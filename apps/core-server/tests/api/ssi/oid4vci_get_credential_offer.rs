@@ -2,7 +2,7 @@ use one_core::model::credential::CredentialStateEnum;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::fixtures::TestingCredentialParams;
+use crate::fixtures::{TestingCredentialParams, key_to_claim_schema_id};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
@@ -116,15 +116,13 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
         .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
         .await;
 
-    let claim_id = credential_schema
-        .claim_schemas
-        .clone()
-        .unwrap()
-        .into_iter()
-        .find(|claim| claim.schema.key == "namespace/root_array/nested/field")
-        .unwrap()
-        .schema
-        .id;
+    let namespace_obj_claim_id = key_to_claim_schema_id("namespace", &credential_schema);
+    let root_field_claim_id = key_to_claim_schema_id("namespace/root_field", &credential_schema);
+    let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema);
+    let nested_obj_claim_id =
+        key_to_claim_schema_id("namespace/root_array/nested", &credential_schema);
+    let nested_field_claim_id =
+        key_to_claim_schema_id("namespace/root_array/nested/field", &credential_schema);
 
     let credential = context
         .db
@@ -137,26 +135,54 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
-                    (claim_id.into(), "namespace/root_field", "foo-field"),
                     (
-                        claim_id.into(),
+                        root_field_claim_id.into(),
+                        "namespace/root_field",
+                        Some("foo-field"),
+                    ),
+                    (
+                        nested_field_claim_id.into(),
                         "namespace/root_array/0/nested/0/field",
-                        "foo1",
+                        Some("foo1"),
+                    ),
+                    (namespace_obj_claim_id.into(), "namespace", None),
+                    (
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/0/nested/0",
+                        None,
                     ),
                     (
-                        claim_id.into(),
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/0/nested",
+                        None,
+                    ),
+                    (array_claim_id.into(), "namespace/root_array/0", None),
+                    (
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/1/nested/1",
+                        None,
+                    ),
+                    (
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/1/nested",
+                        None,
+                    ),
+                    (array_claim_id.into(), "namespace/root_array/1", None),
+                    (array_claim_id.into(), "namespace/root_array", None),
+                    (
+                        nested_field_claim_id.into(),
                         "namespace/root_array/0/nested/1/field",
-                        "foo2",
+                        Some("foo2"),
                     ),
                     (
-                        claim_id.into(),
+                        nested_field_claim_id.into(),
                         "namespace/root_array/1/nested/0/field",
-                        "foo3",
+                        Some("foo3"),
                     ),
                     (
-                        claim_id.into(),
+                        nested_field_claim_id.into(),
                         "namespace/root_array/1/nested/1/field",
-                        "foo4",
+                        Some("foo4"),
                     ),
                 ]),
                 ..Default::default()
@@ -370,15 +396,12 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
         .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
         .await;
 
-    let claim_id = credential_schema
-        .claim_schemas
-        .clone()
-        .unwrap()
-        .into_iter()
-        .find(|claim| claim.schema.key == "namespace/root_array/nested/field")
-        .unwrap()
-        .schema
-        .id;
+    let root_field_claim_id = key_to_claim_schema_id("namespace/root_field", &credential_schema);
+    let array_claim_id = key_to_claim_schema_id("namespace/root_array", &credential_schema);
+    let nested_obj_claim_id =
+        key_to_claim_schema_id("namespace/root_array/nested", &credential_schema);
+    let nested_field_claim_id =
+        key_to_claim_schema_id("namespace/root_array/nested/field", &credential_schema);
 
     let credential = context
         .db
@@ -391,26 +414,53 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
-                    (claim_id.into(), "namespace/root_field", "foo-field"),
                     (
-                        claim_id.into(),
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/0/nested/0",
+                        None,
+                    ),
+                    (
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/0/nested",
+                        None,
+                    ),
+                    (
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/1/nested/1",
+                        None,
+                    ),
+                    (
+                        nested_obj_claim_id.into(),
+                        "namespace/root_array/1/nested",
+                        None,
+                    ),
+                    (array_claim_id.into(), "namespace/root_array/0", None),
+                    (array_claim_id.into(), "namespace/root_array/1", None),
+                    (array_claim_id.into(), "namespace/root_array", None),
+                    (
+                        root_field_claim_id.into(),
+                        "namespace/root_field",
+                        Some("foo-field"),
+                    ),
+                    (
+                        nested_field_claim_id.into(),
                         "namespace/root_array/0/nested/0/field",
-                        "foo1",
+                        Some("foo1"),
                     ),
                     (
-                        claim_id.into(),
+                        nested_field_claim_id.into(),
                         "namespace/root_array/0/nested/1/field",
-                        "foo2",
+                        Some("foo2"),
                     ),
                     (
-                        claim_id.into(),
+                        nested_field_claim_id.into(),
                         "namespace/root_array/1/nested/0/field",
-                        "foo3",
+                        Some("foo3"),
                     ),
                     (
-                        claim_id.into(),
+                        nested_field_claim_id.into(),
                         "namespace/root_array/1/nested/1/field",
-                        "foo4",
+                        Some("foo4"),
                     ),
                 ]),
                 ..Default::default()

@@ -519,6 +519,21 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         ],
         claim_schema_keys
     );
+    let claim_paths: Vec<String> = credential
+        .claims
+        .unwrap()
+        .iter()
+        .map(|claim| claim.path.to_owned())
+        .collect();
+    assert_eq!(
+        vec![
+            "address",
+            "address/location",
+            "address/location/position",
+            "address/location/position/x",
+        ],
+        claim_paths
+    );
 }
 
 #[tokio::test]

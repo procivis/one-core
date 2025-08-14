@@ -280,7 +280,7 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
-                claims_data: Some(vec![(claim_1, "firstName", "test-name")]),
+                claims_data: Some(vec![(claim_1, "firstName", Some("test-name"))]),
                 ..Default::default()
             },
         )
@@ -353,7 +353,7 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
-                claims_data: Some(vec![(claim_1, "firstName", "test-name")]),
+                claims_data: Some(vec![(claim_1, "firstName", Some("test-name"))]),
                 ..Default::default()
             },
         )
@@ -570,7 +570,10 @@ async fn test_get_presentation_definition_dcql_multiple() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
-                claims_data: Some(vec![(claim_2, "org.iso.18013.5.1/test_1", "test-data")]),
+                claims_data: Some(vec![
+                    (claim_1, "org.iso.18013.5.1", None),
+                    (claim_2, "org.iso.18013.5.1/test_1", Some("test-data")),
+                ]),
                 ..Default::default()
             },
         )
@@ -889,8 +892,8 @@ async fn test_get_presentation_definition_dcql_value_match() {
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
-                    (claim_1, "firstName", "test-name"),
-                    (claim_2, "isOver18", "true"),
+                    (claim_1, "firstName", Some("test-name")),
+                    (claim_2, "isOver18", Some("true")),
                 ]),
                 ..Default::default()
             },
@@ -909,8 +912,8 @@ async fn test_get_presentation_definition_dcql_value_match() {
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
-                    (claim_1, "firstName", "test-name2"),
-                    (claim_2, "isOver18", "false"),
+                    (claim_1, "firstName", Some("test-name2")),
+                    (claim_2, "isOver18", Some("false")),
                 ]),
                 ..Default::default()
             },

@@ -615,6 +615,15 @@ async fn test_get_proof_with_array_holder() {
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key".into(),
+                schema: Some(claim_schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0".into(),
                 schema: Some(claim_schema.clone()),
@@ -854,6 +863,24 @@ async fn test_get_proof_with_array_in_object_holder() {
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key/address".into(),
+                schema: Some(claim_schemas[1].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
                 schema: Some(claim_schemas[1].schema.clone()),
@@ -1009,13 +1036,13 @@ async fn test_get_proof_with_array_in_object_holder() {
     assert_eq!(result.proof_inputs[0].claims[0].path, "key");
     let claims = match &result.proof_inputs[0].claims[0].value {
         Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
+        _ => panic!("not nested field"),
     };
 
     assert_eq!(claims[0].path, "key/address");
     let claims = match &claims[0].value {
         Some(ProofClaimValueDTO::Claims(values)) => values,
-        _ => panic!("not array field"),
+        _ => panic!("not nested field"),
     };
 
     assert_eq!(claims[0].path, "key/address/0");
@@ -1093,6 +1120,33 @@ async fn test_get_proof_with_object_array_holder() {
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key/0".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key/1".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
             Claim {
                 id: Uuid::new_v4(),
                 credential_id: Uuid::new_v4().into(),
@@ -1257,14 +1311,26 @@ async fn test_get_proof_with_object_array_holder() {
         _ => panic!("not array field"),
     };
 
-    assert_eq!(claims[0].path, "key/0/address");
+    assert_eq!(claims[0].path, "key/0");
+    let claim_0 = match &claims[0].value {
+        Some(ProofClaimValueDTO::Claims(values)) => values,
+        _ => panic!("not array field"),
+    };
+
+    assert_eq!(claim_0[0].path, "key/0/address");
     assert!(matches!(
-        &claims[0].value,
+        &claim_0[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo1"
     ));
-    assert_eq!(claims[1].path, "key/1/address");
+
+    assert_eq!(claims[1].path, "key/1");
+    let claim_1 = match &claims[1].value {
+        Some(ProofClaimValueDTO::Claims(values)) => values,
+        _ => panic!("not array field"),
+    };
+    assert_eq!(claim_1[0].path, "key/1/address");
     assert!(matches!(
-        &claims[1].value,
+        &claim_1[0].value,
         Some(ProofClaimValueDTO::Value(val)) if val == "foo2"
     ));
 }
@@ -1320,6 +1386,15 @@ async fn test_get_proof_with_array() {
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key".into(),
+                schema: Some(claim_schema.clone()),
+            },
             Claim {
                 id: Uuid::new_v4(),
                 credential_id: Uuid::new_v4().into(),
@@ -1573,6 +1648,24 @@ async fn test_get_proof_with_array_in_object() {
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key/address".into(),
+                schema: Some(claim_schemas[1].schema.clone()),
+            },
             Claim {
                 id: Uuid::new_v4(),
                 credential_id: Uuid::new_v4().into(),
@@ -1832,6 +1925,33 @@ async fn test_get_proof_with_object_array() {
         state: CredentialStateEnum::Accepted,
         suspend_end_date: None,
         claims: Some(vec![
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key/0".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
+            Claim {
+                id: Uuid::new_v4(),
+                credential_id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                value: None,
+                path: "key/1".into(),
+                schema: Some(claim_schemas[0].schema.clone()),
+            },
             Claim {
                 id: Uuid::new_v4(),
                 credential_id: Uuid::new_v4().into(),
