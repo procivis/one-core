@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use one_dto_mapper::convert_inner;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
@@ -105,8 +103,8 @@ fn insert_claim(
     claim_schemas: &[CredentialSchemaClaim],
     config: &CoreConfig,
 ) -> Result<Vec<DetailCredentialClaimResponseDTO>, ServiceError> {
-    match (claim.path.rsplit_once(NESTED_CLAIM_MARKER), &claim.value) {
-        (Some((head, _)), Some(_)) => {
+    match claim.path.rsplit_once(NESTED_CLAIM_MARKER) {
+        Some((head, _)) => {
             let parent_claim = get_or_insert(&mut root, head, claim_schemas)?;
 
             match &mut parent_claim.value {
@@ -135,7 +133,7 @@ fn insert_claim(
                 }
             }
         }
-        (None, Some(_)) => {
+        None => {
             let claim_schema = claim
                 .schema
                 .as_ref()
@@ -147,10 +145,6 @@ fn insert_claim(
                 .ok_or_else(|| ServiceError::Other("claim.schema is unknown".into()))?;
 
             root.push(claim_to_dto(&claim, claim_schema, config)?);
-        }
-        (_, None) => {
-            // just insert the current claim as a parent if it not exist yet
-            get_or_insert(&mut root, &claim.path, claim_schemas)?;
         }
     };
 
@@ -365,97 +359,26 @@ pub(super) fn claims_from_create_request(
     claim_schemas: &[CredentialSchemaClaim],
 ) -> Result<Vec<Claim>, ServiceError> {
     let now = OffsetDateTime::now_utc();
-    let mut claims_map = HashMap::<String, Claim>::new();
 
-    for claim_dto in claims {
-        let claim_schema_id = claim_dto.claim_schema_id;
-        let schema = claim_schemas
-            .iter()
-            .find(|schema| schema.schema.id == claim_schema_id)
-            .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
-        let claim = Claim {
-            id: Uuid::new_v4(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: Some(claim_dto.value),
-            path: claim_dto.path.clone(),
-            schema: Some(schema.schema.clone()),
-        };
-        claims_map.insert(claim_dto.path.clone(), claim);
-        let mut current_path = claim_dto.path;
-        current_path =
-            insert_array_parent(schema, credential_id, now, &mut claims_map, current_path)?;
-
-        let mut current_schema_path = schema.schema.key.clone();
-        let mut current_path_split = current_path.rsplit_once('/');
-
-        // Step through the tree starting from the leaf up to the root and create intermediary
-        // container claims.
-        while let Some(parent_path) = current_path_split.map(|(s, _)| s.to_owned())
-            // If the immediate parent exists then all parents up to the root exist, so no need to
-            // check other splits.
-            && !claims_map.contains_key(&parent_path)
-        {
-            current_path = parent_path.to_owned();
-            let Some((parent_schema_path, _)) = current_schema_path.rsplit_once("/") else {
-                return Err(ServiceError::MappingError(format!(
-                    "Expected schema path '{current_schema_path}' to contain nested property",
-                )));
-            };
+    claims
+        .into_iter()
+        .map(|claim| {
+            let claim_schema_id = claim.claim_schema_id;
             let schema = claim_schemas
                 .iter()
-                .find(|schema| schema.schema.key == parent_schema_path)
-                .ok_or(ServiceError::MappingError(format!(
-                    "Schema not found for array or object claim with path {current_path}",
-                )))?;
-            let parent_claim = Claim {
+                .find(|schema| schema.schema.id == claim_schema_id)
+                .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
+            Ok(Claim {
                 id: Uuid::new_v4(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
-                value: None,
-                path: current_path.clone(),
+                value: Some(claim.value),
+                path: claim.path,
                 schema: Some(schema.schema.clone()),
-            };
-            claims_map.insert(current_path.clone(), parent_claim);
-            current_path =
-                insert_array_parent(schema, credential_id, now, &mut claims_map, current_path)?;
-            current_path_split = current_path.rsplit_once('/');
-            current_schema_path = parent_schema_path.to_string();
-        }
-    }
-    Ok(claims_map.into_values().collect())
-}
-
-fn insert_array_parent(
-    schema: &CredentialSchemaClaim,
-    credential_id: CredentialId,
-    now: OffsetDateTime,
-    claims_map: &mut HashMap<String, Claim>,
-    current_path: String,
-) -> Result<String, ServiceError> {
-    if schema.schema.array {
-        let Some((array_path, _)) = current_path.rsplit_once("/") else {
-            return Err(ServiceError::MappingError(format!(
-                "Expected '{current_path}' to contain array element index",
-            )));
-        };
-        if !claims_map.contains_key(array_path) {
-            let parent_claim = Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: array_path.to_owned(),
-                schema: Some(schema.schema.clone()),
-            };
-            claims_map.insert(array_path.to_owned(), parent_claim);
-        }
-        return Ok(array_path.to_owned());
-    }
-    Ok(current_path)
+            })
+        })
+        .collect::<Result<Vec<_>, _>>()
 }
 
 pub(super) fn credential_revocation_state_to_model_state(

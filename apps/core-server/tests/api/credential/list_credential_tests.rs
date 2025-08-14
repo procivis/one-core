@@ -520,8 +520,8 @@ async fn test_get_list_credential_filter_by_claim_name() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_1, "super-name-100", Some("extra-value-11")),
-                    (claim_2, "super-name-200", Some("extra-value-22")),
+                    (claim_1, "super-name-100", "extra-value-11"),
+                    (claim_2, "super-name-200", "extra-value-22"),
                 ]),
                 ..Default::default()
             },
@@ -537,7 +537,7 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                claims_data: Some(vec![(claim_2, "super-name-200", Some("extra-value-22"))]),
+                claims_data: Some(vec![(claim_2, "super-name-200", "extra-value-22")]),
                 ..Default::default()
             },
         )
@@ -625,8 +625,8 @@ async fn test_get_list_credential_filter_by_claim_value() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_1, "super-name-100", Some("extra-value-11")),
-                    (claim_2, "super-name-200", Some("extra-value-22")),
+                    (claim_1, "super-name-100", "extra-value-11"),
+                    (claim_2, "super-name-200", "extra-value-22"),
                 ]),
                 ..Default::default()
             },
@@ -642,7 +642,7 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                claims_data: Some(vec![(claim_2, "super-name-200", Some("extra-value-33"))]),
+                claims_data: Some(vec![(claim_2, "super-name-200", "extra-value-33")]),
                 ..Default::default()
             },
         )
@@ -730,8 +730,8 @@ async fn test_get_list_credential_filter_by_everything() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_1, "test 2", Some("extra-value-11")),
-                    (claim_2, "super-name-200", Some("extra-value-22")),
+                    (claim_1, "test 2", "extra-value-11"),
+                    (claim_2, "super-name-200", "extra-value-22"),
                 ]),
                 ..Default::default()
             },
@@ -747,7 +747,7 @@ async fn test_get_list_credential_filter_by_everything() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                claims_data: Some(vec![(claim_2, "super-name-200", Some("test 3"))]),
+                claims_data: Some(vec![(claim_2, "super-name-200", "test 3")]),
                 ..Default::default()
             },
         )

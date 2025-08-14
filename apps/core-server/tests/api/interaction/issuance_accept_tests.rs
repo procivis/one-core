@@ -1869,7 +1869,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
-                claims_data: Some(vec![(schema_id, "string", Some(""))]),
+                claims_data: Some(vec![(schema_id, "string", "")]),
                 ..Default::default()
             },
         )
@@ -2089,7 +2089,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                             .id
                             .into(),
                         "first name",
-                        Some("John"),
+                        "John",
                     ),
                     (
                         credential_schema.claim_schemas.as_ref().unwrap()[1]
@@ -2097,15 +2097,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                             .id
                             .into(),
                         "last name",
-                        Some("Doe"),
-                    ),
-                    (
-                        credential_schema.claim_schemas.as_ref().unwrap()[2]
-                            .schema
-                            .id
-                            .into(),
-                        "address",
-                        None,
+                        "Doe",
                     ),
                     (
                         credential_schema.claim_schemas.as_ref().unwrap()[3]
@@ -2113,7 +2105,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                             .id
                             .into(),
                         "address/postal code",
-                        Some("1234"),
+                        "1234",
                     ),
                     (
                         credential_schema.claim_schemas.as_ref().unwrap()[4]
@@ -2121,7 +2113,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
                             .id
                             .into(),
                         "address/street",
-                        Some("Via Torino"),
+                        "Via Torino",
                     ),
                 ]),
                 ..Default::default()

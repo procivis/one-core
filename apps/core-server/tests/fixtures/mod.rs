@@ -41,8 +41,7 @@ use one_crypto::utilities::generate_alphanumeric;
 use sea_orm::ConnectionTrait;
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
-    BlobId, ClaimSchemaId, CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId,
-    ProofId,
+    BlobId, CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId, ProofId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -634,7 +633,7 @@ pub struct TestingCredentialParams<'a> {
     pub issuer_certificate: Option<Certificate>,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub random_claims: bool,
-    pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, Option<ClaimValue<'a>>)>>,
+    pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, ClaimValue<'a>)>>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
 }
@@ -859,16 +858,4 @@ pub fn encrypted_token(token: &str) -> Vec<u8> {
         ),
     )
     .unwrap()
-}
-
-pub fn key_to_claim_schema_id(key: &str, credential_schema: &CredentialSchema) -> ClaimSchemaId {
-    credential_schema
-        .claim_schemas
-        .clone()
-        .unwrap()
-        .into_iter()
-        .find(|claim| claim.schema.key == key)
-        .unwrap()
-        .schema
-        .id
 }

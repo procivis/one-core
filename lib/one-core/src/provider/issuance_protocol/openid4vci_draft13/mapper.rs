@@ -573,7 +573,7 @@ fn validate_and_collect_claims(
         .iter()
         .try_fold(vec![], |claims, (key, field)| {
             let nested_claim = nested_claim_view.claims.get(key);
-            visit_nested_claim(credential_id, now, claims, field, nested_claim, "")
+            visit_nested_claim(credential_id, now, claims, field, nested_claim)
         })
 }
 
@@ -611,7 +611,6 @@ fn visit_nested_object_field(
     now: OffsetDateTime,
     object: &CredentialSchemaClaimsNestedObjectView,
     nested_claim_view: &ClaimsNestedFieldView,
-    path_to_root: &str,
 ) -> Result<Vec<Claim>, IssuanceProtocolError> {
     let claims_view = match nested_claim_view {
         ClaimsNestedFieldView::Leaf { .. } => {
@@ -622,41 +621,14 @@ fn visit_nested_object_field(
         }
         ClaimsNestedFieldView::Nodes(claims) => claims,
     };
-    let path_container_to_root = if path_to_root.is_empty() {
-        object.claim.schema.key.clone()
-    } else {
-        path_to_root.to_string()
-    };
-    let mut child_claims = object
+
+    object
         .fields
         .iter()
         .try_fold(vec![], |claims, (key, field)| {
             let claim = claims_view.get(key);
-            let path_property_to_root = format!("{path_container_to_root}/{key}");
-            visit_nested_claim(
-                credential_id,
-                now,
-                claims,
-                field,
-                claim,
-                &path_property_to_root,
-            )
-        })?;
-
-    if !child_claims.is_empty() {
-        // Object not empty -> insert object container claim
-        child_claims.push(Claim {
-            id: Uuid::new_v4(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: None,
-            path: path_container_to_root,
-            schema: Some(object.claim.schema.clone()),
+            visit_nested_claim(credential_id, now, claims, field, claim)
         })
-    }
-
-    Ok(child_claims)
 }
 
 fn visit_nested_claim(
@@ -665,7 +637,6 @@ fn visit_nested_claim(
     claims: Vec<Claim>,
     field: &Arrayed<CredentialSchemaClaimsNestedTypeView>,
     claim: Option<&ClaimsNestedFieldView>,
-    path_to_root: &str,
 ) -> Result<Vec<Claim>, IssuanceProtocolError> {
     match claim {
         Some(nested_claim) => {
@@ -674,16 +645,10 @@ fn visit_nested_claim(
                     visit_nested_field_field(credential_id, now, claim, nested_claim)
                 }
                 Arrayed::Single(CredentialSchemaClaimsNestedTypeView::Object(object)) => {
-                    visit_nested_object_field(
-                        credential_id,
-                        now,
-                        object,
-                        nested_claim,
-                        path_to_root,
-                    )
+                    visit_nested_object_field(credential_id, now, object, nested_claim)
                 }
                 Arrayed::InArray(array) => {
-                    visit_nested_array_field(credential_id, now, array, nested_claim, path_to_root)
+                    visit_nested_array_field(credential_id, now, array, nested_claim)
                 }
             }?;
             Ok([claims, nested_claims].concat())
@@ -701,7 +666,6 @@ fn visit_nested_array_field(
     now: OffsetDateTime,
     array: &CredentialSchemaClaimsNestedTypeView,
     nested_claim_view: &ClaimsNestedFieldView,
-    path_to_root: &str,
 ) -> Result<Vec<Claim>, IssuanceProtocolError> {
     let claims_view = match nested_claim_view {
         ClaimsNestedFieldView::Leaf { .. } => {
@@ -720,16 +684,7 @@ fn visit_nested_array_field(
         )));
     }
 
-    let array_schema = match array {
-        CredentialSchemaClaimsNestedTypeView::Field(field) => field.schema.clone(),
-        CredentialSchemaClaimsNestedTypeView::Object(obj) => obj.claim.schema.clone(),
-    };
-    let path_container_to_root = if path_to_root.is_empty() {
-        array_schema.key.clone()
-    } else {
-        path_to_root.to_string()
-    };
-    let mut child_claims = (0..claims_view.len()).try_fold(vec![], |claims, index| {
+    (0..claims_view.len()).try_fold(vec![], |claims, index| {
         let claim = claims_view
             .get(&index.to_string())
             .ok_or(IssuanceProtocolError::Failed(format!(
@@ -742,27 +697,11 @@ fn visit_nested_array_field(
                 visit_nested_field_field(credential_id, now, field, claim)
             }
             CredentialSchemaClaimsNestedTypeView::Object(object) => {
-                let path_element_to_root = format!("{path_container_to_root}/{index}");
-                visit_nested_object_field(credential_id, now, object, claim, &path_element_to_root)
+                visit_nested_object_field(credential_id, now, object, claim)
             }
         }?;
         Ok([claims, nested_claims].concat())
-    })?;
-
-    if !child_claims.is_empty() {
-        // Array not empty -> insert array container claim
-        child_claims.push(Claim {
-            id: Uuid::new_v4(),
-            credential_id,
-            created_date: now,
-            last_modified: now,
-            value: None,
-            path: path_container_to_root,
-            schema: Some(array_schema),
-        });
-    }
-
-    Ok(child_claims)
+    })
 }
 
 #[derive(Debug)]

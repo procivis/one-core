@@ -2,7 +2,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
-use shared_types::{CredentialId, KeyId};
+use shared_types::KeyId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -146,8 +146,11 @@ async fn test_create_credential_with_array_success() {
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
 
-    let credential_id = resp["id"].parse::<String>();
-    let resp = context.api.credentials.get(&credential_id).await;
+    let resp = context
+        .api
+        .credentials
+        .get(&resp["id"].parse::<String>())
+        .await;
 
     assert_eq!(resp.status(), 200);
     let resp = resp.json_value().await;
@@ -176,40 +179,6 @@ async fn test_create_credential_with_array_success() {
         "namespace/root_array/0/nested/0/field"
     );
     assert_eq!(nested_field["value"], "foo");
-
-    let credential = context
-        .db
-        .credentials
-        .get(&CredentialId::from(credential_id.parse::<Uuid>().unwrap()))
-        .await;
-    assert_eq!(credential.claims.as_ref().unwrap().len(), 15);
-    let expected_claim_paths = [
-        "namespace",
-        "namespace/root_field",
-        "namespace/root_array",
-        "namespace/root_array/0",
-        "namespace/root_array/1",
-        "namespace/root_array/0/nested",
-        "namespace/root_array/1/nested",
-        "namespace/root_array/0/nested/0",
-        "namespace/root_array/0/nested/1",
-        "namespace/root_array/1/nested/0",
-        "namespace/root_array/1/nested/1",
-        "namespace/root_array/0/nested/0/field",
-        "namespace/root_array/0/nested/1/field",
-        "namespace/root_array/1/nested/0/field",
-        "namespace/root_array/1/nested/1/field",
-    ];
-    for expected_path in expected_claim_paths {
-        assert!(
-            credential
-                .claims
-                .as_ref()
-                .unwrap()
-                .iter()
-                .any(|claim| claim.path == expected_path)
-        )
-    }
 }
 
 #[tokio::test]
@@ -266,7 +235,7 @@ async fn test_create_credential_success_with_nested_claims() {
 
     let credential = context.db.credentials.get(&resp["id"].parse()).await;
     assert_eq!(CredentialStateEnum::Created, credential.state);
-    assert_eq!(5, credential.claims.unwrap().len());
+    assert_eq!(3, credential.claims.unwrap().len());
     assert_eq!("OPENID4VCI_DRAFT13", credential.protocol);
 }
 

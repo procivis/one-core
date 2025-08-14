@@ -924,7 +924,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                 claims_data: Some(vec![(
                     first_claim_schema.schema.id.into(),
                     &first_claim_schema.schema.key,
-                    Some("value"),
+                    "value",
                 )]),
                 ..Default::default()
             },
@@ -944,12 +944,12 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
                     (
                         first_claim_schema.schema.id.into(),
                         &first_claim_schema.schema.key,
-                        Some("value"),
+                        "value",
                     ),
                     (
                         second_claim_schema.schema.id.into(),
                         &second_claim_schema.schema.key,
-                        Some("true"),
+                        "true",
                     ),
                 ]),
                 ..Default::default()

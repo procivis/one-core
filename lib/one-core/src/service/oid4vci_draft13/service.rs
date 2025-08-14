@@ -726,25 +726,20 @@ pub(crate) fn credentials_format(
     Ok(ExtendedSubjectDTO {
         wallet_storage_type,
         keys: Some(ExtendedSubjectClaimsDTO {
-            claims: IndexMap::from_iter(
-                claims
-                    .iter()
-                    .filter(|claim| claim.value.is_some())
-                    .filter_map(|claim| {
-                        claim.schema.as_ref().map(|schema| {
-                            (
-                                claim.path.clone(),
-                                OpenID4VCICredentialValueDetails {
-                                    value: match claims_with_values {
-                                        true => claim.value.clone(),
-                                        false => None,
-                                    },
-                                    value_type: schema.data_type.clone(),
-                                },
-                            )
-                        })
-                    }),
-            ),
+            claims: IndexMap::from_iter(claims.iter().filter_map(|claim| {
+                claim.schema.as_ref().map(|schema| {
+                    (
+                        claim.path.clone(),
+                        OpenID4VCICredentialValueDetails {
+                            value: match claims_with_values {
+                                true => claim.value.clone(),
+                                false => None,
+                            },
+                            value_type: schema.data_type.clone(),
+                        },
+                    )
+                })
+            })),
         }),
     })
 }

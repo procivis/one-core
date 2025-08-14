@@ -4,12 +4,9 @@ use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
-use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-};
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
 use one_core::repository::credential_repository::CredentialRepository;
-use rand::{RngCore, thread_rng};
 use shared_types::CredentialId;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
@@ -78,7 +75,7 @@ impl CredentialsDB {
                         credential_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
-                        value: new_claim.2.map(|new_value| new_value.to_owned()),
+                        value: Some(new_claim.2.to_owned()),
                         path: new_claim.1.to_owned(),
                         schema: Some(claim_schema.schema.to_owned()),
                     }
@@ -90,43 +87,20 @@ impl CredentialsDB {
                 .filter(|claim_schema| {
                     claim_schema.schema.data_type != "OBJECT" && !claim_schema.schema.array
                 })
-                .flat_map(|claim_schema| {
-                    let path = add_intermediary_indices_to_claim_schema_key(
-                        &claim_schema.schema.key,
-                        claim_schemas,
-                    );
-                    if claim_schema.schema.array {
-                        vec![
-                            Claim {
-                                id: Uuid::new_v4(),
-                                credential_id,
-                                created_date: get_dummy_date(),
-                                last_modified: get_dummy_date(),
-                                value: schema_to_dummy_value(claim_schema, params.random_claims),
-                                path: format!("{path}/0"),
-                                schema: Some(claim_schema.schema.to_owned()),
-                            },
-                            Claim {
-                                id: Uuid::new_v4(),
-                                credential_id,
-                                created_date: get_dummy_date(),
-                                last_modified: get_dummy_date(),
-                                value: None,
-                                path,
-                                schema: Some(claim_schema.schema.to_owned()),
-                            },
-                        ]
+                .map(move |claim_schema| Claim {
+                    id: Uuid::new_v4(),
+                    credential_id,
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    value: Some(if params.random_claims {
+                        format!("test:{}", Uuid::new_v4())
+                    } else if claim_schema.schema.data_type != "BOOLEAN" {
+                        "test".to_string()
                     } else {
-                        vec![Claim {
-                            id: Uuid::new_v4(),
-                            credential_id,
-                            created_date: get_dummy_date(),
-                            last_modified: get_dummy_date(),
-                            value: schema_to_dummy_value(claim_schema, params.random_claims),
-                            path,
-                            schema: Some(claim_schema.schema.to_owned()),
-                        }]
-                    }
+                        "true".to_string()
+                    }),
+                    path: claim_schema.schema.key.clone(),
+                    schema: Some(claim_schema.schema.to_owned()),
                 })
                 .collect()
         };
@@ -171,62 +145,4 @@ impl CredentialsDB {
 
         self.get(&id).await
     }
-}
-
-fn add_intermediary_indices_to_claim_schema_key(
-    schema_key: &str,
-    schemas: &[CredentialSchemaClaim],
-) -> String {
-    let mut current_schema_key = "".to_string();
-    let mut claim_path = vec![];
-    for segment in schema_key.split('/') {
-        claim_path.push(segment.to_owned());
-        current_schema_key += segment;
-        if current_schema_key != schema_key // otherwise we're at the end
-            && schemas
-                .iter()
-                .find(|schema| schema.schema.key == current_schema_key)
-                .expect("schema not found")
-                .schema
-                .array
-        {
-            claim_path.push("0".to_string())
-        }
-        current_schema_key += "/";
-    }
-    claim_path.join("/")
-}
-
-fn schema_to_dummy_value(
-    claim_schema: &CredentialSchemaClaim,
-    random_claims: bool,
-) -> Option<String> {
-    let data_type = &claim_schema.schema.data_type;
-    if data_type == "OBJECT" {
-        return None;
-    }
-    let value = match data_type.as_str() {
-        "NUMBER" => {
-            if random_claims {
-                thread_rng().next_u32().to_string()
-            } else {
-                "42".to_string()
-            }
-        }
-        "BOOLEAN" => {
-            if random_claims {
-                (thread_rng().next_u32() % 2 == 0).to_string()
-            } else {
-                "true".to_string()
-            }
-        }
-        _ => {
-            if random_claims {
-                format!("test:{}", Uuid::new_v4())
-            } else {
-                "test".to_string()
-            }
-        }
-    };
-    Some(value)
 }
