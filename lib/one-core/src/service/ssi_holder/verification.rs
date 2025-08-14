@@ -6,7 +6,9 @@ use url::Url;
 
 use super::SSIHolderService;
 use super::dto::{HandleInvitationResultDTO, PresentationSubmitRequestDTO};
-use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, get_or_create_identifier};
+use crate::common_mapper::{
+    IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation, get_or_create_identifier,
+};
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
@@ -574,7 +576,7 @@ impl SSIHolderService {
                 deserialize_interaction_data(interaction.data.as_ref());
             if let Ok(data) = deserialized {
                 if let Some(details) = data.verifier_details {
-                    let (identifier, ..) = get_or_create_identifier(
+                    let (identifier, verifier_identifier_relation) = get_or_create_identifier(
                         &*self.did_method_provider,
                         &*self.did_repository,
                         &*self.certificate_repository,
@@ -587,8 +589,14 @@ impl SSIHolderService {
                         IdentifierRole::Verifier,
                     )
                     .await?;
-
                     proof.verifier_identifier = Some(identifier);
+                    match verifier_identifier_relation {
+                        RemoteIdentifierRelation::Certificate(certificate) => {
+                            proof.verifier_certificate = Some(certificate)
+                        }
+                        RemoteIdentifierRelation::Key(key) => proof.verifier_key = Some(key),
+                        _ => {}
+                    };
                 }
             }
         }
