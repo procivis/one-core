@@ -14,7 +14,7 @@ use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
-    DetailCredential, HolderBindingCtx, IdentifierDetails, TokenVerifier,
+    CredentialClaim, DetailCredential, HolderBindingCtx, IdentifierDetails, TokenVerifier,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -432,7 +432,7 @@ pub(super) fn validate_claims(
             proved_claims.push(ValidatedProofClaimDTO {
                 proof_input_claim: expected_credential_claim.to_owned(),
                 credential: received_credential.to_owned(),
-                value: value.to_owned(),
+                value: value.value.to_owned().into(),
                 credential_schema: credential_schema.to_owned(),
                 mdoc_mso: mso.clone(),
             })
@@ -451,8 +451,8 @@ pub(super) fn validate_claims(
 
 fn resolve_claim<'a>(
     claim_name: &str,
-    claims: &'a HashMap<String, serde_json::Value>,
-) -> Result<Option<&'a serde_json::Value>, OpenID4VCError> {
+    claims: &'a HashMap<String, CredentialClaim>,
+) -> Result<Option<&'a CredentialClaim>, OpenID4VCError> {
     // Simplest case - claim is not nested
     if let Some(value) = claims.get(claim_name) {
         return Ok(Some(value));
@@ -469,14 +469,14 @@ fn resolve_claim<'a>(
 
 fn resolve_claim_inner<'a>(
     claim_name: &str,
-    claims: &'a serde_json::Value,
-) -> Result<Option<&'a serde_json::Value>, OpenID4VCError> {
-    if let Some(value) = claims.get(claim_name) {
+    claims: &'a CredentialClaim,
+) -> Result<Option<&'a CredentialClaim>, OpenID4VCError> {
+    if let Some(value) = claims.value.as_object().and_then(|obj| obj.get(claim_name)) {
         return Ok(Some(value));
     }
 
     match claim_name.split_once(NESTED_CLAIM_MARKER) {
-        Some((prefix, rest)) => match claims.get(prefix) {
+        Some((prefix, rest)) => match claims.value.as_object().and_then(|obj| obj.get(prefix)) {
             None => Ok(None),
             Some(value) => resolve_claim_inner(rest, value),
         },

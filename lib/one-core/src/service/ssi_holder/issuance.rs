@@ -378,7 +378,7 @@ impl SSIHolderService {
             collected_claims.extend(value_to_model_claims(
                 *credential_id,
                 claim_schemas,
-                &value,
+                &value.into(),
                 now,
                 &this_claim_schema.schema,
                 &key,

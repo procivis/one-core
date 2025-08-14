@@ -3,6 +3,7 @@ use std::sync::Arc;
 use std::vec;
 
 use mockall::predicate::eq;
+use one_dto_mapper::try_convert_inner;
 use regex::Regex;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -1034,7 +1035,11 @@ async fn test_accept_credential() {
                 issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
-                    claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),
+                    claims: try_convert_inner(HashMap::from([(
+                        "key1".to_string(),
+                        json!("key1_value"),
+                    )]))
+                    .unwrap(),
                     id: None,
                 },
                 status: vec![],
@@ -1201,7 +1206,11 @@ async fn test_accept_credential_with_did() {
                 issuer: IdentifierDetails::Did("did:test:123".parse().unwrap()),
                 subject: None,
                 claims: CredentialSubject {
-                    claims: HashMap::from([("key1".to_string(), json!("key1_value"))]),
+                    claims: try_convert_inner(HashMap::from([(
+                        "key1".to_string(),
+                        json!("key1_value"),
+                    )]))
+                    .unwrap(),
                     id: None,
                 },
                 status: vec![],

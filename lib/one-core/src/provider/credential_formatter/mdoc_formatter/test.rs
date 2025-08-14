@@ -641,11 +641,20 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 
     assert_eq!(
         hashmap! {
-            "a".into() => json!({
-                "b": {
-                    "c": "15",
-                }
-            })
+            "a".into() => CredentialClaim {
+                selectively_disclosable: true,
+                value: CredentialClaimValue::Object(hashmap! {
+                    "b".into() => CredentialClaim {
+                        selectively_disclosable: true,
+                        value: CredentialClaimValue::Object(hashmap! {
+                            "c".into() =>CredentialClaim {
+                                selectively_disclosable: false,
+                                value: CredentialClaimValue::String("15".into())
+                            }
+                        })
+                    }
+                })
+            }
         },
         credential.claims.claims
     )

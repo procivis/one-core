@@ -6,6 +6,7 @@ use std::vec;
 use async_trait::async_trait;
 use itertools::Itertools;
 use one_crypto::{CryptoProvider, Hasher};
+use one_dto_mapper::try_convert_inner;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
@@ -283,7 +284,7 @@ impl JsonLdClassic {
 
         let claims = CredentialSubject {
             id: credential_subject.id.clone(),
-            claims: HashMap::from_iter(credential_subject.claims),
+            claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
         };
 
         Ok(DetailCredential {

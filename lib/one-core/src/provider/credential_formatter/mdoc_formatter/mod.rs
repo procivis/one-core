@@ -36,10 +36,10 @@ use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialData, CredentialPresentation, CredentialSchema,
-    CredentialSchemaMetadata, CredentialSubject, DetailCredential, Features, FormatterCapabilities,
-    HolderBindingCtx, IdentifierDetails, PublicKeySource, PublishedClaim, SelectiveDisclosure,
-    TokenVerifier, VerificationFn,
+    AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
+    CredentialPresentation, CredentialSchema, CredentialSchemaMetadata, CredentialSubject,
+    DetailCredential, Features, FormatterCapabilities, HolderBindingCtx, IdentifierDetails,
+    PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -443,7 +443,7 @@ async fn extract_credentials_internal(
     let layout = claims.remove(LAYOUT_NAMESPACE);
 
     let metadata: Option<CredentialSchemaMetadata> =
-        layout.and_then(|layout| serde_json::from_value(layout).ok());
+        layout.and_then(|layout| serde_json::from_value(layout.value.into()).ok());
 
     Ok(DetailCredential {
         id: None,
@@ -902,19 +902,28 @@ fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
 
 fn try_extract_claims(
     namespaces: Namespaces,
-) -> Result<HashMap<String, serde_json::Value>, FormatterError> {
+) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
     let mut result = HashMap::new();
     for (namespace, inner_claims) in namespaces {
-        let mut namespace_object_content = serde_json::Map::new();
+        let mut namespace_object_content = HashMap::new();
 
         for issuer_signed_item in inner_claims {
             let issuer_signed_item = issuer_signed_item.into_inner();
             let val = build_json_value(issuer_signed_item.element_value)?;
-            namespace_object_content.insert(issuer_signed_item.element_identifier, val);
+            namespace_object_content.insert(
+                issuer_signed_item.element_identifier,
+                CredentialClaim {
+                    selectively_disclosable: true,
+                    value: val.try_into()?,
+                },
+            );
         }
         result.insert(
             namespace,
-            serde_json::Value::Object(namespace_object_content),
+            CredentialClaim {
+                selectively_disclosable: true,
+                value: CredentialClaimValue::Object(namespace_object_content),
+            },
         );
     }
 

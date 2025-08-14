@@ -257,7 +257,7 @@ fn extract_matching_requested_schema(
                                 namespace == required_key // requesting a whole namespace
                                     ||
                                     // or requesting a single element
-                                    element_value.as_object().is_some_and(|value| {
+                                    element_value.value.as_object().is_some_and(|value| {
                                         value.keys().any(|key| {
                                             &format!("{namespace}{NESTED_CLAIM_MARKER}{key}")
                                                 == required_key
@@ -290,7 +290,7 @@ fn extract_matching_requested_claim(
             .claims
             .claims
             .get(namespace)
-            .and_then(|elements| elements.as_object())
+            .and_then(|elements| elements.value.as_object())
             .and_then(|elements| elements.get(element_identifier))
     } else {
         // requested whole namespace
@@ -309,7 +309,7 @@ fn extract_matching_requested_claim(
     Ok(Some(ValidatedProofClaimDTO {
         claim_schema_id: requested_claim_schema.schema.id,
         credential: received_credential.to_owned(),
-        value: (requested_claim_schema.schema.key, value.to_owned()),
+        value: (requested_claim_schema.schema.key, value.to_owned().into()),
     }))
 }
 

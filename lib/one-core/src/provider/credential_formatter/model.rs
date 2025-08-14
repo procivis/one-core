@@ -123,11 +123,26 @@ pub struct DetailCredential {
     pub credential_schema: Option<CredentialSchema>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct CredentialClaim {
+    pub selectively_disclosable: bool,
+    pub value: CredentialClaimValue,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CredentialClaimValue {
+    Bool(bool),
+    Number(serde_json::Number),
+    String(String),
+    Array(Vec<CredentialClaim>),
+    Object(HashMap<String, CredentialClaim>),
+}
+
 #[derive(Debug, Clone)]
 pub struct CredentialSubject {
     // relevant only for VCDM
     pub id: Option<Url>,
-    pub claims: HashMap<String, serde_json::Value>,
+    pub claims: HashMap<String, CredentialClaim>,
 }
 
 #[skip_serializing_none]

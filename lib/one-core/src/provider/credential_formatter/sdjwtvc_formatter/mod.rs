@@ -14,6 +14,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::SdJwtVcStatus;
 use one_crypto::CryptoProvider;
+use one_dto_mapper::try_convert_inner;
 use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
@@ -396,7 +397,9 @@ impl SDJWTVCFormatter {
                 issuer,
                 subject,
                 claims: CredentialSubject {
-                    claims: HashMap::from_iter(jwt.payload.custom.public_claims),
+                    claims: try_convert_inner(HashMap::from_iter(
+                        jwt.payload.custom.public_claims,
+                    ))?,
                     id: None,
                 },
                 status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),

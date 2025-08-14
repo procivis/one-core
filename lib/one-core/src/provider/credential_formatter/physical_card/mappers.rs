@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use one_dto_mapper::try_convert_inner;
+
 use super::model::{
     IdentityCard, MRZ_CREDENTIAL_SUBJECT_TYPE, OptiocalBarcodeCredential,
     TerseBitstringStatusListEntry,
@@ -60,7 +62,7 @@ impl OptiocalBarcodeCredential {
                 {
                     let claim_values = IdentityCard::try_from(mrz_fields)?;
 
-                    let map = serde_json::to_value(claim_values)
+                    let map: HashMap<_, _> = serde_json::to_value(claim_values)
                         .map_err(|err| {
                             FormatterError::Failed(format!("Failed to decode MRZ: {err}"))
                         })?
@@ -73,7 +75,7 @@ impl OptiocalBarcodeCredential {
                         .collect();
 
                     Ok(CredentialSubject {
-                        claims: map,
+                        claims: try_convert_inner(map)?,
                         id: None,
                     })
                 } else {

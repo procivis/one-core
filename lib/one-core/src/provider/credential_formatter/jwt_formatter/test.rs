@@ -502,8 +502,28 @@ async fn test_extract_credentials() {
         Some(&"Val1".into())
     );
 
-    assert_eq!(credentials.claims.claims.get("name").unwrap(), "John");
-    assert_eq!(credentials.claims.claims.get("age").unwrap(), "42");
+    assert_eq!(
+        credentials
+            .claims
+            .claims
+            .get("name")
+            .unwrap()
+            .value
+            .as_str()
+            .unwrap(),
+        "John"
+    );
+    assert_eq!(
+        credentials
+            .claims
+            .claims
+            .get("age")
+            .unwrap()
+            .value
+            .as_str()
+            .unwrap(),
+        "42"
+    );
 }
 
 #[tokio::test]
@@ -585,14 +605,21 @@ async fn test_extract_credentials_nested_array() {
     );
 
     let root_item = credentials.claims.claims.get("root_item").unwrap();
-    assert_eq!(root_item.as_str(), Some("root_item"));
+    assert_eq!(root_item.value.as_str(), Some("root_item"));
 
-    let root = credentials.claims.claims.get("root").unwrap();
-    let nested = root.get("nested").unwrap();
+    let root = credentials
+        .claims
+        .claims
+        .get("root")
+        .unwrap()
+        .value
+        .as_object()
+        .unwrap();
+    let nested = &root.get("nested").unwrap().value;
     assert_eq!(nested.as_str(), Some("nested_item"));
 
-    let array = root.get("array").unwrap().as_array().unwrap();
-    assert_eq!(array[0].as_str(), Some("array_item"));
+    let array = root.get("array").unwrap().value.as_array().unwrap();
+    assert_eq!(array[0].value.as_str(), Some("array_item"));
 }
 
 #[tokio::test]

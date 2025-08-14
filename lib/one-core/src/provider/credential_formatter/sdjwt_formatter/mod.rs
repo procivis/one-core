@@ -8,6 +8,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
+use one_dto_mapper::try_convert_inner;
 use serde::Deserialize;
 use serde_json::Value;
 use time::Duration;
@@ -286,7 +287,7 @@ pub(crate) async fn extract_credentials_internal(
 
     let claims = CredentialSubject {
         id: credential_subject.id,
-        claims: HashMap::from_iter(credential_subject.claims),
+        claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
     };
 
     let issuer = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {

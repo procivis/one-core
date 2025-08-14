@@ -9,6 +9,7 @@ use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
+use one_dto_mapper::try_convert_inner;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
@@ -26,8 +27,9 @@ use crate::provider::caching_loader::vct::{
 };
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialStatus, IdentifierDetails, Issuer,
-    MockSignatureProvider, MockTokenVerifier, PublicKeySource, PublishedClaim, PublishedClaimValue,
+    CredentialClaim, CredentialClaimValue, CredentialData, CredentialSchema, CredentialStatus,
+    IdentifierDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublicKeySource,
+    PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -519,13 +521,10 @@ async fn test_extract_credentials() {
         }
     );
 
-    let claim_values_as_json = credentials
-        .claims
-        .claims
-        .into_iter()
-        .collect::<serde_json::Map<String, serde_json::Value>>();
+    let claim_values_as_json: serde_json::Value =
+        CredentialClaimValue::Object(credentials.claims.claims).into();
 
-    assert_eq!(claim_values_as_json, *expected_result.as_object().unwrap());
+    assert_eq!(claim_values_as_json, expected_result);
 }
 
 #[tokio::test]
@@ -695,13 +694,11 @@ async fn test_extract_credentials_swiyu() {
             "expiry_date": "2025-08-05"
         }
     );
-    let claim_values_as_json = credentials
-        .claims
-        .claims
-        .into_iter()
-        .collect::<serde_json::Map<String, serde_json::Value>>();
 
-    assert_eq!(claim_values_as_json, *expected_result.as_object().unwrap());
+    let claim_values_as_json: serde_json::Value =
+        CredentialClaimValue::Object(credentials.claims.claims).into();
+
+    assert_eq!(claim_values_as_json, expected_result);
 }
 
 const ISSUER_URL: &str = "https://example.com/.well-known/jwt-vc-issuer/issuer";
@@ -1071,17 +1068,17 @@ async fn test_format_extract_round_trip() {
         .await
         .unwrap();
 
-    assert_eq!(
-        result.claims.claims,
-        hashmap! {
-            "object".into() => json!({
-                "name": "Mike",
-                "measurements": [{
-                    "air pollution": 24.6
-                }]
-            }),
-            "age".into() => json!(22),
-            "is_over_18".into() => json!(true)
-        }
-    )
+    let expected: HashMap<String, CredentialClaim> = try_convert_inner(hashmap! {
+        "object".into() => json!({
+            "name": "Mike",
+            "measurements": [{
+                "air pollution": 24.6
+            }]
+        }),
+        "age".into() => json!(22),
+        "is_over_18".into() => json!(true)
+    })
+    .unwrap();
+
+    assert_eq!(result.claims.claims, expected)
 }

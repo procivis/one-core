@@ -142,14 +142,19 @@ async fn main() -> Result<(), CredentialServiceError> {
     let values = details.claims.claims;
 
     assert_eq!(
-        values.get("root_item").unwrap().as_str().unwrap(),
+        values.get("root_item").unwrap().value.as_str().unwrap(),
         "root_item"
     );
-    let root = values.get("root").expect("root is missing");
-    assert!(root["array"].is_array());
-    assert!(root["nested"].is_null());
+    let root = values
+        .get("root")
+        .expect("root is missing")
+        .value
+        .as_object()
+        .expect("root is not an object");
+    assert!(root["array"].value.is_array());
+    assert_eq!(root["nested"].value.as_str(), Some("nested_item"));
 
-    println!("Array items: {:?}", root["array"].as_array().unwrap());
+    println!("Array items: {:?}", root["array"].value.as_array().unwrap());
 
     Ok(())
 }

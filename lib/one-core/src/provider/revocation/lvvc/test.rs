@@ -18,7 +18,8 @@ use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
+    CredentialClaim, CredentialClaimValue, CredentialStatus, CredentialSubject, DetailCredential,
+    IdentifierDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -132,7 +133,13 @@ fn extracted_credential(status: &str) -> DetailCredential {
         issuer: IdentifierDetails::Did("did:example:123".parse().unwrap()),
         subject: None,
         claims: CredentialSubject {
-            claims: HashMap::from([("status".to_string(), json!(status))]),
+            claims: HashMap::from([(
+                "status".to_string(),
+                CredentialClaim {
+                    selectively_disclosable: false,
+                    value: CredentialClaimValue::String(status.to_string()),
+                },
+            )]),
             id: None,
         },
         status: vec![],

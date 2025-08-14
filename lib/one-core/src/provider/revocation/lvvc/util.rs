@@ -25,7 +25,7 @@ pub fn get_lvvc_credential_subject(credential: &DetailCredential) -> Option<&str
                 .claims
                 .claims
                 .get("id")
-                .and_then(|id| id.as_str())),
+                .and_then(|id| id.value.as_str())),
     }
 }
 
@@ -38,7 +38,8 @@ mod tests {
 
     use super::*;
     use crate::provider::credential_formatter::model::{
-        CredentialSubject, DetailCredential, IdentifierDetails,
+        CredentialClaim, CredentialClaimValue, CredentialSubject, DetailCredential,
+        IdentifierDetails,
     };
 
     fn create_test_detail_credential(
@@ -66,7 +67,13 @@ mod tests {
 
         let claims = CredentialSubject {
             id: None,
-            claims: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
+            claims: HashMap::from([(
+                "status".to_string(),
+                CredentialClaim {
+                    selectively_disclosable: false,
+                    value: CredentialClaimValue::String("ACCEPTED".to_string()),
+                },
+            )]),
         };
 
         // parsed JSON-LD based LVVCs contain the LVVC as the credential subject
@@ -82,14 +89,29 @@ mod tests {
                 claims: HashMap::from([
                     (
                         "id".to_string(),
-                        serde_json::Value::String(Uuid::new_v4().urn().to_string()),
+                        CredentialClaim {
+                            selectively_disclosable: false,
+                            value: CredentialClaimValue::String(Uuid::new_v4().urn().to_string()),
+                        },
                     ),
-                    ("status".to_string(), serde_json::Value::Null),
+                    (
+                        "status".to_string(),
+                        CredentialClaim {
+                            selectively_disclosable: false,
+                            value: CredentialClaimValue::String("ACCEPTED".to_string()),
+                        },
+                    ),
                 ]),
             },
             CredentialSubject {
                 id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
-                claims: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
+                claims: HashMap::from([(
+                    "status".to_string(),
+                    CredentialClaim {
+                        selectively_disclosable: false,
+                        value: CredentialClaimValue::String("ACCEPTED".to_string()),
+                    },
+                )]),
             },
         ];
 
@@ -103,7 +125,13 @@ mod tests {
     fn test_is_lvvc_correctly_rejects() {
         let claims = CredentialSubject {
             id: None,
-            claims: HashMap::from([("status".to_string(), serde_json::Value::Null)]),
+            claims: HashMap::from([(
+                "status".to_string(),
+                CredentialClaim {
+                    selectively_disclosable: false,
+                    value: CredentialClaimValue::String("ACCEPTED".to_string()),
+                },
+            )]),
         };
 
         // The subject ID is missing both in the claims and the credential subject

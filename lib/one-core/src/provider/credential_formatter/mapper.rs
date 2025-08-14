@@ -1,5 +1,8 @@
+use std::collections::HashMap;
+
 use convert_case::{Case, Casing};
 use indexmap::IndexSet;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::fmt::Urn;
@@ -12,8 +15,9 @@ use crate::config::core_config::RevocationType;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialSchemaMetadata, CredentialStatus, Issuer,
+    CredentialClaim, CredentialClaimValue, CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
 use crate::service::credential::dto::CredentialDetailResponseDTO;
 use crate::service::error::ServiceError;
@@ -119,4 +123,86 @@ fn issuer_for_credential(
         .parse()
         .map_err(|_| ServiceError::Other("Invalid credential schema context".to_string()))?;
     Ok(Issuer::Url(url))
+}
+
+impl TryFrom<serde_json::Value> for CredentialClaim {
+    type Error = FormatterError;
+
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        Ok(Self {
+            selectively_disclosable: false,
+            value: value.try_into()?,
+        })
+    }
+}
+
+impl TryFrom<serde_json::Value> for CredentialClaimValue {
+    type Error = FormatterError;
+
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        Ok(match value {
+            serde_json::Value::Null => {
+                return Err(FormatterError::Failed(
+                    "Null json value encountered".to_string(),
+                ));
+            }
+            serde_json::Value::Bool(value) => Self::Bool(value),
+            serde_json::Value::Number(value) => Self::Number(value),
+            serde_json::Value::String(value) => Self::String(value),
+            serde_json::Value::Array(values) => Self::Array(try_convert_inner(values)?),
+            serde_json::Value::Object(values) => Self::Object(try_convert_inner(
+                HashMap::from_iter(values.into_iter().filter(|(_, value)| !value.is_null())),
+            )?),
+        })
+    }
+}
+
+impl From<CredentialClaim> for serde_json::Value {
+    fn from(value: CredentialClaim) -> Self {
+        value.value.into()
+    }
+}
+
+impl From<CredentialClaimValue> for serde_json::Value {
+    fn from(value: CredentialClaimValue) -> Self {
+        match value {
+            CredentialClaimValue::Bool(value) => Self::Bool(value),
+            CredentialClaimValue::Number(value) => Self::Number(value),
+            CredentialClaimValue::String(value) => Self::String(value),
+            CredentialClaimValue::Array(values) => Self::Array(convert_inner(values)),
+            CredentialClaimValue::Object(values) => Self::Object(serde_json::Map::from_iter(
+                values
+                    .into_iter()
+                    .map(|(key, value)| (key, value.into()))
+                    .collect::<HashMap<_, serde_json::Value>>(),
+            )),
+        }
+    }
+}
+
+impl CredentialClaimValue {
+    pub fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn as_object(&self) -> Option<&HashMap<String, CredentialClaim>> {
+        match self {
+            Self::Object(o) => Some(o),
+            _ => None,
+        }
+    }
+
+    pub fn as_array(&self) -> Option<&[CredentialClaim]> {
+        match self {
+            Self::Array(a) => Some(a),
+            _ => None,
+        }
+    }
+
+    pub fn is_array(&self) -> bool {
+        matches!(self, Self::Array(_))
+    }
 }

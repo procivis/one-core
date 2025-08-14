@@ -281,7 +281,7 @@ impl RevocationMethod for BitstringStatusList {
             .claims
             .claims
             .get("encodedList")
-            .and_then(|value| value.as_str())
+            .and_then(|value| value.value.as_str())
             .ok_or(RevocationError::ValidationError(
                 "Missing encodedList in status credential".to_string(),
             ))?;

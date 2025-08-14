@@ -4,20 +4,23 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use super::dto::LvvcStatus;
-use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, PublishedClaim, PublishedClaimValue,
+};
 use crate::provider::revocation::error::RevocationError;
 
 const SUSPEND_END_DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
     time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
 
 pub fn status_from_lvvc_claims(
-    lvvc_claims: &HashMap<String, serde_json::Value>,
+    lvvc_claims: &HashMap<String, CredentialClaim>,
 ) -> Result<LvvcStatus, RevocationError> {
     let status = lvvc_claims
         .get("status")
         .ok_or(RevocationError::ValidationError(
             "missing status claim in LVVC".to_string(),
         ))?
+        .value
         .as_str()
         .ok_or(RevocationError::ValidationError(
             "status claim in LVVC is not string".to_string(),
@@ -31,7 +34,7 @@ pub fn status_from_lvvc_claims(
                 None => None,
                 Some(date) => Some(
                     OffsetDateTime::parse(
-                        date.as_str().ok_or(RevocationError::ValidationError(
+                        date.value.as_str().ok_or(RevocationError::ValidationError(
                             "suspendEndDate claim in LVVC is not string".to_string(),
                         ))?,
                         &Rfc3339,
@@ -89,11 +92,11 @@ fn suspend_end_date_claim(
 mod tests {
     use std::collections::HashMap;
 
-    use serde_json::json;
     use similar_asserts::assert_eq;
     use time::macros::datetime;
 
     use super::*;
+    use crate::provider::credential_formatter::model::CredentialClaimValue;
 
     #[test]
     fn test_create_status_claims() {
@@ -137,20 +140,38 @@ mod tests {
     #[test]
     fn test_status_from_lvvc_claims() {
         assert_eq!(
-            status_from_lvvc_claims(&HashMap::from([("status".to_string(), json!("ACCEPTED"))]))
-                .unwrap(),
+            status_from_lvvc_claims(&HashMap::from([(
+                "status".to_string(),
+                CredentialClaim {
+                    selectively_disclosable: false,
+                    value: CredentialClaimValue::String("ACCEPTED".to_string())
+                }
+            )]))
+            .unwrap(),
             LvvcStatus::Accepted
         );
 
         assert_eq!(
-            status_from_lvvc_claims(&HashMap::from([("status".to_string(), json!("REVOKED"))]))
-                .unwrap(),
+            status_from_lvvc_claims(&HashMap::from([(
+                "status".to_string(),
+                CredentialClaim {
+                    selectively_disclosable: false,
+                    value: CredentialClaimValue::String("REVOKED".to_string())
+                }
+            )]))
+            .unwrap(),
             LvvcStatus::Revoked
         );
 
         assert_eq!(
-            status_from_lvvc_claims(&HashMap::from([("status".to_string(), json!("SUSPENDED"))]))
-                .unwrap(),
+            status_from_lvvc_claims(&HashMap::from([(
+                "status".to_string(),
+                CredentialClaim {
+                    selectively_disclosable: false,
+                    value: CredentialClaimValue::String("SUSPENDED".to_string())
+                }
+            )]))
+            .unwrap(),
             LvvcStatus::Suspended {
                 suspend_end_date: None
             }
@@ -158,8 +179,20 @@ mod tests {
 
         assert_eq!(
             status_from_lvvc_claims(&HashMap::from([
-                ("status".to_string(), json!("SUSPENDED")),
-                ("suspendEndDate".to_string(), json!("2005-04-02T21:37:00Z"))
+                (
+                    "status".to_string(),
+                    CredentialClaim {
+                        selectively_disclosable: false,
+                        value: CredentialClaimValue::String("SUSPENDED".to_string())
+                    }
+                ),
+                (
+                    "suspendEndDate".to_string(),
+                    CredentialClaim {
+                        selectively_disclosable: false,
+                        value: CredentialClaimValue::String("2005-04-02T21:37:00Z".to_string())
+                    }
+                )
             ]))
             .unwrap(),
             LvvcStatus::Suspended {

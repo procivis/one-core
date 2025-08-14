@@ -198,7 +198,10 @@ impl ProofService {
                 }
             };
 
-            claims.push((value.to_owned(), proof_claim_schema.schema.to_owned()));
+            claims.push((
+                value.value.to_owned().into(),
+                proof_claim_schema.schema.to_owned(),
+            ));
 
             let claim_schema = credential_schema_claims
                 .iter()

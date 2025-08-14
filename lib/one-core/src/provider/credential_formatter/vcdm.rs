@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use bon::bon;
 use indexmap::{IndexMap, IndexSet, indexset};
+use one_dto_mapper::try_convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::DidValue;
@@ -434,7 +435,7 @@ impl TryFrom<VcdmCredential> for DetailCredential {
 
         let claims = CredentialSubject {
             id: credential_subject.id.clone(),
-            claims: HashMap::from_iter(credential_subject.claims),
+            claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
         };
 
         // this is not always DID, for example LVVC credentials use URN schema as and id

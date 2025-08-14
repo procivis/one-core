@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use one_dto_mapper::try_convert_inner;
 use shared_types::DidValue;
 
 use super::model::VcClaim;
@@ -61,7 +62,7 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             subject,
             claims: CredentialSubject {
                 id: credential_subject.id,
-                claims: HashMap::from_iter(credential_subject.claims),
+                claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
             },
             status: jwt.payload.custom.vc.credential_status,
             credential_schema: jwt

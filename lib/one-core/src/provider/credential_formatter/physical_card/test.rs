@@ -210,15 +210,23 @@ async fn test_employment_document_mrz_claim_extraction() {
         .await
         .unwrap();
 
-    let given_names = credential.claims.claims.get("Given Name(s)").unwrap();
+    let given_names = &credential.claims.claims.get("Given Name(s)").unwrap().value;
     assert!(given_names.is_array());
     assert_eq!(given_names.as_array().unwrap().len(), 1);
-    assert_eq!(given_names.as_array().unwrap()[0].as_str().unwrap(), "JOHN");
+    assert_eq!(
+        given_names.as_array().unwrap()[0].value.as_str().unwrap(),
+        "JOHN"
+    );
 
-    let birth_date = credential.claims.claims.get("Date of Birth").unwrap();
+    let birth_date = &credential.claims.claims.get("Date of Birth").unwrap().value;
     assert_eq!(birth_date.as_str().unwrap(), "1988-04-19T00:00:00Z");
 
-    let expiration_date = credential.claims.claims.get("Date of Expiry").unwrap();
+    let expiration_date = &credential
+        .claims
+        .claims
+        .get("Date of Expiry")
+        .unwrap()
+        .value;
     assert_eq!(expiration_date.as_str().unwrap(), "2026-01-05T00:00:00Z");
 }
 

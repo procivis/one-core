@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_dto_mapper::try_convert_inner;
 use serde_json::json;
 use shared_types::{DidValue, ProofId};
 use similar_asserts::assert_eq;
@@ -266,10 +267,11 @@ async fn test_submit_proof_failed_credential_suspended() {
                 issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
                 subject: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
                 claims: CredentialSubject {
-                    claims: HashMap::from([
+                    claims: try_convert_inner(HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
                         ("required_key".to_string(), json!("required_key_value")),
-                    ]),
+                    ]))
+                    .unwrap(),
                     id: None,
                 },
                 status: vec![],
@@ -325,10 +327,11 @@ async fn test_submit_proof_failed_credential_suspended() {
                 issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
                 subject: Some(IdentifierDetails::Did(holder_did.to_owned())),
                 claims: CredentialSubject {
-                    claims: HashMap::from([
+                    claims: try_convert_inner(HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
                         ("required_key".to_string(), json!("required_key_value")),
-                    ]),
+                    ]))
+                    .unwrap(),
                     id: None,
                 },
                 status: vec![CredentialStatus {
@@ -584,10 +587,11 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
                 subject: Some(IdentifierDetails::Did(subject_did_clone.to_owned())),
                 claims: CredentialSubject {
-                    claims: HashMap::from([
+                    claims: try_convert_inner(HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
                         ("required_key".to_string(), json!("required_key_value")),
-                    ]),
+                    ]))
+                    .unwrap(),
                     id: None,
                 },
                 status: vec![],
@@ -643,10 +647,11 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
                 subject: Some(IdentifierDetails::Did(subject_did.to_owned())),
                 claims: CredentialSubject {
-                    claims: HashMap::from([
+                    claims: try_convert_inner(HashMap::from([
                         ("unknown_key".to_string(), json!("unknown_key_value")),
                         ("required_key".to_string(), json!("required_key_value")),
-                    ]),
+                    ]))
+                    .unwrap(),
                     id: None,
                 },
                 status: vec![CredentialStatus {
