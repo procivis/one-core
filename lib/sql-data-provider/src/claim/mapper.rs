@@ -15,6 +15,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
             last_modified: Set(value.last_modified),
             value: Set(value.value.map(|val| val.as_bytes().to_vec())),
             claim_schema_id: Set(value.schema.ok_or(DataLayerError::IncorrectParameters)?.id),
+            selectively_disclosable: Set(value.selectively_disclosable),
             path: Set(value.path),
         })
     }
@@ -31,6 +32,7 @@ impl From<claim::Model> for Claim {
             created_date: value.created_date,
             last_modified: value.last_modified,
             path: value.path,
+            selectively_disclosable: value.selectively_disclosable,
             schema: None,
         }
     }

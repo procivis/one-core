@@ -465,6 +465,7 @@ pub(crate) fn value_to_model_claims(
                 last_modified: now,
                 value: Some(value),
                 path: claim_path.to_owned(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.to_owned()),
             });
         }
@@ -476,6 +477,7 @@ pub(crate) fn value_to_model_claims(
                 last_modified: now,
                 value: None,
                 path: claim_path.to_owned(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.to_owned()),
             });
             for (key, value) in object {
@@ -505,6 +507,7 @@ pub(crate) fn value_to_model_claims(
                 last_modified: now,
                 value: None,
                 path: claim_path.to_owned(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.to_owned()),
             });
             for (index, value) in array.iter().enumerate() {

@@ -320,6 +320,7 @@ async fn test_create_credential_success() {
             value: Some("value1".to_string()),
             path: claim_schema.key.to_string(),
             schema: Some(claim_schema.clone()),
+            selectively_disclosable: false,
         },
         Claim {
             id: ClaimId::new_v4(),
@@ -329,6 +330,7 @@ async fn test_create_credential_success() {
             value: Some("value2".to_string()),
             path: claim_schema.key.to_string(),
             schema: Some(claim_schema),
+            selectively_disclosable: false,
         },
     ];
 
@@ -472,6 +474,7 @@ async fn test_create_credential_already_exists() {
         value: Some("value1".to_string()),
         path: claim_schema.key.to_owned(),
         schema: Some(claim_schema),
+        selectively_disclosable: false,
     }];
 
     let result = provider
@@ -820,6 +823,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         value: Some("test_value".to_string()),
         path: claim_schema.key.to_owned(),
         schema: Some(claim_schema),
+        selectively_disclosable: false,
     }];
 
     claim::Entity::insert_many(
@@ -833,6 +837,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
                 path: Set(claim.path.to_string()),
+                selectively_disclosable: Set(claim.selectively_disclosable),
             })
             .collect::<Vec<claim::ActiveModel>>(),
     )
@@ -923,6 +928,7 @@ async fn test_get_credential_success() {
             value: Some("value1".to_string()),
             path: claim_schema1.key.to_owned(),
             schema: Some(claim_schema1),
+            selectively_disclosable: false,
         },
         Claim {
             id: ClaimId::new_v4(),
@@ -932,6 +938,7 @@ async fn test_get_credential_success() {
             value: Some("value2".to_string()),
             path: claim_schema2.key.to_owned(),
             schema: Some(claim_schema2),
+            selectively_disclosable: false,
         },
     ];
 
@@ -947,6 +954,7 @@ async fn test_get_credential_success() {
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
                 path: Set(claim.path.to_string()),
+                selectively_disclosable: Set(claim.selectively_disclosable),
             })
             .collect::<Vec<claim::ActiveModel>>(),
     )
@@ -1217,6 +1225,7 @@ async fn test_get_credential_by_claim_id_success() {
         value: Some("value1".to_string()),
         path: claim_schema.key.clone(),
         schema: Some(claim_schema.clone()),
+        selectively_disclosable: false,
     };
 
     claim::ActiveModel {
@@ -1227,6 +1236,7 @@ async fn test_get_credential_by_claim_id_success() {
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         path: Set(claim.path),
+        selectively_disclosable: Set(false),
     }
     .insert(&db)
     .await

@@ -288,6 +288,7 @@ fn generic_credential() -> Credential {
             last_modified: now,
             value: Some("123".to_string()),
             path: claim_schema.key.clone(),
+            selectively_disclosable: false,
             schema: Some(claim_schema.clone()),
         }]),
         issuer_identifier: Some(Identifier {

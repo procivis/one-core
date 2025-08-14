@@ -203,6 +203,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         credential.id,
         Some(claim_value.as_bytes().to_vec()),
         new_claim_schemas[0].key.to_string(),
+        false,
     )];
     insert_many_claims_to_database(&db, claims.as_slice())
         .await

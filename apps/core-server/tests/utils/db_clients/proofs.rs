@@ -108,6 +108,7 @@ impl ProofsDB {
                     last_modified: get_dummy_date(),
                     value: Some("test".to_string()),
                     path: "test".to_string(),
+                    selectively_disclosable: false,
                     schema: None,
                 },
                 credential: None,

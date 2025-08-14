@@ -144,6 +144,7 @@ async fn test_create_claim_list_success() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
+                    selectively_disclosable: false,
                     schema: Some(schema),
                 })
                 .collect(),
@@ -183,6 +184,7 @@ async fn test_delete_claims_for_credential() {
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
                     schema: Some(schema),
+                    selectively_disclosable: false,
                 })
                 .collect(),
         )
@@ -242,6 +244,7 @@ async fn test_delete_claims_for_credentials() {
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
                     schema: Some(schema.clone()),
+                    selectively_disclosable: false,
                 })
                 .collect(),
         )
@@ -260,6 +263,7 @@ async fn test_delete_claims_for_credentials() {
                     last_modified: get_dummy_date(),
                     path: schema.key.to_owned(),
                     schema: Some(schema),
+                    selectively_disclosable: false,
                 })
                 .collect(),
         )
@@ -298,6 +302,7 @@ async fn test_create_claim_list_missing_schema() {
             last_modified: get_dummy_date(),
             path: String::default(),
             schema: None,
+            selectively_disclosable: false,
         }])
         .await;
     assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
@@ -322,6 +327,7 @@ async fn test_get_claim_list() {
             last_modified: get_dummy_date(),
             path: schema.key.to_owned(),
             schema: Some(schema.to_owned()),
+            selectively_disclosable: false,
         })
         .collect();
     repository.create_claim_list(claims.clone()).await.unwrap();
@@ -399,6 +405,7 @@ async fn test_get_claim_list_with_relation() {
             last_modified: get_dummy_date(),
             path: schema.key.to_owned(),
             schema: Some(schema.to_owned()),
+            selectively_disclosable: false,
         })
         .collect();
     repository.create_claim_list(claims.clone()).await.unwrap();

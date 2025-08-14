@@ -266,6 +266,7 @@ pub(super) fn create_claims_from_credential_definition(
                 last_modified: now,
                 value: Some(value),
                 path: new_schema_claim.schema.key.to_owned(),
+                selectively_disclosable: false,
                 schema: Some(new_schema_claim.schema.to_owned()),
             };
 
@@ -594,6 +595,7 @@ fn visit_nested_field_field(
                     last_modified: now,
                     value: Some(value),
                     path: key.clone(),
+                    selectively_disclosable: false,
                     schema: Some(claim.schema.clone()),
                 });
             }
@@ -652,6 +654,7 @@ fn visit_nested_object_field(
             last_modified: now,
             value: None,
             path: path_container_to_root,
+            selectively_disclosable: false,
             schema: Some(object.claim.schema.clone()),
         })
     }
@@ -758,6 +761,7 @@ fn visit_nested_array_field(
             last_modified: now,
             value: None,
             path: path_container_to_root,
+            selectively_disclosable: false,
             schema: Some(array_schema),
         });
     }

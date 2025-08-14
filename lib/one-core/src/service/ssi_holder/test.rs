@@ -736,6 +736,7 @@ async fn test_submit_proof_repeating_claims() {
                     last_modified: OffsetDateTime::now_utc(),
                     value: Some("claim value".to_string()),
                     path: "claim1".to_string(),
+                    selectively_disclosable: false,
                     schema: Some(ClaimSchema {
                         id: claim_id.into(),
                         key: "claim1".to_string(),

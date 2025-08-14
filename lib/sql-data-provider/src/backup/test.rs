@@ -113,6 +113,7 @@ async fn insert_credential_to_database(
             credential_id,
             Some(vec![255]),
             "name".to_owned(),
+            false,
         )],
     )
     .await

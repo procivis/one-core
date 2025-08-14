@@ -80,6 +80,7 @@ impl CredentialsDB {
                         last_modified: get_dummy_date(),
                         value: new_claim.2.map(|new_value| new_value.to_owned()),
                         path: new_claim.1.to_owned(),
+                        selectively_disclosable: false,
                         schema: Some(claim_schema.schema.to_owned()),
                     }
                 })
@@ -104,6 +105,7 @@ impl CredentialsDB {
                                 last_modified: get_dummy_date(),
                                 value: schema_to_dummy_value(claim_schema, params.random_claims),
                                 path: format!("{path}/0"),
+                                selectively_disclosable: false,
                                 schema: Some(claim_schema.schema.to_owned()),
                             },
                             Claim {
@@ -113,6 +115,7 @@ impl CredentialsDB {
                                 last_modified: get_dummy_date(),
                                 value: None,
                                 path,
+                                selectively_disclosable: false,
                                 schema: Some(claim_schema.schema.to_owned()),
                             },
                         ]
@@ -124,6 +127,7 @@ impl CredentialsDB {
                             last_modified: get_dummy_date(),
                             value: schema_to_dummy_value(claim_schema, params.random_claims),
                             path,
+                            selectively_disclosable: false,
                             schema: Some(claim_schema.schema.to_owned()),
                         }]
                     }

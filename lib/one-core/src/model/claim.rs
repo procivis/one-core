@@ -14,6 +14,7 @@ pub struct Claim {
     pub last_modified: OffsetDateTime,
     pub value: Option<String>,
     pub path: String,
+    pub selectively_disclosable: bool,
 
     // Relations
     pub schema: Option<ClaimSchema>,

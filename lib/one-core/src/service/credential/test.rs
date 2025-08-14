@@ -171,6 +171,7 @@ fn generic_credential() -> Credential {
             last_modified: now,
             value: Some("123".to_string()),
             path: claim_schema.key.clone(),
+            selectively_disclosable: false,
             schema: Some(claim_schema.clone()),
         }]),
         issuer_identifier: Some(Identifier {
@@ -3793,6 +3794,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
         last_modified: now,
         value: Some("123".to_string()),
         path: location_x_claim_schema.key.clone(),
+        selectively_disclosable: false,
         schema: Some(location_x_claim_schema.clone()),
     }];
 
@@ -3849,6 +3851,7 @@ fn generate_claim(
         last_modified: now,
         value: Some(value.to_string()),
         path: path.to_string(),
+        selectively_disclosable: false,
         schema: Some(claim_schema.to_owned()),
     }
 }

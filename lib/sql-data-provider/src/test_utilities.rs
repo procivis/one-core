@@ -142,14 +142,15 @@ pub type ClaimList<'a> = &'a [(
     CredentialId,
     Option<Vec<u8>>,
     String,
+    bool,
 )];
 pub async fn insert_many_claims_to_database(
     database: &DatabaseConnection,
     claims: ClaimList<'_>,
 ) -> Result<(), DbErr> {
-    let models =
-        claims.iter().map(
-            |(id, claim_schema_id, credential_id, value, path)| claim::ActiveModel {
+    let models = claims.iter().map(
+        |(id, claim_schema_id, credential_id, value, path, selectively_disclosable)| {
+            claim::ActiveModel {
                 id: Set(*id),
                 claim_schema_id: Set(*claim_schema_id),
                 credential_id: Set(*credential_id),
@@ -157,8 +158,10 @@ pub async fn insert_many_claims_to_database(
                 created_date: Set(get_dummy_date()),
                 last_modified: Set(get_dummy_date()),
                 path: Set(path.to_owned()),
-            },
-        );
+                selectively_disclosable: Set(*selectively_disclosable),
+            }
+        },
+    );
 
     claim::Entity::insert_many(models).exec(database).await?;
     Ok(())

@@ -3,7 +3,7 @@ use serde::Deserialize;
 use shared_types::{ClaimId, ClaimSchemaId, CredentialId};
 use time::OffsetDateTime;
 
-use crate::common::opt_hex;
+use crate::common::{bool_from_int, opt_hex};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel, Deserialize)]
 #[sea_orm(table_name = "claim")]
@@ -22,6 +22,8 @@ pub struct Model {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub path: String,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub selectively_disclosable: bool,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

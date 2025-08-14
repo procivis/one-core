@@ -547,6 +547,7 @@ async fn test_get_proof_with_relations() {
                 value: Some("value".to_string()),
                 path: String::new(),
                 schema: None,
+                selectively_disclosable: false,
             }])
         });
 
@@ -881,6 +882,7 @@ async fn test_set_proof_claims_success() {
         value: Some("value".to_string()),
         schema: None,
         path: String::default(),
+        selectively_disclosable: false,
     };
 
     // necessary to pass db consistency checks

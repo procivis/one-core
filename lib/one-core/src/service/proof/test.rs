@@ -617,6 +617,7 @@ async fn test_get_proof_with_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.clone()),
             },
             Claim {
@@ -626,6 +627,7 @@ async fn test_get_proof_with_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.clone()),
             },
             Claim {
@@ -635,6 +637,7 @@ async fn test_get_proof_with_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.clone()),
             },
         ]),
@@ -865,6 +868,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -874,6 +878,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key/address".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
@@ -883,6 +888,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
@@ -892,6 +898,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/address/1".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
         ]),
@@ -1127,6 +1134,7 @@ async fn test_get_proof_with_object_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1136,6 +1144,7 @@ async fn test_get_proof_with_object_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key/0".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1145,6 +1154,7 @@ async fn test_get_proof_with_object_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key/1".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1154,6 +1164,7 @@ async fn test_get_proof_with_object_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0/address".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
@@ -1163,6 +1174,7 @@ async fn test_get_proof_with_object_array_holder() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1/address".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
         ]),
@@ -1393,6 +1405,7 @@ async fn test_get_proof_with_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.clone()),
             },
             Claim {
@@ -1402,6 +1415,7 @@ async fn test_get_proof_with_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.clone()),
             },
             Claim {
@@ -1411,6 +1425,7 @@ async fn test_get_proof_with_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schema.clone()),
             },
         ]),
@@ -1655,6 +1670,7 @@ async fn test_get_proof_with_array_in_object() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1664,6 +1680,7 @@ async fn test_get_proof_with_array_in_object() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key/address".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
@@ -1673,6 +1690,7 @@ async fn test_get_proof_with_array_in_object() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/address/0".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
@@ -1682,6 +1700,7 @@ async fn test_get_proof_with_array_in_object() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/address/1".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
         ]),
@@ -1932,6 +1951,7 @@ async fn test_get_proof_with_object_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1941,6 +1961,7 @@ async fn test_get_proof_with_object_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key/0".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1950,6 +1971,7 @@ async fn test_get_proof_with_object_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: None,
                 path: "key/1".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
@@ -1959,6 +1981,7 @@ async fn test_get_proof_with_object_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo1".into()),
                 path: "key/0/address".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
@@ -1968,6 +1991,7 @@ async fn test_get_proof_with_object_array() {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("foo2".into()),
                 path: "key/1/address".into(),
+                selectively_disclosable: false,
                 schema: Some(claim_schemas[1].schema.clone()),
             },
         ]),

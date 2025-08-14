@@ -267,6 +267,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             value: Some("claim value".to_string()),
             path: "key".to_string(),
+            selectively_disclosable: false,
             schema: Some(ClaimSchema {
                 id: claim_schema_id,
                 key: "key".to_string(),

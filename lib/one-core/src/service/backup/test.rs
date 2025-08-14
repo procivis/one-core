@@ -62,6 +62,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 last_modified: OffsetDateTime::now_utc(),
                 value: Some("value".to_string()),
                 path: "key".into(),
+                selectively_disclosable: false,
                 schema: Some(ClaimSchema {
                     id: claim_schema_id,
                     key: "key".into(),

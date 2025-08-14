@@ -365,6 +365,7 @@ async fn test_get_presentation_definition_ok() {
             schema: Some(claim_schemas["org.iso.18013.5.1.mDL/name"].schema.clone()),
             path: "org.iso.18013.5.1.mDL/name".to_string(),
             value: Some("John".to_string()),
+            selectively_disclosable: false,
         },
         Claim {
             id: Uuid::new_v4(),
@@ -374,6 +375,7 @@ async fn test_get_presentation_definition_ok() {
             schema: Some(claim_schemas["org.iso.18013.5.1.mDL/age"].schema.clone()),
             path: "org.iso.18013.5.1.mDL/age".to_string(),
             value: Some("55".to_string()),
+            selectively_disclosable: false,
         },
         Claim {
             id: Uuid::new_v4(),
@@ -387,6 +389,7 @@ async fn test_get_presentation_definition_ok() {
             ),
             path: "org.iso.18013.5.1.mDL/country".to_string(),
             value: Some("Germany".to_string()),
+            selectively_disclosable: false,
         },
         Claim {
             id: Uuid::new_v4(),
@@ -400,6 +403,7 @@ async fn test_get_presentation_definition_ok() {
             ),
             path: "org.iso.18013.5.1.mDL/country_code".to_string(),
             value: Some("DE".to_string()),
+            selectively_disclosable: false,
         },
         Claim {
             id: Uuid::new_v4(),
@@ -413,6 +417,7 @@ async fn test_get_presentation_definition_ok() {
             ),
             path: "org.iso.18013.5.1.mDL/info/code".to_string(),
             value: Some("ABCDEFG".to_string()),
+            selectively_disclosable: false,
         },
     ];
 

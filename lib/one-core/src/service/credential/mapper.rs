@@ -380,6 +380,7 @@ pub(super) fn claims_from_create_request(
             last_modified: now,
             value: Some(claim_dto.value),
             path: claim_dto.path.clone(),
+            selectively_disclosable: false,
             schema: Some(schema.schema.clone()),
         };
         claims_map.insert(claim_dto.path.clone(), claim);
@@ -416,6 +417,7 @@ pub(super) fn claims_from_create_request(
                 last_modified: now,
                 value: None,
                 path: current_path.clone(),
+                selectively_disclosable: false,
                 schema: Some(schema.schema.clone()),
             };
             claims_map.insert(current_path.clone(), parent_claim);
@@ -449,6 +451,7 @@ fn insert_array_parent(
                 last_modified: now,
                 value: None,
                 path: array_path.to_owned(),
+                selectively_disclosable: false,
                 schema: Some(schema.schema.clone()),
             };
             claims_map.insert(array_path.to_owned(), parent_claim);

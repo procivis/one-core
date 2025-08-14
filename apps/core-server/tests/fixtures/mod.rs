@@ -664,6 +664,7 @@ pub async fn create_credential(
             value: Some("test".to_string()),
             schema: Some(claim_schema.schema.to_owned()),
             path: claim_schema.schema.key.clone(),
+            selectively_disclosable: false,
         })
         .collect();
 
