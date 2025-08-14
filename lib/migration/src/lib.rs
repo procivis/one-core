@@ -139,6 +139,7 @@ mod m20250729_132707_issuance_date_nullable;
 mod m20250730_090958_drop_proof_issuance_date;
 mod m20250807_141417_blob_storage_foreign_key_relations;
 mod m20250807_144007_make_claim_values_nullable;
+mod m20250811_154134_insert_container_claims;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -280,6 +281,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250729_114143_proof_blob::Migration),
             Box::new(m20250807_144007_make_claim_values_nullable::Migration),
             Box::new(m20250807_141417_blob_storage_foreign_key_relations::Migration),
+            Box::new(m20250811_154134_insert_container_claims::Migration),
         ]
     }
 }

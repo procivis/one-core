@@ -2133,10 +2133,12 @@ fn test_extract_offered_claims_success_object_array() {
     ]);
 
     let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(10, result.len());
+    assert_eq!(17, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        if claim.value.is_some() {
+            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        }
     }
 }
 
@@ -2176,10 +2178,12 @@ fn test_extract_offered_claims_success_optional_array_missing() {
     ]);
 
     let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(4, result.len());
+    assert_eq!(8, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        if claim.value.is_some() {
+            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        }
     }
 }
 
@@ -2298,10 +2302,12 @@ fn test_extract_offered_claims_opt_object_opt_obj_present() {
     ]);
 
     let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(2, result.len());
+    assert_eq!(4, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        if claim.value.is_some() {
+            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        }
     }
 }
 
@@ -2318,10 +2324,12 @@ fn test_extract_offered_claims_opt_object_opt_obj_missing() {
     )]);
 
     let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(1, result.len());
+    assert_eq!(2, result.len());
 
     for claim in result {
-        assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        if claim.value.is_some() {
+            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
+        }
     }
 }
 

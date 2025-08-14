@@ -118,9 +118,10 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
         )
         .await;
 
+    let root_claim_id = Uuid::new_v4();
     let str_claim_id = Uuid::new_v4();
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
-        (Uuid::new_v4(), "root", true, "OBJECT", false),
+        (root_claim_id, "root", true, "OBJECT", false),
         (str_claim_id, "root/str", true, "STRING", false),
     ];
 
@@ -165,7 +166,10 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
             TestingCredentialParams {
                 interaction: Some(interaction),
                 key: Some(key),
-                claims_data: Some(vec![(str_claim_id, "root/str", "str-value")]),
+                claims_data: Some(vec![
+                    (root_claim_id, "root", None),
+                    (str_claim_id, "root/str", Some("str-value")),
+                ]),
                 ..Default::default()
             },
         )

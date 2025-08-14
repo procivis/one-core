@@ -436,7 +436,7 @@ pub(crate) fn value_to_model_claims(
     json_value: &serde_json::Value,
     now: OffsetDateTime,
     claim_schema: &ClaimSchema,
-    path: &str,
+    claim_path: &str,
 ) -> Result<Vec<Claim>, ServiceError> {
     let mut model_claims = vec![];
 
@@ -464,11 +464,20 @@ pub(crate) fn value_to_model_claims(
                 created_date: now,
                 last_modified: now,
                 value: Some(value),
-                path: path.to_owned(),
+                path: claim_path.to_owned(),
                 schema: Some(claim_schema.to_owned()),
             });
         }
         serde_json::Value::Object(object) => {
+            model_claims.push(Claim {
+                id: ClaimId::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: None,
+                path: claim_path.to_owned(),
+                schema: Some(claim_schema.to_owned()),
+            });
             for (key, value) in object {
                 let this_name = &claim_schema.key;
                 let child_schema_name = format!("{this_name}/{key}");
@@ -484,21 +493,29 @@ pub(crate) fn value_to_model_claims(
                     value,
                     now,
                     &child_credential_schema_claim.schema,
-                    &format!("{path}/{key}"),
+                    &format!("{claim_path}/{key}"),
                 )?);
             }
         }
         serde_json::Value::Array(array) => {
+            model_claims.push(Claim {
+                id: ClaimId::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: None,
+                path: claim_path.to_owned(),
+                schema: Some(claim_schema.to_owned()),
+            });
             for (index, value) in array.iter().enumerate() {
-                let child_schema_path = format!("{path}/{index}");
-
+                let child_path = format!("{claim_path}/{index}");
                 model_claims.extend(value_to_model_claims(
                     credential_id,
                     claim_schemas,
                     value,
                     now,
                     claim_schema,
-                    &child_schema_path,
+                    &child_path,
                 )?);
             }
         }
@@ -950,7 +967,7 @@ mod tests {
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,
             },
-            vec![(json!({ "element": "Test" }), namespace_claim_schema)],
+            vec![(json!({ "element": "Test" }), namespace_claim_schema.clone())],
             Identifier {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
@@ -973,9 +990,16 @@ mod tests {
         .unwrap();
 
         let claims = credential.claims.unwrap();
-        assert_eq!(claims.len(), 1);
-        assert_eq!(claims[0].schema.as_ref().unwrap(), &element_claim_schema);
-        assert_eq!(claims[0].value, Some("Test".to_string()));
+        assert_eq!(claims.len(), 2);
+        assert!(claims.iter().any(
+            |claim| claim.schema.as_ref().unwrap() == &element_claim_schema
+                && claim.value == Some("Test".to_string())
+        ));
+        assert!(
+            claims
+                .iter()
+                .any(|claim| claim.schema.as_ref().unwrap() == &namespace_claim_schema)
+        );
         assert_eq!(credential.issuance_date, Some(issuance_date));
     }
 }

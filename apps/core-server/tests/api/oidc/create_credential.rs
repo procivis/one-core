@@ -486,11 +486,12 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         )
         .await;
 
+    let root_claim_id = Uuid::new_v4();
     let str_claim_id = Uuid::new_v4();
     let num_claim_id = Uuid::new_v4();
     let bool_claim_id = Uuid::new_v4();
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
-        (Uuid::new_v4(), "root", true, "OBJECT", false),
+        (root_claim_id, "root", true, "OBJECT", false),
         (str_claim_id, "root/str", true, "STRING", false),
         (num_claim_id, "root/num", true, "NUMBER", false),
         (bool_claim_id, "root/bool", true, "BOOLEAN", false),
@@ -537,9 +538,10 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                 interaction: Some(interaction),
                 key: Some(key),
                 claims_data: Some(vec![
-                    (str_claim_id, "root/str", "str-value"),
-                    (num_claim_id, "root/num", "12"),
-                    (bool_claim_id, "root/bool", "false"),
+                    (root_claim_id, "root", None),
+                    (str_claim_id, "root/str", Some("str-value")),
+                    (num_claim_id, "root/num", Some("12")),
+                    (bool_claim_id, "root/bool", Some("false")),
                 ]),
                 ..Default::default()
             },

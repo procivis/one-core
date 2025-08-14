@@ -3348,6 +3348,7 @@ dependencies = [
  "shared-types",
  "time",
  "tokio",
+ "tracing",
  "urlencoding",
  "uuid",
 ]
