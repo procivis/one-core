@@ -33,7 +33,9 @@ use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, CredentialClaim, CredentialClaimValue, IdentifierDetails,
+};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -433,53 +435,47 @@ pub(crate) async fn get_or_create_key_identifier(
 pub(crate) fn value_to_model_claims(
     credential_id: CredentialId,
     claim_schemas: &[CredentialSchemaClaim],
-    json_value: &serde_json::Value,
+    claim_value: CredentialClaim,
     now: OffsetDateTime,
     claim_schema: &ClaimSchema,
     claim_path: &str,
 ) -> Result<Vec<Claim>, ServiceError> {
     let mut model_claims = vec![];
 
-    match json_value {
-        serde_json::Value::String(_)
-        | serde_json::Value::Bool(_)
-        | serde_json::Value::Number(_) => {
-            let value = match json_value {
-                serde_json::Value::String(v) => v.to_owned(),
-                serde_json::Value::Bool(v) => {
-                    if *v {
+    let mut claim_stub = Claim {
+        id: ClaimId::new_v4(),
+        credential_id,
+        created_date: now,
+        last_modified: now,
+        value: None,
+        path: claim_path.to_owned(),
+        selectively_disclosable: claim_value.selectively_disclosable,
+        schema: Some(claim_schema.to_owned()),
+    };
+
+    match claim_value.value {
+        CredentialClaimValue::String(_)
+        | CredentialClaimValue::Bool(_)
+        | CredentialClaimValue::Number(_) => {
+            let value = match claim_value.value {
+                CredentialClaimValue::String(v) => v,
+                CredentialClaimValue::Bool(v) => {
+                    if v {
                         "true".to_string()
                     } else {
                         "false".to_string()
                     }
                 }
-                serde_json::Value::Number(v) => v.to_string(),
+                CredentialClaimValue::Number(v) => v.to_string(),
                 _ => {
                     return Err(ServiceError::MappingError("invalid value type".to_string()));
                 }
             };
-            model_claims.push(Claim {
-                id: ClaimId::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: Some(value),
-                path: claim_path.to_owned(),
-                selectively_disclosable: false,
-                schema: Some(claim_schema.to_owned()),
-            });
+            claim_stub.value = Some(value);
+            model_claims.push(claim_stub);
         }
-        serde_json::Value::Object(object) => {
-            model_claims.push(Claim {
-                id: ClaimId::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: claim_path.to_owned(),
-                selectively_disclosable: false,
-                schema: Some(claim_schema.to_owned()),
-            });
+        CredentialClaimValue::Object(object) => {
+            model_claims.push(claim_stub);
             for (key, value) in object {
                 let this_name = &claim_schema.key;
                 let child_schema_name = format!("{this_name}/{key}");
@@ -499,18 +495,9 @@ pub(crate) fn value_to_model_claims(
                 )?);
             }
         }
-        serde_json::Value::Array(array) => {
-            model_claims.push(Claim {
-                id: ClaimId::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: claim_path.to_owned(),
-                selectively_disclosable: false,
-                schema: Some(claim_schema.to_owned()),
-            });
-            for (index, value) in array.iter().enumerate() {
+        CredentialClaimValue::Array(array) => {
+            model_claims.push(claim_stub);
+            for (index, value) in array.into_iter().enumerate() {
                 let child_path = format!("{claim_path}/{index}");
                 model_claims.extend(value_to_model_claims(
                     credential_id,
@@ -522,11 +509,6 @@ pub(crate) fn value_to_model_claims(
                 )?);
             }
         }
-        _ => {
-            return Err(ServiceError::MappingError(
-                "value type is not supported".to_string(),
-            ));
-        }
     }
 
     Ok(model_claims)
@@ -536,7 +518,7 @@ pub(crate) fn value_to_model_claims(
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
-    claims: Vec<(serde_json::Value, ClaimSchema)>,
+    claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_identifier: Identifier,
     issuer_identifier_relation: RemoteIdentifierRelation,
     holder_identifier: Option<Identifier>,
@@ -551,7 +533,7 @@ pub(crate) fn extracted_credential_to_model(
         model_claims.extend(value_to_model_claims(
             credential_id,
             claim_schemas,
-            &value,
+            value,
             now,
             &claim_schema,
             &claim_schema.key,
@@ -970,7 +952,10 @@ mod tests {
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,
             },
-            vec![(json!({ "element": "Test" }), namespace_claim_schema.clone())],
+            vec![(
+                CredentialClaim::try_from(json!({ "element": "Test" })).unwrap(),
+                namespace_claim_schema.clone(),
+            )],
             Identifier {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),

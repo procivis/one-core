@@ -15,7 +15,9 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, DetailCredential, IdentifierDetails,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -36,7 +38,7 @@ use crate::util::key_verification::KeyVerification;
 pub(crate) struct ValidatedProofClaimDTO {
     pub claim_schema_id: ClaimSchemaId,
     pub credential: DetailCredential,
-    pub value: (String, serde_json::Value),
+    pub value: (String, CredentialClaim),
 }
 
 // copied from lib/one-core/src/service/ssi_verifier/validator.rs
@@ -309,7 +311,7 @@ fn extract_matching_requested_claim(
     Ok(Some(ValidatedProofClaimDTO {
         claim_schema_id: requested_claim_schema.schema.id,
         credential: received_credential.to_owned(),
-        value: (requested_claim_schema.schema.key, value.to_owned().into()),
+        value: (requested_claim_schema.schema.key, value.to_owned()),
     }))
 }
 
@@ -372,7 +374,7 @@ pub(crate) async fn accept_proof(
 
     struct ProvedClaim {
         claim_schema: ClaimSchema,
-        value: (String, serde_json::Value),
+        value: (String, CredentialClaim),
         credential: DetailCredential,
         credential_schema: CredentialSchema,
     }
@@ -419,7 +421,7 @@ pub(crate) async fn accept_proof(
 
     let mut proof_claims: Vec<Claim> = vec![];
     for (_, credential_claims) in claims_per_credential {
-        let claims: Vec<(serde_json::Value, ClaimSchema)> = credential_claims
+        let claims: Vec<(CredentialClaim, ClaimSchema)> = credential_claims
             .iter()
             .map(|claim| Ok((claim.value.1.to_owned(), claim.claim_schema.to_owned())))
             .collect::<Result<Vec<_>, ServiceError>>()?;

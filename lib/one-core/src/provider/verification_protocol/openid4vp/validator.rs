@@ -432,7 +432,7 @@ pub(super) fn validate_claims(
             proved_claims.push(ValidatedProofClaimDTO {
                 proof_input_claim: expected_credential_claim.to_owned(),
                 credential: received_credential.to_owned(),
-                value: value.value.to_owned().into(),
+                value: value.to_owned(),
                 credential_schema: credential_schema.to_owned(),
                 mdoc_mso: mso.clone(),
             })

@@ -191,8 +191,13 @@ async fn test_issuance_accept_openid4vc() {
         holder_did.id,
         credential.holder_identifier.unwrap().did.unwrap().id
     );
-
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
+
+    let claims = credential.claims.as_ref().unwrap();
+    assert_eq!(claims.len(), 1);
+    assert_eq!(claims[0].value.as_ref().unwrap(), "string");
+    assert_eq!(claims[0].selectively_disclosable, false);
+
     let history = context
         .db
         .histories

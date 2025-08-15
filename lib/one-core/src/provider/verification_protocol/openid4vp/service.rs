@@ -21,7 +21,9 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, DetailCredential, HolderBindingCtx,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -766,7 +768,7 @@ async fn accept_proof(
     #[derive(Debug)]
     struct ProvedClaim {
         claim_schema: ClaimSchema,
-        value: serde_json::Value,
+        value: CredentialClaim,
         credential: DetailCredential,
         credential_schema: CredentialSchema,
         mdoc_mso: Option<MobileSecurityObject>,
@@ -796,7 +798,7 @@ async fn accept_proof(
 
     let mut proof_claims: Vec<Claim> = vec![];
     for (credential_schema_id, credential_claims) in claims_per_credential {
-        let claims: Vec<(serde_json::Value, ClaimSchema)> = credential_claims
+        let claims: Vec<(CredentialClaim, ClaimSchema)> = credential_claims
             .iter()
             .map(|claim| (claim.value.to_owned(), claim.claim_schema.to_owned()))
             .collect();

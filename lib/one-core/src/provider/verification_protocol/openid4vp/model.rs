@@ -17,7 +17,9 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
-use crate::provider::credential_formatter::model::{DetailCredential, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, DetailCredential, IdentifierDetails,
+};
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::util::mdoc::MobileSecurityObject;
@@ -164,7 +166,7 @@ pub(super) struct ValidatedProofClaimDTO {
     pub proof_input_claim: ProofInputClaimSchema,
     pub credential: DetailCredential,
     pub credential_schema: CredentialSchema,
-    pub value: serde_json::Value,
+    pub value: CredentialClaim,
     pub mdoc_mso: Option<MobileSecurityObject>,
 }
 

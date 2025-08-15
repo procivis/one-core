@@ -33,7 +33,9 @@ use crate::model::interaction::InteractionId;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::provider::credential_formatter::model::{AuthenticationFn, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, CredentialClaim, IdentifierDetails,
+};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -481,7 +483,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
-    claims: Vec<(serde_json::Value, ClaimSchema)>,
+    claims: Vec<(CredentialClaim, ClaimSchema)>,
     issuer_details: IdentifierDetails,
     holder_details: IdentifierDetails,
     mdoc_mso: Option<MobileSecurityObject>,
@@ -498,7 +500,7 @@ pub(crate) fn extracted_credential_to_model(
             value_to_model_claims(
                 credential_id,
                 claim_schemas,
-                &value,
+                value,
                 now,
                 &claim_schema,
                 &claim_schema.key,

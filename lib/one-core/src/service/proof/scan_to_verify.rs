@@ -13,6 +13,7 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::credential_formatter::model::CredentialClaim;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
 };
@@ -183,7 +184,7 @@ impl ProofService {
                 ))?;
 
         let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
-        let mut claims: Vec<(serde_json::Value, ClaimSchema)> = vec![];
+        let mut claims: Vec<(CredentialClaim, ClaimSchema)> = vec![];
         for proof_claim_schema in proof_claim_schemas {
             let value = credential.claims.claims.get(&proof_claim_schema.schema.key);
             let value = match value {
@@ -198,10 +199,7 @@ impl ProofService {
                 }
             };
 
-            claims.push((
-                value.value.to_owned().into(),
-                proof_claim_schema.schema.to_owned(),
-            ));
+            claims.push((value.to_owned(), proof_claim_schema.schema.to_owned()));
 
             let claim_schema = credential_schema_claims
                 .iter()
