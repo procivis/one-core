@@ -148,7 +148,7 @@ impl ProtectedOpticalData {
         let subject_type = subject
             .claims
             .get("type")
-            .and_then(|v| v.as_str())
+            .and_then(|v| v.value.as_str())
             .ok_or(FormatterError::Failed("Missing subject type".to_string()))?;
 
         match subject_type {

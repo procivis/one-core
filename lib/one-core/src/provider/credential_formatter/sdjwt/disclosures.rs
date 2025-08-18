@@ -7,6 +7,7 @@ use serde_json::Value;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
 use crate::util::jwt::mapper::string_to_b64url_string;
 
@@ -310,60 +311,65 @@ fn collect_all_subdisclosures(disclosure: &DisclosureTree) -> Vec<String> {
 fn gather_disclosures_from_sd(
     disclosures: &[(&Disclosure, (String, String))],
     sd_hashes: &[String],
-) -> serde_json::Map<String, serde_json::Value> {
-    let mut result = serde_json::Map::new();
+) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
+    let mut result = HashMap::new();
 
-    sd_hashes.iter().for_each(|hash| {
+    sd_hashes.iter().try_for_each(|hash| {
         if let Some((disclosure, _)) = disclosures
             .iter()
             .find(|(_, disclosure_hash)| *hash == *disclosure_hash.0 || *hash == *disclosure_hash.1)
         {
-            result.insert(disclosure.key.clone(), disclosure.value.clone());
+            let credential_claim = CredentialClaim {
+                selectively_disclosable: true,
+                value: CredentialClaimValue::try_from(disclosure.value.clone())?,
+            };
+            result.insert(disclosure.key.clone(), credential_claim);
         }
-    });
+        Ok::<_, FormatterError>(())
+    })?;
 
-    result
+    Ok(result)
 }
 
-fn gather_hashes_from_sd(sd: &serde_json::Value) -> Option<Vec<String>> {
+fn gather_hashes_from_sd(sd: &CredentialClaimValue) -> Option<Vec<String>> {
     sd.as_array().map(|array| {
         array
             .iter()
-            .filter_map(|hash| hash.as_str().map(str::to_string))
+            .filter_map(|hash| hash.value.as_str().map(str::to_string))
             .collect()
     })
 }
 
 fn gather_insertables_from_value(
     disclosures: &[(&Disclosure, (String, String))],
-    map: &serde_json::Map<String, serde_json::Value>,
-) -> serde_json::Map<String, serde_json::Value> {
+    map: &HashMap<String, CredentialClaim>,
+) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
     if let Some(sd) = map.get(SELECTIVE_DISCLOSURE_MARKER) {
-        if let Some(hashes) = gather_hashes_from_sd(sd) {
+        if let Some(hashes) = gather_hashes_from_sd(&sd.value) {
             return gather_disclosures_from_sd(disclosures, &hashes);
         }
     }
 
-    Default::default()
+    Ok(HashMap::new())
 }
 
 pub fn recursively_expand_disclosures(
     disclosures: &[(&Disclosure, (String, String))],
-    claims: &mut serde_json::Value,
-) {
-    if let Some(map) = claims.as_object_mut() {
-        let values: serde_json::Map<String, Value> =
-            gather_insertables_from_value(disclosures, map);
+    claims: &mut CredentialClaim,
+) -> Result<(), FormatterError> {
+    if let Some(map) = claims.value.as_object_mut() {
+        let values: HashMap<String, CredentialClaim> =
+            gather_insertables_from_value(disclosures, map)?;
 
         map.remove(SELECTIVE_DISCLOSURE_MARKER);
         map.extend(values);
 
-        map.iter_mut().for_each(|(_, v)| {
-            recursively_expand_disclosures(disclosures, v);
-        });
-    } else if let Some(array) = claims.as_array_mut() {
+        map.iter_mut()
+            .try_for_each(|(_, v)| recursively_expand_disclosures(disclosures, v))?;
+    } else if let Some(array) = claims.value.as_array_mut() {
         for v in array.iter_mut() {
-            recursively_expand_disclosures(disclosures, v);
+            recursively_expand_disclosures(disclosures, v)?;
         }
     }
+    Ok(())
 }

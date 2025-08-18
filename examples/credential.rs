@@ -96,6 +96,7 @@ async fn main() -> Result<(), CredentialServiceError> {
     let holder_did = issuer_did.clone();
     let issuer = Issuer::Url(issuer_did.into_url());
     let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .unwrap()
         .with_id(holder_did.clone().into_url());
 
     let vcdm = VcdmCredential::new_v2(issuer, credential_subject)

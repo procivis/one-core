@@ -426,7 +426,7 @@ pub async fn create_lvvc_with_status(
     let claims = nest_claims(claims)
         .map_err(|err| RevocationError::ValidationError(format!("Invalid claims: {err}")))?;
 
-    let credential_subject = VcdmCredentialSubject::new(claims).with_id(credential_subject_id);
+    let credential_subject = VcdmCredentialSubject::new(claims)?.with_id(credential_subject_id);
 
     let lvvc_context = json_ld_context
         .url

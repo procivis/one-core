@@ -11,8 +11,8 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 
 use super::model::{
-    AuthenticationFn, CertificateDetails, HolderBindingCtx, IdentifierDetails, PublicKeySource,
-    TokenVerifier, VerificationFn,
+    AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
+    PublicKeySource, SettableClaims, TokenVerifier, VerificationFn,
 };
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
@@ -286,7 +286,7 @@ pub(crate) struct SdJwtHolderBindingParams {
     pub skip_holder_binding_aud_check: bool,
 }
 
-impl<Payload: DeserializeOwned> Jwt<Payload> {
+impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
     pub(crate) async fn build_from_token_with_disclosures(
         token: &str,
         crypto: &dyn CryptoProvider,
@@ -434,14 +434,24 @@ impl<Payload: DeserializeOwned> Jwt<Payload> {
             .collect::<Result<Vec<(&Disclosure, (String, String))>, FormatterError>>()?;
 
         let expanded_payload: Payload = {
-            let mut payload_before_expanding = Value::from(decomposed_token.payload.custom);
+            let mut payload_before_expanding =
+                CredentialClaim::try_from(Value::from(decomposed_token.payload.custom.clone()))?;
 
-            recursively_expand_disclosures(&disclosures_with_hashes, &mut payload_before_expanding);
-            serde_json::from_value(payload_before_expanding).map_err(|_| {
+            recursively_expand_disclosures(
+                &disclosures_with_hashes,
+                &mut payload_before_expanding,
+            )?;
+
+            let mut extended_payload: Payload = serde_json::from_value(Value::from(
+                decomposed_token.payload.custom,
+            ))
+            .map_err(|_| {
                 FormatterError::CouldNotExtractCredentials(
                     "Failed to deserialize JWT payload".to_string(),
                 )
-            })?
+            })?;
+            extended_payload.set_claims(payload_before_expanding)?;
+            extended_payload
         };
 
         let subject = match (

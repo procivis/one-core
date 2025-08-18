@@ -8,7 +8,6 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
-use one_dto_mapper::try_convert_inner;
 use serde::Deserialize;
 use serde_json::Value;
 use time::Duration;
@@ -287,7 +286,7 @@ pub(crate) async fn extract_credentials_internal(
 
     let claims = CredentialSubject {
         id: credential_subject.id,
-        claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
+        claims: HashMap::from_iter(credential_subject.claims),
     };
 
     let issuer = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {
@@ -346,7 +345,11 @@ fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterE
                 .id
                 .as_ref()
                 .map(|id| ("id".to_string(), serde_json::json!(id)));
-            let claims = cs.claims.clone().into_iter();
+            let claims = cs
+                .claims
+                .clone()
+                .into_iter()
+                .map(|(key, val)| (key, val.into()));
             let object = serde_json::Map::from_iter(claims.chain(id));
             serde_json::Value::Object(object)
         })

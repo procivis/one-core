@@ -1,9 +1,14 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none};
 use url::Url;
+
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, CredentialClaimValue, SettableClaims,
+};
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,7 +32,26 @@ pub struct SdJwtVc {
     pub status: Option<SdJwtVcStatus>,
 
     #[serde(flatten)]
-    pub public_claims: Map<String, Value>,
+    pub public_claims: HashMap<String, CredentialClaim>,
+}
+
+impl SettableClaims for SdJwtVc {
+    fn set_claims(&mut self, claims: CredentialClaim) -> Result<(), FormatterError> {
+        let mut claims = match claims.value {
+            CredentialClaimValue::Object(claims) => claims,
+            _ => Err(FormatterError::Failed(
+                "Expected claims to be object".to_string(),
+            ))?,
+        };
+        // don't override reserved claims
+        claims.remove("vct");
+        claims.remove("vct#integrity");
+        claims.remove("_sd");
+        claims.remove("_sd_alg");
+        claims.remove("status");
+        self.public_claims = claims;
+        Ok(())
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

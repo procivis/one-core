@@ -1,13 +1,19 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use time::OffsetDateTime;
+use url::Url;
 
 use crate::model::certificate::Certificate;
 use crate::model::identifier::Identifier;
-use crate::provider::credential_formatter::model::{CredentialSchema, CredentialStatus, Issuer};
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::{
+    CredentialClaim, CredentialClaimValue, CredentialSchema, CredentialStatus, Issuer,
+    SettableClaims,
+};
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
 
 #[skip_serializing_none]
@@ -46,6 +52,61 @@ pub struct VcClaim {
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
     #[serde(rename = "_sd_alg", default)]
     pub hash_alg: Option<String>,
+}
+
+impl SettableClaims for VcClaim {
+    fn set_claims(&mut self, mut claims: CredentialClaim) -> Result<(), FormatterError> {
+        let Some(subject) = self.vc.credential_subject.first_mut() else {
+            return Err(FormatterError::Failed(
+                "Missing vc.credential_subject".to_string(),
+            ));
+        };
+        let first_level = claims.value.as_object_mut().ok_or(FormatterError::Failed(
+            "Expected claims to be an object".to_string(),
+        ))?;
+        let vc = first_level
+            .get_mut("vc")
+            .ok_or(FormatterError::Failed("vc not found".to_string()))?
+            .value
+            .as_object_mut()
+            .ok_or(FormatterError::Failed("vc is not an object".to_string()))?;
+        let credential_subject = vc
+            .get_mut("credentialSubject")
+            .ok_or(FormatterError::Failed(
+                "Missing credentialSubject".to_string(),
+            ))?;
+
+        let subject_claims = match &mut credential_subject.value {
+            CredentialClaimValue::Array(arr) => {
+                let first = arr.first_mut().ok_or(FormatterError::Failed(
+                    "Empty credentialSubject".to_string(),
+                ))?;
+                first.value.as_object_mut().ok_or(FormatterError::Failed(
+                    "credentialSubject must be an object or array of objects".to_string(),
+                ))?
+            }
+            CredentialClaimValue::Object(obj) => obj,
+            _ => {
+                return Err(FormatterError::Failed(
+                    "credentialSubject must be array or object".to_string(),
+                ));
+            }
+        };
+
+        let id = subject_claims.remove("id");
+        if let Some(id) = id {
+            subject.id = Some(
+                Url::parse(
+                    id.value
+                        .as_str()
+                        .ok_or(FormatterError::Failed("id must be string".to_string()))?,
+                )
+                .map_err(|e| FormatterError::Failed(format!("failed to parse id as URL: {e}")))?,
+            );
+        };
+        subject.claims = IndexMap::from_iter(subject_claims.drain());
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

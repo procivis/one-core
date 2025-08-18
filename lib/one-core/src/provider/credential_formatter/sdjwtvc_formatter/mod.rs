@@ -14,7 +14,6 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::SdJwtVcStatus;
 use one_crypto::CryptoProvider;
-use one_dto_mapper::try_convert_inner;
 use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
@@ -22,7 +21,10 @@ use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
 use url::Url;
 
-use super::model::{CredentialData, CredentialStatus, HolderBindingCtx, PublishedClaim};
+use super::model::{
+    CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, HolderBindingCtx,
+    PublishedClaim,
+};
 use super::sdjwt;
 use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
@@ -397,9 +399,7 @@ impl SDJWTVCFormatter {
                 issuer,
                 subject,
                 claims: CredentialSubject {
-                    claims: try_convert_inner(HashMap::from_iter(
-                        jwt.payload.custom.public_claims,
-                    ))?,
+                    claims: jwt.payload.custom.public_claims,
                     id: None,
                 },
                 status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
@@ -414,19 +414,15 @@ impl SDJWTVCFormatter {
         credential: &VcdmCredential,
         published_claims: &[PublishedClaim],
     ) -> Result<Value, FormatterError> {
-        let mut claims = credential
+        let claims = credential
             .credential_subject
             .first()
-            .map(|cs| {
-                let object = serde_json::Map::from_iter(cs.claims.clone());
-                serde_json::Value::Object(object)
-            })
+            .map(|cs| cs.claims.clone())
             .ok_or_else(|| {
                 FormatterError::Failed("Credential is missing credential subject".to_string())
             })?;
-        let Some(object_claim) = claims.as_object_mut() else {
-            return Ok(claims);
-        };
+
+        let mut claims = HashMap::from_iter(claims);
 
         if self.params.swiyu_mode {
             // Remove data uri prefix from image claim values when formatting for SWIYU
@@ -440,19 +436,22 @@ impl SDJWTVCFormatter {
                 fields.r#type == DatatypeType::File
             }) {
                 let path = published_claim.key.split(NESTED_CLAIM_MARKER).collect();
-                post_process_claims(path, object_claim, |value| {
+                post_process_claims(path, &mut claims, |value| {
                     value.trim_start_matches(JPEG_DATA_URI_PREFIX).to_string()
                 });
             }
         }
-
-        Ok(claims)
+        Ok(Value::Object(serde_json::Map::from_iter(
+            claims
+                .into_iter()
+                .map(|(key, value)| (key, serde_json::Value::from(value.value))),
+        )))
     }
 }
 
 fn post_process_claims(
     mut path: Vec<&str>,
-    claims: &mut serde_json::Map<String, Value>,
+    claims: &mut HashMap<String, CredentialClaim>,
     process: impl Fn(&str) -> String,
 ) {
     let Some(current) = path.pop() else { return };
@@ -461,13 +460,12 @@ fn post_process_claims(
     };
 
     if path.is_empty() {
-        let Some(str_value) = current_value.as_str() else {
+        let Some(str_value) = current_value.value.as_str() else {
             return;
         };
-        let processed_value = process(str_value);
-        claims.insert(current.to_string(), Value::String(processed_value));
+        current_value.value = CredentialClaimValue::String(process(str_value));
     } else {
-        let Some(map_value) = current_value.as_object_mut() else {
+        let Some(map_value) = current_value.value.as_object_mut() else {
             return;
         };
         post_process_claims(path, map_value, process)

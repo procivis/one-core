@@ -85,6 +85,7 @@ async fn create_token(include_layout: bool) -> Value {
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
 
     let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .unwrap()
         .with_id(holder_did.clone().into_url());
 
     let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)

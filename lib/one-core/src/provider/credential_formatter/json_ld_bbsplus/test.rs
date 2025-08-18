@@ -89,6 +89,7 @@ async fn test_create_and_verify_base_and_derived_proof() {
         .map(String::as_str)
         .chain(
             credential_subject.claims["permanentResidentCard"]
+                .value
                 .as_object()
                 .unwrap()
                 .keys()

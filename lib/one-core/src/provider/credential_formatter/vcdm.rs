@@ -7,6 +7,8 @@ use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use time::OffsetDateTime;
 use url::Url;
 
+use super::error::FormatterError;
+use super::model::CredentialClaim;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
@@ -198,20 +200,22 @@ pub struct RefreshService {
 pub struct VcdmCredentialSubject {
     pub id: Option<Url>,
     #[serde(flatten)]
-    pub claims: IndexMap<String, serde_json::Value>,
+    pub claims: IndexMap<String, CredentialClaim>,
 }
 
 impl VcdmCredentialSubject {
     pub fn new(
         claims: impl IntoIterator<Item = (impl Into<String>, impl Into<serde_json::Value>)>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, FormatterError> {
+        Ok(Self {
             id: None,
             claims: claims
                 .into_iter()
-                .map(|(k, v)| (k.into(), v.into()))
-                .collect(),
-        }
+                .map(|(k, v)| {
+                    Ok::<_, FormatterError>((k.into(), CredentialClaim::try_from(v.into())?))
+                })
+                .collect::<Result<_, _>>()?,
+        })
     }
 
     pub fn with_id(mut self, id: impl Into<Url>) -> Self {

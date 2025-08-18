@@ -693,7 +693,8 @@ pub fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Cre
         },
     ];
     let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap());
+    let credential_subject =
+        VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap()).unwrap();
     let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
         .add_context(schema_context)
         .add_credential_schema(schema)

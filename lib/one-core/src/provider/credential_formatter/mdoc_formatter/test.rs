@@ -213,7 +213,7 @@ async fn test_credential_formatting_ok_for_ecdsa() {
 
     let vcdm = VcdmCredential::new_v2(
         issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()),
+        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
     )
     .add_credential_schema(CredentialSchema {
         id: "credential-schema-id".to_string(),
@@ -442,7 +442,7 @@ async fn test_unverified_credential_extraction() {
 
     let vcdm = VcdmCredential::new_v2(
         issuer_did.clone(),
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()),
+        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
     )
     .add_credential_schema(CredentialSchema {
         id: "doctype".to_string(),
@@ -704,7 +704,7 @@ async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
 
     let vcdm = VcdmCredential::new_v2(
         issuer_did,
-        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()),
+        VcdmCredentialSubject::new(std::iter::empty::<(String, String)>()).unwrap(),
     )
     .add_credential_schema(CredentialSchema {
         id: "credential-schema-id".to_string(),

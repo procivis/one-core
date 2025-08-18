@@ -169,7 +169,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             ("type", json!("BitstringStatusList")),
             ("statusPurpose", json!(status_purpose)),
             ("encodedList", json!(encoded_list)),
-        ])
+        ])?
         .with_id(credential_subject_id);
 
         let credential_id = Url::parse(&revocation_list_url).map_err(|_| {

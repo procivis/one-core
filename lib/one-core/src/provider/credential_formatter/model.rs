@@ -7,7 +7,8 @@ use std::fmt::{Display, Formatter};
 use async_trait::async_trait;
 use indexmap::IndexMap;
 use one_crypto::SignerError;
-use serde::{Deserialize, Serialize};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use shared_types::DidValue;
 use strum::{Display, IntoStaticStr};
@@ -66,6 +67,10 @@ pub trait SignatureProvider: Send + Sync {
     fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String>;
     fn jose_alg(&self) -> Option<String>;
     fn get_public_key(&self) -> Vec<u8>;
+}
+
+pub trait SettableClaims {
+    fn set_claims(&mut self, claims: CredentialClaim) -> Result<(), FormatterError>;
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -129,6 +134,25 @@ pub struct CredentialClaim {
     pub value: CredentialClaimValue,
 }
 
+impl Serialize for CredentialClaim {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serde_json::Value::from(self.clone()).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CredentialClaim {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        CredentialClaim::try_from(serde_json::Value::deserialize(deserializer)?)
+            .map_err(Error::custom)
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum CredentialClaimValue {
     Bool(bool),
@@ -136,6 +160,25 @@ pub enum CredentialClaimValue {
     String(String),
     Array(Vec<CredentialClaim>),
     Object(HashMap<String, CredentialClaim>),
+}
+
+impl Serialize for CredentialClaimValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serde_json::Value::from(self.clone()).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for CredentialClaimValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        CredentialClaimValue::try_from(serde_json::Value::deserialize(deserializer)?)
+            .map_err(Error::custom)
+    }
 }
 
 #[derive(Debug, Clone)]

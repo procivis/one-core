@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use one_dto_mapper::try_convert_inner;
 use shared_types::DidValue;
 
 use crate::provider::credential_formatter::error::FormatterError;
@@ -44,7 +43,7 @@ pub(super) fn convert_to_detail_credential(
         })
         .transpose()?;
 
-    let mut claims = try_convert_inner(HashMap::from_iter(credential_subject.claims))?;
+    let mut claims = HashMap::from_iter(credential_subject.claims);
 
     if let Some(mandatory_pointers) = mandatory_pointers {
         let mandatory_claim_paths: Vec<_> = mandatory_pointers

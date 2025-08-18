@@ -60,7 +60,7 @@ impl JWTFormatter {
             ("type", json!("BitstringStatusList")),
             ("statusPurpose", json!(status_purpose)),
             ("encodedList", json!(encoded_list)),
-        ])
+        ])?
         .with_id(credential_subject_id.clone());
 
         let vc = VcdmCredential::new_v2(issuer, credential_subject)

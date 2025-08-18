@@ -2,8 +2,10 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use maplit::hashmap;
 use mockall::predicate::eq;
 use one_crypto::{MockCryptoProvider, MockHasher};
+use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -17,8 +19,8 @@ use crate::model::identifier::Identifier;
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialSchema, CredentialStatus, Features, IdentifierDetails, Issuer,
-    MockTokenVerifier, PublicKeySource, PublishedClaim,
+    CredentialClaim, CredentialClaimValue, CredentialData, CredentialSchema, CredentialStatus,
+    Features, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource, PublishedClaim,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -172,10 +174,11 @@ async fn test_format_credential_a() {
 
     assert!(
         vc.credential_subject[0].claims["_sd"]
+            .value
             .as_array()
             .unwrap()
             .iter()
-            .all(|hashed_claim| hashed_claim.as_str().unwrap() == "YWJjMTIz")
+            .all(|hashed_claim| hashed_claim.value.as_str().unwrap() == "YWJjMTIz")
     );
 
     assert!(
@@ -348,10 +351,11 @@ async fn test_format_credential_with_array() {
         HashSet::<&str>::from_iter([hash4, hash3]),
         HashSet::from_iter(
             vc.credential_subject[0].claims["_sd"]
+                .value
                 .as_array()
                 .unwrap()
                 .iter()
-                .map(|d| d.as_str().unwrap())
+                .map(|d| d.value.as_str().unwrap())
         )
     );
 }
@@ -476,6 +480,14 @@ async fn test_extract_credentials() {
             .unwrap(),
         "John"
     );
+    assert!(
+        credentials
+            .claims
+            .claims
+            .get("name")
+            .unwrap()
+            .selectively_disclosable
+    );
     assert_eq!(
         credentials
             .claims
@@ -486,6 +498,14 @@ async fn test_extract_credentials() {
             .as_str()
             .unwrap(),
         "42"
+    );
+    assert!(
+        credentials
+            .claims
+            .claims
+            .get("age")
+            .unwrap()
+            .selectively_disclosable
     );
 }
 
@@ -708,18 +728,24 @@ async fn test_extract_credentials_with_array_stripped() {
     let root_item = &credentials.claims.claims.get("root_item").unwrap().value;
     assert_eq!(root_item.as_str(), Some("root_item"));
 
-    let root = credentials
-        .claims
-        .claims
-        .get("root")
-        .unwrap()
-        .value
-        .as_object()
-        .unwrap();
-    assert!(root.get("nested").is_none());
-
-    let array = root.get("array").unwrap().value.as_array().unwrap();
-    assert_eq!(array[0].value.as_str(), Some("array_item"));
+    let expected: HashMap<String, CredentialClaim> = hashmap! {
+        "root".into() => CredentialClaim {
+            selectively_disclosable: true,
+            value: CredentialClaimValue::Object(
+                hashmap! {
+                    "array".into() => CredentialClaim {
+                            selectively_disclosable: true,
+                            value: json!(["array_item"]).try_into().unwrap(), // individual items not selectively disclosable
+                        },
+                }
+            )
+        },
+        "root_item".into() => CredentialClaim {
+            selectively_disclosable: true,
+            value: json!("root_item").try_into().unwrap(),
+        },
+    };
+    assert_eq!(credentials.claims.claims, expected);
 }
 
 #[test]
@@ -782,7 +808,8 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     ];
 
     let issuer_did = Issuer::Url("did:issuer:test".parse().unwrap());
-    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap());
+    let credential_subject =
+        VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap()).unwrap();
 
     let vcdm = VcdmCredential::new_v2(issuer_did, credential_subject)
         .add_context(schema_context)

@@ -72,6 +72,7 @@ fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> Credent
     ];
 
     let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .unwrap()
         .with_id(holder_did.clone().into_url());
 
     let vcdm = VcdmCredential::new_v2(
@@ -139,6 +140,7 @@ fn get_credential_data_with_array(status: CredentialStatus, core_base_url: &str)
     ];
 
     let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .unwrap()
         .with_id(holder_did.clone().into_url());
 
     let vcdm = VcdmCredential::new_v2(
@@ -410,14 +412,22 @@ async fn test_format_credential_nested_array() {
     let vc = payload.custom.vc;
 
     let root_item = vc.credential_subject[0].claims.get("root_item").unwrap();
-    assert_eq!(root_item.as_str(), Some("root_item"));
+    assert_eq!(root_item.value.as_str(), Some("root_item"));
 
     let root = vc.credential_subject[0].claims.get("root").unwrap();
-    let nested = root.get("nested").unwrap();
-    assert_eq!(nested.as_str(), Some("nested_item"));
+    let nested = root.value.as_object().unwrap().get("nested").unwrap();
+    assert_eq!(nested.value.as_str(), Some("nested_item"));
 
-    let array = root.get("array").unwrap().as_array().unwrap();
-    assert_eq!(array[0].as_str(), Some("array_item"));
+    let array = root
+        .value
+        .as_object()
+        .unwrap()
+        .get("array")
+        .unwrap()
+        .value
+        .as_array()
+        .unwrap();
+    assert_eq!(array[0].value.as_str(), Some("array_item"));
 }
 
 #[tokio::test]

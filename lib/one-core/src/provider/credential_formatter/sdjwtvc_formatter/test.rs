@@ -9,7 +9,6 @@ use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
-use one_dto_mapper::try_convert_inner;
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
@@ -259,7 +258,12 @@ async fn test_format_credential_swiyu() {
         .claims
         .insert(
             "portrait".to_string(),
-            serde_json::Value::String(picture_value.clone()),
+            CredentialClaim {
+                value: serde_json::Value::String(picture_value.clone())
+                    .try_into()
+                    .unwrap(),
+                selectively_disclosable: true,
+            },
         );
     credential_data.claims.push(PublishedClaim {
         key: "portrait".to_string(),
@@ -969,6 +973,7 @@ async fn test_format_extract_round_trip() {
 
     let issuer = Issuer::Url(issuer_did.to_string().parse().unwrap());
     let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .unwrap()
         .with_id(holder_did.clone().into_url());
 
     let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
@@ -1068,17 +1073,30 @@ async fn test_format_extract_round_trip() {
         .await
         .unwrap();
 
-    let expected: HashMap<String, CredentialClaim> = try_convert_inner(hashmap! {
-        "object".into() => json!({
-            "name": "Mike",
-            "measurements": [{
-                "air pollution": 24.6
-            }]
-        }),
-        "age".into() => json!(22),
-        "is_over_18".into() => json!(true)
-    })
-    .unwrap();
-
+    let expected: HashMap<String, CredentialClaim> = hashmap! {
+        "object".into() => CredentialClaim {
+            selectively_disclosable: true,
+            value: CredentialClaimValue::Object(
+                hashmap! {
+                    "measurements".into() => CredentialClaim {
+                            selectively_disclosable: true,
+                            value: json!([{"air pollution": 24.6}]).try_into().unwrap(),
+                        },
+                    "name".into() => CredentialClaim {
+                            selectively_disclosable: true,
+                            value: json!("Mike").try_into().unwrap(),
+                        },
+                }
+            )
+        },
+        "age".into() => CredentialClaim {
+            selectively_disclosable: true,
+            value: json!(22).try_into().unwrap(),
+        },
+        "is_over_18".into() => CredentialClaim {
+            selectively_disclosable: true,
+            value: json!(true).try_into().unwrap(),
+        },
+    };
     assert_eq!(result.claims.claims, expected)
 }

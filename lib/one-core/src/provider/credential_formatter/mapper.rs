@@ -64,7 +64,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     // We don't add the credentialSubject.id here for backwards compatibility with older JWT/SD-JWT formatters where they store the "id" in the "sub" claim.
     // For JSON-LD formats the "id" is added to the credentialSubject inside the formatter.
     // This is currently the only way to remain backwards compatible with the old formatters and allow LVVC credential to set the credentialSubject.id.
-    let credential_subject = VcdmCredentialSubject::new(claims);
+    let credential_subject = VcdmCredentialSubject::new(claims)?;
 
     let layout_metadata =
         schema
@@ -195,7 +195,21 @@ impl CredentialClaimValue {
         }
     }
 
+    pub fn as_object_mut(&mut self) -> Option<&mut HashMap<String, CredentialClaim>> {
+        match self {
+            Self::Object(o) => Some(o),
+            _ => None,
+        }
+    }
+
     pub fn as_array(&self) -> Option<&[CredentialClaim]> {
+        match self {
+            Self::Array(a) => Some(a),
+            _ => None,
+        }
+    }
+
+    pub fn as_array_mut(&mut self) -> Option<&mut Vec<CredentialClaim>> {
         match self {
             Self::Array(a) => Some(a),
             _ => None,
