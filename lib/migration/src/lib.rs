@@ -142,6 +142,7 @@ mod m20250807_144007_make_claim_values_nullable;
 mod m20250811_154134_insert_container_claims;
 mod m20250814_120106_add_selectively_disclosable_column_to_claims;
 mod m20250818_045324_json_ld_bbs_disclosability;
+mod m20250818_082108_mdoc_disclosability;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -286,6 +287,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250811_154134_insert_container_claims::Migration),
             Box::new(m20250814_120106_add_selectively_disclosable_column_to_claims::Migration),
             Box::new(m20250818_045324_json_ld_bbs_disclosability::Migration),
+            Box::new(m20250818_082108_mdoc_disclosability::Migration),
         ]
     }
 }

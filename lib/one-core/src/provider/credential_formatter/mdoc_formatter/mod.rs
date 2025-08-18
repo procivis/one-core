@@ -438,7 +438,7 @@ async fn extract_credentials_internal(
         }
     }
 
-    let mut claims = try_extract_claims(namespaces)?;
+    let mut claims = extract_claims(namespaces)?;
 
     let layout = claims.remove(LAYOUT_NAMESPACE);
 
@@ -900,7 +900,7 @@ fn handle_bytes(bytes: &[u8]) -> Result<serde_json::Value, FormatterError> {
     )))
 }
 
-fn try_extract_claims(
+fn extract_claims(
     namespaces: Namespaces,
 ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
     let mut result = HashMap::new();
