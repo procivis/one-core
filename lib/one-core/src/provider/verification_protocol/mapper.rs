@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use shared_types::{OrganisationId, ProofId};
+use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -252,7 +252,7 @@ pub(crate) fn create_presentation_definition_field(
     field: CredentialGroupItem,
     credentials: &[Credential],
 ) -> Result<PresentationDefinitionFieldDTO, VerificationProtocolError> {
-    let mut key_map: HashMap<String, String> = HashMap::new();
+    let mut key_map: HashMap<CredentialId, String> = HashMap::new();
     let key = field.key;
     for credential in credentials {
         for claim in credential
@@ -270,7 +270,7 @@ pub(crate) fn create_presentation_definition_field(
                 ))?;
 
             if claim_schema.key.starts_with(&key) {
-                key_map.insert(credential.id.to_string(), key.clone());
+                key_map.insert(credential.id, key.clone());
                 break;
             }
         }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use shared_types::DidValue;
+use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
@@ -74,8 +74,8 @@ pub struct PresentationDefinitionRequestedCredentialResponseDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub fields: Vec<PresentationDefinitionFieldDTO>,
-    pub applicable_credentials: Vec<String>,
-    pub inapplicable_credentials: Vec<String>,
+    pub applicable_credentials: Vec<CredentialId>,
+    pub inapplicable_credentials: Vec<CredentialId>,
     pub validity_credential_nbf: Option<OffsetDateTime>,
 }
 
@@ -85,7 +85,7 @@ pub struct PresentationDefinitionFieldDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub required: Option<bool>,
-    pub key_map: HashMap<String, String>,
+    pub key_map: HashMap<CredentialId, String>,
 }
 
 #[derive(Clone, Debug)]

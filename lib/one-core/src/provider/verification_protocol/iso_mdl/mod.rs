@@ -351,14 +351,14 @@ impl VerificationProtocol for IsoMdl {
                     }) {
                         field_description
                             .key_map
-                            .insert(credential.id.to_string(), field_description.id.to_owned());
+                            .insert(credential.id, field_description.id.to_owned());
 
                         credential_claim_requested = true;
                     }
                 }
 
                 if credential_claim_requested {
-                    applicable_credentials.push(credential.id.to_string());
+                    applicable_credentials.push(credential.id);
 
                     let credential =
                         credential_detail_response_from_model(credential, &self.config, None)

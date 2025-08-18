@@ -16,7 +16,7 @@ use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    CertificateId, CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -302,11 +302,9 @@ pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     pub purpose: Option<String>,
     #[from(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub applicable_credentials: Vec<String>,
-    #[from(with_fn = convert_inner)]
+    pub applicable_credentials: Vec<CredentialId>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub inapplicable_credentials: Vec<String>,
+    pub inapplicable_credentials: Vec<CredentialId>,
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     validity_credential_nbf: Option<OffsetDateTime>,
@@ -321,7 +319,7 @@ pub(crate) struct PresentationDefinitionFieldRestDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub required: Option<bool>,
-    pub key_map: HashMap<String, String>,
+    pub key_map: HashMap<CredentialId, String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, From)]

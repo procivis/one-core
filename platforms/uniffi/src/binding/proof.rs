@@ -3,8 +3,7 @@ use std::collections::HashMap;
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::verification_protocol::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
-    PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionRequestGroupResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
@@ -27,7 +26,7 @@ use super::mapper::{optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofRequestClaimBindingDTO};
 use crate::OneCoreBinding;
 use crate::error::BindingError;
-use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_id_opt};
+use crate::utils::{TimestampFormat, into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -388,29 +387,22 @@ pub struct PresentationDefinitionRequestGroupBindingDTO {
     pub requested_credentials: Vec<PresentationDefinitionRequestedCredentialBindingDTO>,
 }
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(PresentationDefinitionRequestedCredentialResponseDTO)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    #[from(with_fn = convert_inner)]
     pub fields: Vec<PresentationDefinitionFieldBindingDTO>,
-    #[from(with_fn = convert_inner)]
     pub applicable_credentials: Vec<String>,
-    #[from(with_fn = convert_inner)]
     pub inapplicable_credentials: Vec<String>,
-    #[from(with_fn = format_timestamp_opt)]
     pub validity_credential_nbf: Option<String>,
 }
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(PresentationDefinitionFieldDTO)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct PresentationDefinitionFieldBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    #[from(unwrap_or = true)]
     pub required: bool,
     pub key_map: HashMap<String, String>,
 }

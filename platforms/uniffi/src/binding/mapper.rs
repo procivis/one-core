@@ -6,6 +6,9 @@ use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::GetProofSchemaQuery;
 use one_core::model::trust_entity::TrustEntityType;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
+use one_core::provider::verification_protocol::dto::{
+    PresentationDefinitionFieldDTO, PresentationDefinitionRequestedCredentialResponseDTO,
+};
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
@@ -60,6 +63,7 @@ use crate::binding::organisation::{
     CreateOrganisationRequestBindingDTO, UpsertOrganisationRequestBindingDTO,
 };
 use crate::binding::proof::{
+    PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestedCredentialBindingDTO,
     ProofListQueryBindingDTO, ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
 };
 use crate::binding::proof_schema::{
@@ -73,7 +77,7 @@ use crate::binding::trust_entity::{
     ExactTrustEntityFilterColumnBindings, ListTrustEntitiesFiltersBindings,
 };
 use crate::error::ErrorResponseBindingDTO;
-use crate::utils::{TimestampFormat, into_id, into_timestamp};
+use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_timestamp};
 
 impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
     fn from(value: CredentialDetailResponseDTO) -> Self {
@@ -950,5 +954,45 @@ impl TryFrom<CreateIdentifierDidRequestBindingDTO> for CreateIdentifierDidReques
             keys: value.keys.try_into()?,
             params: Some(json!(value.params)),
         })
+    }
+}
+
+impl From<PresentationDefinitionRequestedCredentialResponseDTO>
+    for PresentationDefinitionRequestedCredentialBindingDTO
+{
+    fn from(value: PresentationDefinitionRequestedCredentialResponseDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            purpose: value.purpose,
+            fields: convert_inner(value.fields),
+            applicable_credentials: value
+                .applicable_credentials
+                .iter()
+                .map(|item| item.to_string())
+                .collect(),
+            inapplicable_credentials: value
+                .inapplicable_credentials
+                .iter()
+                .map(|item| item.to_string())
+                .collect(),
+            validity_credential_nbf: format_timestamp_opt(value.validity_credential_nbf),
+        }
+    }
+}
+
+impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBindingDTO {
+    fn from(value: PresentationDefinitionFieldDTO) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            purpose: value.purpose,
+            required: value.required.unwrap_or(true),
+            key_map: value
+                .key_map
+                .into_iter()
+                .map(|(key, value)| (key.to_string(), value))
+                .collect(),
+        }
     }
 }

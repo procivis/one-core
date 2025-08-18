@@ -4,6 +4,7 @@ use std::sync::Arc;
 use maplit::{hashmap, hashset};
 use mockall::predicate::eq;
 use secrecy::SecretSlice;
+use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -469,17 +470,18 @@ async fn test_get_presentation_definition_ok() {
 
     assert_eq!(1, requested_credential.applicable_credentials.len());
     assert_eq!(
-        credential_id.to_string(),
+        credential_id,
         requested_credential.applicable_credentials[0]
     );
 
-    let (credentials, mapped_field_ids): (HashSet<String>, HashSet<String>) = requested_credential
-        .fields
-        .into_iter()
-        .flat_map(|field| field.key_map)
-        .unzip();
+    let (credentials, mapped_field_ids): (HashSet<CredentialId>, HashSet<String>) =
+        requested_credential
+            .fields
+            .into_iter()
+            .flat_map(|field| field.key_map)
+            .unzip();
 
-    assert_eq!(hashset![credential_id.to_string()], credentials);
+    assert_eq!(hashset![credential_id], credentials);
 
     assert_eq!(
         mapped_field_ids,

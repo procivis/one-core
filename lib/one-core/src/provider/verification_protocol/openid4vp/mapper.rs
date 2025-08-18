@@ -119,12 +119,12 @@ pub(super) fn presentation_definition_from_interaction_data(
                         applicable_credentials: group
                             .applicable_credentials
                             .into_iter()
-                            .map(|credential| credential.id.to_string())
+                            .map(|credential| credential.id)
                             .collect(),
                         inapplicable_credentials: group
                             .inapplicable_credentials
                             .into_iter()
-                            .map(|credential| credential.id.to_string())
+                            .map(|credential| credential.id)
                             .collect(),
                         validity_credential_nbf: group.validity_credential_nbf,
                     })

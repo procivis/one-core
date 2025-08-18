@@ -85,8 +85,12 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
         });
 
         credential_candidates.retain(|credential| {
-            credential.state == CredentialStateEnum::Accepted
-                && credential.role == CredentialRole::Holder
+            matches!(
+                credential.state,
+                CredentialStateEnum::Accepted
+                    | CredentialStateEnum::Revoked
+                    | CredentialStateEnum::Suspended
+            ) && credential.role == CredentialRole::Holder
         });
 
         let match_result = first_applicable_claim_set(
@@ -145,7 +149,7 @@ fn to_requested_credential(
         let key_map = claim_to_credentials
             .credentials
             .into_iter()
-            .map(|id| (id.to_string(), claim_path.clone()))
+            .map(|id| (id, claim_path.clone()))
             .collect();
         let claim_query = query
             .claims
@@ -200,8 +204,8 @@ fn to_requested_credential(
 
 struct ClaimSetMatchResult {
     claims_to_credentials: HashMap<String, ClaimToCredentials>,
-    applicable_credentials: Vec<String>,
-    inapplicable_credentials: Vec<String>,
+    applicable_credentials: Vec<CredentialId>,
+    inapplicable_credentials: Vec<CredentialId>,
 }
 
 struct ClaimToCredentials {
@@ -226,10 +230,15 @@ fn first_applicable_claim_set(
 
         // match each credential against the particular filter / claim set
         for credential in credentials {
+            if !matches!(credential.state, CredentialStateEnum::Accepted) {
+                inapplicable_credentials.push(credential.id);
+                continue;
+            }
+
             let selected_claims = select_claims(credential, filter, formatter_provider)?;
 
             if let Some(selected_claims) = selected_claims {
-                applicable_credentials.push(credential.id.to_string());
+                applicable_credentials.push(credential.id);
                 // The current credential matched. Arrange them by path so that it is easier
                 // to later build the `field.keyMap`.
                 for selected_claim in selected_claims {
@@ -248,7 +257,7 @@ fn first_applicable_claim_set(
                 }
             } else {
                 // the current credential is not applicable given the current claim set
-                inapplicable_credentials.push(credential.id.to_string());
+                inapplicable_credentials.push(credential.id);
             }
         }
 
@@ -284,10 +293,7 @@ fn first_applicable_claim_set(
             })
             .collect(),
         applicable_credentials: vec![],
-        inapplicable_credentials: credentials
-            .iter()
-            .map(|credential| credential.id.to_string())
-            .collect(),
+        inapplicable_credentials: credentials.iter().map(|credential| credential.id).collect(),
     })
 }
 

@@ -294,7 +294,7 @@ impl SSIHolderService {
                 .map(|field| {
                     Ok(field
                         .key_map
-                        .get(&credential_request.credential_id.to_string())
+                        .get(&credential_request.credential_id)
                         .ok_or(ServiceError::MappingError(format!(
                             "no matching key for credential_id `{}`",
                             credential_request.credential_id
