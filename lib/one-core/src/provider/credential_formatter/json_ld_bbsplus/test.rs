@@ -37,7 +37,7 @@ async fn test_create_and_verify_base_and_derived_proof() {
     // create base proof
     let mut base_proof = create_base_proof(
         &vcdm,
-        mandatory_pointers,
+        mandatory_pointers.clone(),
         verification_method(),
         loader,
         &hasher,
@@ -49,7 +49,7 @@ async fn test_create_and_verify_base_and_derived_proof() {
     base_proof.context = Some(vcdm.context.clone());
 
     // verify base proof
-    verify_base_proof(
+    let proof_components = verify_base_proof(
         &vcdm,
         base_proof.clone(),
         loader,
@@ -59,6 +59,8 @@ async fn test_create_and_verify_base_and_derived_proof() {
     )
     .await
     .unwrap();
+
+    assert_eq!(proof_components.mandatory_pointers, mandatory_pointers);
 
     // create derived proof
     let selective_pointers = [

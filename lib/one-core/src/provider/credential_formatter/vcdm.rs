@@ -2,15 +2,11 @@ use std::collections::HashMap;
 
 use bon::bon;
 use indexmap::{IndexMap, IndexSet, indexset};
-use one_dto_mapper::try_convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::DidValue;
 use time::OffsetDateTime;
 use url::Url;
 
-use super::error::FormatterError;
-use super::model::{CredentialSubject, DetailCredential, IdentifierDetails};
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
@@ -395,68 +391,6 @@ impl From<VcdmCredential> for JwtVcdmCredential {
             evidence: value.evidence,
             related_resource: value.related_resource,
         }
-    }
-}
-
-impl TryFrom<VcdmCredential> for DetailCredential {
-    type Error = FormatterError;
-
-    fn try_from(mut vcdm: VcdmCredential) -> Result<Self, Self::Error> {
-        let Some(credential_subject) = vcdm.credential_subject.pop() else {
-            return Err(FormatterError::Failed(
-                "Missing credential subject".to_string(),
-            ));
-        };
-
-        if !vcdm.credential_subject.is_empty() {
-            return Err(FormatterError::Failed(
-                "We currently don't support multiple credential subjects".to_string(),
-            ));
-        }
-
-        let credential_schema = vcdm
-            .credential_schema
-            .map(|mut schemas| {
-                let Some(credential_schema) = schemas.pop() else {
-                    return Err(FormatterError::Failed(
-                        "Missing credential schema".to_string(),
-                    ));
-                };
-
-                if !schemas.is_empty() {
-                    return Err(FormatterError::Failed(
-                        "We currently don't support multiple credential schemas".to_string(),
-                    ));
-                }
-
-                Ok(credential_schema)
-            })
-            .transpose()?;
-
-        let claims = CredentialSubject {
-            id: credential_subject.id.clone(),
-            claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
-        };
-
-        // this is not always DID, for example LVVC credentials use URN schema as and id
-        let subject = credential_subject
-            .id
-            .and_then(|id| DidValue::from_did_url(id).ok())
-            .map(IdentifierDetails::Did);
-
-        Ok(Self {
-            id: vcdm.id.map(|url| url.to_string()),
-            issuance_date: vcdm.proof.and_then(|proof| proof.created),
-            valid_from: vcdm.valid_from.or(vcdm.issuance_date),
-            valid_until: vcdm.valid_until.or(vcdm.expiration_date),
-            update_at: None,
-            invalid_before: None,
-            issuer: IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
-            subject,
-            claims,
-            status: vcdm.credential_status,
-            credential_schema,
-        })
     }
 }
 

@@ -1,4 +1,4 @@
-use super::{JsonLdBbsplus, data_integrity};
+use super::{JsonLdBbsplus, convert_to_detail_credential, data_integrity};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, VerificationFn};
@@ -53,7 +53,7 @@ impl JsonLdBbsplus {
 
         match proof_type(proof_value)? {
             ProofType::Base => {
-                data_integrity::verify_base_proof(
+                let mandatory_pointers = data_integrity::verify_base_proof(
                     &vcdm,
                     proof,
                     &self.caching_loader,
@@ -61,9 +61,10 @@ impl JsonLdBbsplus {
                     &*verification,
                     json_ld_processor_options(),
                 )
-                .await?;
+                .await?
+                .mandatory_pointers;
 
-                DetailCredential::try_from(vcdm)
+                convert_to_detail_credential(vcdm, Some(mandatory_pointers))
             }
             ProofType::Derived => {
                 let handle = self
@@ -81,7 +82,12 @@ impl JsonLdBbsplus {
                 )
                 .await?;
 
-                DetailCredential::try_from(vcdm)
+                convert_to_detail_credential(
+                    vcdm,
+                    // mandatory pointers not easily visible on verifier side,
+                    // so skipping marking the disclosability of claims
+                    None,
+                )
             }
         }
     }
@@ -142,4 +148,23 @@ fn proof_type(proof_value: &str) -> Result<ProofType, FormatterError> {
             "Invalid proof value prefix or unsupported proof feature".to_string(),
         )),
     }
+}
+
+pub(super) fn extract_mandatory_pointers(
+    vc: &VcdmCredential,
+) -> Result<Option<Vec<String>>, FormatterError> {
+    let Some(base_proof) = &vc.proof else {
+        return Ok(None);
+    };
+
+    let Some(proof_value) = &base_proof.proof_value else {
+        return Ok(None);
+    };
+
+    Ok(match proof_type(proof_value)? {
+        ProofType::Base => {
+            Some(data_integrity::parse_base_proof_value(proof_value)?.mandatory_pointers)
+        }
+        ProofType::Derived => None,
+    })
 }

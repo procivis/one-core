@@ -5,12 +5,14 @@ use std::sync::Arc;
 use std::vec;
 
 use async_trait::async_trait;
+use mapper::convert_to_detail_credential;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
 use time::{Duration, OffsetDateTime};
 use url::Url;
+use verify_proof::extract_mandatory_pointers;
 
 use super::CredentialFormatter;
 use super::model::{CredentialData, HolderBindingCtx, Issuer};
@@ -36,6 +38,7 @@ use crate::util::rdf_canonization::json_ld_processor_options;
 use crate::util::vcdm_jsonld_contexts::jsonld_forbidden_claim_names;
 
 mod data_integrity;
+mod mapper;
 pub mod model;
 mod verify_proof;
 
@@ -220,7 +223,8 @@ impl CredentialFormatter for JsonLdBbsplus {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
-        DetailCredential::try_from(vc)
+        let mandatory_pointers = extract_mandatory_pointers(&vc)?;
+        convert_to_detail_credential(vc, mandatory_pointers)
     }
 
     async fn format_credential_presentation(

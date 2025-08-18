@@ -14,6 +14,7 @@ use crate::provider::credential_formatter::json_ld_bbsplus::data_integrity::{
     base_proof_config, base_proof_hashing, base_proof_transformation, generate_signature_input,
     parse_derived_proof_value,
 };
+use crate::provider::credential_formatter::json_ld_bbsplus::model::BbsBaseProofComponents;
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmProof};
 use crate::util::rdf_canonization::rdf_canonize;
@@ -25,7 +26,7 @@ pub async fn verify_base_proof(
     hasher: &dyn Hasher,
     verifier: &dyn TokenVerifier,
     options: json_ld::Options,
-) -> Result<(), FormatterError> {
+) -> Result<BbsBaseProofComponents, FormatterError> {
     if vcdm.proof.is_some() {
         return Err(FormatterError::Failed(
             "VCDM should not contain proof".to_string(),
@@ -77,7 +78,9 @@ pub async fn verify_base_proof(
             &proof_components.bbs_signature,
         )
         .await
-        .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
+        .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
+
+    Ok(proof_components)
 }
 
 pub async fn verify_derived_proof(
