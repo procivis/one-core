@@ -17,8 +17,8 @@ use uuid::Uuid;
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
 use crate::fixtures::{
-    TestingCredentialParams, TestingDidParams, TestingIdentifierParams, TestingKeyParams,
-    encrypted_token,
+    ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+    TestingKeyParams, encrypted_token,
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
@@ -1874,7 +1874,12 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
-                claims_data: Some(vec![(schema_id, "string", Some(""))]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: schema_id.into(),
+                    path: "string".to_string(),
+                    value: Some("".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )
@@ -2088,46 +2093,46 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
-                    (
-                        credential_schema.claim_schemas.as_ref().unwrap()[0]
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
                             .schema
-                            .id
-                            .into(),
-                        "first name",
-                        Some("John"),
-                    ),
-                    (
-                        credential_schema.claim_schemas.as_ref().unwrap()[1]
+                            .id,
+                        path: "first name".to_string(),
+                        value: Some("John".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
                             .schema
-                            .id
-                            .into(),
-                        "last name",
-                        Some("Doe"),
-                    ),
-                    (
-                        credential_schema.claim_schemas.as_ref().unwrap()[2]
+                            .id,
+                        path: "last name".to_string(),
+                        value: Some("Doe".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[2]
                             .schema
-                            .id
-                            .into(),
-                        "address",
-                        None,
-                    ),
-                    (
-                        credential_schema.claim_schemas.as_ref().unwrap()[3]
+                            .id,
+                        path: "address".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[3]
                             .schema
-                            .id
-                            .into(),
-                        "address/postal code",
-                        Some("1234"),
-                    ),
-                    (
-                        credential_schema.claim_schemas.as_ref().unwrap()[4]
+                            .id,
+                        path: "address/postal code".to_string(),
+                        value: Some("1234".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[4]
                             .schema
-                            .id
-                            .into(),
-                        "address/street",
-                        Some("Via Torino"),
-                    ),
+                            .id,
+                        path: "address/street".to_string(),
+                        value: Some("Via Torino".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },

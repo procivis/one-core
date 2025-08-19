@@ -22,7 +22,9 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::api_oidc_tests::common::proof_jwt;
-use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
+use crate::fixtures::{
+    ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -538,10 +540,30 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                 interaction: Some(interaction),
                 key: Some(key),
                 claims_data: Some(vec![
-                    (root_claim_id, "root", None),
-                    (str_claim_id, "root/str", Some("str-value")),
-                    (num_claim_id, "root/num", Some("12")),
-                    (bool_claim_id, "root/bool", Some("false")),
+                    ClaimData {
+                        schema_id: root_claim_id.into(),
+                        path: "root".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: str_claim_id.into(),
+                        path: "root/str".to_string(),
+                        value: Some("str-value".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: num_claim_id.into(),
+                        path: "root/num".to_string(),
+                        value: Some("12".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: bool_claim_id.into(),
+                        path: "root/bool".to_string(),
+                        value: Some("false".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },

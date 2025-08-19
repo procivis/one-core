@@ -396,7 +396,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 proof,
                 storage_access,
                 &self.config,
-                &*self.credential_formatter_provider,
             )
             .await;
         }

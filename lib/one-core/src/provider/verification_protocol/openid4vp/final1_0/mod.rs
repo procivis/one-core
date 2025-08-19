@@ -25,7 +25,6 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -76,7 +75,6 @@ const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
 
 pub(crate) struct OpenID4VPFinal1_0 {
     client: Arc<dyn HttpClient>,
-    credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -96,7 +94,6 @@ impl OpenID4VPFinal1_0 {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         base_url: Option<String>,
-        credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -108,7 +105,6 @@ impl OpenID4VPFinal1_0 {
     ) -> Self {
         Self {
             base_url,
-            credential_formatter_provider,
             presentation_formatter_provider,
             did_method_provider,
             key_algorithm_provider,
@@ -306,14 +302,8 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                 "missing dcql_query".to_string(),
             ))?;
 
-        get_presentation_definition_for_dcql_query(
-            dcql_query,
-            proof,
-            storage_access,
-            &self.config,
-            &*self.credential_formatter_provider,
-        )
-        .await
+        get_presentation_definition_for_dcql_query(dcql_query, proof, storage_access, &self.config)
+            .await
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {

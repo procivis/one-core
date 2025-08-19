@@ -18,9 +18,6 @@ use crate::model::identifier::Identifier;
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
-use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::FormatterCapabilities;
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -48,7 +45,6 @@ use crate::service::test_utilities::{dummy_claim_schema, dummy_identifier};
 
 #[derive(Default)]
 struct TestInputs {
-    pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
@@ -60,7 +56,6 @@ struct TestInputs {
 fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
     OpenID4VPFinal1_0::new(
         Some("http://base_url".to_string()),
-        Arc::new(inputs.credential_formatter_provider),
         Arc::new(inputs.presentation_formatter_provider),
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
@@ -206,17 +201,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
 
 #[tokio::test]
 async fn test_share_proof_direct_post() {
-    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
-    let mut credential_formatter = MockCredentialFormatter::new();
-    credential_formatter
-        .expect_get_capabilities()
-        .returning(FormatterCapabilities::default);
-    let arc = Arc::new(credential_formatter);
-    credential_formatter_provider
-        .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
     let protocol = setup_protocol(TestInputs {
-        credential_formatter_provider,
         ..Default::default()
     });
 
@@ -341,18 +326,7 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
         .expect_key_algorithm_from_type()
         .returning(move |_| Some(arc.clone()));
 
-    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
-    let mut credential_formatter = MockCredentialFormatter::new();
-    credential_formatter
-        .expect_get_capabilities()
-        .returning(FormatterCapabilities::default);
-    let arc = Arc::new(credential_formatter);
-    credential_formatter_provider
-        .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
-
     let protocol = setup_protocol(TestInputs {
-        credential_formatter_provider,
         key_provider,
         key_algorithm_provider,
         ..Default::default()
@@ -498,18 +472,7 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
         .expect_key_algorithm_from_type()
         .returning(move |_| Some(arc.clone()));
 
-    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
-    let mut credential_formatter = MockCredentialFormatter::new();
-    credential_formatter
-        .expect_get_capabilities()
-        .returning(FormatterCapabilities::default);
-    let arc = Arc::new(credential_formatter);
-    credential_formatter_provider
-        .expect_get_credential_formatter()
-        .returning(move |_| Some(arc.clone()));
-
     let protocol = setup_protocol(TestInputs {
-        credential_formatter_provider,
         key_provider,
         key_algorithm_provider,
         ..Default::default()

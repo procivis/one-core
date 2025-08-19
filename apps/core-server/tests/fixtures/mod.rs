@@ -620,12 +620,16 @@ pub async fn create_revocation_list(
     revocation_list
 }
 
-type ClaimPath<'a> = &'a str;
-type ClaimValue<'a> = &'a str;
-type TestClaimSchema = Uuid;
+#[derive(Debug)]
+pub struct ClaimData {
+    pub schema_id: ClaimSchemaId,
+    pub path: String,
+    pub value: Option<String>,
+    pub selectively_disclosable: bool,
+}
 
 #[derive(Debug, Default)]
-pub struct TestingCredentialParams<'a> {
+pub struct TestingCredentialParams {
     pub holder_identifier: Option<Identifier>,
     pub interaction: Option<Interaction>,
     pub deleted_at: Option<OffsetDateTime>,
@@ -634,7 +638,7 @@ pub struct TestingCredentialParams<'a> {
     pub issuer_certificate: Option<Certificate>,
     pub suspend_end_date: Option<OffsetDateTime>,
     pub random_claims: bool,
-    pub claims_data: Option<Vec<(TestClaimSchema, ClaimPath<'a>, Option<ClaimValue<'a>>)>>,
+    pub claims_data: Option<Vec<ClaimData>>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
 }
@@ -646,11 +650,12 @@ pub async fn create_credential(
     state: CredentialStateEnum,
     issuer_identifier: &Identifier,
     exchange: &str,
-    params: TestingCredentialParams<'_>,
+    params: TestingCredentialParams,
 ) -> Credential {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let credential_id = Uuid::new_v4().into();
+    assert!(params.claims_data.is_none());
     let claims: Vec<Claim> = credential_schema
         .claim_schemas
         .as_ref()

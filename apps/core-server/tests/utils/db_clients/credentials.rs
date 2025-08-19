@@ -59,7 +59,7 @@ impl CredentialsDB {
         state: CredentialStateEnum,
         issuer_identifier: &Identifier,
         protocol: &str,
-        params: TestingCredentialParams<'_>,
+        params: TestingCredentialParams,
     ) -> Credential {
         let credential_id = Uuid::new_v4().into();
         let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
@@ -70,7 +70,7 @@ impl CredentialsDB {
                 .map(|new_claim| {
                     let claim_schema = claim_schemas
                         .iter()
-                        .find(|schema| schema.schema.id == new_claim.0)
+                        .find(|schema| schema.schema.id == new_claim.schema_id)
                         .expect("Missing claim schema id");
 
                     Claim {
@@ -78,9 +78,9 @@ impl CredentialsDB {
                         credential_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
-                        value: new_claim.2.map(|new_value| new_value.to_owned()),
-                        path: new_claim.1.to_owned(),
-                        selectively_disclosable: false,
+                        value: new_claim.value,
+                        path: new_claim.path,
+                        selectively_disclosable: new_claim.selectively_disclosable,
                         schema: Some(claim_schema.schema.to_owned()),
                     }
                 })

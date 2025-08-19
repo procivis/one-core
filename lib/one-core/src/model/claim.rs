@@ -20,6 +20,12 @@ pub struct Claim {
     pub schema: Option<ClaimSchema>,
 }
 
+impl std::hash::Hash for Claim {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct ClaimRelations {
     pub schema: Option<ClaimSchemaRelations>,

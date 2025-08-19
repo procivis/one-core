@@ -2,7 +2,7 @@ use one_core::model::credential::CredentialStateEnum;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, key_to_claim_schema_id};
+use crate::fixtures::{ClaimData, TestingCredentialParams, key_to_claim_schema_id};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
@@ -135,55 +135,84 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
-                    (
-                        root_field_claim_id.into(),
-                        "namespace/root_field",
-                        Some("foo-field"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/0/nested/0/field",
-                        Some("foo1"),
-                    ),
-                    (namespace_obj_claim_id.into(), "namespace", None),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/0/nested/0",
-                        None,
-                    ),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/0/nested",
-                        None,
-                    ),
-                    (array_claim_id.into(), "namespace/root_array/0", None),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/1/nested/1",
-                        None,
-                    ),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/1/nested",
-                        None,
-                    ),
-                    (array_claim_id.into(), "namespace/root_array/1", None),
-                    (array_claim_id.into(), "namespace/root_array", None),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/0/nested/1/field",
-                        Some("foo2"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/1/nested/0/field",
-                        Some("foo3"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/1/nested/1/field",
-                        Some("foo4"),
-                    ),
+                    ClaimData {
+                        schema_id: root_field_claim_id,
+                        path: "namespace/root_field".to_string(),
+                        value: Some("foo-field".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/0/nested/0/field".to_string(),
+                        value: Some("foo1".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: namespace_obj_claim_id,
+                        path: "namespace".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/0/nested/0".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/0/nested".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: array_claim_id,
+                        path: "namespace/root_array/0".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/1/nested/1".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/1/nested".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: array_claim_id,
+                        path: "namespace/root_array/1".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: array_claim_id,
+                        path: "namespace/root_array".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/0/nested/1/field".to_string(),
+                        value: Some("foo2".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/1/nested/0/field".to_string(),
+                        value: Some("foo3".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/1/nested/1/field".to_string(),
+                        value: Some("foo4".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },
@@ -414,54 +443,78 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             TestingCredentialParams {
                 interaction: Some(interaction.to_owned()),
                 claims_data: Some(vec![
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/0/nested/0",
-                        None,
-                    ),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/0/nested",
-                        None,
-                    ),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/1/nested/1",
-                        None,
-                    ),
-                    (
-                        nested_obj_claim_id.into(),
-                        "namespace/root_array/1/nested",
-                        None,
-                    ),
-                    (array_claim_id.into(), "namespace/root_array/0", None),
-                    (array_claim_id.into(), "namespace/root_array/1", None),
-                    (array_claim_id.into(), "namespace/root_array", None),
-                    (
-                        root_field_claim_id.into(),
-                        "namespace/root_field",
-                        Some("foo-field"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/0/nested/0/field",
-                        Some("foo1"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/0/nested/1/field",
-                        Some("foo2"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/1/nested/0/field",
-                        Some("foo3"),
-                    ),
-                    (
-                        nested_field_claim_id.into(),
-                        "namespace/root_array/1/nested/1/field",
-                        Some("foo4"),
-                    ),
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/0/nested/0".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/0/nested".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/1/nested/1".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_obj_claim_id,
+                        path: "namespace/root_array/1/nested".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: array_claim_id,
+                        path: "namespace/root_array/0".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: array_claim_id,
+                        path: "namespace/root_array/1".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: array_claim_id,
+                        path: "namespace/root_array".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: root_field_claim_id,
+                        path: "namespace/root_field".to_string(),
+                        value: Some("foo-field".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/0/nested/0/field".to_string(),
+                        value: Some("foo1".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/0/nested/1/field".to_string(),
+                        value: Some("foo2".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/1/nested/0/field".to_string(),
+                        value: Some("foo3".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: nested_field_claim_id,
+                        path: "namespace/root_array/1/nested/1/field".to_string(),
+                        value: Some("foo4".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet, VecDeque};
 
 use dcql::matching::{ClaimFilter, CredentialFilter};
 use dcql::{ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
@@ -7,9 +7,7 @@ use shared_types::{CredentialId, OrganisationId};
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
@@ -45,7 +43,6 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
     proof: &Proof,
     storage_access: &StorageAccess,
     config: &CoreConfig,
-    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
     let organisation = proof
         .interaction
@@ -93,11 +90,7 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
             ) && credential.role == CredentialRole::Holder
         });
 
-        let match_result = first_applicable_claim_set(
-            &credential_candidates,
-            credential_filters,
-            formatter_provider,
-        )?;
+        let match_result = first_applicable_claim_set(&credential_candidates, credential_filters)?;
         relevant_credentials.append(&mut credential_candidates);
         requested_credentials.push(to_requested_credential(query, match_result))
     }
@@ -218,13 +211,12 @@ struct ClaimToCredentials {
 fn first_applicable_claim_set(
     credentials: &[Credential],
     filters: &[CredentialFilter],
-    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<ClaimSetMatchResult, VerificationProtocolError> {
     // Try to find at least one credential matching for each credential filter
     // The filters are ordered by verifier preference. The number of filters corresponds
     // to the number of entries in `claim_sets` for the current credential query.
     for filter in filters {
-        let mut claim_to_credentials = HashMap::new();
+        let mut claims_to_credentials = HashMap::new();
         let mut applicable_credentials = vec![];
         let mut inapplicable_credentials = vec![];
 
@@ -235,7 +227,7 @@ fn first_applicable_claim_set(
                 continue;
             }
 
-            let selected_claims = select_claims(credential, filter, formatter_provider)?;
+            let selected_claims = select_claims(credential, filter)?;
 
             if let Some(selected_claims) = selected_claims {
                 applicable_credentials.push(credential.id);
@@ -243,7 +235,7 @@ fn first_applicable_claim_set(
                 // to later build the `field.keyMap`.
                 for selected_claim in selected_claims {
                     let sd_supported = selected_claim.selective_disclosure_supported;
-                    claim_to_credentials
+                    claims_to_credentials
                         .entry(selected_claim.key)
                         .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
                             claim_to_creds.credentials.push(credential.id);
@@ -265,7 +257,7 @@ fn first_applicable_claim_set(
         // Otherwise, we need to continue searching for matches using the next claim set.
         if !applicable_credentials.is_empty() {
             return Ok(ClaimSetMatchResult {
-                claims_to_credentials: claim_to_credentials,
+                claims_to_credentials,
                 applicable_credentials,
                 inapplicable_credentials,
             });
@@ -297,6 +289,7 @@ fn first_applicable_claim_set(
     })
 }
 
+#[derive(PartialEq, Eq, Hash)]
 struct SelectedClaim {
     key: String,
     selective_disclosure_supported: bool,
@@ -305,57 +298,43 @@ struct SelectedClaim {
 fn select_claims(
     credential: &Credential,
     filter: &CredentialFilter,
-    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
     let Some(claims) = &credential.claims else {
         return Err(VerificationProtocolError::Failed(format!(
-            "credential {} has no claims",
+            "credential {} missing claims",
             credential.id
         )));
     };
 
-    // Credentials could have the different schemas and not each credential of the same schema
-    // necessarily needs to have the same claims selectively disclosable.
-    // Given the info on a per-claim basis is not available at least each credential is checked
-    // individually whether it's format supports selective disclosure.
-    // TODO: We should improve the SD support flag be on a per-claim basis.
-    let credential_schema = credential
-        .schema
-        .as_ref()
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "missing credential schema for credential {}",
-            credential.id
-        )))?;
+    let mut result = HashSet::new();
+    // add all nonselectively disclosable claims defined from root
+    {
+        let root_nonselectively_disclosable: Vec<_> = claims
+            .iter()
+            .filter(|claim| !claim.selectively_disclosable)
+            .filter(|claim| !claim.path.contains("/"))
+            .collect();
 
-    // The format does _not_ support selective disclosure, so we are forced to reveal _all_ claims
-    // if the credential matches all the filters.
-    if !selective_disclosure_supported(credential_schema, formatter_provider)? {
-        let credential_matches_filters = filter.claims.iter().all(|claim_filter| {
-            matching_claim_path(claims, claim_filter, &filter.format).is_some()
-        });
-        return if credential_matches_filters {
-            let all_claims = credential
-                .claims
+        // children of the root nonselectively disclosable that are also not selectively disclosable
+        let nonselectively_disclosable_children_of_root = get_nonselectively_disclosable_children(
+            claims,
+            root_nonselectively_disclosable
                 .iter()
-                .flatten()
-                .map(|claim| SelectedClaim {
-                    key: claim.path.to_string(),
-                    selective_disclosure_supported: false,
-                })
-                .collect();
-            Ok(Some(all_claims))
-        } else {
-            Ok(None)
-        };
+                .map(|claim| claim.path.to_owned())
+                .collect::<Vec<_>>(),
+        );
+
+        let nonselectively_disclosable = root_nonselectively_disclosable
+            .iter()
+            .chain(nonselectively_disclosable_children_of_root.iter());
+
+        result.extend(nonselectively_disclosable.map(|claim| SelectedClaim {
+            key: claim.path.to_owned(),
+            selective_disclosure_supported: claim.selectively_disclosable,
+        }));
     }
 
-    // The format _does_ support selective disclosure and no claims were requested, hence we show
-    // nothing at all.
-    if claims.is_empty() {
-        return Ok(Some(vec![]));
-    }
-
-    let mut result = vec![];
+    // add claims requested by the verifier
     for claim_filter in &filter.claims {
         if claim_filter
             .path
@@ -368,58 +347,103 @@ fn select_claims(
                 claim_filter.path
             )));
         }
-        if let Some(key) = matching_claim_path(claims, claim_filter, &filter.format) {
-            result.push(SelectedClaim {
-                key,
-                // If the format supports it in general, we assume SD is possible for all claims.
-                // TODO: actually fill this in accurately based on the given credential
-                selective_disclosure_supported: true,
-            });
+
+        let matching_claims = get_matching_claims(claims, claim_filter, &filter.format);
+        if !matching_claims.is_empty() {
+            result.extend(matching_claims.iter().map(|claim| SelectedClaim {
+                key: claim.path.to_owned(),
+                selective_disclosure_supported: claim.selectively_disclosable,
+            }));
         } else if claim_filter.required {
             // no match but claim is required --> abort as not matching
             return Ok(None);
         }
     }
-    Ok(Some(result))
+
+    Ok(Some(result.into_iter().collect()))
 }
 
-fn matching_claim_path(
-    claims: &[Claim],
+fn get_matching_claims<'a>(
+    claims: &'a [Claim],
     claim_filter: &ClaimFilter,
     format: &CredentialFormat,
-) -> Option<String> {
-    let path_prefix = dcql_path_to_claim_key(&claim_filter.path, format);
+) -> HashSet<&'a Claim> {
+    let path_to_claim = dcql_path_to_claim_key(&claim_filter.path, format);
     let values_filter = claim_filter
         .values
         .iter()
         .map(stringify_value)
         .collect::<Vec<_>>();
-    if claims.iter().any(|claim| {
-        claim.path.starts_with(&path_prefix)
-            && (values_filter.is_empty()
-                || claim
-                    .value
-                    .as_ref()
-                    .is_some_and(|value| values_filter.contains(value)))
-    }) {
-        Some(path_prefix)
-    } else {
-        None
+
+    let filtered_subtree: Vec<_> = claims
+        .iter()
+        .filter(|claim| {
+            (claim.path == path_to_claim || claim.path.starts_with(&format!("{path_to_claim}/")))
+                && (values_filter.is_empty()
+                    || claim
+                        .value
+                        .as_ref()
+                        .is_some_and(|value| values_filter.contains(value)))
+        })
+        .collect();
+
+    if filtered_subtree.is_empty() {
+        // no matches found, return empty result
+        return HashSet::new();
     }
+
+    // "trunk" nodes on the path from root to the filtered_subtree
+    // all of these are either arrays or objects
+    let claims_towards_root: Vec<_> = claims
+        .iter()
+        .filter(|claim| path_to_claim.starts_with(&format!("{}/", claim.path)))
+        .collect();
+
+    // branches of nodes that are not selectively disclosable
+    let nonselectively_disclosable_children = get_nonselectively_disclosable_children(
+        claims,
+        claims_towards_root
+            .iter()
+            .map(|claim| claim.path.to_owned())
+            .collect::<Vec<_>>(),
+    );
+
+    let mut combined_set = HashSet::new();
+    combined_set.extend(filtered_subtree);
+    combined_set.extend(claims_towards_root);
+    combined_set.extend(nonselectively_disclosable_children);
+    combined_set
 }
 
-fn selective_disclosure_supported(
-    schema: &CredentialSchema,
-    formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<bool, VerificationProtocolError> {
-    let formatter_capabilities = formatter_provider
-        .get_credential_formatter(&schema.format)
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "missing credential formatter for credential format {}",
-            schema.format
-        )))?
-        .get_capabilities();
-    Ok(!formatter_capabilities.selective_disclosure.is_empty())
+fn get_nonselectively_disclosable_children(
+    all_claims: &[Claim],
+    of_parent_paths: Vec<String>,
+) -> Vec<&Claim> {
+    let mut result = vec![];
+
+    let mut parent_paths = VecDeque::from_iter(of_parent_paths);
+    loop {
+        let Some(parent_path) = parent_paths.pop_front() else {
+            break;
+        };
+
+        let nonselectively_disclosable_children = all_claims
+            .iter()
+            .filter(|claim| !claim.selectively_disclosable)
+            .filter(|claim| {
+                claim
+                    .path
+                    .rsplit_once("/")
+                    .is_some_and(|(prefix, _)| prefix == parent_path)
+            });
+
+        for child in nonselectively_disclosable_children {
+            parent_paths.push_back(child.path.to_owned());
+            result.push(child);
+        }
+    }
+
+    result
 }
 
 async fn fetch_credentials_for_schema_ids(

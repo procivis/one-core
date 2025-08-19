@@ -114,7 +114,6 @@ pub(crate) fn verification_protocol_providers_from_config(
 
                 let final1_0 = OpenID4VPFinal1_0::new(
                     core_base_url.clone(),
-                    credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),

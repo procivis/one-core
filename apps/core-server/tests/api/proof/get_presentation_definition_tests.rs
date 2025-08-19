@@ -9,7 +9,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::fixtures::{
-    self, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
+    self, ClaimData, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
     TestingIdentifierParams,
 };
 use crate::utils;
@@ -921,11 +921,12 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
-                claims_data: Some(vec![(
-                    first_claim_schema.schema.id.into(),
-                    &first_claim_schema.schema.key,
-                    Some("value"),
-                )]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: first_claim_schema.schema.id,
+                    path: first_claim_schema.schema.key.to_owned(),
+                    value: Some("value".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )
@@ -941,16 +942,18 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
-                    (
-                        first_claim_schema.schema.id.into(),
-                        &first_claim_schema.schema.key,
-                        Some("value"),
-                    ),
-                    (
-                        second_claim_schema.schema.id.into(),
-                        &second_claim_schema.schema.key,
-                        Some("true"),
-                    ),
+                    ClaimData {
+                        schema_id: first_claim_schema.schema.id,
+                        path: first_claim_schema.schema.key.to_owned(),
+                        value: Some("value".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: second_claim_schema.schema.id,
+                        path: second_claim_schema.schema.key.to_owned(),
+                        value: Some("true".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },

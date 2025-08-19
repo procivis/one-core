@@ -8,7 +8,7 @@ use time::Duration;
 use time::macros::datetime;
 use uuid::Uuid;
 
-use crate::fixtures::TestingCredentialParams;
+use crate::fixtures::{ClaimData, TestingCredentialParams};
 use crate::utils::api_clients::credentials::Filters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -520,8 +520,18 @@ async fn test_get_list_credential_filter_by_claim_name() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_1, "super-name-100", Some("extra-value-11")),
-                    (claim_2, "super-name-200", Some("extra-value-22")),
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "super-name-100".to_string(),
+                        value: Some("extra-value-11".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "super-name-200".to_string(),
+                        value: Some("extra-value-22".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },
@@ -537,7 +547,12 @@ async fn test_get_list_credential_filter_by_claim_name() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                claims_data: Some(vec![(claim_2, "super-name-200", Some("extra-value-22"))]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_2.into(),
+                    path: "super-name-200".to_string(),
+                    value: Some("extra-value-22".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )
@@ -625,8 +640,18 @@ async fn test_get_list_credential_filter_by_claim_value() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_1, "super-name-100", Some("extra-value-11")),
-                    (claim_2, "super-name-200", Some("extra-value-22")),
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "super-name-100".to_string(),
+                        value: Some("extra-value-11".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "super-name-200".to_string(),
+                        value: Some("extra-value-22".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },
@@ -642,7 +667,12 @@ async fn test_get_list_credential_filter_by_claim_value() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                claims_data: Some(vec![(claim_2, "super-name-200", Some("extra-value-33"))]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_2.into(),
+                    path: "super-name-200".to_string(),
+                    value: Some("extra-value-33".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )
@@ -730,8 +760,18 @@ async fn test_get_list_credential_filter_by_everything() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 claims_data: Some(vec![
-                    (claim_1, "test 2", Some("extra-value-11")),
-                    (claim_2, "super-name-200", Some("extra-value-22")),
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "test 2".to_string(),
+                        value: Some("extra-value-11".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "super-name-200".to_string(),
+                        value: Some("extra-value-22".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },
@@ -747,7 +787,12 @@ async fn test_get_list_credential_filter_by_everything() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                claims_data: Some(vec![(claim_2, "super-name-200", Some("test 3"))]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_2.into(),
+                    path: "super-name-200".to_string(),
+                    value: Some("test 3".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )

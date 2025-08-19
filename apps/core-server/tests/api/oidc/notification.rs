@@ -11,7 +11,9 @@ use time::OffsetDateTime;
 use time::macros::format_description;
 use uuid::Uuid;
 
-use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
+use crate::fixtures::{
+    ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
+};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 
@@ -167,8 +169,18 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
                 interaction: Some(interaction),
                 key: Some(key),
                 claims_data: Some(vec![
-                    (root_claim_id, "root", None),
-                    (str_claim_id, "root/str", Some("str-value")),
+                    ClaimData {
+                        schema_id: root_claim_id.into(),
+                        path: "root".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: str_claim_id.into(),
+                        path: "root/str".to_string(),
+                        value: Some("str-value".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },

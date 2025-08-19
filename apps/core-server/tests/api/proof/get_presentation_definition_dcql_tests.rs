@@ -11,7 +11,7 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
-use crate::fixtures::TestingCredentialParams;
+use crate::fixtures::{ClaimData, TestingCredentialParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
@@ -48,6 +48,24 @@ async fn test_get_presentation_definition_dcql_simple() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                            .schema
+                            .id,
+                        path: "firstName".to_string(),
+                        value: Some("name".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                            .schema
+                            .id,
+                        path: "isOver18".to_string(),
+                        value: Some("true".to_string()),
+                        selectively_disclosable: true,
+                    },
+                ]),
                 ..Default::default()
             },
         )
@@ -280,7 +298,12 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
-                claims_data: Some(vec![(claim_1, "firstName", Some("test-name"))]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_1.into(),
+                    path: "firstName".to_string(),
+                    value: Some("test-name".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )
@@ -353,7 +376,12 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
-                claims_data: Some(vec![(claim_1, "firstName", Some("test-name"))]),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_1.into(),
+                    path: "firstName".to_string(),
+                    value: Some("test-name".to_string()),
+                    selectively_disclosable: false,
+                }]),
                 ..Default::default()
             },
         )
@@ -436,6 +464,24 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                            .schema
+                            .id,
+                        path: "firstName".to_string(),
+                        value: Some("name1".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                            .schema
+                            .id,
+                        path: "isOver18".to_string(),
+                        value: Some("true".to_string()),
+                        selectively_disclosable: true,
+                    },
+                ]),
                 ..Default::default()
             },
         )
@@ -450,6 +496,24 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                            .schema
+                            .id,
+                        path: "firstName".to_string(),
+                        value: Some("name2".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                            .schema
+                            .id,
+                        path: "isOver18".to_string(),
+                        value: Some("false".to_string()),
+                        selectively_disclosable: true,
+                    },
+                ]),
                 ..Default::default()
             },
         )
@@ -571,8 +635,18 @@ async fn test_get_presentation_definition_dcql_multiple() {
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
-                    (claim_1, "org.iso.18013.5.1", None),
-                    (claim_2, "org.iso.18013.5.1/test_1", Some("test-data")),
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "org.iso.18013.5.1".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "org.iso.18013.5.1/test_1".to_string(),
+                        value: Some("test-data".to_string()),
+                        selectively_disclosable: false,
+                    },
                 ]),
                 ..Default::default()
             },
@@ -655,6 +729,14 @@ async fn test_get_presentation_definition_dcql_no_claims() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                        .schema
+                        .id,
+                    path: "firstName".to_string(),
+                    value: Some("name".to_string()),
+                    selectively_disclosable: true,
+                }]),
                 ..Default::default()
             },
         )
@@ -794,6 +876,24 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: credential_schema_with_sd.claim_schemas.as_ref().unwrap()[0]
+                            .schema
+                            .id,
+                        path: "firstName".to_string(),
+                        value: Some("name".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: credential_schema_with_sd.claim_schemas.as_ref().unwrap()[1]
+                            .schema
+                            .id,
+                        path: "isOver18".to_string(),
+                        value: Some("false".to_string()),
+                        selectively_disclosable: true,
+                    },
+                ]),
                 ..Default::default()
             },
         )
@@ -892,8 +992,18 @@ async fn test_get_presentation_definition_dcql_value_match() {
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
-                    (claim_1, "firstName", Some("test-name")),
-                    (claim_2, "isOver18", Some("true")),
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "firstName".to_string(),
+                        value: Some("test-name".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "isOver18".to_string(),
+                        value: Some("true".to_string()),
+                        selectively_disclosable: true,
+                    },
                 ]),
                 ..Default::default()
             },
@@ -912,8 +1022,18 @@ async fn test_get_presentation_definition_dcql_value_match() {
             TestingCredentialParams {
                 role: Some(CredentialRole::Holder),
                 claims_data: Some(vec![
-                    (claim_1, "firstName", Some("test-name2")),
-                    (claim_2, "isOver18", Some("false")),
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "firstName".to_string(),
+                        value: Some("test-name2".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "isOver18".to_string(),
+                        value: Some("false".to_string()),
+                        selectively_disclosable: true,
+                    },
                 ]),
                 ..Default::default()
             },
