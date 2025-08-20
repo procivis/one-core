@@ -33,16 +33,25 @@ fn build_claim_from_credential_claims(
     claims: &[CredentialSchemaClaim],
     key: &str,
     path: String,
+    required: bool,
 ) -> Result<ProofClaimDTO, ServiceError> {
+    let claim_schema = &claims
+        .iter()
+        .find(|claim_schema| claim_schema.schema.key == key)
+        .ok_or(ServiceError::MappingError(
+            "nested claim is not found by key".into(),
+        ))?
+        .schema;
     Ok(ProofClaimDTO {
-        schema: claims
-            .iter()
-            .find(|claim_schema| claim_schema.schema.key == key)
-            .cloned()
-            .ok_or(ServiceError::MappingError(
-                "nested claim is not found by key".into(),
-            ))?
-            .into(),
+        schema: ProofClaimSchemaResponseDTO {
+            id: claim_schema.id,
+            requested: true,
+            required,
+            key: claim_schema.key.to_owned(),
+            data_type: claim_schema.data_type.to_owned(),
+            claims: vec![],
+            array: claim_schema.array,
+        },
         path,
         value: Some(ProofClaimValueDTO::Claims(vec![])),
     })
@@ -53,6 +62,7 @@ fn get_or_insert_proof_container_claim<'a>(
     path: &str,
     original_key: &str,
     credential_claim_schemas: &[CredentialSchemaClaim],
+    required: bool,
 ) -> Result<&'a mut ProofClaimDTO, ServiceError> {
     match path.rsplit_once(NESTED_CLAIM_MARKER) {
         // It's a nested claim
@@ -62,6 +72,7 @@ fn get_or_insert_proof_container_claim<'a>(
                 prefix,
                 original_key,
                 credential_claim_schemas,
+                required,
             )?;
 
             let Some(ProofClaimValueDTO::Claims(claims)) = &mut parent_claim.value else {
@@ -78,6 +89,7 @@ fn get_or_insert_proof_container_claim<'a>(
                     credential_claim_schemas,
                     &key,
                     path.into(),
+                    required,
                 )?;
 
                 // Individual array elements should not have the array flag in nested representation.
@@ -103,6 +115,7 @@ fn get_or_insert_proof_container_claim<'a>(
                     credential_claim_schemas,
                     path,
                     path.into(),
+                    required,
                 )?);
                 let last = proof_claims.len() - 1;
                 Ok(&mut proof_claims[last])
@@ -242,6 +255,8 @@ pub(super) async fn get_verifier_proof_detail(
                     "Missing claim schema in credential_schema".to_string(),
                 ))?;
 
+        // construct generated proof input claim schemas that are nested children of explicit input_claim_schemas
+        // in order to have all inputs available later to map to particular shared claims
         let object_nested_claims = input_claim_schemas
             .iter()
             .map(|claim| {
@@ -252,20 +267,41 @@ pub(super) async fn get_verifier_proof_detail(
             })
             .collect::<Result<Vec<_>, _>>()?
             .into_iter()
+            // only object claim schemas can have nested claim schemas
             .filter(|(_, r#type)| r#type == &DatatypeType::Object)
-            .flat_map(|(claim, _)| {
+            .flat_map(|(parent_input_claim, _)| {
                 credential_claim_schemas
                     .iter()
-                    .enumerate()
-                    .filter(|(_, c)| {
-                        c.schema
-                            .key
-                            .starts_with(&format!("{}{NESTED_CLAIM_MARKER}", claim.schema.key))
+                    .filter(|c| {
+                        c.schema.key.starts_with(&format!(
+                            "{}{NESTED_CLAIM_MARKER}",
+                            parent_input_claim.schema.key
+                        ))
                     })
-                    .map(|(i, c)| ProofInputClaimSchema {
-                        schema: c.schema.clone(),
-                        required: c.required,
-                        order: i as u32,
+                    .enumerate()
+                    .map(|(i, c)| {
+                        // nested claims are required if the explicitly requested object parent is required
+                        // and all parents on the path to the requested object are mandatory in the credential schema
+                        let required = parent_input_claim.required
+                            && c.required
+                            && credential_claim_schemas
+                                .iter()
+                                .filter(|claim_in_between| {
+                                    claim_in_between.schema.key.starts_with(&format!(
+                                        "{}{NESTED_CLAIM_MARKER}",
+                                        parent_input_claim.schema.key
+                                    )) && c.schema.key.starts_with(&format!(
+                                        "{}{NESTED_CLAIM_MARKER}",
+                                        claim_in_between.schema.key
+                                    ))
+                                })
+                                .all(|claim_in_between| claim_in_between.required);
+
+                        ProofInputClaimSchema {
+                            schema: c.schema.clone(),
+                            required,
+                            order: i as u32,
+                        }
                     })
             })
             .collect::<Vec<_>>();
@@ -293,6 +329,7 @@ pub(super) async fn get_verifier_proof_detail(
                             prefix,
                             &input_claim.schema.key,
                             credential_claim_schemas,
+                            input_claim.required,
                         )?;
 
                         if parent_proof_claim.value.is_none() {
@@ -417,7 +454,17 @@ fn nest_proof_claims(
                     "missing credential claim schema with id {}",
                     claim_schema.id
                 )))?;
-            ProofClaimSchemaResponseDTO::from(credential_schema_claim.to_owned())
+
+            ProofClaimSchemaResponseDTO {
+                id: credential_schema_claim.schema.id,
+                key: credential_schema_claim.schema.key.to_owned(),
+                data_type: credential_schema_claim.schema.data_type.to_owned(),
+                claims: vec![],
+                array: credential_schema_claim.schema.array,
+                // we don't have that information on holder side, so guessing flags here
+                requested: true,
+                required: credential_schema_claim.required,
+            }
         };
 
         match (
@@ -430,6 +477,7 @@ fn nest_proof_claims(
                     prefix,
                     &claim_schema.key,
                     credential_claim_schemas,
+                    schema.required,
                 )?;
 
                 let Some(ProofClaimValueDTO::Claims(parent_proof_claims)) =
@@ -458,6 +506,7 @@ fn nest_proof_claims(
                     &proof_claim.claim.path,
                     &claim_schema.key,
                     credential_claim_schemas,
+                    schema.required,
                 )?;
             }
         };
