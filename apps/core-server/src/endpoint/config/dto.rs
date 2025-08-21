@@ -1,15 +1,13 @@
 use std::collections::HashMap;
 
 use one_core::service::config::dto::ConfigDTO;
-use one_dto_mapper::From;
 use serde::Serialize;
 use serde_json::Value;
 use utoipa::ToSchema;
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[schema(example = json!({"format": {}, "identifier": {}, "issuanceProtocol": {}, "verificationProtocol": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}}))]
-#[from(ConfigDTO)]
+#[schema(example = json!({"format": {}, "identifier": {}, "issuanceProtocol": {}, "verificationProtocol": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}, "frontend": {}}))]
 pub(crate) struct ConfigRestDTO {
     /// Credential formats for issuing, holding and verifying.
     pub format: HashMap<String, Value>,
@@ -41,4 +39,29 @@ pub(crate) struct ConfigRestDTO {
     pub task: HashMap<String, Value>,
     /// Blob storage
     pub blob_storage: HashMap<String, Value>,
+    /// Frontend configuration
+    pub frontend: HashMap<String, Value>,
+}
+
+impl From<ConfigDTO> for ConfigRestDTO {
+    fn from(config: ConfigDTO) -> Self {
+        ConfigRestDTO {
+            format: config.format,
+            identifier: config.identifier,
+            issuance_protocol: config.issuance_protocol,
+            verification_protocol: config.verification_protocol,
+            transport: config.transport,
+            revocation: config.revocation,
+            did: config.did,
+            datatype: config.datatype,
+            key_algorithm: config.key_algorithm,
+            holder_key_storage: config.holder_key_storage,
+            key_storage: config.key_storage,
+            trust_management: config.trust_management,
+            cache_entities: config.cache_entities,
+            task: config.task,
+            blob_storage: config.blob_storage,
+            frontend: HashMap::new(),
+        }
+    }
 }

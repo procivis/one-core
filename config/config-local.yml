@@ -14,6 +14,24 @@ app:
   enableOpenApi: true
   enableExternalEndpoints: true
   enableManagementEndpoints: true
+  enableWalletProvider: true
+walletProvider:
+  PROCIVIS_ONE:
+    type: PROCIVIS_ONE
+    display: walletProvider.procivisOne
+    params:
+      private:
+      public:
+        walletName: "Procivis One Trial Wallet"
+        walletlink: "https://procivis.ch"
+        android:
+          bundleId: ch.procivis.one.wallet.dev
+        ios:
+          bundleId: ch.procivis.one.wallet.dev
+        lifetime:
+          expirationTime: 86400 # 24*60*60 seconds
+          minimumRefreshTime: 60
+        issuerIdentifier: UUID # -> use ES256 key
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

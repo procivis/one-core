@@ -46,4 +46,5 @@ pub struct ServerConfig {
     pub enable_open_api: bool,
     pub enable_external_endpoints: bool,
     pub enable_management_endpoints: bool,
+    pub enable_wallet_provider: bool,
 }

@@ -54,7 +54,8 @@ fn convert_internal_structure_to_dto() {
           "trustManagement": {},
           "blobStorage": {},
           "cacheEntities": {},
-          "task": {}
+          "task": {},
+          "walletProvider": {}
         }),
         output
     );
@@ -106,7 +107,8 @@ fn do_not_serialize_private_parameters() {
           "trustManagement": {},
           "blobStorage": {},
           "cacheEntities": {},
-          "task": {}
+          "task": {},
+          "walletProvider": {}
         }),
         output
     );

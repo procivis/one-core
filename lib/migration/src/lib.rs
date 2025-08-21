@@ -144,6 +144,7 @@ mod m20250814_120106_add_selectively_disclosable_column_to_claims;
 mod m20250818_045324_json_ld_bbs_disclosability;
 mod m20250818_082108_mdoc_disclosability;
 mod m20250818_090154_set_selectively_disclosable_on_sd_jwt_claims;
+mod m20250820_084021_wallet_unit_table;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -290,6 +291,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250818_045324_json_ld_bbs_disclosability::Migration),
             Box::new(m20250818_082108_mdoc_disclosability::Migration),
             Box::new(m20250818_090154_set_selectively_disclosable_on_sd_jwt_claims::Migration),
+            Box::new(m20250820_084021_wallet_unit_table::Migration),
         ]
     }
 }

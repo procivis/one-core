@@ -13,3 +13,4 @@ transport: {}
 cacheEntities: {}
 holderKeyStorage: {}
 blobStorage: {}
+walletProvider: {}

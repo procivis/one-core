@@ -41,6 +41,18 @@ use crate::router::AppState;
 "},
 )]
 pub(crate) async fn get_config(state: State<AppState>) -> OkOrErrorResponse<ConfigRestDTO> {
-    let result = state.core.config_service.get_config();
+    let result: Result<ConfigRestDTO, _> = state
+        .core
+        .config_service
+        .get_config()
+        .map(ConfigRestDTO::from)
+        .map(|mut config| {
+            config.frontend.insert(
+                "walletProviderEnabled".to_string(),
+                serde_json::json!(state.config.enable_wallet_provider),
+            );
+            config
+        });
+
     OkOrErrorResponse::from_result(result, state, "getting config")
 }

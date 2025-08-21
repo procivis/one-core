@@ -57,6 +57,7 @@ pub struct CoreConfig {
     pub(crate) trust_management: TrustManagementConfig,
     pub(crate) blob_storage: BlobStorageConfig,
     pub cache_entities: CacheEntitiesConfig,
+    pub(crate) wallet_provider: WalletProviderConfig,
 }
 
 impl CoreConfig {
@@ -72,6 +73,23 @@ impl CoreConfig {
             })
             .collect::<Vec<&str>>()
     }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletProviderConfig {
+    #[serde(flatten)]
+    pub entities: HashMap<String, WalletProviderEntry>,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletProviderEntry {
+    pub r#type: String,
+    pub display: String,
+    #[serde(default, deserialize_with = "deserialize_params")]
+    pub params: Option<Params>,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]

@@ -21,3 +21,4 @@ pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod validity_credential;
+pub mod wallet_unit;

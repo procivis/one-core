@@ -117,6 +117,7 @@ rusty_fork_test! {
             cacheEntities: {}
             holderKeyStorage: {}
             blobStorage: {}
+            walletProvider: {}
         "};
 
         let config3 = indoc::indoc! {"

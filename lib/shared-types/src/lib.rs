@@ -1,3 +1,4 @@
+mod blob_id;
 mod certificate_id;
 mod claim_id;
 mod claim_schema_id;
@@ -17,8 +18,7 @@ mod remote_entity_cache_entry_id;
 mod trust_anchor_id;
 mod trust_entity_id;
 mod trust_entity_key;
-
-mod blob_id;
+mod wallet_unit_id;
 
 pub use blob_id::BlobId;
 pub use certificate_id::CertificateId;
@@ -39,3 +39,4 @@ pub use remote_entity_cache_entry_id::RemoteEntityCacheEntryId;
 pub use trust_anchor_id::TrustAnchorId;
 pub use trust_entity_id::TrustEntityId;
 pub use trust_entity_key::TrustEntityKey;
+pub use wallet_unit_id::WalletUnitId;

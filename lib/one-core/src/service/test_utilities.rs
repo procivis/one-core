@@ -231,6 +231,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         trustManagement: {}
         cacheEntities: {}
         blobStorage: {}
+        walletProvider: {}
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

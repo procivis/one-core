@@ -1,7 +1,23 @@
+walletProvider:
+  PROCIVIS_ONE:
+    type: PROCIVIS_ONE
+    display: walletProvider.procivisOne
+    params:
+      private:
+      public:
+        walletName: "Procivis One Demo Wallet"
+        walletlink: "https://procivis.ch"
+        android:
+          bundleId: ch.procivis.one.wallet.demo
+        ios:
+          bundleId: ch.procivis.one.wallet.demo
+        lifetime:
+          expirationTime: 86400 # 24*60*60 seconds
+          minimumRefreshTime: 60
+        issuerIdentifier: UUID # -> use ES256 key
 keyStorage:
   AZURE_VAULT:
     params:
       private:
         vaultUrl: "https://procivis-one-demo.vault.azure.net"
         clientId: "9b645db1-39eb-485c-af62-47b3a498bec2"
-
