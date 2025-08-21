@@ -1156,6 +1156,124 @@ async fn test_get_presentation_definition_dcql_claim_sets() {
 }
 
 #[tokio::test]
+async fn test_get_presentation_definition_dcql_claim_sets_disjoint_credentials() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let claim_1 = Uuid::new_v4();
+    let claim_2 = Uuid::new_v4();
+
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "Simple test schema",
+            &org,
+            "NONE",
+            &[
+                (claim_1, "first", false, "STRING", false),
+                (claim_2, "second", false, "STRING", false),
+            ],
+            "SD_JWT_VC",
+            vct,
+        )
+        .await;
+    let credential1 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_1.into(),
+                    path: "first".to_string(),
+                    value: Some("test-value-first".to_string()),
+                    selectively_disclosable: false,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential2 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![ClaimData {
+                    schema_id: claim_2.into(),
+                    path: "second".to_string(),
+                    value: Some("test-value-second".to_string()),
+                    selectively_disclosable: false,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .id("claim1")
+                .path(vec!["first".to_string()])
+                .required(true)
+                .build(),
+            ClaimQuery::builder()
+                .id("claim2")
+                .path(vec!["second".to_string()])
+                .required(true)
+                .build(),
+        ])
+        .claim_sets(vec![
+            vec![ClaimQueryId::from("claim1")],
+            vec![ClaimQueryId::from("claim2")],
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+        .assert_eq_unordered(&[credential1.id.to_string(), credential2.id.to_string()]);
+    let field1 = json!({
+        "id": "test_id:first",
+        "keyMap": {
+            credential1.id.to_string(): "first"
+        },
+        "name": "first",
+        "required": true
+    });
+    let field2 = json!({
+        "id": "test_id:second",
+        "keyMap": {
+            credential2.id.to_string(): "second"
+        },
+        "name": "second",
+        "required": true
+    });
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"]
+        .assert_eq_unordered(&[field1, field2]);
+}
+
+#[tokio::test]
 async fn test_get_presentation_definition_dcql_multiple_applicable_credentials() {
     // GIVEN
     let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;

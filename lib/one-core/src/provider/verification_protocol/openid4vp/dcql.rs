@@ -184,60 +184,59 @@ fn first_applicable_claim_set(
     credentials: &[Credential],
     filters: &[CredentialFilter],
 ) -> Result<ClaimSetMatchResult, VerificationProtocolError> {
-    // Try to find at least one credential matching for each credential filter
-    // The filters are ordered by verifier preference. The number of filters corresponds
-    // to the number of entries in `claim_sets` for the current credential query.
-    for filter in filters {
-        let mut claims_to_credentials = HashMap::new();
-        let mut applicable_credentials = vec![];
-        let mut inapplicable_credentials = vec![];
-
-        // match each credential against the particular filter / claim set
-        for credential in credentials {
-            if !matches!(credential.state, CredentialStateEnum::Accepted) {
-                inapplicable_credentials.push(credential.id);
-                continue;
-            }
-
-            let selected_claims = select_claims(credential, filter)?;
-
-            if let Some(selected_claims) = selected_claims {
-                applicable_credentials.push(credential.id);
-                // The current credential matched. Arrange them by path so that it is easier
-                // to later build the `field.keyMap`.
-                for selected_claim in selected_claims {
-                    let sd_supported = selected_claim.selective_disclosure_supported;
-                    claims_to_credentials
-                        .entry(selected_claim.key)
-                        .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
-                            claim_to_creds.credentials.push(credential.id);
-                            claim_to_creds.selective_disclosure_supported =
-                                claim_to_creds.selective_disclosure_supported && sd_supported;
-                        })
-                        .or_insert(ClaimToCredentials {
-                            selective_disclosure_supported: sd_supported,
-                            credentials: vec![credential.id],
-                            required_by_verifier: selected_claim.required_by_verifier,
-                        });
-                }
-            } else {
-                // the current credential is not applicable given the current claim set
-                inapplicable_credentials.push(credential.id);
-            }
+    let mut claims_to_credentials = HashMap::new();
+    let mut applicable_credentials = vec![];
+    let mut inapplicable_credentials = vec![];
+    // match each credential against the particular filter / claim set
+    for credential in credentials {
+        if !matches!(credential.state, CredentialStateEnum::Accepted) {
+            inapplicable_credentials.push(credential.id);
+            continue;
         }
+        // Go through the filters and find the first that matches some claims, if any.
+        let Some(selected_claims) = filters
+            .iter()
+            .filter_map(|filter| select_claims(credential, filter).transpose())
+            .next()
+            .transpose()?
+        else {
+            // the current credential is not applicable for any of the filters
+            // -> mark inapplicable and continue
+            inapplicable_credentials.push(credential.id);
+            continue;
+        };
 
-        // If we have at least one match, we can stop and use that claim set.
-        // Otherwise, we need to continue searching for matches using the next claim set.
-        if !applicable_credentials.is_empty() {
-            return Ok(ClaimSetMatchResult {
-                claims_to_credentials,
-                applicable_credentials,
-                inapplicable_credentials,
-            });
+        // The current credential matched. Arrange the claims by path so that it is easier
+        // to later build the `field.keyMap`.
+        applicable_credentials.push(credential.id);
+        for selected_claim in selected_claims {
+            let sd_supported = selected_claim.selective_disclosure_supported;
+            claims_to_credentials
+                .entry(selected_claim.key)
+                .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
+                    claim_to_creds.credentials.push(credential.id);
+                    claim_to_creds.selective_disclosure_supported =
+                        claim_to_creds.selective_disclosure_supported && sd_supported;
+                })
+                .or_insert(ClaimToCredentials {
+                    selective_disclosure_supported: sd_supported,
+                    credentials: vec![credential.id],
+                    required_by_verifier: selected_claim.required_by_verifier,
+                });
         }
     }
 
-    // We have exhausted all options / claim sets and never found any credential matching.
+    if !applicable_credentials.is_empty() {
+        return Ok(ClaimSetMatchResult {
+            claims_to_credentials,
+            applicable_credentials,
+            inapplicable_credentials,
+        });
+    }
+
+    // We have exhausted all options / claim sets and never found any matching credential.
+    // -> build the match result so that it explains which fields we were looking for that didn't
+    // match any credentials.
     Ok(ClaimSetMatchResult {
         claims_to_credentials: filters
             // Presumably the last option has the lowest requirements (as it is the least preferred by verifiers).
@@ -258,8 +257,10 @@ fn first_applicable_claim_set(
                 )
             })
             .collect(),
-        applicable_credentials: vec![],
-        inapplicable_credentials: credentials.iter().map(|credential| credential.id).collect(),
+        // empty
+        applicable_credentials,
+        // all credential candidates
+        inapplicable_credentials,
     })
 }
 
