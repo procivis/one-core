@@ -375,10 +375,10 @@ fn get_matching_claims<'a>(
         .map(stringify_value)
         .collect::<Vec<_>>();
 
-    let filtered_subtree: Vec<_> = claims
+    let filtered_claims: Vec<_> = claims
         .iter()
         .filter(|claim| {
-            (claim.path == path_to_claim || claim.path.starts_with(&format!("{path_to_claim}/")))
+            claim.path == path_to_claim
                 && (values_filter.is_empty()
                     || claim
                         .value
@@ -387,12 +387,12 @@ fn get_matching_claims<'a>(
         })
         .collect();
 
-    if filtered_subtree.is_empty() {
+    if filtered_claims.is_empty() {
         // no matches found, return empty result
         return HashSet::new();
     }
 
-    // "trunk" nodes on the path from root to the filtered_subtree
+    // "trunk" nodes on the path from root to the filtered_claims
     // all of these are either arrays or objects
     let claims_towards_root: Vec<_> = claims
         .iter()
@@ -409,7 +409,7 @@ fn get_matching_claims<'a>(
     );
 
     let mut combined_set = HashSet::new();
-    combined_set.extend(filtered_subtree);
+    combined_set.extend(filtered_claims);
     combined_set.extend(claims_towards_root);
     combined_set.extend(nonselectively_disclosable_children);
     combined_set

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use core_server::endpoint::proof::dto::PresentationDefinitionFieldRestDTO;
 use dcql::{ClaimQuery, ClaimQueryId, CredentialQuery, DcqlQuery};
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchemaType;
@@ -102,6 +103,232 @@ async fn test_get_presentation_definition_dcql_simple() {
         "required": true
     });
     body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_nesting() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let claim_1 = Uuid::new_v4();
+    let claim_2 = Uuid::new_v4();
+    let claim_3 = Uuid::new_v4();
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "Nested test schema",
+            &org,
+            "NONE",
+            &[
+                (claim_1, "first", true, "OBJECT", true),
+                (claim_2, "first/second", true, "OBJECT", false),
+                (claim_3, "first/second/third", true, "STRING", true),
+            ],
+            "SD_JWT_VC",
+            vct,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "first".to_string(),
+                        value: None,
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "first/0".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "first/0/second".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_3.into(),
+                        path: "first/0/second/third".to_string(),
+                        value: None,
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: claim_3.into(),
+                        path: "first/0/second/third/0".to_string(),
+                        value: Some("test_value".to_string()),
+                        selectively_disclosable: false,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["first".to_string()])
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+        .assert_eq(&vec![credential.id.to_string()]);
+    let field1 = json!({
+        "id": "test_id:first",
+        "keyMap": {
+            credential.id.to_string(): "first"
+        },
+        "name": "first",
+        "required": true
+    });
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&[field1]);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_nested_with_mandatory_disclosure_sibling() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let claim_1 = Uuid::new_v4();
+    let claim_2 = Uuid::new_v4();
+    let claim_3 = Uuid::new_v4();
+    let claim_4 = Uuid::new_v4();
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "Nested test schema",
+            &org,
+            "NONE",
+            &[
+                (claim_1, "first", true, "OBJECT", false),
+                (claim_2, "first/second", true, "OBJECT", false),
+                (claim_3, "first/second/third", true, "STRING", false),
+                (claim_4, "first/sibling", true, "STRING", false),
+            ],
+            "SD_JWT_VC",
+            vct,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "first".to_string(),
+                        value: None,
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "first/second".to_string(),
+                        value: None,
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_3.into(),
+                        path: "first/second/third".to_string(),
+                        value: Some("test_value1".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_4.into(),
+                        path: "first/sibling".to_string(),
+                        value: Some("test_value2".to_string()),
+                        selectively_disclosable: false,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["first".to_string(), "second".to_string()])
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+
+    let group = body["requestGroups"][0]["requestedCredentials"][0]
+        .as_object()
+        .unwrap();
+    group["applicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
+
+    let fields: Vec<PresentationDefinitionFieldRestDTO> =
+        serde_json::from_value(group["fields"].to_owned()).unwrap();
+    assert_eq!(fields.len(), 3);
+
+    let root_obj_field = fields
+        .iter()
+        .find(|field| field.name.as_ref().unwrap() == "first")
+        .unwrap();
+    assert_eq!(root_obj_field.required.unwrap(), false);
+
+    let requested_field = fields
+        .iter()
+        .find(|field| field.name.as_ref().unwrap() == "first/second")
+        .unwrap();
+    assert_eq!(requested_field.required.unwrap(), true);
+
+    let sibling_field = fields
+        .iter()
+        .find(|field| field.name.as_ref().unwrap() == "first/sibling")
+        .unwrap();
+    assert_eq!(sibling_field.required.unwrap(), true);
 }
 
 #[tokio::test]

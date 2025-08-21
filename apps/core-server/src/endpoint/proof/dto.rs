@@ -311,10 +311,10 @@ pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]
 #[from(PresentationDefinitionFieldDTO)]
-pub(crate) struct PresentationDefinitionFieldRestDTO {
+pub struct PresentationDefinitionFieldRestDTO {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
