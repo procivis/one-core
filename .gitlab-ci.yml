@@ -3,7 +3,7 @@ image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
 include:
   - project: "procivis/one/one-operations"
     file:
-      - 'gitlab/client-matrix.yml'
+      - 'gitlab/client-matrix.gitlab-ci.yml'
       - "gitlab/docker.gitlab-ci.yml"
       - "gitlab/github.gitlab-ci.yml"
       - "gitlab/rules.gitlab-ci.yml"
@@ -14,8 +14,8 @@ include:
 variables:
   DOCKER_DRIVER: overlay2
   DEPENDENCY_TRACK_PROJECT_NAME: "ONE-Core"
-  CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
-  GITHUB_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+-.+$/
+  CI_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+/
+  GITHUB_TAG_PATTERN: /^v[0-9]+\.[0-9]+\.[0-9]+/
   CARGO_TARGET_DIR: "/build-cache/target"
   CARGO_HOME: "/build-cache/cargo-home"
   CARGO_UNSTABLE_GC: "true"
@@ -71,11 +71,6 @@ stages:
 
 before_script:
   - *app_settings
-
-.only_main_or_tag_or_manual:
-  rules:
-    - !reference [.rule:only_main_or_tag, rules]
-    - when: manual
 
 .rule:run_tests:
   rules:
@@ -203,16 +198,18 @@ build_image:
   dependencies: []
   extends:
     - .docker_publish
-    - .rule:only_main_or_tag
+    - .rule:default
   variables:
     EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
+  parallel:
+    matrix: !reference [ .one_core, clients_matrix ]
 
 build_image_acr:
   stage: build
   dependencies: []
   extends:
     - .docker_acr_publish
-    - .only_tag
+    - .rule:default:on_tag_only
   variables:
     EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
   parallel:
@@ -364,7 +361,7 @@ tests:api:
 .deploy_trigger:
   stage: deploy
   needs:
-    - job: build_image
+    - job: "build_image: [procivis]"
   trigger:
     project: procivis/one/one-operations
     branch: main
