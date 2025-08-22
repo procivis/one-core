@@ -38,7 +38,8 @@ pub(crate) fn generate_jsonld_context_response(
 ) -> Result<HashMap<String, JsonLDEntityDTO>, ServiceError> {
     let mut entities: HashMap<String, JsonLDEntityDTO> = HashMap::new();
     for claim_schema in claim_schemas {
-        if claim_schema.schema.data_type != "OBJECT" {
+        // Metadata claims are not part of our JSON-LD context
+        if claim_schema.schema.data_type != "OBJECT" && !claim_schema.schema.metadata {
             let key_parts: Vec<&str> = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
             insert_claim(&mut entities, &key_parts, base_url, 0)?;
         }

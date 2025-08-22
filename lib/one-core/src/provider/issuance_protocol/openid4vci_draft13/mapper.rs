@@ -31,6 +31,7 @@ use crate::model::credential_schema::{
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
@@ -68,6 +69,8 @@ pub(crate) fn prepare_nested_representation(
 
     claim_schemas
         .iter()
+        // Metadata claims should not be listed in credential configurations
+        .filter(|schema| !schema.schema.metadata)
         .try_fold(Default::default(), |state, claim_schema| {
             insert_claim_schema(state, claim_schema, claim_schemas, &object_types)
         })
@@ -435,6 +438,24 @@ fn from_jwt_request_claim_schema(
     }
 }
 
+pub(crate) fn claim_schema_from_metadata_claim_schema(
+    metadata_claim: MetadataClaimSchema,
+    now: OffsetDateTime,
+) -> CredentialSchemaClaim {
+    CredentialSchemaClaim {
+        schema: ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: metadata_claim.key,
+            data_type: metadata_claim.data_type,
+            created_date: now,
+            last_modified: now,
+            array: metadata_claim.array,
+            metadata: true,
+        },
+        required: metadata_claim.required,
+    }
+}
+
 pub(crate) async fn fetch_procivis_schema(
     schema_id: &str,
     http_client: &dyn HttpClient,
@@ -694,10 +715,10 @@ fn visit_nested_claim(
             }?;
             Ok([claims, nested_claims].concat())
         }
-        None if field.required() => Err(IssuanceProtocolError::Failed(format!(
-            "Validation Error. Claim key {} missing",
-            field.key(),
-        ))),
+        // TODO ONE-7022: Remove exemption for metadata claims once credential formatters extract them.
+        None if field.required() && !field.metadata() => Err(IssuanceProtocolError::Failed(
+            format!("Validation Error. Claim key {} missing", field.key(),),
+        )),
         None => Ok(claims),
     }
 }
@@ -1029,6 +1050,7 @@ pub(super) fn credentials_supported_mdoc(
     // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
     let element_order: Vec<String> = claim_schemas
         .iter()
+        .filter(|claim| !claim.schema.metadata)
         .filter(|claim| {
             claim
                 .schema

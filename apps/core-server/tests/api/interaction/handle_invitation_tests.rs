@@ -512,10 +512,22 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .collect();
     assert_eq!(
         vec![
+            // payload claims
             "address",
             "address/location",
             "address/location/position",
             "address/location/position/x",
+            // metadata claims
+            "iss",
+            "sub",
+            "aud",
+            "exp",
+            "nbf",
+            "iat",
+            "jti",
+            "vc",
+            "vc/type",
+            "vc/id",
         ],
         claim_schema_keys
     );
@@ -730,11 +742,23 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .collect();
     assert_eq!(
         vec![
+            // payload claims
             "address",
             "address/field",
             "address/location",
             "address/location/position",
-            "address/location/position/x"
+            "address/location/position/x",
+            // metadata claims
+            "iss",
+            "sub",
+            "aud",
+            "exp",
+            "nbf",
+            "iat",
+            "jti",
+            "vc",
+            "vc/type",
+            "vc/id",
         ],
         claim_schema_keys
     );
@@ -934,11 +958,23 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
         .collect();
     assert_eq!(
         vec![
+            // payload claims
             "address",
             "address/field",
             "address/field of location",
             "address/field of location/position",
-            "address/field of location/position/x"
+            "address/field of location/position/x",
+            // metadata claims
+            "iss",
+            "sub",
+            "aud",
+            "exp",
+            "nbf",
+            "iat",
+            "jti",
+            "vc",
+            "vc/type",
+            "vc/id",
         ],
         claim_schema_keys
     );
@@ -1744,6 +1780,7 @@ async fn test_handle_invitation_mdoc() {
             "company/address",
             "company/address/streetName",
             "company/address/streetNumber",
+            "doctype"
         ]),
         claim_schema_keys
     );

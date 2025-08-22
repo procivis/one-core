@@ -79,7 +79,10 @@ pub(crate) fn validate_create_request(
             let datatype = &claim_schema.schema.data_type;
             let config = config.datatype.get_fields(datatype)?;
 
-            if claim_schema.required && config.r#type != DatatypeType::Object {
+            if claim_schema.required
+                && !claim_schema.schema.metadata // Clients are not expected to submit _metadata_ claims.
+                && config.r#type != DatatypeType::Object
+            {
                 claims
                     .iter()
                     .find(|claim| claim.claim_schema_id == claim_schema.schema.id)

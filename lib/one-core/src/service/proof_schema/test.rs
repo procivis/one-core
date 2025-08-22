@@ -1458,6 +1458,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
+    formatter.expect_get_metadata_claims().returning(Vec::new);
 
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();
@@ -1665,6 +1666,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
             datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
+    formatter.expect_get_metadata_claims().returning(Vec::new);
 
     let formatter = Arc::new(formatter);
     let mut formatter_provider = MockCredentialFormatterProvider::new();

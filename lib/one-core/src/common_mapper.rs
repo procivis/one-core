@@ -732,6 +732,14 @@ impl Arrayed<CredentialSchemaClaimsNestedTypeView> {
         .required()
     }
 
+    pub fn metadata(&self) -> bool {
+        match self {
+            Self::InArray(n) => n,
+            Self::Single(n) => n,
+        }
+        .metadata()
+    }
+
     pub fn key(&self) -> &str {
         match self {
             Self::InArray(n) => n,
@@ -781,6 +789,13 @@ impl CredentialSchemaClaimsNestedTypeView {
         match self {
             Self::Field(claim) => claim.required,
             Self::Object(object) => object.claim.required,
+        }
+    }
+
+    pub(crate) fn metadata(&self) -> bool {
+        match self {
+            Self::Field(claim) => claim.schema.metadata,
+            Self::Object(object) => object.claim.schema.metadata,
         }
     }
 

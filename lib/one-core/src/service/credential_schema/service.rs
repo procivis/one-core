@@ -14,7 +14,9 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
     GetCredentialSchemaQueryDTO, ImportCredentialSchemaRequestDTO,
 };
-use crate::service::credential_schema::mapper::from_create_request_with_id;
+use crate::service::credential_schema::mapper::{
+    claim_schema_from_metadata_claim_schema, from_create_request_with_id,
+};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -82,7 +84,7 @@ impl CredentialSchemaService {
         let id = CredentialSchemaId::from(Uuid::new_v4());
         let schema_id = formatter.credential_schema_id(id, &request, core_base_url)?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
-        let credential_schema = from_create_request_with_id(
+        let mut credential_schema = from_create_request_with_id(
             id,
             request,
             organisation,
@@ -91,6 +93,24 @@ impl CredentialSchemaService {
             schema_id,
             imported_source_url,
         )?;
+
+        let metadata_claims = formatter
+            .get_metadata_claims()
+            .into_iter()
+            .map(|metadata_claim| {
+                claim_schema_from_metadata_claim_schema(
+                    metadata_claim,
+                    credential_schema.created_date,
+                )
+            })
+            .collect::<Vec<_>>();
+        credential_schema
+            .claim_schemas
+            .as_mut()
+            .ok_or(ServiceError::MappingError(
+                "Missing claim schemas".to_string(),
+            ))?
+            .extend(metadata_claims);
 
         let result = self
             .credential_schema_repository

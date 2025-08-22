@@ -38,7 +38,18 @@ async fn test_create_credential_schema_success() {
     assert_eq!(credential_schema.revocation_method, "NONE");
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
     assert_eq!(credential_schema.format, "JWT");
-    assert_eq!(credential_schema.claim_schemas.unwrap().len(), 2);
+    let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
+    assert_eq!(
+        claim_schemas
+            .iter()
+            .filter(|cs| !cs.schema.metadata)
+            .count(),
+        2
+    );
+    assert_eq!(
+        claim_schemas.iter().filter(|cs| cs.schema.metadata).count(),
+        10
+    );
     assert_eq!(
         credential_schema.schema_id,
         format!("{}/ssi/schema/v1/{id}", context.config.app.core_base_url)
@@ -78,7 +89,15 @@ async fn test_create_credential_schema_remote_secure_element_success() {
     let credential_schema = context.db.credential_schemas.get(&id).await;
 
     assert_eq!(credential_schema.name, "some credential schema");
-    assert_eq!(credential_schema.claim_schemas.unwrap().len(), 2);
+    assert_eq!(
+        credential_schema
+            .claim_schemas
+            .unwrap()
+            .iter()
+            .filter(|claim_schema| !claim_schema.schema.metadata)
+            .count(),
+        2
+    );
     assert_eq!(
         credential_schema.wallet_storage_type,
         Some(WalletStorageTypeEnum::RemoteSecureElement)

@@ -489,6 +489,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.vct_type_metadata_cache.clone(),
             self.client.clone(),
+            self.formatter_provider.clone(),
         );
 
         let InvitationResponseDTO {
@@ -730,6 +731,7 @@ impl SSIHolderService {
             self.credential_schema_repository.clone(),
             self.vct_type_metadata_cache.clone(),
             self.client.clone(),
+            self.formatter_provider.clone(),
         );
 
         let issuance_protocol::openid4vci_draft13::model::ContinueIssuanceResponseDTO {

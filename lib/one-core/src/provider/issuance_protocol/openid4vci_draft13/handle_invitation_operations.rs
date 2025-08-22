@@ -6,14 +6,18 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::mapper::{fetch_procivis_schema, from_create_request, parse_procivis_schema_claim};
+use super::mapper::{
+    claim_schema_from_metadata_claim_schema, fetch_procivis_schema, from_create_request,
+    parse_procivis_schema_claim,
+};
 use super::model::OpenID4VCICredentialConfigurationData;
 use crate::model::credential_schema::{
-    BackgroundProperties, CredentialSchema, CredentialSchemaType, LayoutProperties, LayoutType,
-    LogoProperties,
+    BackgroundProperties, CredentialFormat, CredentialSchema, CredentialSchemaClaim,
+    CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
 };
 use crate::model::organisation::Organisation;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
@@ -27,6 +31,7 @@ use crate::provider::issuance_protocol::{
     BasicSchemaData, BuildCredentialSchemaResponse, HandleInvitationOperations,
 };
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::service::error::MissingProviderError;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::util::oidc::map_from_openid4vp_format;
 
@@ -38,6 +43,7 @@ pub(crate) struct HandleInvitationOperationsImpl {
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     pub http_client: Arc<dyn HttpClient>,
+    pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
 }
 
 impl HandleInvitationOperationsImpl {
@@ -46,13 +52,34 @@ impl HandleInvitationOperationsImpl {
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         http_client: Arc<dyn HttpClient>,
+        formatter_provider: Arc<dyn CredentialFormatterProvider>,
     ) -> Self {
         Self {
             organisation,
             credential_schemas,
             vct_type_metadata_cache,
             http_client,
+            formatter_provider,
         }
+    }
+
+    fn add_metadata_claim_schemas(
+        &self,
+        schema: &mut CredentialSchema,
+    ) -> Result<(), IssuanceProtocolError> {
+        let metadata_claims = get_metadata_claim_schemas(
+            &*self.formatter_provider,
+            schema.format.clone(),
+            schema.created_date,
+        )?;
+        schema
+            .claim_schemas
+            .as_mut()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing claim schemas".to_string(),
+            ))?
+            .extend(metadata_claims);
+        Ok(())
     }
 }
 
@@ -136,7 +163,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     .await
                     .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
 
-                let schema = from_create_request(
+                let mut schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
                         name: procivis_schema.name,
                         format: procivis_schema.format,
@@ -157,6 +184,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     procivis_schema.schema_type,
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                self.add_metadata_claim_schemas(&mut schema)?;
 
                 let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
@@ -199,7 +227,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         IssuanceProtocolError::Failed("MDOC metadata missing doctype".to_string())
                     })?;
 
-                let credential_schema = from_create_request(
+                let mut credential_schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
                         name,
                         format: credential_format,
@@ -220,6 +248,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     "mdoc".to_string(),
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+                self.add_metadata_claim_schemas(&mut credential_schema)?;
 
                 if claims_specified {
                     let claims =
@@ -290,7 +319,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                 let now = OffsetDateTime::now_utc();
                 let id = Uuid::new_v4();
-                let credential_schema = CredentialSchema {
+                let mut credential_schema = CredentialSchema {
                     id: id.into(),
                     deleted_at: None,
                     created_date: now,
@@ -309,6 +338,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     organisation: Some(organisation),
                     allow_suspension: false,
                 };
+                self.add_metadata_claim_schemas(&mut credential_schema)?;
 
                 BuildCredentialSchemaResponse {
                     claims,
@@ -329,6 +359,22 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
         Ok(result)
     }
+}
+
+fn get_metadata_claim_schemas(
+    formatter_provider: &dyn CredentialFormatterProvider,
+    format: CredentialFormat,
+    now: OffsetDateTime,
+) -> Result<Vec<CredentialSchemaClaim>, IssuanceProtocolError> {
+    let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
+        IssuanceProtocolError::Other(MissingProviderError::Formatter(format.to_string()).into()),
+    )?;
+    let metadata_claims = formatter
+        .get_metadata_claims()
+        .into_iter()
+        .map(|metadata_claim| claim_schema_from_metadata_claim_schema(metadata_claim, now))
+        .collect::<Vec<_>>();
+    Ok(metadata_claims)
 }
 
 fn map_layout_properties(

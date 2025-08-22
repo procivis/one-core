@@ -1,5 +1,5 @@
 use super::dto::ImportCredentialSchemaRequestSchemaDTO;
-use super::mapper::from_create_request_with_id;
+use super::mapper::{claim_schema_from_metadata_claim_schema, from_create_request_with_id};
 use crate::config::core_config::CoreConfig;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
@@ -44,7 +44,7 @@ pub(crate) async fn import_credential_schema(
     super::validator::check_logo_properties(&create_request)?;
 
     let format_type = &config.format.get_fields(&request.format)?.r#type;
-    let credential_schema = from_create_request_with_id(
+    let mut credential_schema = from_create_request_with_id(
         credential_schema_id,
         create_request,
         organisation,
@@ -53,6 +53,21 @@ pub(crate) async fn import_credential_schema(
         request.schema_id,
         request.imported_source_url,
     )?;
+
+    let metadata_claims = formatter
+        .get_metadata_claims()
+        .into_iter()
+        .map(|metadata_claim| {
+            claim_schema_from_metadata_claim_schema(metadata_claim, credential_schema.created_date)
+        })
+        .collect::<Vec<_>>();
+    credential_schema
+        .claim_schemas
+        .as_mut()
+        .ok_or(ServiceError::MappingError(
+            "Missing claim schemas".to_string(),
+        ))?
+        .extend(metadata_claims);
 
     let credential_schema = regenerate_credential_schema_uuids(credential_schema);
 

@@ -13,6 +13,7 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
+use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, GetCredentialSchemaQueryDTO,
@@ -23,8 +24,13 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
     type Error = ServiceError;
 
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
-        let claim_schemas =
-            renest_claim_schemas(convert_inner(value.claim_schemas.unwrap_or_default()))?;
+        let claim_schemas = value
+            .claim_schemas
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|schema| !schema.schema.metadata)
+            .collect::<Vec<_>>();
+        let claim_schemas = renest_claim_schemas(convert_inner(claim_schemas))?;
 
         let organisation_id = match value.organisation {
             None => Err(ServiceError::MappingError(
@@ -161,6 +167,24 @@ fn from_jwt_request_claim_schema(
             metadata: false,
         },
         required,
+    }
+}
+
+pub(crate) fn claim_schema_from_metadata_claim_schema(
+    metadata_claim: MetadataClaimSchema,
+    now: OffsetDateTime,
+) -> CredentialSchemaClaim {
+    CredentialSchemaClaim {
+        schema: ClaimSchema {
+            id: Uuid::new_v4().into(),
+            key: metadata_claim.key,
+            data_type: metadata_claim.data_type,
+            created_date: now,
+            last_modified: now,
+            array: metadata_claim.array,
+            metadata: true,
+        },
+        required: metadata_claim.required,
     }
 }
 
