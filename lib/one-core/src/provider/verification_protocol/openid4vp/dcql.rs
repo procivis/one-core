@@ -28,13 +28,8 @@ use crate::service::storage_proxy::StorageAccess;
 ///   - Metadata claims such as `exp`, `aud`, `@context` or `_sd` cannot be queried
 ///   - No support for `vct` inheritance
 ///   - W3C VCs have proprietary lookup logic based on the JSON-LD context
-///   - Claim paths with array index or array all selectors are not supported
-///   - Misleading requested credential `fields` array when `claims` is absent: The mapping to
-///     presentation definition assumes that _all_ claims are selectively disclosable, which is not
-///     generally true for third-party credentials. This might result in UI components showing too
-///     little data being disclosed on proof requests.
 ///   - Misleading requested credential `fields` `required` flag when credentials with different schemas are queried
-///     simultaneously and where only some credential schemas support selective disclosure (this is only possible for W3C VCs):
+///     simultaneously and where only some claims support selective disclosure:
 ///     Since there is only one required flag per field, the required flag will be set to `true` if the field is present in
 ///     at least one credential where the field is not selectively disclosable even if it would be optional given the DCQL
 ///     query, and it would be selectively disclosable for other credentials.
@@ -92,7 +87,7 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
 
         let match_result = first_applicable_claim_set(&credential_candidates, credential_filters)?;
         relevant_credentials.append(&mut credential_candidates);
-        requested_credentials.push(to_requested_credential(query, match_result))
+        requested_credentials.push(to_requested_credential(query, match_result)?)
     }
     Ok(PresentationDefinitionResponseDTO {
         request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
@@ -135,7 +130,7 @@ fn format_matches(dcql_format: &CredentialFormat, format: &str, config: &CoreCon
 fn to_requested_credential(
     query: CredentialQuery,
     match_result: ClaimSetMatchResult,
-) -> PresentationDefinitionRequestedCredentialResponseDTO {
+) -> Result<PresentationDefinitionRequestedCredentialResponseDTO, VerificationProtocolError> {
     let mut fields = vec![];
     for (claim_path, claim_to_credentials) in match_result.claims_to_credentials {
         let selective_disclosure_supported = claim_to_credentials.selective_disclosure_supported;
@@ -144,47 +139,23 @@ fn to_requested_credential(
             .into_iter()
             .map(|id| (id, claim_path.clone()))
             .collect();
-        let claim_query = query
-            .claims
-            .iter()
-            .flatten()
-            .find(|claim| dcql_path_to_claim_key(&claim.path, &query.format) == claim_path);
-
-        // The query is absent in case `claims` was not provided in the DCQL query, or we have a
-        // credential that does not support selective disclosure and more claims are revealed than
-        // requested by the verifier.
-        let field = if let Some(claim_query) = claim_query {
-            let required = if selective_disclosure_supported {
-                claim_query.required.unwrap_or(true)
-            } else {
-                // Everything is "required" (i.e. will be revealed) if selective disclosure is not
-                // supported.
-                true
-            };
-            PresentationDefinitionFieldDTO {
-                id: claim_query
-                    .id
-                    .as_ref()
-                    .map(ToString::to_string)
-                    .unwrap_or(format!("{}:{}", query.id, claim_path)),
-                name: Some(claim_path.clone()),
-                purpose: None,
-                required: Some(required),
-                key_map,
-            }
+        let required = if selective_disclosure_supported {
+            claim_to_credentials.required_by_verifier
         } else {
-            PresentationDefinitionFieldDTO {
-                id: format!("{}:{}", query.id, claim_path),
-                name: Some(claim_path.clone()),
-                purpose: None,
-                // Required if selective disclosure is _not_ supported
-                required: Some(!selective_disclosure_supported),
-                key_map,
-            }
+            // Everything is "required" (i.e. will be revealed) if selective disclosure is not
+            // supported.
+            true
+        };
+        let field = PresentationDefinitionFieldDTO {
+            id: format!("{}:{}", query.id, claim_path),
+            name: Some(claim_path.clone()),
+            purpose: None,
+            required: Some(required),
+            key_map,
         };
         fields.push(field);
     }
-    PresentationDefinitionRequestedCredentialResponseDTO {
+    Ok(PresentationDefinitionRequestedCredentialResponseDTO {
         id: query.id.to_string(),
         name: None,
         purpose: None,
@@ -192,7 +163,7 @@ fn to_requested_credential(
         applicable_credentials: match_result.applicable_credentials,
         inapplicable_credentials: match_result.inapplicable_credentials,
         validity_credential_nbf: None,
-    }
+    })
 }
 
 struct ClaimSetMatchResult {
@@ -206,6 +177,7 @@ struct ClaimToCredentials {
     credentials: Vec<CredentialId>,
     // Whether selectively disclosing this claim is supported by _all_ applicable credentials
     selective_disclosure_supported: bool,
+    required_by_verifier: bool,
 }
 
 fn first_applicable_claim_set(
@@ -245,6 +217,7 @@ fn first_applicable_claim_set(
                         .or_insert(ClaimToCredentials {
                             selective_disclosure_supported: sd_supported,
                             credentials: vec![credential.id],
+                            required_by_verifier: selected_claim.required_by_verifier,
                         });
                 }
             } else {
@@ -275,11 +248,12 @@ fn first_applicable_claim_set(
             .filter(|(claim, _)| claim.required)
             .map(|(claim, format)| {
                 (
-                    dcql_path_to_claim_key(&claim.path, format),
+                    dcql_path_to_absent_claim_key(&claim.path, format),
                     ClaimToCredentials {
                         credentials: vec![],
                         // the empty set of credentials is always selectively disclosable
                         selective_disclosure_supported: true,
+                        required_by_verifier: true,
                     },
                 )
             })
@@ -293,6 +267,7 @@ fn first_applicable_claim_set(
 struct SelectedClaim {
     key: String,
     selective_disclosure_supported: bool,
+    required_by_verifier: bool,
 }
 
 fn select_claims(
@@ -306,7 +281,7 @@ fn select_claims(
         )));
     };
 
-    let mut result = HashSet::new();
+    let mut result = HashMap::new();
     // add all nonselectively disclosable claims defined from root
     {
         let root_nonselectively_disclosable: Vec<_> = claims
@@ -320,7 +295,7 @@ fn select_claims(
             claims,
             root_nonselectively_disclosable
                 .iter()
-                .map(|claim| claim.path.to_owned())
+                .map(|claim| claim.path.as_str())
                 .collect::<Vec<_>>(),
         );
 
@@ -328,47 +303,51 @@ fn select_claims(
             .iter()
             .chain(nonselectively_disclosable_children_of_root.iter());
 
-        result.extend(nonselectively_disclosable.map(|claim| SelectedClaim {
-            key: claim.path.to_owned(),
-            selective_disclosure_supported: claim.selectively_disclosable,
+        result.extend(nonselectively_disclosable.map(|claim| {
+            (
+                claim.path.to_owned(),
+                SelectedClaim {
+                    key: claim.path.to_owned(),
+                    selective_disclosure_supported: claim.selectively_disclosable,
+                    required_by_verifier: false,
+                },
+            )
         }));
     }
 
     // add claims requested by the verifier
     for claim_filter in &filter.claims {
-        if claim_filter
-            .path
-            .segments
-            .iter()
-            .any(|segment| !matches!(segment, PathSegment::PropertyName(_)))
-        {
-            return Err(VerificationProtocolError::Failed(format!(
-                "unsupported claim filter (reaching into array claim): {}",
-                claim_filter.path
-            )));
-        }
-
-        let matching_claims = get_matching_claims(claims, claim_filter, &filter.format);
+        let matching_claims = get_matching_claims(claims, claim_filter, &filter.format)?;
         if !matching_claims.is_empty() {
-            result.extend(matching_claims.iter().map(|claim| SelectedClaim {
-                key: claim.path.to_owned(),
-                selective_disclosure_supported: claim.selectively_disclosable,
-            }));
+            matching_claims.into_iter().for_each(|matching_claim| {
+                if let Some(claim) = result.get_mut(&matching_claim.path) {
+                    claim.required_by_verifier =
+                        claim.required_by_verifier || claim_filter.required;
+                } else {
+                    result.insert(
+                        matching_claim.path.to_owned(),
+                        SelectedClaim {
+                            key: matching_claim.path.to_owned(),
+                            selective_disclosure_supported: matching_claim.selectively_disclosable,
+                            required_by_verifier: claim_filter.required,
+                        },
+                    );
+                }
+            });
         } else if claim_filter.required {
             // no match but claim is required --> abort as not matching
             return Ok(None);
         }
     }
 
-    Ok(Some(result.into_iter().collect()))
+    Ok(Some(result.into_values().collect()))
 }
 
 fn get_matching_claims<'a>(
     claims: &'a [Claim],
     claim_filter: &ClaimFilter,
     format: &CredentialFormat,
-) -> HashSet<&'a Claim> {
-    let path_to_claim = dcql_path_to_claim_key(&claim_filter.path, format);
+) -> Result<HashSet<&'a Claim>, VerificationProtocolError> {
     let values_filter = claim_filter
         .values
         .iter()
@@ -377,48 +356,67 @@ fn get_matching_claims<'a>(
 
     let filtered_claims: Vec<_> = claims
         .iter()
-        .filter(|claim| {
-            claim.path == path_to_claim
-                && (values_filter.is_empty()
-                    || claim
-                        .value
-                        .as_ref()
-                        .is_some_and(|value| values_filter.contains(value)))
+        // use filter_map to propagate errors of fallible predicate
+        .filter_map(|claim| {
+            dcql_path_exactly_matches_claim_key(&claim_filter.path, &claim.path, claims, format)
+                .map(|matches| {
+                    if matches
+                        && (values_filter.is_empty()
+                            || claim
+                                .value
+                                .as_ref()
+                                .is_some_and(|value| values_filter.contains(value)))
+                    {
+                        Some(claim)
+                    } else {
+                        None
+                    }
+                })
+                .transpose()
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     if filtered_claims.is_empty() {
         // no matches found, return empty result
-        return HashSet::new();
+        return Ok(HashSet::new());
     }
 
     // "trunk" nodes on the path from root to the filtered_claims
     // all of these are either arrays or objects
-    let claims_towards_root: Vec<_> = claims
-        .iter()
-        .filter(|claim| path_to_claim.starts_with(&format!("{}/", claim.path)))
-        .collect();
+    let mut claims_towards_root = HashSet::<&Claim>::new();
+    filtered_claims.iter().try_for_each(|claim| {
+        let mut current_path = claim.path.as_str();
+        while let Some((parent_path, _)) = current_path.rsplit_once('/') {
+            let parent_claim = claims
+                .iter()
+                .find(|claim| claim.path == parent_path)
+                .ok_or(VerificationProtocolError::Failed(format!(
+                    "Missing claim with path '{parent_path}' (parent of claim {}).",
+                    claim.id
+                )))?;
+            claims_towards_root.insert(parent_claim);
+            current_path = parent_path;
+        }
+        Ok(())
+    })?;
 
     // branches of nodes that are not selectively disclosable
     let nonselectively_disclosable_children = get_nonselectively_disclosable_children(
         claims,
-        claims_towards_root
-            .iter()
-            .map(|claim| claim.path.to_owned())
-            .collect::<Vec<_>>(),
+        claims_towards_root.iter().map(|claim| claim.path.as_str()),
     );
 
     let mut combined_set = HashSet::new();
     combined_set.extend(filtered_claims);
     combined_set.extend(claims_towards_root);
     combined_set.extend(nonselectively_disclosable_children);
-    combined_set
+    Ok(combined_set)
 }
 
-fn get_nonselectively_disclosable_children(
-    all_claims: &[Claim],
-    of_parent_paths: Vec<String>,
-) -> Vec<&Claim> {
+fn get_nonselectively_disclosable_children<'a, 'b>(
+    all_claims: &'a [Claim],
+    of_parent_paths: impl IntoIterator<Item = &'b str>,
+) -> Vec<&'a Claim> {
     let mut result = vec![];
 
     let mut parent_paths = VecDeque::from_iter(of_parent_paths);
@@ -438,7 +436,7 @@ fn get_nonselectively_disclosable_children(
             });
 
         for child in nonselectively_disclosable_children {
-            parent_paths.push_back(child.path.to_owned());
+            parent_paths.push_back(child.path.as_str());
             result.push(child);
         }
     }
@@ -486,7 +484,86 @@ async fn fetch_credentials_for_schema_ids(
     Ok(credentials)
 }
 
-fn dcql_path_to_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String {
+/// Predicate that checks if the DCQL path matches the claim path exactly, as in
+/// it addresses the claim directly (and not a child claim).
+fn dcql_path_exactly_matches_claim_key(
+    dcql_path: &ClaimPath,
+    claim_path: &str,
+    claims: &[Claim],
+    format: &CredentialFormat,
+) -> Result<bool, VerificationProtocolError> {
+    let dcql_segments = adjust_dcql_path_for_format(dcql_path, format);
+    let claim_path_segments = claim_path.split('/').collect::<Vec<_>>();
+    if dcql_segments.len() != claim_path_segments.len() {
+        // nesting depth mismatch -> no match
+        return Ok(false);
+    }
+
+    let mut current_path = "".to_string();
+    for (dcql_path_segment, claim_path_segment) in
+        dcql_segments.into_iter().zip(claim_path.split('/'))
+    {
+        current_path = if current_path.is_empty() {
+            claim_path_segment.to_string()
+        } else {
+            format!("{current_path}/{claim_path_segment}")
+        };
+        let schema = claims
+            .iter()
+            .find(|claim| claim.path == current_path)
+            .and_then(|claim| claim.schema.as_ref())
+            .ok_or(VerificationProtocolError::Failed(format!(
+                "missing schema for claim with path '{current_path}'"
+            )))?;
+        match dcql_path_segment {
+            PathSegment::PropertyName(name) => {
+                if name != claim_path_segment {
+                    // wrong property name -> no match
+                    return Ok(false);
+                }
+            }
+            PathSegment::ArrayIndex(index) => {
+                if !schema.array {
+                    // property is not an array -> no match
+                    return Ok(false);
+                }
+                if index.to_string() != claim_path_segment {
+                    // wrong index -> no match
+                    return Ok(false);
+                }
+            }
+            PathSegment::ArrayAll => {
+                if !schema.array {
+                    // property is not an array -> no match
+                    return Ok(false);
+                }
+            }
+        }
+    }
+    Ok(true)
+}
+
+fn dcql_path_to_absent_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String {
+    let segments_iter = adjust_dcql_path_for_format(path, format);
+    segments_iter
+        .into_iter()
+        .map(|segment| {
+            match segment {
+                PathSegment::PropertyName(name) => name.to_owned(),
+                PathSegment::ArrayIndex(index) => index.to_string(),
+                // We need to show the claim path of claims that are missing,
+                // -> substituting array index 0 to convey the "at least one element" semantics.
+                PathSegment::ArrayAll => "0".to_owned(),
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+fn adjust_dcql_path_for_format<'a>(
+    path: &'a ClaimPath,
+    format: &CredentialFormat,
+) -> Vec<&'a PathSegment> {
     let mut segments_iter = path.segments.iter().peekable();
     match format {
         CredentialFormat::JwtVc | CredentialFormat::LdpVc | CredentialFormat::W3cSdJwt => {
@@ -498,17 +575,7 @@ fn dcql_path_to_claim_key(path: &ClaimPath, format: &CredentialFormat) -> String
             // nothing to do
         }
     }
-
-    segments_iter
-        .filter_map(|segment| {
-            if let PathSegment::PropertyName(name) = segment {
-                Some(name.to_string())
-            } else {
-                None
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("/")
+    segments_iter.collect()
 }
 
 fn stringify_value(value: &ClaimValue) -> String {
@@ -519,7 +586,7 @@ fn stringify_value(value: &ClaimValue) -> String {
     }
 }
 
-impl From<FormatType> for dcql::CredentialFormat {
+impl From<FormatType> for CredentialFormat {
     fn from(value: FormatType) -> Self {
         match value {
             FormatType::Jwt => CredentialFormat::JwtVc,
