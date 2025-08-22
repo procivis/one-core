@@ -108,8 +108,7 @@ before_script:
 .run_tests:
   stage: extra_tests
   needs:
-    - job: build_image
-      artifacts: true
+    - job: "build_image: [procivis]"
   variables:
     CORE_IMAGE_TAG: ${APP_VERSION}
     CHECK_LINT: false
