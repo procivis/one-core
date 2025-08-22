@@ -80,6 +80,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
+                metadata: false,
             },
             required: false,
         });
@@ -208,6 +209,7 @@ fn mdoc_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -216,6 +218,7 @@ fn mdoc_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
     ];
 
@@ -332,6 +335,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -340,6 +344,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -348,6 +353,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -356,6 +362,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -364,6 +371,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         },
     ];
 
@@ -456,6 +464,7 @@ fn dummy_credential() -> Credential {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
+                metadata: false,
             }),
         }]),
         issuer_identifier: None,
@@ -480,6 +489,7 @@ fn dummy_credential() -> Credential {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     array: false,
+                    metadata: false,
                 },
                 required: true,
             }]),

@@ -640,6 +640,7 @@ async fn test_extract_credentials_swiyu() {
                 created_date: now,
                 last_modified: now,
                 array: false,
+                metadata: false,
             },
             required: false,
         }]),

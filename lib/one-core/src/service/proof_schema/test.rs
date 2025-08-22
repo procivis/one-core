@@ -327,6 +327,7 @@ async fn test_create_proof_schema_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let mut formatter = MockCredentialFormatter::default();
@@ -453,6 +454,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let organisation_id = Uuid::new_v4().into();
@@ -586,6 +588,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_schema_id_2 = Uuid::new_v4().into();
@@ -596,6 +599,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let formatter_provider = MockCredentialFormatterProvider::default();
@@ -730,6 +734,7 @@ async fn test_create_proof_schema_array_object_fail() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_schema_array = ClaimSchema {
@@ -739,6 +744,7 @@ async fn test_create_proof_schema_array_object_fail() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: true,
+        metadata: false,
     };
 
     let claim_schema_array_object = ClaimSchema {
@@ -748,6 +754,7 @@ async fn test_create_proof_schema_array_object_fail() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_schema_array_object_item = ClaimSchema {
@@ -757,6 +764,7 @@ async fn test_create_proof_schema_array_object_fail() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_id = claim_schema_array_object_item.id;
@@ -887,6 +895,7 @@ async fn test_create_proof_schema_array_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_schema_array = ClaimSchema {
@@ -896,6 +905,7 @@ async fn test_create_proof_schema_array_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: true,
+        metadata: false,
     };
 
     let claim_schema_array_object = ClaimSchema {
@@ -905,6 +915,7 @@ async fn test_create_proof_schema_array_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_schema_array_object_item = ClaimSchema {
@@ -914,6 +925,7 @@ async fn test_create_proof_schema_array_success() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     };
 
     let claim_id = claim_schema_array.id;
@@ -1132,6 +1144,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
                         array: false,
+                        metadata: false,
                     },
                     required: false,
                 }]),
@@ -1754,6 +1767,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                         created_date: get_dummy_date(),
                         array: false,
                         last_modified: get_dummy_date(),
+                        metadata: false,
                     },
                     required: true,
                 }]),
@@ -2094,6 +2108,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
     let location_x_claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2102,6 +2117,7 @@ async fn test_get_proof_schema_success_nested_claims() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2153,6 +2169,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
     let location_x_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2161,6 +2178,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
     let location_foo_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2169,6 +2187,7 @@ async fn test_get_proof_schema_success_nested_claims_not_mandatory() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2224,6 +2243,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
     let location_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2232,6 +2252,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
     let location_x_cs = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -2240,6 +2261,7 @@ async fn test_get_proof_schema_success_nested_claims_parent_not_mandatory() {
         created_date: now,
         last_modified: now,
         array: false,
+        metadata: false,
     };
 
     let mut proof_schema = generic_proof_schema();
@@ -2434,6 +2456,7 @@ async fn test_create_proof_schema_verify_nested_generic(
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         })
         .collect();
 

@@ -53,6 +53,7 @@ impl CredentialSchemasDB {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 array: false,
+                metadata: false,
             };
             let claim_schema1 = ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -61,6 +62,7 @@ impl CredentialSchemasDB {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 array: false,
+                metadata: false,
             };
             vec![
                 CredentialSchemaClaim {
@@ -153,6 +155,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schemas = vec![CredentialSchemaClaim {
             schema: claim_schema.to_owned(),
@@ -203,6 +206,7 @@ impl CredentialSchemasDB {
     ) -> CredentialSchema {
         let claim_schema_root_namespace: ClaimSchema = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "namespace".to_string(),
             data_type: "OBJECT".to_string(),
@@ -211,6 +215,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_root_field: ClaimSchema = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "namespace/root_field".to_string(),
             data_type: "STRING".to_string(),
@@ -224,6 +229,7 @@ impl CredentialSchemasDB {
             data_type: "OBJECT".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            metadata: false,
         };
         let claim_schema_nested = ClaimSchema {
             array: true,
@@ -232,9 +238,11 @@ impl CredentialSchemasDB {
             data_type: "OBJECT".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
+            metadata: false,
         };
         let claim_schema_field = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "namespace/root_array/nested/field".to_string(),
             data_type: "STRING".to_string(),
@@ -309,6 +317,7 @@ impl CredentialSchemasDB {
     ) -> CredentialSchema {
         let claim_schema_address = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address".to_string(),
             data_type: "OBJECT".to_string(),
@@ -317,6 +326,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_street = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/street".to_string(),
             data_type: "STRING".to_string(),
@@ -325,6 +335,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates".to_string(),
             data_type: "OBJECT".to_string(),
@@ -333,6 +344,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/x".to_string(),
             data_type: "NUMBER".to_string(),
@@ -341,6 +353,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/y".to_string(),
             data_type: "NUMBER".to_string(),
@@ -420,9 +433,11 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schema_address = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address".to_string(),
             data_type: "OBJECT".to_string(),
@@ -431,6 +446,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_street = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/street".to_string(),
             data_type: "STRING".to_string(),
@@ -439,6 +455,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates".to_string(),
             data_type: "OBJECT".to_string(),
@@ -447,6 +464,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/x".to_string(),
             data_type: "NUMBER".to_string(),
@@ -455,6 +473,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/y".to_string(),
             data_type: "NUMBER".to_string(),
@@ -538,6 +557,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schema_string_array = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -546,6 +566,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: true,
+            metadata: false,
         };
         let claim_schema_object_array = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -554,6 +575,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: true,
+            metadata: false,
         };
         let claim_schema_object_array_field1 = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -562,6 +584,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schema_object_array_field2 = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -570,9 +593,11 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schema_address = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address".to_string(),
             data_type: "OBJECT".to_string(),
@@ -581,6 +606,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_street = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/street".to_string(),
             data_type: "STRING".to_string(),
@@ -589,6 +615,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates".to_string(),
             data_type: "OBJECT".to_string(),
@@ -602,6 +629,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: true,
+            metadata: false,
         };
         let claim_schema_nested_object_array = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -610,6 +638,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: true,
+            metadata: false,
         };
         let claim_schema_nested_object_array_field1 = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -618,6 +647,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schema_nested_object_array_field2 = ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -626,9 +656,11 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         };
         let claim_schema_address_coordinates_x = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/x".to_string(),
             data_type: "NUMBER".to_string(),
@@ -637,6 +669,7 @@ impl CredentialSchemasDB {
         };
         let claim_schema_address_coordinates_y = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "address/coordinates/y".to_string(),
             data_type: "NUMBER".to_string(),
@@ -745,6 +778,7 @@ impl CredentialSchemasDB {
     ) -> CredentialSchema {
         let claim_schema = ClaimSchema {
             array: false,
+            metadata: false,
             id: Uuid::new_v4().into(),
             key: "firstName".to_string(),
             data_type: "PICTURE".to_string(),
@@ -808,6 +842,7 @@ impl CredentialSchemasDB {
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         array: *array,
+                        metadata: false,
                     },
                     required: *required,
                 },

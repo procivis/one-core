@@ -83,6 +83,7 @@ async fn setup_empty() -> TestSetup {
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 
@@ -117,6 +118,7 @@ async fn setup_empty() -> TestSetup {
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         array: false,
+                        metadata: false,
                     },
                     required: true,
                 })

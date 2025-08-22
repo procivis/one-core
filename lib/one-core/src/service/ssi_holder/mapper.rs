@@ -39,6 +39,7 @@ impl From<CredentialClaimSchemaDTO> for CredentialSchemaClaim {
                 created_date: value.created_date,
                 last_modified: value.last_modified,
                 array: false,
+                metadata: false,
             },
             required: value.required,
         }

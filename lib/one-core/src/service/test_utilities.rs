@@ -276,6 +276,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
+                metadata: false,
             }),
         }]),
         issuer_identifier: Some(Identifier {
@@ -303,6 +304,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     array: false,
+                    metadata: false,
                 },
                 required: true,
             }]),
@@ -477,6 +479,7 @@ pub fn dummy_claim_schema() -> ClaimSchema {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         array: false,
+        metadata: false,
     }
 }
 

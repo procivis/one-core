@@ -745,6 +745,7 @@ async fn test_submit_proof_repeating_claims() {
                         created_date: OffsetDateTime::now_utc(),
                         last_modified: OffsetDateTime::now_utc(),
                         array: false,
+                        metadata: false,
                     }),
                 }]),
                 ..dummy_credential()
@@ -1616,6 +1617,7 @@ fn dummy_credential() -> Credential {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     array: false,
+                    metadata: false,
                 },
                 required: true,
             }]),

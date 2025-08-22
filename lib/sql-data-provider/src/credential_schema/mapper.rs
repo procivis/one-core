@@ -96,6 +96,7 @@ pub(super) fn claim_schemas_to_model_vec(
             key: Set(claim_schema.schema.key),
             datatype: Set(claim_schema.schema.data_type),
             array: Set(claim_schema.schema.array),
+            metadata: Set(claim_schema.schema.metadata),
         })
         .collect()
 }

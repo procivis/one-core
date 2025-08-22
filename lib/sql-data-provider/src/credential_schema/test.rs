@@ -94,6 +94,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 
@@ -129,6 +130,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
                             key: claim.key.to_owned(),
                             data_type: claim.datatype.to_owned(),
                             array: false,
+                            metadata: false,
                         },
                         required: claim.required,
                     })
@@ -166,6 +168,7 @@ async fn test_create_credential_schema_success() {
                 key: "key1".to_string(),
                 data_type: "STRING".to_string(),
                 array: false,
+                metadata: false,
             },
             required: true,
         },
@@ -177,6 +180,7 @@ async fn test_create_credential_schema_success() {
                 key: "key2".to_string(),
                 data_type: "STRING".to_string(),
                 array: false,
+                metadata: false,
             },
             required: false,
         },
@@ -333,6 +337,7 @@ async fn test_get_credential_schema_success() {
                     key: format!("key{id}"),
                     data_type: "STRING".to_string(),
                     array: false,
+                    metadata: false,
                 })
                 .collect())
         });
@@ -393,6 +398,7 @@ async fn test_get_credential_schema_deleted() {
                     key: format!("key{id}"),
                     data_type: "STRING".to_string(),
                     array: false,
+                    metadata: false,
                 })
                 .collect())
         });

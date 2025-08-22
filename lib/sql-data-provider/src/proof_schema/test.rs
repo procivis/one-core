@@ -183,6 +183,7 @@ async fn test_create_proof_schema_already_exists() {
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         array: false,
+                        metadata: false,
                     },
                     required: false,
                     order: 0,
@@ -246,6 +247,7 @@ async fn test_create_proof_schema_success() {
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 
@@ -279,6 +281,7 @@ async fn test_create_proof_schema_success() {
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         array: false,
+                        metadata: false,
                     },
                     required: false,
                     order: 0,
@@ -476,6 +479,7 @@ async fn test_get_proof_schema_with_relations() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     array: false,
+                    metadata: false,
                 })
                 .collect())
         });
@@ -543,6 +547,7 @@ async fn test_get_proof_schema_with_relations() {
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 
@@ -612,6 +617,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     array: false,
+                    metadata: false,
                 })
                 .collect())
         });
@@ -688,6 +694,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 
@@ -699,6 +706,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
             order: 2 + i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 

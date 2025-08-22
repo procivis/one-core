@@ -40,6 +40,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             key: Set("TestKey".to_string()),
             datatype: Set("STRING".to_string()),
             array: Set(false),
+            metadata: Set(false),
         }
         .insert(&db)
         .await
@@ -112,6 +113,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 array: false,
+                metadata: false,
             })
             .collect(),
         identifier_id,
@@ -384,6 +386,7 @@ async fn test_get_claim_list_with_relation() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     array: false,
+                    metadata: false,
                 })
                 .collect())
         });

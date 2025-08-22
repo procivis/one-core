@@ -238,6 +238,7 @@ fn generic_credential() -> Credential {
         data_type: "NUMBER".to_string(),
         created_date: now,
         last_modified: now,
+        metadata: false,
     };
     let organisation = dummy_organisation(None);
 

@@ -92,6 +92,7 @@ async fn setup(
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 

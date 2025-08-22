@@ -400,6 +400,7 @@ pub async fn create_credential_schema(
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         array: false,
+        metadata: false,
     };
     let claim_schemas = vec![CredentialSchemaClaim {
         schema: claim_schema.to_owned(),
@@ -464,6 +465,7 @@ pub async fn create_credential_schema_with_claims(
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     array: *array,
+                    metadata: false,
                 },
                 required: required.to_owned(),
             },
@@ -522,6 +524,7 @@ pub async fn create_proof_schema(
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
                         array: false,
+                        metadata: false,
                     },
                     required: claim.required.to_owned(),
                     order: order as _,

@@ -12,6 +12,7 @@ impl From<ClaimSchema> for claim_schema::ActiveModel {
             key: Set(value.key),
             datatype: Set(value.data_type),
             array: Set(value.array),
+            metadata: Set(value.metadata),
         }
     }
 }

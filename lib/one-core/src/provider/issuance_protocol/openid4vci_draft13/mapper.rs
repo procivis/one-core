@@ -254,6 +254,7 @@ pub(super) fn create_claims_from_credential_definition(
                 created_date: now,
                 last_modified: now,
                 array: false,
+                metadata: false,
             },
             required: false,
         };
@@ -293,6 +294,7 @@ pub(super) fn create_claims_from_credential_definition(
                 created_date: now,
                 last_modified: now,
                 array: false,
+                metadata: false,
             },
             required: false,
         })
@@ -427,6 +429,7 @@ fn from_jwt_request_claim_schema(
             created_date: now,
             last_modified: now,
             array: array.unwrap_or(false),
+            metadata: false,
         },
         required,
     }

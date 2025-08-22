@@ -894,6 +894,7 @@ mod tests {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         };
 
         let element_claim_schema = ClaimSchema {
@@ -903,6 +904,7 @@ mod tests {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             array: false,
+            metadata: false,
         };
 
         let claim_schemas = vec![

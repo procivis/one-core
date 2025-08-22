@@ -35,6 +35,7 @@ async fn test_create_claim_schema_list() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         }])
         .await;
     assert!(result.is_ok());
@@ -61,6 +62,7 @@ async fn test_get_claim_schema_list() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         },
         ClaimSchema {
             id: Uuid::new_v4().into(),
@@ -69,6 +71,7 @@ async fn test_get_claim_schema_list() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: false,
+            metadata: false,
         },
     ];
     repository

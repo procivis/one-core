@@ -88,6 +88,7 @@ fn generic_credential_schema() -> CredentialSchema {
                 created_date: now,
                 last_modified: now,
                 array: false,
+                metadata: false,
             },
             required: true,
         }]),

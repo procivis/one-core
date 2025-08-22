@@ -327,6 +327,7 @@ async fn test_import_proof_schema_nested_array() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             array: true,
+            metadata: false,
         },
         required: true,
     };
@@ -349,6 +350,7 @@ async fn test_import_proof_schema_nested_array() {
                             created_date: get_dummy_date(),
                             last_modified: get_dummy_date(),
                             array: false,
+                            metadata: false,
                         },
                         required: true,
                     },

@@ -158,6 +158,7 @@ fn from_jwt_request_claim_schema(
             created_date: now,
             last_modified: now,
             array: array.unwrap_or(false),
+            metadata: false,
         },
         required,
     }

@@ -9,6 +9,7 @@ pub struct ClaimSchema {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub array: bool,
+    pub metadata: bool,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

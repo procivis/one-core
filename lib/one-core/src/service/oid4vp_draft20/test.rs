@@ -181,6 +181,7 @@ async fn test_presentation_definition_success() {
                                     created_date: get_dummy_date(),
                                     last_modified: get_dummy_date(),
                                     array: false,
+                                    metadata: false,
                                 },
                                 required: true,
                                 order: 0,

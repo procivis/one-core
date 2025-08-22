@@ -184,6 +184,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
             order: i as u32,
             datatype: "STRING",
             array: false,
+            metadata: false,
         })
         .collect();
 

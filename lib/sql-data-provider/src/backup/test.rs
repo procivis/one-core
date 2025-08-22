@@ -95,6 +95,7 @@ async fn insert_credential_to_database(
         order: 0,
         datatype: "STRING",
         array: false,
+        metadata: false,
     };
 
     let proof_input = ProofInput {

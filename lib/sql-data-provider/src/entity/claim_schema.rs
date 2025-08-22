@@ -26,6 +26,8 @@ pub struct Model {
     pub datatype: String,
     #[serde(deserialize_with = "bool_from_int")]
     pub array: bool,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub metadata: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

@@ -804,6 +804,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        metadata: false,
     };
     let obj_claim = ClaimSchema {
         array: false,
@@ -812,6 +813,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         data_type: "OBJECT".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        metadata: false,
     };
     let nested_claim = ClaimSchema {
         array: false,
@@ -820,6 +822,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
         data_type: "STRING".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
+        metadata: false,
     };
     let credential_schema = context
         .db

@@ -267,7 +267,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
         "org.iso.18013.5.1.mDL/name" => CredentialSchemaClaim {
@@ -278,7 +278,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
        "org.iso.18013.5.1.mDL/age" => CredentialSchemaClaim {
@@ -289,7 +289,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
        "org.iso.18013.5.1.mDL/country" => CredentialSchemaClaim {
@@ -300,7 +300,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
        "org.iso.18013.5.1.mDL/country_code" => CredentialSchemaClaim {
@@ -311,7 +311,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
         "org.iso.18013.5.1.mDL/info" => CredentialSchemaClaim {
@@ -322,7 +322,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
         "org.iso.18013.5.1.mDL/info/code" => CredentialSchemaClaim {
@@ -333,7 +333,7 @@ async fn test_get_presentation_definition_ok() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 array: false,
-            },
+            metadata: false,},
             required: true,
         },
     ];

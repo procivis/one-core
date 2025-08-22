@@ -180,6 +180,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
             key: Set(claim_schema.key.to_string()),
             datatype: Set(claim_schema.datatype.to_string()),
             array: Set(claim_schema.array),
+            metadata: Set(claim_schema.metadata),
         }
         .insert(database)
         .await?;
@@ -245,6 +246,7 @@ pub struct ClaimInsertInfo<'a> {
     pub order: u32,
     pub datatype: &'a str,
     pub array: bool,
+    pub metadata: bool,
 }
 
 pub struct ProofInput<'a> {
