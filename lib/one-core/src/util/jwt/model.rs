@@ -2,20 +2,26 @@ use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use time::OffsetDateTime;
 
+use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JWTHeader {
+    // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.1
     #[serde(rename = "alg")]
     pub algorithm: String,
 
+    // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.4
     #[serde(rename = "kid", default)]
     pub key_id: Option<String>,
 
+    // https://www.rfc-editor.org/rfc/rfc7519.html#section-5.1
+    // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.9
     #[serde(rename = "typ", default)]
     pub r#type: Option<String>,
 
+    // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.3
     #[serde(rename = "jwk", default)]
     pub jwk: Option<PublicKeyJwkDTO>,
 
@@ -28,6 +34,7 @@ pub struct JWTHeader {
     pub x5c: Option<Vec<String>>,
 }
 
+/// <https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1>
 #[skip_serializing_none]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -47,7 +54,6 @@ pub struct JWTPayload<CustomPayload> {
     #[serde(rename = "sub", default)]
     pub subject: Option<String>,
 
-    /// <https://datatracker.ietf.org/doc/html/rfc7519#section-4.1.3>
     #[serde(rename = "aud", default)]
     #[serde_as(as = "Option<OneOrMany<_>>")]
     pub audience: Option<Vec<String>>,
@@ -98,4 +104,53 @@ impl ProofOfPossessionJwk {
             ProofOfPossessionJwk::Swiyu(jwk) => jwk,
         }
     }
+}
+
+pub(crate) fn jwt_metadata_claims() -> Vec<MetadataClaimSchema> {
+    vec![
+        // selected registered JWT claims
+        // https://www.rfc-editor.org/rfc/rfc7519.html#section-4.1
+        MetadataClaimSchema {
+            key: "iss".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: false,
+        },
+        MetadataClaimSchema {
+            key: "sub".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: false,
+        },
+        MetadataClaimSchema {
+            key: "aud".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: false,
+        },
+        MetadataClaimSchema {
+            key: "exp".to_string(),
+            data_type: "NUMBER".to_string(),
+            array: false,
+            required: false,
+        },
+        MetadataClaimSchema {
+            key: "nbf".to_string(),
+            data_type: "NUMBER".to_string(),
+            array: false,
+            required: false,
+        },
+        MetadataClaimSchema {
+            key: "iat".to_string(),
+            data_type: "NUMBER".to_string(),
+            array: false,
+            required: false,
+        },
+        MetadataClaimSchema {
+            key: "jti".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: false,
+        },
+    ]
 }

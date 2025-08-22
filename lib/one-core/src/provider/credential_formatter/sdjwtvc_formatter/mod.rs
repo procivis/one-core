@@ -47,7 +47,9 @@ use crate::provider::credential_formatter::sdjwt::{
     SdJwtHolderBindingParams, prepare_sd_presentation,
 };
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::{
+    CredentialFormatter, MetadataClaimSchema, StatusListType,
+};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -56,7 +58,7 @@ use crate::provider::revocation::token_status_list::credential_status_from_sdjwt
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::util::jwt::Jwt;
-use crate::util::jwt::model::JWTPayload;
+use crate::util::jwt::model::{JWTPayload, jwt_metadata_claims};
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 
@@ -305,6 +307,22 @@ impl CredentialFormatter for SDJWTVCFormatter {
         }
 
         Ok(url.to_string())
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        // specific SD-JWT VC claims
+        let sd_jwt_vc_claims = vec![MetadataClaimSchema {
+            key: "vct".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: true,
+        }];
+
+        [jwt_metadata_claims(), sd_jwt_vc_claims].concat()
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec![]
     }
 }
 

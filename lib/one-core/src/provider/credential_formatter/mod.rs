@@ -35,6 +35,14 @@ pub mod vcdm;
 #[cfg(test)]
 mod test;
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct MetadataClaimSchema {
+    pub key: String,
+    pub data_type: String,
+    pub array: bool,
+    pub required: bool,
+}
+
 /// Format credentials for sharing and parse credentials which have been shared.
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -110,4 +118,13 @@ pub trait CredentialFormatter: Send + Sync {
     ) -> Result<String, FormatterError> {
         Ok(format!("{core_base_url}/ssi/schema/v1/{id}"))
     }
+
+    /// Returns definitions of metadata claims for the format
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema>;
+
+    /// Path to the subtree of user (non-metadata) claims within the formatted credentials
+    ///
+    /// Returns path segments
+    /// Returns empty if user claims do not appear nested in any specific metadata claim
+    fn user_claims_path(&self) -> Vec<String>;
 }

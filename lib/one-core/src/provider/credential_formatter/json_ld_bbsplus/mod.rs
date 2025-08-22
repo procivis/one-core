@@ -24,12 +24,15 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
+use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, Features, FormatterCapabilities,
     SelectiveDisclosure, VerificationFn,
 };
-use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use crate::provider::credential_formatter::vcdm::{
+    VcdmCredential, VcdmCredentialSubject, vcdm_metadata_claims,
+};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -330,6 +333,47 @@ impl CredentialFormatter for JsonLdBbsplus {
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        let selectively_disclosable_vcdm_claims = vec![
+            // VCDM 2.0
+            MetadataClaimSchema {
+                key: "validFrom".to_string(),
+                data_type: "DATE".to_string(),
+                array: false,
+                required: false,
+            },
+            MetadataClaimSchema {
+                key: "validUntil".to_string(),
+                data_type: "DATE".to_string(),
+                array: false,
+                required: false,
+            },
+            // VCDM v1.1
+            MetadataClaimSchema {
+                key: "issuanceDate".to_string(),
+                data_type: "DATE".to_string(),
+                array: false,
+                required: false,
+            },
+            MetadataClaimSchema {
+                key: "expirationDate".to_string(),
+                data_type: "DATE".to_string(),
+                array: false,
+                required: false,
+            },
+        ];
+
+        [
+            vcdm_metadata_claims(None),
+            selectively_disclosable_vcdm_claims,
+        ]
+        .concat()
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec!["credentialSubject".to_string()]
     }
 }
 

@@ -9,6 +9,7 @@ use url::Url;
 
 use super::error::FormatterError;
 use super::model::CredentialClaim;
+use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialStatus, Description, Issuer, Name,
 };
@@ -306,6 +307,41 @@ pub struct VcdmRelatedResource {
     #[serde(rename = "digestSRI")]
     pub digest_sri: Option<String>,
     pub digest_multibase: Option<String>,
+}
+
+pub(crate) fn vcdm_metadata_claims(parent_object_key: Option<&str>) -> Vec<MetadataClaimSchema> {
+    let mut result = vec![];
+
+    let prefix = if let Some(key) = parent_object_key {
+        result.push(MetadataClaimSchema {
+            key: key.to_string(),
+            data_type: "OBJECT".to_string(),
+            array: false,
+            required: true,
+        });
+
+        format!("{key}/")
+    } else {
+        "".to_string()
+    };
+
+    // selected vcdm claims
+    result.extend(vec![
+        MetadataClaimSchema {
+            key: format!("{prefix}type"),
+            data_type: "STRING".to_string(),
+            array: true,
+            required: true,
+        },
+        MetadataClaimSchema {
+            key: format!("{prefix}id"),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: false,
+        },
+    ]);
+
+    result
 }
 
 #[skip_serializing_none]

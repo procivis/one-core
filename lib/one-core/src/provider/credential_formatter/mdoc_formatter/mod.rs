@@ -33,7 +33,6 @@ use crate::model::credential_schema::CredentialSchemaType;
 use crate::model::identifier::Identifier;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
@@ -41,6 +40,7 @@ use crate::provider::credential_formatter::model::{
     DetailCredential, Features, FormatterCapabilities, HolderBindingCtx, IdentifierDetails,
     PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
+use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::certificate::validator::CertificateValidator;
@@ -379,6 +379,19 @@ impl CredentialFormatter for MdocFormatter {
             .schema_id
             .clone()
             .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        vec![MetadataClaimSchema {
+            key: "doctype".to_string(),
+            data_type: "STRING".to_string(),
+            array: false,
+            required: true,
+        }]
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec![]
     }
 }
 

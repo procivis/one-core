@@ -23,12 +23,13 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
     FormatterCapabilities, Issuer, VerificationFn,
 };
+use crate::provider::credential_formatter::vcdm::vcdm_metadata_claims;
+use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -222,6 +223,14 @@ impl CredentialFormatter for JsonLdClassic {
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        vcdm_metadata_claims(None)
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec!["credentialSubject".to_string()]
     }
 }
 

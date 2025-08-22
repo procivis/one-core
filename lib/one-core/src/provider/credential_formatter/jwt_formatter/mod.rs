@@ -16,16 +16,17 @@ use crate::config::core_config::{
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, FormatterCapabilities,
     VerificationFn,
 };
+use crate::provider::credential_formatter::vcdm::vcdm_metadata_claims;
+use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::jwt::Jwt;
-use crate::util::jwt::model::JWTPayload;
+use crate::util::jwt::model::{JWTPayload, jwt_metadata_claims};
 
 #[cfg(test)]
 mod test;
@@ -243,5 +244,13 @@ impl CredentialFormatter for JWTFormatter {
             ],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        [jwt_metadata_claims(), vcdm_metadata_claims(Some("vc"))].concat()
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec!["vc".to_string(), "credentialSubject".to_string()]
     }
 }

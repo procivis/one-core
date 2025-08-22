@@ -20,7 +20,9 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, Features, FormatterCapabilities,
     VerificationFn,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::{
+    CredentialFormatter, MetadataClaimSchema, StatusListType,
+};
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -167,6 +169,14 @@ impl CredentialFormatter for PhysicalCardFormatter {
                 "No schema_id specified for PHYSICAL_CARD".to_string(),
             ))?
             .to_owned())
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        vec![]
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec![]
     }
 }
 

@@ -24,7 +24,10 @@ use crate::provider::credential_formatter::model::{
     FormatterCapabilities, HolderBindingCtx, IdentifierDetails, SelectiveDisclosure,
     VerificationFn,
 };
-use crate::provider::credential_formatter::{CredentialFormatter, StatusListType};
+use crate::provider::credential_formatter::vcdm::vcdm_metadata_claims;
+use crate::provider::credential_formatter::{
+    CredentialFormatter, MetadataClaimSchema, StatusListType,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::jwt::Jwt;
@@ -42,7 +45,7 @@ use crate::provider::credential_formatter::sdjwt::{
 };
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
-use crate::util::jwt::model::JWTPayload;
+use crate::util::jwt::model::{JWTPayload, jwt_metadata_claims};
 
 pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,
@@ -231,6 +234,14 @@ impl CredentialFormatter for SDJWTFormatter {
             ],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
+    }
+
+    fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
+        [jwt_metadata_claims(), vcdm_metadata_claims(Some("vc"))].concat()
+    }
+
+    fn user_claims_path(&self) -> Vec<String> {
+        vec!["vc".to_string(), "credentialSubject".to_string()]
     }
 }
 
