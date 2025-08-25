@@ -639,6 +639,27 @@ pub enum BlobStorageType {
     Db,
 }
 
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    Hash,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+)]
+pub enum WalletProviderType {
+    #[serde(rename = "PROCIVIS_ONE")]
+    #[strum(serialize = "PROCIVIS_ONE")]
+    ProcivisOne,
+}
+
 #[skip_serializing_none]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -22,3 +22,4 @@ pub mod trust_anchor;
 pub mod trust_entity;
 pub mod validity_credential;
 pub mod wallet_unit;
+pub mod wallet_unit_attestation;

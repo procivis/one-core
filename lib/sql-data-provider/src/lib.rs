@@ -35,6 +35,7 @@ use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
+use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use organisation::OrganisationProvider;
 use organisation::history::OrganisationHistoryDecorator;
 use proof::ProofProvider;
@@ -46,6 +47,7 @@ use trust_anchor::TrustAnchorProvider;
 use trust_entity::TrustEntityProvider;
 use trust_entity::history::TrustEntityHistoryDecorator;
 use validity_credential::ValidityCredentialProvider;
+use wallet_unit::WalletUnitProvider;
 
 use crate::blob::BlobProvider;
 use crate::credential::CredentialProvider;
@@ -81,6 +83,7 @@ pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod validity_credential;
+pub mod wallet_unit;
 
 // Re-exporting the DatabaseConnection to avoid unnecessary dependency on sea_orm in cases where we only need the DB connection
 pub type DbConn = DatabaseConnection;
@@ -109,6 +112,7 @@ pub struct DataLayer {
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
+    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     blob_repository: Arc<dyn BlobRepository>,
 }
 
@@ -259,6 +263,8 @@ impl DataLayer {
 
         let blob_repository = Arc::new(BlobProvider::new(db.clone()));
 
+        let wallet_unit_repository = Arc::new(WalletUnitProvider { db: db.clone() });
+
         Self {
             organisation_repository,
             credential_repository,
@@ -278,6 +284,7 @@ impl DataLayer {
             backup_repository,
             trust_anchor_repository,
             trust_entity_repository,
+            wallet_unit_repository,
             identifier_repository,
             certificate_repository,
             blob_repository,
@@ -343,6 +350,9 @@ impl DataRepository for DataLayer {
     }
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
         self.trust_entity_repository.clone()
+    }
+    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {
+        self.wallet_unit_repository.clone()
     }
 
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {

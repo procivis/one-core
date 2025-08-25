@@ -24,6 +24,7 @@ pub mod revocation_list;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod validity_credential;
+pub mod wallet_unit;
 
 pub use identifier::{
     ActiveModel as IdentifierActiveModel, Column as IdentifierColumn, Entity as IdentifierEntity,

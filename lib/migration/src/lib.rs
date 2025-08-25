@@ -145,7 +145,9 @@ mod m20250818_045324_json_ld_bbs_disclosability;
 mod m20250818_082108_mdoc_disclosability;
 mod m20250818_090154_set_selectively_disclosable_on_sd_jwt_claims;
 mod m20250820_084021_wallet_unit_table;
+mod m20250822_091700_add_wallet_unit_attestation_table;
 mod m20250822_112457_add_metadata_claim_schema_column;
+mod m20250822_122340_update_wallet_unit_table;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -294,6 +296,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20250818_090154_set_selectively_disclosable_on_sd_jwt_claims::Migration),
             Box::new(m20250820_084021_wallet_unit_table::Migration),
             Box::new(m20250822_112457_add_metadata_claim_schema_column::Migration),
+            Box::new(m20250822_091700_add_wallet_unit_attestation_table::Migration),
+            Box::new(m20250822_122340_update_wallet_unit_table::Migration),
         ]
     }
 }
