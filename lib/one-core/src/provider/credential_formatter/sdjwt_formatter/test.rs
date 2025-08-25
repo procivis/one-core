@@ -720,21 +720,23 @@ async fn test_extract_credentials_with_array_stripped() {
         .expect_key_algorithm_provider()
         .return_const(Box::new(key_algorithm_provider));
 
-    let credentials = sd_formatter
+    let credential = sd_formatter
         .extract_credentials(&token, None, Box::new(verify_mock), None)
         .await
         .unwrap();
 
-    let root_item = &credentials.claims.claims.get("root_item").unwrap().value;
+    let root_item = &credential.claims.claims.get("root_item").unwrap().value;
     assert_eq!(root_item.as_str(), Some("root_item"));
 
     let expected: HashMap<String, CredentialClaim> = hashmap! {
         "root".into() => CredentialClaim {
             selectively_disclosable: true,
+            metadata: false,
             value: CredentialClaimValue::Object(
                 hashmap! {
                     "array".into() => CredentialClaim {
                             selectively_disclosable: true,
+                            metadata: false,
                             value: json!(["array_item"]).try_into().unwrap(), // individual items not selectively disclosable
                         },
                 }
@@ -742,10 +744,73 @@ async fn test_extract_credentials_with_array_stripped() {
         },
         "root_item".into() => CredentialClaim {
             selectively_disclosable: true,
+            metadata: false,
             value: json!("root_item").try_into().unwrap(),
         },
+        "jti".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String("http://base_url/ssi/credential/v1/9a414a60-9e6b-4757-8011-9aa870ef4788".to_owned())
+        },
+        "sub".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String("did:holder:123".to_owned()),
+        },
+        "iss".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value:  CredentialClaimValue::String("did:issuer:123".to_owned()),
+        },
+        "exp".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(credential.valid_until.unwrap().unix_timestamp()).try_into().unwrap(),
+        },
+        "vc".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::Object(
+                hashmap! {
+                    "id".into()=> CredentialClaim {
+                        selectively_disclosable: false,
+                        metadata: true,
+                        value: CredentialClaimValue::String(
+                            "http://base_url/ssi/credential/v1/9a414a60-9e6b-4757-8011-9aa870ef4788".to_owned()),
+                    },
+                    "type".into()=> CredentialClaim {
+                        selectively_disclosable: false,
+                        metadata: true,
+                        value: CredentialClaimValue::Array(
+                            vec![
+                                CredentialClaim {
+                                    selectively_disclosable: false,
+                                    metadata: true,
+                                    value: CredentialClaimValue::String("VerifiableCredential".to_owned(),),
+                                },
+                                CredentialClaim {
+                                    selectively_disclosable: false,
+                                    metadata: true,
+                                    value: CredentialClaimValue::String("Type1".to_owned()),
+                                },
+                            ],
+                        ),
+                    },
+                },
+            ),
+        },
+        "iat".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(credential.issuance_date.unwrap().unix_timestamp()).try_into().unwrap(),
+        },
+        "nbf".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(credential.invalid_before.unwrap().unix_timestamp()).try_into().unwrap(),
+        },
     };
-    assert_eq!(credentials.claims.claims, expected);
+    assert_eq!(credential.claims.claims, expected);
 }
 
 #[test]

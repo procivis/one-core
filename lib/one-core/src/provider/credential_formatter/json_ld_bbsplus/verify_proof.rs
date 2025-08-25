@@ -1,5 +1,6 @@
 use super::{JsonLdBbsplus, convert_to_detail_credential, data_integrity};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{DetailCredential, VerificationFn};
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
@@ -51,6 +52,11 @@ impl JsonLdBbsplus {
             .get_hasher("sha-256")
             .map_err(|_| FormatterError::CouldNotVerify("SHA256 hasher unavailable".to_string()))?;
 
+        let metadata_claims = self
+            .get_metadata_claims()
+            .into_iter()
+            .map(|c| c.key)
+            .collect::<Vec<_>>();
         match proof_type(proof_value)? {
             ProofType::Base => {
                 let mandatory_pointers = data_integrity::verify_base_proof(
@@ -64,7 +70,7 @@ impl JsonLdBbsplus {
                 .await?
                 .mandatory_pointers;
 
-                convert_to_detail_credential(vcdm, Some(mandatory_pointers))
+                convert_to_detail_credential(vcdm, Some(mandatory_pointers), &metadata_claims)
             }
             ProofType::Derived => {
                 let handle = self
@@ -87,6 +93,7 @@ impl JsonLdBbsplus {
                     // mandatory pointers not easily visible on verifier side,
                     // so skipping marking the disclosability of claims
                     None,
+                    &metadata_claims,
                 )
             }
         }

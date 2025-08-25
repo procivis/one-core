@@ -1,6 +1,7 @@
 //! Implementations for JWT credential format.
 
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::fmt::Debug;
 
 use anyhow::Context;
@@ -16,7 +17,7 @@ use self::model::{DecomposedToken, JWTHeader, JWTPayload};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, PublicKeySource, TokenVerifier, VerificationFn,
+    AuthenticationFn, CredentialClaim, PublicKeySource, TokenVerifier, VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -28,6 +29,10 @@ pub mod mapper;
 pub mod model;
 
 pub type AnyPayload = serde_json::Map<String, serde_json::Value>;
+
+pub trait WithMetadata {
+    fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError>;
+}
 
 #[async_trait]
 impl TokenVerifier for Box<dyn TokenVerifier> {
@@ -83,6 +88,28 @@ impl<Payload> Jwt<Payload> {
         };
 
         Jwt { header, payload }
+    }
+}
+
+impl<Payload: WithMetadata + Serialize> Jwt<Payload> {
+    pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
+        let value = serde_json::to_value(&self.payload).unwrap();
+
+        let Some(obj) = value.as_object() else {
+            return Err(FormatterError::Failed(
+                "Expected root to be an object".to_string(),
+            ));
+        };
+
+        let mut result = HashMap::new();
+        for key in ["iss", "aud", "sub", "jti", "exp", "nbf", "iat"] {
+            let Some(claim) = obj.get(key) else { continue };
+            let mut claim = CredentialClaim::try_from(claim.clone())?;
+            claim.set_metadata(true);
+            result.insert(key.to_string(), claim);
+        }
+        result.extend(self.payload.custom.get_metadata_claims()?);
+        Ok(result)
     }
 }
 

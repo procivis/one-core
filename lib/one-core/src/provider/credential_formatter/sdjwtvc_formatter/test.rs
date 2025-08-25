@@ -263,6 +263,7 @@ async fn test_format_credential_swiyu() {
                     .try_into()
                     .unwrap(),
                 selectively_disclosable: true,
+                metadata: false,
             },
         );
     credential_data.claims.push(PublishedClaim {
@@ -522,6 +523,10 @@ async fn test_extract_credentials() {
             },
             "is_over_21": true,
             "family_name": "Doe",
+            "iat": 1698151532,
+            "iss": "did:key:z6MktqtXNG8CDUY9PrrtoStFzeCnhpMmgxYL1gikcW3BzvNW",
+            "sub": "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6Im9FTlZzeE9VaUg1NFg4d0pMYVZraWNDUmswMHdCSVE0c1JnYms1NE44TW8ifQ",
+            "vct": "IdentityCredential",
         }
     );
 
@@ -696,7 +701,11 @@ async fn test_extract_credentials_swiyu() {
             "portrait": "data:image/jpeg;base64,iVBORw0KGgoAAAANSUhEUgAAAVYAAAHOCAYAAADDmiGtAAAOiklEQVR4Xu3UsQ0AAAjDMPr/0zyR0RzQwULZOQIECBBIBZauGSNAgACBE1ZPQIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBAQVj9AgACBWEBYY1BzBAgQEFY/QIAAgVhAWGNQcwQIEBBWP0CAAIFYQFhjUHMECBB4VfsBz6y9icEAAAAASUVORK5CYII=",
             "nationality": "CH",
             "birth_date": "1848-09-12",
-            "expiry_date": "2025-08-05"
+            "expiry_date": "2025-08-05",
+            "iat": 1746454355,
+            "iss": "did:tdw:QmPEZPhDFR4nEYSFK5bMnvECqdpf1tPTPJuWs9QrMjCumw:identifier-reg.trust-infra.swiyu-int.admin.ch:api:v1:did:9a5559f0-b81c-4368-a170-e7b4ae424527",
+            "sub": "did:jwk:eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6IlpwOXFMYVRKTWh1UC1kcE1hOXBMbHBxWmNRNGNoVkRKeVNXcmlzQUFpMmciLCJ5IjoieHVWdTVYZ1BOUUstUDBUc0RsaGE4cDVNZkFEZVpoU2dTNzdLVVYzaGN2RSJ9",
+            "vct": "betaid-sdjwt"
         }
     );
 
@@ -1077,14 +1086,17 @@ async fn test_format_extract_round_trip() {
     let expected: HashMap<String, CredentialClaim> = hashmap! {
         "object".into() => CredentialClaim {
             selectively_disclosable: true,
+            metadata: false,
             value: CredentialClaimValue::Object(
                 hashmap! {
                     "measurements".into() => CredentialClaim {
                             selectively_disclosable: true,
+                            metadata: false,
                             value: json!([{"air pollution": 24.6}]).try_into().unwrap(),
                         },
                     "name".into() => CredentialClaim {
                             selectively_disclosable: true,
+                            metadata: false,
                             value: json!("Mike").try_into().unwrap(),
                         },
                 }
@@ -1092,11 +1104,50 @@ async fn test_format_extract_round_trip() {
         },
         "age".into() => CredentialClaim {
             selectively_disclosable: true,
+            metadata: false,
             value: json!(22).try_into().unwrap(),
         },
         "is_over_18".into() => CredentialClaim {
             selectively_disclosable: true,
+            metadata: false,
             value: json!(true).try_into().unwrap(),
+        },
+        "iss".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(
+                result.issuer.did_value().unwrap().as_str()
+            ).try_into().unwrap(),
+        },
+        "vct".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String("credential-schema-id".to_string()),
+        },
+        "nbf".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(result.invalid_before.unwrap().unix_timestamp()).try_into().unwrap(),
+
+        },
+        "iat".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(result.issuance_date.unwrap().unix_timestamp()).try_into().unwrap(),
+
+        },
+        "sub".into() => CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String(
+                "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX".to_owned(),
+            ),
+        },
+        "exp".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value:
+                json!(result.valid_until.unwrap().unix_timestamp()).try_into().unwrap(),
         },
     };
     assert_eq!(result.claims.claims, expected)

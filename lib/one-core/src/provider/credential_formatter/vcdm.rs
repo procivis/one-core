@@ -183,6 +183,40 @@ impl VcdmCredential {
                 .for_each(|schema| schema.metadata = None)
         }
     }
+
+    pub(crate) fn get_metadata_claims(
+        &self,
+        plain_claims: &[String],
+        selectively_disclosable_claims: &[String],
+    ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
+        let value = serde_json::to_value(self).unwrap();
+
+        let Some(obj) = value.as_object() else {
+            return Err(FormatterError::Failed(
+                "Expected root to be an object".to_string(),
+            ));
+        };
+
+        let mut result = HashMap::new();
+        for key in plain_claims {
+            let Some(claim) = obj.get(key) else { continue };
+            let mut claim = CredentialClaim::try_from(claim.clone())?;
+            claim.set_metadata(true);
+            result.insert(key.to_string(), claim);
+        }
+
+        for key in selectively_disclosable_claims {
+            let Some(claim) = obj.get(key) else { continue };
+            let claim = CredentialClaim {
+                selectively_disclosable: true,
+                metadata: true,
+                ..CredentialClaim::try_from(claim.clone())?
+            };
+            result.insert(key.to_string(), claim);
+        }
+
+        Ok(result)
+    }
 }
 
 #[serde_as]

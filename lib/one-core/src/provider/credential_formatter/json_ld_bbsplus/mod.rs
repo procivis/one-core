@@ -226,8 +226,13 @@ impl CredentialFormatter for JsonLdBbsplus {
             FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
         })?;
 
+        let metadata_claims = self
+            .get_metadata_claims()
+            .into_iter()
+            .map(|c| c.key)
+            .collect::<Vec<_>>();
         let mandatory_pointers = extract_mandatory_pointers(&vc)?;
-        convert_to_detail_credential(vc, mandatory_pointers)
+        convert_to_detail_credential(vc, mandatory_pointers, &metadata_claims)
     }
 
     async fn format_credential_presentation(

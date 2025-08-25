@@ -131,6 +131,7 @@ impl TryFrom<serde_json::Value> for CredentialClaim {
     fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
         Ok(Self {
             selectively_disclosable: false,
+            metadata: false,
             value: value.try_into()?,
         })
     }

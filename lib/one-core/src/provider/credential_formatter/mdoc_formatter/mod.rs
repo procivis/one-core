@@ -452,6 +452,14 @@ async fn extract_credentials_internal(
     }
 
     let mut claims = extract_claims(namespaces)?;
+    claims.insert(
+        "doctype".to_string(),
+        CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String(mso.doc_type.clone()),
+        },
+    );
 
     let layout = claims.remove(LAYOUT_NAMESPACE);
 
@@ -927,6 +935,7 @@ fn extract_claims(
                 issuer_signed_item.element_identifier,
                 CredentialClaim {
                     selectively_disclosable: true,
+                    metadata: false,
                     value: val.try_into()?,
                 },
             );
@@ -935,6 +944,7 @@ fn extract_claims(
             namespace,
             CredentialClaim {
                 selectively_disclosable: true,
+                metadata: false,
                 value: CredentialClaimValue::Object(namespace_object_content),
             },
         );

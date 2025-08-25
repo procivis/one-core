@@ -139,7 +139,16 @@ pub struct DetailCredential {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CredentialClaim {
     pub selectively_disclosable: bool,
+    pub metadata: bool,
     pub value: CredentialClaimValue,
+}
+
+impl CredentialClaim {
+    /// Recursively sets the metadata flag.
+    pub(crate) fn set_metadata(&mut self, metadata: bool) {
+        self.metadata = metadata;
+        self.value.set_metadata(metadata);
+    }
 }
 
 impl Serialize for CredentialClaim {
@@ -168,6 +177,25 @@ pub enum CredentialClaimValue {
     String(String),
     Array(Vec<CredentialClaim>),
     Object(HashMap<String, CredentialClaim>),
+}
+
+impl CredentialClaimValue {
+    /// Recursively sets the metadata flag.
+    pub(crate) fn set_metadata(&mut self, metadata: bool) {
+        match self {
+            CredentialClaimValue::Bool(_)
+            | CredentialClaimValue::Number(_)
+            | CredentialClaimValue::String(_) => {
+                // nothing to do
+            }
+            CredentialClaimValue::Array(arr) => {
+                arr.iter_mut().for_each(|elem| elem.set_metadata(metadata))
+            }
+            CredentialClaimValue::Object(obj) => {
+                obj.iter_mut().for_each(|(_, v)| v.set_metadata(metadata))
+            }
+        }
+    }
 }
 
 impl Serialize for CredentialClaimValue {

@@ -125,7 +125,7 @@ pub(crate) fn jwt_metadata_claims() -> Vec<MetadataClaimSchema> {
         MetadataClaimSchema {
             key: "aud".to_string(),
             data_type: "STRING".to_string(),
-            array: false,
+            array: true,
             required: false,
         },
         MetadataClaimSchema {

@@ -643,17 +643,25 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         hashmap! {
             "a".into() => CredentialClaim {
                 selectively_disclosable: true,
+                metadata: false,
                 value: CredentialClaimValue::Object(hashmap! {
                     "b".into() => CredentialClaim {
                         selectively_disclosable: true,
+                        metadata: false,
                         value: CredentialClaimValue::Object(hashmap! {
                             "c".into() =>CredentialClaim {
                                 selectively_disclosable: false,
+                                metadata: false,
                                 value: CredentialClaimValue::String("15".into())
                             }
                         })
                     }
                 })
+            },
+            "doctype".into()=> CredentialClaim {
+                selectively_disclosable: false,
+                metadata: true,
+                value: CredentialClaimValue::String("doctype".into())
             }
         },
         credential.claims.claims

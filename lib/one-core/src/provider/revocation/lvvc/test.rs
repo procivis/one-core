@@ -137,6 +137,7 @@ fn extracted_credential(status: &str) -> DetailCredential {
                 "status".to_string(),
                 CredentialClaim {
                     selectively_disclosable: false,
+                    metadata: false,
                     value: CredentialClaimValue::String(status.to_string()),
                 },
             )]),

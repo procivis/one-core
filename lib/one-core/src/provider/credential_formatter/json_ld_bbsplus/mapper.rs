@@ -11,6 +11,7 @@ use crate::provider::credential_formatter::vcdm::VcdmCredential;
 pub(super) fn convert_to_detail_credential(
     mut vcdm: VcdmCredential,
     mandatory_pointers: Option<Vec<String>>,
+    metadata_claim_keys: &[String],
 ) -> Result<DetailCredential, FormatterError> {
     let Some(credential_subject) = vcdm.credential_subject.pop() else {
         return Err(FormatterError::Failed(
@@ -23,6 +24,17 @@ pub(super) fn convert_to_detail_credential(
             "We currently don't support multiple credential subjects".to_string(),
         ));
     }
+
+    let (plain_metadata, sd_metadata): (Vec<_>, Vec<_>) =
+        if let Some(mandatory_pointers) = &mandatory_pointers {
+            metadata_claim_keys
+                .iter()
+                .cloned()
+                .partition(|key| mandatory_pointers.contains(key))
+        } else {
+            (metadata_claim_keys.to_vec(), vec![])
+        };
+    let metadata_claims = vcdm.get_metadata_claims(&plain_metadata, &sd_metadata)?;
 
     let credential_schema = vcdm
         .credential_schema
@@ -52,6 +64,7 @@ pub(super) fn convert_to_detail_credential(
             .collect();
         mark_object_claims_selectively_disclosable(&mut claims, &mandatory_claim_paths);
     }
+    claims.extend(metadata_claims);
 
     let claims = CredentialSubject {
         id: credential_subject.id.clone(),

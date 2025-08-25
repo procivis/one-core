@@ -286,6 +286,7 @@ pub(crate) async fn extract_credentials_internal(
             http_client,
         )
         .await?;
+    let metadata_claims = jwt.get_metadata_claims()?;
     let credential_subject = jwt
         .payload
         .custom
@@ -295,10 +296,11 @@ pub(crate) async fn extract_credentials_internal(
         .next()
         .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
 
-    let claims = CredentialSubject {
+    let mut claims = CredentialSubject {
         id: credential_subject.id,
         claims: HashMap::from_iter(credential_subject.claims),
     };
+    claims.claims.extend(metadata_claims);
 
     let issuer = match (jwt.payload.issuer, jwt.payload.custom.vc.issuer) {
         (None, None) => {

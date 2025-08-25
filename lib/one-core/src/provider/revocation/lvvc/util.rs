@@ -71,6 +71,7 @@ mod tests {
                 "status".to_string(),
                 CredentialClaim {
                     selectively_disclosable: false,
+                    metadata: false,
                     value: CredentialClaimValue::String("ACCEPTED".to_string()),
                 },
             )]),
@@ -91,6 +92,7 @@ mod tests {
                         "id".to_string(),
                         CredentialClaim {
                             selectively_disclosable: false,
+                            metadata: false,
                             value: CredentialClaimValue::String(Uuid::new_v4().urn().to_string()),
                         },
                     ),
@@ -98,6 +100,7 @@ mod tests {
                         "status".to_string(),
                         CredentialClaim {
                             selectively_disclosable: false,
+                            metadata: false,
                             value: CredentialClaimValue::String("ACCEPTED".to_string()),
                         },
                     ),
@@ -109,6 +112,7 @@ mod tests {
                     "status".to_string(),
                     CredentialClaim {
                         selectively_disclosable: false,
+                        metadata: false,
                         value: CredentialClaimValue::String("ACCEPTED".to_string()),
                     },
                 )]),
@@ -129,6 +133,7 @@ mod tests {
                 "status".to_string(),
                 CredentialClaim {
                     selectively_disclosable: false,
+                    metadata: false,
                     value: CredentialClaimValue::String("ACCEPTED".to_string()),
                 },
             )]),

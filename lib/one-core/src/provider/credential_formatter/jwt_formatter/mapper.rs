@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use one_dto_mapper::try_convert_inner;
 use shared_types::DidValue;
 
 use super::model::VcClaim;
@@ -27,6 +26,7 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
     type Error = anyhow::Error;
 
     fn try_from(jwt: Jwt<VcClaim>) -> Result<Self, Self::Error> {
+        let metadata_claims = jwt.get_metadata_claims()?;
         let credential_subject = jwt
             .payload
             .custom
@@ -51,6 +51,8 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             .ok_or(anyhow::anyhow!("JWT missing credential issuer"))?
             .parse()?;
 
+        let mut claims = HashMap::from_iter(credential_subject.claims);
+        claims.extend(metadata_claims);
         Ok(Self {
             id: jwt.payload.jwt_id,
             issuance_date: jwt.payload.issued_at,
@@ -62,7 +64,7 @@ impl TryFrom<Jwt<VcClaim>> for DetailCredential {
             subject,
             claims: CredentialSubject {
                 id: credential_subject.id,
-                claims: try_convert_inner(HashMap::from_iter(credential_subject.claims))?,
+                claims,
             },
             status: jwt.payload.custom.vc.credential_status,
             credential_schema: jwt

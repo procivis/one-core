@@ -321,6 +321,7 @@ fn gather_disclosures_from_sd(
         {
             let credential_claim = CredentialClaim {
                 selectively_disclosable: true,
+                metadata: false,
                 value: CredentialClaimValue::try_from(disclosure.value.clone())?,
             };
             result.insert(disclosure.key.clone(), credential_claim);

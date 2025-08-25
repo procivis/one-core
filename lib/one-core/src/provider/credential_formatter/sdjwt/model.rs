@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
+use maplit::hashmap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
@@ -15,6 +16,7 @@ use crate::provider::credential_formatter::model::{
     SettableClaims,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
+use crate::util::jwt::WithMetadata;
 
 #[skip_serializing_none]
 #[serde_as]
@@ -52,10 +54,37 @@ pub struct VcClaim {
     /// https://www.iana.org/assignments/named-information/named-information.xhtml
     #[serde(rename = "_sd_alg", default)]
     pub hash_alg: Option<String>,
+
+    /// Copy of all the claims to retain selective disclosability info.
+    /// Used later to retrieve metadata claims.
+    #[serde(skip)]
+    pub all_claims: Option<CredentialClaim>,
+}
+
+impl WithMetadata for VcClaim {
+    fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
+        let Some(claims) = &self.all_claims else {
+            return Ok(HashMap::new());
+        };
+        let Some(vc) = claims.value.as_object().and_then(|o| o.get("vc")) else {
+            return Ok(HashMap::new());
+        };
+        let mut vc_claim = vc.clone();
+        if let Some(obj) = vc_claim.value.as_object_mut() {
+            obj.retain(|k, _| k == "type" || k == "id");
+        }
+        vc_claim.set_metadata(true);
+
+        Ok(hashmap! {
+            "vc".to_string() => vc_claim,
+        })
+    }
 }
 
 impl SettableClaims for VcClaim {
     fn set_claims(&mut self, mut claims: CredentialClaim) -> Result<(), FormatterError> {
+        // store all claims for later use
+        self.all_claims = Some(claims.clone());
         let Some(subject) = self.vc.credential_subject.first_mut() else {
             return Err(FormatterError::Failed(
                 "Missing vc.credential_subject".to_string(),

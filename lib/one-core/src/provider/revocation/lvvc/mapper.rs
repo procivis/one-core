@@ -144,6 +144,7 @@ mod tests {
                 "status".to_string(),
                 CredentialClaim {
                     selectively_disclosable: false,
+                    metadata: false,
                     value: CredentialClaimValue::String("ACCEPTED".to_string())
                 }
             )]))
@@ -156,6 +157,7 @@ mod tests {
                 "status".to_string(),
                 CredentialClaim {
                     selectively_disclosable: false,
+                    metadata: false,
                     value: CredentialClaimValue::String("REVOKED".to_string())
                 }
             )]))
@@ -168,6 +170,7 @@ mod tests {
                 "status".to_string(),
                 CredentialClaim {
                     selectively_disclosable: false,
+                    metadata: false,
                     value: CredentialClaimValue::String("SUSPENDED".to_string())
                 }
             )]))
@@ -183,6 +186,7 @@ mod tests {
                     "status".to_string(),
                     CredentialClaim {
                         selectively_disclosable: false,
+                        metadata: false,
                         value: CredentialClaimValue::String("SUSPENDED".to_string())
                     }
                 ),
@@ -190,6 +194,7 @@ mod tests {
                     "suspendEndDate".to_string(),
                     CredentialClaim {
                         selectively_disclosable: false,
+                        metadata: false,
                         value: CredentialClaimValue::String("2005-04-02T21:37:00Z".to_string())
                     }
                 )

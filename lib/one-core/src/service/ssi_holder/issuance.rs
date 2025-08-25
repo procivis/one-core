@@ -44,6 +44,7 @@ use crate::provider::issuance_protocol::{
     IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::provider::key_storage::model::KeySecurity;
+use crate::service::error::ServiceError::BusinessLogic;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -370,19 +371,24 @@ impl SSIHolderService {
         let now = OffsetDateTime::now_utc();
 
         for (key, value) in credential.claims.claims {
-            let this_claim_schema = claim_schemas
+            let claim_schema = claim_schemas
                 .iter()
-                .find(|claim_schema| claim_schema.schema.key == key)
-                .ok_or(ServiceError::BusinessLogic(
-                    BusinessLogicError::MissingClaimSchemas,
-                ))?;
+                .find(|claim_schema| claim_schema.schema.key == key);
+            let Some(claim_schema) = claim_schema else {
+                // Legacy compatibility shim: extra metadata claims are allowed, if not in the
+                // schema they are also not stored.
+                if value.metadata {
+                    continue;
+                }
+                return Err(BusinessLogic(BusinessLogicError::MissingClaimSchemas));
+            };
 
             collected_claims.extend(value_to_model_claims(
                 *credential_id,
                 claim_schemas,
                 value,
                 now,
-                &this_claim_schema.schema,
+                &claim_schema.schema,
                 &key,
             )?);
         }

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use maplit::hashmap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none};
@@ -9,6 +10,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, SettableClaims,
 };
+use crate::util::jwt::WithMetadata;
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]
@@ -33,6 +35,18 @@ pub struct SdJwtVc {
 
     #[serde(flatten)]
     pub public_claims: HashMap<String, CredentialClaim>,
+}
+
+impl WithMetadata for SdJwtVc {
+    fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
+        Ok(hashmap! {
+            "vct".to_string() => CredentialClaim {
+                selectively_disclosable: false,
+                metadata: true,
+                value: CredentialClaimValue::String(self.vc_type.clone()),
+            }
+        })
+    }
 }
 
 impl SettableClaims for SdJwtVc {

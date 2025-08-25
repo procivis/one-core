@@ -398,6 +398,7 @@ impl SDJWTVCFormatter {
             }
         }
 
+        let metadata_claims = jwt.get_metadata_claims()?;
         let subject = jwt
             .payload
             .subject
@@ -406,6 +407,11 @@ impl SDJWTVCFormatter {
             .map_err(|e| FormatterError::Failed(e.to_string()))?
             .map(IdentifierDetails::Did);
 
+        let mut claims = CredentialSubject {
+            claims: jwt.payload.custom.public_claims,
+            id: None,
+        };
+        claims.claims.extend(metadata_claims);
         Ok((
             DetailCredential {
                 id: jwt.payload.jwt_id,
@@ -416,10 +422,7 @@ impl SDJWTVCFormatter {
                 invalid_before: jwt.payload.invalid_before,
                 issuer,
                 subject,
-                claims: CredentialSubject {
-                    claims: jwt.payload.custom.public_claims,
-                    id: None,
-                },
+                claims,
                 status: credential_status_from_sdjwt_status(&jwt.payload.custom.status),
                 credential_schema: None,
             },

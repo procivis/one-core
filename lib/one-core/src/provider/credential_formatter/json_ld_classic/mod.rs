@@ -283,6 +283,14 @@ impl JsonLdClassic {
             ));
         }
 
+        let metadata_claims = vcdm.get_metadata_claims(
+            &self
+                .get_metadata_claims()
+                .into_iter()
+                .map(|c| c.key)
+                .collect::<Vec<_>>(),
+            &[],
+        )?;
         // We only take first subject now as one credential only contains one credential schema
         let credential_subject = vcdm.credential_subject.into_iter().next().ok_or_else(|| {
             FormatterError::CouldNotExtractCredentials(
@@ -290,10 +298,8 @@ impl JsonLdClassic {
             )
         })?;
 
-        let claims = CredentialSubject {
-            id: credential_subject.id.clone(),
-            claims: HashMap::from_iter(credential_subject.claims),
-        };
+        let mut claims = HashMap::from_iter(credential_subject.claims);
+        claims.extend(metadata_claims);
 
         Ok(DetailCredential {
             id: vcdm.id.map(|url| url.to_string()),
@@ -305,9 +311,13 @@ impl JsonLdClassic {
             issuer: IdentifierDetails::Did(vcdm.issuer.to_did_value()?),
             subject: credential_subject
                 .id
+                .clone()
                 .and_then(|id| DidValue::from_did_url(id).ok())
                 .map(IdentifierDetails::Did),
-            claims,
+            claims: CredentialSubject {
+                id: credential_subject.id,
+                claims,
+            },
             status: vcdm.credential_status,
             credential_schema: vcdm.credential_schema.map(|v| v[0].clone()),
         })

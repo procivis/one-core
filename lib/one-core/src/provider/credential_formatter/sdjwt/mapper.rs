@@ -21,5 +21,6 @@ pub(crate) fn vc_from_credential(
         digests: vec![],
         vc: credential.into(),
         hash_alg: Some(algorithm.to_owned()),
+        all_claims: None,
     })
 }

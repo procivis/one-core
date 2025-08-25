@@ -100,6 +100,7 @@ async fn test_issuance_accept_openid4vc() {
         .await;
 
     let schema_id = Uuid::new_v4();
+    let metadata_schema_id = Uuid::new_v4();
 
     let credential_schema = context
         .db
@@ -109,18 +110,32 @@ async fn test_issuance_accept_openid4vc() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                claim_schemas: Some(vec![CredentialSchemaClaim {
-                    schema: ClaimSchema {
-                        id: schema_id.into(),
-                        key: "string".to_string(),
-                        data_type: "STRING".to_string(),
-                        created_date: datetime!(2024-10-20 12:00 +1),
-                        last_modified: datetime!(2024-10-20 12:00 +1),
-                        array: false,
-                        metadata: false,
+                claim_schemas: Some(vec![
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: schema_id.into(),
+                            key: "string".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: datetime!(2024-10-20 12:00 +1),
+                            last_modified: datetime!(2024-10-20 12:00 +1),
+                            array: false,
+                            metadata: false,
+                        },
+                        required: true,
                     },
-                    required: true,
-                }]),
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: metadata_schema_id.into(),
+                            key: "iss".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: datetime!(2024-10-20 12:00 +1),
+                            last_modified: datetime!(2024-10-20 12:00 +1),
+                            array: false,
+                            metadata: true,
+                        },
+                        required: false,
+                    },
+                ]),
                 ..Default::default()
             },
         )
@@ -194,10 +209,20 @@ async fn test_issuance_accept_openid4vc() {
     );
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
 
-    let claims = credential.claims.as_ref().unwrap();
-    assert_eq!(claims.len(), 1);
-    assert_eq!(claims[0].value.as_ref().unwrap(), "string");
+    let mut claims = credential.claims.unwrap();
+    claims.sort_by(|a, b| a.path.cmp(&b.path));
+    assert_eq!(claims.len(), 2);
+    assert_eq!(claims[0].path, "iss");
+    assert_eq!(
+        claims[0].value.as_ref().unwrap(),
+        "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+    );
     assert_eq!(claims[0].selectively_disclosable, false);
+    assert_eq!(claims[0].schema.as_ref().unwrap().metadata, true);
+    assert_eq!(claims[1].path, "string");
+    assert_eq!(claims[1].value.as_ref().unwrap(), "string");
+    assert_eq!(claims[1].selectively_disclosable, false);
+    assert_eq!(claims[1].schema.as_ref().unwrap().metadata, false);
 
     let history = context
         .db
