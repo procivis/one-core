@@ -972,18 +972,39 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
     assert_eq!(resp.status(), 200);
     let body = resp.json_value().await;
     assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
-    let expected_requested_credentials = json!({
-        "applicableCredentials": [],
-        "fields": [{
-            "id": "test_id:non-existing-claim",
-            "keyMap": {},
-            "name": "non-existing-claim",
-            "required": true,
-        }],
-        "id": "test_id",
-        "inapplicableCredentials": [credential.id.to_string()]
+    let credential_request = &body["requestGroups"][0]["requestedCredentials"][0];
+    credential_request["inapplicableCredentials"].assert_eq(&vec![credential.id.to_string()]);
+    assert_eq!(
+        credential_request["applicableCredentials"]
+            .as_array()
+            .unwrap()
+            .len(),
+        0
+    );
+
+    let field_non_existing = json!({
+        "id": "test_id:non-existing-claim",
+        "keyMap": {},
+        "name": "non-existing-claim",
+        "required": true,
     });
-    body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
+    let field_1 = json!({
+        "id": "test_id:firstName",
+        "keyMap": {
+            credential.id.to_string(): "firstName"
+        },
+        "name": "firstName",
+        "required": true
+    });
+    let field_2 = json!({
+        "id": "test_id:isOver18",
+        "keyMap": {
+            credential.id.to_string(): "isOver18"
+        },
+        "name": "isOver18",
+        "required": true
+    });
+    credential_request["fields"].assert_eq_unordered(&[field_1, field_2, field_non_existing]);
 }
 
 #[tokio::test]
@@ -1036,7 +1057,11 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
         .id("test_id")
         .claims(vec![
             ClaimQuery::builder()
-                .id("test-claim-id")
+                .id("test-claim-firstName")
+                .path(vec!["firstName".to_string()])
+                .build(),
+            ClaimQuery::builder()
+                .id("test-claim-isOver18")
                 .path(vec!["isOver18".to_string()])
                 .build(),
         ])
@@ -1055,13 +1080,23 @@ async fn test_get_presentation_definition_dcql_inapplicable_credential() {
     assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
     body["requestGroups"][0]["requestedCredentials"][0]["inapplicableCredentials"]
         .assert_eq(&vec![credential.id.to_string()]);
-    let field = json!({
+
+    let field_found = json!({
+        "id": "test_id:firstName",
+        "keyMap": {
+            credential.id.to_string(): "firstName"
+        },
+        "name": "firstName",
+        "required": true
+    });
+    let field_not_found = json!({
         "id": "test_id:isOver18",
         "keyMap": {},
         "name": "isOver18",
         "required": true
     });
-    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"]
+        .assert_eq_unordered(&[field_found, field_not_found]);
 }
 
 #[tokio::test]

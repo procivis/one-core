@@ -184,97 +184,131 @@ fn first_applicable_claim_set(
     credentials: &[Credential],
     filters: &[CredentialFilter],
 ) -> Result<ClaimSetMatchResult, VerificationProtocolError> {
-    let mut claims_to_credentials = HashMap::new();
-    let mut applicable_credentials = vec![];
-    let mut inapplicable_credentials = vec![];
-    // match each credential against the particular filter / claim set
-    for credential in credentials {
-        if !matches!(credential.state, CredentialStateEnum::Accepted) {
-            inapplicable_credentials.push(credential.id);
-            continue;
-        }
-        // Go through the filters and find the first that matches some claims, if any.
-        let Some(selected_claims) = filters
-            .iter()
-            .filter_map(|filter| select_claims(credential, filter).transpose())
-            .next()
-            .transpose()?
-        else {
-            // the current credential is not applicable for any of the filters
-            // -> mark inapplicable and continue
-            inapplicable_credentials.push(credential.id);
-            continue;
-        };
-
-        // The current credential matched. Arrange the claims by path so that it is easier
-        // to later build the `field.keyMap`.
-        applicable_credentials.push(credential.id);
-        for selected_claim in selected_claims {
-            let sd_supported = selected_claim.selective_disclosure_supported;
-            claims_to_credentials
-                .entry(selected_claim.key)
-                .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
-                    claim_to_creds.credentials.push(credential.id);
-                    claim_to_creds.selective_disclosure_supported =
-                        claim_to_creds.selective_disclosure_supported && sd_supported;
-                })
-                .or_insert(ClaimToCredentials {
-                    selective_disclosure_supported: sd_supported,
-                    credentials: vec![credential.id],
-                    required_by_verifier: selected_claim.required_by_verifier,
-                });
-        }
-    }
-
-    if !applicable_credentials.is_empty() {
+    if credentials.is_empty() {
+        // no local candidates available
+        // build the match result so that it explains which fields we were looking for that didn't match any credentials.
         return Ok(ClaimSetMatchResult {
-            claims_to_credentials,
-            applicable_credentials,
-            inapplicable_credentials,
+            claims_to_credentials: filters
+                // Presumably the last option has the lowest requirements (as it is the least preferred by verifiers).
+                // Let's use that as the minimum requirement the credentials in the wallet failed to match.
+                .last()
+                .iter()
+                .flat_map(|filter| filter.claims.iter().map(|claim| (claim, &filter.format)))
+                .filter(|(claim, _)| claim.required)
+                .map(|(claim, format)| {
+                    (
+                        dcql_path_to_absent_claim_key(&claim.path, format),
+                        ClaimToCredentials {
+                            credentials: vec![],
+                            // the empty set of credentials is always selectively disclosable
+                            selective_disclosure_supported: true,
+                            required_by_verifier: true,
+                        },
+                    )
+                })
+                .collect(),
+            // empty
+            applicable_credentials: vec![],
+            inapplicable_credentials: vec![],
         });
     }
 
-    // We have exhausted all options / claim sets and never found any matching credential.
-    // -> build the match result so that it explains which fields we were looking for that didn't
-    // match any credentials.
+    let mut claims_to_credentials = HashMap::new();
+    let mut applicable_credentials = vec![];
+    let mut inapplicable_credentials = vec![];
+
+    // match each credential against the particular filter / claim set
+    for credential in credentials {
+        let mut applicable = false;
+        let mut matched_claims = vec![];
+
+        // Go through the filters and find the first that matches some claims, if any.
+        for filter in filters {
+            let claims = select_claims(credential, filter)?;
+
+            let credential_applicable = !claims
+                .iter()
+                .any(|c| matches!(c, MatchedClaim::Missing { .. }));
+            if credential_applicable {
+                matched_claims = claims;
+                applicable = true;
+                break;
+            }
+
+            // for inapplicable credentials remember the first filter result
+            if matched_claims.is_empty() {
+                matched_claims = claims;
+            }
+        }
+
+        if !matches!(credential.state, CredentialStateEnum::Accepted) {
+            applicable = false;
+        }
+
+        if applicable {
+            applicable_credentials.push(credential.id);
+        } else {
+            inapplicable_credentials.push(credential.id);
+        }
+
+        for matched_claim in matched_claims {
+            match matched_claim {
+                MatchedClaim::Selected(selected_claim) => {
+                    let sd_supported = selected_claim.selective_disclosure_supported;
+                    claims_to_credentials
+                        .entry(selected_claim.key)
+                        .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
+                            claim_to_creds.credentials.push(credential.id);
+                            claim_to_creds.selective_disclosure_supported =
+                                claim_to_creds.selective_disclosure_supported && sd_supported;
+                        })
+                        .or_insert(ClaimToCredentials {
+                            selective_disclosure_supported: sd_supported,
+                            credentials: vec![credential.id],
+                            required_by_verifier: selected_claim.required_by_verifier,
+                        });
+                }
+                MatchedClaim::Missing { path, format } => {
+                    claims_to_credentials
+                        .entry(dcql_path_to_absent_claim_key(&path, &format))
+                        .or_insert(ClaimToCredentials {
+                            credentials: vec![],
+                            // the empty set of credentials is always selectively disclosable
+                            selective_disclosure_supported: true,
+                            required_by_verifier: true,
+                        });
+                }
+            };
+        }
+    }
+
     Ok(ClaimSetMatchResult {
-        claims_to_credentials: filters
-            // Presumably the last option has the lowest requirements (as it is the least preferred by verifiers).
-            // Let's use that as the minimum requirement the credentials in the wallet failed to match.
-            .last()
-            .iter()
-            .flat_map(|filter| filter.claims.iter().map(|claim| (claim, &filter.format)))
-            .filter(|(claim, _)| claim.required)
-            .map(|(claim, format)| {
-                (
-                    dcql_path_to_absent_claim_key(&claim.path, format),
-                    ClaimToCredentials {
-                        credentials: vec![],
-                        // the empty set of credentials is always selectively disclosable
-                        selective_disclosure_supported: true,
-                        required_by_verifier: true,
-                    },
-                )
-            })
-            .collect(),
-        // empty
+        claims_to_credentials,
         applicable_credentials,
-        // all credential candidates
         inapplicable_credentials,
     })
 }
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 struct SelectedClaim {
     key: String,
     selective_disclosure_supported: bool,
     required_by_verifier: bool,
 }
 
+#[derive(Debug, PartialEq, Eq, Hash)]
+enum MatchedClaim {
+    Selected(SelectedClaim),
+    Missing {
+        path: ClaimPath,
+        format: CredentialFormat,
+    },
+}
+
 fn select_claims(
     credential: &Credential,
     filter: &CredentialFilter,
-) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
+) -> Result<Vec<MatchedClaim>, VerificationProtocolError> {
     let Some(claims) = &credential.claims else {
         return Err(VerificationProtocolError::Failed(format!(
             "credential {} missing claims",
@@ -282,7 +316,7 @@ fn select_claims(
         )));
     };
 
-    let mut result = HashMap::new();
+    let mut selected = HashMap::new();
     // add all nonselectively disclosable claims defined from root
     {
         let root_nonselectively_disclosable: Vec<_> = claims
@@ -304,7 +338,7 @@ fn select_claims(
             .iter()
             .chain(nonselectively_disclosable_children_of_root.iter());
 
-        result.extend(nonselectively_disclosable.map(|claim| {
+        selected.extend(nonselectively_disclosable.map(|claim| {
             (
                 claim.path.to_owned(),
                 SelectedClaim {
@@ -316,16 +350,18 @@ fn select_claims(
         }));
     }
 
+    let mut missing_claims = vec![];
+
     // add claims requested by the verifier
     for claim_filter in &filter.claims {
         let matching_claims = get_matching_claims(claims, claim_filter, &filter.format)?;
         if !matching_claims.is_empty() {
             matching_claims.into_iter().for_each(|matching_claim| {
-                if let Some(claim) = result.get_mut(&matching_claim.path) {
+                if let Some(claim) = selected.get_mut(&matching_claim.path) {
                     claim.required_by_verifier =
                         claim.required_by_verifier || claim_filter.required;
                 } else {
-                    result.insert(
+                    selected.insert(
                         matching_claim.path.to_owned(),
                         SelectedClaim {
                             key: matching_claim.path.to_owned(),
@@ -336,12 +372,20 @@ fn select_claims(
                 }
             });
         } else if claim_filter.required {
-            // no match but claim is required --> abort as not matching
-            return Ok(None);
+            // no match but claim is required --> add to missing claims (mark the credential as inapplicable)
+            missing_claims.push(MatchedClaim::Missing {
+                path: claim_filter.path.to_owned(),
+                format: filter.format.to_owned(),
+            });
         }
     }
 
-    Ok(Some(result.into_values().collect()))
+    let mut result: Vec<MatchedClaim> =
+        selected.into_values().map(MatchedClaim::Selected).collect();
+
+    result.extend(missing_claims);
+
+    Ok(result)
 }
 
 fn get_matching_claims<'a>(

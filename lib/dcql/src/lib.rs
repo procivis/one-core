@@ -85,7 +85,7 @@ pub struct ClaimQuery {
     pub intent_to_retain: Option<bool>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum CredentialFormat {
     #[serde(rename = "jwt_vc_json")]
     JwtVc,
@@ -99,13 +99,13 @@ pub enum CredentialFormat {
     W3cSdJwt,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Builder)]
 #[serde(transparent)]
 pub struct ClaimPath {
     pub segments: Vec<PathSegment>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum PathSegment {
     /// Property of object with specific name
