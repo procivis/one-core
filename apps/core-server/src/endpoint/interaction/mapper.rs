@@ -1,7 +1,8 @@
-use one_core::service::ssi_holder::dto::HandleInvitationResultDTO;
-use one_dto_mapper::convert_inner;
+use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
+use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use super::dto::HandleInvitationResponseRestDTO;
+use crate::endpoint::interaction::dto::InitiateIssuanceRequestRestDTO;
 
 impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
     fn from(value: HandleInvitationResultDTO) -> Self {
@@ -44,6 +45,21 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 credential_configurations_supported: None,
                 authorization_code_flow_url: None,
             },
+        }
+    }
+}
+
+impl From<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
+    fn from(value: InitiateIssuanceRequestRestDTO) -> Self {
+        Self {
+            organisation_id: value.organisation_id,
+            protocol: value.protocol,
+            issuer: value.issuer,
+            client_id: value.client_id,
+            redirect_uri: value.redirect_uri,
+            scope: value.scope,
+            authorization_details: convert_inner_of_inner(value.authorization_details),
+            issuer_state: None,
         }
     }
 }

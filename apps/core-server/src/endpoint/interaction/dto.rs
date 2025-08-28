@@ -6,9 +6,8 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
 use one_core::service::proof::dto::ProposeProofResponseDTO;
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
-    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
-    InitiateIssuanceResponseDTO, PresentationSubmitCredentialRequestDTO,
-    PresentationSubmitRequestDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
+    PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
@@ -85,11 +84,9 @@ pub(crate) struct OpenID4VCITxCodeRestDTO {
     #[serde(default)] // we always provide it, but it is optional according to OpenID4VCI standard
     /// Type of code expected.
     pub input_mode: OpenID4VCITxCodeInputModeRestDTO,
-    #[from(with_fn = convert_inner)]
     /// Length of transaction code, to pass to the frontend for guiding the
     /// wallet holder.
     pub length: Option<i64>,
-    #[from(with_fn = convert_inner)]
     #[schema(value_type = String, example = "Pin number", max_length = 300)]
     /// Information about the transaction code, to pass to the frontend for
     /// guiding the wallet holder.
@@ -179,8 +176,7 @@ pub(crate) struct ProposeProofResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(InitiateIssuanceRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct InitiateIssuanceRequestRestDTO {
     /// organisation to place the issued credential into
@@ -193,13 +189,10 @@ pub(crate) struct InitiateIssuanceRequestRestDTO {
     /// OpenID4VCI authorization request parameter
     pub client_id: String,
     /// OpenID4VCI authorization request parameter
-    #[into(with_fn = convert_inner)]
     pub redirect_uri: Option<String>,
     /// OpenID4VCI authorization request parameter
-    #[into(with_fn = convert_inner_of_inner)]
     pub scope: Option<Vec<String>>,
     /// OpenID4VCI authorization request parameter
-    #[into(with_fn = convert_inner_of_inner)]
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailRestDTO>>,
 }
 

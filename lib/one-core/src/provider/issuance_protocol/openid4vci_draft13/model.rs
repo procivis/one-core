@@ -253,6 +253,7 @@ pub(crate) enum InvitationResponseEnum {
         client_id: String,
         redirect_uri: Option<String>,
         authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailDTO>>,
+        issuer_state: Option<String>,
     },
 }
 

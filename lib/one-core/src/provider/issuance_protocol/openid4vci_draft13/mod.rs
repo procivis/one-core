@@ -1546,7 +1546,7 @@ async fn handle_credential_invitation(
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
-    if let OpenID4VCIGrants::AuthorizationCode(_authorization_code) = credential_offer.grants {
+    if let OpenID4VCIGrants::AuthorizationCode(authorization_code) = credential_offer.grants {
         let params = config
             .credential_issuer
             .entities
@@ -1582,6 +1582,7 @@ async fn handle_credential_invitation(
                     )
                     .collect(),
             ),
+            issuer_state: authorization_code.issuer_state,
         });
     }
 

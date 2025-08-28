@@ -527,6 +527,7 @@ impl SSIHolderService {
                 client_id,
                 redirect_uri,
                 authorization_details,
+                issuer_state,
             } => {
                 let InitiateIssuanceResponseDTO {
                     interaction_id,
@@ -540,6 +541,7 @@ impl SSIHolderService {
                         redirect_uri,
                         scope: None,
                         authorization_details,
+                        issuer_state,
                     })
                     .await?;
 
@@ -675,22 +677,25 @@ impl SSIHolderService {
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let interaction_id = Uuid::new_v4();
+        let mut authorization_request = OAuthAuthorizationRequest::new(
+            request.client_id.clone(),
+            request.scope.as_ref().map(|s| s.join(" ")),
+            Some(interaction_id.to_string()),
+            request.redirect_uri.clone(),
+            request
+                .authorization_details
+                .as_ref()
+                .map(|ad| serde_json::json!(ad).to_string()),
+        );
+        if let Some(issuer_state) = &request.issuer_state {
+            authorization_request =
+                authorization_request.with_issuer_state(issuer_state.to_owned());
+        }
+
         let authorization_response = self
             .client
             .oauth_client()
-            .initiate_authorization_code_flow(
-                issuer,
-                OAuthAuthorizationRequest::new(
-                    request.client_id.clone(),
-                    request.scope.as_ref().map(|s| s.join(" ")),
-                    Some(interaction_id.to_string()),
-                    request.redirect_uri.clone(),
-                    request
-                        .authorization_details
-                        .as_ref()
-                        .map(|ad| serde_json::json!(ad).to_string()),
-                ),
-            )
+            .initiate_authorization_code_flow(issuer, authorization_request)
             .await
             .map_err(|e| IssuanceProtocolError::Failed(format!("OAuth request failed: {e:?}")))?;
 

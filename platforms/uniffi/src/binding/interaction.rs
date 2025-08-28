@@ -6,10 +6,9 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
 use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
-    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
-    InitiateIssuanceResponseDTO,
+    InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, Into};
 use url::Url;
 
 use crate::OneCoreBinding;
@@ -179,9 +178,7 @@ pub struct OpenID4VCIProofTypeSupportedBindingDTO {
 #[from(OpenID4VCITxCode)]
 pub struct OpenID4VCITxCodeBindingDTO {
     pub input_mode: OpenID4VCITxCodeInputModeBindingEnum,
-    #[from(with_fn = convert_inner)]
     pub length: Option<i64>,
-    #[from(with_fn = convert_inner)]
     pub description: Option<String>,
 }
 
@@ -192,22 +189,14 @@ pub enum OpenID4VCITxCodeInputModeBindingEnum {
     Text,
 }
 
-#[derive(Clone, Debug, uniffi::Record, TryInto)]
-#[try_into(T=InitiateIssuanceRequestDTO, Error=ServiceError)]
+#[derive(Clone, Debug, uniffi::Record)]
 pub struct InitiateIssuanceRequestBindingDTO {
-    #[try_into(with_fn = into_id)]
     pub organisation_id: String,
-    #[try_into(infallible)]
     pub protocol: String,
-    #[try_into(infallible)]
     pub issuer: String,
-    #[try_into(infallible)]
     pub client_id: String,
-    #[try_into(with_fn = convert_inner, infallible)]
     pub redirect_uri: Option<String>,
-    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub scope: Option<Vec<String>>,
-    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailBindingDTO>>,
 }
 

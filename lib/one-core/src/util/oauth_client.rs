@@ -193,6 +193,9 @@ pub(crate) struct OAuthAuthorizationRequest {
     pub response_type: String,
     pub code_challenge: Option<String>,
     pub code_challenge_method: Option<OAuthCodeChallengeMethod>,
+
+    /// <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-5.1.3-2.1>
+    pub issuer_state: Option<String>,
 }
 
 impl OAuthAuthorizationRequest {
@@ -212,6 +215,7 @@ impl OAuthAuthorizationRequest {
             response_type: "code".to_string(),
             code_challenge: None,
             code_challenge_method: None,
+            issuer_state: None,
         }
     }
 
@@ -223,6 +227,13 @@ impl OAuthAuthorizationRequest {
         Self {
             code_challenge: Some(code_challenge),
             code_challenge_method: Some(code_challenge_method),
+            ..self
+        }
+    }
+
+    pub(crate) fn with_issuer_state(self, issuer_state: String) -> Self {
+        Self {
+            issuer_state: Some(issuer_state),
             ..self
         }
     }
@@ -288,7 +299,8 @@ mod tests {
                         }])
                         .to_string(),
                     ),
-                ),
+                )
+                .with_issuer_state("issuerState".to_string()),
             )
             .await
             .unwrap();
@@ -302,6 +314,7 @@ mod tests {
         assert!(url.contains("redirect_uri=http%3A%2F%2Fredirect.uri"));
         assert!(url.contains("scope=scope1+scope2"));
         assert!(url.contains("authorization_details=%5B%7B%22credential_configuration_id%22%3A%22configurationId%22%2C%22type%22%3A%22type%22%7D%5D"));
+        assert!(url.contains("issuer_state=issuerState"));
 
         assert!(!url.contains("code_challenge="));
         assert!(!url.contains("code_challenge_method="));
@@ -439,5 +452,58 @@ mod tests {
         assert!(!url.contains("authorization_details="));
         assert!(!url.contains("code_challenge="));
         assert!(!url.contains("code_challenge_method="));
+    }
+
+    #[tokio::test]
+    async fn send_authorization_request_par_with_issuer_state() {
+        // given
+        let client = (Arc::new(ReqwestClient::default()) as Arc<dyn HttpClient>).oauth_client();
+        let mock_server = MockServer::start().await;
+
+        let issuer = mock_server.uri();
+        Mock::given(method(Method::GET))
+            .and(path("/.well-known/oauth-authorization-server"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                OAuthAuthorizationServerMetadata {
+                    issuer: issuer.parse().unwrap(),
+                    authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                    pushed_authorization_request_endpoint: Some(
+                        Url::parse(&format!("{issuer}/par")).unwrap(),
+                    ),
+                    code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
+                },
+            ))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        Mock::given(method(Method::POST))
+            .and(path("/par"))
+            .and(body_string_contains("issuer_state=testing-state"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(OAuthPARResponse {
+                request_uri: "testRequestUri".to_string(),
+                expires_in: 300,
+            }))
+            .expect(1)
+            .mount(&mock_server)
+            .await;
+
+        // when
+        let result = client
+            .initiate_authorization_code_flow(
+                issuer.parse().unwrap(),
+                OAuthAuthorizationRequest::new("clientId".to_string(), None, None, None, None)
+                    .with_issuer_state("testing-state".to_string()),
+            )
+            .await
+            .unwrap();
+
+        // then
+        let url = result.url.to_string();
+        assert!(url.contains("https://authorize.com/"));
+        assert!(url.contains("client_id=clientId"));
+        assert!(url.contains("request_uri=testRequestUri"));
+
+        assert!(!url.contains("issuer_state="));
     }
 }

@@ -1355,6 +1355,7 @@ async fn test_initiate_issuance() {
                 r#type: "type".to_string(),
                 credential_configuration_id: "configurationId".to_string(),
             }]),
+            issuer_state: None,
         })
         .await
         .unwrap();
@@ -1393,6 +1394,7 @@ async fn test_continue_issuance() {
             redirect_uri: None,
             scope: Some(vec!["scope1".to_string(), "scope2".to_string()]),
             authorization_details: None,
+            issuer_state: None,
         },
         code_verifier: None,
     };
@@ -1513,6 +1515,7 @@ async fn test_initiate_issuance_pkce() {
             redirect_uri: Some("http://redirect.uri".to_string()),
             scope: Some(vec!["scope".to_string()]),
             authorization_details: None,
+            issuer_state: None,
         })
         .await
         .unwrap();

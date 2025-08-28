@@ -33,12 +33,12 @@ use one_core::service::proof::dto::{
 use one_core::service::proof_schema::dto::{
     ImportProofSchemaClaimSchemaDTO, ProofSchemaFilterValue,
 };
-use one_core::service::ssi_holder::dto::HandleInvitationResultDTO;
+use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
 use one_core::service::trust_anchor::dto::{ListTrustAnchorsQueryDTO, TrustAnchorFilterValue};
 use one_core::service::trust_entity::dto::{
     ListTrustEntitiesQueryDTO, TrustEntityFilterValue, TrustListLogo,
 };
-use one_dto_mapper::{convert_inner, try_convert_inner};
+use one_dto_mapper::{convert_inner, convert_inner_of_inner, try_convert_inner};
 use serde_json::json;
 use shared_types::{KeyId, TrustEntityKey};
 use time::OffsetDateTime;
@@ -57,7 +57,9 @@ use crate::binding::history::{
     HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
 use crate::binding::identifier::CreateIdentifierDidRequestBindingDTO;
-use crate::binding::interaction::HandleInvitationResponseBindingEnum;
+use crate::binding::interaction::{
+    HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO,
+};
 use crate::binding::key::KeyRequestBindingDTO;
 use crate::binding::organisation::{
     CreateOrganisationRequestBindingDTO, UpsertOrganisationRequestBindingDTO,
@@ -1004,5 +1006,21 @@ impl From<PresentationDefinitionFieldDTO> for PresentationDefinitionFieldBinding
                 .map(|(key, value)| (key.to_string(), value))
                 .collect(),
         }
+    }
+}
+
+impl TryFrom<InitiateIssuanceRequestBindingDTO> for InitiateIssuanceRequestDTO {
+    type Error = ServiceError;
+    fn try_from(request: InitiateIssuanceRequestBindingDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            organisation_id: into_id(request.organisation_id)?,
+            protocol: request.protocol,
+            issuer: request.issuer,
+            client_id: request.client_id,
+            redirect_uri: request.redirect_uri,
+            scope: request.scope,
+            authorization_details: convert_inner_of_inner(request.authorization_details),
+            issuer_state: None,
+        })
     }
 }

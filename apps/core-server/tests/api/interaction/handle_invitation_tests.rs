@@ -2534,3 +2534,67 @@ async fn test_handle_invitation_authorization_code() {
     );
     assert!(authorization_code_flow_url.contains("%22type%22%3A%22openid_credential%22"));
 }
+
+#[tokio::test]
+async fn test_handle_invitation_authorization_code_issuer_state() {
+    let mock_server = MockServer::start().await;
+
+    let issuer = mock_server.uri();
+
+    let additional_config = Some(indoc::formatdoc! {"
+            credentialIssuer:
+              EUDI_PID_FLOW:
+                params:
+                  public:
+                    issuer: {issuer}
+        "});
+    let (context, organistion) = TestContext::new_with_organisation(additional_config).await;
+
+    let authorization_endpoint = "https://authorization.com/authorize";
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/oauth-authorization-server"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "issuer": issuer,
+                "authorization_endpoint": authorization_endpoint,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let credential_offer = json!({
+        "credential_issuer": issuer,
+        "credential_configuration_ids": [
+            "config-id"
+        ],
+        "grants": {
+            "authorization_code": {
+                "issuer_state": "test-state"
+            }
+        }
+    });
+
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organistion.id, credential_offer_url.as_str())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp.json_value().await;
+    assert!(resp["interactionId"].is_string());
+    let authorization_code_flow_url = resp["authorizationCodeFlowUrl"].as_str().unwrap();
+
+    assert!(authorization_code_flow_url.starts_with(authorization_endpoint));
+    assert!(authorization_code_flow_url.contains("issuer_state=test-state"));
+}
