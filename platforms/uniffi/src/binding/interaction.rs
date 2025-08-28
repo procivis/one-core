@@ -21,18 +21,22 @@ impl OneCoreBinding {
     #[uniffi::method]
     pub async fn handle_invitation(
         &self,
-        url: String,
-        organisation_id: String,
-        transport: Option<Vec<String>>,
+        request: HandleInvitationRequestBindingDTO,
     ) -> Result<HandleInvitationResponseBindingEnum, BindingError> {
-        let url = Url::parse(&url).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
+        let url =
+            Url::parse(&request.url).map_err(|e| ServiceError::ValidationError(e.to_string()))?;
 
-        let organisation_id = into_id(&organisation_id)?;
+        let organisation_id = into_id(&request.organisation_id)?;
 
         let core = self.use_core().await?;
         let invitation_response = core
             .ssi_holder_service
-            .handle_invitation(url, organisation_id, transport)
+            .handle_invitation(
+                url,
+                organisation_id,
+                request.transport,
+                request.redirect_uri,
+            )
             .await?;
 
         Ok(invitation_response.into())
@@ -95,6 +99,14 @@ impl OneCoreBinding {
     }
 }
 
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct HandleInvitationRequestBindingDTO {
+    pub url: String,
+    pub organisation_id: String,
+    pub transport: Option<Vec<String>>,
+    pub redirect_uri: Option<String>,
+}
+
 #[derive(Clone, Debug, uniffi::Enum)]
 pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
@@ -103,6 +115,10 @@ pub enum HandleInvitationResponseBindingEnum {
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
         credential_configurations_supported:
             HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
+    },
+    AuthorizationCodeFlow {
+        interaction_id: String,
+        authorization_code_flow_url: String,
     },
     ProofRequest {
         interaction_id: String,

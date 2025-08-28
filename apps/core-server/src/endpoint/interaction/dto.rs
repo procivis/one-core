@@ -27,6 +27,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     pub url: Url,
     pub organisation_id: OrganisationId,
     pub transport: Option<Vec<String>>,
+    pub redirect_uri: Option<String>,
 }
 
 #[options_not_nullable]
@@ -43,6 +44,8 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     #[schema(value_type = Object)]
     pub credential_configurations_supported:
         Option<HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>>,
+    /// if running authorization code flow, the URL where the interactive issuance continues
+    pub authorization_code_flow_url: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -215,9 +218,8 @@ pub(crate) struct InitiateIssuanceResponseRestDTO {
     pub url: String,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[into(InitiateIssuanceResponseDTO)]
 pub(crate) struct ContinueIssuanceRequestRestDTO {
     pub url: String,
 }

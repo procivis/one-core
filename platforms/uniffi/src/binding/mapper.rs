@@ -232,6 +232,13 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                     .map(|(id, conf)| (id.to_string(), conf.into()))
                     .collect(),
             },
+            HandleInvitationResultDTO::AuthorizationCodeFlow {
+                interaction_id,
+                authorization_code_flow_url,
+            } => Self::AuthorizationCodeFlow {
+                interaction_id: interaction_id.to_string(),
+                authorization_code_flow_url,
+            },
             HandleInvitationResultDTO::ProofRequest {
                 interaction_id,
                 proof_id,

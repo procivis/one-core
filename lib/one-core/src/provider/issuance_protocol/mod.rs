@@ -31,7 +31,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseDTO, OpenID4VCIParams, ShareResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIParams, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::{
@@ -212,10 +212,10 @@ pub(crate) type HandleInvitationOperationsAccess = dyn HandleInvitationOperation
 #[allow(clippy::too_many_arguments)]
 pub(crate) trait IssuanceProtocol: Send + Sync {
     // Holder methods:
-    /// Check if the holder can handle the necessary URLs.
+    /// Check if the holder can handle the invitation URL.
     fn holder_can_handle(&self, url: &Url) -> bool;
 
-    /// For handling credential issuance and verification, this method
+    /// For handling credential issuance, this method
     /// saves the offer information coming in.
     async fn holder_handle_invitation(
         &self,
@@ -223,7 +223,8 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
-    ) -> Result<InvitationResponseDTO, IssuanceProtocolError>;
+        redirect_uri: Option<String>,
+    ) -> Result<InvitationResponseEnum, IssuanceProtocolError>;
 
     /// Accepts an offered credential.
     ///

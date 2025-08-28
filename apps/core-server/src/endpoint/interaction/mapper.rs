@@ -19,6 +19,18 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 credential_configurations_supported: Some(convert_inner(
                     credential_configurations_supported,
                 )),
+                authorization_code_flow_url: None,
+            },
+            HandleInvitationResultDTO::AuthorizationCodeFlow {
+                interaction_id,
+                authorization_code_flow_url,
+            } => Self {
+                interaction_id,
+                credential_ids: None,
+                proof_id: None,
+                tx_code: None,
+                credential_configurations_supported: None,
+                authorization_code_flow_url: Some(authorization_code_flow_url),
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
@@ -30,6 +42,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 proof_id: Some(proof_id),
                 tx_code: None,
                 credential_configurations_supported: None,
+                authorization_code_flow_url: None,
             },
         }
     }

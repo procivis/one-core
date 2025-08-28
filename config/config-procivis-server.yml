@@ -45,3 +45,15 @@ cacheEntities:
     refreshAfter: 86400
     cacheRefreshTimeout: 86400
     cacheSize: 1000
+credentialIssuer:
+  EUDI_PID_FLOW:
+    display:
+      en: EUDI Issuer
+      de: EUDI Issuer
+    order: 1
+    enabled: true
+    params:
+      public:
+        issuer: https://eudiw-issuer.eudi.dev.procivis-one.com
+      private:
+        clientId: procivis-wallet-dev

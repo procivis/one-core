@@ -58,6 +58,7 @@ pub struct CoreConfig {
     pub(crate) blob_storage: BlobStorageConfig,
     pub cache_entities: CacheEntitiesConfig,
     pub wallet_provider: WalletProviderConfig,
+    pub(crate) credential_issuer: CredentialIssuerConfig,
 }
 
 impl CoreConfig {
@@ -114,6 +115,24 @@ pub struct CacheEntityConfig {
     /// (if refresh fails, the cached value is ignored and fetching fails)
     #[serde_as(as = "DurationSeconds<i64>")]
     pub cache_refresh_timeout: time::Duration,
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialIssuerConfig {
+    #[serde(flatten)]
+    pub entities: HashMap<String, CredentialIssuerEntry>,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialIssuerEntry {
+    pub display: ConfigEntryDisplay,
+    pub order: Option<u64>,
+    pub enabled: Option<bool>,
+    #[serde(default, deserialize_with = "deserialize_params")]
+    pub params: Option<Params>,
 }
 
 pub enum InputFormat {

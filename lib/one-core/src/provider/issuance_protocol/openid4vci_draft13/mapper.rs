@@ -17,7 +17,8 @@ use super::model::{
     OpenID4VCITokenResponseDTO,
 };
 use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::config::core_config::{CoreConfig, DatatypeType, Params};
+use crate::config::{ConfigError, ConfigParsingError};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -36,7 +37,7 @@ use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO,
+    CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO, CredentialIssuerParams,
     CredentialSchemaDetailResponseDTO, OpenID4VCICredentialValueDetails,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
@@ -1116,4 +1117,17 @@ pub(crate) fn map_cryptographic_binding_methods_supported(
         .collect();
     binding_methods.push("jwk".to_string());
     binding_methods
+}
+
+pub(crate) fn parse_credential_issuer_params(
+    config_params: &Option<Params>,
+) -> Result<CredentialIssuerParams, ConfigError> {
+    config_params
+        .as_ref()
+        .and_then(|p| p.merge())
+        .map(serde_json::from_value)
+        .ok_or(ConfigError::Parsing(
+            ConfigParsingError::GeneralParsingError("Credential issuer params missing".to_string()),
+        ))?
+        .map_err(|e| ConfigError::Parsing(ConfigParsingError::GeneralParsingError(e.to_string())))
 }

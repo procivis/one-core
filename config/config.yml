@@ -14,3 +14,4 @@ cacheEntities: {}
 holderKeyStorage: {}
 blobStorage: {}
 walletProvider: {}
+credentialIssuer: {}

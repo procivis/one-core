@@ -149,6 +149,7 @@ pub fn datatype_config() -> DatatypeConfig {
         holderKeyStorage: {}
         blobStorage: {}
         walletProvider: {}
+        credentialIssuer: {}
     "};
 
     AppConfig::<ServerConfig>::parse(vec![InputFormat::yaml_str(config)])

@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
@@ -36,7 +37,8 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    InvitationResponseDTO, OpenID4VCIProofTypeSupported, SubmitIssuerResponse, UpdateResponse,
+    InvitationResponseEnum, OpenID4VCIProofTypeSupported, OpenID4VCITxCode, SubmitIssuerResponse,
+    UpdateResponse,
 };
 use crate::provider::issuance_protocol::{
     IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
@@ -470,6 +472,7 @@ impl SSIHolderService {
         organisation: Organisation,
         exchange: String,
         issuance_protocol: Arc<dyn IssuanceProtocol>,
+        redirect_uri: Option<String>,
     ) -> Result<HandleInvitationResultDTO, ServiceError> {
         let storage_access = StorageProxyImpl::new(
             self.interaction_repository.clone(),
@@ -492,15 +495,73 @@ impl SSIHolderService {
             self.formatter_provider.clone(),
         );
 
-        let InvitationResponseDTO {
-            credentials,
-            interaction_id,
-            tx_code,
-            mut issuer_proof_type_supported,
-        } = issuance_protocol
-            .holder_handle_invitation(url, organisation, &storage_access, &handle_operations)
+        let result = issuance_protocol
+            .holder_handle_invitation(
+                url,
+                organisation,
+                &storage_access,
+                &handle_operations,
+                redirect_uri,
+            )
             .await?;
 
+        match result {
+            InvitationResponseEnum::Credential {
+                credentials,
+                interaction_id,
+                tx_code,
+                issuer_proof_type_supported,
+            } => {
+                self.handle_credential_issuance(
+                    exchange,
+                    interaction_id,
+                    credentials,
+                    tx_code,
+                    issuer_proof_type_supported,
+                )
+                .await
+            }
+            InvitationResponseEnum::AuthorizationFlow {
+                organisation_id,
+                issuer,
+                client_id,
+                redirect_uri,
+                authorization_details,
+            } => {
+                let InitiateIssuanceResponseDTO {
+                    interaction_id,
+                    url,
+                } = self
+                    .initiate_issuance(InitiateIssuanceRequestDTO {
+                        organisation_id,
+                        protocol: exchange,
+                        issuer,
+                        client_id,
+                        redirect_uri,
+                        scope: None,
+                        authorization_details,
+                    })
+                    .await?;
+
+                Ok(HandleInvitationResultDTO::AuthorizationCodeFlow {
+                    interaction_id,
+                    authorization_code_flow_url: url,
+                })
+            }
+        }
+    }
+
+    async fn handle_credential_issuance(
+        &self,
+        exchange: String,
+        interaction_id: InteractionId,
+        credentials: Vec<Credential>,
+        tx_code: Option<OpenID4VCITxCode>,
+        mut issuer_proof_type_supported: HashMap<
+            CredentialId,
+            Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+        >,
+    ) -> Result<HandleInvitationResultDTO, ServiceError> {
         let mut holder_proof_types_supported = self
             .key_algorithm_provider
             .supported_verification_jose_alg_ids();
@@ -653,6 +714,7 @@ impl SSIHolderService {
             .await?;
 
         Ok(InitiateIssuanceResponseDTO {
+            interaction_id,
             url: authorization_response.url.to_string(),
         })
     }

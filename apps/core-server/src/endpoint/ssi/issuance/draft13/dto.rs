@@ -280,5 +280,6 @@ pub(crate) struct OpenID4VCIPreAuthorizedGrantRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIAuthorizationCodeGrant)]
 pub(crate) struct OpenID4VCIAuthorizationCodeGrantRestDTO {
-    pub authorization_code: String,
+    pub issuer_state: Option<String>,
+    pub authorization_server: Option<String>,
 }

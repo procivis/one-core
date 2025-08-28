@@ -58,7 +58,7 @@ pub(crate) enum Features {
     SupportsRejection,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct ContinueIssuanceDTO {
     pub credential_issuer: String,
     pub authorization_code: String,

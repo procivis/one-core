@@ -55,7 +55,8 @@ fn convert_internal_structure_to_dto() {
           "blobStorage": {},
           "cacheEntities": {},
           "task": {},
-          "walletProvider": {}
+          "walletProvider": {},
+          "credentialIssuer": {}
         }),
         output
     );
@@ -108,7 +109,8 @@ fn do_not_serialize_private_parameters() {
           "blobStorage": {},
           "cacheEntities": {},
           "task": {},
-          "walletProvider": {}
+          "walletProvider": {},
+          "credentialIssuer": {}
         }),
         output
     );

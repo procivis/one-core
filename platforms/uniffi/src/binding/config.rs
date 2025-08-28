@@ -47,6 +47,8 @@ pub struct ConfigBindingDTO {
     pub cache_entities: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub task: HashMap<String, String>,
+    #[from(with_fn = serialize_config_entity)]
+    pub credential_issuer: HashMap<String, String>,
 }
 
 fn serialize_config_entity(input: HashMap<String, serde_json::Value>) -> HashMap<String, String> {

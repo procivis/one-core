@@ -11,6 +11,7 @@ impl SSIHolderService {
         url: Url,
         organisation_id: OrganisationId,
         transport: Option<Vec<String>>,
+        redirect_uri: Option<String>,
     ) -> Result<HandleInvitationResultDTO, ServiceError> {
         let organisation = self
             .organisation_repository
@@ -26,7 +27,13 @@ impl SSIHolderService {
             self.issuance_protocol_provider.detect_protocol(&url)
         {
             return self
-                .handle_issuance_invitation(url, organisation, issuance_exchange, issuance_protocol)
+                .handle_issuance_invitation(
+                    url,
+                    organisation,
+                    issuance_exchange,
+                    issuance_protocol,
+                    redirect_uri,
+                )
                 .await;
         }
 

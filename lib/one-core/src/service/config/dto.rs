@@ -22,4 +22,5 @@ pub struct ConfigDTO {
     pub blob_storage: HashMap<String, Value>,
     pub task: HashMap<String, Value>,
     pub wallet_provider: HashMap<String, Value>,
+    pub credential_issuer: HashMap<String, Value>,
 }

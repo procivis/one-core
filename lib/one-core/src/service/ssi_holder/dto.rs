@@ -37,6 +37,10 @@ pub enum HandleInvitationResultDTO {
         credential_configurations_supported:
             HashMap<CredentialId, CredentialConfigurationSupportedResponseDTO>,
     },
+    AuthorizationCodeFlow {
+        interaction_id: InteractionId,
+        authorization_code_flow_url: String,
+    },
     ProofRequest {
         interaction_id: InteractionId,
         proof_id: ProofId,
@@ -70,6 +74,7 @@ pub struct InitiateIssuanceAuthorizationDetailDTO {
 
 #[derive(Clone, Debug)]
 pub struct InitiateIssuanceResponseDTO {
+    pub interaction_id: InteractionId,
     pub url: String,
 }
 

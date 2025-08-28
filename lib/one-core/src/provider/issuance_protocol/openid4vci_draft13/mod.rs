@@ -66,9 +66,10 @@ use crate::provider::issuance_protocol::mapper::{
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     create_credential, extract_offered_claims, get_credential_offer_url,
+    parse_credential_issuer_params,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ContinueIssuanceResponseDTO, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseDTO,
+    ContinueIssuanceResponseDTO, ExtendedSubjectDTO, HolderInteractionData, InvitationResponseEnum,
     OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
@@ -104,6 +105,7 @@ use crate::service::certificate::validator::{
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::service::credentials_format;
+use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
@@ -460,12 +462,17 @@ impl OpenID4VCI13 {
                     tx_code,
                 }
             }
-            OpenID4VCIGrants::AuthorizationCode(code) => {
+            OpenID4VCIGrants::AuthorizationCode(_) => {
+                let Some(data) = &interaction_data.continue_issuance else {
+                    return Err(IssuanceProtocolError::Failed(
+                        "continue_issuance data is missing".to_string(),
+                    ));
+                };
                 OpenID4VCITokenRequestDTO::AuthorizationCode {
-                    authorization_code: code.authorization_code.to_owned(),
-                    client_id: code.client_id.to_owned(),
-                    redirect_uri: code.redirect_uri.to_owned(),
-                    code_verifier: code.code_verifier.to_owned(),
+                    authorization_code: data.authorization_code.to_owned(),
+                    client_id: data.client_id.to_owned(),
+                    redirect_uri: data.redirect_uri.to_owned(),
+                    code_verifier: data.code_verifier.to_owned(),
                 }
             }
         };
@@ -862,7 +869,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
-    ) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
+        redirect_uri: Option<String>,
+    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         if !self.holder_can_handle(&url) {
             return Err(IssuanceProtocolError::Failed(
                 "No OpenID4VC query params detected".to_string(),
@@ -876,6 +884,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
             &*self.certificate_validator,
             storage_access,
             handle_invitation_operations,
+            redirect_uri,
+            &self.config,
         )
         .await
     }
@@ -1523,6 +1533,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
@@ -1530,8 +1541,49 @@ async fn handle_credential_invitation(
     certificate_validator: &dyn CertificateValidator,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
-) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
+    redirect_uri: Option<String>,
+    config: &CoreConfig,
+) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
+
+    if let OpenID4VCIGrants::AuthorizationCode(_authorization_code) = credential_offer.grants {
+        let params = config
+            .credential_issuer
+            .entities
+            .iter()
+            .filter(|(_, entity)| entity.enabled.unwrap_or(true))
+            .filter_map(|(_, entity)| parse_credential_issuer_params(&entity.params).ok())
+            .find(|params| params.issuer == credential_offer.credential_issuer)
+            .ok_or(IssuanceProtocolError::InvalidRequest(format!(
+                "No config entry for Authorization Code found, issuer: {}",
+                credential_offer.credential_issuer
+            )))?;
+
+        let credential_configuration_ids = credential_offer.credential_configuration_ids;
+        if credential_configuration_ids.is_empty() {
+            return Err(IssuanceProtocolError::InvalidRequest(
+                "No credential_configuration_ids provided".to_string(),
+            ));
+        }
+
+        return Ok(InvitationResponseEnum::AuthorizationFlow {
+            organisation_id: organisation.id,
+            issuer: params.issuer,
+            client_id: params.client_id,
+            redirect_uri,
+            authorization_details: Some(
+                credential_configuration_ids
+                    .into_iter()
+                    .map(
+                        |credential_configuration_id| InitiateIssuanceAuthorizationDetailDTO {
+                            r#type: "openid_credential".to_string(),
+                            credential_configuration_id,
+                        },
+                    )
+                    .collect(),
+            ),
+        });
+    }
 
     let remote_identifier = match (
         credential_offer.issuer_did,
@@ -1629,10 +1681,11 @@ async fn handle_credential_invitation(
             credential_offer.credential_subject.as_ref(),
             storage_access,
             handle_invitation_operations,
+            None,
         )
         .await?;
 
-    Ok(InvitationResponseDTO {
+    Ok(InvitationResponseEnum::Credential {
         issuer_proof_type_supported,
         interaction_id,
         credentials,
@@ -1670,7 +1723,7 @@ async fn handle_continue_issuance(
 
     let scope_credential_config_ids = continue_issuance_dto
         .scope
-        .into_iter()
+        .iter()
         .map(|s| {
             scope_to_id
                 .get(&s)
@@ -1694,10 +1747,8 @@ async fn handle_continue_issuance(
             token_endpoint,
             issuer_metadata,
             OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
-                authorization_code: continue_issuance_dto.authorization_code,
-                client_id: continue_issuance_dto.client_id,
-                redirect_uri: continue_issuance_dto.redirect_uri,
-                code_verifier: continue_issuance_dto.code_verifier,
+                issuer_state: None,
+                authorization_server: None,
             }),
             &all_credential_configuration_ids,
             None,
@@ -1705,6 +1756,7 @@ async fn handle_continue_issuance(
             None,
             storage_access,
             handle_invitation_operations,
+            Some(continue_issuance_dto),
         )
         .await?;
 
@@ -1728,6 +1780,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     credential_subject: Option<&ExtendedSubjectDTO>,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
+    continue_issuance: Option<ContinueIssuanceDTO>,
 ) -> Result<
     (
         InteractionId,
@@ -1759,6 +1812,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         notification_endpoint: issuer_metadata.notification_endpoint.to_owned(),
         token_endpoint: Some(token_endpoint),
         grants: Some(grants),
+        continue_issuance,
         access_token: None,
         access_token_expires_at: None,
         refresh_token: None,

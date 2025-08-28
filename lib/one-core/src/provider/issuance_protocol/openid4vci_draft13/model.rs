@@ -25,7 +25,9 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::provider::credential_formatter::vcdm::ContextType;
+use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::params::deserialize_encryption_key;
 
 #[skip_serializing_none]
@@ -39,6 +41,8 @@ pub(crate) struct HolderInteractionData {
     pub notification_endpoint: Option<String>,
     #[serde(default)]
     pub grants: Option<OpenID4VCIGrants>,
+    #[serde(default)]
+    pub continue_issuance: Option<ContinueIssuanceDTO>,
     #[serde(default)]
     pub access_token: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
@@ -235,12 +239,21 @@ pub struct OpenID4VCIDiscoveryResponseDTO {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct InvitationResponseDTO {
-    pub interaction_id: InteractionId,
-    pub credentials: Vec<Credential>,
-    pub tx_code: Option<OpenID4VCITxCode>,
-    pub issuer_proof_type_supported:
-        HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+pub(crate) enum InvitationResponseEnum {
+    Credential {
+        interaction_id: InteractionId,
+        credentials: Vec<Credential>,
+        tx_code: Option<OpenID4VCITxCode>,
+        issuer_proof_type_supported:
+            HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+    },
+    AuthorizationFlow {
+        organisation_id: OrganisationId,
+        issuer: String,
+        client_id: String,
+        redirect_uri: Option<String>,
+        authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailDTO>>,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -384,10 +397,8 @@ pub struct OpenID4VCIPreAuthorizedCodeGrant {
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCIAuthorizationCodeGrant {
-    pub authorization_code: String,
-    pub client_id: String,
-    pub redirect_uri: Option<String>,
-    pub code_verifier: Option<String>,
+    pub issuer_state: Option<String>,
+    pub authorization_server: Option<String>,
 }
 
 #[skip_serializing_none]
@@ -685,6 +696,15 @@ pub(crate) struct OpenID4VCRedirectUriParams {
 pub(crate) struct OpenID4VCRejectionIdentifierParams {
     pub did_method: String,
     pub key_algorithm: KeyAlgorithmType,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialIssuerParams {
+    #[allow(dead_code)]
+    pub logo: Option<String>,
+    pub issuer: String,
+    pub client_id: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

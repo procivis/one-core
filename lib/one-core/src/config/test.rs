@@ -118,6 +118,7 @@ rusty_fork_test! {
             holderKeyStorage: {}
             blobStorage: {}
             walletProvider: {}
+            credentialIssuer: {}
         "};
 
         let config3 = indoc::indoc! {"
@@ -133,7 +134,6 @@ rusty_fork_test! {
                     display: 'display'
         "};
 
-        #[cfg(feature = "config_json")]
         let config5 = indoc::indoc! {"
         {
             \"keyAlgorithm\": {
@@ -156,7 +156,7 @@ rusty_fork_test! {
             InputFormat::yaml_str(config2),
             InputFormat::yaml_str(config3),
             InputFormat::yaml_str(config4),
-            InputFormat::yaml_str(config5),
+            InputFormat::json_str(config5),
         ])
         .unwrap();
 

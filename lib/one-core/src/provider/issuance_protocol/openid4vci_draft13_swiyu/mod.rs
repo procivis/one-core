@@ -21,7 +21,7 @@ use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProto
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseDTO, OpenID4VCIParams,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIParams,
     OpenID4VCRedirectUriParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::{HandleInvitationOperationsAccess, IssuanceProtocol};
@@ -123,13 +123,15 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         organisation: Organisation,
         storage_access: &StorageAccess,
         handle_invitation_operations: &HandleInvitationOperationsAccess,
-    ) -> Result<InvitationResponseDTO, IssuanceProtocolError> {
+        redirect_uri: Option<String>,
+    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         self.inner
             .holder_handle_invitation(
                 url,
                 organisation,
                 storage_access,
                 handle_invitation_operations,
+                redirect_uri,
             )
             .await
     }

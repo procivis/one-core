@@ -43,9 +43,9 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     extract_offered_claims, get_parent_claim_paths,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrants, OpenID4VCIParams,
-    OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCRedirectUriParams,
-    OpenID4VCRejectionIdentifierParams,
+    HolderInteractionData, InvitationResponseEnum, OpenID4VCICredentialValueDetails,
+    OpenID4VCIGrants, OpenID4VCIParams, OpenID4VCIPreAuthorizedCodeGrant,
+    OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
@@ -595,6 +595,7 @@ async fn test_holder_accept_credential_success() {
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
+            continue_issuance: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -792,6 +793,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
+            continue_issuance: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -999,6 +1001,7 @@ async fn test_holder_accept_expired_credential_fails() {
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
+            continue_issuance: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -1183,6 +1186,7 @@ async fn test_holder_reject_credential() {
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
+            continue_issuance: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -1487,11 +1491,19 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     let protocol = setup_protocol(Default::default());
     let result = protocol
-        .holder_handle_invitation(url, dummy_organisation(None), &storage_proxy, &operations)
+        .holder_handle_invitation(
+            url,
+            dummy_organisation(None),
+            &storage_proxy,
+            &operations,
+            None,
+        )
         .await
         .unwrap();
 
-    let credentials = result.credentials;
+    let InvitationResponseEnum::Credential { credentials, .. } = result else {
+        panic!("Invalid response type");
+    };
 
     assert_eq!(credentials.len(), 1);
 
