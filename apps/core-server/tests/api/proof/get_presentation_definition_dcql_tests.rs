@@ -1,15 +1,17 @@
 use std::collections::HashMap;
 
 use core_server::endpoint::proof::dto::PresentationDefinitionFieldRestDTO;
-use dcql::{ClaimQuery, ClaimQueryId, CredentialQuery, DcqlQuery, PathSegment};
+use dcql::{ClaimQuery, ClaimQueryId, ClaimValue, CredentialQuery, DcqlQuery, PathSegment};
+use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::CredentialSchemaType;
+use one_core::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType};
 use one_core::model::identifier::Identifier;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::json;
 use similar_asserts::assert_eq;
+use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
 use crate::fixtures::{ClaimData, TestingCredentialParams};
@@ -1306,6 +1308,204 @@ async fn test_get_presentation_definition_dcql_claim_sets_disjoint_credentials()
     });
     body["requestGroups"][0]["requestedCredentials"][0]["fields"]
         .assert_eq_unordered(&[field1, field2]);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_metadata_value_matching() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let claim_schema_id = Uuid::new_v4();
+    let metadata_claim_schema_id = Uuid::new_v4();
+
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "Simple test schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some(vct.to_owned()),
+                format: Some("SD_JWT_VC".to_string()),
+                claim_schemas: Some(vec![
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: claim_schema_id.into(),
+                            key: "string_claim".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: get_dummy_date(),
+                            last_modified: get_dummy_date(),
+                            array: false,
+                            metadata: false,
+                        },
+                        required: true,
+                    },
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: metadata_claim_schema_id.into(),
+                            key: "iss".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: get_dummy_date(),
+                            last_modified: get_dummy_date(),
+                            array: false,
+                            metadata: true,
+                        },
+                        required: false,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential1 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: claim_schema_id.into(),
+                        path: "string_claim".to_string(),
+                        value: Some("test-value-first".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: metadata_claim_schema_id.into(),
+                        path: "iss".to_string(),
+                        value: Some("some-issuer".to_string()),
+                        selectively_disclosable: false,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let credential2 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: claim_schema_id.into(),
+                        path: "string_claim".to_string(),
+                        value: Some("test-value-first".to_string()),
+                        selectively_disclosable: false,
+                    },
+                    ClaimData {
+                        schema_id: metadata_claim_schema_id.into(),
+                        path: "iss".to_string(),
+                        value: Some("other-issuer".to_string()),
+                        selectively_disclosable: false,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .id("claim1")
+                .path(vec!["string_claim".to_string()])
+                .required(true)
+                .build(),
+            ClaimQuery::builder()
+                .id("claim2")
+                .path(vec!["iss".to_string()])
+                .values(vec![ClaimValue::String("some-issuer".to_owned())])
+                .required(true)
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+        .assert_eq(&[credential1.id.to_string()]);
+    // credential 2 is inapplicable because the iss claim has the wrong value
+    body["requestGroups"][0]["requestedCredentials"][0]["inapplicableCredentials"]
+        .assert_eq(&[credential2.id.to_string()]);
+    let field1 = json!({
+        "id": "test_id:string_claim",
+        "keyMap": {
+            credential1.id.to_string(): "string_claim",
+            credential2.id.to_string(): "string_claim"
+        },
+        "name": "string_claim",
+        "required": true
+    });
+    // Metadata claims (such as iss) are used for matching, but are _not_ added to the fields array.
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&[field1]);
+}
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_no_credentials() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let vct = "https://example.org/foo";
+    let credential_query = CredentialQuery::w3c_sd_jwt(vec![vec![vct.to_string()]])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .id("claim1")
+                .path(vec![
+                    "vc".to_string(),
+                    "credentialSubject".to_string(),
+                    "string_claim".to_string(),
+                ])
+                .required(true)
+                .build(),
+            ClaimQuery::builder()
+                .id("claim2")
+                .path(vec!["iss".to_string()])
+                .values(vec![ClaimValue::String("some-issuer".to_owned())])
+                .required(true)
+                .build(),
+        ])
+        .build();
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    let field1 = json!({
+        "id": "test_id:string_claim",
+        "keyMap": {},
+        "name": "string_claim",
+        "required": true
+    });
+    // Metadata claims (such as iss) are used for matching, but are _not_ added to the fields array.
+    body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&[field1]);
 }
 
 #[tokio::test]

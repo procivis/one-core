@@ -395,6 +395,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 dcql_query,
                 proof,
                 storage_access,
+                &*self.credential_formatter_provider,
                 &self.config,
             )
             .await;
@@ -658,7 +659,11 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         let (presentation_definition, dcql_query) = if self.params.verifier.use_dcql {
             (
                 None,
-                Some(create_dcql_query(proof_schema, &format_to_type_mapper)?),
+                Some(create_dcql_query(
+                    proof_schema,
+                    &format_to_type_mapper,
+                    &*self.credential_formatter_provider,
+                )?),
             )
         } else {
             (

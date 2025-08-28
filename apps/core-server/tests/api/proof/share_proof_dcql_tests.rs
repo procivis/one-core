@@ -183,17 +183,17 @@ async fn test_share_proof_dcql_jwt_success() {
                 "claims": [
                     {
                         "id": name_claim_id,
-                        "path": ["credentialSubject", "name"],
+                        "path": ["vc", "credentialSubject", "name"],
                         "required": true,
                     },
                     {
                         "id": email_claim_id,
-                        "path": ["credentialSubject", "email"],
+                        "path": ["vc", "credentialSubject", "email"],
                         "required": false,
                     },
                     {
                         "id": age_claim_id,
-                        "path": ["credentialSubject", "age"],
+                        "path": ["vc", "credentialSubject", "age"],
                         "required": false,
                     }
                 ],
@@ -637,17 +637,17 @@ async fn test_share_proof_dcql_sd_jwt_success() {
                 "claims": [
                     {
                         "id": given_name_claim_id,
-                        "path": ["credentialSubject", "given_name"],
+                        "path": ["vc", "credentialSubject", "given_name"],
                         "required": true,
                     },
                     {
                         "id": family_name_claim_id,
-                        "path": ["credentialSubject", "family_name"],
+                        "path": ["vc","credentialSubject", "family_name"],
                         "required": false,
                     },
                     {
                         "id": age_claim_id,
-                        "path": ["credentialSubject", "age"],
+                        "path": ["vc","credentialSubject", "age"],
                         "required": false,
                     }
                 ],
@@ -838,12 +838,12 @@ async fn test_share_proof_dcql_nested_object_with_array_success() {
                 "claims": [
                     {
                         "id": name_claim_id,
-                        "path": ["credentialSubject", "profile", "name"],
+                        "path": ["vc", "credentialSubject", "profile", "name"],
                         "required": true,
                     },
                     {
                         "id": phone_numbers_claim_id,
-                        "path": ["credentialSubject", "profile", "address", "phoneNumbers"],
+                        "path": ["vc", "credentialSubject", "profile", "address", "phoneNumbers"],
                         "required": true,
                     }
                 ],

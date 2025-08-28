@@ -1,18 +1,18 @@
 use convert_case::{Case, Casing};
-use dcql::{
-    ClaimQuery, ClaimQueryId, CredentialFormat, CredentialMeta, CredentialQuery, DcqlQuery,
-};
+use dcql::{ClaimQuery, ClaimQueryId, CredentialFormat, CredentialQuery, DcqlQuery};
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::FormatType;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::FormatMapper;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 
 pub fn create_dcql_query(
     proof_schema: &ProofSchema,
     format_to_type_mapper: &FormatMapper,
+    credential_formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<DcqlQuery, VerificationProtocolError> {
     let input_schemas =
         proof_schema
@@ -33,6 +33,12 @@ pub fn create_dcql_query(
                 let claim_schemas = input_schema.claim_schemas.as_ref().ok_or(
                     VerificationProtocolError::Failed("Claim schemas not found".to_string()),
                 )?;
+                let formatter = credential_formatter_provider
+                    .get_credential_formatter(&credential_schema.format)
+                    .ok_or(VerificationProtocolError::Failed(format!(
+                        "No formatter for credential format '{}'",
+                        credential_schema.format
+                    )))?;
 
                 let credential_format = format_to_type_mapper(&credential_schema.format)?;
                 let dcql_format: CredentialFormat = credential_format.into();
@@ -63,7 +69,7 @@ pub fn create_dcql_query(
                             .id(claim_schema.schema.id.to_string())
                             .path(format_dcql_path(
                                 &claim_schema.schema.key,
-                                base_credential_query.get_meta(),
+                                formatter.user_claims_path(),
                             ))
                             .required(claim_schema.required);
 
@@ -123,16 +129,7 @@ fn w3c_credential_query_type_values(credential_schema: &CredentialSchema) -> Vec
     ]
 }
 
-fn format_dcql_path(claim_key: &str, credential_meta: &CredentialMeta) -> Vec<String> {
-    let key_split: Vec<String> = claim_key
-        .split(NESTED_CLAIM_MARKER)
-        .map(str::to_string)
-        .collect();
-
-    match credential_meta {
-        CredentialMeta::W3cVc { .. } => std::iter::once("credentialSubject".to_string())
-            .chain(key_split)
-            .collect(),
-        _ => key_split,
-    }
+fn format_dcql_path(claim_key: &str, mut user_claim_path: Vec<String>) -> Vec<String> {
+    user_claim_path.extend(claim_key.split(NESTED_CLAIM_MARKER).map(str::to_string));
+    user_claim_path
 }
