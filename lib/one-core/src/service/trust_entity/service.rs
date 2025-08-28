@@ -720,6 +720,16 @@ impl TrustEntityService {
 
                 // validation is allowed to fail, silently ignore and drop it from the results
                 let Ok(validated_trust_entity) = validated_trust_entity else {
+                    tracing::info!(
+                        "identifier `{identifier_id}`{} is not trusted{}",
+                        certificate
+                            .map(|cert| format!(" using certificate {}", cert.id))
+                            .unwrap_or_default(),
+                        validated_trust_entity
+                            .err()
+                            .map(|err| format!(": {err}"))
+                            .unwrap_or_default()
+                    );
                     continue;
                 };
 
