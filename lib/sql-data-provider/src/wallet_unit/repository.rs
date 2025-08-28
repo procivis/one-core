@@ -87,6 +87,7 @@ impl WalletUnitRepository for WalletUnitProvider {
                 .status
                 .map(|status| Set(status.into()))
                 .unwrap_or_default(),
+            last_issuance: request.last_issuance.map(Set).unwrap_or_default(),
             ..Default::default()
         };
 

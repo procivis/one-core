@@ -112,8 +112,8 @@ pub struct DataLayer {
     backup_repository: Arc<dyn BackupRepository>,
     trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
-    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     blob_repository: Arc<dyn BlobRepository>,
+    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
 }
 
 impl DataLayer {
@@ -284,10 +284,10 @@ impl DataLayer {
             backup_repository,
             trust_anchor_repository,
             trust_entity_repository,
-            wallet_unit_repository,
             identifier_repository,
             certificate_repository,
             blob_repository,
+            wallet_unit_repository,
         }
     }
 }
@@ -351,12 +351,13 @@ impl DataRepository for DataLayer {
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository> {
         self.trust_entity_repository.clone()
     }
-    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {
-        self.wallet_unit_repository.clone()
-    }
 
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository> {
         self.blob_repository.clone()
+    }
+
+    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {
+        self.wallet_unit_repository.clone()
     }
 }
 

@@ -441,6 +441,14 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 "/ssi/vct/v1/{organisationId}/{vctType}",
                 get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
             )
+            .route(
+                "/ssi/wallet-unit",
+                post(ssi::controller::ssi_register_wallet_unit)
+            )
+            .route(
+                "/ssi/wallet-unit/{id}/refresh",
+                post(ssi::controller::ssi_refresh_wallet_unit)
+            )
     } else {
         if let Some(paths) = openapi_paths.as_mut() {
             paths.shift_remove("/ssi");

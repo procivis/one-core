@@ -71,6 +71,7 @@ pub(crate) struct HistoryResponseDetailRestDTO {
 pub(crate) enum HistoryMetadataRestEnum {
     UnexportableEntities(UnexportableEntitiesResponseRestDTO),
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
+    WalletUnitJWT(#[try_from(infallible)] String),
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -153,6 +154,7 @@ pub(crate) enum HistoryEntityType {
     Backup,
     TrustAnchor,
     TrustEntity,
+    WalletUnit,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

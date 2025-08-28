@@ -245,3 +245,29 @@ impl<Payload: Serialize> Jwt<Payload> {
         Ok(token)
     }
 }
+
+impl<T> DecomposedToken<T> {
+    pub async fn verify_signature(
+        &self,
+        public_key_source: PublicKeySource<'_>,
+        token_verifier: &dyn TokenVerifier,
+    ) -> Result<(), FormatterError> {
+        let (_, algorithm) = token_verifier
+            .key_algorithm_provider()
+            .key_algorithm_from_jose_alg(&self.header.algorithm)
+            .ok_or(FormatterError::CouldNotVerify(format!(
+                "Missing key algorithm for {}",
+                self.header.algorithm
+            )))?;
+
+        token_verifier
+            .verify(
+                public_key_source,
+                algorithm.algorithm_type(),
+                self.unverified_jwt.as_bytes(),
+                &self.signature,
+            )
+            .await
+            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
+    }
+}

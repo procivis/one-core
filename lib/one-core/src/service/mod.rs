@@ -23,6 +23,7 @@ pub mod revocation_list;
 pub mod ssi_holder;
 pub mod ssi_issuer;
 mod ssi_validator;
+pub mod ssi_wallet_provider;
 pub mod storage_proxy;
 pub mod task;
 pub mod trust_anchor;

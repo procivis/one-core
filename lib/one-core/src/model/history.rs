@@ -15,6 +15,7 @@ use crate::service::error::ErrorCode;
 pub enum HistoryMetadata {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadata),
+    WalletUnitJWT(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -84,6 +85,7 @@ pub enum HistoryEntityType {
     Backup,
     TrustAnchor,
     TrustEntity,
+    WalletUnit,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

@@ -43,6 +43,14 @@ pub enum PublicKeySource<'a> {
     },
 }
 
+impl<'a> From<&'a PublicKeyJwk> for PublicKeySource<'a> {
+    fn from(value: &'a PublicKeyJwk) -> Self {
+        Self::Jwk {
+            jwk: Cow::Borrowed(value),
+        }
+    }
+}
+
 /// Method for verifying credential.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]

@@ -65,19 +65,31 @@ pub(crate) fn validate_issuance_time(
     issued_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
-    if issued_at.is_none() {
+    let Some(issued_at) = issued_at else {
         return Ok(());
-    }
+    };
 
     let now = OffsetDateTime::now_utc();
-    let issued = issued_at.ok_or(ServiceError::ValidationError(
-        "Missing issuance date".to_owned(),
-    ))?;
-
-    if issued > now.add(Duration::from_secs(leeway)) {
+    if *issued_at > now.add(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Issued in future".to_owned()));
     }
+    Ok(())
+}
 
+pub(crate) fn validate_not_before_time(
+    not_before: &Option<OffsetDateTime>,
+    leeway: u64,
+) -> Result<(), ServiceError> {
+    let Some(not_before) = not_before else {
+        return Ok(());
+    };
+
+    let now = OffsetDateTime::now_utc();
+    if *not_before > now.add(Duration::from_secs(leeway)) {
+        return Err(ServiceError::ValidationError(
+            "Not before in future".to_owned(),
+        ));
+    }
     Ok(())
 }
 
@@ -85,19 +97,14 @@ pub(crate) fn validate_expiration_time(
     expires_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
-    if expires_at.is_none() {
+    let Some(expires_at) = expires_at else {
         return Ok(());
-    }
+    };
 
     let now = OffsetDateTime::now_utc();
-    let expires = expires_at.ok_or(ServiceError::ValidationError(
-        "Missing expiration date".to_owned(),
-    ))?;
-
-    if expires < now.sub(Duration::from_secs(leeway)) {
+    if *expires_at < now.sub(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Expired".to_owned()));
     }
-
     Ok(())
 }
 
@@ -133,6 +140,21 @@ mod tests {
         assert!(issued_in_future.is_err());
 
         let missing_date = validate_expiration_time(&None, leeway);
+        assert!(missing_date.is_ok());
+    }
+
+    #[test]
+    fn test_validate_not_before_time() {
+        let leeway = 5u64;
+
+        let correct_not_before = validate_not_before_time(&Some(OffsetDateTime::now_utc()), leeway);
+        assert!(correct_not_before.is_ok());
+
+        let now_plus_minute = OffsetDateTime::now_utc().add(Duration::from_secs(60));
+        let not_before_in_future = validate_not_before_time(&Some(now_plus_minute), leeway);
+        assert!(not_before_in_future.is_err());
+
+        let missing_date = validate_not_before_time(&None, leeway);
         assert!(missing_date.is_ok());
     }
 }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
     IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
-    TrustEntityKey,
+    TrustEntityKey, WalletUnitId,
 };
 use strum::{EnumMessage, IntoStaticStr};
 use thiserror::Error;
@@ -35,6 +35,7 @@ use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
+use crate::service::ssi_wallet_provider::error::WalletProviderError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -130,6 +131,9 @@ pub enum ServiceError {
 
     #[error("Blob storage error `{0}`")]
     BlobStorageError(#[from] BlobStorageError),
+
+    #[error("Wallet provider error: `{0}`")]
+    WalletProviderError(#[from] WalletProviderError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -190,6 +194,9 @@ pub enum EntityNotFoundError {
 
     #[error("Interaction `{0}` not found")]
     Interaction(InteractionId),
+
+    #[error("Wallet unit `{0}` not found")]
+    WalletUnit(WalletUnitId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -893,6 +900,9 @@ pub enum ErrorCode {
     #[strum(message = "Key already exists")]
     BR_0066,
 
+    #[strum(message = "Proof unauthorized")]
+    BR_0071,
+
     #[strum(message = "Key must not be remote")]
     BR_0076,
 
@@ -1280,6 +1290,18 @@ pub enum ErrorCode {
 
     #[strum(message = "Interaction not found")]
     BR_0257,
+
+    #[strum(message = "Minimum refresh time not reached")]
+    BR_0258,
+
+    #[strum(message = "Wallet unit not found")]
+    BR_0259,
+
+    #[strum(message = "Wallet provider not enabled in config")]
+    BR_0260,
+
+    #[strum(message = "Wallet unit revoked")]
+    BR_0261,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1324,6 +1346,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
             Self::KeyHandleError(_) => ErrorCode::BR_0201,
             Self::BlobStorageError(_) => ErrorCode::BR_0251,
+            Self::WalletProviderError(error) => error.error_code(),
         }
     }
 }
@@ -1362,6 +1385,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Identifier(_) | Self::IdentifierByDidId(_) => ErrorCode::BR_0207,
             Self::Certificate(_) => ErrorCode::BR_0223,
             Self::Interaction(_) => ErrorCode::BR_0257,
+            Self::WalletUnit(_) => ErrorCode::BR_0259,
         }
     }
 }
@@ -1644,6 +1668,18 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::Task(_) => ErrorCode::BR_0103,
             Self::TrustManager(_) => ErrorCode::BR_0132,
             Self::BlobStorage(_) => ErrorCode::BR_0252,
+        }
+    }
+}
+
+impl ErrorCodeMixin for WalletProviderError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::WalletProviderDisabled(_) => ErrorCode::BR_0260,
+            Self::CouldNotVerifyProof(_) => ErrorCode::BR_0071,
+            Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
+            Self::WalletUnitRevoked => ErrorCode::BR_0261,
+            Self::RefreshTimeNotReached => ErrorCode::BR_0258,
         }
     }
 }

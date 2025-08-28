@@ -20,6 +20,10 @@ use one_core::service::ssi_issuer::dto::{
     SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
+use one_core::service::ssi_wallet_provider::dto::{
+    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO,
+};
 use one_core::service::trust_anchor::dto::{
     GetTrustAnchorEntityListResponseDTO, GetTrustAnchorResponseDTO,
 };
@@ -35,7 +39,7 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
+use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey, WalletUnitId};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
@@ -89,10 +93,11 @@ pub(crate) struct DidVerificationMethodRestDTO {
 }
 
 /// JWK representation of the public key used to verify the DID.
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "camelCase")]
 #[serde(tag = "kty")]
 #[from(PublicKeyJwkDTO)]
+#[into(PublicKeyJwkDTO)]
 pub(crate) enum PublicKeyJwkRestDTO {
     #[serde(rename = "EC")]
     Ec(PublicKeyJwkEllipticDataRestDTO),
@@ -107,42 +112,58 @@ pub(crate) enum PublicKeyJwkRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[from(PublicKeyJwkMlweDataDTO)]
+#[into(PublicKeyJwkMlweDataDTO)]
 pub(crate) struct PublicKeyJwkMlweDataRestDTO {
     pub r#use: Option<String>,
     pub alg: Option<String>,
     pub x: String,
+    #[schema(ignore)]
+    #[serde(default, skip_serializing)]
+    pub kid: Option<String>,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[from(PublicKeyJwkOctDataDTO)]
+#[into(PublicKeyJwkOctDataDTO)]
 pub(crate) struct PublicKeyJwkOctDataRestDTO {
     pub alg: Option<String>,
     pub r#use: Option<String>,
     pub k: String,
+    #[schema(ignore)]
+    #[serde(default, skip_serializing)]
+    pub kid: Option<String>,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[from(PublicKeyJwkRsaDataDTO)]
+#[into(PublicKeyJwkRsaDataDTO)]
 pub(crate) struct PublicKeyJwkRsaDataRestDTO {
     pub r#use: Option<String>,
     pub alg: Option<String>,
     pub e: String,
     pub n: String,
+    #[schema(ignore)]
+    #[serde(default, skip_serializing)]
+    pub kid: Option<String>,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
 #[from(PublicKeyJwkEllipticDataDTO)]
+#[into(PublicKeyJwkEllipticDataDTO)]
 pub(crate) struct PublicKeyJwkEllipticDataRestDTO {
     pub r#use: Option<String>,
     pub alg: Option<String>,
     pub crv: String,
     pub x: String,
     pub y: Option<String>,
+    #[schema(ignore)]
+    #[serde(default, skip_serializing)]
+    pub kid: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -466,4 +487,39 @@ pub(crate) struct SSIPostTrustEntityRequestRestDTO {
     pub privacy_url: Option<String>,
     #[try_into(infallible)]
     pub role: TrustEntityRoleRest,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(RegisterWalletUnitRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RegisterWalletUnitRequestRestDTO {
+    pub wallet_provider: String,
+    pub os: String,
+    pub public_key: PublicKeyJwkRestDTO,
+    pub proof: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(RegisterWalletUnitResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RegisterWalletUnitResponseRestDTO {
+    pub id: WalletUnitId,
+    pub attestation: String,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(RefreshWalletUnitRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RefreshWalletUnitRequestRestDTO {
+    pub proof: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(RefreshWalletUnitResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct RefreshWalletUnitResponseRestDTO {
+    pub id: WalletUnitId,
+    pub attestation: String,
 }

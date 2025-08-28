@@ -11,6 +11,7 @@ pub mod timestamp;
 pub mod vcdm_jsonld_contexts;
 pub mod x509;
 
+pub mod clock;
 pub mod cose;
 pub mod identifier;
 pub mod jwt;

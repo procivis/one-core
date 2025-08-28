@@ -62,6 +62,9 @@ use crate::service::key::KeyService;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::revocation_list::RevocationListService;
+use crate::service::ssi_wallet_provider::SSIWalletProviderService;
+use crate::util::clock::DefaultClock;
+
 pub mod config;
 pub mod provider;
 
@@ -153,6 +156,7 @@ pub struct OneCore {
     pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
+    pub ssi_wallet_provider_service: SSIWalletProviderService,
     pub task_service: TaskService,
     pub jsonld_service: JsonLdService,
     pub config: Arc<CoreConfig>,
@@ -381,6 +385,8 @@ impl OneCore {
             }
             _ => None,
         };
+
+        let clock = Arc::new(DefaultClock);
 
         let did_method_provider = providers
             .did_method_provider
@@ -764,7 +770,7 @@ impl OneCore {
                 data_provider.get_revocation_list_repository(),
                 certificate_validator.clone(),
                 ContextCache::new(jsonld_caching_loader.clone(), client.clone()),
-                providers.core_base_url,
+                providers.core_base_url.clone(),
             ),
             ssi_holder_service: SSIHolderService::new(
                 data_provider.get_credential_repository(),
@@ -778,17 +784,27 @@ impl OneCore {
                 data_provider.get_identifier_repository(),
                 data_provider.get_certificate_repository(),
                 data_provider.get_history_repository(),
-                key_provider,
-                key_algorithm_provider,
+                key_provider.clone(),
+                key_algorithm_provider.clone(),
                 credential_formatter_provider,
                 issuance_provider,
                 verification_provider,
-                did_method_provider,
-                certificate_validator,
+                did_method_provider.clone(),
+                certificate_validator.clone(),
                 config.clone(),
                 client.clone(),
                 vct_type_metadata_cache,
                 blob_storage_provider,
+            ),
+            ssi_wallet_provider_service: SSIWalletProviderService::new(
+                data_provider.get_wallet_unit_repository(),
+                data_provider.get_identifier_repository(),
+                data_provider.get_history_repository(),
+                key_provider,
+                key_algorithm_provider,
+                clock,
+                config.clone(),
+                providers.core_base_url,
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),

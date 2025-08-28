@@ -1,4 +1,4 @@
-use one_dto_mapper::Into;
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::WalletUnitId;
 use strum::{AsRefStr, Display};
@@ -12,15 +12,15 @@ use crate::config;
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WalletUnit {
     pub id: WalletUnitId,
+    pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub last_issuance: OffsetDateTime,
-    pub name: String,
     pub os: String,
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
     pub public_key: String,
+    pub last_issuance: OffsetDateTime,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -29,9 +29,10 @@ pub enum WalletUnitStatus {
     Revoked,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Display, AsRefStr, Into)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Display, AsRefStr, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into(config::core_config::WalletProviderType)]
+#[from(config::core_config::WalletProviderType)]
 pub enum WalletProviderType {
     ProcivisOne,
 }
@@ -68,4 +69,5 @@ pub type GetWalletUnitList = GetListResponse<WalletUnit>;
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
+    pub last_issuance: Option<OffsetDateTime>,
 }

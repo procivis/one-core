@@ -299,6 +299,9 @@ impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
                     message: value.message,
                 },
             },
+            HistoryMetadataResponse::WalletUnitJWT(value) => {
+                HistoryMetadataBinding::WalletUnitJWT(value)
+            }
         }
     }
 }

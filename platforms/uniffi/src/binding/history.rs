@@ -157,6 +157,7 @@ pub enum HistoryEntityTypeBindingEnum {
     Backup,
     TrustAnchor,
     TrustEntity,
+    WalletUnit,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
@@ -167,6 +168,7 @@ pub enum HistoryMetadataBinding {
     ErrorMetadata {
         value: HistoryErrorMetadataBindingDTO,
     },
+    WalletUnitJWT(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]

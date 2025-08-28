@@ -45,9 +45,9 @@ use revocation_list_repository::RevocationListRepository;
 use trust_anchor_repository::TrustAnchorRepository;
 use validity_credential_repository::ValidityCredentialRepository;
 
+use self::blob_repository::BlobRepository;
 use self::trust_entity_repository::TrustEntityRepository;
 use self::wallet_unit_repository::WalletUnitRepository;
-use crate::repository::blob_repository::BlobRepository;
 
 pub trait DataRepository: Send + Sync {
     fn get_organisation_repository(&self) -> Arc<dyn OrganisationRepository>;
@@ -69,7 +69,6 @@ pub trait DataRepository: Send + Sync {
     fn get_backup_repository(&self) -> Arc<dyn BackupRepository>;
     fn get_trust_anchor_repository(&self) -> Arc<dyn TrustAnchorRepository>;
     fn get_trust_entity_repository(&self) -> Arc<dyn TrustEntityRepository>;
-    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository>;
-
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository>;
+    fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository>;
 }

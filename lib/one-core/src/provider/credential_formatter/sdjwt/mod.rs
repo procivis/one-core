@@ -12,7 +12,7 @@ use time::{Duration, OffsetDateTime};
 
 use super::model::{
     AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
-    PublicKeySource, SettableClaims, TokenVerifier, VerificationFn,
+    PublicKeySource, SettableClaims, VerificationFn,
 };
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
@@ -417,7 +417,9 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         };
 
         if let Some(verification) = verification {
-            Self::verify_token_signature(&decomposed_token, params, verification).await?;
+            decomposed_token
+                .verify_signature(params, verification)
+                .await?;
         };
 
         let disclosures_with_hashes = disclosures
@@ -524,7 +526,9 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 did: Cow::Borrowed(&kb_issuer),
                 key_id: decomposed_kb_token.header.key_id.as_deref(),
             };
-            Self::verify_token_signature(&decomposed_kb_token, params, verification).await?;
+            decomposed_kb_token
+                .verify_signature(params, verification)
+                .await?;
         }
 
         let DecomposedToken {
@@ -586,29 +590,5 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             )));
         }
         Ok(Some(kb_payload))
-    }
-
-    async fn verify_token_signature<AnyPayload>(
-        token: &DecomposedToken<AnyPayload>,
-        params: PublicKeySource<'_>,
-        verification_fn: &dyn TokenVerifier,
-    ) -> Result<(), FormatterError> {
-        let (_, algorithm) = verification_fn
-            .key_algorithm_provider()
-            .key_algorithm_from_jose_alg(&token.header.algorithm)
-            .ok_or(FormatterError::CouldNotVerify(format!(
-                "Missing key algorithm for {}",
-                token.header.algorithm
-            )))?;
-
-        verification_fn
-            .verify(
-                params,
-                algorithm.algorithm_type(),
-                token.unverified_jwt.as_bytes(),
-                &token.signature,
-            )
-            .await
-            .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))
     }
 }

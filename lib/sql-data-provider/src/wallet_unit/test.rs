@@ -607,6 +607,7 @@ async fn test_update_wallet_unit_status_success() {
     // Update only the status to REVOKED
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
+        last_issuance: None,
     };
 
     let result = provider
@@ -649,6 +650,7 @@ async fn test_update_wallet_unit_nonexistent() {
     let nonexistent_id: WalletUnitId = Uuid::new_v4().into();
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
+        last_issuance: None,
     };
 
     let result = provider
@@ -715,6 +717,7 @@ async fn test_update_wallet_unit_status_changes() {
     // Update to REVOKED
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
+        last_issuance: None,
     };
 
     let result = provider
@@ -733,6 +736,7 @@ async fn test_update_wallet_unit_status_changes() {
     // Update back to ACTIVE
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Active),
+        last_issuance: None,
     };
 
     let result = provider
@@ -769,6 +773,7 @@ async fn test_update_and_list_wallet_units() {
     // Update one wallet unit to REVOKED status
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
+        last_issuance: None,
     };
 
     provider
@@ -1160,6 +1165,7 @@ async fn test_sort_by_last_modified_after_updates() {
     // Update the first wallet unit to change its last_modified
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
+        last_issuance: None,
     };
     provider
         .update_wallet_unit(&wallet_unit_id1, update_request)

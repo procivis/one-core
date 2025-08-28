@@ -141,4 +141,6 @@ pub enum HistoryEntityType {
     TrustAnchor,
     #[sea_orm(string_value = "TRUST_ENTITY")]
     TrustEntity,
+    #[sea_orm(string_value = "WALLET_UNIT")]
+    WalletUnit,
 }
