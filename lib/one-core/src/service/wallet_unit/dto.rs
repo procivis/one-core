@@ -1,7 +1,27 @@
-use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
+use one_dto_mapper::From;
+use shared_types::WalletUnitId;
 use time::OffsetDateTime;
 
-use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use crate::model::common::GetListResponse;
+use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitStatus};
+
+#[derive(From)]
+#[from(WalletUnit)]
+pub struct GetWalletUnitResponseDTO {
+    pub id: WalletUnitId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub last_issuance: OffsetDateTime,
+    pub name: String,
+    pub os: String,
+    pub status: WalletUnitStatus,
+    pub wallet_provider_type: WalletProviderType,
+    pub wallet_provider_name: String,
+    pub public_key: String,
+}
+
+pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;
+use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId};
 
 #[derive(Debug, Clone)]
 pub struct HolderRegisterWalletUnitRequestDTO {

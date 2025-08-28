@@ -1,15 +1,65 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, WalletUnitId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::wallet_unit::dto::{
-    HolderRefreshWalletUnitRequestRestDTO, HolderRegisterWalletUnitRequestRestDTO,
-    HolderWalletUnitAttestationResponseRestDTO,
+    GetWalletUnitsResponseRestDTO, HolderRefreshWalletUnitRequestRestDTO,
+    HolderRegisterWalletUnitRequestRestDTO, HolderWalletUnitAttestationResponseRestDTO,
+    ListWalletUnitsQuery, WalletUnitResponseRestDTO,
 };
+use crate::extractor::Qs;
 use crate::router::AppState;
+
+#[utoipa::path(
+    get,
+    path = "/api/wallet-unit/v1",
+    params(ListWalletUnitsQuery),
+    responses(OkOrErrorResponse<GetWalletUnitsResponseRestDTO>),
+    tag = "wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "List wallet units",
+    description = indoc::formatdoc! {"
+    Returns a list of wallet units.
+"},
+)]
+pub(crate) async fn get_wallet_unit_list(
+    state: State<AppState>,
+    WithRejection(Qs(query), _): WithRejection<Qs<ListWalletUnitsQuery>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetWalletUnitsResponseRestDTO> {
+    let result = state
+        .core
+        .wallet_unit_service
+        .get_wallet_unit_list(query.into())
+        .await;
+    OkOrErrorResponse::from_result(result, state, "getting wallet unit list")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/wallet-unit/v1/{id}",
+    params(
+        ("id" = WalletUnitId, Path, description = "Wallet unit id")
+    ),
+    responses(OkOrErrorResponse<WalletUnitResponseRestDTO>),
+    tag = "wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve a wallet unit",
+    description = "Returns details on a given wallet unit.",
+)]
+pub(crate) async fn get_wallet_unit_details(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<WalletUnitResponseRestDTO> {
+    let result = state.core.wallet_unit_service.get_wallet_unit(&id).await;
+    OkOrErrorResponse::from_result(result, state, "fetching wallet unit")
+}
 
 #[utoipa::path(
     post,

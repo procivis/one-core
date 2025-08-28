@@ -1,12 +1,13 @@
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use crate::common_mapper::list_response_into;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
-use crate::model::wallet_unit::WalletUnitStatus;
 use crate::model::wallet_unit::WalletUnitStatus::Revoked;
+use crate::model::wallet_unit::{WalletUnitListQuery, WalletUnitRelations, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
 };
@@ -20,14 +21,48 @@ use crate::service::ssi_wallet_provider::dto::{
 };
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderWalletUnitAttestationResponseDTO,
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitAttestationResponseDTO,
 };
 use crate::service::wallet_unit::error::WalletUnitAttestationError;
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{DecomposedToken, JWTPayload};
 
 impl WalletUnitService {
+    /// Returns details of a wallet unit
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Wallet unit uuid
+    pub async fn get_wallet_unit(
+        &self,
+        id: &WalletUnitId,
+    ) -> Result<GetWalletUnitResponseDTO, ServiceError> {
+        let result = self
+            .wallet_unit_repository
+            .get_wallet_unit(id, &WalletUnitRelations::default())
+            .await?
+            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+
+        Ok(result.into())
+    }
+
+    /// Returns list of proof schemas according to query
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - query parameters
+    pub async fn get_wallet_unit_list(
+        &self,
+        query: WalletUnitListQuery,
+    ) -> Result<GetWalletUnitListResponseDTO, ServiceError> {
+        let result = self
+            .wallet_unit_repository
+            .get_wallet_unit_list(query)
+            .await?;
+
+        Ok(list_response_into(result))
+    }
     pub async fn holder_register(
         &self,
         request: HolderRegisterWalletUnitRequestDTO,

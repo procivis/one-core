@@ -282,6 +282,14 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 post(trust_entity::controller::create_remote_trust_entity),
             )
             .route(
+                "/api/wallet-unit/v1",
+                get(wallet_unit::controller::get_wallet_unit_list),
+            )
+            .route(
+                "/api/wallet-unit/v1/{id}",
+                get(wallet_unit::controller::get_wallet_unit_details),
+            )
+            .route(
                 "/api/trust-entity/remote/v1/{did_id}",
                 get(trust_entity::controller::get_remote_trust_entity)
                     .patch(trust_entity::controller::update_remote_trust_entity),

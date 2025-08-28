@@ -65,3 +65,6 @@ mod jsonld;
 
 #[path = "api/generic_api_tests.rs"]
 mod generic_api_tests;
+
+#[path = "api/wallet_unit/mod.rs"]
+mod api_wallet_unit_tests;

@@ -826,6 +826,7 @@ impl OneCore {
             ),
             wallet_unit_service: WalletUnitService::new(
                 data_provider.get_organisation_repository(),
+                data_provider.get_wallet_unit_repository(),
                 data_provider.get_wallet_unit_attestation_repository(),
                 data_provider.get_history_repository(),
                 data_provider.get_key_repository(),

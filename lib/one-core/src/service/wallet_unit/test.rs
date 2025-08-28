@@ -31,6 +31,7 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
+use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitResponseDTO, RegisterWalletUnitResponseDTO,
 };
@@ -50,6 +51,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         organisation_repository: Arc::new(MockOrganisationRepository::default()),
         key_repository: Arc::new(MockKeyRepository::default()),
         wallet_provider_client: Arc::new(MockWalletProviderClient::default()),
+        wallet_unit_repository: Arc::new(MockWalletUnitRepository::default()),
         wallet_unit_attestation_repository: Arc::new(MockWalletUnitAttestationRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
         key_provider: Arc::new(MockKeyProvider::default()),

@@ -5,9 +5,9 @@ use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
-use super::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use super::list_query::ListQuery;
 use crate::config;
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WalletUnit {

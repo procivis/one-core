@@ -18,6 +18,7 @@ use self::trust_entities::TrustEntityDB;
 use crate::utils::db_clients::blobs::BlobsDB;
 use crate::utils::db_clients::remote_entity_cache::RemoteEntityCacheDB;
 use crate::utils::db_clients::validity_credentials::ValidityCredentialsDB;
+use crate::utils::db_clients::wallet_units::WalletUnitsDB;
 
 pub mod blobs;
 pub mod certificates;
@@ -36,6 +37,7 @@ pub mod revocation_lists;
 pub mod trust_anchors;
 pub mod trust_entities;
 pub mod validity_credentials;
+pub mod wallet_units;
 
 pub struct DbClient {
     pub organisations: OrganisationsDB,
@@ -55,6 +57,7 @@ pub struct DbClient {
     pub trust_anchors: TrustAnchorDB,
     pub trust_entities: TrustEntityDB,
     pub blobs: BlobsDB,
+    pub wallet_units: WalletUnitsDB,
     pub db_conn: DbConn,
 }
 
@@ -82,6 +85,7 @@ impl DbClient {
             trust_anchors: TrustAnchorDB::new(layer.get_trust_anchor_repository()),
             trust_entities: TrustEntityDB::new(layer.get_trust_entity_repository()),
             blobs: BlobsDB::new(layer.get_blob_repository()),
+            wallet_units: WalletUnitsDB::new(layer.get_wallet_unit_repository()),
         }
     }
 }

@@ -1,15 +1,104 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
-use one_core::service::wallet_unit::dto::{
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+use one_core::model::wallet_unit::{
+    SortableWalletUnitColumn, WalletProviderType, WalletUnitStatus,
 };
-use one_dto_mapper::{From, Into};
+use one_core::service::wallet_unit::dto::{
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+};
+use one_dto_mapper::{From, Into, convert_inner};
+use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
+use crate::dto::common::ListQueryParamsRest;
 use crate::serialize::front_time;
+
+pub(crate) type ListWalletUnitsQuery =
+    ListQueryParamsRest<WalletUnitFilterQueryParamsRestDTO, SortableWalletUnitColumnRest>;
+
+#[options_not_nullable]
+#[derive(Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(GetWalletUnitListResponseDTO)]
+pub(crate) struct GetWalletUnitsResponseRestDTO {
+    pub total_pages: u64,
+    pub total_items: u64,
+    #[from(with_fn = convert_inner)]
+    pub values: Vec<WalletUnitResponseRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(GetWalletUnitResponseDTO)]
+pub(crate) struct WalletUnitResponseRestDTO {
+    pub id: WalletUnitId,
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub created_date: OffsetDateTime,
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub last_modified: OffsetDateTime,
+    #[schema(example = "2023-06-09T14:19:57.000Z")]
+    #[serde(serialize_with = "front_time")]
+    pub last_issuance: OffsetDateTime,
+    pub name: String,
+    pub os: String,
+    pub status: WalletUnitStatusRestEnum,
+    pub wallet_provider_type: WalletProviderTypeRestEnum,
+    pub wallet_provider_name: String,
+    pub public_key: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(WalletUnitStatus)]
+#[into(WalletUnitStatus)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum WalletUnitStatusRestEnum {
+    Active,
+    Revoked,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(WalletProviderType)]
+#[into(WalletProviderType)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum WalletProviderTypeRestEnum {
+    ProcivisOne,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
+    /// Return only wallet units with a name starting with this string.
+    #[param(nullable = false)]
+    pub name: Option<String>,
+    /// Filter by specific wallet unit UUIDs.
+    #[param(rename = "ids[]", inline, nullable = false)]
+    pub ids: Option<Vec<WalletUnitId>>,
+    /// Return only wallet units with the specified status.
+    #[param(rename = "status[]", inline, nullable = false)]
+    pub status: Option<Vec<WalletUnitStatusRestEnum>>,
+    /// Return only wallet units with the specified OS.
+    #[param(rename = "os[]", inline, nullable = false)]
+    pub os: Option<Vec<String>>,
+    /// Return only wallet units with the specified wallet provider type.
+    #[param(rename = "walletProviderType[]", inline, nullable = false)]
+    pub wallet_provider_type: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(SortableWalletUnitColumn)]
+#[into(SortableWalletUnitColumn)]
+pub(crate) enum SortableWalletUnitColumnRest {
+    CreatedDate,
+    LastModified,
+    Name,
+    Status,
+    Os,
+}
 
 #[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -60,21 +149,4 @@ pub(crate) struct HolderWalletUnitAttestationResponseRestDTO {
     pub wallet_provider_url: String,
     pub wallet_provider_type: WalletProviderTypeRestEnum,
     pub wallet_provider_name: String,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Into, From)]
-#[into(WalletUnitStatus)]
-#[from(WalletUnitStatus)]
-#[serde(rename_all = "UPPERCASE")]
-pub(crate) enum WalletUnitStatusRestEnum {
-    Active,
-    Revoked,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From)]
-#[into(WalletProviderType)]
-#[from(WalletProviderType)]
-#[serde(rename_all = "UPPERCASE")]
-pub(crate) enum WalletProviderTypeRestEnum {
-    ProcivisOne,
 }
