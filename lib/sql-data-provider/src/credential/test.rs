@@ -1181,6 +1181,143 @@ async fn test_update_credential_success() {
 }
 
 #[tokio::test]
+async fn test_update_credential_success_no_claims() {
+    let mut claim_repository = MockClaimRepository::default();
+
+    claim_repository
+        .expect_delete_claims_for_credential()
+        .returning(|_| Ok(()));
+
+    let TestSetup {
+        credential_schema,
+        db,
+        identifier,
+        ..
+    } = setup_empty().await;
+
+    let mut identifier_repository = MockIdentifierRepository::default();
+    identifier_repository.expect_get().return_once({
+        let identifier = identifier.clone();
+        |_, _| Ok(Some(identifier))
+    });
+
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    let credential_schema_clone = credential_schema.clone();
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
+
+    let blob_id = Uuid::new_v4().into();
+
+    let credential_id = insert_credential(
+        &db,
+        &credential_schema.id,
+        CredentialStateEnum::Created,
+        "OPENID4VCI_DRAFT13",
+        identifier.id,
+        None,
+        None,
+        blob_id,
+    )
+    .await
+    .unwrap()
+    .id;
+
+    let mut interaction_repository = MockInteractionRepository::default();
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .returning(|id, _| {
+            Ok(Some(Interaction {
+                id: id.to_owned(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                host: Some("https://host.co".parse().unwrap()),
+                data: None,
+                organisation: None,
+            }))
+        });
+
+    let provider = credential_repository(
+        db.clone(),
+        Some(Repositories {
+            credential_schema_repository: Arc::new(credential_schema_repository),
+            claim_repository: Arc::new(claim_repository),
+            interaction_repository: Arc::new(interaction_repository),
+            identifier_repository: Arc::new(identifier_repository),
+            ..Repositories::default()
+        }),
+    );
+
+    let credential_before_update = provider
+        .get_credential(&credential_id, &CredentialRelations::default())
+        .await;
+    assert!(credential_before_update.is_ok());
+    let credential_before_update = credential_before_update.unwrap().unwrap();
+    assert_eq!(credential_id, credential_before_update.id);
+
+    assert_eq!(
+        blob_id,
+        credential_before_update.credential_blob_id.unwrap()
+    );
+
+    let organisation_id = test_utilities::insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+
+    let interaction_id = Uuid::parse_str(
+        &insert_interaction(&db, "host", &[], organisation_id)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert!(
+        provider
+            .update_credential(
+                credential_id,
+                UpdateCredentialRequest {
+                    state: Some(CredentialStateEnum::Pending),
+                    suspend_end_date: Clearable::DontTouch,
+                    interaction: Some(interaction_id),
+                    credential_blob_id: Some(blob_id),
+                    claims: Some(vec![]),
+                    ..Default::default()
+                }
+            )
+            .await
+            .is_ok()
+    );
+    let credential_after_update = provider
+        .get_credential(
+            &credential_id,
+            &CredentialRelations {
+                interaction: Some(InteractionRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await;
+    assert!(credential_after_update.is_ok());
+    let credential_after_update = credential_after_update.unwrap().unwrap();
+    assert_eq!(blob_id, credential_after_update.credential_blob_id.unwrap());
+    assert_eq!(
+        interaction_id,
+        credential_after_update.interaction.unwrap().id
+    );
+    assert_eq!(credential_after_update.state, CredentialStateEnum::Pending);
+
+    let history = crate::entity::history::Entity::find()
+        .all(&db)
+        .await
+        .unwrap();
+    assert_eq!(history.len(), 1);
+    assert_eq!(
+        history[0].action,
+        crate::entity::history::HistoryAction::Pending
+    );
+}
+
+#[tokio::test]
 async fn test_get_credential_by_claim_id_success() {
     let TestSetup {
         credential_schema,

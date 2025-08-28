@@ -598,7 +598,9 @@ impl CredentialRepository for CredentialProvider {
                 .delete_claims_for_credential(credential_id)
                 .await?;
 
-            self.claim_repository.create_claim_list(claims).await?;
+            if !claims.is_empty() {
+                self.claim_repository.create_claim_list(claims).await?;
+            }
         }
 
         update_model
