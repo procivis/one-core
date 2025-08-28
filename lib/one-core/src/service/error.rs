@@ -36,6 +36,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::wallet_unit::error::WalletUnitAttestationError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -134,6 +135,9 @@ pub enum ServiceError {
 
     #[error("Wallet provider error: `{0}`")]
     WalletProviderError(#[from] WalletProviderError),
+
+    #[error("Wallet unit error: `{0}`")]
+    WalletUnitAttestationError(#[from] WalletUnitAttestationError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -197,6 +201,9 @@ pub enum EntityNotFoundError {
 
     #[error("Wallet unit `{0}` not found")]
     WalletUnit(WalletUnitId),
+
+    #[error("Wallet unit attestation by organisation `{0}` not found")]
+    WalletUnitAttestationByOrganisation(OrganisationId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1302,6 +1309,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Wallet unit revoked")]
     BR_0261,
+
+    #[strum(message = "No wallet unit registration")]
+    BR_0262,
+
+    #[strum(message = "Cannot fetch wallet unit attestation")]
+    BR_0264,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1347,6 +1360,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::KeyHandleError(_) => ErrorCode::BR_0201,
             Self::BlobStorageError(_) => ErrorCode::BR_0251,
             Self::WalletProviderError(error) => error.error_code(),
+            Self::WalletUnitAttestationError(error) => error.error_code(),
         }
     }
 }
@@ -1386,6 +1400,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Certificate(_) => ErrorCode::BR_0223,
             Self::Interaction(_) => ErrorCode::BR_0257,
             Self::WalletUnit(_) => ErrorCode::BR_0259,
+            Self::WalletUnitAttestationByOrganisation(_) => ErrorCode::BR_0262,
         }
     }
 }
@@ -1680,6 +1695,15 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
             Self::WalletUnitRevoked => ErrorCode::BR_0261,
             Self::RefreshTimeNotReached => ErrorCode::BR_0258,
+        }
+    }
+}
+
+impl ErrorCodeMixin for WalletUnitAttestationError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            WalletUnitAttestationError::WalletUnitRevoked => ErrorCode::BR_0261,
+            WalletUnitAttestationError::WalletProviderClientFailure(_) => ErrorCode::BR_0264,
         }
     }
 }

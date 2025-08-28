@@ -148,6 +148,7 @@ mod m20250820_084021_wallet_unit_table;
 mod m20250822_091700_add_wallet_unit_attestation_table;
 mod m20250822_112457_add_metadata_claim_schema_column;
 mod m20250822_122340_update_wallet_unit_table;
+mod m20250826_081725_update_wallet_unit_attestation_expiration_date_not_nullable;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -298,6 +299,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250822_112457_add_metadata_claim_schema_column::Migration),
             Box::new(m20250822_091700_add_wallet_unit_attestation_table::Migration),
             Box::new(m20250822_122340_update_wallet_unit_table::Migration),
+            Box::new(m20250826_081725_update_wallet_unit_attestation_expiration_date_not_nullable::Migration),
         ]
     }
 }

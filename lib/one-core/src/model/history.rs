@@ -86,6 +86,7 @@ pub enum HistoryEntityType {
     TrustAnchor,
     TrustEntity,
     WalletUnit,
+    WalletUnitAttestation,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

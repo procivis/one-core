@@ -35,6 +35,7 @@ use one_core::repository::revocation_list_repository::RevocationListRepository;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
+use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use organisation::OrganisationProvider;
 use organisation::history::OrganisationHistoryDecorator;
@@ -56,6 +57,7 @@ use crate::history::HistoryProvider;
 use crate::key::KeyProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
+use crate::wallet_unit_attestation::WalletUnitAttestationProvider;
 
 mod common;
 mod entity;
@@ -114,6 +116,7 @@ pub struct DataLayer {
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
     blob_repository: Arc<dyn BlobRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
+    wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
 }
 
 impl DataLayer {
@@ -265,6 +268,12 @@ impl DataLayer {
 
         let wallet_unit_repository = Arc::new(WalletUnitProvider { db: db.clone() });
 
+        let wallet_unit_attestation_repository = Arc::new(WalletUnitAttestationProvider {
+            db: db.clone(),
+            key_repository: key_repository.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
+
         Self {
             organisation_repository,
             credential_repository,
@@ -288,6 +297,7 @@ impl DataLayer {
             certificate_repository,
             blob_repository,
             wallet_unit_repository,
+            wallet_unit_attestation_repository,
         }
     }
 }
@@ -359,6 +369,10 @@ impl DataRepository for DataLayer {
     fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository> {
         self.wallet_unit_repository.clone()
     }
+
+    fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository> {
+        self.wallet_unit_attestation_repository.clone()
+    }
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
@@ -378,3 +392,4 @@ pub async fn db_conn(
 mod blob;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;
+mod wallet_unit_attestation;

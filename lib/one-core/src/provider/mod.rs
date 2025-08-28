@@ -16,3 +16,5 @@ pub mod trust_management;
 pub mod verification_protocol;
 
 pub mod blob_storage_provider;
+pub mod os_provider;
+pub mod wallet_provider_client;

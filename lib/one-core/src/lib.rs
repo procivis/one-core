@@ -51,8 +51,10 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::issuance_protocol_providers_from_config;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::os_provider::OSInfoProviderImpl;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::service::cache::CacheService;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::CredentialSchemaService;
@@ -63,6 +65,7 @@ use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::revocation_list::RevocationListService;
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
+use crate::service::wallet_unit::WalletUnitService;
 use crate::util::clock::DefaultClock;
 
 pub mod config;
@@ -162,6 +165,7 @@ pub struct OneCore {
     pub config: Arc<CoreConfig>,
     pub vc_api_service: VCAPIService,
     pub cache_service: CacheService,
+    pub wallet_unit_service: WalletUnitService,
 }
 
 #[derive(Default)]
@@ -800,15 +804,15 @@ impl OneCore {
                 data_provider.get_wallet_unit_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_history_repository(),
-                key_provider,
-                key_algorithm_provider,
+                key_provider.clone(),
+                key_algorithm_provider.clone(),
                 clock,
                 config.clone(),
-                providers.core_base_url,
+                providers.core_base_url.clone(),
             ),
             task_service: TaskService::new(task_provider),
             config_service: ConfigService::new(config.clone()),
-            jsonld_service: JsonLdService::new(jsonld_caching_loader, client),
+            jsonld_service: JsonLdService::new(jsonld_caching_loader, client.clone()),
             config: config.clone(),
             cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
             identifier_service: IdentifierService::new(
@@ -819,6 +823,18 @@ impl OneCore {
                 did_service,
                 certificate_service,
                 config,
+            ),
+            wallet_unit_service: WalletUnitService::new(
+                data_provider.get_organisation_repository(),
+                data_provider.get_wallet_unit_attestation_repository(),
+                data_provider.get_history_repository(),
+                data_provider.get_key_repository(),
+                key_provider,
+                key_algorithm_provider,
+                Arc::new(HTTPWalletProviderClient::new(client)),
+                Arc::new(OSInfoProviderImpl),
+                Arc::new(DefaultClock),
+                providers.core_base_url,
             ),
         })
     }

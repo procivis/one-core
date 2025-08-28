@@ -31,6 +31,7 @@ pub mod task;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod version;
+pub mod wallet_unit;
 
 type CoreBuilder = Box<
     dyn Fn(String) -> Pin<Box<dyn Future<Output = Result<one_core::OneCore, BindingError>> + Send>>

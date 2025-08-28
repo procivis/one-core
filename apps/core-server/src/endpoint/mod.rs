@@ -19,3 +19,4 @@ pub mod task;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod vc_api;
+pub mod wallet_unit;
