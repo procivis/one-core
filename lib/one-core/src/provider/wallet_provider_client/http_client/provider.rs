@@ -23,7 +23,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         wallet_provider_url: &str,
         request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderClientError> {
-        let url = Url::parse(format!("{wallet_provider_url}/ssi/wallet-unit").as_str())
+        let url = Url::parse(format!("{wallet_provider_url}/ssi/wallet-unit/v1").as_str())
             .context("url error")
             .map_err(WalletProviderClientError::Transport)?;
 
@@ -52,7 +52,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         request: RefreshWalletUnitRequestDTO,
     ) -> Result<RefreshWalletUnitResponse, WalletProviderClientError> {
         let url = Url::parse(
-            format!("{wallet_provider_url}/ssi/wallet-unit/{wallet_unit_id}/refresh").as_str(),
+            format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/refresh").as_str(),
         )
         .context("url error")
         .map_err(WalletProviderClientError::Transport)?;

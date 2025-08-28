@@ -6,7 +6,7 @@ walletProvider:
       private:
       public:
         walletName: "Procivis One Dev Wallet"
-        walletlink: "https://procivis.ch"
+        walletLink: "https://procivis.ch"
         android:
           bundleId: ch.procivis.one.wallet.dev
         ios:

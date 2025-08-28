@@ -23,7 +23,7 @@ walletProvider:
       private:
       public:
         walletName: "Procivis One Trial Wallet"
-        walletlink: "https://procivis.ch"
+        walletLink: "https://procivis.ch"
         android:
           bundleId: ch.procivis.one.wallet.dev
         ios:

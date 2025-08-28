@@ -489,7 +489,7 @@ pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
 
 #[utoipa::path(
     post,
-    path = "/ssi/wallet-unit",
+    path = "/ssi/wallet-unit/v1",
     request_body = RegisterWalletUnitRequestRestDTO,
     responses(OkOrErrorResponse<RegisterWalletUnitResponseRestDTO>),
     tag = "ssi",
@@ -515,7 +515,7 @@ pub(crate) async fn ssi_register_wallet_unit(
 
 #[utoipa::path(
     post,
-    path = "/ssi/wallet-unit/{id}/refresh",
+    path = "/ssi/wallet-unit/v1/{id}/refresh",
     params(
         ("id" = WalletUnitId, Path, description = "Wallet unit id")
     ),

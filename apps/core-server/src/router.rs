@@ -462,11 +462,11 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
             )
             .route(
-                "/ssi/wallet-unit",
+                "/ssi/wallet-unit/v1",
                 post(ssi::controller::ssi_register_wallet_unit)
             )
             .route(
-                "/ssi/wallet-unit/{id}/refresh",
+                "/ssi/wallet-unit/v1/{id}/refresh",
                 post(ssi::controller::ssi_refresh_wallet_unit)
             )
     } else {
