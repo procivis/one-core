@@ -306,7 +306,7 @@ echo `pwd`
 pushd platforms/ios >/dev/null
 xcodebuild docbuild -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -derivedDataPath ${TARGET_DIR}/platforms/ios/docs CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 cp -R ${TARGET_DIR}/platforms/ios/docs/Build/Products/Debug-iphoneos/ProcivisOneCore.doccarchive ${TARGET_DIR}/bindings/ios
-$(xcrun --find docc) process-archive transform-for-static-hosting ${TARGET_DIR}/bindings/ios/ProcivisOneCore.doccarchive/ --output-path ${TARGET_DIR}/bindings/ios/htmldoc
+$(xcrun --find docc) process-archive transform-for-static-hosting ${TARGET_DIR}/bindings/ios/ProcivisOneCore.doccarchive/ --output-path ${TARGET_DIR}/bindings/ios/htmldoc --hosting-base-path ios
 '''
 
 [tasks.build_ios]

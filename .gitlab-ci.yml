@@ -10,6 +10,7 @@ include:
       - "gitlab/ci-tools.gitlab-ci.yml"
       - "gitlab/dtrack.gitlab-ci.yml"
       - "gitlab/bitrise.gitlab-ci.yml"
+      - "gitlab/azure.gitlab-ci.yml"
 
 variables:
   DOCKER_DRIVER: overlay2
@@ -252,14 +253,14 @@ sdk:android:build:
 
 sdk:upload_artifacts:
   stage: sdk_artifact
-  image: mcr.microsoft.com/azure-cli
+  extends:
+    - .azure:upload_to_container
   needs:
     - job: sdk:android:build
       artifacts: true
     - job: sdk:ios:bitrise
       artifacts: true
   variables:
-    AZURE_CONTAINER_NAME: "core-sdk"
     ANDROID_BUILD_SOURCE_PATH: "target/bindings/android"
     ANDROID_CONTAINER_PATH: "android/${CI_PIPELINE_ID}"
     ANDROID_SDK_DEBUG_FILE: "onecore-debug.aar"
@@ -267,16 +268,18 @@ sdk:upload_artifacts:
     IOS_CONTAINER_PATH: "ios/${CI_PIPELINE_ID}"
     IOS_BUILD_SOURCE_PATH: "artifacts"
     IOS_BUILD_FILE: "deploy.zip"
-    AZURE_STORAGE_URL: "https://onetfstatestorage.blob.core.windows.net"
   script:
     # https://learn.microsoft.com/en-us/cli/azure/storage/blob?view=azure-cli-latest#az-storage-blob-download
-    - ANDROID_CONTAINER_PATH_DEBUG=$ANDROID_CONTAINER_PATH/$ANDROID_SDK_DEBUG_FILE
-    - ANDROID_CONTAINER_PATH_RELEASE=$ANDROID_CONTAINER_PATH/$ANDROID_SDK_RELEASE_FILE
+    - ANDROID_CONTAINER_PATH_DEBUG=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_DEBUG_FILE}
+    - ANDROID_CONTAINER_PATH_RELEASE=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_RELEASE_FILE}
+    - ANDROID_CONTAINER_DOCS_UPLOAD_PATH=${AZURE_CONTAINER_NAME}/${ANDROID_CONTAINER_PATH}/docs
     - IOS_CONTAINER_PATH=$IOS_CONTAINER_PATH/$IOS_BUILD_FILE
     # Upload Android debug file
-    - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_DEBUG -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE
+    - az storage blob upload --overwrite -c ${AZURE_CONTAINER_NAME} -n $ANDROID_CONTAINER_PATH_DEBUG -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE
     # Upload Android release file
     - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
+    # Upload Android docs file
+    - az storage blob upload-batch -d ${ANDROID_CONTAINER_DOCS_UPLOAD_PATH} -s $ANDROID_BUILD_SOURCE_PATH/html
     # Upload IOS zip file
     - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
     # Prepare variables
@@ -322,6 +325,7 @@ sdk:react-native:
       artifacts: true
   variables:
     NEW_VERSION: "1.$CI_PIPELINE_ID.0"
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
     CI_COMMIT_REF_NAME: $CI_COMMIT_REF_NAME
   trigger:
     project: procivis/one/react-native-one-core
@@ -341,6 +345,31 @@ sdk:generate_binding_files:
       - target/uniffi-interface/ch/procivis/one/core/one_core_uniffi.kt
       - target/uniffi-interface/ProcivisOneCore.swift
     expire_in: 10 days
+
+sdk:update_doc_sdk_version:
+  stage: sdk_artifact
+  needs:
+    - job: sdk:upload_artifacts
+  extends:
+    - .ci-tool.create-mr
+  variables:
+    GIT_STRATEGY: none
+    SOURCE_BRANCH: "auto_merge-$CI_PIPELINE_ID"
+    CLONE_URL: https://gitlab-ci-token:${GITLAB_PRIVATE_TOKEN}@${CI_SERVER_HOST}/procivis/one/one-documentation.git
+    REPO_PATH: ./one-documentation
+    COMMIT_MESSAGE: "Update Docs SDK version to $CI_PIPELINE_ID"
+    MR_TITLE: "Update Docs SDK version to $CI_PIPELINE_ID"
+    REVIEWER_ID: 44
+    EXTRA_ARGS: >
+      --move sdk_version.json:sdk_version.json
+  before_script:
+    - |
+      cat > sdk_version.json <<EOF
+      {
+        "sdk": ${CI_PIPELINE_ID}
+      }
+      EOF
+
 
 tests:e2e:
   when: manual
