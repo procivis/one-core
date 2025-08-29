@@ -98,7 +98,12 @@ impl WalletUnitService {
         let now = self.clock.now_utc();
         let os_name = self.os_info_provider.get_os_name().await;
         let signed_proof = self
-            .create_signed_key_possession_proof(now, &request.wallet_provider.name, auth_fn)
+            .create_signed_key_possession_proof(
+                now,
+                &request.wallet_provider.name,
+                auth_fn,
+                &request.wallet_provider.url,
+            )
             .await?;
 
         let register_request = RegisterWalletUnitRequestDTO {
@@ -208,6 +213,7 @@ impl WalletUnitService {
                 now,
                 &wallet_unit_attestation.wallet_provider_name,
                 auth_fn,
+                &wallet_unit_attestation.wallet_provider_url,
             )
             .await?;
 
@@ -313,6 +319,7 @@ impl WalletUnitService {
         now: OffsetDateTime,
         wallet_provider_name: &str,
         auth_fn: AuthenticationFn,
+        audience: &str,
     ) -> Result<String, ServiceError> {
         let proof = Jwt::new(
             "jwt".to_string(),
@@ -330,7 +337,7 @@ impl WalletUnitService {
                     .base_url
                     .clone()
                     .map(|base_url| format!("{base_url}/{wallet_provider_name}")),
-                audience: self.base_url.clone().map(|e| vec![e]),
+                audience: Some(vec![audience.to_owned()]),
                 jwt_id: None,
                 proof_of_possession_key: None,
                 custom: (),
