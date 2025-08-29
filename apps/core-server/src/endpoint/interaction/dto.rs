@@ -179,11 +179,10 @@ pub(crate) struct ProposeProofResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct InitiateIssuanceRequestRestDTO {
-    /// organisation to place the issued credential into
+    /// Organization to place the issued credential into
     pub organisation_id: OrganisationId,
     /// Selected issuance protocol
     pub protocol: String,
-
     /// OpenID4VCI authorization request parameter
     pub issuer: String,
     /// OpenID4VCI authorization request parameter
@@ -208,6 +207,7 @@ pub(crate) struct InitiateIssuanceAuthorizationDetailRestDTO {
 #[serde(rename_all = "camelCase")]
 #[from(InitiateIssuanceResponseDTO)]
 pub(crate) struct InitiateIssuanceResponseRestDTO {
+    /// Authorization endpoint URL
     pub url: String,
 }
 

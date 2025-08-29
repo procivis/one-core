@@ -214,9 +214,9 @@ pub(crate) async fn propose_proof(
     security(
         ("bearer" = [])
     ),
-    summary = "Initiate OpenID Connect issuance",
+    summary = "Initiate OID4VCI issuance",
     description = indoc::formatdoc! {"
-        For digital wallets, starts OpenID Connect authorization code flow.
+        For wallets, starts the OpenID4VCI Authorization Code Flow.
     "},
 )]
 pub(crate) async fn initiate_issuance(
@@ -243,9 +243,10 @@ pub(crate) async fn initiate_issuance(
     security(
         ("bearer" = [])
     ),
-     summary = "Continue OpenID Connect issuance",
+    summary = "Continue OID4VCI issuance",
     description = indoc::formatdoc! {"
-        For digital wallets, continue OpenID Connect authorization code flow.
+        For wallet-initiated flows, continues the OpenID4VCI issuance process after
+        completing authorization.
     "},
 )]
 pub(crate) async fn continue_issuance(

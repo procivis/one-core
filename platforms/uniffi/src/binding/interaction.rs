@@ -17,6 +17,9 @@ use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
+    /// For a wallet, handles the interaction once the wallet connects to the share
+    /// endpoint URL (for example, scans the QR code of an orffered credential or
+    /// request for proof.)
     #[uniffi::method]
     pub async fn handle_invitation(
         &self,
@@ -41,6 +44,8 @@ impl OneCoreBinding {
         Ok(invitation_response.into())
     }
 
+    /// Accepts an offered credential. The chosen identifier will be listed as
+    /// the subject of the issued credential.
     #[uniffi::method]
     pub async fn holder_accept_credential(
         &self,
@@ -63,6 +68,7 @@ impl OneCoreBinding {
             .await?)
     }
 
+    /// Rejects an offered credential.
     #[uniffi::method]
     pub async fn holder_reject_credential(
         &self,
@@ -75,6 +81,7 @@ impl OneCoreBinding {
             .await?)
     }
 
+    /// For wallets, starts the OpenID4VCI Authorization Code Flow.
     #[uniffi::method]
     pub async fn initiate_issuance(
         &self,
@@ -88,6 +95,8 @@ impl OneCoreBinding {
             .into())
     }
 
+    /// For wallet-initiated flows, continues the OpenID4VCI issuance
+    /// process after completing authorization.
     #[uniffi::method]
     pub async fn continue_issuance(
         &self,
