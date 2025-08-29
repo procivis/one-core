@@ -60,6 +60,7 @@ impl From<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
             scope: value.scope,
             authorization_details: convert_inner_of_inner(value.authorization_details),
             issuer_state: None,
+            authorization_server: None,
         }
     }
 }

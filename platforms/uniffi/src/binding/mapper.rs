@@ -1021,6 +1021,7 @@ impl TryFrom<InitiateIssuanceRequestBindingDTO> for InitiateIssuanceRequestDTO {
             scope: request.scope,
             authorization_details: convert_inner_of_inner(request.authorization_details),
             issuer_state: None,
+            authorization_server: None,
         })
     }
 }

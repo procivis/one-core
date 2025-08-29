@@ -53,6 +53,7 @@ pub(crate) fn create_issuer_metadata_response(
     )?;
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
+        authorization_servers: None,
         credential_endpoint: format!("{schema_base_url}/credential"),
         notification_endpoint: Some(format!("{schema_base_url}/notification")),
         credential_configurations_supported,
@@ -292,6 +293,7 @@ pub(crate) fn create_credential_offer(
         grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),
             tx_code: None,
+            authorization_server: None,
         }),
         credential_subject: Some(credential_subject),
     })

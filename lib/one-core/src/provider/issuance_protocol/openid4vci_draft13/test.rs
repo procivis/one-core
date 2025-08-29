@@ -586,6 +586,7 @@ async fn test_holder_accept_credential_success() {
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
+                    authorization_server: None,
                 },
             )),
             access_token: None,
@@ -784,6 +785,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
+                    authorization_server: None,
                 },
             )),
             access_token: None,
@@ -992,6 +994,7 @@ async fn test_holder_accept_expired_credential_fails() {
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
+                    authorization_server: None,
                 },
             )),
             access_token: None,
@@ -1177,6 +1180,7 @@ async fn test_holder_reject_credential() {
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
                     tx_code: None,
+                    authorization_server: None,
                 },
             )),
             access_token: None,
@@ -1679,6 +1683,7 @@ async fn inner_continue_issuance_test(
                 scope,
                 credential_configuration_ids,
                 code_verifier: None,
+                authorization_server: None,
             },
             dummy_organisation(None),
             &storage_proxy,

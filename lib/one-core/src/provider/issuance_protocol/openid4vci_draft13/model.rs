@@ -67,6 +67,7 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_issuer: String,
+    pub authorization_servers: Option<Vec<String>>,
     pub credential_endpoint: String,
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
@@ -254,6 +255,7 @@ pub(crate) enum InvitationResponseEnum {
         redirect_uri: Option<String>,
         authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailDTO>>,
         issuer_state: Option<String>,
+        authorization_server: Option<String>,
     },
 }
 
@@ -384,6 +386,17 @@ impl OpenID4VCIGrants {
             OpenID4VCIGrants::AuthorizationCode(_authorization_code) => None,
         }
     }
+
+    pub fn authorization_server(&self) -> Option<&String> {
+        match self {
+            OpenID4VCIGrants::PreAuthorizedCode(pre_authorized_code) => {
+                pre_authorized_code.authorization_server.as_ref()
+            }
+            OpenID4VCIGrants::AuthorizationCode(authorization_code) => {
+                authorization_code.authorization_server.as_ref()
+            }
+        }
+    }
 }
 
 #[skip_serializing_none]
@@ -393,6 +406,7 @@ pub struct OpenID4VCIPreAuthorizedCodeGrant {
     pub pre_authorized_code: String,
     #[serde(default)]
     pub tx_code: Option<OpenID4VCITxCode>,
+    pub authorization_server: Option<String>,
 }
 
 #[skip_serializing_none]

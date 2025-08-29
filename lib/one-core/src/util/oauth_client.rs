@@ -16,12 +16,14 @@ pub(crate) struct OAuthClient {
 impl OAuthClient {
     pub(crate) async fn initiate_authorization_code_flow(
         &self,
-        issuer: Url,
+        authorization_server: Url,
         request: OAuthAuthorizationRequest,
     ) -> Result<OAuthAuthorizationResponse, OAuthClientError> {
-        let metadata = self.fetch_metadata(issuer.clone()).await?;
+        let metadata = self
+            .fetch_authorization_server_metadata(authorization_server.clone())
+            .await?;
 
-        if metadata.issuer != issuer {
+        if metadata.issuer != authorization_server {
             return Err(OAuthClientError::Failed(
                 "Issuer mismatch between request and authorization server metadata".to_string(),
             ));
@@ -86,7 +88,7 @@ impl OAuthClient {
         })
     }
 
-    async fn fetch_metadata(
+    async fn fetch_authorization_server_metadata(
         &self,
         issuer_url: Url,
     ) -> Result<OAuthAuthorizationServerMetadata, OAuthClientError> {

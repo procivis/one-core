@@ -2598,3 +2598,163 @@ async fn test_handle_invitation_authorization_code_issuer_state() {
     assert!(authorization_code_flow_url.starts_with(authorization_endpoint));
     assert!(authorization_code_flow_url.contains("issuer_state=test-state"));
 }
+
+#[tokio::test]
+async fn test_handle_invitation_authorization_code_authorization_server() {
+    let mock_issuer_server = MockServer::start().await;
+    let mock_authorization_server = MockServer::start().await;
+
+    let issuer_server_uri = mock_issuer_server.uri();
+    let authorization_server_uri = mock_authorization_server.uri();
+
+    let additional_config = Some(indoc::formatdoc! {"
+            credentialIssuer:
+              EUDI_PID_FLOW:
+                params:
+                  public:
+                    issuer: {issuer_server_uri}
+        "});
+    let (context, organistion) = TestContext::new_with_organisation(additional_config).await;
+
+    let authorization_endpoint = "https://authorization.com/authorize";
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/oauth-authorization-server"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "issuer": authorization_server_uri,
+                "authorization_endpoint": authorization_endpoint,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_authorization_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/openid-credential-issuer"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_issuer": issuer_server_uri,
+                "authorization_servers": ["https://another.server.com", authorization_server_uri],
+                "credential_endpoint": format!("{issuer_server_uri}/credential"),
+                "credential_configurations_supported": {}
+            }
+        )))
+        .expect(1)
+        .mount(&mock_issuer_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/openid-configuration"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "issuer": issuer_server_uri,
+                "token_endpoint": "https://token.server.com"
+            }
+        )))
+        .mount(&mock_issuer_server)
+        .await;
+
+    let credential_offer = json!({
+        "credential_issuer": issuer_server_uri,
+        "credential_configuration_ids": [
+            "config-id"
+        ],
+        "grants": {
+            "authorization_code": {
+                "authorization_server": authorization_server_uri
+            }
+        }
+    });
+
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organistion.id, credential_offer_url.as_str())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp.json_value().await;
+    assert!(resp["interactionId"].is_string());
+    let authorization_code_flow_url = resp["authorizationCodeFlowUrl"].as_str().unwrap();
+    assert!(authorization_code_flow_url.starts_with(authorization_endpoint));
+}
+
+#[tokio::test]
+async fn test_handle_invitation_failure_authorization_code_authorization_server_not_in_issuer_metadata()
+ {
+    let mock_issuer_server = MockServer::start().await;
+
+    let issuer_server_uri = mock_issuer_server.uri();
+
+    let additional_config = Some(indoc::formatdoc! {"
+            credentialIssuer:
+              EUDI_PID_FLOW:
+                params:
+                  public:
+                    issuer: {issuer_server_uri}
+        "});
+    let (context, organistion) = TestContext::new_with_organisation(additional_config).await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/openid-credential-issuer"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_issuer": issuer_server_uri,
+                "authorization_servers": ["https://another.server.com"],
+                "credential_endpoint": format!("{issuer_server_uri}/credential"),
+                "credential_configurations_supported": {}
+            }
+        )))
+        .expect(1)
+        .mount(&mock_issuer_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/openid-configuration"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "issuer": issuer_server_uri,
+                "token_endpoint": "https://token.server.com"
+            }
+        )))
+        .mount(&mock_issuer_server)
+        .await;
+
+    let credential_offer = json!({
+        "credential_issuer": issuer_server_uri,
+        "credential_configuration_ids": [
+            "config-id"
+        ],
+        "grants": {
+            "authorization_code": {
+                "authorization_server": "https://some.server.com"
+            }
+        }
+    });
+
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organistion.id, credential_offer_url.as_str())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0085");
+}

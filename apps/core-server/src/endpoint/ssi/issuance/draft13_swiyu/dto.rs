@@ -254,13 +254,16 @@ pub(crate) enum OpenID4VCIGrantsRestDTO {
     AuthorizationCode(OpenID4VCIAuthorizationCodeGrantRestDTO),
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIPreAuthorizedCodeGrant)]
 pub(crate) struct OpenID4VCIPreAuthorizedGrantRestDTO {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
+    pub authorization_server: Option<String>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIAuthorizationCodeGrant)]
 pub struct OpenID4VCIAuthorizationCodeGrantRestDTO {

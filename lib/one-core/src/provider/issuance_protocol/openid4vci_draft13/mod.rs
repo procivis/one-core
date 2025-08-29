@@ -1566,6 +1566,28 @@ async fn handle_credential_invitation(
             ));
         }
 
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
+        if let Some(authorization_server) = &authorization_code.authorization_server {
+            let credential_issuer_endpoint: Url = params.issuer.parse().map_err(|_| {
+                IssuanceProtocolError::InvalidRequest(format!(
+                    "Invalid credential issuer url {}",
+                    params.issuer
+                ))
+            })?;
+
+            let (_, issuer_metadata) =
+                get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
+
+            if issuer_metadata
+                .authorization_servers
+                .is_none_or(|servers| !servers.contains(authorization_server))
+            {
+                return Err(IssuanceProtocolError::InvalidRequest(format!(
+                    "Authorization server missing in issuer metadata: {authorization_server}"
+                )));
+            }
+        }
+
         return Ok(InvitationResponseEnum::AuthorizationFlow {
             organisation_id: organisation.id,
             issuer: params.issuer,
@@ -1583,6 +1605,7 @@ async fn handle_credential_invitation(
                     .collect(),
             ),
             issuer_state: authorization_code.issuer_state,
+            authorization_server: authorization_code.authorization_server,
         });
     }
 
@@ -1748,8 +1771,8 @@ async fn handle_continue_issuance(
             token_endpoint,
             issuer_metadata,
             OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
-                issuer_state: None,
-                authorization_server: None,
+                issuer_state: None, // issuer state was used at the authorization request stage so it is not relevant anymore
+                authorization_server: continue_issuance_dto.authorization_server.to_owned(),
             }),
             &all_credential_configuration_ids,
             None,
@@ -1803,6 +1826,19 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
                 "Credential configuration is missing for {configuration_id}"
             ))
         })?;
+
+    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
+    if let Some(authorization_server) = grants.authorization_server() {
+        if issuer_metadata
+            .authorization_servers
+            .as_ref()
+            .is_none_or(|servers| !servers.contains(authorization_server))
+        {
+            return Err(IssuanceProtocolError::InvalidRequest(format!(
+                "Authorization server missing in issuer metadata: {authorization_server}"
+            )));
+        }
+    }
 
     let schema_data =
         handle_invitation_operations.find_schema_data(credential_config, configuration_id)?;

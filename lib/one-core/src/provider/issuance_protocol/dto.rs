@@ -67,4 +67,5 @@ pub(crate) struct ContinueIssuanceDTO {
     pub scope: Vec<String>,
     pub credential_configuration_ids: Vec<String>,
     pub code_verifier: Option<String>,
+    pub authorization_server: Option<String>,
 }

@@ -46,8 +46,6 @@ impl ErrorResponse {
     fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {
-            ServiceError::IssuanceProtocolError(IssuanceProtocolError::OperationNotSupported)
-            | ServiceError::WalletProviderError(_) => Self::BadRequest(response),
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
             ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
             | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))
@@ -61,14 +59,17 @@ impl ErrorResponse {
             | ServiceError::BusinessLogic(_)
             | ServiceError::FormatterError(FormatterError::BBSOnly)
             | ServiceError::ConfigValidationError(_)
-            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::TxCode(_))
             | ServiceError::IssuanceProtocolError(
-                IssuanceProtocolError::CredentialVerificationFailed(_),
+                IssuanceProtocolError::OperationNotSupported
+                | IssuanceProtocolError::TxCode(_)
+                | IssuanceProtocolError::CredentialVerificationFailed(_)
+                | IssuanceProtocolError::DidMismatch
+                | IssuanceProtocolError::RefreshTooSoon
+                | IssuanceProtocolError::Suspended
+                | IssuanceProtocolError::InvalidRequest(_),
             )
-            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::DidMismatch)
-            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::RefreshTooSoon)
-            | ServiceError::IssuanceProtocolError(IssuanceProtocolError::Suspended)
-            | ServiceError::TrustManagementError(_) => Self::BadRequest(response),
+            | ServiceError::TrustManagementError(_)
+            | ServiceError::WalletProviderError(_) => Self::BadRequest(response),
             _ => Self::ServerError(response),
         }
     }

@@ -65,6 +65,7 @@ pub struct InitiateIssuanceRequestDTO {
     pub scope: Option<Vec<String>>,
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailDTO>>,
     pub issuer_state: Option<String>,
+    pub authorization_server: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -534,6 +534,7 @@ impl SSIHolderService {
                 redirect_uri,
                 authorization_details,
                 issuer_state,
+                authorization_server,
             } => {
                 let InitiateIssuanceResponseDTO {
                     interaction_id,
@@ -548,6 +549,7 @@ impl SSIHolderService {
                         scope: None,
                         authorization_details,
                         issuer_state,
+                        authorization_server,
                     })
                     .await?;
 
@@ -679,7 +681,14 @@ impl SSIHolderService {
             return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
         };
 
-        let issuer = Url::parse(&request.issuer)
+        let authorization_server = request
+            .authorization_server
+            .as_ref()
+            // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
+            // ... If this parameter is omitted, the entity providing the Credential Issuer is also acting as the Authorization Server
+            .unwrap_or(&request.issuer);
+
+        let authorization_server = Url::parse(authorization_server)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let interaction_id = Uuid::new_v4();
@@ -701,7 +710,7 @@ impl SSIHolderService {
         let authorization_response = self
             .client
             .oauth_client()
-            .initiate_authorization_code_flow(issuer, authorization_request)
+            .initiate_authorization_code_flow(authorization_server, authorization_request)
             .await
             .map_err(|e| IssuanceProtocolError::Failed(format!("OAuth request failed: {e:?}")))?;
 
@@ -832,6 +841,7 @@ impl SSIHolderService {
                         .map(|d| d.credential_configuration_id)
                         .collect(),
                     code_verifier: issuance.code_verifier,
+                    authorization_server: issuance.request.authorization_server,
                 },
                 organisation,
                 &storage_access,
