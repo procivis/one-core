@@ -11,7 +11,7 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{Fields, KeyAlgorithmType, WalletProviderType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
-use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::wallet_unit::{
@@ -95,7 +95,7 @@ impl SSIWalletProviderService {
                 target: Some(wallet_unit_id.to_string()),
                 entity_id: Some(wallet_unit_id.into()),
                 entity_type: HistoryEntityType::WalletUnit,
-                metadata: Some(HistoryMetadata::WalletUnitJWT(signed_attestation.clone())),
+                metadata: None,
                 organisation_id: None,
             })
             .await?;
@@ -169,7 +169,7 @@ impl SSIWalletProviderService {
                 target: Some(wallet_unit.id.to_string()),
                 entity_id: Some(wallet_unit.id.into()),
                 entity_type: HistoryEntityType::WalletUnit,
-                metadata: Some(HistoryMetadata::WalletUnitJWT(signed_attestation.clone())),
+                metadata: None,
                 organisation_id: None,
             })
             .await?;

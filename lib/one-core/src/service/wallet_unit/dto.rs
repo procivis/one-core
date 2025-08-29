@@ -1,5 +1,5 @@
 use one_dto_mapper::From;
-use shared_types::WalletUnitId;
+use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
@@ -21,13 +21,12 @@ pub struct GetWalletUnitResponseDTO {
 }
 
 pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;
-use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId};
 
 #[derive(Debug, Clone)]
 pub struct HolderRegisterWalletUnitRequestDTO {
     pub organisation_id: OrganisationId,
     pub wallet_provider: WalletProviderDTO,
-    pub key: KeyId,
+    pub key_id: KeyId,
 }
 
 #[derive(Debug, Clone)]

@@ -63,6 +63,7 @@ impl WalletUnitService {
 
         Ok(list_response_into(result))
     }
+
     pub async fn holder_register(
         &self,
         request: HolderRegisterWalletUnitRequestDTO,
@@ -75,9 +76,9 @@ impl WalletUnitService {
 
         let key = self
             .key_repository
-            .get_key(&request.key, &KeyRelations::default())
+            .get_key(&request.key_id, &KeyRelations::default())
             .await?
-            .ok_or(EntityNotFoundError::Key(request.key))?;
+            .ok_or(EntityNotFoundError::Key(request.key_id))?;
 
         let key_storage = self
             .key_provider
@@ -262,7 +263,7 @@ impl WalletUnitService {
                     .await?;
                 Ok(())
             }
-            RefreshWalletUnitResponse::Suspended => {
+            RefreshWalletUnitResponse::Revoked => {
                 self.wallet_unit_attestation_repository
                     .update_wallet_attestation(
                         &wallet_unit_attestation.id,

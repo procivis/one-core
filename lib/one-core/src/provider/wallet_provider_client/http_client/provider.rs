@@ -68,7 +68,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             .context("send error")
             .map_err(WalletProviderClientError::Transport)?;
 
-        if result.status.is_server_error() {
+        if result.status.is_client_error() {
             let body = serde_json::from_slice::<Value>(&result.body)
                 .map_err(|e| WalletProviderClientError::Transport(Error::JsonError(e).into()))?;
             let cause = body
@@ -77,7 +77,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
                     "Error missing code"
                 )))?;
             if *cause == json!("BR_0261".to_string()) {
-                return Ok(RefreshWalletUnitResponse::Suspended);
+                return Ok(RefreshWalletUnitResponse::Revoked);
             }
         }
 

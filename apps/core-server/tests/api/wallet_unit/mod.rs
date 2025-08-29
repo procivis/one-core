@@ -1,2 +1,57 @@
+use std::ops::Add;
+
+use one_core::model::key::PublicKeyJwk;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use one_core::util::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
+use one_core::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use one_core::util::jwt::{Jwt, JwtPublicKeyInfo};
+use time::{Duration, OffsetDateTime};
+
 pub mod get_wallet_unit_tests;
+mod holder_attestation;
+mod holder_refresh_wallet_unit;
+mod holder_register_wallet_unit;
 pub mod list_wallet_unit_tests;
+
+async fn create_wallet_unit_attestation(wallet_key: PublicKeyJwk, base_url: String) -> String {
+    let provider_key = Ecdsa.generate_key().unwrap();
+    let now = OffsetDateTime::now_utc();
+    let jwt = Jwt::<()>::new(
+        "oauth-client-attestation+jwt".to_string(),
+        "ES256".to_string(),
+        None,
+        Some(JwtPublicKeyInfo::Jwk(
+            provider_key.key.public_key_as_jwk().unwrap().into(),
+        )),
+        JWTPayload {
+            issued_at: Some(now),
+            expires_at: Some(now.add(Duration::seconds(100))),
+            invalid_before: Some(now),
+            issuer: Some(base_url.clone()),
+            subject: Some(format!("{base_url}/PROCIVIS_ONE")),
+            proof_of_possession_key: Some(ProofOfPossessionKey {
+                key_id: None,
+                jwk: ProofOfPossessionJwk::Jwk {
+                    jwk: wallet_key.into(),
+                },
+            }),
+            ..Default::default()
+        },
+    );
+
+    let jwt_header_json = serde_json::to_string(&jwt.header).unwrap();
+    let payload_json = serde_json::to_string(&jwt.payload).unwrap();
+    let mut token = format!(
+        "{}.{}",
+        string_to_b64url_string(&jwt_header_json).unwrap(),
+        string_to_b64url_string(&payload_json).unwrap(),
+    );
+
+    let signature = provider_key.key.sign(token.as_bytes()).await.unwrap();
+    let signature_encoded = bin_to_b64url_string(&signature).unwrap();
+
+    token.push('.');
+    token.push_str(&signature_encoded);
+    token
+}

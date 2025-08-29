@@ -1,13 +1,19 @@
+use one_core::model::wallet_unit::WalletUnitStatus;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::wallet_units::TestWalletUnit;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_get_wallet_unit_success() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let wallet_unit = context.db.wallet_units.create().await;
+    let wallet_unit = context
+        .db
+        .wallet_units
+        .create(TestWalletUnit::default())
+        .await;
 
     // WHEN
     let resp = context.api.wallet_units.get(&wallet_unit.id).await;
@@ -32,7 +38,14 @@ async fn test_get_wallet_unit_success() {
 async fn test_get_revoked_wallet_unit_success() {
     // GIVEN
     let context = TestContext::new(None).await;
-    let wallet_unit = context.db.wallet_units.create_revoked().await;
+    let wallet_unit = context
+        .db
+        .wallet_units
+        .create(TestWalletUnit {
+            status: Some(WalletUnitStatus::Revoked),
+            ..Default::default()
+        })
+        .await;
 
     // WHEN
     let resp = context.api.wallet_units.get(&wallet_unit.id).await;

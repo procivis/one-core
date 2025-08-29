@@ -275,7 +275,7 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     #[try_into(infallible)]
     wallet_provider: WalletProviderBindingDTO,
     #[try_into(with_fn = into_id)]
-    key: String,
+    key_id: String,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

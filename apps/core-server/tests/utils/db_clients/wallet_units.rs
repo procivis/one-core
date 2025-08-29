@@ -1,13 +1,24 @@
+use std::ops::Sub;
 use std::sync::Arc;
 
+use one_core::model::key::PublicKeyJwk;
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitStatus};
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
-use shared_types::WalletUnitId;
-use sql_data_provider::test_utilities::get_dummy_date;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 pub struct WalletUnitsDB {
     repository: Arc<dyn WalletUnitRepository>,
+}
+
+#[derive(Default)]
+pub struct TestWalletUnit {
+    pub name: Option<String>,
+    pub public_key: Option<PublicKeyJwk>,
+    pub status: Option<WalletUnitStatus>,
+    pub last_issuance: Option<OffsetDateTime>,
 }
 
 impl WalletUnitsDB {
@@ -15,28 +26,21 @@ impl WalletUnitsDB {
         Self { repository }
     }
 
-    pub async fn create(&self) -> WalletUnit {
-        self.create_with_name("test_wallet").await
-    }
-
-    pub async fn create_with_name(&self, name: &str) -> WalletUnit {
-        let id: WalletUnitId = Uuid::new_v4().into();
-        let now = get_dummy_date();
-
-        // Generate unique public key to avoid constraint violations
-        let unique_suffix = id.to_string();
+    pub async fn create(&self, test_wallet_unit: TestWalletUnit) -> WalletUnit {
+        let six_hours_ago = OffsetDateTime::now_utc().sub(Duration::days(1));
 
         let wallet_unit = WalletUnit {
-            id,
-            created_date: now,
-            last_modified: now,
-            last_issuance: now,
-            name: name.to_string(),
+            id: Uuid::new_v4().into(),
+            name: test_wallet_unit.name.unwrap_or("test_wallet".to_string()),
+            created_date: six_hours_ago,
+            last_modified: six_hours_ago,
             os: "ANDROID".to_string(),
-            status: WalletUnitStatus::Active,
+            status: test_wallet_unit.status.unwrap_or(WalletUnitStatus::Active),
             wallet_provider_type: WalletProviderType::ProcivisOne,
-            wallet_provider_name: "Test Provider Name".to_string(),
-            public_key: format!("test_public_key_{unique_suffix}"),
+            wallet_provider_name: "PROCIVIS_ONE".to_string(),
+            public_key: serde_json::to_string(&test_wallet_unit.public_key.unwrap_or(random_jwk()))
+                .unwrap(),
+            last_issuance: test_wallet_unit.last_issuance.unwrap_or(six_hours_ago),
         };
 
         self.repository
@@ -46,32 +50,9 @@ impl WalletUnitsDB {
 
         wallet_unit
     }
+}
 
-    pub async fn create_revoked(&self) -> WalletUnit {
-        let id: WalletUnitId = Uuid::new_v4().into();
-        let now = get_dummy_date();
-
-        // Generate unique public key to avoid constraint violations
-        let unique_suffix = id.to_string();
-
-        let wallet_unit = WalletUnit {
-            id,
-            created_date: now,
-            last_modified: now,
-            last_issuance: now,
-            name: "revoked_wallet".to_string(),
-            os: "IOS".to_string(),
-            status: WalletUnitStatus::Revoked,
-            wallet_provider_type: WalletProviderType::ProcivisOne,
-            wallet_provider_name: "Test Provider Name".to_string(),
-            public_key: format!("test_public_key_{unique_suffix}"),
-        };
-
-        self.repository
-            .create_wallet_unit(wallet_unit.clone())
-            .await
-            .unwrap();
-
-        wallet_unit
-    }
+fn random_jwk() -> PublicKeyJwk {
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    holder_key_pair.key.public_key_as_jwk().unwrap()
 }

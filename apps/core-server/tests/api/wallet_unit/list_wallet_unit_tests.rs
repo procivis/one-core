@@ -1,6 +1,8 @@
+use one_core::model::wallet_unit::WalletUnitStatus;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::wallet_units::TestWalletUnit;
 
 #[tokio::test]
 async fn test_list_wallet_unit_success() {
@@ -11,7 +13,10 @@ async fn test_list_wallet_unit_success() {
         context
             .db
             .wallet_units
-            .create_with_name(&format!("wallet_{i}"))
+            .create(TestWalletUnit {
+                name: Some(format!("wallet_{i}")),
+                ..Default::default()
+            })
             .await;
     }
 
@@ -47,12 +52,22 @@ async fn test_list_wallet_unit_revoked_success() {
         context
             .db
             .wallet_units
-            .create_with_name(&format!("wallet_{i}"))
+            .create(TestWalletUnit {
+                name: Some(format!("wallet_{i}")),
+                ..Default::default()
+            })
             .await;
     }
 
     for _i in 10..15 {
-        context.db.wallet_units.create_revoked().await;
+        context
+            .db
+            .wallet_units
+            .create(TestWalletUnit {
+                status: Some(WalletUnitStatus::Revoked),
+                ..Default::default()
+            })
+            .await;
     }
 
     // WHEN

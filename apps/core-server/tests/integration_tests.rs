@@ -63,6 +63,9 @@ mod trust_entity;
 #[path = "api/jsonld/mod.rs"]
 mod jsonld;
 
+#[path = "api/wallet_provider/mod.rs"]
+mod api_ssi_wallet_provider_tests;
+
 #[path = "api/generic_api_tests.rs"]
 mod generic_api_tests;
 

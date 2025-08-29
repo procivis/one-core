@@ -180,7 +180,7 @@ async fn holder_register_success() {
 
     let request = HolderRegisterWalletUnitRequestDTO {
         organisation_id,
-        key: key_id,
+        key_id,
         wallet_provider: WalletProviderDTO {
             name: "PROCIVIS_ONE".to_string(),
             r#type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,

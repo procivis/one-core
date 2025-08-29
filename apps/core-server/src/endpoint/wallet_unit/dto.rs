@@ -107,7 +107,7 @@ pub(crate) enum SortableWalletUnitColumnRest {
 pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
     pub organisation_id: OrganisationId,
     pub wallet_provider: WalletProviderRestDTO,
-    pub key: KeyId,
+    pub key_id: KeyId,
 }
 
 #[allow(dead_code)]
@@ -126,6 +126,12 @@ pub(crate) struct WalletProviderRestDTO {
 #[into(HolderRefreshWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRefreshWalletUnitRequestRestDTO {
+    pub organisation_id: OrganisationId,
+}
+
+#[derive(Clone, Debug, Deserialize, utoipa::IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct HolderAttestationsQueryParams {
     pub organisation_id: OrganisationId,
 }
 

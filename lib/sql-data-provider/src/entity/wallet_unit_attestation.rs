@@ -11,7 +11,7 @@ use time::OffsetDateTime;
 use crate::entity::wallet_unit::{WalletProviderType, WalletUnitStatus};
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
-#[sea_orm(table_name = "wallet_unit")]
+#[sea_orm(table_name = "wallet_unit_attestation")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: WalletUnitAttestationId,

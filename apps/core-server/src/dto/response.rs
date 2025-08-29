@@ -46,9 +46,8 @@ impl ErrorResponse {
     fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {
-            ServiceError::IssuanceProtocolError(IssuanceProtocolError::OperationNotSupported) => {
-                Self::BadRequest(response)
-            }
+            ServiceError::IssuanceProtocolError(IssuanceProtocolError::OperationNotSupported)
+            | ServiceError::WalletProviderError(_) => Self::BadRequest(response),
             ServiceError::EntityNotFound(_) => Self::NotFound(response),
             ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
             | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))

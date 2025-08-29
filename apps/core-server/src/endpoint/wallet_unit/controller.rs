@@ -1,14 +1,14 @@
 use axum::Json;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum_extra::extract::WithRejection;
 use shared_types::{OrganisationId, WalletUnitId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::wallet_unit::dto::{
-    GetWalletUnitsResponseRestDTO, HolderRefreshWalletUnitRequestRestDTO,
-    HolderRegisterWalletUnitRequestRestDTO, HolderWalletUnitAttestationResponseRestDTO,
-    ListWalletUnitsQuery, WalletUnitResponseRestDTO,
+    GetWalletUnitsResponseRestDTO, HolderAttestationsQueryParams,
+    HolderRefreshWalletUnitRequestRestDTO, HolderRegisterWalletUnitRequestRestDTO,
+    HolderWalletUnitAttestationResponseRestDTO, ListWalletUnitsQuery, WalletUnitResponseRestDTO,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -123,7 +123,7 @@ pub(crate) async fn wallet_unit_holder_refresh(
     get,
     path = "/api/wallet-unit/v1/holder-attestation",
     params(
-        ("organisationId" = OrganisationId, Path, description = "Organization id")
+        ("organisationId" = OrganisationId, Query, description = "Organization id")
     ),
     responses(
         (status = 200, description = "OK", body = HolderWalletUnitAttestationResponseRestDTO),
@@ -141,15 +141,15 @@ pub(crate) async fn wallet_unit_holder_refresh(
 )]
 pub(crate) async fn wallet_unit_holder_attestation(
     state: State<AppState>,
-    WithRejection(Path(organisation_id), _): WithRejection<
-        Path<OrganisationId>,
+    WithRejection(Query(query_params), _): WithRejection<
+        Query<HolderAttestationsQueryParams>,
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<HolderWalletUnitAttestationResponseRestDTO> {
     let result = state
         .core
         .wallet_unit_service
-        .holder_attestation(organisation_id)
+        .holder_attestation(query_params.organisation_id)
         .await;
     OkOrErrorResponse::from_result(result, state, "get wallet unit attestation")
 }

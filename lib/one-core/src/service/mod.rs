@@ -1,6 +1,7 @@
 pub mod backup;
 pub mod cache;
 pub mod certificate;
+mod common_dto;
 mod common_mapper;
 pub mod config;
 pub mod credential;
@@ -26,11 +27,9 @@ mod ssi_validator;
 pub mod ssi_wallet_provider;
 pub mod storage_proxy;
 pub mod task;
+#[cfg(test)]
+pub mod test_utilities;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod vc_api;
 pub mod wallet_unit;
-
-mod common_dto;
-#[cfg(test)]
-pub mod test_utilities;
