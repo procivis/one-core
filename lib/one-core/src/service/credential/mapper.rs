@@ -35,7 +35,10 @@ pub fn credential_detail_response_from_model(
 
     let claims = value
         .claims
-        .ok_or(ServiceError::MappingError("claims is None".to_string()))?;
+        .ok_or(ServiceError::MappingError("claims is None".to_string()))?
+        .into_iter()
+        .filter(|claim| !claim.schema.as_ref().is_some_and(|s| s.metadata))
+        .collect();
     let state = value.state;
 
     let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
