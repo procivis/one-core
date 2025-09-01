@@ -539,3 +539,8 @@ holderKeyStorage:
 blobStorage:
   DB:
     enabled: true
+verificationEngagement:
+  QR_CODE:
+    display: verificationEngagement.qrCode
+    order: 1
+    enabled: true

@@ -61,3 +61,8 @@ trustManagement:
     params:
       public:
         enablePublishing: false
+verificationEngagement:
+  NFC:
+    display: verificationEngagement.nfc
+    order: 2
+    enabled: true

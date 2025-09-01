@@ -56,7 +56,8 @@ fn convert_internal_structure_to_dto() {
           "cacheEntities": {},
           "task": {},
           "walletProvider": {},
-          "credentialIssuer": {}
+          "credentialIssuer": {},
+          "verificationEngagement": {}
         }),
         output
     );
@@ -110,7 +111,8 @@ fn do_not_serialize_private_parameters() {
           "cacheEntities": {},
           "task": {},
           "walletProvider": {},
-          "credentialIssuer": {}
+          "credentialIssuer": {},
+          "verificationEngagement": {}
         }),
         output
     );

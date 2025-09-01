@@ -59,6 +59,7 @@ pub struct CoreConfig {
     pub cache_entities: CacheEntitiesConfig,
     pub wallet_provider: WalletProviderConfig,
     pub(crate) credential_issuer: CredentialIssuerConfig,
+    pub verification_engagement: VerificationEngagementConfig,
 }
 
 impl CoreConfig {
@@ -671,6 +672,40 @@ pub enum WalletProviderType {
 }
 
 pub type WalletProviderConfig = ConfigBlock<WalletProviderType>;
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+)]
+pub enum VerificationEngagement {
+    #[serde(rename = "QR_CODE")]
+    #[strum(serialize = "QR_CODE")]
+    QrCode,
+    #[serde(rename = "NFC")]
+    #[strum(serialize = "NFC")]
+    NFC,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VerificationEngagementFields {
+    pub display: ConfigEntryDisplay,
+    pub order: Option<u64>,
+    pub enabled: Option<bool>,
+}
+
+pub type VerificationEngagementConfig = Dict<VerificationEngagement, VerificationEngagementFields>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]

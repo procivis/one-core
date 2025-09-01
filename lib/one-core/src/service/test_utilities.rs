@@ -233,6 +233,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         blobStorage: {}
         walletProvider: {}
         credentialIssuer: {}
+        verificationEngagement: {}
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

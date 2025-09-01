@@ -119,6 +119,7 @@ rusty_fork_test! {
             blobStorage: {}
             walletProvider: {}
             credentialIssuer: {}
+            verificationEngagement: {}
         "};
 
         let config3 = indoc::indoc! {"
