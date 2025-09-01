@@ -1,5 +1,7 @@
 use std::ops::Add;
 
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use shared_types::{IdentifierId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -11,7 +13,7 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{Fields, KeyAlgorithmType, WalletProviderType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::wallet_unit::{
@@ -86,6 +88,11 @@ impl SSIWalletProviderService {
             .create_wallet_unit(wallet_unit)
             .await?;
 
+        let attestation_hash = SHA256
+            .hash_base64(signed_attestation.as_bytes())
+            .map_err(|e| {
+                ServiceError::MappingError(format!("Could not hash wallet unit attestation: {e}"))
+            })?;
         self.history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
@@ -95,7 +102,7 @@ impl SSIWalletProviderService {
                 target: Some(wallet_unit_id.to_string()),
                 entity_id: Some(wallet_unit_id.into()),
                 entity_type: HistoryEntityType::WalletUnit,
-                metadata: None,
+                metadata: Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
                 organisation_id: None,
             })
             .await?;
@@ -160,6 +167,11 @@ impl SSIWalletProviderService {
             )
             .await?;
 
+        let attestation_hash = SHA256
+            .hash_base64(signed_attestation.as_bytes())
+            .map_err(|e| {
+                ServiceError::MappingError(format!("Could not hash wallet unit attestation: {e}"))
+            })?;
         self.history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
@@ -169,7 +181,7 @@ impl SSIWalletProviderService {
                 target: Some(wallet_unit.id.to_string()),
                 entity_id: Some(wallet_unit.id.into()),
                 entity_type: HistoryEntityType::WalletUnit,
-                metadata: None,
+                metadata: Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
                 organisation_id: None,
             })
             .await?;

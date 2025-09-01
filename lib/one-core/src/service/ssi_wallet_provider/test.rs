@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::Arc;
 
+use assert2::let_assert;
 use async_trait::async_trait;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
@@ -13,6 +14,7 @@ use uuid::Uuid;
 
 use crate::config;
 use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+use crate::model::history::HistoryMetadata;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit};
@@ -150,7 +152,12 @@ async fn test_register_wallet_unit() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .return_once(|entry| {
+            let_assert!(Some(metadata) = entry.metadata);
+            let_assert!(HistoryMetadata::WalletUnitJWT(attestation) = metadata);
+            assert!(!attestation.is_empty());
+            Ok(Uuid::new_v4().into())
+        });
 
     let ssi_wallet_provider_service = SSIWalletProviderService {
         key_algorithm_provider: Arc::new(key_algorithm_provider),
