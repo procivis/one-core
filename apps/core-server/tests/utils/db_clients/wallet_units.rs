@@ -2,7 +2,9 @@ use std::ops::Sub;
 use std::sync::Arc;
 
 use one_core::model::key::PublicKeyJwk;
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitStatus};
+use one_core::model::wallet_unit::{
+    GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitStatus,
+};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
@@ -18,7 +20,7 @@ pub struct TestWalletUnit {
     pub name: Option<String>,
     pub public_key: Option<PublicKeyJwk>,
     pub status: Option<WalletUnitStatus>,
-    pub last_issuance: Option<OffsetDateTime>,
+    pub last_issuance: Option<Option<OffsetDateTime>>,
 }
 
 impl WalletUnitsDB {
@@ -40,7 +42,10 @@ impl WalletUnitsDB {
             wallet_provider_name: "PROCIVIS_ONE".to_string(),
             public_key: serde_json::to_string(&test_wallet_unit.public_key.unwrap_or(random_jwk()))
                 .unwrap(),
-            last_issuance: test_wallet_unit.last_issuance.unwrap_or(six_hours_ago),
+            last_issuance: test_wallet_unit
+                .last_issuance
+                .unwrap_or(Some(six_hours_ago)),
+            nonce: None,
         };
 
         self.repository
@@ -49,6 +54,10 @@ impl WalletUnitsDB {
             .unwrap();
 
         wallet_unit
+    }
+
+    pub async fn list(&self, query: WalletUnitListQuery) -> GetWalletUnitList {
+        self.repository.get_wallet_unit_list(query).await.unwrap()
     }
 }
 

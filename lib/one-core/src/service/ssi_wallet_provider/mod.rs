@@ -3,6 +3,7 @@ pub mod error;
 pub mod service;
 mod validator;
 
+mod mapper;
 #[cfg(test)]
 mod test;
 

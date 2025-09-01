@@ -14,13 +14,14 @@ pub struct Model {
     pub id: WalletUnitId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub last_issuance: OffsetDateTime,
+    pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
     pub os: String,
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
     pub public_key: String,
+    pub nonce: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -37,6 +38,8 @@ pub enum WalletUnitStatus {
     Active,
     #[sea_orm(string_value = "REVOKED")]
     Revoked,
+    #[sea_orm(string_value = "PENDING")]
+    Pending,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize)]
@@ -61,6 +64,7 @@ impl From<WalletUnit> for ActiveModel {
             wallet_provider_type: Set(wallet_unit.wallet_provider_type.into()),
             wallet_provider_name: Set(wallet_unit.wallet_provider_name),
             public_key: Set(wallet_unit.public_key),
+            nonce: Set(wallet_unit.nonce),
         }
     }
 }

@@ -11,7 +11,7 @@ pub struct GetWalletUnitResponseDTO {
     pub id: WalletUnitId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub last_issuance: OffsetDateTime,
+    pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
     pub os: String,
     pub status: WalletUnitStatus,

@@ -14,7 +14,8 @@ pub struct RegisterWalletUnitRequestDTO {
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitResponseDTO {
     pub id: WalletUnitId,
-    pub attestation: String,
+    pub attestation: Option<String>,
+    pub nonce: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -28,19 +29,50 @@ pub struct RefreshWalletUnitResponseDTO {
     pub attestation: String,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WalletProviderParams {
+    #[allow(unused)]
     pub wallet_name: String,
+    #[allow(unused)]
     pub wallet_link: String,
+    #[allow(unused)]
     pub android: Option<Bundle>,
+    #[allow(unused)]
     pub ios: Option<Bundle>,
     pub lifetime: Lifetime,
     pub issuer_identifier: IdentifierId,
+    #[serde(default)]
+    pub integrity_check: IntegrityCheck,
 }
 
-#[allow(dead_code)]
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct IntegrityCheck {
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+    #[allow(unused)]
+    #[serde(default = "default_attestation_timeout")]
+    pub timeout: usize,
+}
+
+impl Default for IntegrityCheck {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            timeout: 300,
+        }
+    }
+}
+
+fn default_enabled() -> bool {
+    true
+}
+
+fn default_attestation_timeout() -> usize {
+    300
+}
+
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct Lifetime {
@@ -48,9 +80,11 @@ pub(super) struct Lifetime {
     pub minimum_refresh_time: i64,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(unused)]
 pub(super) struct Bundle {
     pub bundle_id: String,
+    #[serde(rename = "trustedAttestationCAs")]
+    pub trusted_attestation_cas: Vec<String>,
 }

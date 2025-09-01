@@ -64,13 +64,14 @@ async fn insert_wallet_unit_to_database(
         id: Set(id),
         created_date: Set(now),
         last_modified: Set(now),
-        last_issuance: Set(now),
+        last_issuance: Set(Some(now)),
         name: Set(name.unwrap_or("test_wallet").to_string()),
         os: Set("ANDROID".to_string()),
         status: Set(wallet_unit::WalletUnitStatus::Active),
         wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
         wallet_provider_name: Set("Test Provider Name".to_string()),
         public_key: Set(format!("test_public_key_{unique_suffix}")),
+        nonce: Set(None),
     }
     .insert(db)
     .await
@@ -85,13 +86,14 @@ fn dummy_wallet_unit(id: WalletUnitId) -> WalletUnit {
         id,
         created_date: now,
         last_modified: now,
-        last_issuance: now,
+        last_issuance: Some(now),
         name: "test_wallet".to_string(),
         os: "ANDROID".to_string(),
         status: WalletUnitStatus::Active,
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "Test Provider Name".to_string(),
         public_key: format!("test_public_key_{id}"),
+        nonce: None,
     }
 }
 

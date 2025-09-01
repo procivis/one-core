@@ -146,7 +146,8 @@ async fn holder_register_success() {
             check!(url == "https://wallet.provider/register");
             Ok(RegisterWalletUnitResponseDTO {
                 id: wallet_unit_id,
-                attestation: attestation_token,
+                attestation: Some(attestation_token),
+                nonce: None,
             })
         });
 

@@ -20,11 +20,13 @@ pub struct WalletUnit {
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
     pub public_key: String,
-    pub last_issuance: OffsetDateTime,
+    pub last_issuance: Option<OffsetDateTime>,
+    pub nonce: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum WalletUnitStatus {
+    Pending,
     Active,
     Revoked,
 }

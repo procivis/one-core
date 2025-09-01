@@ -489,7 +489,6 @@ pub(crate) struct SSIPostTrustEntityRequestRestDTO {
     pub role: TrustEntityRoleRest,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(RegisterWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -500,15 +499,16 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub proof: String,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(RegisterWalletUnitResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletUnitId,
-    pub attestation: String,
+    pub attestation: Option<String>,
+    pub nonce: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(RefreshWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]

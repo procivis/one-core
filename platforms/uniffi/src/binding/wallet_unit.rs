@@ -15,7 +15,7 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use crate::ServiceError;
 use crate::binding::OneCoreBinding;
 use crate::binding::common::SortDirection;
-use crate::binding::mapper::deserialize_timestamp;
+use crate::binding::mapper::{deserialize_timestamp, optional_time};
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
 
@@ -206,8 +206,8 @@ pub struct WalletUnitBindingDTO {
     pub created_date: String,
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_issuance: String,
+    #[from(with_fn = "optional_time")]
+    pub last_issuance: Option<String>,
     pub name: String,
     pub os: String,
     pub status: WalletUnitStatusBindingEnum,
@@ -220,6 +220,7 @@ pub struct WalletUnitBindingDTO {
 #[into(WalletUnitStatus)]
 #[from(WalletUnitStatus)]
 pub enum WalletUnitStatusBindingEnum {
+    Pending,
     Active,
     Revoked,
 }

@@ -52,6 +52,42 @@ fn mock_ssi_wallet_service() -> SSIWalletProviderService {
     }
 }
 
+fn wallet_provider_config(
+    issuer_identifier_id: IdentifierId,
+    integrity_check_enabled: bool,
+) -> Fields<config::core_config::WalletProviderType> {
+    Fields {
+        r#type: config::core_config::WalletProviderType::ProcivisOne,
+        display: "display".into(),
+        order: None,
+        enabled: Some(true),
+        capabilities: None,
+        params: Some(Params {
+            public: Some(json!({
+                "walletName": "Procivis One Trial Wallet",
+                "walletLink": "https://procivis.ch",
+                "android": {
+                    "bundleId": "com.procivis...",
+                    "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
+                },
+                "ios": {
+                    "bundleId": "com.procivis...",
+                    "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
+                },
+                "lifetime": {
+                  "expirationTime": 60,
+                  "minimumRefreshTime": 60
+                },
+                "issuerIdentifier": issuer_identifier_id,
+                "integrityCheck": {
+                    "enabled": integrity_check_enabled
+                }
+            })),
+            private: None,
+        }),
+    }
+}
+
 #[tokio::test]
 async fn test_register_wallet_unit() {
     // given
@@ -60,31 +96,7 @@ async fn test_register_wallet_unit() {
 
     config.wallet_provider.insert(
         "PROCIVIS_ONE".to_string(),
-        Fields {
-            r#type: config::core_config::WalletProviderType::ProcivisOne,
-            display: "display".into(),
-            order: None,
-            enabled: Some(true),
-            capabilities: None,
-            params: Some(Params {
-                public: Some(json!({
-                    "walletName": "Procivis One Trial Wallet",
-                    "walletLink": "https://procivis.ch",
-                    "android": {
-                        "bundleId": "com.procivis..."
-                    },
-                    "ios": {
-                        "bundleId": "com.procivis..."
-                    },
-                    "lifetime": {
-                      "expirationTime": 60,
-                      "minimumRefreshTime": 60
-                    },
-                    "issuerIdentifier": issuer_identifier_id
-                })),
-                private: None,
-            }),
-        },
+        wallet_provider_config(issuer_identifier_id, false),
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -180,10 +192,114 @@ async fn test_register_wallet_unit() {
     // when
     let result = ssi_wallet_provider_service
         .register_wallet_unit(request)
-        .await;
+        .await
+        .unwrap();
 
     // then
-    assert!(result.is_ok(), "Failed: {result:?}");
+    assert!(result.attestation.is_some());
+    assert!(result.nonce.is_none());
+}
+
+#[tokio::test]
+async fn test_register_wallet_unit_integrity_check() {
+    // given
+    let mut config = CoreConfig::default();
+    let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
+
+    config.wallet_provider.insert(
+        "PROCIVIS_ONE".to_string(),
+        wallet_provider_config(issuer_identifier_id, true),
+    );
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .once()
+        .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
+
+    let mut wallet_unit_repository = MockWalletUnitRepository::new();
+    wallet_unit_repository
+        .expect_create_wallet_unit()
+        .return_once(|wu| Ok(wu.id));
+
+    let (issuer_private, issuer_public) = ECDSASigner::generate_key_pair();
+    let issuer_public_clone = issuer_public.clone();
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get()
+        .return_once(move |id, _| {
+            Ok(Some(Identifier {
+                id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "test".to_string(),
+                r#type: IdentifierType::Key,
+                is_remote: false,
+                state: IdentifierState::Active,
+                deleted_at: None,
+                organisation: None,
+                did: None,
+                key: Some(Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    public_key: issuer_public_clone,
+                    name: "".to_string(),
+                    key_reference: None,
+                    storage_type: "TEST".to_string(),
+                    key_type: "ECDSA".to_string(),
+                    organisation: None,
+                }),
+                certificates: None,
+            }))
+        });
+
+    let issuer_key_handle = Ecdsa
+        .reconstruct_key(&issuer_public, Some(issuer_private.clone()), None)
+        .unwrap();
+
+    let mut key_storage = MockKeyStorage::new();
+    key_storage
+        .expect_key_handle()
+        .return_once(|_| Ok(issuer_key_handle));
+
+    let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+    key_storages.insert("TEST".to_string(), Arc::new(key_storage));
+
+    let key_provider = KeyProviderImpl::new(key_storages);
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
+    let ssi_wallet_provider_service = SSIWalletProviderService {
+        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        wallet_unit_repository: Arc::new(wallet_unit_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        history_repository: Arc::new(history_repository),
+        key_provider: Arc::new(key_provider),
+        config: Arc::new(config),
+        ..mock_ssi_wallet_service()
+    };
+
+    let (proof, holder_jwk) = create_proof().await;
+    let request = RegisterWalletUnitRequestDTO {
+        wallet_provider: "PROCIVIS_ONE".to_string(),
+        os: "ANDROID".to_string(),
+        public_key: holder_jwk.public_key_as_jwk().unwrap().into(),
+        proof,
+    };
+
+    // when
+    let result = ssi_wallet_provider_service
+        .register_wallet_unit(request)
+        .await
+        .unwrap();
+
+    // then
+    assert!(result.nonce.is_some());
+    assert!(result.attestation.is_none());
 }
 
 #[tokio::test]
@@ -194,31 +310,7 @@ async fn test_refresh_wallet_unit_success() {
 
     config.wallet_provider.insert(
         "PROCIVIS_ONE".to_string(),
-        Fields {
-            r#type: config::core_config::WalletProviderType::ProcivisOne,
-            display: "display".into(),
-            order: None,
-            enabled: Some(true),
-            capabilities: None,
-            params: Some(Params {
-                public: Some(json!({
-                    "walletName": "Procivis One Trial Wallet",
-                    "walletLink": "https://procivis.ch",
-                    "android": {
-                        "bundleId": "com.procivis..."
-                    },
-                    "ios": {
-                        "bundleId": "com.procivis..."
-                    },
-                    "lifetime": {
-                      "expirationTime": 60,
-                      "minimumRefreshTime": 60
-                    },
-                    "issuerIdentifier": issuer_identifier_id
-                })),
-                private: None,
-            }),
-        },
+        wallet_provider_config(issuer_identifier_id, false),
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -315,7 +407,8 @@ async fn test_refresh_wallet_unit_success() {
                     wallet_provider_type: WalletProviderType::ProcivisOne,
                     public_key: holder_public_key_str,
                     // ensure refresh window has passed
-                    last_issuance: now.sub(Duration::minutes(120)),
+                    last_issuance: Some(now.sub(Duration::minutes(120))),
+                    nonce: None,
                 }))
             }
         });

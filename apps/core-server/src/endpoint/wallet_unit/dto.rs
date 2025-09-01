@@ -13,7 +13,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::ListQueryParamsRest;
-use crate::serialize::front_time;
+use crate::serialize::{front_time, front_time_option};
 
 pub(crate) type ListWalletUnitsQuery =
     ListQueryParamsRest<WalletUnitFilterQueryParamsRestDTO, SortableWalletUnitColumnRest>;
@@ -42,8 +42,8 @@ pub(crate) struct WalletUnitResponseRestDTO {
     #[serde(serialize_with = "front_time")]
     pub last_modified: OffsetDateTime,
     #[schema(example = "2023-06-09T14:19:57.000Z")]
-    #[serde(serialize_with = "front_time")]
-    pub last_issuance: OffsetDateTime,
+    #[serde(serialize_with = "front_time_option")]
+    pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
     pub os: String,
     pub status: WalletUnitStatusRestEnum,
@@ -59,6 +59,7 @@ pub(crate) struct WalletUnitResponseRestDTO {
 pub(crate) enum WalletUnitStatusRestEnum {
     Active,
     Revoked,
+    Pending,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]

@@ -122,8 +122,17 @@ async fn test_refresh_wallet_unit_failed_with_revoked_wallet_unit() {
 
 #[tokio::test]
 async fn test_refresh_wallet_unit_failed_with_refresh_before_minimum_refresh_time() {
+    let config = indoc::indoc! {"
+      walletProvider:
+        PROCIVIS_ONE:
+            params:
+              public:
+                integrityCheck:
+                    enabled: false
+    "}
+    .to_string();
     // given
-    let (context, org) = TestContext::new_with_organisation(None).await;
+    let (context, org) = TestContext::new_with_organisation(Some(config)).await;
     create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
 
     let holder_key_pair = Ecdsa.generate_key().unwrap();
@@ -135,7 +144,7 @@ async fn test_refresh_wallet_unit_failed_with_refresh_before_minimum_refresh_tim
         .wallet_units
         .create(TestWalletUnit {
             public_key: Some(holder_public_jwk),
-            last_issuance: Some(now),
+            last_issuance: Some(Some(now)),
             ..Default::default()
         })
         .await;

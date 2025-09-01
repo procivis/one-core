@@ -119,8 +119,11 @@ impl WalletUnitService {
             .await
             .map_err(WalletUnitAttestationError::from)?;
 
-        let attestation_token: DecomposedToken<()> =
-            Jwt::decompose_token(&register_response.attestation)?;
+        let Some(attestation) = register_response.attestation else {
+            unimplemented!("holder nonce handling: TODO ONE-7129")
+        };
+
+        let attestation_token: DecomposedToken<()> = Jwt::decompose_token(&attestation)?;
 
         let wallet_unit_attestation = WalletUnitAttestation {
             id: Uuid::new_v4().into(),
@@ -131,7 +134,7 @@ impl WalletUnitService {
                 .expires_at
                 .ok_or(ServiceError::MappingError("expires_at is None".to_string()))?,
             status: WalletUnitStatus::Active,
-            attestation: register_response.attestation,
+            attestation,
             wallet_unit_id: register_response.id,
             wallet_provider_url: request.wallet_provider.url,
             wallet_provider_type: request.wallet_provider.r#type.clone(),

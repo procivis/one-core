@@ -2,6 +2,7 @@ use std::ops::Add;
 
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use one_crypto::utilities::generate_alphanumeric;
 use shared_types::{IdentifierId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -16,9 +17,7 @@ use crate::model::did::{DidRelations, KeyFilter};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
-use crate::model::wallet_unit::{
-    UpdateWalletUnitRequest, WalletUnit, WalletUnitRelations, WalletUnitStatus,
-};
+use crate::model::wallet_unit::{UpdateWalletUnitRequest, WalletUnitRelations, WalletUnitStatus};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -30,6 +29,7 @@ use crate::service::ssi_wallet_provider::dto::{
     RegisterWalletUnitResponseDTO, WalletProviderParams,
 };
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::ssi_wallet_provider::mapper::wallet_unit_from_request;
 use crate::service::ssi_wallet_provider::validator::validate_audience;
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{
@@ -45,44 +45,82 @@ impl SSIWalletProviderService {
         request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let (config, config_params) =
-            self.get_wallet_provider_config_params(request.wallet_provider.clone())?;
+            self.get_wallet_provider_config_params(&request.wallet_provider)?;
 
         let proof = Jwt::<()>::decompose_token(&request.proof)?;
-        let public_key_jwk = request.public_key.into();
+        let public_key_jwk = request.public_key.clone().into();
         let public_key = self
             .parse_jwk(&proof.header.algorithm, &public_key_jwk)
             .await?;
 
         self.verify_proof(&proof, &public_key, LEEWAY).await?;
 
-        let now = self.clock.now_utc();
+        if config_params.integrity_check.enabled && request.os != "WEB" {
+            self.create_integrity_check_nonce(request, config, public_key_jwk)
+                .await
+        } else {
+            self.create_wallet_unit_attestation(request, config, config_params, public_key_jwk)
+                .await
+        }
+    }
 
+    async fn create_integrity_check_nonce(
+        &self,
+        request: RegisterWalletUnitRequestDTO,
+        config: &Fields<WalletProviderType>,
+        public_key_jwk: PublicKeyJwk,
+    ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
+        let now = self.clock.now_utc();
+        let nonce = generate_alphanumeric(44).to_owned();
+        let wallet_unit =
+            wallet_unit_from_request(request, config, &public_key_jwk, now, Some(nonce.clone()))?;
+        let wallet_unit_name = wallet_unit.name.clone();
+        let wallet_unit_id = self
+            .wallet_unit_repository
+            .create_wallet_unit(wallet_unit)
+            .await?;
+
+        self.history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                action: HistoryAction::Pending,
+                name: wallet_unit_name,
+                target: Some(wallet_unit_id.to_string()),
+                entity_id: Some(wallet_unit_id.into()),
+                entity_type: HistoryEntityType::WalletUnit,
+                metadata: None,
+                organisation_id: None,
+            })
+            .await?;
+
+        Ok(RegisterWalletUnitResponseDTO {
+            id: wallet_unit_id,
+            attestation: None,
+            nonce: Some(nonce),
+        })
+    }
+
+    async fn create_wallet_unit_attestation(
+        &self,
+        request: RegisterWalletUnitRequestDTO,
+        config: &Fields<WalletProviderType>,
+        config_params: WalletProviderParams,
+        public_key_jwk: PublicKeyJwk,
+    ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
+        let now = self.clock.now_utc();
+        let wallet_provider = request.wallet_provider.clone();
         let auth_fn = self.get_auth_fn(config_params.issuer_identifier).await?;
+        let wallet_unit = wallet_unit_from_request(request, config, &public_key_jwk, now, None)?;
+        let wallet_unit_name = wallet_unit.name.clone();
         let attestation = self.create_attestation(
             now,
-            &request.wallet_provider,
+            &wallet_provider,
             config_params.lifetime.expiration_time,
-            public_key_jwk.clone(),
+            public_key_jwk,
             &auth_fn,
         )?;
         let signed_attestation = attestation.tokenize(Some(auth_fn)).await?;
-
-        let wallet_unit_name = format!("{}-{}-{}", config.r#type, request.os, now.unix_timestamp());
-
-        let encoded_public_key = serde_json::to_string(&public_key_jwk)
-            .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
-        let wallet_unit = WalletUnit {
-            id: Uuid::new_v4().into(),
-            name: wallet_unit_name.clone(),
-            created_date: now,
-            last_modified: now,
-            last_issuance: now,
-            os: request.os,
-            status: WalletUnitStatus::Active,
-            wallet_provider_name: request.wallet_provider,
-            wallet_provider_type: config.r#type.into(),
-            public_key: encoded_public_key,
-        };
         let wallet_unit_id = self
             .wallet_unit_repository
             .create_wallet_unit(wallet_unit)
@@ -109,7 +147,8 @@ impl SSIWalletProviderService {
 
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
-            attestation: signed_attestation,
+            attestation: Some(signed_attestation),
+            nonce: None,
         })
     }
 
@@ -125,7 +164,7 @@ impl SSIWalletProviderService {
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
         let (_, config_params) =
-            self.get_wallet_provider_config_params(wallet_unit.wallet_provider_name.clone())?;
+            self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
 
         let decoded_public_key = serde_json::from_str::<PublicKeyJwk>(&wallet_unit.public_key)
             .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
@@ -136,10 +175,11 @@ impl SSIWalletProviderService {
         self.verify_proof(&proof, &key, LEEWAY).await?;
 
         let now = self.clock.now_utc();
-        let can_be_issued_after = wallet_unit.last_issuance.add(Duration::minutes(
-            config_params.lifetime.minimum_refresh_time,
-        ));
-        if can_be_issued_after > now {
+        if let Some(last_issuance) = wallet_unit.last_issuance
+            && last_issuance.add(Duration::minutes(
+                config_params.lifetime.minimum_refresh_time,
+            )) > now
+        {
             return Err(WalletProviderError::RefreshTimeNotReached.into());
         }
 
@@ -194,12 +234,12 @@ impl SSIWalletProviderService {
 
     fn get_wallet_provider_config_params(
         &self,
-        wallet_provider: String,
+        wallet_provider: &str,
     ) -> Result<(&Fields<WalletProviderType>, WalletProviderParams), ServiceError> {
         let wallet_provider_config = self
             .config
             .wallet_provider
-            .get_if_enabled(wallet_provider.as_str())
+            .get_if_enabled(wallet_provider)
             .map_err(WalletProviderError::WalletProviderDisabled)?;
 
         let wallet_provider_config_params = wallet_provider_config
