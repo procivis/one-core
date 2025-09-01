@@ -13,7 +13,7 @@ use crate::binding::identifier::{
 };
 use crate::binding::key::KeyRequestBindingDTO;
 use crate::binding::organisation::CreateOrganisationRequestBindingDTO;
-use crate::initialize;
+use crate::{InitParamsDTO, initialize};
 
 /// Utility to create testing folder
 /// - automatically cleaned-up in the end of the test (when dropped)
@@ -84,9 +84,15 @@ async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
     })
     .to_string();
 
-    initialize(additional_config, data_dir_path, None, None, None, None)
-        .await
-        .unwrap()
+    initialize(
+        data_dir_path,
+        InitParamsDTO {
+            config_json: Some(additional_config),
+            ..Default::default()
+        },
+    )
+    .await
+    .unwrap()
 }
 
 pub struct TestContext {

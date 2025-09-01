@@ -176,7 +176,31 @@ pub enum BleError {
 
 impl From<uniffi::UnexpectedUniFFICallbackError> for BleError {
     fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
-        BleError::Unknown {
+        Self::Unknown {
+            reason: e.to_string(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Error, uniffi::Error)]
+pub enum NfcError {
+    #[error("NFC Adapter not enabled")]
+    NotEnabled,
+    #[error("The device does not support NFC")]
+    NotSupported,
+    #[error("Already started")]
+    AlreadyStarted,
+    #[error("Not started")]
+    NotStarted,
+    #[error("Operation cancelled")]
+    Cancelled,
+    #[error("Unknown NFC error: {reason}")]
+    Unknown { reason: String },
+}
+
+impl From<uniffi::UnexpectedUniFFICallbackError> for NfcError {
+    fn from(e: uniffi::UnexpectedUniFFICallbackError) -> Self {
+        Self::Unknown {
             reason: e.to_string(),
         }
     }

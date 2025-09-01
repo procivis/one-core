@@ -23,6 +23,7 @@ pub mod jsonld;
 pub mod key;
 pub mod key_storage;
 mod mapper;
+pub mod nfc;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;

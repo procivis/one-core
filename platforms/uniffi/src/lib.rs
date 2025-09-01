@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "strict", deny(warnings))]
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::{Arc, LazyLock};
 
 use did_config::DidWebVhParams;
@@ -90,6 +91,7 @@ use tracing::warn;
 use crate::binding::OneCoreBinding;
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
+use crate::binding::nfc::hce::NfcHce;
 use crate::did_config::{DidUniversalParams, DidWebParams};
 use crate::error::{BindingError, SDKError};
 
@@ -110,14 +112,20 @@ struct MobileConfig {
     pub trace_level: Option<String>,
 }
 
+#[derive(Default, uniffi::Record)]
+pub struct InitParamsDTO {
+    pub config_json: Option<String>,
+    pub native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    pub remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    pub ble_central: Option<Arc<dyn BleCentral>>,
+    pub ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    pub nfc_hce: Option<Arc<dyn NfcHce>>,
+}
+
 #[uniffi::export]
 fn initialize_core(
-    config_json: String,
     data_dir_path: String,
-    native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
-    remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
-    ble_central: Option<Arc<dyn BleCentral>>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    params: InitParamsDTO,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     // Sets tokio as global runtime for all async exports
     static TOKIO_RUNTIME: LazyLock<Result<tokio::runtime::Runtime, std::io::Error>> =
@@ -133,37 +141,33 @@ fn initialize_core(
         .as_ref()
         .map_err(|err| BindingError::from(SDKError::InitializationFailure(err.to_string())))?;
 
-    rt.block_on(initialize(
-        config_json,
-        data_dir_path,
-        native_secure_element,
-        remote_secure_element,
-        ble_central,
-        ble_peripheral,
-    ))
+    rt.block_on(initialize(data_dir_path, params))
 }
 
 async fn initialize(
-    config_json: String,
     data_dir_path: String,
-    native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
-    remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
-    ble_central: Option<Arc<dyn BleCentral>>,
-    ble_peripheral: Option<Arc<dyn BlePeripheral>>,
+    params: InitParamsDTO,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
     let native_secure_element: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
-    > = native_secure_element.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+    > = params
+        .native_secure_element
+        .map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
 
     let remote_secure_element: Option<
         Arc<dyn one_core::provider::key_storage::secure_element::NativeKeyStorage>,
-    > = remote_secure_element.map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
+    > = params
+        .remote_secure_element
+        .map(|storage| Arc::new(NativeKeyStorageWrapper(storage)) as _);
 
-    let ble_central = ble_central.map(|central| Arc::new(BleCentralWrapper(central)) as _);
-    let ble_peripheral =
-        ble_peripheral.map(|peripheral| Arc::new(BlePeripheralWrapper(peripheral)) as _);
+    let ble_central = params
+        .ble_central
+        .map(|central| Arc::new(BleCentralWrapper(central)) as _);
+    let ble_peripheral = params
+        .ble_peripheral
+        .map(|peripheral| Arc::new(BlePeripheralWrapper(peripheral)) as _);
 
-    let cfg = build_config(&config_json)?;
+    let cfg = build_config(params.config_json.as_deref().unwrap_or("{}"))?;
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
     {
@@ -190,8 +194,22 @@ async fn initialize(
         subscriber.try_init();
     }
 
-    let main_db_path = format!("{data_dir_path}/one_core_db.sqlite");
-    let backup_db_path = format!("{data_dir_path}/backup_one_core_db.sqlite");
+    let path = Path::new(&data_dir_path);
+    let main_db_path = path
+        .join("one_core_db.sqlite")
+        .to_str()
+        .ok_or(SDKError::InitializationFailure(
+            "invalid data_dir_path".to_string(),
+        ))?
+        .to_owned();
+    let backup_db_path = path
+        .join("backup_one_core_db.sqlite")
+        .to_str()
+        .ok_or(SDKError::InitializationFailure(
+            "invalid data_dir_path".to_string(),
+        ))?
+        .to_owned();
+
     let result = std::fs::remove_file(&backup_db_path);
     if let Err(err) = result {
         warn!("failed to delete backup database: {err}");
