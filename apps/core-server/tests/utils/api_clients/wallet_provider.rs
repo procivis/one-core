@@ -30,6 +30,25 @@ impl WalletProviderApi {
         self.client.post("/ssi/wallet-unit/v1", body).await
     }
 
+    pub async fn activate_wallet(
+        &self,
+        wallet_unit_id: WalletUnitId,
+        attestation: &str,
+        nonce: &str,
+    ) -> Response {
+        let body = json!( {
+            "attestation": attestation,
+            "nonce": nonce,
+        });
+
+        self.client
+            .post(
+                &format!("/ssi/wallet-unit/v1/{wallet_unit_id}/activate"),
+                body,
+            )
+            .await
+    }
+
     pub async fn refresh_wallet(&self, wallet_unit_id: WalletUnitId, proof: String) -> Response {
         let body = json!( {
             "proof": proof

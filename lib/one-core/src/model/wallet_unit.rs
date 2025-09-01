@@ -29,6 +29,7 @@ pub enum WalletUnitStatus {
     Pending,
     Active,
     Revoked,
+    Error,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, Display, AsRefStr, Into, From)]

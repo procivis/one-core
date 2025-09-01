@@ -3,7 +3,7 @@ use std::ops::Add;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{IdentifierId, WalletUnitId};
+use shared_types::{EntityId, IdentifierId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -14,22 +14,28 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{Fields, KeyAlgorithmType, WalletProviderType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
-use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
+use crate::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+};
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
-use crate::model::wallet_unit::{UpdateWalletUnitRequest, WalletUnitRelations, WalletUnitStatus};
+use crate::model::wallet_unit::{
+    UpdateWalletUnitRequest, WalletUnit, WalletUnitRelations, WalletUnitStatus,
+};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::provider::key_algorithm::provider::ParsedKey;
-use crate::service::error::{EntityNotFoundError, ServiceError};
+use crate::service::error::{EntityNotFoundError, ErrorCodeMixin, ServiceError};
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletProviderParams,
+    RegisterWalletUnitResponseDTO, WalletProviderParams, WalletUnitActivationRequestDTO,
+    WalletUnitActivationResponseDTO,
 };
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
-use crate::service::ssi_wallet_provider::mapper::wallet_unit_from_request;
+use crate::service::ssi_wallet_provider::mapper::{
+    public_key_from_wallet_unit, wallet_unit_from_request,
+};
 use crate::service::ssi_wallet_provider::validator::validate_audience;
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{
@@ -59,7 +65,7 @@ impl SSIWalletProviderService {
             self.create_integrity_check_nonce(request, config, public_key_jwk)
                 .await
         } else {
-            self.create_wallet_unit_attestation(request, config, config_params, public_key_jwk)
+            self.create_wallet_unit_with_attestation(request, config, config_params, public_key_jwk)
                 .await
         }
     }
@@ -80,19 +86,13 @@ impl SSIWalletProviderService {
             .create_wallet_unit(wallet_unit)
             .await?;
 
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                action: HistoryAction::Pending,
-                name: wallet_unit_name,
-                target: Some(wallet_unit_id.to_string()),
-                entity_id: Some(wallet_unit_id.into()),
-                entity_type: HistoryEntityType::WalletUnit,
-                metadata: None,
-                organisation_id: None,
-            })
-            .await?;
+        self.create_wallet_unit_history(
+            &wallet_unit_id,
+            wallet_unit_name,
+            HistoryAction::Pending,
+            None,
+        )
+        .await;
 
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
@@ -101,7 +101,33 @@ impl SSIWalletProviderService {
         })
     }
 
-    async fn create_wallet_unit_attestation(
+    async fn create_wallet_unit_history(
+        &self,
+        wallet_unit_id: &WalletUnitId,
+        wallet_unit_name: String,
+        action: HistoryAction,
+        metadata: Option<HistoryMetadata>,
+    ) {
+        let result = self
+            .history_repository
+            .create_history(History {
+                id: Uuid::new_v4().into(),
+                created_date: self.clock.now_utc(),
+                action,
+                name: wallet_unit_name,
+                target: Some(wallet_unit_id.to_string()),
+                entity_id: Some(EntityId::from(*wallet_unit_id)),
+                entity_type: HistoryEntityType::WalletUnit,
+                metadata,
+                organisation_id: None,
+            })
+            .await;
+        if let Err(err) = result {
+            tracing::warn!("Failed to write wallet unit history: {err}")
+        };
+    }
+
+    async fn create_wallet_unit_with_attestation(
         &self,
         request: RegisterWalletUnitRequestDTO,
         config: &Fields<WalletProviderType>,
@@ -110,46 +136,166 @@ impl SSIWalletProviderService {
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let wallet_provider = request.wallet_provider.clone();
-        let auth_fn = self.get_auth_fn(config_params.issuer_identifier).await?;
         let wallet_unit = wallet_unit_from_request(request, config, &public_key_jwk, now, None)?;
         let wallet_unit_name = wallet_unit.name.clone();
-        let attestation = self.create_attestation(
-            now,
-            &wallet_provider,
-            config_params.lifetime.expiration_time,
-            public_key_jwk,
-            &auth_fn,
-        )?;
-        let signed_attestation = attestation.tokenize(Some(auth_fn)).await?;
+        let (signed_attestation, attestation_hash) = self
+            .sign_attestation(&config_params, public_key_jwk, &wallet_provider)
+            .await?;
         let wallet_unit_id = self
             .wallet_unit_repository
             .create_wallet_unit(wallet_unit)
             .await?;
-
-        let attestation_hash = SHA256
-            .hash_base64(signed_attestation.as_bytes())
-            .map_err(|e| {
-                ServiceError::MappingError(format!("Could not hash wallet unit attestation: {e}"))
-            })?;
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                action: HistoryAction::Created,
-                name: wallet_unit_name,
-                target: Some(wallet_unit_id.to_string()),
-                entity_id: Some(wallet_unit_id.into()),
-                entity_type: HistoryEntityType::WalletUnit,
-                metadata: Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
-                organisation_id: None,
-            })
-            .await?;
+        self.create_wallet_unit_history(
+            &wallet_unit_id,
+            wallet_unit_name,
+            HistoryAction::Created,
+            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+        )
+        .await;
 
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
             attestation: Some(signed_attestation),
             nonce: None,
         })
+    }
+
+    async fn sign_attestation(
+        &self,
+        config_params: &WalletProviderParams,
+        public_key_jwk: PublicKeyJwk,
+        wallet_provider: &str,
+    ) -> Result<(String, String), ServiceError> {
+        let now = self.clock.now_utc();
+        let auth_fn = self.get_auth_fn(config_params.issuer_identifier).await?;
+        let attestation = self.create_attestation(
+            now,
+            wallet_provider,
+            config_params.lifetime.expiration_time,
+            public_key_jwk,
+            &auth_fn,
+        )?;
+        let signed_attestation = attestation.tokenize(Some(auth_fn)).await?;
+        let attestation_hash = SHA256
+            .hash_base64(signed_attestation.as_bytes())
+            .map_err(|e| {
+                ServiceError::MappingError(format!("Could not hash wallet unit attestation: {e}"))
+            })?;
+        Ok((signed_attestation, attestation_hash))
+    }
+
+    pub async fn activate_wallet_unit(
+        &self,
+        wallet_unit_id: WalletUnitId,
+        request: WalletUnitActivationRequestDTO,
+    ) -> Result<WalletUnitActivationResponseDTO, ServiceError> {
+        let wallet_unit = self
+            .wallet_unit_repository
+            .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
+            .await?
+            .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
+
+        match wallet_unit.status {
+            WalletUnitStatus::Pending => {} // OK
+            WalletUnitStatus::Active | WalletUnitStatus::Error => {
+                return Err(WalletProviderError::InvalidWalletUnitState.into());
+            }
+            WalletUnitStatus::Revoked => return Err(WalletProviderError::WalletUnitRevoked.into()),
+        }
+
+        if Some(request.nonce) != wallet_unit.nonce {
+            let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
+            self.set_wallet_unit_to_error(
+                &wallet_unit,
+                HistoryErrorMetadata {
+                    error_code: error.error_code(),
+                    message: format!(
+                        "Failed to activate wallet unit {}: invalid nonce",
+                        wallet_unit.id
+                    ),
+                },
+            )
+            .await?;
+            return Err(error.into());
+        }
+
+        let (_, config_params) =
+            self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
+
+        if wallet_unit.last_modified
+            + Duration::seconds(config_params.integrity_check.timeout as i64)
+            < self.clock.now_utc()
+        {
+            let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
+            self.set_wallet_unit_to_error(
+                &wallet_unit,
+                HistoryErrorMetadata {
+                    error_code: error.error_code(),
+                    message: format!(
+                        "Failed to activate wallet unit {}: nonce expired",
+                        wallet_unit.id
+                    ),
+                },
+            )
+            .await?;
+            return Err(error.into());
+        };
+
+        // TODO ONE-7121: validate attestation here
+
+        let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
+        let (signed_attestation, attestation_hash) = self
+            .sign_attestation(
+                &config_params,
+                key.public_key_as_jwk()?,
+                &wallet_unit.wallet_provider_name,
+            )
+            .await?;
+        self.wallet_unit_repository
+            .update_wallet_unit(
+                &wallet_unit_id,
+                UpdateWalletUnitRequest {
+                    status: Some(WalletUnitStatus::Active),
+                    last_issuance: Some(self.clock.now_utc()),
+                },
+            )
+            .await?;
+
+        self.create_wallet_unit_history(
+            &wallet_unit_id,
+            wallet_unit.name,
+            HistoryAction::Activated,
+            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+        )
+        .await;
+
+        Ok(WalletUnitActivationResponseDTO {
+            attestation: signed_attestation,
+        })
+    }
+
+    async fn set_wallet_unit_to_error(
+        &self,
+        wallet_unit: &WalletUnit,
+        error_metadata: HistoryErrorMetadata,
+    ) -> Result<(), ServiceError> {
+        self.wallet_unit_repository
+            .update_wallet_unit(
+                &wallet_unit.id,
+                UpdateWalletUnitRequest {
+                    status: Some(WalletUnitStatus::Error),
+                    last_issuance: None,
+                },
+            )
+            .await?;
+        self.create_wallet_unit_history(
+            &wallet_unit.id,
+            wallet_unit.name.clone(),
+            HistoryAction::Errored,
+            Some(HistoryMetadata::ErrorMetadata(error_metadata)),
+        )
+        .await;
+        Ok(())
     }
 
     pub async fn refresh_wallet_unit(
@@ -166,11 +312,7 @@ impl SSIWalletProviderService {
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
 
-        let decoded_public_key = serde_json::from_str::<PublicKeyJwk>(&wallet_unit.public_key)
-            .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
-
-        let ParsedKey { key, .. } = self.key_algorithm_provider.parse_jwk(&decoded_public_key)?;
-
+        let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let proof = Jwt::<()>::decompose_token(&request.proof)?;
         self.verify_proof(&proof, &key, LEEWAY).await?;
 
@@ -187,16 +329,13 @@ impl SSIWalletProviderService {
             return Err(WalletProviderError::WalletUnitRevoked.into());
         }
 
-        let auth_fn = self.get_auth_fn(config_params.issuer_identifier).await?;
-        let attestation = self.create_attestation(
-            now,
-            &wallet_unit.wallet_provider_name,
-            config_params.lifetime.expiration_time,
-            key.public_key_as_jwk()?,
-            &auth_fn,
-        )?;
-        let signed_attestation = attestation.tokenize(Some(auth_fn)).await?;
-
+        let (signed_attestation, attestation_hash) = self
+            .sign_attestation(
+                &config_params,
+                key.public_key_as_jwk()?,
+                &wallet_unit.wallet_provider_name,
+            )
+            .await?;
         self.wallet_unit_repository
             .update_wallet_unit(
                 &wallet_unit_id,
@@ -207,24 +346,13 @@ impl SSIWalletProviderService {
             )
             .await?;
 
-        let attestation_hash = SHA256
-            .hash_base64(signed_attestation.as_bytes())
-            .map_err(|e| {
-                ServiceError::MappingError(format!("Could not hash wallet unit attestation: {e}"))
-            })?;
-        self.history_repository
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                action: HistoryAction::Updated,
-                name: wallet_unit.name,
-                target: Some(wallet_unit.id.to_string()),
-                entity_id: Some(wallet_unit.id.into()),
-                entity_type: HistoryEntityType::WalletUnit,
-                metadata: Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
-                organisation_id: None,
-            })
-            .await?;
+        self.create_wallet_unit_history(
+            &wallet_unit_id,
+            wallet_unit.name,
+            HistoryAction::Updated,
+            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+        )
+        .await;
 
         Ok(RefreshWalletUnitResponseDTO {
             id: wallet_unit.id,

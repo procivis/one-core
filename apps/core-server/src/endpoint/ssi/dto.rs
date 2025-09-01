@@ -22,7 +22,7 @@ use one_core::service::ssi_issuer::dto::{
 };
 use one_core::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO,
+    RegisterWalletUnitResponseDTO, WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
 };
 use one_core::service::trust_anchor::dto::{
     GetTrustAnchorEntityListResponseDTO, GetTrustAnchorResponseDTO,
@@ -507,6 +507,23 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletUnitId,
     pub attestation: Option<String>,
     pub nonce: Option<String>,
+}
+
+#[serde_as]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(WalletUnitActivationRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WalletUnitActivationRequestRestDTO {
+    #[serde_as(as = "OneOrMany<_>")]
+    pub attestation: Vec<String>,
+    pub nonce: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(WalletUnitActivationResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WalletUnitActivationResponseRestDTO {
+    pub attestation: String,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

@@ -4,6 +4,8 @@ use uuid::Uuid;
 use crate::config::core_config::{Fields, WalletProviderType};
 use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
+use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::dto::RegisterWalletUnitRequestDTO;
 
@@ -42,4 +44,14 @@ fn wallet_unit_name(
     now: OffsetDateTime,
 ) -> String {
     format!("{}-{}-{}", config.r#type, request.os, now.unix_timestamp())
+}
+
+pub(crate) fn public_key_from_wallet_unit(
+    wallet_unit: &WalletUnit,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<KeyHandle, ServiceError> {
+    let decoded_public_key = serde_json::from_str::<PublicKeyJwk>(&wallet_unit.public_key)
+        .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
+    let ParsedKey { key, .. } = key_algorithm_provider.parse_jwk(&decoded_public_key)?;
+    Ok(key)
 }

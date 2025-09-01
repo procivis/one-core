@@ -19,6 +19,17 @@ pub struct RegisterWalletUnitResponseDTO {
 }
 
 #[derive(Clone, Debug)]
+pub struct WalletUnitActivationRequestDTO {
+    pub attestation: Vec<String>,
+    pub nonce: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct WalletUnitActivationResponseDTO {
+    pub attestation: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct RefreshWalletUnitRequestDTO {
     pub proof: String,
 }

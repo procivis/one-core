@@ -3,11 +3,13 @@ use std::sync::Arc;
 
 use one_core::model::key::PublicKeyJwk;
 use one_core::model::wallet_unit::{
-    GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitStatus,
+    GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitRelations,
+    WalletUnitStatus,
 };
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
+use shared_types::WalletUnitId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -18,6 +20,8 @@ pub struct WalletUnitsDB {
 #[derive(Default)]
 pub struct TestWalletUnit {
     pub name: Option<String>,
+    pub nonce: Option<String>,
+    pub last_modified: Option<OffsetDateTime>,
     pub public_key: Option<PublicKeyJwk>,
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<Option<OffsetDateTime>>,
@@ -35,7 +39,7 @@ impl WalletUnitsDB {
             id: Uuid::new_v4().into(),
             name: test_wallet_unit.name.unwrap_or("test_wallet".to_string()),
             created_date: six_hours_ago,
-            last_modified: six_hours_ago,
+            last_modified: test_wallet_unit.last_modified.unwrap_or(six_hours_ago),
             os: "ANDROID".to_string(),
             status: test_wallet_unit.status.unwrap_or(WalletUnitStatus::Active),
             wallet_provider_type: WalletProviderType::ProcivisOne,
@@ -45,7 +49,7 @@ impl WalletUnitsDB {
             last_issuance: test_wallet_unit
                 .last_issuance
                 .unwrap_or(Some(six_hours_ago)),
-            nonce: None,
+            nonce: test_wallet_unit.nonce,
         };
 
         self.repository
@@ -58,6 +62,17 @@ impl WalletUnitsDB {
 
     pub async fn list(&self, query: WalletUnitListQuery) -> GetWalletUnitList {
         self.repository.get_wallet_unit_list(query).await.unwrap()
+    }
+
+    pub async fn get(
+        &self,
+        wallet_unit_id: impl Into<WalletUnitId>,
+        relations: &WalletUnitRelations,
+    ) -> Option<WalletUnit> {
+        self.repository
+            .get_wallet_unit(&wallet_unit_id.into(), relations)
+            .await
+            .unwrap()
     }
 }
 

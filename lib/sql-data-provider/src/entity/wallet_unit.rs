@@ -40,6 +40,8 @@ pub enum WalletUnitStatus {
     Revoked,
     #[sea_orm(string_value = "PENDING")]
     Pending,
+    #[sea_orm(string_value = "ERROR")]
+    Error,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize)]

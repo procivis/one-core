@@ -1078,6 +1078,9 @@ pub enum ErrorCode {
     #[strum(message = "Invalid mdl request")]
     BR_0147,
 
+    #[strum(message = "Invalid wallet unit attestation nonce")]
+    BR_0153,
+
     #[strum(message = "Key storage not supported for proof request")]
     BR_0158,
 
@@ -1315,6 +1318,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Cannot fetch wallet unit attestation")]
     BR_0264,
+
+    #[strum(message = "Invalid wallet unit state")]
+    BR_0265,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1695,6 +1701,8 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
             Self::WalletUnitRevoked => ErrorCode::BR_0261,
             Self::RefreshTimeNotReached => ErrorCode::BR_0258,
+            Self::InvalidWalletUnitAttestationNonce => ErrorCode::BR_0153,
+            Self::InvalidWalletUnitState => ErrorCode::BR_0265,
         }
     }
 }

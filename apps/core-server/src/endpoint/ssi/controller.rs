@@ -18,7 +18,8 @@ use super::dto::{
     LVVCIssuerResponseRestDTO, PatchTrustEntityRequestRestDTO, RefreshWalletUnitRequestRestDTO,
     RefreshWalletUnitResponseRestDTO, RegisterWalletUnitRequestRestDTO,
     RegisterWalletUnitResponseRestDTO, SSIPostTrustEntityRequestRestDTO,
-    SdJwtVcTypeMetadataResponseRestDTO,
+    SdJwtVcTypeMetadataResponseRestDTO, WalletUnitActivationRequestRestDTO,
+    WalletUnitActivationResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -511,6 +512,36 @@ pub(crate) async fn ssi_register_wallet_unit(
         .register_wallet_unit(request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "register wallet unit")
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/wallet-unit/v1/{id}/activate",
+    params(
+        ("id" = WalletUnitId, Path, description = "Wallet unit id")
+    ),
+    request_body = WalletUnitActivationRequestRestDTO,
+    responses(OkOrErrorResponse<WalletUnitActivationResponseRestDTO>),
+    tag = "ssi",
+    summary = "Activates wallet unit.",
+    description = indoc::formatdoc! {"
+        Activates wallet unit.
+    "},
+)]
+pub(crate) async fn ssi_activate_wallet_unit(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<WalletUnitActivationRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> OkOrErrorResponse<WalletUnitActivationResponseRestDTO> {
+    let result = state
+        .core
+        .ssi_wallet_provider_service
+        .activate_wallet_unit(id, request.into())
+        .await;
+    OkOrErrorResponse::from_result(result, state, "activate wallet unit")
 }
 
 #[utoipa::path(

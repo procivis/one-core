@@ -17,6 +17,7 @@ use uuid::Uuid;
 use crate::fixtures::{TestingIdentifierParams, TestingKeyParams};
 use crate::utils::context::TestContext;
 
+mod activate_wallet_unit;
 mod refresh_wallet_unit;
 mod register_wallet_unit;
 

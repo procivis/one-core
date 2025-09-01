@@ -223,6 +223,7 @@ pub enum WalletUnitStatusBindingEnum {
     Pending,
     Active,
     Revoked,
+    Error,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]

@@ -60,6 +60,7 @@ pub(crate) enum WalletUnitStatusRestEnum {
     Active,
     Revoked,
     Pending,
+    Error,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]

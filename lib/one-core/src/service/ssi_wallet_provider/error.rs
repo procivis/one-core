@@ -15,4 +15,8 @@ pub enum WalletProviderError {
     WalletUnitRevoked,
     #[error("Minimum refresh time not reached")]
     RefreshTimeNotReached,
+    #[error("Invalid wallet unit attestation nonce")]
+    InvalidWalletUnitAttestationNonce,
+    #[error("Invalid wallet unit state")]
+    InvalidWalletUnitState,
 }

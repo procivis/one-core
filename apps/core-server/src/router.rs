@@ -466,6 +466,10 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 post(ssi::controller::ssi_register_wallet_unit)
             )
             .route(
+                "/ssi/wallet-unit/v1/{id}/activate",
+                post(ssi::controller::ssi_activate_wallet_unit),
+            )
+            .route(
                 "/ssi/wallet-unit/v1/{id}/refresh",
                 post(ssi::controller::ssi_refresh_wallet_unit)
             )
