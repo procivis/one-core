@@ -3,7 +3,7 @@ image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
 include:
   - project: "procivis/one/one-operations"
     file:
-      - 'gitlab/client-matrix.gitlab-ci.yml'
+      - "gitlab/client-matrix.gitlab-ci.yml"
       - "gitlab/docker.gitlab-ci.yml"
       - "gitlab/github.gitlab-ci.yml"
       - "gitlab/rules.gitlab-ci.yml"
@@ -254,41 +254,51 @@ sdk:android:build:
 sdk:upload_artifacts:
   stage: sdk_artifact
   extends:
-    - .azure:upload_to_container
+    - .azure:upload_to_onesdk_storage
   needs:
     - job: sdk:android:build
       artifacts: true
     - job: sdk:ios:bitrise
       artifacts: true
   variables:
+    ANDROID_CONTAINER_PATH: "${CI_PIPELINE_ID}/android"
+    IOS_CONTAINER_PATH: "${CI_PIPELINE_ID}/ios"
+
     ANDROID_BUILD_SOURCE_PATH: "target/bindings/android"
-    ANDROID_CONTAINER_PATH: "android/${CI_PIPELINE_ID}"
+    IOS_BUILD_SOURCE_PATH: "artifacts"
+
     ANDROID_SDK_DEBUG_FILE: "onecore-debug.aar"
     ANDROID_SDK_RELEASE_FILE: "onecore-release.aar"
-    IOS_CONTAINER_PATH: "ios/${CI_PIPELINE_ID}"
-    IOS_BUILD_SOURCE_PATH: "artifacts"
     IOS_BUILD_FILE: "deploy.zip"
   script:
     # https://learn.microsoft.com/en-us/cli/azure/storage/blob?view=azure-cli-latest#az-storage-blob-download
     - ANDROID_CONTAINER_PATH_DEBUG=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_DEBUG_FILE}
     - ANDROID_CONTAINER_PATH_RELEASE=${ANDROID_CONTAINER_PATH}/${ANDROID_SDK_RELEASE_FILE}
     - ANDROID_CONTAINER_DOCS_UPLOAD_PATH=${AZURE_CONTAINER_NAME}/${ANDROID_CONTAINER_PATH}/docs
-    - IOS_CONTAINER_PATH=$IOS_CONTAINER_PATH/$IOS_BUILD_FILE
+    - IOS_CONTAINER_PATH=${IOS_CONTAINER_PATH}/${IOS_BUILD_FILE}
     # Upload Android debug file
-    - az storage blob upload --overwrite -c ${AZURE_CONTAINER_NAME} -n $ANDROID_CONTAINER_PATH_DEBUG -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${ANDROID_CONTAINER_PATH_DEBUG} -f ${ANDROID_BUILD_SOURCE_PATH}/${ANDROID_SDK_DEBUG_FILE}
     # Upload Android release file
-    - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $ANDROID_CONTAINER_PATH_RELEASE -f $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE
-    # Upload Android docs file
-    - az storage blob upload-batch -d ${ANDROID_CONTAINER_DOCS_UPLOAD_PATH} -s $ANDROID_BUILD_SOURCE_PATH/html
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${ANDROID_CONTAINER_PATH_RELEASE} -f ${ANDROID_BUILD_SOURCE_PATH}/${ANDROID_SDK_RELEASE_FILE}
     # Upload IOS zip file
-    - az storage blob upload --overwrite -c $AZURE_CONTAINER_NAME -n $IOS_CONTAINER_PATH -f $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE
+    - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${IOS_CONTAINER_PATH} -f ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE}
+
+    # Upload Android docs files
+    - zip -q -r android-docs.zip ${ANDROID_BUILD_SOURCE_PATH}/html
+    - az storage blob upload --only-show-errors -c ${DOCS_CONTAINER_NAME} -n ${CI_PIPELINE_ID}/android-docs.zip -f android-docs.zip
+
+    # Upload iOS docs files
+    - unzip -q ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE} "ios/htmldoc/*" -d ios-htmldoc
+    - zip -q -r ios-docs.zip ios-htmldoc/ios/htmldoc
+    - az storage blob upload --only-show-errors -c ${DOCS_CONTAINER_NAME} -n ${CI_PIPELINE_ID}/ios-docs.zip -f ios-docs.zip
+
     # Prepare variables
     - |
-      ANDROID_DEBUG_LINK=${AZURE_STORAGE_URL}/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_DEBUG
+      ANDROID_DEBUG_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$ANDROID_CONTAINER_PATH_DEBUG
       ANDROID_DEBUG_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_DEBUG_FILE | cut -d " " -f1)
-      ANDROID_RELEASE_LINK=${AZURE_STORAGE_URL}/$AZURE_CONTAINER_NAME/$ANDROID_CONTAINER_PATH_RELEASE
+      ANDROID_RELEASE_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$ANDROID_CONTAINER_PATH_RELEASE
       ANDROID_RELEASE_SHA1=$(sha1sum -b $ANDROID_BUILD_SOURCE_PATH/$ANDROID_SDK_RELEASE_FILE | cut -d " " -f1)
-      IOS_LINK=${AZURE_STORAGE_URL}/$AZURE_CONTAINER_NAME/$IOS_CONTAINER_PATH
+      IOS_LINK=${AZURE_STORAGE_URL}/${SDK_CONTAINER_NAME}/$IOS_CONTAINER_PATH
       IOS_SHA1=$(sha1sum -b $IOS_BUILD_SOURCE_PATH/$IOS_BUILD_FILE | cut -d " " -f1)
     - >
       cat <<-EOM
