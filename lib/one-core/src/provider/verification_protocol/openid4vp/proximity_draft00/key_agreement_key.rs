@@ -8,7 +8,7 @@ use x25519_dalek::{PublicKey, ReusableSecret};
 
 // Ephemeral x25519 key pair, discarded after the symmetric keys are derived
 #[derive(Clone)]
-pub(super) struct KeyAgreementKey {
+pub(crate) struct KeyAgreementKey {
     secret_key: ReusableSecret,
 }
 
