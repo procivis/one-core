@@ -194,6 +194,8 @@ pub enum NfcError {
     NotStarted,
     #[error("Operation cancelled")]
     Cancelled,
+    #[error("Session closed")]
+    SessionClosed,
     #[error("Unknown NFC error: {reason}")]
     Unknown { reason: String },
 }

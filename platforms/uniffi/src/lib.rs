@@ -93,6 +93,7 @@ use crate::binding::OneCoreBinding;
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
 use crate::binding::nfc::hce::NfcHce;
+use crate::binding::nfc::scanner::NfcScanner;
 use crate::did_config::{DidUniversalParams, DidWebParams};
 use crate::error::{BindingError, SDKError};
 
@@ -121,6 +122,7 @@ pub struct InitParamsDTO {
     pub ble_central: Option<Arc<dyn BleCentral>>,
     pub ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     pub nfc_hce: Option<Arc<dyn NfcHce>>,
+    pub nfc_scanner: Option<Arc<dyn NfcScanner>>,
 }
 
 #[uniffi::export]
