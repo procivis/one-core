@@ -1,4 +1,4 @@
-image: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
+image: $BUILD_IMAGE
 
 include:
   - project: "procivis/one/one-operations"
@@ -61,10 +61,8 @@ stages:
   - ci_tools
 
 .app_settings: &app_settings
-  - APP_FLAVOR=${APP_FLAVOR:-$(echo $CI_COMMIT_TAG | sed -n "s/^v.*-\(.*\)$/\1/p")}
   - export APP_FLAVOR=${APP_FLAVOR:-procivis}
-  - APP_VERSION=$(echo $CI_COMMIT_TAG | sed -n "s/^\(v.*\)-.*$/\1/p")
-  - export APP_VERSION=${APP_VERSION:-$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA}
+  - export APP_VERSION=$(echo "$CI_COMMIT_TAG" | sed -E 's/^(v[0-9]+\.[0-9]+\.[0-9]+.*)$/\1/; t; s/.*/'"$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"'/')
   - export IMAGE_NAME=$CI_REGISTRY_IMAGE/$APP_FLAVOR
   - export IMAGE_TAG=$IMAGE_NAME:$APP_VERSION
   - export D_TRACK_PROJECT_VERSION=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
