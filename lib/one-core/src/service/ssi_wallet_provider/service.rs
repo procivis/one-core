@@ -27,6 +27,7 @@ use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::{EntityNotFoundError, ErrorCodeMixin, ServiceError};
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
+use crate::service::ssi_wallet_provider::app_integrity::ios::validate_attestation_ios;
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
     RegisterWalletUnitResponseDTO, WalletProviderParams, WalletUnitActivationRequestDTO,
@@ -203,7 +204,10 @@ impl SSIWalletProviderService {
             WalletUnitStatus::Revoked => return Err(WalletProviderError::WalletUnitRevoked.into()),
         }
 
-        if Some(request.nonce) != wallet_unit.nonce {
+        let Some(wallet_unit_nonce) = &wallet_unit.nonce else {
+            return Err(WalletProviderError::MissingWalletUnitAttestationNonce.into());
+        };
+        if &request.nonce != wallet_unit_nonce {
             let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
             self.set_wallet_unit_to_error(
                 &wallet_unit,
@@ -241,9 +245,56 @@ impl SSIWalletProviderService {
             return Err(error.into());
         };
 
-        // TODO ONE-7121: validate attestation here
-
+        let attested_public_key = match wallet_unit.os.as_str() {
+            "IOS" => {
+                let Some(attestation) = request.attestation.first() else {
+                    return Err(WalletProviderError::AppIntegrityValidationError(
+                        "Missing attestation".to_string(),
+                    )
+                    .into());
+                };
+                let Some(bundle) = &config_params.ios else {
+                    return Err(WalletProviderError::AppIntegrityValidationError(
+                        "Missing iOS config".to_string(),
+                    )
+                    .into());
+                };
+                validate_attestation_ios(
+                    attestation,
+                    wallet_unit_nonce,
+                    bundle,
+                    &*self.certificate_validator,
+                )
+                .await?
+            }
+            // TODO ONE-7121: validate ANDROID attestation here as well
+            // For now just use the wu pubkey
+            "ANDROID" => public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?,
+            os => {
+                let error = WalletProviderError::AppIntegrityValidationError(format!(
+                    "Unknown wallet unit os: {os}"
+                ));
+                self.set_wallet_unit_to_error(
+                    &wallet_unit,
+                    HistoryErrorMetadata {
+                        error_code: error.error_code(),
+                        message: format!(
+                            "Failed to activate wallet unit {}: nonce expired",
+                            wallet_unit.id
+                        ),
+                    },
+                )
+                .await?;
+                return Err(error.into());
+            }
+        };
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
+        if key.public_key_as_raw() != attested_public_key.public_key_as_raw() {
+            return Err(WalletProviderError::AppIntegrityValidationError(
+                "Attested public key does not match wallet unit public key".to_string(),
+            )
+            .into());
+        }
         let (signed_attestation, attestation_hash) = self
             .sign_attestation(
                 &config_params,

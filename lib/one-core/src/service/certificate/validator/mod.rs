@@ -48,6 +48,15 @@ pub trait CertificateValidator: Send + Sync {
         pem_chain: &[u8],
         ca_pem_chain: &[u8],
     ) -> Result<ParsedCertificate, ServiceError>;
+
+    /// Validates the der_chain (chain of DER encoded certificates) starting from a leaf certificate
+    /// against a ca certificate.
+    /// Returns the parsed leaf certificate in the chain.
+    async fn validate_der_chain_against_ca(
+        &self,
+        der_chain: Vec<Vec<u8>>,
+        ca_pem: &str,
+    ) -> Result<ParsedCertificate, ServiceError>;
 }
 
 pub struct CertificateValidationOptions {

@@ -806,6 +806,7 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
+                certificate_validator.clone(),
                 clock,
                 config.clone(),
                 providers.core_base_url.clone(),

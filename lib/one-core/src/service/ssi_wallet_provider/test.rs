@@ -28,6 +28,7 @@ use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
+use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
@@ -46,6 +47,7 @@ fn mock_ssi_wallet_service() -> SSIWalletProviderService {
         history_repository: Arc::new(MockHistoryRepository::default()),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
+        certificate_validator: Arc::new(MockCertificateValidator::default()),
         clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),

@@ -1321,6 +1321,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid wallet unit state")]
     BR_0265,
+
+    #[strum(message = "App integrity validation failed")]
+    BR_0266,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1701,8 +1704,11 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::IssuerKeyWithAlgorithmNotFound(_) => ErrorCode::BR_0222,
             Self::WalletUnitRevoked => ErrorCode::BR_0261,
             Self::RefreshTimeNotReached => ErrorCode::BR_0258,
-            Self::InvalidWalletUnitAttestationNonce => ErrorCode::BR_0153,
+            Self::MissingWalletUnitAttestationNonce | Self::InvalidWalletUnitAttestationNonce => {
+                ErrorCode::BR_0153
+            }
             Self::InvalidWalletUnitState => ErrorCode::BR_0265,
+            Self::AppIntegrityValidationError(_) => ErrorCode::BR_0266,
         }
     }
 }

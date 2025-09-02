@@ -3,6 +3,7 @@ pub mod error;
 pub mod service;
 mod validator;
 
+mod app_integrity;
 mod mapper;
 #[cfg(test)]
 mod test;
@@ -15,6 +16,7 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
+use crate::service::certificate::validator::CertificateValidator;
 use crate::util::clock::Clock;
 
 #[allow(dead_code)]
@@ -25,6 +27,7 @@ pub struct SSIWalletProviderService {
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
     clock: Arc<dyn Clock>,
     base_url: Option<String>,
     config: Arc<core_config::CoreConfig>,
@@ -38,6 +41,7 @@ impl SSIWalletProviderService {
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        certificate_validator: Arc<dyn CertificateValidator>,
         clock: Arc<dyn Clock>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
@@ -48,6 +52,7 @@ impl SSIWalletProviderService {
             history_repository,
             key_provider,
             key_algorithm_provider,
+            certificate_validator,
             config,
             base_url,
             clock,
