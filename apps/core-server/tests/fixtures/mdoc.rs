@@ -23,6 +23,7 @@ use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use one_core::service::certificate::validator::CertificateValidatorImpl;
+use one_core::util::clock::DefaultClock;
 use rcgen::CertificateParams;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -106,6 +107,7 @@ pub(crate) async fn format_mdoc_credential(
         Arc::new(CertificateValidatorImpl::new(
             key_algorithm_provider.clone(),
             crl_cache,
+            Arc::new(DefaultClock),
         )) as _,
         did_method_provider.clone(),
         datatype_config(),

@@ -66,6 +66,7 @@ use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::repository::DataRepository;
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::service::certificate::validator::CertificateValidatorImpl;
+use one_core::util::clock::DefaultClock;
 use one_core::{
     CertificateValidatorCreator, DataProviderCreator, DidMethodCreator, FormatterProviderCreator,
     KeyAlgorithmCreator, KeyStorageCreator, OneCore, OneCoreBuildError, OneCoreBuilder,
@@ -680,6 +681,7 @@ pub async fn initialize_core(
             Ok(Arc::new(CertificateValidatorImpl::new(
                 key_algorithm_provider.clone(),
                 x509_crl_cache,
+                Arc::new(DefaultClock),
             )))
         })
     };

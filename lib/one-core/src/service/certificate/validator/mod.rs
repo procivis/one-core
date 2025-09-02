@@ -6,6 +6,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::error::ServiceError;
+use crate::util::clock::Clock;
 
 pub mod parse;
 mod revocation;
@@ -93,16 +94,19 @@ impl CertificateValidationOptions {
 pub struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crl_cache: Arc<X509CrlCache>,
+    clock: Arc<dyn Clock>,
 }
 
 impl CertificateValidatorImpl {
     pub fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         crl_cache: Arc<X509CrlCache>,
+        clock: Arc<dyn Clock>,
     ) -> Self {
         Self {
             key_algorithm_provider,
             crl_cache,
+            clock,
         }
     }
 }
@@ -120,6 +124,7 @@ mod tests {
     };
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
     use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
+    use crate::util::clock::DefaultClock;
 
     #[tokio::test]
     async fn test_revocation_check_uses_crl_cache() {
@@ -190,6 +195,7 @@ STsfRXkSUfgzmbAsuDE=
                 Duration::days(1),
                 Duration::days(1),
             )),
+            Arc::new(DefaultClock),
         );
 
         let pem = Pem::iter_from_buffer(CERTIFICATE.as_bytes())

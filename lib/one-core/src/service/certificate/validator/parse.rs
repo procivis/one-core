@@ -68,7 +68,10 @@ impl CertificateValidator for CertificateValidatorImpl {
                 self.validate_path_length(&certs)?;
             }
 
-            if !current.validity().is_valid() {
+            if !current
+                .validity()
+                .is_valid_at(ASN1Time::from(self.clock.now_utc()))
+            {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
@@ -128,7 +131,7 @@ impl CertificateValidator for CertificateValidatorImpl {
                 result = Some(res);
             }
 
-            let now = ASN1Time::now();
+            let now = ASN1Time::from(self.clock.now_utc());
             if !current.validity().is_valid_at(now) {
                 let result = result.ok_or(ValidationError::CertificateParsingFailed(
                     "No certificates specified".to_string(),
@@ -210,7 +213,10 @@ impl CertificateValidator for CertificateValidatorImpl {
         let mut chain = certs.iter().peekable();
         while let Some(current_cert) = chain.next() {
             validate_key_usage(current_cert)?;
-            if !current_cert.validity().is_valid() {
+            if !current_cert
+                .validity()
+                .is_valid_at(ASN1Time::from(self.clock.now_utc()))
+            {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
