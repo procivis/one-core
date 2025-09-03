@@ -29,6 +29,9 @@ use crate::router::AppState;
         For a wallet, handles the interaction once the wallet connects to a share
         endpoint URL (for example, scans the QR code of an offered credential or
         request for proof).
+
+        To start the wallet-initiated Authorization Code Flow request for issuance,
+        use the [initiate-issuance](/reference/core/initiate-issuance) endpoint.
     "},
 )]
 pub(crate) async fn handle_invitation(

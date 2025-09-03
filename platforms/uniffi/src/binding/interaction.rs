@@ -17,9 +17,9 @@ use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
-    /// For a wallet, handles the interaction once the wallet connects to the share
-    /// endpoint URL (for example, scans the QR code of an orffered credential or
-    /// request for proof.)
+    /// For a wallet, handles the interaction once the wallet connects to a share
+    /// endpoint URL (for example, scans the QR code of an offered credential or
+    /// request for proof).
     #[uniffi::method]
     pub async fn handle_invitation(
         &self,
@@ -97,6 +97,10 @@ impl OneCoreBinding {
 
     /// For wallet-initiated flows, continues the OpenID4VCI issuance
     /// process after completing authorization.
+    ///
+    /// * url - Starts with the `redirectUri` and is used to continue the
+    ///   Authorization Code Flow issuance process. For example:
+    ///   `myapp://example/credential-offer?code=xxx&clientId=myWallet&...`
     #[uniffi::method]
     pub async fn continue_issuance(
         &self,
@@ -109,35 +113,59 @@ impl OneCoreBinding {
 
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct HandleInvitationRequestBindingDTO {
+    /// Typically encoded as a QR code or deep link by the issuer or
+    /// verifier. For example: "https://example.com/credential-offer".
     pub url: String,
     pub organisation_id: String,
+    /// For configurations with multiple transport protocols enabled you
+    /// can specify which one to use for this interaction. For example:
+    /// "HTTP".
     pub transport: Option<Vec<String>>,
+    /// For issuer-initiated Authorization Code Flows, provide the
+    /// authorization server with the URI it should return the user
+    /// to once authorization is complete. For example:
+    /// "myapp://example".
     pub redirect_uri: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
 pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
+        /// For reference.
         interaction_id: String,
+        /// Offered credential.
         credential_ids: Vec<String>,
+        /// Metadata for entering a transaction code
+        /// If a pre-authorized code is issued with a transaction code object, the
+        /// wallet user must input a transaction code to receive the offered credential.
+        /// This code is typically sent through a separate channel such as SMS or email.
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
+        /// Metadata for selecting an appropriate key.
         credential_configurations_supported:
             HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
     },
     AuthorizationCodeFlow {
+        /// For reference.
         interaction_id: String,
+        /// For issuer-initiated Authorization Code Flows, use this URL to start
+        /// the authorization process with the authorization server.
         authorization_code_flow_url: String,
     },
     ProofRequest {
+        /// For reference.
         interaction_id: String,
+        /// Proof request.
         proof_id: String,
     },
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
 pub struct ContinueIssuanceResponseBindingDTO {
+    /// For reference.
     pub interaction_id: String,
+    /// Offered credential.
     pub credential_ids: Vec<String>,
+    /// Metadata for selecting an appropriate key.
     pub credential_configurations_supported:
         HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
 }

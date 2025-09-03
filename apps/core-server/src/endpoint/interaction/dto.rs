@@ -23,10 +23,16 @@ use uuid::Uuid;
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HandleInvitationRequestRestDTO {
+    #[schema(example = "https://example.com/credential-offer")]
     /// Typically encoded as a QR code or deep link by the issuer or verifier.
     pub url: Url,
     pub organisation_id: OrganisationId,
+    #[schema(example = json!(["HTTP"]))]
+    /// For configurations with multiple transport protocols enabled you can
+    /// specify which one to use for this interaction.
     pub transport: Option<Vec<String>>,
+    /// For issuer-initiated Authorization Code Flow, provide the authorization server
+    /// with the URI it should return the user to once authorization is complete.
     pub redirect_uri: Option<String>,
 }
 
@@ -35,16 +41,21 @@ pub(crate) struct HandleInvitationRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
+    /// Offered credential.
     pub credential_ids: Option<Vec<CredentialId>>,
+    /// Requested proof.
     pub proof_id: Option<ProofId>,
+    /// Metadata for entering a transaction code.
     /// If a pre-authorized code is issued with a transaction code object, the
     /// wallet user must input a transaction code to receive the offered credential.
     /// This code is typically sent through a separate channel such as SMS or email.
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
     #[schema(value_type = Object)]
+    /// Metadata for selecting an appropriate key.
     pub credential_configurations_supported:
         Option<HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>>,
-    /// if running authorization code flow, the URL where the interactive issuance continues
+    /// For issuer-initiated Authorization Code Flows, use this URL to start the
+    /// authorization process with the authorization server.
     pub authorization_code_flow_url: Option<String>,
 }
 
@@ -52,10 +63,13 @@ pub(crate) struct HandleInvitationResponseRestDTO {
 #[from(ContinueIssuanceResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ContinueIssuanceResponseRestDTO {
+    /// For reference.
     pub interaction_id: Uuid,
+    /// Offered credential.
     pub credential_ids: Vec<CredentialId>,
     #[schema(value_type = Object)]
     #[from(with_fn = convert_inner)]
+    /// Metadata for selecting an appropriate key.
     pub credential_configurations_supported:
         HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>,
 }
@@ -211,19 +225,19 @@ pub(crate) struct ProposeProofResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct InitiateIssuanceRequestRestDTO {
-    /// Organization to place the issued credential into
+    /// Organization to place the issued credential into.
     pub organisation_id: OrganisationId,
-    /// Selected issuance protocol
+    /// Selected issuance protocol.
     pub protocol: String,
-    /// OpenID4VCI authorization request parameter
+    /// OpenID4VCI authorization request parameter.
     pub issuer: String,
-    /// OpenID4VCI authorization request parameter
+    /// OpenID4VCI authorization request parameter.
     pub client_id: String,
-    /// OpenID4VCI authorization request parameter
+    /// OpenID4VCI authorization request parameter.
     pub redirect_uri: Option<String>,
-    /// OpenID4VCI authorization request parameter
+    /// OpenID4VCI authorization request parameter.
     pub scope: Option<Vec<String>>,
-    /// OpenID4VCI authorization request parameter
+    /// OpenID4VCI authorization request parameter.
     pub authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailRestDTO>>,
 }
 
@@ -246,5 +260,8 @@ pub(crate) struct InitiateIssuanceResponseRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ContinueIssuanceRequestRestDTO {
+    #[schema(example = "myapp://example/credential-offer?code=xxx&clientId=myWallet&...")]
+    /// Starts with the `redirectUri` and is used to continue the
+    /// Authorization Code Flow issuance process.
     pub url: String,
 }
