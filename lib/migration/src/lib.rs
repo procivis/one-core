@@ -150,6 +150,7 @@ mod m20250822_112457_add_metadata_claim_schema_column;
 mod m20250822_122340_update_wallet_unit_table;
 mod m20250826_081725_update_wallet_unit_attestation_expiration_date_not_nullable;
 mod m20250901_114033_wua_last_modified_issued_nullability;
+mod m20250902_121056_adds_engagement_column_to_proof;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -302,6 +303,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250822_122340_update_wallet_unit_table::Migration),
             Box::new(m20250826_081725_update_wallet_unit_attestation_expiration_date_not_nullable::Migration),
             Box::new(m20250901_114033_wua_last_modified_issued_nullability::Migration),
+            Box::new(m20250902_121056_adds_engagement_column_to_proof::Migration),
         ]
     }
 }
