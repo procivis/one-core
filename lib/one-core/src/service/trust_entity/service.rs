@@ -31,7 +31,10 @@ use crate::model::trust_entity::{
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::{TrustEntityKeyBatch, TrustOperation};
 use crate::repository::error::DataLayerError;
-use crate::service::certificate::validator::{CertificateValidationOptions, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertSelection, CertificateChainValidationOptions, CertificateValidationOptions,
+    ParsedCertificate,
+};
 use crate::service::error::BusinessLogicError::IdentifierCertificateIdMismatch;
 use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{
@@ -793,7 +796,13 @@ impl TrustEntityService {
             ..
         } = self
             .certificate_validator
-            .validate_chain_against_ca_chain(certificate.chain.as_bytes(), ca_chain.as_bytes())
+            .validate_chain_against_ca_chain(
+                certificate.chain.as_bytes(),
+                ca_chain.as_bytes(),
+                CertificateChainValidationOptions::from_cert_selection(
+                    CertSelection::LowestCaChain,
+                ),
+            )
             .await?;
 
         let public_key = hex::encode(public_key.public_key_as_raw());

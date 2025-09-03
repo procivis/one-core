@@ -4,7 +4,10 @@ use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG
 use x509_parser::pem::Pem;
 use x509_parser::prelude::{ASN1Time, X509Certificate};
 
-use super::{CertificateValidator, CertificateValidatorImpl, ParsedCertificate, x509_extension};
+use super::{
+    CertSelection, CertificateChainValidationOptions, CertificateValidator,
+    CertificateValidatorImpl, CrlMode, ParsedCertificate, x509_extension,
+};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::CertificateState;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
@@ -82,7 +85,7 @@ impl CertificateValidator for CertificateValidatorImpl {
                     .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
             }
 
-            let revoked = self.check_revocation(current, next).await?;
+            let revoked = self.check_revocation(current, next, CrlMode::X509).await?;
             if revoked {
                 return Err(ValidationError::CertificateRevoked.into());
             }
@@ -151,7 +154,7 @@ impl CertificateValidator for CertificateValidatorImpl {
                     .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
             }
 
-            let revoked = self.check_revocation(current, next).await?;
+            let revoked = self.check_revocation(current, next, CrlMode::X509).await?;
             if revoked {
                 let result = result.ok_or(ValidationError::CertificateParsingFailed(
                     "No certificates specified".to_string(),
@@ -170,6 +173,7 @@ impl CertificateValidator for CertificateValidatorImpl {
         &self,
         pem_chain: &[u8],
         ca_pem_chain: &[u8],
+        options: CertificateChainValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError> {
         let pems = Pem::iter_from_buffer(pem_chain)
             .collect::<Result<Vec<_>, _>>()
@@ -177,20 +181,35 @@ impl CertificateValidator for CertificateValidatorImpl {
         let ca_pems = Pem::iter_from_buffer(ca_pem_chain)
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-        let ca_cert = self
-            .validate_chain_against_ca_chain_inner(&ca_pems, &pems)
+        let lowest_ca_cert = self
+            .validate_chain_against_ca_chain_inner(
+                &ca_pems,
+                &pems,
+                &options.leaf_only_extensions,
+                options.crl_mode,
+            )
             .await?;
-        let subject_common_name = ca_cert
+        let selected_cert = match options.cert_selection {
+            CertSelection::LowestCaChain => lowest_ca_cert,
+            CertSelection::Leaf => pems
+                .first()
+                .ok_or(ValidationError::CertificateParsingFailed(
+                    "empty chain".to_string(),
+                ))?
+                .parse_x509()
+                .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?,
+        };
+        let subject_common_name = selected_cert
             .subject
             .iter_common_name()
             .next()
             .and_then(|cn| cn.as_str().ok())
             .map(ToString::to_string);
         Ok(ParsedCertificate {
-            attributes: parse_x509_attributes(&ca_cert)?,
+            attributes: parse_x509_attributes(&selected_cert)?,
             subject_common_name,
-            subject_key_identifier: subject_key_identifier(&ca_cert)?,
-            public_key: self.extract_public_key(&ca_cert)?,
+            subject_key_identifier: subject_key_identifier(&selected_cert)?,
+            public_key: self.extract_public_key(&selected_cert)?,
         })
     }
 
@@ -215,7 +234,7 @@ impl CertificateValidator for CertificateValidatorImpl {
         let ca_pems = Pem::iter_from_buffer(ca_pem.as_bytes())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-        self.validate_chain_against_ca_chain_inner(&ca_pems, &pems)
+        self.validate_chain_against_ca_chain_inner(&ca_pems, &pems, &[], CrlMode::X509)
             .await?;
         let parsed_cert = leaf_pem
             .parse_x509()
@@ -356,6 +375,8 @@ impl CertificateValidatorImpl {
         &self,
         ca_pems: &'a [Pem],
         pems: &[Pem],
+        leaf_only_extensions: &[String],
+        crl_mode: CrlMode,
     ) -> Result<X509Certificate<'a>, ServiceError> {
         let certs = pems
             .iter()
@@ -398,10 +419,27 @@ impl CertificateValidatorImpl {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
+            // Parsing extensions checks for unsupported critical extensions
+            let extensions = current_cert
+                .extensions()
+                .iter()
+                .map(x509_extension::parse)
+                .collect::<Result<Vec<_>, _>>()?;
+            if current_cert.is_ca()
+                && extensions
+                    .iter()
+                    .any(|ext| leaf_only_extensions.contains(&ext.oid))
+            {
+                return Err(ValidationError::InvalidCaCertificateChain(
+                    "Found leaf only extension in CA cert".to_string(),
+                )
+                .into());
+            }
+
             // This is the root CA
             // signature is already validated in validate_root_ca_termination
             if is_ca_chain && current_cert.is_ca() && chain.peek().is_none() {
-                self.check_revocation(current_cert, Some(current_cert))
+                self.check_revocation(current_cert, Some(current_cert), crl_mode)
                     .await?;
 
                 return Ok(ca_certs.swap_remove(0));
@@ -440,7 +478,7 @@ impl CertificateValidatorImpl {
                     .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
             }
             let revoked = self
-                .check_revocation(current_cert, Some(parent_cert))
+                .check_revocation(current_cert, Some(parent_cert), crl_mode)
                 .await?;
             if revoked {
                 return Err(ValidationError::CertificateRevoked.into());

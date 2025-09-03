@@ -6,7 +6,7 @@ use x509_parser::prelude::{
     GeneralName, ParsedExtension, X509Certificate,
 };
 
-use super::CertificateValidatorImpl;
+use super::{CertificateValidatorImpl, CrlMode};
 use crate::provider::caching_loader::{CachingLoaderError, ResolverError};
 use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
@@ -18,16 +18,24 @@ impl CertificateValidatorImpl {
         &self,
         certificate: &X509Certificate<'_>,
         parent: Option<&X509Certificate<'_>>,
+        crl_mode: CrlMode,
     ) -> Result<bool, ServiceError> {
-        let extension = certificate
-            .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
-            .map_err(|err| ValidationError::CRLCheckFailed(err.to_string()))?;
+        match crl_mode {
+            CrlMode::X509 => {
+                let extension = certificate
+                    .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
+                    .map_err(|err| ValidationError::CRLCheckFailed(err.to_string()))?;
 
-        if let Some(ParsedExtension::CRLDistributionPoints(crl)) =
-            extension.map(|extension| extension.parsed_extension())
-        {
-            let downloaded_crl = self.download_crl_from_points(crl).await?;
-            return self.check_crl_revocation(&downloaded_crl, certificate, parent);
+                if let Some(ParsedExtension::CRLDistributionPoints(crl)) =
+                    extension.map(|extension| extension.parsed_extension())
+                {
+                    let downloaded_crl = self.download_crl_from_points(crl).await?;
+                    return self.check_crl_revocation(&downloaded_crl, certificate, parent);
+                }
+            }
+            CrlMode::AndroidAttestation => {
+                // TODO ONE-7189: Implement Android attestation revocation check
+            }
         }
 
         // OCSP support not implemented

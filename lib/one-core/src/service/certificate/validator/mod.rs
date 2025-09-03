@@ -42,21 +42,54 @@ pub trait CertificateValidator: Send + Sync {
 
     /// Validates the pem_chain starting from a leaf certificate against a ca_chain starting
     /// from an intermediary or root CA.
-    /// Returns the parsed lowest level certificate in the CA chain.
+    /// Returns the parsed certificate according to the `cert_selection`.
     async fn validate_chain_against_ca_chain(
         &self,
         pem_chain: &[u8],
         ca_pem_chain: &[u8],
+        options: CertificateChainValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError>;
 
     /// Validates the der_chain (chain of DER encoded certificates) starting from a leaf certificate
     /// against a ca certificate.
-    /// Returns the parsed leaf certificate in the chain.
+    /// Returns the parsed **leaf** certificate in the chain.
     async fn validate_der_chain_against_ca(
         &self,
         der_chain: Vec<Vec<u8>>,
         ca_pem: &str,
     ) -> Result<ParsedCertificate, ServiceError>;
+}
+
+pub enum CertSelection {
+    /// Last certificate in the CA chain
+    LowestCaChain,
+    /// Leaf certificate of the whole chain
+    Leaf,
+}
+
+pub struct CertificateChainValidationOptions {
+    // OID of extensions that must only be present in the leaf certificate.
+    // This is specifically used in the Android App integrity check.
+    pub leaf_only_extensions: Vec<String>,
+    pub cert_selection: CertSelection,
+    pub crl_mode: CrlMode,
+}
+
+impl CertificateChainValidationOptions {
+    pub fn from_cert_selection(cert_selection: CertSelection) -> Self {
+        Self {
+            leaf_only_extensions: vec![],
+            cert_selection,
+            crl_mode: CrlMode::X509,
+        }
+    }
+}
+
+#[derive(Clone, Debug, Copy)]
+pub enum CrlMode {
+    X509,
+    /// Unimplemented! Currently just skips CRL check entirely
+    AndroidAttestation,
 }
 
 pub struct CertificateValidationOptions {
@@ -214,7 +247,7 @@ STsfRXkSUfgzmbAsuDE=
 
         // The check will fail because we do not provide a mock CRL
         let _error = validator
-            .check_revocation(&pem.parse_x509().unwrap(), None)
+            .check_revocation(&pem.parse_x509().unwrap(), None, CrlMode::X509)
             .await;
     }
 }

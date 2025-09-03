@@ -27,6 +27,7 @@ use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::{EntityNotFoundError, ErrorCodeMixin, ServiceError};
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
+use crate::service::ssi_wallet_provider::app_integrity::android::validate_attestation_android;
 use crate::service::ssi_wallet_provider::app_integrity::ios::validate_attestation_ios;
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
@@ -255,7 +256,7 @@ impl SSIWalletProviderService {
                 };
                 let Some(bundle) = &config_params.ios else {
                     return Err(WalletProviderError::AppIntegrityValidationError(
-                        "Missing iOS config".to_string(),
+                        "Missing iOS app integrity config".to_string(),
                     )
                     .into());
                 };
@@ -267,9 +268,27 @@ impl SSIWalletProviderService {
                 )
                 .await?
             }
-            // TODO ONE-7121: validate ANDROID attestation here as well
-            // For now just use the wu pubkey
-            "ANDROID" => public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?,
+            "ANDROID" => {
+                if request.attestation.is_empty() {
+                    return Err(WalletProviderError::AppIntegrityValidationError(
+                        "Missing attestation".to_string(),
+                    )
+                    .into());
+                }
+                let Some(bundle) = &config_params.android else {
+                    return Err(WalletProviderError::AppIntegrityValidationError(
+                        "Missing Android app integrity config".to_string(),
+                    )
+                    .into());
+                };
+                validate_attestation_android(
+                    &request.attestation,
+                    wallet_unit_nonce,
+                    bundle,
+                    &*self.certificate_validator,
+                )
+                .await?
+            }
             os => {
                 let error = WalletProviderError::AppIntegrityValidationError(format!(
                     "Unknown wallet unit os: {os}"
