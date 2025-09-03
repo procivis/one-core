@@ -16,7 +16,7 @@ use one_core::service::proof::dto::{
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_inner};
 
 use super::common::SortDirection;
 use super::credential::CredentialDetailBindingDTO;
@@ -80,16 +80,17 @@ impl OneCoreBinding {
     pub async fn holder_submit_proof(
         &self,
         interaction_id: String,
-        submit_credentials: HashMap<String, PresentationSubmitCredentialRequestBindingDTO>,
+        submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestBindingDTO>>,
         did_id: Option<String>,
         identifier_id: Option<String>,
         key_id: Option<String>,
     ) -> Result<(), BindingError> {
         let core = self.use_core().await?;
+
         core.ssi_holder_service
             .submit_proof(PresentationSubmitRequestDTO {
                 interaction_id: into_id(&interaction_id)?,
-                submit_credentials: try_convert_inner(submit_credentials)?,
+                submit_credentials: try_convert_inner_of_inner(submit_credentials)?,
                 did_id: did_id.map(into_id).transpose()?,
                 identifier_id: identifier_id.map(into_id).transpose()?,
                 key_id: key_id.map(|key_id| into_id(&key_id)).transpose()?,
@@ -396,6 +397,7 @@ pub struct PresentationDefinitionRequestedCredentialBindingDTO {
     pub applicable_credentials: Vec<String>,
     pub inapplicable_credentials: Vec<String>,
     pub validity_credential_nbf: Option<String>,
+    pub multiple: Option<bool>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

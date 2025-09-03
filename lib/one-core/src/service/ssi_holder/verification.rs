@@ -167,32 +167,34 @@ impl SSIHolderService {
         };
 
         let mut credentials = HashMap::new();
-        for submitted_credential in submission.submit_credentials.values() {
-            let credential = self
-                .credential_repository
-                .get_credential(
-                    &submitted_credential.credential_id,
-                    &CredentialRelations {
-                        claims: Some(ClaimRelations {
-                            schema: Some(ClaimSchemaRelations::default()),
-                        }),
-                        holder_identifier: Some(IdentifierRelations {
-                            did: Some(DidRelations {
-                                keys: Some(KeyRelations::default()),
+        for submitted_credentials in submission.submit_credentials.values() {
+            for submitted_credential in submitted_credentials {
+                let credential = self
+                    .credential_repository
+                    .get_credential(
+                        &submitted_credential.credential_id,
+                        &CredentialRelations {
+                            claims: Some(ClaimRelations {
+                                schema: Some(ClaimSchemaRelations::default()),
+                            }),
+                            holder_identifier: Some(IdentifierRelations {
+                                did: Some(DidRelations {
+                                    keys: Some(KeyRelations::default()),
+                                    ..Default::default()
+                                }),
                                 ..Default::default()
                             }),
+                            key: Some(KeyRelations::default()),
+                            schema: Some(CredentialSchemaRelations::default()),
                             ..Default::default()
-                        }),
-                        key: Some(KeyRelations::default()),
-                        schema: Some(CredentialSchemaRelations::default()),
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .ok_or(EntityNotFoundError::Credential(
-                    submitted_credential.credential_id,
-                ))?;
-            credentials.insert(credential.id, credential);
+                        },
+                    )
+                    .await?
+                    .ok_or(EntityNotFoundError::Credential(
+                        submitted_credential.credential_id,
+                    ))?;
+                credentials.insert(credential.id, credential);
+            }
         }
 
         for credential in credentials.values() {
@@ -279,7 +281,8 @@ impl SSIHolderService {
         let mut credential_presentations: Vec<PresentedCredential> = vec![];
         let holder_binding_ctx =
             verification_protocol.holder_get_holder_binding_context(&proof, interaction_data)?;
-        for (requested_credential_id, credential_request) in submission.submit_credentials {
+
+        for (requested_credential_id, submitted_credentials) in submission.submit_credentials {
             let requested_credential = requested_credentials
                 .iter()
                 .find(|credential| credential.id == requested_credential_id)
@@ -287,186 +290,192 @@ impl SSIHolderService {
                     "requested credential `{requested_credential_id}` not found"
                 )))?;
 
-            let submitted_keys = requested_credential
-                .fields
-                .iter()
-                .filter(|field| credential_request.submit_claims.contains(&field.id))
-                .map(|field| {
-                    Ok(field
-                        .key_map
-                        .get(&credential_request.credential_id)
-                        .ok_or(ServiceError::MappingError(format!(
-                            "no matching key for credential_id `{}`",
-                            credential_request.credential_id
-                        )))?
-                        .to_owned())
-                })
-                .collect::<Result<Vec<String>, ServiceError>>()?;
-
-            let credential =
-                credentials
-                    .get(&credential_request.credential_id)
-                    .ok_or(ServiceError::Other(format!(
-                        "Failed to find preloaded credential with id {}",
-                        credential_request.credential_id
-                    )))?;
-
-            let credential_blob_id =
-                credential
-                    .credential_blob_id
-                    .ok_or(BusinessLogicError::MissingCredentialData {
-                        credential_id: credential_request.credential_id,
-                    })?;
-
-            let db_blob_storage = self
-                .blob_storage_provider
-                .get_blob_storage(BlobStorageType::Db)
-                .await
-                .ok_or_else(|| {
-                    MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                })?;
-            let credential_blob = db_blob_storage.get(&credential_blob_id).await?.ok_or(
-                BusinessLogicError::MissingCredentialData {
-                    credential_id: credential_request.credential_id,
-                },
-            )?;
-
-            let credential_data = credential_blob.value.as_slice();
-            let credential_content = std::str::from_utf8(credential_data)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-            let credential_schema =
-                credential
-                    .schema
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "credential_schema missing".to_string(),
-                    ))?;
-
-            for claim in credential
-                .claims
-                .as_ref()
-                .ok_or(ServiceError::MappingError("claims missing".to_string()))?
-            {
-                let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
-                    "claim_schema missing".to_string(),
-                ))?;
-
-                for key in &submitted_keys {
-                    // handle nested path by checking the prefix
-                    if claim_schema
-                        .key
-                        .starts_with(&format!("{key}{NESTED_CLAIM_MARKER}"))
-                        || claim_schema.key == *key
-                            && submitted_claims.iter().all(|c| c.id != claim.id)
-                    {
-                        submitted_claims.push(claim.to_owned());
-                    }
-                }
+            if requested_credential.multiple.unwrap_or(false) && submitted_credentials.len() > 1 {
+                return Err(ServiceError::MappingError(format!(
+                    "multiple credentials not supported for requested credential `{requested_credential_id}`"
+                )));
             }
 
-            let format =
-                detect_format_with_crypto_suite(&credential_schema.format, credential_content)?;
+            for submitted_credential in submitted_credentials {
+                let submitted_keys = requested_credential
+                    .fields
+                    .iter()
+                    .filter(|field| submitted_credential.submit_claims.contains(&field.id))
+                    .map(|field| {
+                        Ok(field
+                            .key_map
+                            .get(&submitted_credential.credential_id)
+                            .ok_or(ServiceError::MappingError(format!(
+                                "no matching key for credential_id `{}`",
+                                submitted_credential.credential_id
+                            )))?
+                            .to_owned())
+                    })
+                    .collect::<Result<Vec<String>, ServiceError>>()?;
 
-            let formatter = self
-                .formatter_provider
-                .get_credential_formatter(&format)
-                .ok_or(MissingProviderError::Formatter(format.to_string()))?;
+                let credential = credentials.get(&submitted_credential.credential_id).ok_or(
+                    ServiceError::Other(format!(
+                        "Failed to find preloaded credential with id {}",
+                        submitted_credential.credential_id
+                    )),
+                )?;
 
-            validate_holder_capabilities(
-                self.config.as_ref(),
-                &holder_did,
-                &holder_identifier,
-                selected_key,
-                &formatter.get_capabilities(),
-                self.key_algorithm_provider.as_ref(),
-            )?;
+                let credential_blob_id = credential.credential_blob_id.ok_or(
+                    BusinessLogicError::MissingCredentialData {
+                        credential_id: submitted_credential.credential_id,
+                    },
+                )?;
 
-            let credential_presentation = CredentialPresentation {
-                token: credential_content.to_owned(),
-                disclosed_keys: submitted_keys.to_owned(),
-            };
+                let db_blob_storage = self
+                    .blob_storage_provider
+                    .get_blob_storage(BlobStorageType::Db)
+                    .await
+                    .ok_or_else(|| {
+                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                    })?;
+                let credential_blob = db_blob_storage.get(&credential_blob_id).await?.ok_or(
+                    BusinessLogicError::MissingCredentialData {
+                        credential_id: submitted_credential.credential_id,
+                    },
+                )?;
 
-            let authn_fn = credential
-                .key
-                .as_ref()
-                .map(|key| {
-                    self.key_provider.get_signature_provider(
-                        key,
-                        None,
-                        self.key_algorithm_provider.clone(),
-                    )
-                })
-                .transpose()?;
+                let credential_data = credential_blob.value.as_slice();
+                let credential_content = std::str::from_utf8(credential_data)
+                    .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
-            let formatted_credential_presentation = formatter
-                .format_credential_presentation(
-                    credential_presentation,
-                    holder_binding_ctx.clone(),
-                    authn_fn,
-                )
-                .await?;
+                let credential_schema =
+                    credential
+                        .schema
+                        .as_ref()
+                        .ok_or(ServiceError::MappingError(
+                            "credential_schema missing".to_string(),
+                        ))?;
 
-            let mut presented_credential = PresentedCredential {
-                presentation: formatted_credential_presentation.to_owned(),
-                validity_credential_presentation: None,
-                credential_schema: credential_schema.clone(),
-                request: requested_credential.to_owned(),
-            };
+                for claim in credential
+                    .claims
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+                {
+                    let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
+                        "claim_schema missing".to_string(),
+                    ))?;
 
-            let revocation_method: Fields<RevocationType> = self
-                .config
-                .revocation
-                .get(&credential_schema.revocation_method)?;
-            if revocation_method.r#type == RevocationType::Lvvc {
-                let extracted = formatter
-                    .extract_credentials_unverified(
-                        &formatted_credential_presentation,
-                        Some(credential_schema),
+                    for key in &submitted_keys {
+                        // handle nested path by checking the prefix
+                        if claim_schema
+                            .key
+                            .starts_with(&format!("{key}{NESTED_CLAIM_MARKER}"))
+                            || claim_schema.key == *key
+                                && submitted_claims.iter().all(|c| c.id != claim.id)
+                        {
+                            submitted_claims.push(claim.to_owned());
+                        }
+                    }
+                }
+
+                let format =
+                    detect_format_with_crypto_suite(&credential_schema.format, credential_content)?;
+
+                let formatter = self
+                    .formatter_provider
+                    .get_credential_formatter(&format)
+                    .ok_or(MissingProviderError::Formatter(format.to_string()))?;
+
+                validate_holder_capabilities(
+                    self.config.as_ref(),
+                    &holder_did,
+                    &holder_identifier,
+                    selected_key,
+                    &formatter.get_capabilities(),
+                    self.key_algorithm_provider.as_ref(),
+                )?;
+
+                let credential_presentation = CredentialPresentation {
+                    token: credential_content.to_owned(),
+                    disclosed_keys: submitted_keys.to_owned(),
+                };
+
+                let authn_fn = credential
+                    .key
+                    .as_ref()
+                    .map(|key| {
+                        self.key_provider.get_signature_provider(
+                            key,
+                            None,
+                            self.key_algorithm_provider.clone(),
+                        )
+                    })
+                    .transpose()?;
+
+                let formatted_credential_presentation = formatter
+                    .format_credential_presentation(
+                        credential_presentation,
+                        holder_binding_ctx.clone(),
+                        authn_fn,
                     )
                     .await?;
-                let credential_status = extracted
-                    .status
-                    .first()
-                    .ok_or(ServiceError::MappingError(
-                        "credential_status is None".to_string(),
-                    ))?
-                    .to_owned();
 
-                let revocation_params = self
+                let mut presented_credential = PresentedCredential {
+                    presentation: formatted_credential_presentation.to_owned(),
+                    validity_credential_presentation: None,
+                    credential_schema: credential_schema.clone(),
+                    request: requested_credential.to_owned(),
+                };
+
+                let revocation_method: Fields<RevocationType> = self
                     .config
                     .revocation
                     .get(&credential_schema.revocation_method)?;
+                if revocation_method.r#type == RevocationType::Lvvc {
+                    let extracted = formatter
+                        .extract_credentials_unverified(
+                            &formatted_credential_presentation,
+                            Some(credential_schema),
+                        )
+                        .await?;
+                    let credential_status = extracted
+                        .status
+                        .first()
+                        .ok_or(ServiceError::MappingError(
+                            "credential_status is None".to_string(),
+                        ))?
+                        .to_owned();
 
-                let lvvc = holder_get_lvvc(
-                    credential,
-                    &credential_status,
-                    &*self.validity_credential_repository,
-                    &*self.key_provider,
-                    &self.key_algorithm_provider,
-                    &*self.client,
-                    &revocation_params,
-                    false,
-                )
-                .await?;
+                    let revocation_params = self
+                        .config
+                        .revocation
+                        .get(&credential_schema.revocation_method)?;
 
-                let token = std::str::from_utf8(&lvvc.credential)
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))?
-                    .to_string();
-
-                let lvvc_presentation = CredentialPresentation {
-                    token,
-                    disclosed_keys: vec!["id".to_string(), "status".to_string()],
-                };
-
-                let formatted_lvvc_presentation = formatter
-                    .format_credential_presentation(lvvc_presentation, None, None)
+                    let lvvc = holder_get_lvvc(
+                        credential,
+                        &credential_status,
+                        &*self.validity_credential_repository,
+                        &*self.key_provider,
+                        &self.key_algorithm_provider,
+                        &*self.client,
+                        &revocation_params,
+                        false,
+                    )
                     .await?;
 
-                presented_credential.validity_credential_presentation =
-                    Some(formatted_lvvc_presentation);
+                    let token = std::str::from_utf8(&lvvc.credential)
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                        .to_string();
+
+                    let lvvc_presentation = CredentialPresentation {
+                        token,
+                        disclosed_keys: vec!["id".to_string(), "status".to_string()],
+                    };
+
+                    let formatted_lvvc_presentation = formatter
+                        .format_credential_presentation(lvvc_presentation, None, None)
+                        .await?;
+
+                    presented_credential.validity_credential_presentation =
+                        Some(formatted_lvvc_presentation);
+                }
+                credential_presentations.push(presented_credential);
             }
-            credential_presentations.push(presented_credential);
         }
 
         let submit_result = verification_protocol

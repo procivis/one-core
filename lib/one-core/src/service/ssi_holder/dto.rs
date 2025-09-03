@@ -11,7 +11,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 #[derive(Clone, Debug)]
 pub struct PresentationSubmitRequestDTO {
     pub interaction_id: InteractionId,
-    pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestDTO>,
+    pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestDTO>>,
     pub did_id: Option<DidId>,
     pub identifier_id: Option<IdentifierId>,
     pub key_id: Option<KeyId>,

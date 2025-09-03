@@ -96,6 +96,7 @@ pub(super) fn presentation_definition_from_interaction_data(
                     Ok(PresentationDefinitionRequestedCredentialResponseDTO {
                         id: group.id,
                         name: group.name,
+                        multiple: None,
                         purpose: group.purpose,
                         fields: convert_inner(
                             group

@@ -173,6 +173,7 @@ fn to_requested_credential(
         id: query.id.to_string(),
         name: None,
         purpose: None,
+        multiple: query.multiple.then_some(true),
         fields,
         applicable_credentials: match_result.applicable_credentials,
         inapplicable_credentials: match_result.inapplicable_credentials,

@@ -2152,3 +2152,97 @@ async fn test_get_presentation_definition_dcql_value_match() {
     });
     body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
 }
+
+#[tokio::test]
+async fn test_get_presentation_definition_dcql_using_multiple_flag() {
+    // GIVEN
+    let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+    let claim_1 = Uuid::new_v4();
+    let claim_2 = Uuid::new_v4();
+
+    let vct = "https://example.org/foo";
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "Simple test schema",
+            &org,
+            "NONE",
+            &[
+                (claim_1, "firstName", true, "STRING", false),
+                (claim_2, "isOver18", false, "BOOLEAN", false),
+            ],
+            "SD_JWT_VC",
+            vct,
+        )
+        .await;
+
+    let credential1 = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(vec![
+                    ClaimData {
+                        schema_id: claim_1.into(),
+                        path: "firstName".to_string(),
+                        value: Some("test-name".to_string()),
+                        selectively_disclosable: true,
+                    },
+                    ClaimData {
+                        schema_id: claim_2.into(),
+                        path: "isOver18".to_string(),
+                        value: Some("true".to_string()),
+                        selectively_disclosable: true,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+        .id("test_id")
+        .claims(vec![
+            ClaimQuery::builder()
+                .path(vec!["isOver18".to_string()])
+                .values(vec![true.into()])
+                .build(),
+        ])
+        .multiple()
+        .build();
+
+    let dcql_query = DcqlQuery::builder()
+        .credentials(vec![credential_query])
+        .build();
+    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+
+    // WHEN
+    let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let body = resp.json_value().await;
+    assert_eq!(body["credentials"].as_array().unwrap().len(), 1);
+    let expected_requested_credentials = json!({
+        "applicableCredentials": [credential1.id.to_string()],
+        "multiple": true,
+        "fields": [{
+            "id": "test_id:isOver18",
+            "keyMap": {
+                credential1.id.to_string(): "isOver18",
+            },
+            "name": "isOver18",
+            "required": true,
+        }],
+        "id": "test_id"
+    });
+    body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
+}

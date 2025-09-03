@@ -1,7 +1,5 @@
-use crate::{
-    CredentialFormat, CredentialMeta, CredentialQuery, CredentialQueryBuilder,
-    credential_query_builder,
-};
+use crate::credential_query_builder::{self, IsUnset, SetMultiple, State};
+use crate::{CredentialFormat, CredentialMeta, CredentialQuery, CredentialQueryBuilder};
 
 type SetMetaAndFormat = credential_query_builder::SetMeta<credential_query_builder::SetFormat>;
 
@@ -37,6 +35,19 @@ impl CredentialQuery {
     }
 }
 
+impl<S: State> CredentialQueryBuilder<S>
+where
+    S::Multiple: IsUnset,
+{
+    pub fn multiple(self) -> CredentialQueryBuilder<SetMultiple<S>> {
+        self.set_multiple_internal(true)
+    }
+
+    pub fn single(self) -> CredentialQueryBuilder<SetMultiple<S>> {
+        self.set_multiple_internal(false)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use similar_asserts::assert_eq;
@@ -58,6 +69,7 @@ mod tests {
                     .build(),
             ])
             .id("test_id")
+            .multiple()
             .build();
 
         assert_eq!(credential.id, CredentialQueryId::from("test_id"));

@@ -375,6 +375,7 @@ impl VerificationProtocol for IsoMdl {
                 id: schema_id,
                 name: None,
                 purpose: None,
+                multiple: None,
                 fields,
                 applicable_credentials,
                 inapplicable_credentials: vec![],

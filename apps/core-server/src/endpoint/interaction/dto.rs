@@ -12,6 +12,7 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
+use serde_with::serde_as;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
 use strum::Display;
 use url::Url;
@@ -133,20 +134,51 @@ pub(crate) struct PresentationRejectRequestRestDTO {
     pub interaction_id: Uuid,
 }
 
+#[derive(Clone, Debug, Deserialize)]
+#[serde(untagged)]
+pub(crate) enum SingleOrArray<T> {
+    Single(T),
+    Array(Vec<T>),
+}
+
+impl<T> From<SingleOrArray<T>> for Vec<T> {
+    fn from(value: SingleOrArray<T>) -> Self {
+        match value {
+            SingleOrArray::Single(v) => vec![v],
+            SingleOrArray::Array(v) => v,
+        }
+    }
+}
+
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]
+#[serde_as]
 pub(crate) struct PresentationSubmitRequestRestDTO {
     pub interaction_id: Uuid,
-    #[into(with_fn = convert_inner)]
-    pub submit_credentials: HashMap<String, PresentationSubmitCredentialRequestRestDTO>,
+    #[into(with_fn = convert_inner_of_inner)]
+    #[serde(deserialize_with = "deserialize_submit_credentials")]
+    pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestRestDTO>>,
     pub did_id: Option<DidId>,
     pub identifier_id: Option<IdentifierId>,
     /// If the associated DID supports multiple keys for authentication,
     /// specify which key to use. If no key is specified the first suitable key listed
     /// will be used.
     pub key_id: Option<KeyId>,
+}
+
+fn deserialize_submit_credentials<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, Vec<PresentationSubmitCredentialRequestRestDTO>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let map =
+        HashMap::<String, SingleOrArray<PresentationSubmitCredentialRequestRestDTO>>::deserialize(
+            deserializer,
+        )?;
+    Ok(map.into_iter().map(|(k, v)| (k, v.into())).collect())
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]

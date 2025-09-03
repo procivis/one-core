@@ -220,6 +220,149 @@ async fn test_direct_post_one_credential_correct() {
 }
 
 #[tokio::test]
+async fn test_direct_post_dcql_multiple_flag_true_success() {
+    // GIVEN
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
+    let nonce = "nonce123";
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
+    ];
+
+    let credential_schema = create_credential_schema_with_claims(
+        &context.db.db_conn,
+        "NewCredentialSchema",
+        &organisation,
+        "NONE",
+        &new_claim_schemas,
+    )
+    .await;
+
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
+
+    let interaction_data = json!({
+        "nonce": nonce,
+        "dcql_query": {
+            "credentials": [{
+                "claims": [{
+                    "id": new_claim_schemas[0].0,
+                    "path": ["credentialSubject", "cat1"],
+                    "required": true
+                },
+                {
+                    "id": new_claim_schemas[1].0,
+                    "path": ["credentialSubject", "cat2"],
+                    "required": false
+                }
+                ],
+                "id": credential_schema.schema_id,
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
+                },
+                "multiple": true
+            }]
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
+    });
+
+    let base_url = context.config.app.core_base_url.clone();
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        &base_url,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+    )
+    .await;
+
+    let proof = create_proof(
+        &context.db.db_conn,
+        &verifier_identifier,
+        None,
+        Some(&proof_schema),
+        ProofStateEnum::Pending,
+        ProofRole::Verifier,
+        "OPENID4VP_FINAL1_0",
+        Some(&interaction),
+        Some(&verifier_key),
+        None,
+    )
+    .await;
+
+    let vp_token = json!({
+        credential_schema.schema_id: [TOKEN2, TOKEN2]
+    });
+
+    let params = [
+        ("vp_token", vp_token.to_string()),
+        ("state", interaction.id.to_string()),
+    ];
+
+    // WHEN
+    let url = format!("{base_url}/ssi/openid4vp/final-1.0/response");
+    let resp = utils::client()
+        .post(url)
+        .form(&params)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let proof = get_proof(&context.db.db_conn, &proof.id).await;
+    assert_eq!(proof.state, ProofStateEnum::Accepted);
+
+    let proof_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await;
+    assert_eq!(
+        proof_history
+            .values
+            .first()
+            .as_ref()
+            .unwrap()
+            .target
+            .as_ref()
+            .unwrap(),
+        &proof.holder_identifier.unwrap().id.to_string()
+    );
+
+    let claims = proof.claims.unwrap();
+
+    assert!(
+        new_claim_schemas
+            .iter()
+            .filter(|required_claim| required_claim.2) //required
+            .all(|required_claim| claims
+                .iter()
+                // Values are just keys uppercase
+                .any(
+                    |db_claim| db_claim.claim.value == Some(required_claim.1.to_ascii_uppercase())
+                ))
+    );
+
+    let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;
+    assert!(str::from_utf8(&blob.value).unwrap().contains("vp_token"));
+    assert_eq!(blob.r#type, BlobType::Proof);
+}
+
+#[tokio::test]
 async fn test_direct_post_one_credential_missing_required_claim() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

@@ -32,7 +32,6 @@ pub struct CredentialQueryId(String);
 /// Credential query structure
 ///
 /// The following fields defined in the specification are not supported
-/// - multiple
 /// - trusted_authorities
 /// - require_cryptographic_holder_binding
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
@@ -50,6 +49,13 @@ pub struct CredentialQuery {
     /// Trusted authorities to be considered when evaluating issuer trust.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_authorities: Option<Vec<TrustedAuthority>>,
+    #[builder(default = false, setters(vis = "", name = "set_multiple_internal"))]
+    #[serde(default = "default_false")]
+    pub multiple: bool,
+}
+
+fn default_false() -> bool {
+    false
 }
 
 /// Format-specific metadata for credential queries

@@ -308,6 +308,7 @@ pub(crate) struct PresentationDefinitionRequestedCredentialResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     validity_credential_nbf: Option<OffsetDateTime>,
+    pub multiple: Option<bool>,
 }
 
 #[options_not_nullable]

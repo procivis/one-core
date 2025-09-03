@@ -74,6 +74,7 @@ pub struct PresentationDefinitionRequestedCredentialResponseDTO {
     pub name: Option<String>,
     pub purpose: Option<String>,
     pub fields: Vec<PresentationDefinitionFieldDTO>,
+    pub multiple: Option<bool>,
     pub applicable_credentials: Vec<CredentialId>,
     pub inapplicable_credentials: Vec<CredentialId>,
     pub validity_credential_nbf: Option<OffsetDateTime>,

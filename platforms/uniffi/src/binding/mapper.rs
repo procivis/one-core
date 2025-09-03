@@ -977,6 +977,7 @@ impl From<PresentationDefinitionRequestedCredentialResponseDTO>
             id: value.id,
             name: value.name,
             purpose: value.purpose,
+            multiple: value.multiple,
             fields: convert_inner(value.fields),
             applicable_credentials: value
                 .applicable_credentials
