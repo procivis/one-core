@@ -282,12 +282,12 @@ sdk:upload_artifacts:
     - az storage blob upload --overwrite --only-show-errors -c ${SDK_CONTAINER_NAME} -n ${IOS_CONTAINER_PATH} -f ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE}
 
     # Upload Android docs files
-    - zip -q -r android-docs.zip ${ANDROID_BUILD_SOURCE_PATH}/html
+    - (cd ${ANDROID_BUILD_SOURCE_PATH}/html && zip -qr ${CI_PROJECT_DIR}/android-docs.zip .)
     - az storage blob upload --only-show-errors -c ${DOCS_CONTAINER_NAME} -n ${CI_PIPELINE_ID}/android-docs.zip -f android-docs.zip
 
     # Upload iOS docs files
     - unzip -q ${IOS_BUILD_SOURCE_PATH}/${IOS_BUILD_FILE} "ios/htmldoc/*" -d ios-htmldoc
-    - zip -q -r ios-docs.zip ios-htmldoc/ios/htmldoc
+    - (cd ios-htmldoc/ios/htmldoc && zip -qr ${CI_PROJECT_DIR}/ios-docs.zip .)
     - az storage blob upload --only-show-errors -c ${DOCS_CONTAINER_NAME} -n ${CI_PIPELINE_ID}/ios-docs.zip -f ios-docs.zip
 
     # Prepare variables
