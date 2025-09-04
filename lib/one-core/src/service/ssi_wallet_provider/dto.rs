@@ -8,8 +8,8 @@ use crate::service::key::dto::PublicKeyJwkDTO;
 pub struct RegisterWalletUnitRequestDTO {
     pub wallet_provider: String,
     pub os: WalletUnitOs,
-    pub public_key: PublicKeyJwkDTO,
-    pub proof: String,
+    pub public_key: Option<PublicKeyJwkDTO>,
+    pub proof: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -22,7 +22,7 @@ pub struct RegisterWalletUnitResponseDTO {
 #[derive(Clone, Debug)]
 pub struct WalletUnitActivationRequestDTO {
     pub attestation: Vec<String>,
-    pub nonce: String,
+    pub proof: String,
 }
 
 #[derive(Clone, Debug)]

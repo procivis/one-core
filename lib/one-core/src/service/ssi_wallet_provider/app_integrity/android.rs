@@ -16,7 +16,7 @@ static ATTESTATION_EXTENSION_OID: &str = "1.3.6.1.4.1.11129.2.1.17";
 
 pub(crate) async fn validate_attestation_android(
     attestation: &[String],
-    _server_nonce: &str,
+    server_nonce: &str,
     bundle: &Bundle,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<KeyHandle, WalletProviderError> {
@@ -36,9 +36,14 @@ pub(crate) async fn validate_attestation_android(
     let extension_data = hex::decode(&ext.value).map_err(|err| {
         AppIntegrityValidationError(format!("Failed to decode extension value: {err}"))
     })?;
-    let bundle_id = bundle_id_from_der_data(&extension_data).map_err(|err| {
-        AppIntegrityValidationError(format!("Failed to decode extension value: {err}"))
-    })?;
+    let (nonce, bundle_id) = nonce_and_bundle_id_from_attestation_extension(&extension_data)
+        .map_err(|err| {
+            AppIntegrityValidationError(format!("Failed to decode extension value: {err}"))
+        })?;
+
+    if server_nonce != nonce {
+        return Err(AppIntegrityValidationError("Nonce mismatch".to_string()));
+    }
 
     if bundle_id != bundle.bundle_id {
         return Err(AppIntegrityValidationError(format!(
@@ -51,12 +56,21 @@ pub(crate) async fn validate_attestation_android(
 
 const SOFTWARE_ENFORCED_AUTHZ_TAG: Tag = Tag(709);
 
-fn bundle_id_from_der_data(result: &[u8]) -> Result<String, BerError> {
-    let (_, parsed_ext) = parse_der(result)?;
+fn nonce_and_bundle_id_from_attestation_extension(
+    extension_data: &[u8],
+) -> Result<(String, String), BerError> {
+    let (_, parsed_ext) = parse_der(extension_data)?;
     let key_description = parsed_ext.as_sequence().expect("Expected DER sequence");
     if key_description.len() != 8 {
         return Err(BerError::InvalidLength);
     }
+
+    let nonce = key_description
+        .get(4)
+        .ok_or(BerError::InvalidLength)?
+        .as_slice()?;
+    let nonce = (*String::from_utf8_lossy(nonce)).to_owned();
+
     let software_enforced_authz_list = key_description
         .get(6)
         .ok_or(BerError::InvalidLength)?
@@ -94,12 +108,12 @@ fn bundle_id_from_der_data(result: &[u8]) -> Result<String, BerError> {
     if appid.len() != 2 {
         return Err(BerError::InvalidLength);
     }
-
     // finally pull out name
-    Ok(
+    let package_name =
         (*String::from_utf8_lossy(appid.first().ok_or(BerError::InvalidLength)?.as_slice()?))
-            .to_owned(),
-    )
+            .to_owned();
+
+    Ok((nonce, package_name))
 }
 
 async fn check_ca_certs(
@@ -216,7 +230,7 @@ ex0SdDrx+tWUDqG8At2JHA==
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
-            "currently_irrelevant",
+            "challenge",
             &Bundle {
                 bundle_id: "com.google.wireless.android.security.attestationverifier.collector"
                     .to_string(),
@@ -262,7 +276,7 @@ ex0SdDrx+tWUDqG8At2JHA==
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
-            "currently_irrelevant",
+            "AttestationChallenge",
             &Bundle {
                 bundle_id: "com.exampleapp".to_string(),
                 trusted_attestation_cas: vec![GOOGLE_CA.to_string()],

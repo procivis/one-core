@@ -55,18 +55,27 @@ impl SSIWalletProviderService {
         let (config, config_params) =
             self.get_wallet_provider_config_params(&request.wallet_provider)?;
 
-        let proof = Jwt::<()>::decompose_token(&request.proof)?;
-        let public_key_jwk = request.public_key.clone().into();
-        let public_key = self
-            .parse_jwk(&proof.header.algorithm, &public_key_jwk)
-            .await?;
-
-        self.verify_proof(&proof, &public_key, LEEWAY).await?;
-
         if config_params.integrity_check.enabled && request.os != WalletUnitOs::Web {
-            self.create_integrity_check_nonce(request, config, public_key_jwk)
-                .await
+            if request.public_key.is_some() || request.proof.is_some() {
+                return Err(WalletProviderError::AppIntegrityCheckRequired.into());
+            }
+            self.create_integrity_check_nonce(request, config).await
         } else {
+            let proof = Jwt::<()>::decompose_token(
+                request
+                    .proof
+                    .as_ref()
+                    .ok_or(WalletProviderError::MissingProof)?,
+            )?;
+            let public_key_jwk = request
+                .public_key
+                .clone()
+                .ok_or(WalletProviderError::MissingPublicKey)?
+                .into();
+            let public_key = self
+                .parse_jwk(&proof.header.algorithm, &public_key_jwk)
+                .await?;
+            self.verify_proof(&proof, &public_key, LEEWAY).await?;
             self.create_wallet_unit_with_attestation(request, config, config_params, public_key_jwk)
                 .await
         }
@@ -76,12 +85,11 @@ impl SSIWalletProviderService {
         &self,
         request: RegisterWalletUnitRequestDTO,
         config: &Fields<WalletProviderType>,
-        public_key_jwk: PublicKeyJwk,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
         let wallet_unit =
-            wallet_unit_from_request(request, config, &public_key_jwk, now, Some(nonce.clone()))?;
+            wallet_unit_from_request(request, config, None, now, Some(nonce.clone()))?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
             .wallet_unit_repository
@@ -138,7 +146,8 @@ impl SSIWalletProviderService {
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let wallet_provider = request.wallet_provider.clone();
-        let wallet_unit = wallet_unit_from_request(request, config, &public_key_jwk, now, None)?;
+        let wallet_unit =
+            wallet_unit_from_request(request, config, Some(&public_key_jwk), now, None)?;
         let wallet_unit_name = wallet_unit.name.clone();
         let (signed_attestation, attestation_hash) = self
             .sign_attestation(&config_params, public_key_jwk, &wallet_provider)
@@ -208,22 +217,6 @@ impl SSIWalletProviderService {
         let Some(wallet_unit_nonce) = &wallet_unit.nonce else {
             return Err(WalletProviderError::MissingWalletUnitAttestationNonce.into());
         };
-        if &request.nonce != wallet_unit_nonce {
-            let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
-            self.set_wallet_unit_to_error(
-                &wallet_unit,
-                HistoryErrorMetadata {
-                    error_code: error.error_code(),
-                    message: format!(
-                        "Failed to activate wallet unit {}: invalid nonce",
-                        wallet_unit.id
-                    ),
-                },
-            )
-            .await?;
-            return Err(error.into());
-        }
-
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
 
@@ -246,84 +239,46 @@ impl SSIWalletProviderService {
             return Err(error.into());
         };
 
-        let attested_public_key = match wallet_unit.os {
-            WalletUnitOs::Ios => {
-                let Some(attestation) = request.attestation.first() else {
-                    return Err(WalletProviderError::AppIntegrityValidationError(
-                        "Missing attestation".to_string(),
-                    )
-                    .into());
-                };
-                let Some(bundle) = &config_params.ios else {
-                    return Err(WalletProviderError::AppIntegrityValidationError(
-                        "Missing iOS app integrity config".to_string(),
-                    )
-                    .into());
-                };
-                validate_attestation_ios(
-                    attestation,
-                    wallet_unit_nonce,
-                    bundle,
-                    &*self.certificate_validator,
-                )
-                .await?
-            }
-            WalletUnitOs::Android => {
-                if request.attestation.is_empty() {
-                    return Err(WalletProviderError::AppIntegrityValidationError(
-                        "Missing attestation".to_string(),
-                    )
-                    .into());
-                }
-                let Some(bundle) = &config_params.android else {
-                    return Err(WalletProviderError::AppIntegrityValidationError(
-                        "Missing Android app integrity config".to_string(),
-                    )
-                    .into());
-                };
-                validate_attestation_android(
-                    &request.attestation,
-                    wallet_unit_nonce,
-                    bundle,
-                    &*self.certificate_validator,
-                )
-                .await?
-            }
-            WalletUnitOs::Web => {
-                let error = WalletProviderError::AppIntegrityValidationError(
-                    "Cannot integrity check wallet unit with os 'WEB'".to_string(),
-                );
+        let attestation_result = self
+            .validate_attestation(
+                &request.attestation,
+                wallet_unit.os,
+                wallet_unit_nonce,
+                &config_params,
+            )
+            .await;
+        let attested_public_key = match attestation_result {
+            Ok(key) => key,
+            Err(err) => {
                 self.set_wallet_unit_to_error(
                     &wallet_unit,
                     HistoryErrorMetadata {
-                        error_code: error.error_code(),
-                        message: error.to_string(),
+                        error_code: err.error_code(),
+                        message: err.to_string(),
                     },
                 )
                 .await?;
-                return Err(error.into());
+                return Err(err.into());
             }
         };
-        let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
-        if key.public_key_as_raw() != attested_public_key.public_key_as_raw() {
-            return Err(WalletProviderError::AppIntegrityValidationError(
-                "Attested public key does not match wallet unit public key".to_string(),
-            )
-            .into());
-        }
-        let (signed_attestation, attestation_hash) = self
-            .sign_attestation(
-                &config_params,
-                key.public_key_as_jwk()?,
-                &wallet_unit.wallet_provider_name,
-            )
+        let proof = Jwt::<()>::decompose_token(&request.proof)?;
+        self.verify_proof(&proof, &attested_public_key, LEEWAY)
             .await?;
+
+        let jwk = attested_public_key.public_key_as_jwk()?;
+        let encoded_public_key = serde_json::to_string(&jwk)
+            .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
+        let (signed_attestation, attestation_hash) = self
+            .sign_attestation(&config_params, jwk, &wallet_unit.wallet_provider_name)
+            .await?;
+
         self.wallet_unit_repository
             .update_wallet_unit(
                 &wallet_unit_id,
                 UpdateWalletUnitRequest {
                     status: Some(WalletUnitStatus::Active),
                     last_issuance: Some(self.clock.now_utc()),
+                    public_key: Some(encoded_public_key),
                 },
             )
             .await?;
@@ -341,6 +296,59 @@ impl SSIWalletProviderService {
         })
     }
 
+    async fn validate_attestation(
+        &self,
+        attestation: &[String],
+        os: WalletUnitOs,
+        wallet_unit_nonce: &str,
+        config_params: &WalletProviderParams,
+    ) -> Result<KeyHandle, WalletProviderError> {
+        match os {
+            WalletUnitOs::Ios => {
+                let attestation =
+                    attestation
+                        .first()
+                        .ok_or(WalletProviderError::AppIntegrityValidationError(
+                            "Missing attestation".to_string(),
+                        ))?;
+                let bundle = config_params.ios.as_ref().ok_or(
+                    WalletProviderError::AppIntegrityValidationError(
+                        "Missing iOS app integrity config".to_string(),
+                    ),
+                )?;
+                validate_attestation_ios(
+                    attestation,
+                    wallet_unit_nonce,
+                    bundle,
+                    &*self.certificate_validator,
+                )
+                .await
+            }
+            WalletUnitOs::Android => {
+                if attestation.is_empty() {
+                    return Err(WalletProviderError::AppIntegrityValidationError(
+                        "Missing attestation".to_string(),
+                    ));
+                }
+                let bundle = config_params.android.as_ref().ok_or(
+                    WalletProviderError::AppIntegrityValidationError(
+                        "Missing Android app integrity config".to_string(),
+                    ),
+                )?;
+                validate_attestation_android(
+                    attestation,
+                    wallet_unit_nonce,
+                    bundle,
+                    &*self.certificate_validator,
+                )
+                .await
+            }
+            WalletUnitOs::Web => Err(WalletProviderError::AppIntegrityValidationError(
+                "Cannot integrity check wallet unit with os 'WEB'".to_string(),
+            )),
+        }
+    }
+
     async fn set_wallet_unit_to_error(
         &self,
         wallet_unit: &WalletUnit,
@@ -352,6 +360,7 @@ impl SSIWalletProviderService {
                 UpdateWalletUnitRequest {
                     status: Some(WalletUnitStatus::Error),
                     last_issuance: None,
+                    public_key: None,
                 },
             )
             .await?;

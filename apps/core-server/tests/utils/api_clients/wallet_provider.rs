@@ -17,15 +17,19 @@ impl WalletProviderApi {
         &self,
         wallet_provider: &str,
         os: &str,
-        jwk: &PublicKeyJwk,
-        proof: &str,
+        jwk: Option<&PublicKeyJwk>,
+        proof: Option<&str>,
     ) -> Response {
-        let body = json!( {
+        let mut body = json!( {
             "walletProvider": wallet_provider,
             "os": os,
-            "publicKey": jwk,
-            "proof": proof
         });
+        if let Some(jwk) = jwk {
+            body["publicKey"] = json!(jwk);
+        }
+        if let Some(proof) = proof {
+            body["proof"] = json!(proof);
+        }
 
         self.client.post("/ssi/wallet-unit/v1", body).await
     }
@@ -34,11 +38,11 @@ impl WalletProviderApi {
         &self,
         wallet_unit_id: WalletUnitId,
         attestation: &str,
-        nonce: &str,
+        proof: &str,
     ) -> Response {
         let body = json!( {
             "attestation": attestation,
-            "nonce": nonce,
+            "proof": proof,
         });
 
         self.client

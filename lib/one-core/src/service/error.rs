@@ -1324,6 +1324,17 @@ pub enum ErrorCode {
 
     #[strum(message = "App integrity validation failed")]
     BR_0266,
+
+    #[strum(message = "Missing proof")]
+    BR_0268,
+
+    #[strum(message = "Missing public key")]
+    BR_0269,
+
+    #[strum(
+        message = "App integrity check required: proof and public key must only be provided on wallet unit activation"
+    )]
+    BR_0270,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1709,6 +1720,9 @@ impl ErrorCodeMixin for WalletProviderError {
             }
             Self::InvalidWalletUnitState => ErrorCode::BR_0265,
             Self::AppIntegrityValidationError(_) => ErrorCode::BR_0266,
+            Self::MissingProof => ErrorCode::BR_0268,
+            Self::MissingPublicKey => ErrorCode::BR_0269,
+            Self::AppIntegrityCheckRequired => ErrorCode::BR_0270,
         }
     }
 }

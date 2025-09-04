@@ -109,8 +109,8 @@ impl WalletUnitService {
         let register_request = RegisterWalletUnitRequestDTO {
             wallet_provider: request.wallet_provider.name.clone(),
             os: os_name.into(),
-            public_key: key_handle.public_key_as_jwk()?.into(),
-            proof: signed_proof,
+            public_key: Some(key_handle.public_key_as_jwk()?.into()),
+            proof: Some(signed_proof),
         };
 
         let register_response = self

@@ -6,8 +6,6 @@ use one_core::model::wallet_unit::{
     GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs,
     WalletUnitRelations, WalletUnitStatus,
 };
-use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use shared_types::WalletUnitId;
 use time::{Duration, OffsetDateTime};
@@ -44,10 +42,9 @@ impl WalletUnitsDB {
             status: test_wallet_unit.status.unwrap_or(WalletUnitStatus::Active),
             wallet_provider_type: WalletProviderType::ProcivisOne,
             wallet_provider_name: "PROCIVIS_ONE".to_string(),
-            public_key: Some(
-                serde_json::to_string(&test_wallet_unit.public_key.unwrap_or(random_jwk()))
-                    .unwrap(),
-            ),
+            public_key: test_wallet_unit
+                .public_key
+                .map(|v| serde_json::to_string(&v).unwrap()),
             last_issuance: test_wallet_unit
                 .last_issuance
                 .unwrap_or(Some(six_hours_ago)),
@@ -76,9 +73,4 @@ impl WalletUnitsDB {
             .await
             .unwrap()
     }
-}
-
-fn random_jwk() -> PublicKeyJwk {
-    let holder_key_pair = Ecdsa.generate_key().unwrap();
-    holder_key_pair.key.public_key_as_jwk().unwrap()
 }

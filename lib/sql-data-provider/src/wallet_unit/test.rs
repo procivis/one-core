@@ -616,6 +616,7 @@ async fn test_update_wallet_unit_status_success() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
+        public_key: None,
     };
 
     let result = provider
@@ -659,6 +660,7 @@ async fn test_update_wallet_unit_nonexistent() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
+        public_key: None,
     };
 
     let result = provider
@@ -726,6 +728,7 @@ async fn test_update_wallet_unit_status_changes() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
+        public_key: None,
     };
 
     let result = provider
@@ -745,6 +748,7 @@ async fn test_update_wallet_unit_status_changes() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Active),
         last_issuance: None,
+        public_key: None,
     };
 
     let result = provider
@@ -759,6 +763,47 @@ async fn test_update_wallet_unit_status_changes() {
         .unwrap()
         .unwrap();
     assert_eq!(updated_wallet_unit.status, WalletUnitStatus::Active);
+}
+
+#[tokio::test]
+async fn test_update_wallet_unit_public_key_changes() {
+    let data_layer = setup_test_data_layer_and_connection().await;
+    let provider = WalletUnitProvider {
+        db: data_layer.db.clone(),
+    };
+
+    let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
+    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+    wallet_unit.public_key = None;
+    provider.create_wallet_unit(wallet_unit).await.unwrap();
+    let created_wallet_unit = provider
+        .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(created_wallet_unit.public_key, None);
+
+    let update_request = UpdateWalletUnitRequest {
+        status: None,
+        last_issuance: None,
+        public_key: Some("new_value".to_string()),
+    };
+
+    let result = provider
+        .update_wallet_unit(&wallet_unit_id, update_request)
+        .await;
+    assert!(result.is_ok());
+
+    // Verify public key was updated
+    let updated_wallet_unit = provider
+        .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(
+        updated_wallet_unit.public_key,
+        Some("new_value".to_string())
+    );
 }
 
 #[tokio::test]
@@ -782,6 +827,7 @@ async fn test_update_and_list_wallet_units() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
+        public_key: None,
     };
 
     provider
@@ -1174,6 +1220,7 @@ async fn test_sort_by_last_modified_after_updates() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
+        public_key: None,
     };
     provider
         .update_wallet_unit(&wallet_unit_id1, update_request)

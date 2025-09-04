@@ -94,7 +94,14 @@ impl WalletUnitRepository for WalletUnitProvider {
                 .status
                 .map(|status| Set(status.into()))
                 .unwrap_or_default(),
-            last_issuance: Set(request.last_issuance),
+            last_issuance: request
+                .last_issuance
+                .map(|last_issuance| Set(last_issuance.into()))
+                .unwrap_or_default(),
+            public_key: request
+                .public_key
+                .map(|pk| Set(pk.into()))
+                .unwrap_or_default(),
             ..Default::default()
         };
 

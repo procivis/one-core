@@ -36,7 +36,12 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
     let resp = context
         .api
         .wallet_provider
-        .register_wallet("PROCIVIS_ONE", "ANDROID", &holder_public_jwk, &proof)
+        .register_wallet(
+            "PROCIVIS_ONE",
+            "ANDROID",
+            Some(&holder_public_jwk),
+            Some(&proof),
+        )
         .await;
 
     // then
@@ -69,19 +74,11 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled() {
     // given
     let (context, org) = TestContext::new_with_organisation(None).await;
     create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
-
-    let holder_key_pair = Ecdsa.generate_key().unwrap();
-    let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
-
-    let proof =
-        create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
-            .await;
-
     // when
     let resp = context
         .api
         .wallet_provider
-        .register_wallet("PROCIVIS_ONE", "ANDROID", &holder_public_jwk, &proof)
+        .register_wallet("PROCIVIS_ONE", "ANDROID", None, None)
         .await;
 
     // then
@@ -101,6 +98,7 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled() {
     resp_json["nonce"].assert_eq(&wallet_unit.nonce);
     assert_eq!(wallet_unit.status, WalletUnitStatus::Pending);
     assert_eq!(wallet_unit.last_issuance, None);
+    assert_eq!(wallet_unit.public_key, None);
 }
 
 #[tokio::test]
@@ -120,7 +118,12 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled_web() {
     let resp = context
         .api
         .wallet_provider
-        .register_wallet("PROCIVIS_ONE", "WEB", &holder_public_jwk, &proof)
+        .register_wallet(
+            "PROCIVIS_ONE",
+            "WEB",
+            Some(&holder_public_jwk),
+            Some(&proof),
+        )
         .await;
 
     // then
@@ -171,7 +174,12 @@ async fn test_register_wallet_unit_fail_on_disabled_wallet_provider() {
     let resp = context
         .api
         .wallet_provider
-        .register_wallet("PROCIVIS_ONE", "ANDROID", &holder_public_jwk, &proof)
+        .register_wallet(
+            "PROCIVIS_ONE",
+            "ANDROID",
+            Some(&holder_public_jwk),
+            Some(&proof),
+        )
         .await;
 
     // then

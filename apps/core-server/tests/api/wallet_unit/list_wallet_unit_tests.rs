@@ -1,4 +1,6 @@
 use one_core::model::wallet_unit::WalletUnitStatus;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
@@ -10,11 +12,14 @@ async fn test_list_wallet_unit_success() {
     let context = TestContext::new(None).await;
 
     for i in 1..15 {
+        let holder_key_pair = Ecdsa.generate_key().unwrap();
+        let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
         context
             .db
             .wallet_units
             .create(TestWalletUnit {
                 name: Some(format!("wallet_{i}")),
+                public_key: Some(holder_public_jwk),
                 ..Default::default()
             })
             .await;

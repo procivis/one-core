@@ -9,15 +9,14 @@ use crate::service::ssi_wallet_provider::dto::{
     RegisterWalletUnitResponseDTO,
 };
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, From)]
 #[from(RegisterWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub wallet_provider: String,
     pub os: WalletUnitOs,
-    pub public_key: PublicKeyJwkDTO,
-    pub proof: String,
+    pub public_key: Option<PublicKeyJwkDTO>,
+    pub proof: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]
@@ -29,7 +28,6 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub nonce: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, From)]
 #[from(RefreshWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]

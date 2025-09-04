@@ -187,8 +187,8 @@ async fn test_register_wallet_unit() {
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: "PROCIVIS_ONE".to_string(),
         os: WalletUnitOs::Android,
-        public_key: holder_jwk.public_key_as_jwk().unwrap().into(),
-        proof,
+        public_key: Some(holder_jwk.public_key_as_jwk().unwrap().into()),
+        proof: Some(proof),
     };
 
     // when
@@ -212,12 +212,6 @@ async fn test_register_wallet_unit_integrity_check() {
         "PROCIVIS_ONE".to_string(),
         wallet_provider_config(issuer_identifier_id, true),
     );
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_jose_alg()
-        .once()
-        .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
 
     let mut wallet_unit_repository = MockWalletUnitRepository::new();
     wallet_unit_repository
@@ -276,7 +270,7 @@ async fn test_register_wallet_unit_integrity_check() {
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let ssi_wallet_provider_service = SSIWalletProviderService {
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         wallet_unit_repository: Arc::new(wallet_unit_repository),
         identifier_repository: Arc::new(identifier_repository),
         history_repository: Arc::new(history_repository),
@@ -285,12 +279,11 @@ async fn test_register_wallet_unit_integrity_check() {
         ..mock_ssi_wallet_service()
     };
 
-    let (proof, holder_jwk) = create_proof().await;
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: "PROCIVIS_ONE".to_string(),
         os: WalletUnitOs::Android,
-        public_key: holder_jwk.public_key_as_jwk().unwrap().into(),
-        proof,
+        public_key: None,
+        proof: None,
     };
 
     // when

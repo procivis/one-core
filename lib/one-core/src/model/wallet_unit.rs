@@ -82,4 +82,5 @@ pub type GetWalletUnitList = GetListResponse<WalletUnit>;
 pub struct UpdateWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<OffsetDateTime>,
+    pub public_key: Option<String>,
 }

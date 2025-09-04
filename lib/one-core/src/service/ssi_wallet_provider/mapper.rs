@@ -12,11 +12,13 @@ use crate::service::ssi_wallet_provider::dto::RegisterWalletUnitRequestDTO;
 pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,
     config: &Fields<WalletProviderType>,
-    public_key: &PublicKeyJwk,
+    public_key: Option<&PublicKeyJwk>,
     now: OffsetDateTime,
     nonce: Option<String>,
 ) -> Result<WalletUnit, ServiceError> {
-    let encoded_public_key = serde_json::to_string(public_key)
+    let encoded_public_key = public_key
+        .map(serde_json::to_string)
+        .transpose()
         .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
 
     let (status, last_issuance) = match &nonce {
@@ -33,7 +35,7 @@ pub(crate) fn wallet_unit_from_request(
         status,
         wallet_provider_name: request.wallet_provider,
         wallet_provider_type: config.r#type.into(),
-        public_key: Some(encoded_public_key),
+        public_key: encoded_public_key,
         nonce,
     })
 }
