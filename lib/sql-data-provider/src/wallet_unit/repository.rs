@@ -6,7 +6,7 @@ use one_core::model::wallet_unit::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use one_dto_mapper::convert_inner;
-use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, Set, Unchanged};
+use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder, Set, Unchanged};
 use shared_types::WalletUnitId;
 use time::OffsetDateTime;
 
@@ -51,6 +51,13 @@ impl WalletUnitRepository for WalletUnitProvider {
         let mut query = wallet_unit::Entity::find();
 
         query = query.with_list_query(&query_params);
+
+        if query_params.sorting.is_some() || query_params.pagination.is_some() {
+            // fallback ordering
+            query = query
+                .order_by_desc(wallet_unit::Column::CreatedDate)
+                .order_by_desc(wallet_unit::Column::Id);
+        }
 
         let wallet_units = query.all(&self.db).await.map_err(to_data_layer_error)?;
 
