@@ -16,8 +16,8 @@ import kotlin.coroutines.suspendCoroutine
 
 
 class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : NfcScanner {
-    private object Companion {
-        const val TAG = "NFCScanner"
+    companion object {
+        private const val TAG = "NFCScanner"
     }
 
     private val mNfcAdapter = NfcAdapter.getDefaultAdapter(context)
@@ -79,13 +79,14 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
                         mNfcAdapter.disableReaderMode(activity)
                     }
                 }
-            }, NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A, null
+            },
+            NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B,
+            null
         )
     }
 
-
     private fun onTagDiscovered(tag: Tag) {
-        Log.d(Companion.TAG, "Tag discovered: $tag")
+        Log.d(TAG, "Tag discovered: $tag")
         val tech = IsoDep.get(tag)
 
         if (tech == null) {
@@ -115,7 +116,7 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
                     mTech?.close()
                     mTech = null
                 } catch (e: Throwable) {
-                    Log.wtf(Companion.TAG, "Closing tech failed: $e")
+                    Log.wtf(TAG, "Closing tech failed: $e")
                 }
             }
         }
