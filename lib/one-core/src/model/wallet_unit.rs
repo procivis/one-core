@@ -15,13 +15,22 @@ pub struct WalletUnit {
     pub name: String,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub os: String,
+    pub os: WalletUnitOs,
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub public_key: String,
+    pub public_key: Option<String>,
     pub last_issuance: Option<OffsetDateTime>,
     pub nonce: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(ascii_case_insensitive, serialize_all = "UPPERCASE")]
+pub enum WalletUnitOs {
+    Ios,
+    Android,
+    Web,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -58,7 +67,7 @@ pub enum WalletUnitFilterValue {
     Ids(Vec<WalletUnitId>),
     Status(Vec<WalletUnitStatus>),
     WalletProviderType(Vec<String>),
-    Os(Vec<String>),
+    Os(Vec<WalletUnitOs>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
 }

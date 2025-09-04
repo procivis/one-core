@@ -41,7 +41,12 @@ impl IntoFilterCondition for WalletUnitFilterValue {
                 .is_in(types.iter())
                 .into_condition(),
             Self::Os(os_values) => wallet_unit::Column::Os
-                .is_in(os_values.iter())
+                .is_in(
+                    os_values
+                        .into_iter()
+                        .map(wallet_unit::WalletUnitOs::from)
+                        .collect::<Vec<_>>(),
+                )
                 .into_condition(),
             Self::CreatedDate(comparison) => {
                 get_comparison_condition(wallet_unit::Column::CreatedDate, comparison)

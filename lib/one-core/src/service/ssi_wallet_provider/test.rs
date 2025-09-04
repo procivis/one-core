@@ -17,7 +17,7 @@ use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
 use crate::model::history::HistoryMetadata;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnit};
+use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs};
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -186,7 +186,7 @@ async fn test_register_wallet_unit() {
     let (proof, holder_jwk) = create_proof().await;
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: "PROCIVIS_ONE".to_string(),
-        os: "ANDROID".to_string(),
+        os: WalletUnitOs::Android,
         public_key: holder_jwk.public_key_as_jwk().unwrap().into(),
         proof,
     };
@@ -288,7 +288,7 @@ async fn test_register_wallet_unit_integrity_check() {
     let (proof, holder_jwk) = create_proof().await;
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: "PROCIVIS_ONE".to_string(),
-        os: "ANDROID".to_string(),
+        os: WalletUnitOs::Android,
         public_key: holder_jwk.public_key_as_jwk().unwrap().into(),
         proof,
     };
@@ -403,11 +403,11 @@ async fn test_refresh_wallet_unit_success() {
                     name: "PROCIVIS_ONE-ANDROID-123".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
-                    os: "ANDROID".to_string(),
+                    os: WalletUnitOs::Android,
                     status: crate::model::wallet_unit::WalletUnitStatus::Active,
                     wallet_provider_name: "PROCIVIS_ONE".to_string(),
                     wallet_provider_type: WalletProviderType::ProcivisOne,
-                    public_key: holder_public_key_str,
+                    public_key: Some(holder_public_key_str),
                     // ensure refresh window has passed
                     last_issuance: Some(now.sub(Duration::minutes(120))),
                     nonce: None,

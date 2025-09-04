@@ -5,7 +5,7 @@ use crate::datatype::ColumnDefExt;
 #[derive(DeriveMigrationName)]
 pub struct Migration;
 
-const UNIQUE_WALLET_UNIT_PUBLIC_KEY_INDEX: &str = "index-WalletUnit-PublicKey-Unique";
+pub const UNIQUE_WALLET_UNIT_PUBLIC_KEY_INDEX: &str = "index-WalletUnit-PublicKey-Unique";
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {

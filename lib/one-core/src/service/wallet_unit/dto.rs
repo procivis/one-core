@@ -3,7 +3,9 @@ use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId}
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitStatus};
+pub use crate::model::wallet_unit::{
+    WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus,
+};
 
 #[derive(From)]
 #[from(WalletUnit)]
@@ -13,11 +15,11 @@ pub struct GetWalletUnitResponseDTO {
     pub last_modified: OffsetDateTime,
     pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
-    pub os: String,
+    pub os: WalletUnitOs,
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub public_key: String,
+    pub public_key: Option<String>,
 }
 
 pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;

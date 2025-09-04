@@ -49,6 +49,7 @@ use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRes
 use crate::endpoint::trust_entity::dto::{
     TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
 };
+use crate::endpoint::wallet_unit::dto::WalletUnitOsRestEnum;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
@@ -494,7 +495,7 @@ pub(crate) struct SSIPostTrustEntityRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub wallet_provider: String,
-    pub os: String,
+    pub os: WalletUnitOsRestEnum,
     pub public_key: PublicKeyJwkRestDTO,
     pub proof: String,
 }

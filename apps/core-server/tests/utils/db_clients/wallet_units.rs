@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use one_core::model::key::PublicKeyJwk;
 use one_core::model::wallet_unit::{
-    GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitRelations,
-    WalletUnitStatus,
+    GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs,
+    WalletUnitRelations, WalletUnitStatus,
 };
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -40,12 +40,14 @@ impl WalletUnitsDB {
             name: test_wallet_unit.name.unwrap_or("test_wallet".to_string()),
             created_date: six_hours_ago,
             last_modified: test_wallet_unit.last_modified.unwrap_or(six_hours_ago),
-            os: "ANDROID".to_string(),
+            os: WalletUnitOs::Android,
             status: test_wallet_unit.status.unwrap_or(WalletUnitStatus::Active),
             wallet_provider_type: WalletProviderType::ProcivisOne,
             wallet_provider_name: "PROCIVIS_ONE".to_string(),
-            public_key: serde_json::to_string(&test_wallet_unit.public_key.unwrap_or(random_jwk()))
-                .unwrap(),
+            public_key: Some(
+                serde_json::to_string(&test_wallet_unit.public_key.unwrap_or(random_jwk()))
+                    .unwrap(),
+            ),
             last_issuance: test_wallet_unit
                 .last_issuance
                 .unwrap_or(Some(six_hours_ago)),

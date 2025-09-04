@@ -19,7 +19,9 @@ impl From<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletUnit
             .status
             .map(|status| WalletUnitFilterValue::Status(convert_inner(status)));
 
-        let os = value.os.map(WalletUnitFilterValue::Os);
+        let os = value
+            .os
+            .map(|os_values| WalletUnitFilterValue::Os(convert_inner(os_values)));
 
         let wallet_provider_type = value
             .wallet_provider_type

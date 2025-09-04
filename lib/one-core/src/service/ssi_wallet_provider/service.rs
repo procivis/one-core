@@ -20,7 +20,7 @@ use crate::model::history::{
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::wallet_unit::{
-    UpdateWalletUnitRequest, WalletUnit, WalletUnitRelations, WalletUnitStatus,
+    UpdateWalletUnitRequest, WalletUnit, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
 };
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -63,7 +63,7 @@ impl SSIWalletProviderService {
 
         self.verify_proof(&proof, &public_key, LEEWAY).await?;
 
-        if config_params.integrity_check.enabled && request.os != "WEB" {
+        if config_params.integrity_check.enabled && request.os != WalletUnitOs::Web {
             self.create_integrity_check_nonce(request, config, public_key_jwk)
                 .await
         } else {
@@ -246,8 +246,8 @@ impl SSIWalletProviderService {
             return Err(error.into());
         };
 
-        let attested_public_key = match wallet_unit.os.as_str() {
-            "IOS" => {
+        let attested_public_key = match wallet_unit.os {
+            WalletUnitOs::Ios => {
                 let Some(attestation) = request.attestation.first() else {
                     return Err(WalletProviderError::AppIntegrityValidationError(
                         "Missing attestation".to_string(),
@@ -268,7 +268,7 @@ impl SSIWalletProviderService {
                 )
                 .await?
             }
-            "ANDROID" => {
+            WalletUnitOs::Android => {
                 if request.attestation.is_empty() {
                     return Err(WalletProviderError::AppIntegrityValidationError(
                         "Missing attestation".to_string(),
@@ -289,18 +289,15 @@ impl SSIWalletProviderService {
                 )
                 .await?
             }
-            os => {
-                let error = WalletProviderError::AppIntegrityValidationError(format!(
-                    "Unknown wallet unit os: {os}"
-                ));
+            WalletUnitOs::Web => {
+                let error = WalletProviderError::AppIntegrityValidationError(
+                    "Cannot integrity check wallet unit with os 'WEB'".to_string(),
+                );
                 self.set_wallet_unit_to_error(
                     &wallet_unit,
                     HistoryErrorMetadata {
                         error_code: error.error_code(),
-                        message: format!(
-                            "Failed to activate wallet unit {}: nonce expired",
-                            wallet_unit.id
-                        ),
+                        message: error.to_string(),
                     },
                 )
                 .await?;

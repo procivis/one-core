@@ -33,7 +33,7 @@ pub(crate) fn wallet_unit_from_request(
         status,
         wallet_provider_name: request.wallet_provider,
         wallet_provider_type: config.r#type.into(),
-        public_key: encoded_public_key,
+        public_key: Some(encoded_public_key),
         nonce,
     })
 }
@@ -50,8 +50,13 @@ pub(crate) fn public_key_from_wallet_unit(
     wallet_unit: &WalletUnit,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<KeyHandle, ServiceError> {
-    let decoded_public_key = serde_json::from_str::<PublicKeyJwk>(&wallet_unit.public_key)
-        .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
+    let decoded_public_key = serde_json::from_str::<PublicKeyJwk>(
+        wallet_unit
+            .public_key
+            .as_ref()
+            .ok_or(ServiceError::MappingError("Missing public key".to_string()))?,
+    )
+    .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
     let ParsedKey { key, .. } = key_algorithm_provider.parse_jwk(&decoded_public_key)?;
     Ok(key)
 }

@@ -1,5 +1,5 @@
 use one_core::model::wallet_unit::{
-    SortableWalletUnitColumn, WalletProviderType, WalletUnitStatus,
+    SortableWalletUnitColumn, WalletProviderType, WalletUnitOs, WalletUnitStatus,
 };
 use one_core::service::wallet_unit::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
@@ -45,11 +45,21 @@ pub(crate) struct WalletUnitResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
-    pub os: String,
+    pub os: WalletUnitOsRestEnum,
     pub status: WalletUnitStatusRestEnum,
     pub wallet_provider_type: WalletProviderTypeRestEnum,
     pub wallet_provider_name: String,
-    pub public_key: String,
+    pub public_key: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(WalletUnitOs)]
+#[into(WalletUnitOs)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum WalletUnitOsRestEnum {
+    Ios,
+    Android,
+    Web,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
@@ -85,7 +95,7 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
     pub status: Option<Vec<WalletUnitStatusRestEnum>>,
     /// Return only wallet units with the specified OS.
     #[param(rename = "os[]", inline, nullable = false)]
-    pub os: Option<Vec<String>>,
+    pub os: Option<Vec<WalletUnitOsRestEnum>>,
     /// Return only wallet units with the specified wallet provider type.
     #[param(rename = "walletProviderType[]", inline, nullable = false)]
     pub wallet_provider_type: Option<Vec<String>>,

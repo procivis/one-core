@@ -4,7 +4,7 @@ use one_core::model::list_filter::{
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, WalletProviderType, WalletUnitFilterValue, WalletUnitListQuery,
-    WalletUnitStatus,
+    WalletUnitOs, WalletUnitStatus,
 };
 use one_core::service::wallet_unit::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
@@ -75,7 +75,9 @@ impl OneCoreBinding {
                 )
             });
 
-            let os = query.os.map(WalletUnitFilterValue::Os);
+            let os = query
+                .os
+                .map(|os| WalletUnitFilterValue::Os(os.iter().map(|o| o.clone().into()).collect()));
 
             let created_date_after = query
                 .created_date_after
@@ -209,11 +211,20 @@ pub struct WalletUnitBindingDTO {
     #[from(with_fn = "optional_time")]
     pub last_issuance: Option<String>,
     pub name: String,
-    pub os: String,
+    pub os: WalletUnitOsBindingEnum,
     pub status: WalletUnitStatusBindingEnum,
     pub wallet_provider_type: WalletProviderTypeBindingEnum,
     pub wallet_provider_name: String,
-    pub public_key: String,
+    pub public_key: Option<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Enum, Into, From)]
+#[into(WalletUnitOs)]
+#[from(WalletUnitOs)]
+pub enum WalletUnitOsBindingEnum {
+    Android,
+    Web,
+    Ios,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]
@@ -246,7 +257,7 @@ pub struct WalletUnitListQueryBindingDTO {
     pub ids: Option<Vec<String>>,
     pub status: Option<Vec<WalletUnitStatusBindingEnum>>,
     pub wallet_provider_type: Option<Vec<WalletProviderTypeBindingEnum>>,
-    pub os: Option<Vec<String>>,
+    pub os: Option<Vec<WalletUnitOsBindingEnum>>,
     pub created_date_after: Option<String>,
     pub created_date_before: Option<String>,
     pub last_modified_after: Option<String>,

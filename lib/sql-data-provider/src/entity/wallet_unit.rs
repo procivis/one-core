@@ -16,11 +16,11 @@ pub struct Model {
     pub last_modified: OffsetDateTime,
     pub last_issuance: Option<OffsetDateTime>,
     pub name: String,
-    pub os: String,
+    pub os: WalletUnitOs,
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub public_key: String,
+    pub public_key: Option<String>,
     pub nonce: Option<String>,
 }
 
@@ -28,6 +28,19 @@ pub struct Model {
 pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize)]
+#[from(one_core::model::wallet_unit::WalletUnitOs)]
+#[into(one_core::model::wallet_unit::WalletUnitOs)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum WalletUnitOs {
+    #[sea_orm(string_value = "IOS")]
+    Ios,
+    #[sea_orm(string_value = "ANDROID")]
+    Android,
+    #[sea_orm(string_value = "WEB")]
+    Web,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize)]
 #[from(one_core::model::wallet_unit::WalletUnitStatus)]
@@ -61,7 +74,7 @@ impl From<WalletUnit> for ActiveModel {
             last_modified: Set(wallet_unit.last_modified),
             last_issuance: Set(wallet_unit.last_issuance),
             name: Set(wallet_unit.name),
-            os: Set(wallet_unit.os),
+            os: Set(wallet_unit.os.into()),
             status: Set(wallet_unit.status.into()),
             wallet_provider_type: Set(wallet_unit.wallet_provider_type.into()),
             wallet_provider_name: Set(wallet_unit.wallet_provider_name),

@@ -2,7 +2,8 @@ use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, UpdateWalletUnitRequest, WalletProviderType, WalletUnit,
-    WalletUnitFilterValue, WalletUnitListQuery, WalletUnitRelations, WalletUnitStatus,
+    WalletUnitFilterValue, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
+    WalletUnitStatus,
 };
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use sea_orm::{ActiveModelTrait, Set};
@@ -66,11 +67,11 @@ async fn insert_wallet_unit_to_database(
         last_modified: Set(now),
         last_issuance: Set(Some(now)),
         name: Set(name.unwrap_or("test_wallet").to_string()),
-        os: Set("ANDROID".to_string()),
+        os: Set(wallet_unit::WalletUnitOs::Android),
         status: Set(wallet_unit::WalletUnitStatus::Active),
         wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
         wallet_provider_name: Set("Test Provider Name".to_string()),
-        public_key: Set(format!("test_public_key_{unique_suffix}")),
+        public_key: Set(Some(format!("test_public_key_{unique_suffix}"))),
         nonce: Set(None),
     }
     .insert(db)
@@ -88,11 +89,11 @@ fn dummy_wallet_unit(id: WalletUnitId) -> WalletUnit {
         last_modified: now,
         last_issuance: Some(now),
         name: "test_wallet".to_string(),
-        os: "ANDROID".to_string(),
+        os: WalletUnitOs::Android,
         status: WalletUnitStatus::Active,
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "Test Provider Name".to_string(),
-        public_key: format!("test_public_key_{id}"),
+        public_key: Some(format!("test_public_key_{id}")),
         nonce: None,
     }
 }
@@ -148,7 +149,7 @@ async fn test_create_wallet_unit_duplicate_id() {
 
     // Try to create second wallet unit with same ID - should fail
     let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id);
-    wallet_unit2.public_key = format!("different_key_{wallet_unit_id}");
+    wallet_unit2.public_key = Some(format!("different_key_{wallet_unit_id}"));
 
     let result2 = provider.create_wallet_unit(wallet_unit2).await;
     assert!(result2.is_err());
@@ -221,7 +222,7 @@ async fn test_create_wallet_unit_different_os_types() {
     // Test creating with ANDROID OS
     let android_id: WalletUnitId = Uuid::new_v4().into();
     let mut android_wallet_unit = dummy_wallet_unit(android_id);
-    android_wallet_unit.os = "ANDROID".to_string();
+    android_wallet_unit.os = WalletUnitOs::Android;
 
     let result_android = provider.create_wallet_unit(android_wallet_unit).await;
     assert!(result_android.is_ok());
@@ -229,7 +230,7 @@ async fn test_create_wallet_unit_different_os_types() {
     // Test creating with iOS OS
     let ios_id: WalletUnitId = Uuid::new_v4().into();
     let mut ios_wallet_unit = dummy_wallet_unit(ios_id);
-    ios_wallet_unit.os = "IOS".to_string();
+    ios_wallet_unit.os = WalletUnitOs::Ios;
 
     let result_ios = provider.create_wallet_unit(ios_wallet_unit).await;
     assert!(result_ios.is_ok());
@@ -240,14 +241,14 @@ async fn test_create_wallet_unit_different_os_types() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(android_stored.os, "ANDROID");
+    assert_eq!(android_stored.os, WalletUnitOs::Android);
 
     let ios_stored = provider
         .get_wallet_unit(&ios_id, &WalletUnitRelations::default())
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(ios_stored.os, "IOS");
+    assert_eq!(ios_stored.os, WalletUnitOs::Ios);
 }
 
 #[tokio::test]
@@ -311,14 +312,19 @@ async fn test_get_wallet_unit_success() {
     let wallet_unit = wallet_unit.unwrap();
     assert_eq!(wallet_unit.id, wallet_unit_id);
     assert_eq!(wallet_unit.name, "test_wallet");
-    assert_eq!(wallet_unit.os, "ANDROID");
+    assert_eq!(wallet_unit.os, WalletUnitOs::Android);
     assert_eq!(wallet_unit.status, WalletUnitStatus::Active);
     assert_eq!(
         wallet_unit.wallet_provider_type,
         WalletProviderType::ProcivisOne
     );
     assert_eq!(wallet_unit.wallet_provider_name, "Test Provider Name");
-    assert!(wallet_unit.public_key.starts_with("test_public_key_"));
+    assert!(
+        wallet_unit
+            .public_key
+            .unwrap()
+            .starts_with("test_public_key_")
+    );
 }
 
 #[tokio::test]
@@ -548,7 +554,7 @@ async fn test_get_wallet_unit_list_with_os_filter() {
             page_size: 10,
         }),
         sorting: None,
-        filtering: Some(WalletUnitFilterValue::Os(vec!["ANDROID".to_string()]).condition()),
+        filtering: Some(WalletUnitFilterValue::Os(vec![WalletUnitOs::Android]).condition()),
         include: None,
     };
 
@@ -559,7 +565,7 @@ async fn test_get_wallet_unit_list_with_os_filter() {
     assert_eq!(data.total_pages, 1);
     assert_eq!(data.total_items, 3);
     assert_eq!(data.values.len(), 3);
-    assert!(data.values.iter().all(|wu| wu.os == "ANDROID"));
+    assert!(data.values.iter().all(|wu| wu.os == WalletUnitOs::Android));
 }
 
 #[tokio::test]
@@ -599,7 +605,7 @@ async fn test_update_wallet_unit_status_success() {
     let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
     wallet_unit.status = WalletUnitStatus::Active;
     let original_name = wallet_unit.name.clone();
-    let original_os = wallet_unit.os.clone();
+    let original_os = wallet_unit.os;
     let original_provider_type = wallet_unit.wallet_provider_type.clone();
     let original_provider_name = wallet_unit.wallet_provider_name.clone();
     let original_public_key = wallet_unit.public_key.clone();
@@ -973,13 +979,13 @@ async fn test_sort_by_os_ascending() {
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
     let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
     wallet_unit1.name = "ios_wallet".to_string();
-    wallet_unit1.os = "IOS".to_string();
+    wallet_unit1.os = WalletUnitOs::Ios;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
     let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
     wallet_unit2.name = "android_wallet".to_string();
-    wallet_unit2.os = "ANDROID".to_string();
+    wallet_unit2.os = WalletUnitOs::Android;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
 
     let query = WalletUnitListQuery {
@@ -999,8 +1005,8 @@ async fn test_sort_by_os_ascending() {
 
     assert_eq!(result.total_items, 2);
     // ANDROID should come before IOS alphabetically
-    assert_eq!(result.values[0].os, "ANDROID");
-    assert_eq!(result.values[1].os, "IOS");
+    assert_eq!(result.values[0].os, WalletUnitOs::Android);
+    assert_eq!(result.values[1].os, WalletUnitOs::Ios);
 }
 
 #[tokio::test]
@@ -1012,13 +1018,13 @@ async fn test_sort_by_os_descending() {
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
     let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
     wallet_unit1.name = "ios_wallet".to_string();
-    wallet_unit1.os = "IOS".to_string();
+    wallet_unit1.os = WalletUnitOs::Ios;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
     let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
     wallet_unit2.name = "android_wallet".to_string();
-    wallet_unit2.os = "ANDROID".to_string();
+    wallet_unit2.os = WalletUnitOs::Android;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
 
     let query = WalletUnitListQuery {
@@ -1038,8 +1044,8 @@ async fn test_sort_by_os_descending() {
 
     assert_eq!(result.total_items, 2);
     // IOS should come before ANDROID in descending order
-    assert_eq!(result.values[0].os, "IOS");
-    assert_eq!(result.values[1].os, "ANDROID");
+    assert_eq!(result.values[0].os, WalletUnitOs::Ios);
+    assert_eq!(result.values[1].os, WalletUnitOs::Android);
 }
 
 #[tokio::test]

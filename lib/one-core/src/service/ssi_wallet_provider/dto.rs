@@ -1,12 +1,13 @@
 use serde::Deserialize;
 use shared_types::{IdentifierId, WalletUnitId};
 
+use crate::model::wallet_unit::WalletUnitOs;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitRequestDTO {
     pub wallet_provider: String,
-    pub os: String,
+    pub os: WalletUnitOs,
     pub public_key: PublicKeyJwkDTO,
     pub proof: String,
 }
