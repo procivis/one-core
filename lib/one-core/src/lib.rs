@@ -51,6 +51,8 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::issuance_protocol_providers_from_config;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::nfc::hce::NfcHce;
+use crate::provider::nfc::scanner::NfcScanner;
 use crate::provider::os_provider::OSInfoProviderImpl;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -188,6 +190,8 @@ pub struct OneCoreBuilder {
     providers: OneCoreBuilderProviders,
     ble_peripheral: Option<Arc<dyn BlePeripheral>>,
     ble_central: Option<Arc<dyn BleCentral>>,
+    nfc_hce: Option<Arc<dyn NfcHce>>,
+    nfc_scanner: Option<Arc<dyn NfcScanner>>,
     mqtt_client: Option<Arc<dyn MqttClient>>,
     data_provider_creator: Option<DataProviderCreator>,
     jsonld_caching_loader: Option<JsonLdCachingLoader>,
@@ -316,6 +320,16 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_nfc(
+        mut self,
+        hce: Option<Arc<dyn NfcHce>>,
+        scanner: Option<Arc<dyn NfcScanner>>,
+    ) -> Self {
+        self.nfc_hce = hce;
+        self.nfc_scanner = scanner;
+        self
+    }
+
     pub fn with_jsonld_caching_loader(mut self, loader: JsonLdCachingLoader) -> Self {
         self.jsonld_caching_loader = Some(loader);
         self
@@ -350,6 +364,8 @@ impl OneCoreBuilder {
             self.core_config,
             self.ble_peripheral,
             self.ble_central,
+            self.nfc_hce,
+            self.nfc_scanner,
             self.mqtt_client,
             self.providers,
             self.jsonld_caching_loader,
@@ -373,6 +389,8 @@ impl OneCore {
         mut core_config: CoreConfig,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
+        _nfc_hce: Option<Arc<dyn NfcHce>>,
+        _nfc_scanner: Option<Arc<dyn NfcScanner>>,
         mqtt_client: Option<Arc<dyn MqttClient>>,
         providers: OneCoreBuilderProviders,
         jsonld_caching_loader: Option<JsonLdCachingLoader>,

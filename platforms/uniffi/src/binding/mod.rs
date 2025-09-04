@@ -24,6 +24,7 @@ pub mod key;
 pub mod key_storage;
 mod mapper;
 pub mod nfc;
+pub mod nfc_scan;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;

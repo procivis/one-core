@@ -182,7 +182,9 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for BleError {
     }
 }
 
-#[derive(Debug, Clone, Error, uniffi::Error)]
+#[derive(Debug, Clone, From, Into, Error, uniffi::Error)]
+#[from(one_core::provider::nfc::NfcError)]
+#[into(one_core::provider::nfc::NfcError)]
 pub enum NfcError {
     #[error("NFC Adapter not enabled")]
     NotEnabled,

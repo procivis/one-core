@@ -92,8 +92,8 @@ use tracing::warn;
 use crate::binding::OneCoreBinding;
 use crate::binding::ble::{BleCentral, BleCentralWrapper, BlePeripheral, BlePeripheralWrapper};
 use crate::binding::key_storage::{NativeKeyStorage, NativeKeyStorageWrapper};
-use crate::binding::nfc::hce::NfcHce;
-use crate::binding::nfc::scanner::NfcScanner;
+use crate::binding::nfc::hce::{NfcHce, NfcHceWrapper};
+use crate::binding::nfc::scanner::{NfcScanner, NfcScannerWrapper};
 use crate::did_config::{DidUniversalParams, DidWebParams};
 use crate::error::{BindingError, SDKError};
 
@@ -170,6 +170,11 @@ async fn initialize(
         .ble_peripheral
         .map(|peripheral| Arc::new(BlePeripheralWrapper(peripheral)) as _);
 
+    let nfc_hce = params.nfc_hce.map(|hce| Arc::new(NfcHceWrapper(hce)) as _);
+    let nfc_scanner = params
+        .nfc_scanner
+        .map(|hce| Arc::new(NfcScannerWrapper(hce)) as _);
+
     let cfg = build_config(params.config_json.as_deref().unwrap_or("{}"))?;
 
     #[cfg(any(target_os = "android", target_os = "ios"))]
@@ -225,6 +230,8 @@ async fn initialize(
         let remote_secure_element = remote_secure_element.clone();
         let ble_peripheral = ble_peripheral.clone();
         let ble_central = ble_central.clone();
+        let nfc_hce = nfc_hce.clone();
+        let nfc_scanner = nfc_scanner.clone();
 
         Box::pin(async move {
             let db_url = format!("sqlite:{db_path}?mode=rwc");
@@ -820,6 +827,7 @@ async fn initialize(
                 .and_then(|b| b.with_formatter_provider(formatter_provider_creator))
                 .and_then(|b| b.with_revocation_method_provider(revocation_method_creator))
                 .map(|b| b.with_ble(ble_peripheral, ble_central))
+                .map(|b| b.with_nfc(nfc_hce, nfc_scanner))
                 .map(|b| b.with_mqtt_client(Arc::new(RumqttcClient::default())))
                 .map(|b| b.with_vct_type_metadata_cache(vct_type_metadata_cache))
                 .map(|b| b.with_json_schema_cache(json_schema_cache))
