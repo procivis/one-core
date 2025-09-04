@@ -92,6 +92,7 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
+#[serde(rename_all = "camelCase")]
 #[from(SortableWalletUnitColumn)]
 #[into(SortableWalletUnitColumn)]
 pub(crate) enum SortableWalletUnitColumnRest {
