@@ -391,7 +391,7 @@ impl OneCore {
         mut core_config: CoreConfig,
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
-        _nfc_hce: Option<Arc<dyn NfcHce>>,
+        nfc_hce: Option<Arc<dyn NfcHce>>,
         nfc_scanner: Option<Arc<dyn NfcScanner>>,
         mqtt_client: Option<Arc<dyn MqttClient>>,
         providers: OneCoreBuilderProviders,
@@ -776,6 +776,7 @@ impl OneCore {
                 certificate_validator.clone(),
                 data_provider.get_key_repository().clone(),
                 blob_storage_provider.clone(),
+                nfc_hce,
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),

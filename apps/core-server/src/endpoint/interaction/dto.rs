@@ -210,6 +210,7 @@ pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
 pub(crate) struct ProposeProofRequestRestDTO {
     pub protocol: String,
     pub organisation_id: OrganisationId,
+    pub engagement: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -218,7 +219,7 @@ pub(crate) struct ProposeProofRequestRestDTO {
 pub(crate) struct ProposeProofResponseRestDTO {
     pub proof_id: ProofId,
     pub interaction_id: Uuid,
-    pub url: String,
+    pub url: Option<String>,
 }
 
 #[options_not_nullable]

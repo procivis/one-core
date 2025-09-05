@@ -5,6 +5,7 @@ use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
@@ -58,6 +59,7 @@ pub struct ProofService {
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    nfc_hce_provider: Option<Arc<dyn NfcHce>>,
 }
 
 impl ProofService {
@@ -87,6 +89,7 @@ impl ProofService {
         certificate_validator: Arc<dyn CertificateValidator>,
         key_repository: Arc<dyn KeyRepository>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
+        nfc_hce_provider: Option<Arc<dyn NfcHce>>,
     ) -> Self {
         Self {
             proof_repository,
@@ -113,10 +116,12 @@ impl ProofService {
             validity_credential_repository,
             certificate_validator,
             blob_storage_provider,
+            nfc_hce_provider,
         }
     }
 }
 
+mod nfc;
 #[cfg(test)]
 mod test;
 mod validator;

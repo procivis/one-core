@@ -105,11 +105,12 @@ impl OneCoreBinding {
         &self,
         exchange: String,
         organisation_id: String,
+        engagement: Vec<String>,
     ) -> Result<ProposeProofResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .proof_service
-            .propose_proof(exchange, into_id(&organisation_id)?)
+            .propose_proof(exchange, into_id(&organisation_id)?, engagement)
             .await?
             .into())
     }
@@ -338,7 +339,7 @@ pub struct ProposeProofResponseBindingDTO {
     pub proof_id: String,
     #[from(with_fn_ref = "ToString::to_string")]
     pub interaction_id: String,
-    pub url: String,
+    pub url: Option<String>,
 }
 
 #[derive(Into, uniffi::Record)]

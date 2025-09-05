@@ -139,7 +139,7 @@ pub type GetProofQueryDTO = ListQuery<SortableProofColumn, ProofFilterValue>;
 pub struct ProposeProofResponseDTO {
     pub proof_id: ProofId,
     pub interaction_id: InteractionId,
-    pub url: String,
+    pub url: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

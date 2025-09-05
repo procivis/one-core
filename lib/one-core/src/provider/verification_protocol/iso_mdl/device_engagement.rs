@@ -52,48 +52,40 @@ pub(crate) struct BleOptions {
     pub peripheral_server_mac_address: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct GeneratedQRCode {
-    pub qr_code_content: String,
-    pub device_engagement: EmbeddedCbor<DeviceEngagement>,
-}
+const QR_CODE_PREFIX: &str = "mdoc:";
 
 impl DeviceEngagement {
-    const QR_CODE_PREFIX: &'static str = "mdoc:";
-
-    pub(crate) fn generate_qr_code(self) -> anyhow::Result<GeneratedQRCode> {
-        let device_engagement = EmbeddedCbor::new(self)?;
-
-        let ciborium::tag::Required::<_, 24>(Bstr(embedded_cbor)) =
-            ciborium::from_reader(device_engagement.bytes())?;
-
-        let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&embedded_cbor)
-            .map(|content| format!("{}{content}", Self::QR_CODE_PREFIX))
-            .context("QR code base64 encoding")?;
-
-        Ok(GeneratedQRCode {
-            qr_code_content,
-            device_engagement,
-        })
+    pub(crate) fn into_cbor(self) -> anyhow::Result<EmbeddedCbor<Self>> {
+        EmbeddedCbor::new(self).map_err(Into::into)
     }
 
     pub(crate) fn parse_qr_code(
         qr_code_content: &str,
     ) -> anyhow::Result<EmbeddedCbor<DeviceEngagement>> {
-        if !qr_code_content.starts_with(Self::QR_CODE_PREFIX) {
+        if !qr_code_content.starts_with(QR_CODE_PREFIX) {
             return Err(anyhow!("Invalid mdoc QR: {qr_code_content}"));
         }
 
-        let data = Base64UrlSafeNoPadding::decode_to_vec(
-            &qr_code_content[Self::QR_CODE_PREFIX.len()..],
-            None,
-        )?;
+        let data =
+            Base64UrlSafeNoPadding::decode_to_vec(&qr_code_content[QR_CODE_PREFIX.len()..], None)?;
 
         let tagged_value = ciborium::tag::Required::<_, 24>(Bstr(data));
         let mut bytes: Vec<u8> = vec![];
         ciborium::into_writer(&tagged_value, &mut bytes)?;
 
         Ok(ciborium::from_reader(bytes.as_slice())?)
+    }
+}
+
+impl EmbeddedCbor<DeviceEngagement> {
+    pub(crate) fn generate_qr_code(&self) -> anyhow::Result<String> {
+        let ciborium::tag::Required::<_, 24>(Bstr(embedded_cbor)) =
+            ciborium::from_reader(self.bytes())?;
+
+        let qr_code_content = Base64UrlSafeNoPadding::encode_to_string(&embedded_cbor)
+            .map(|content| format!("{QR_CODE_PREFIX}{content}"))
+            .context("QR code base64 encoding")?;
+        Ok(qr_code_content)
     }
 }
 
@@ -383,15 +375,13 @@ mod test {
     fn test_device_engagement_qr_code() {
         let engagement = get_example_engagement();
 
-        let generated = engagement.clone().generate_qr_code().unwrap();
-        let parsed = DeviceEngagement::parse_qr_code(&generated.qr_code_content).unwrap();
+        let cbor_device_engagement = engagement.clone().into_cbor().unwrap();
+        let qr_code_content = cbor_device_engagement.generate_qr_code().unwrap();
+        let parsed = DeviceEngagement::parse_qr_code(&qr_code_content).unwrap();
 
         assert_eq!(&engagement, parsed.inner());
-        assert_eq!(generated.device_engagement, parsed);
-        assert_eq!(
-            generated.device_engagement.into_bytes(),
-            parsed.into_bytes()
-        );
+        assert_eq!(cbor_device_engagement, parsed);
+        assert_eq!(cbor_device_engagement.into_bytes(), parsed.into_bytes());
     }
 
     #[test]

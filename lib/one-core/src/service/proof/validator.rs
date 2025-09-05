@@ -253,7 +253,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
     Ok(())
 }
 
-pub(super) fn validate_engagement(
+pub(super) fn validate_verifier_engagement(
     iso_mdl_engagement: Option<&str>,
     engagement: Option<&str>,
     config: &VerificationEngagementConfig,
@@ -261,18 +261,12 @@ pub(super) fn validate_engagement(
     match (iso_mdl_engagement, engagement) {
         (None, None) => Ok(()),
         (Some(_), Some(engagement)) => {
-            let engagement = VerificationEngagement::from_str(engagement).map_err(|_| {
-                ValidationError::MissingVerificationEngagementConfig(engagement.to_string())
-            })?;
-            let enabled = config
-                .get(&engagement)
-                .ok_or(ValidationError::MissingVerificationEngagementConfig(
-                    engagement.to_string(),
-                ))?
-                .enabled
-                .ok_or(ValidationError::MissingVerificationEngagementConfig(
-                    engagement.to_string(),
-                ))?;
+            let enabled = VerificationEngagement::from_str(engagement)
+                .ok()
+                .and_then(|e| config.get(&e))
+                .map(|e| e.enabled())
+                .unwrap_or(false);
+
             if enabled {
                 Ok(())
             } else {
@@ -285,6 +279,32 @@ pub(super) fn validate_engagement(
         (Some(_), None) => Err(ValidationError::MissingEngagementForISOmDLFlow.into()),
         (None, Some(_)) => Err(ValidationError::EngagementProvidedForNonISOmDLFlow.into()),
     }
+}
+
+pub(super) fn validate_holder_engagements(
+    engagements: &[impl AsRef<str>],
+    config: &VerificationEngagementConfig,
+) -> Result<(), ValidationError> {
+    if engagements.is_empty() {
+        return Err(ValidationError::MissingVerificationEngagementConfig(
+            "-".to_string(),
+        ));
+    }
+
+    for engagement in engagements {
+        let enabled = VerificationEngagement::from_str(engagement.as_ref())
+            .ok()
+            .and_then(|e| config.get(&e))
+            .map(|e| e.enabled())
+            .unwrap_or(false);
+
+        if !enabled {
+            return Err(ValidationError::MissingVerificationEngagementConfig(
+                engagement.as_ref().to_string(),
+            ));
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -311,7 +331,7 @@ mod tests {
         );
 
         // when
-        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+        let result = validate_verifier_engagement(iso_mdl_engagement, engagement, &config);
 
         // then
         assert!(result.is_ok());
@@ -325,7 +345,7 @@ mod tests {
         let config = VerificationEngagementConfig::default();
 
         // when
-        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+        let result = validate_verifier_engagement(iso_mdl_engagement, engagement, &config);
 
         // then
         let_assert!(Err(e) = result);
@@ -350,7 +370,7 @@ mod tests {
         );
 
         // when
-        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+        let result = validate_verifier_engagement(iso_mdl_engagement, engagement, &config);
 
         // then
         let_assert!(Err(e) = result);
@@ -365,7 +385,7 @@ mod tests {
         let config = VerificationEngagementConfig::default();
 
         // when
-        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+        let result = validate_verifier_engagement(iso_mdl_engagement, engagement, &config);
 
         // then
         let_assert!(Err(e) = result);
@@ -391,7 +411,7 @@ mod tests {
         );
 
         // when
-        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+        let result = validate_verifier_engagement(iso_mdl_engagement, engagement, &config);
 
         // then
         let_assert!(Err(e) = result);

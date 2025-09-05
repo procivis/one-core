@@ -14,6 +14,7 @@ use super::common::{
 };
 use super::device_engagement::DeviceEngagement;
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
+use crate::config::core_config::VerificationEngagement;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
@@ -22,6 +23,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
+use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
@@ -103,6 +105,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
 }
 
 /// Waits for verifier connection + reads device request
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
     device_engagement: EmbeddedCbor<DeviceEngagement>,
@@ -111,6 +114,7 @@ pub(crate) async fn receive_mdl_request(
     mut interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
     proof_id: ProofId,
+    nfc: Option<Arc<dyn NfcHce>>,
 ) -> Result<(), ServiceError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
@@ -185,6 +189,20 @@ pub(crate) async fn receive_mdl_request(
                         .map_err(VerificationProtocolError::Other)?,
                     );
 
+                    let engagement = match nfc {
+                        None => VerificationEngagement::QrCode,
+                        Some(nfc_hce) => {
+                            match nfc_hce
+                                .stop_host_data()
+                                .await
+                                .map_err(|e| VerificationProtocolError::Transport(e.into()))?
+                            {
+                                true => VerificationEngagement::NFC,
+                                false => VerificationEngagement::QrCode,
+                            }
+                        }
+                    };
+
                     interaction_repository
                         .update_interaction(interaction.into())
                         .await
@@ -196,6 +214,7 @@ pub(crate) async fn receive_mdl_request(
                             &proof_id,
                             UpdateProofRequest {
                                 state: Some(ProofStateEnum::Requested),
+                                engagement: Some(Some(engagement.to_string())),
                                 ..Default::default()
                             },
                             None,

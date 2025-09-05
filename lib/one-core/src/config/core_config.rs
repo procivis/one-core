@@ -705,6 +705,12 @@ pub struct VerificationEngagementFields {
     pub enabled: Option<bool>,
 }
 
+impl VerificationEngagementFields {
+    pub fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
+}
+
 pub type VerificationEngagementConfig = Dict<VerificationEngagement, VerificationEngagementFields>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

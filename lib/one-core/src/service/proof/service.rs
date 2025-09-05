@@ -16,12 +16,13 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
 use super::validator::{
-    validate_did_and_format_compatibility, validate_engagement, validate_mdl_exchange,
+    validate_did_and_format_compatibility, validate_holder_engagements, validate_mdl_exchange,
     validate_redirect_uri, validate_verification_key_storage_compatibility,
+    validate_verifier_engagement,
 };
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::config::core_config::{TransportType, VerificationEngagement, VerificationProtocolType};
 use crate::config::validator::protocol::{
     validate_identifier, validate_protocol_did_compatibility, validate_protocol_type,
 };
@@ -49,6 +50,7 @@ use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use crate::provider::blob_storage_provider::BlobStorageType;
+use crate::provider::nfc::NfcError;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, ShareResponse,
 };
@@ -67,6 +69,7 @@ use crate::service::credential_schema::validator::validate_wallet_storage_type_s
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::proof::nfc::create_nfc_payload;
 use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
@@ -277,7 +280,7 @@ impl ProofService {
             request.redirect_uri.as_deref(),
             &self.config.verification_protocol,
         )?;
-        validate_engagement(
+        validate_verifier_engagement(
             request.iso_mdl_engagement.as_deref(),
             request.engagement.as_deref(),
             &self.config.verification_engagement,
@@ -699,8 +702,10 @@ impl ProofService {
         &self,
         exchange: String,
         organisation_id: OrganisationId,
+        engagements: Vec<String>,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
         validate_protocol_type(&exchange, &self.config.verification_protocol)?;
+        validate_holder_engagements(&engagements, &self.config.verification_engagement)?;
         let exchange_type = self
             .config
             .verification_protocol
@@ -736,14 +741,44 @@ impl ProofService {
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
                     peripheral_server_uuid: server.service_uuid,
-                    peripheral_server_mac_address: server.mac_address,
+                    peripheral_server_mac_address: server.mac_address.clone(),
                 }),
             }],
         };
 
-        let qr = device_engagement
-            .generate_qr_code()
+        let device_engagement = device_engagement
+            .into_cbor()
             .map_err(|err| ServiceError::Other(err.to_string()))?;
+
+        let qr_code = if engagements.contains(&VerificationEngagement::QrCode.to_string()) {
+            Some(
+                device_engagement
+                    .generate_qr_code()
+                    .map_err(|err| ServiceError::Other(err.to_string()))?,
+            )
+        } else {
+            None
+        };
+
+        let nfc = if engagements.contains(&VerificationEngagement::NFC.to_string()) {
+            let nfc_hce_provider = self
+                .nfc_hce_provider
+                .clone()
+                .ok_or(ServiceError::Other("NFC HCE provider is missing".into()))?;
+
+            let nfc_message = create_nfc_payload(server.clone(), device_engagement.clone())
+                .map_err(|err| {
+                    ServiceError::Other(format!("Failed to create NFC payload: {err}"))
+                })?;
+
+            let bytes_payload = nfc_message.to_buffer().map_err(|err| {
+                ServiceError::Other(format!("Failed to parse NFC payload: {err}"))
+            })?;
+            nfc_hce_provider.start_host_data(bytes_payload).await?;
+            Some(nfc_hce_provider)
+        } else {
+            None
+        };
 
         let interaction_id = Uuid::new_v4();
 
@@ -798,23 +833,33 @@ impl ProofService {
 
         receive_mdl_request(
             ble,
-            qr.device_engagement,
+            device_engagement,
             key_pair,
             self.interaction_repository.clone(),
             interaction,
             self.proof_repository.clone(),
             proof_id,
+            nfc,
         )
         .await?;
 
         Ok(ProposeProofResponseDTO {
             proof_id,
             interaction_id,
-            url: qr.qr_code_content,
+            url: qr_code,
         })
     }
 
     pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ServiceError> {
+        if let Some(nfc_hce_provider) = &self.nfc_hce_provider {
+            if nfc_hce_provider.is_supported().await? && nfc_hce_provider.is_enabled().await? {
+                match nfc_hce_provider.stop_host_data().await {
+                    Ok(_) | Err(NfcError::NotStarted) => {}
+                    Err(err) => tracing::error!("Failed to stop NFC host data: {err}"),
+                }
+            }
+        }
+
         let Some(proof) = self
             .proof_repository
             .get_proof(

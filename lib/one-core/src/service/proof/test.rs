@@ -55,6 +55,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::nfc::hce::{MockNfcHce, NfcHce};
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
@@ -119,6 +120,7 @@ struct Repositories {
     pub certificate_repository: MockCertificateRepository,
     pub key_repository: MockKeyRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub nfc_hce_provider: Option<MockNfcHce>,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -149,6 +151,10 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.certificate_validator),
         Arc::new(repositories.key_repository),
         Arc::new(repositories.blob_storage_provider),
+        repositories.nfc_hce_provider.map(|m| {
+            let m: Arc<dyn NfcHce> = Arc::new(m);
+            m
+        }),
     )
 }
 
