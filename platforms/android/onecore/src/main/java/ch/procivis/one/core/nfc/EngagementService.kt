@@ -80,42 +80,57 @@ class EngagementService : HostApduService() {
             return Constant.HceResponse.A_NOT_AVAILABLE;
         }
 
-        //
-        // First command: NDEF Tag Application select (Section 5.5.2 in NFC Forum spec)
-        //
-        if (commandApdu.contentEquals(Constant.HceCommand.SELECT_APPLICATION)) {
-            Log.d(TAG, "SELECT_APPLICATION triggered.")
-            mSelectedFile = null;
-            return Constant.HceResponse.A_OKAY
+        val command = try {
+            Util.CommandApdu.decode(commandApdu)
+        } catch (e: Throwable) {
+            Log.wtf(TAG, "processCommandApdu() | invalid command: $e")
+            return Constant.HceResponse.A_ERROR
         }
 
-        // Select file (CC or NDEF)
-        if (commandApdu.sliceArray(0..4).contentEquals(Constant.HceCommand.SELECT_FILE)) {
-            val fileID = commandApdu.sliceArray(5..6);
-            if (fileID.contentEquals(Constant.HceFile.CAPABILITY_CONTAINER_ID)) {
-                Log.d(TAG, "SELECT CC triggered.")
-                mSelectedFile = CAPABILITY_CONTAINER;
+        if (command.cla != 0x00) {
+            Log.wtf(TAG, "processCommandApdu() | invalid command CLA: ${command.cla}")
+            return Constant.HceResponse.A_ERROR
+        }
+
+        if (command.ins == Constant.Apdu.INS_SELECT) {
+            // First command: NDEF Tag Application select (Section 5.5.2 in NFC Forum spec)
+            if ((command.p == Constant.Apdu.PARAMS_SELECT_APPLICATION) && command.payload.contentEquals(
+                    Constant.ENGAGEMENT_APPLICATION
+                )
+            ) {
+                Log.d(TAG, "SELECT_APPLICATION triggered.")
+                mSelectedFile = null;
                 return Constant.HceResponse.A_OKAY
             }
 
-            if (fileID.contentEquals(Constant.HceFile.NDEF_FILE_ID)) {
-                Log.d(TAG, "SELECT NDEF triggered.")
-                mSelectedFile = mNDEFFile;
-                mMessageRead = true
-                return Constant.HceResponse.A_OKAY
+            // Select file (CC or NDEF)
+            if (command.p == Constant.Apdu.PARAMS_SELECT_FILE) {
+                if (command.payload.contentEquals(Constant.HceFile.CAPABILITY_CONTAINER_ID)) {
+                    Log.d(TAG, "SELECT CC triggered.")
+                    mSelectedFile = CAPABILITY_CONTAINER;
+                    return Constant.HceResponse.A_OKAY
+                }
+
+                if (command.payload.contentEquals(Constant.HceFile.NDEF_FILE_ID)) {
+                    Log.d(TAG, "SELECT NDEF triggered.")
+                    mSelectedFile = mNDEFFile;
+                    mMessageRead = true
+                    return Constant.HceResponse.A_OKAY
+                }
             }
         }
 
-        // Read file (previously selected)
-        if (commandApdu.sliceArray(0..1).contentEquals(Constant.HceCommand.NDEF_READ_BINARY)) {
+        if (command.ins == Constant.Apdu.INS_READ_BINARY) {
             val selectedFile = mSelectedFile;
             if (selectedFile == null) {
                 Log.wtf(TAG, "NDEF_READ_BINARY - No file selected")
                 return Constant.HceResponse.A_ERROR
             }
 
-            val offset = Util.bytesToHex(commandApdu.sliceArray(2..3)).toInt(16)
-            val expectedLength = Util.bytesToHex(commandApdu.sliceArray(4..4)).toInt(16)
+            val higher = command.p.first and 0xFF
+            val lower = command.p.second and 0xFF
+            val offset = ((higher shl 8) or lower)
+            val expectedLength = command.le
 
             Log.d(TAG, "NDEF_READ_BINARY triggered.")
             Log.d(TAG, "READ_BINARY - OFFSET: $offset - LEN: $expectedLength")
@@ -136,9 +151,7 @@ class EngagementService : HostApduService() {
             return response
         }
 
-        //
         // We're doing something outside our scope
-        //
         Log.wtf(TAG, "processCommandApdu() | unknown command")
         return Constant.HceResponse.A_ERROR
     }
