@@ -97,7 +97,7 @@ async fn test_list_proof_success() {
                 None,
                 verifier_key.to_owned(),
                 None,
-                None,
+                Some("NFC".to_string()),
             )
             .await;
 
@@ -118,6 +118,9 @@ async fn test_list_proof_success() {
     assert_eq!(resp["totalItems"], 14);
     assert_eq!(resp["totalPages"], 2);
     assert_eq!(resp["values"].as_array().unwrap().len(), 10);
+    for i in 0..9 {
+        assert_eq!(resp["values"][i]["engagement"], "NFC");
+    }
 }
 
 #[tokio::test]

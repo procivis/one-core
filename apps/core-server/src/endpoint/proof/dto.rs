@@ -256,6 +256,7 @@ pub(crate) struct ProofListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub verifier: Option<GetIdentifierListItemResponseRestDTO>,
 
+    pub engagement: Option<String>,
     /// Verification protocol used.
     pub protocol: String,
     /// Transport protocol used.
@@ -390,6 +391,9 @@ pub(crate) struct ProofDetailResponseRestDTO {
 
     #[try_from(infallible)]
     pub protocol: String,
+
+    #[try_from(infallible)]
+    pub engagement: Option<String>,
 
     #[try_from(infallible)]
     pub transport: String,

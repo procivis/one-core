@@ -252,6 +252,7 @@ pub struct ProofListItemBindingDTO {
     pub verifier: Option<String>,
     pub protocol: String,
     pub transport: String,
+    pub engagement: Option<String>,
     pub state: ProofStateBindingEnum,
     pub role: ProofRoleBindingEnum,
     #[from(with_fn = convert_inner)]
@@ -272,6 +273,7 @@ pub struct ProofResponseBindingDTO {
     pub role: ProofRoleBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,
     pub protocol: String,
+    pub engagement: Option<String>,
     pub transport: String,
     pub redirect_uri: Option<String>,
     pub proof_inputs: Vec<ProofInputBindingDTO>,

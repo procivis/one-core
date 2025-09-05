@@ -105,7 +105,7 @@ async fn test_get_proof_success() {
             None,
             verifier_key,
             None,
-            None,
+            Some("NFC".to_string()),
         )
         .await;
 
@@ -121,7 +121,7 @@ async fn test_get_proof_success() {
     resp["transport"].assert_eq(&"HTTP".to_string());
     resp["schema"]["id"].assert_eq(&proof_schema.id);
     resp["role"].assert_eq(&proof.role.to_string().to_ascii_uppercase());
-
+    resp["engagement"].assert_eq(&proof.engagement);
     assert_eq!(resp["proofInputs"].as_array().unwrap().len(), 1);
     assert_eq!(
         resp["proofInputs"][0]["claims"].as_array().unwrap().len(),

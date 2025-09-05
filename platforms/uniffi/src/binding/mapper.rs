@@ -152,6 +152,7 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             holder: value.holder.map(Into::into),
             protocol: value.protocol,
             transport: value.transport,
+            engagement: value.engagement,
             redirect_uri: value.redirect_uri,
             proof_inputs: convert_inner(value.proof_inputs),
             retain_until_date: value.retain_until_date.map(|date| date.format_timestamp()),
