@@ -29,6 +29,7 @@ pub struct CreateProofRequestDTO {
     pub iso_mdl_engagement: Option<String>,
     pub transport: Option<Vec<String>>,
     pub profile: Option<String>,
+    pub engagement: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

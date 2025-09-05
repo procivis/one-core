@@ -86,6 +86,7 @@ async fn create_proof_with_claims(
         None,
         Some(key),
         None,
+        None,
     )
     .await
 }

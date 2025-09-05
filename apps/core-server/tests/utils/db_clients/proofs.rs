@@ -39,6 +39,7 @@ impl ProofsDB {
         interaction: Option<&Interaction>,
         verifier_key: Key,
         proof_blob_id: Option<BlobId>,
+        engagement: Option<String>,
     ) -> Proof {
         self.create_with_profile(
             id,
@@ -51,6 +52,7 @@ impl ProofsDB {
             verifier_key,
             None,
             proof_blob_id,
+            engagement,
         )
         .await
     }
@@ -68,6 +70,7 @@ impl ProofsDB {
         verifier_key: Key,
         profile: Option<String>,
         proof_blob_id: Option<BlobId>,
+        engagement: Option<String>,
     ) -> Proof {
         let requested_date = match state {
             ProofStateEnum::Pending
@@ -126,6 +129,7 @@ impl ProofsDB {
             interaction: interaction.cloned(),
             profile,
             proof_blob_id,
+            engagement,
         };
 
         let proof_id = self.repository.create_proof(proof.clone()).await.unwrap();

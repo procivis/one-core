@@ -1,8 +1,11 @@
+use std::str::FromStr;
+
 use url::Url;
 
 use super::dto::CreateProofRequestDTO;
 use crate::config::core_config::{
-    CoreConfig, IdentifierType, VerificationProtocolConfig, VerificationProtocolType,
+    CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
+    VerificationProtocolConfig, VerificationProtocolType,
 };
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::key::Key;
@@ -248,4 +251,168 @@ pub(super) fn validate_verification_key_storage_compatibility(
     })?;
 
     Ok(())
+}
+
+pub(super) fn validate_engagement(
+    iso_mdl_engagement: Option<&str>,
+    engagement: Option<&str>,
+    config: &VerificationEngagementConfig,
+) -> Result<(), ServiceError> {
+    match (iso_mdl_engagement, engagement) {
+        (None, None) => Ok(()),
+        (Some(_), Some(engagement)) => {
+            let engagement = VerificationEngagement::from_str(engagement).map_err(|_| {
+                ValidationError::MissingVerificationEngagementConfig(engagement.to_string())
+            })?;
+            let enabled = config
+                .get(&engagement)
+                .ok_or(ValidationError::MissingVerificationEngagementConfig(
+                    engagement.to_string(),
+                ))?
+                .enabled
+                .ok_or(ValidationError::MissingVerificationEngagementConfig(
+                    engagement.to_string(),
+                ))?;
+            if enabled {
+                Ok(())
+            } else {
+                Err(
+                    ValidationError::MissingVerificationEngagementConfig(engagement.to_string())
+                        .into(),
+                )
+            }
+        }
+        (Some(_), None) => Err(ValidationError::MissingEngagementForISOmDLFlow.into()),
+        (None, Some(_)) => Err(ValidationError::EngagementProvidedForNonISOmDLFlow.into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use assert2::let_assert;
+
+    use super::*;
+    use crate::config::core_config::{ConfigEntryDisplay, VerificationEngagementFields};
+    use crate::service::test_utilities::generic_config;
+
+    #[test]
+    fn test_validate_engagement_success() {
+        // given
+        let iso_mdl_engagement = Some("iso_mdl");
+        let engagement = Some("QR_CODE");
+        let mut config = VerificationEngagementConfig::default();
+        config.insert(
+            VerificationEngagement::QrCode,
+            VerificationEngagementFields {
+                display: ConfigEntryDisplay::TranslationId("test".to_string()),
+                order: Some(1),
+                enabled: Some(true),
+            },
+        );
+
+        // when
+        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+
+        // then
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_engagement_fails_missing_iso_mdl_engagement() {
+        // given
+        let iso_mdl_engagement = None;
+        let engagement = Some("QR_CODE");
+        let config = VerificationEngagementConfig::default();
+
+        // when
+        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+
+        // then
+        let_assert!(Err(e) = result);
+        let_assert!(
+            ServiceError::Validation(ValidationError::EngagementProvidedForNonISOmDLFlow) = e
+        );
+    }
+
+    #[test]
+    fn test_validate_engagement_fails_when_iso_mdl_is_some_and_engagement_is_missing() {
+        // given
+        let iso_mdl_engagement = Some("iso_mdl");
+        let engagement = None;
+        let mut config = VerificationEngagementConfig::default();
+        config.insert(
+            VerificationEngagement::QrCode,
+            VerificationEngagementFields {
+                display: ConfigEntryDisplay::TranslationId("test".to_string()),
+                order: Some(1),
+                enabled: Some(true),
+            },
+        );
+
+        // when
+        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+
+        // then
+        let_assert!(Err(e) = result);
+        let_assert!(ServiceError::Validation(ValidationError::MissingEngagementForISOmDLFlow) = e);
+    }
+
+    #[test]
+    fn test_validate_engagement_fails_when_engagement_config_is_missing() {
+        // given
+        let iso_mdl_engagement = Some("iso_mdl");
+        let engagement = Some("QR_CODE");
+        let config = VerificationEngagementConfig::default();
+
+        // when
+        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+
+        // then
+        let_assert!(Err(e) = result);
+        let_assert!(
+            ServiceError::Validation(ValidationError::MissingVerificationEngagementConfig(m)) = e
+        );
+        assert!(m == "QR_CODE");
+    }
+
+    #[test]
+    fn test_validate_engagement_fails_when_engagement_config_is_disabled() {
+        // given
+        let iso_mdl_engagement = Some("iso_mdl");
+        let engagement = Some("QR_CODE");
+        let mut config = VerificationEngagementConfig::default();
+        config.insert(
+            VerificationEngagement::QrCode,
+            VerificationEngagementFields {
+                display: ConfigEntryDisplay::TranslationId("test".to_string()),
+                order: Some(1),
+                enabled: Some(false),
+            },
+        );
+
+        // when
+        let result = validate_engagement(iso_mdl_engagement, engagement, &config);
+
+        // then
+        let_assert!(Err(e) = result);
+        let_assert!(
+            ServiceError::Validation(ValidationError::MissingVerificationEngagementConfig(m)) = e
+        );
+        assert!(m == "QR_CODE");
+    }
+
+    #[test]
+    fn test_validate_mdl_exchange() {
+        let config = generic_config().core.verification_protocol;
+        let engagement = Some("engagement");
+        let uri = Some("uri");
+
+        assert!(validate_mdl_exchange("ISO_MDL", engagement, None, &config).is_ok());
+        assert!(validate_mdl_exchange("ISO_MDL", engagement, uri, &config).is_err());
+        assert!(validate_mdl_exchange("ISO_MDL", None, uri, &config).is_err());
+
+        assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", None, uri, &config).is_ok());
+        assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, uri, &config).is_err());
+        assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, None, &config).is_err());
+    }
 }

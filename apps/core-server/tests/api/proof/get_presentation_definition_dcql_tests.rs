@@ -1869,6 +1869,7 @@ async fn proof_for_dcql_query(
             Some(&interaction),
             key,
             None,
+            None,
         )
         .await
 }

@@ -240,6 +240,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         key_id,
         None,
         None,
+        None,
     )
     .await
     .unwrap();

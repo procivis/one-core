@@ -179,6 +179,7 @@ async fn test_presentation_reject_ok() {
         }),
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
 
     let result = provider.holder_reject_proof(&proof).await;
@@ -253,6 +254,7 @@ async fn test_get_presentation_definition_ok() {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
 
     let credential_id = Uuid::new_v4().into();

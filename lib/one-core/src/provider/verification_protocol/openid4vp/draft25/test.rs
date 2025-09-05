@@ -300,5 +300,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     }
 }

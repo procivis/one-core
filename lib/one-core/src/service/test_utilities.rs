@@ -233,7 +233,11 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
         blobStorage: {}
         walletProvider: {}
         credentialIssuer: {}
-        verificationEngagement: {}
+        verificationEngagement:
+            QR_CODE:
+                display: verificationEngagement.qrCode
+                order: 1
+                enabled: true
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()
@@ -409,6 +413,7 @@ pub fn dummy_proof_with_protocol(protocol: &str) -> Proof {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     }
 }
 

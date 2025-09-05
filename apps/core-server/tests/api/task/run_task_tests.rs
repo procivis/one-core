@@ -272,6 +272,7 @@ async fn test_run_retain_proof_check_with_update() {
             None,
             verifier_key.clone(),
             Some(proof_blob_1.id),
+            None,
         )
         .await;
 
@@ -288,6 +289,7 @@ async fn test_run_retain_proof_check_with_update() {
             None,
             verifier_key,
             Some(proof_blob_2.id),
+            None,
         )
         .await;
 

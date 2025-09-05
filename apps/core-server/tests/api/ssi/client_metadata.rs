@@ -51,6 +51,7 @@ async fn test_get_client_metadata() {
             None,
             key.to_owned(),
             None,
+            None,
         )
         .await;
 
@@ -160,6 +161,7 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
             None,
             key,
             None,
+            None,
         )
         .await;
 
@@ -215,6 +217,7 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
             None,
         )
         .await;

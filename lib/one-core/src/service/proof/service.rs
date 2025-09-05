@@ -16,8 +16,8 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
 use super::validator::{
-    validate_did_and_format_compatibility, validate_mdl_exchange, validate_redirect_uri,
-    validate_verification_key_storage_compatibility,
+    validate_did_and_format_compatibility, validate_engagement, validate_mdl_exchange,
+    validate_redirect_uri, validate_verification_key_storage_compatibility,
 };
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::throw_if_latest_proof_state_not_eq;
@@ -73,10 +73,10 @@ use crate::service::proof::validator::{
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_proof;
 use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
-use crate::util::interactions::{
-    add_new_interaction, clear_previous_interaction, update_proof_interaction,
-};
+use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::mdoc::EmbeddedCbor;
+
+const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
 
 impl ProofService {
     /// Returns details of a proof
@@ -276,6 +276,11 @@ impl ProofService {
             request.iso_mdl_engagement.as_deref(),
             request.redirect_uri.as_deref(),
             &self.config.verification_protocol,
+        )?;
+        validate_engagement(
+            request.iso_mdl_engagement.as_deref(),
+            request.engagement.as_deref(),
+            &self.config.verification_engagement,
         )?;
         validate_redirect_uri(
             &request.protocol,
@@ -522,6 +527,10 @@ impl ProofService {
     ) -> Result<EntityShareResponseDTO, ServiceError> {
         let proof = self.get_proof_with_state(id).await?;
 
+        if proof.engagement.is_some() {
+            return Err(ValidationError::InvalidProofEngagement.into());
+        }
+
         match proof.state {
             Created => {
                 self.proof_repository
@@ -587,7 +596,18 @@ impl ProofService {
             Some(organisation.to_owned()),
         )
         .await?;
-        update_proof_interaction(proof.id, interaction_id, &*self.proof_repository).await?;
+
+        self.proof_repository
+            .update_proof(
+                &proof.id,
+                UpdateProofRequest {
+                    interaction: Some(Some(interaction_id)),
+                    engagement: Some(Some(DEFAULT_ENGAGEMENT.to_string())),
+                    ..Default::default()
+                },
+                None,
+            )
+            .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
         log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Shared).await;
@@ -772,6 +792,7 @@ impl ProofService {
                 verifier_certificate: None,
                 interaction: Some(interaction.clone()),
                 proof_blob_id: None,
+                engagement: None,
             })
             .await?;
 

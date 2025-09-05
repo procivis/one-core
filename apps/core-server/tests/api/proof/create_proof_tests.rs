@@ -10,6 +10,7 @@ use crate::fixtures::{
     TestingIdentifierParams, assert_history_count,
 };
 use crate::utils;
+use crate::utils::api_clients::proofs::CreateProofTestParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::DbClient;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
@@ -61,14 +62,12 @@ async fn test_create_proof_success_without_related_key() {
     let resp = context
         .api
         .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "OPENID4VP_DRAFT20",
-            &did.id.to_string(),
-            None,
-            None,
-            None,
-        )
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -83,8 +82,7 @@ async fn test_create_proof_success_without_related_key() {
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
 }
 
-// TODO Enable this when we reverted the other todos marked with ONE-5918
-/* #[tokio::test]
+#[tokio::test]
 async fn test_create_proof_wrong_identifier_type() {
     // GIVEN
     let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
@@ -126,19 +124,18 @@ async fn test_create_proof_wrong_identifier_type() {
     let resp = context
         .api
         .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "MDOC_OPENID4VP",
-            &did.id.to_string(),
-            None,
-            None,
-        )
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "MDOC_OPENID4VP".into(),
+            verifier_did: did.id.to_string().into(),
+            ..Default::default()
+        })
         .await;
 
     // THEN
     assert_eq!(resp.status(), 400);
     assert_eq!("BR_0218", resp.error_code().await);
-}*/
+}
 
 #[tokio::test]
 async fn test_create_proof_success_with_related_key() {
@@ -182,14 +179,13 @@ async fn test_create_proof_success_with_related_key() {
     let resp = context
         .api
         .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "OPENID4VP_DRAFT20",
-            &did.id.to_string(),
-            None,
-            Some(&key.id.to_string()),
-            None,
-        )
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            verifier_key: Some(key.id.to_string().into()),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -462,14 +458,12 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
     let resp = context
         .api
         .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "OPENID4VP_DRAFT20",
-            &did.id.to_string(),
-            None,
-            None,
-            None,
-        )
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -560,14 +554,12 @@ async fn test_create_proof_success_without_key_agreement_key() {
     let resp = context
         .api
         .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "OPENID4VP_DRAFT20",
-            &did.id.to_string(),
-            None,
-            None,
-            None,
-        )
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -702,14 +694,13 @@ async fn test_create_proof_success_with_profile() {
     let resp = context
         .api
         .proofs
-        .create(
-            &proof_schema.id.to_string(),
-            "OPENID4VP_DRAFT20",
-            &did.id.to_string(),
-            None,
-            None,
-            Some(test_profile),
-        )
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            profile: Some(test_profile),
+            ..Default::default()
+        })
         .await;
 
     // THEN
@@ -726,4 +717,205 @@ async fn test_create_proof_success_with_profile() {
     assert_eq!(proof.profile.as_ref().unwrap(), test_profile);
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Created, 1).await;
+}
+
+#[tokio::test]
+async fn test_create_proof_fails_with_engagement_on_non_iso_mdl_protocol() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "OPENID4VP_DRAFT20".into(),
+            verifier_did: did.id.to_string().into(),
+            engagement: Some("QR_CODE"),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp: Value = resp.json().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0272");
+    assert_eq!(
+        resp["message"].as_str().unwrap(),
+        "Engagement provided for non ISO mDL flow"
+    );
+}
+
+#[tokio::test]
+async fn test_create_proof_fails_with_iso_mdl_engagement_and_none_engagement() {
+    // GIVEN
+    let config = indoc::indoc! {"
+        verificationProtocol:
+            ISO_MDL:
+                type: 'ISO_MDL'
+                display: 'exchange.isoMdl'
+                order: 4
+    "}
+    .to_string();
+    let (context, organisation, did, ..) = TestContext::new_with_did(Some(config)).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "ISO_MDL".into(),
+            verifier_did: did.id.to_string().into(),
+            iso_mdl_engagement: Some("ISO_MDL_ENGAGEMENT"),
+            engagement: None,
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp: Value = resp.json().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0079");
+    assert_eq!(
+        resp["message"].as_str().unwrap(),
+        "Engagement missing for ISO mDL flow"
+    );
+}
+
+#[tokio::test]
+async fn test_create_proof_fails_with_iso_mdl_engagement_and_invalid_engagement() {
+    // GIVEN
+    let config = indoc::indoc! {"
+        verificationProtocol:
+            ISO_MDL:
+                type: 'ISO_MDL'
+                display: 'exchange.isoMdl'
+                order: 4
+    "}
+    .to_string();
+    let (context, organisation, did, ..) = TestContext::new_with_did(Some(config)).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .create(CreateProofTestParams {
+            proof_schema_id: proof_schema.id.to_string().into(),
+            protocol: "ISO_MDL".into(),
+            verifier_did: did.id.to_string().into(),
+            iso_mdl_engagement: Some("ISO_MDL_ENGAGEMENT"),
+            engagement: Some("INVALID_ENGAGEMENT"),
+            ..Default::default()
+        })
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp: Value = resp.json().await;
+    assert_eq!(resp["code"].as_str().unwrap(), "BR_0077");
+    assert_eq!(
+        resp["message"].as_str().unwrap(),
+        "Verification engagement not enabled"
+    );
 }

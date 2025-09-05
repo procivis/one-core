@@ -857,6 +857,7 @@ async fn test_get_client_metadata_success() {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         proof_repository

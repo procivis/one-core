@@ -205,6 +205,7 @@ pub async fn get_proof_by_id(
     proof::Entity::find_by_id(id).one(database).await
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_identifier_id: IdentifierId,
@@ -213,6 +214,7 @@ pub async fn insert_proof_request_to_database(
     verifier_key_id: KeyId,
     interaction_id: Option<String>,
     proof_blob_id: Option<BlobId>,
+    engagement: Option<String>,
 ) -> Result<ProofId, DbErr> {
     let proof = proof::ActiveModel {
         id: Set(Uuid::new_v4().into()),
@@ -233,6 +235,7 @@ pub async fn insert_proof_request_to_database(
         interaction_id: Set(interaction_id),
         profile: Set(None),
         proof_blob_id: Set(proof_blob_id),
+        engagement: Set(engagement),
     }
     .insert(database)
     .await?;

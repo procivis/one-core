@@ -141,6 +141,7 @@ async fn test_direct_post_one_credential_correct() {
         Some(&interaction),
         Some(&verifier_key),
         None,
+        None,
     )
     .await;
 
@@ -298,6 +299,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
         "OPENID4VP_FINAL1_0",
         Some(&interaction),
         Some(&verifier_key),
+        None,
         None,
     )
     .await;
@@ -473,6 +475,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         "OPENID4VP_DRAFT20",
         Some(&interaction),
         Some(&verifier_key),
+        None,
         None,
     )
     .await;
@@ -734,6 +737,7 @@ async fn test_direct_post_multiple_presentations() {
         Some(&interaction),
         Some(&verifier_key),
         None,
+        None,
     )
     .await;
 
@@ -934,6 +938,7 @@ async fn test_direct_post_wrong_claim_format() {
         Some(&interaction),
         Some(&verifier_key),
         None,
+        None,
     )
     .await;
 
@@ -1074,6 +1079,7 @@ async fn test_direct_post_draft25() {
         "OPENID4VP_DRAFT25",
         Some(&interaction),
         Some(&verifier_key),
+        None,
         None,
     )
     .await;
@@ -1242,6 +1248,7 @@ async fn test_direct_post_with_profile_verification() {
         Some(&interaction),
         Some(&verifier_key),
         Some(test_profile.to_string()),
+        None,
     )
     .await;
 

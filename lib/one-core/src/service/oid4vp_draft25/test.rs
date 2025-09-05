@@ -164,6 +164,7 @@ async fn test_presentation_definition_success() {
                     completed_date: None,
                     profile: None,
                     proof_blob_id: None,
+                    engagement: None,
                     schema: Some(ProofSchema {
                         id: Uuid::default().into(),
                         created_date: now,
@@ -990,6 +991,7 @@ async fn test_get_client_metadata_success() {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         proof_repository

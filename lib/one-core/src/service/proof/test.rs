@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use assert2::let_assert;
 use mockall::Sequence;
 use mockall::predicate::*;
 use rstest::rstest;
@@ -88,7 +89,6 @@ use crate::service::proof::dto::{
     CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
     ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO, ShareProofRequestDTO,
 };
-use crate::service::proof::validator::validate_mdl_exchange;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
@@ -228,6 +228,7 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     }
 }
 
@@ -359,6 +360,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         role: ProofRole::Verifier,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
 
     {
@@ -480,6 +482,7 @@ async fn test_get_proof_exists() {
         role: ProofRole::Verifier,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -705,6 +708,7 @@ async fn test_get_proof_with_array_holder() {
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -968,6 +972,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -1246,6 +1251,7 @@ async fn test_get_proof_with_object_array_holder() {
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -1512,6 +1518,7 @@ async fn test_get_proof_with_array() {
         role: ProofRole::Verifier,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -1789,6 +1796,7 @@ async fn test_get_proof_with_array_in_object() {
         role: ProofRole::Verifier,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -2082,6 +2090,7 @@ async fn test_get_proof_with_object_array() {
         role: ProofRole::Verifier,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -2263,6 +2272,7 @@ async fn test_get_proof_list_success() {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         let res_clone = proof.clone();
@@ -2331,6 +2341,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2423,6 +2434,7 @@ async fn test_create_proof_using_invalid_did_method() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2549,6 +2561,7 @@ async fn test_create_proof_using_identifier() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2629,7 +2642,9 @@ async fn test_create_proof_using_identifier() {
     proof_repository
         .expect_create_proof()
         .once()
-        .withf(move |proof| proof.protocol == exchange_type.to_string())
+        .withf(move |proof| {
+            proof.protocol == exchange_type.to_string() && proof.engagement.is_none()
+        })
         .returning(move |_| Ok(proof_id));
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -2676,6 +2691,7 @@ async fn test_create_proof_without_related_key() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2810,6 +2826,7 @@ async fn test_create_proof_with_related_key() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -2940,6 +2957,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_input_schema = generic_proof_input_schema();
@@ -3079,6 +3097,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3185,6 +3204,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3246,6 +3266,7 @@ async fn test_create_proof_did_deactivated_error() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3379,6 +3400,7 @@ async fn test_create_proof_schema_deleted() {
             iso_mdl_engagement: None,
             transport: None,
             profile: None,
+            engagement: None,
         })
         .await;
     assert2::assert!(
@@ -3445,6 +3467,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
             iso_mdl_engagement: None,
             transport: None,
             profile: None,
+            engagement: None,
         })
         .await;
     assert2::assert!(
@@ -3467,6 +3490,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
         iso_mdl_engagement: None,
         transport: None,
         profile: None,
+        engagement: None,
     };
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
@@ -3598,6 +3622,7 @@ async fn test_create_proof_failed_invalid_redirect_uri() {
             iso_mdl_engagement: None,
             transport: None,
             profile: None,
+            engagement: None,
         })
         .await;
     assert!(matches!(
@@ -3705,7 +3730,9 @@ async fn test_share_proof_created_success() {
         .once()
         .in_sequence(&mut seq)
         .withf(move |id, update, _| {
-            id == &proof_id && update.interaction == Some(Some(interaction_id))
+            id == &proof_id
+                && update.interaction == Some(Some(interaction_id))
+                && update.engagement == Some(Some("QR_CODE".to_string()))
         })
         .returning(|_, _, _| Ok(()));
 
@@ -3874,6 +3901,39 @@ async fn test_share_proof_invalid_state() {
             BusinessLogicError::InvalidProofState { .. }
         ))
     ));
+}
+
+#[tokio::test]
+async fn test_share_proof_fails_when_engagement_is_present() {
+    // given
+    let proof_id = Uuid::new_v4().into();
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
+    proof.engagement = Some("SOME_ENGAGEMENT".to_string());
+
+    let mut proof_repository = MockProofRepository::default();
+    proof_repository
+        .expect_get_proof()
+        .once()
+        .withf(move |id, _| id == &proof_id)
+        .returning(move |_, _| Ok(Some(proof.to_owned())));
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    // when
+    let result = service
+        .share_proof(&proof_id, ShareProofRequestDTO::default())
+        .await;
+
+    // then
+    let_assert!(
+        Err(ServiceError::Validation(
+            ValidationError::InvalidProofEngagement
+        )) = result
+    );
 }
 
 #[rstest]
@@ -4262,19 +4322,4 @@ async fn test_retract_proof_success_holder_iso_mdl() {
 
     let result = service.delete_proof(proof_id).await;
     assert!(result.is_ok());
-}
-
-#[test]
-fn test_validate_mdl_exchange() {
-    let config = generic_config().core.verification_protocol;
-    let engagement = Some("engagement");
-    let uri = Some("uri");
-
-    assert!(validate_mdl_exchange("ISO_MDL", engagement, None, &config).is_ok());
-    assert!(validate_mdl_exchange("ISO_MDL", engagement, uri, &config).is_err());
-    assert!(validate_mdl_exchange("ISO_MDL", None, uri, &config).is_err());
-
-    assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", None, uri, &config).is_ok());
-    assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, uri, &config).is_err());
-    assert!(validate_mdl_exchange("OPENID4VP_DRAFT20", engagement, None, &config).is_err());
 }

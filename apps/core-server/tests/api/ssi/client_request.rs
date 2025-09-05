@@ -102,6 +102,7 @@ async fn test_get_client_request() {
             Some(&interaction),
             key.to_owned(),
             None,
+            None,
         )
         .await;
 

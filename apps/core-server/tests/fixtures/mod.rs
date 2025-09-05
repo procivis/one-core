@@ -743,6 +743,7 @@ pub async fn create_proof(
     interaction: Option<&Interaction>,
     verifier_key: Option<&Key>,
     profile: Option<String>,
+    engagement: Option<String>,
 ) -> Proof {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -780,6 +781,7 @@ pub async fn create_proof(
         interaction: interaction.cloned(),
         profile,
         proof_blob_id: None,
+        engagement,
     };
 
     data_layer

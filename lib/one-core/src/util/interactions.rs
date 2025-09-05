@@ -1,13 +1,11 @@
-use shared_types::{CredentialId, ProofId};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 
 use crate::model::credential::UpdateCredentialRequest;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
-use crate::model::proof::UpdateProofRequest;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ServiceError;
 
 pub async fn add_new_interaction(
@@ -53,22 +51,6 @@ pub async fn update_credentials_interaction(
 
     credential_repository
         .update_credential(credential_id, update)
-        .await?;
-    Ok(())
-}
-
-pub async fn update_proof_interaction(
-    proof_id: ProofId,
-    interaction_id: InteractionId,
-    proof_repository: &dyn ProofRepository,
-) -> Result<(), ServiceError> {
-    let update = UpdateProofRequest {
-        interaction: Some(Some(interaction_id)),
-        ..Default::default()
-    };
-
-    proof_repository
-        .update_proof(&proof_id, update, None)
         .await?;
     Ok(())
 }

@@ -28,6 +28,7 @@ pub struct Proof {
     pub completed_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub proof_blob_id: Option<BlobId>,
+    pub engagement: Option<String>,
 
     // Relations
     pub schema: Option<ProofSchema>,
@@ -102,4 +103,5 @@ pub struct UpdateProofRequest {
     pub transport: Option<String>,
     pub requested_date: Option<Option<OffsetDateTime>>,
     pub proof_blob_id: Option<Option<BlobId>>,
+    pub engagement: Option<Option<String>>,
 }

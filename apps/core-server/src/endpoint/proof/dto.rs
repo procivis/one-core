@@ -113,6 +113,8 @@ pub(crate) struct CreateProofRequestRestDTO {
     pub transport: Option<Vec<String>>,
     /// Optional profile to associate with this proof request
     pub profile: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub engagement: Option<String>,
 }
 
 /// Only for use when verifying VC Barcodes.

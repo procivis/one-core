@@ -184,6 +184,11 @@ impl ProofRepository for ProofProvider {
             Some(blob_id) => Set(blob_id),
         };
 
+        let engagement = match proof.engagement {
+            None => Unchanged(Default::default()),
+            Some(engagement) => Set(engagement),
+        };
+
         let now = OffsetDateTime::now_utc();
         let mut update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
@@ -195,6 +200,7 @@ impl ProofRepository for ProofProvider {
             transport,
             requested_date,
             proof_blob_id,
+            engagement,
             ..Default::default()
         };
 
@@ -242,6 +248,7 @@ fn get_proof_list_query(query_params: &GetProofQuery) -> Select<crate::entity::p
             proof::Column::CompletedDate,
             proof::Column::Profile,
             proof::Column::ProofBlobId,
+            proof::Column::Engagement,
         ])
         .column_as(proof::Column::Protocol, "protocol")
         .column_as(proof::Column::Transport, "transport")

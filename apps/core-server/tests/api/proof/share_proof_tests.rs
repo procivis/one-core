@@ -62,6 +62,7 @@ async fn test_share_proof_success() {
         None,
         Some(&key),
         None,
+        None,
     )
     .await;
 
@@ -186,6 +187,7 @@ async fn test_share_proof_success_with_separate_encryption_key() {
             None,
             signing_key,
             None,
+            None,
         )
         .await;
 
@@ -273,6 +275,7 @@ async fn test_share_proof_success_mdoc() {
             VerificationProtocolType::OpenId4VpDraft20.as_ref(),
             None,
             key,
+            None,
             None,
         )
         .await;
@@ -401,6 +404,7 @@ async fn test_share_proof_success_jsonld() {
             None,
             key,
             None,
+            None,
         )
         .await;
 
@@ -487,6 +491,7 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
         exchange.unwrap_or("OPENID4VP_DRAFT20"),
         None,
         Some(&key),
+        None,
         None,
     )
     .await;
@@ -614,4 +619,65 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
     );
 
     assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
+async fn test_share_proof_fails_when_engagement_is_set_on_proof() {
+    // GIVEN
+    let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = fixtures::create_proof_schema(
+        &context.db.db_conn,
+        "test",
+        &organisation,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
+    )
+    .await;
+
+    let proof = fixtures::create_proof(
+        &context.db.db_conn,
+        &identifier,
+        None,
+        Some(&proof_schema),
+        ProofStateEnum::Created,
+        ProofRole::Verifier,
+        "OPENID4VP_DRAFT20",
+        None,
+        Some(&key),
+        None,
+        Some("QR_CODE".to_string()),
+    )
+    .await;
+
+    // WHEN
+    let resp = context.api.proofs.share(proof.id, None).await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json::<Value>().await;
+    assert_eq!(&resp["code"], "BR_0078");
+    assert_eq!(
+        &resp["message"],
+        "Sharing not possible with non QR_CODE engagement"
+    );
 }

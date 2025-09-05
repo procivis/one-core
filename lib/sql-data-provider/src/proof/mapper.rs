@@ -172,6 +172,7 @@ impl TryFrom<ProofListItemModel> for Proof {
             verifier_certificate: None,
             interaction: None,
             proof_blob_id: value.proof_blob_id,
+            engagement: value.engagement,
         })
     }
 }
@@ -191,6 +192,7 @@ impl From<proof::Model> for Proof {
             completed_date: value.completed_date,
             profile: value.profile,
             proof_blob_id: value.proof_blob_id,
+            engagement: value.engagement,
             schema: None,
             claims: None,
             verifier_identifier: None,
@@ -228,6 +230,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
                 .map(|interaction| interaction.id.to_string())),
             profile: Set(value.profile),
             proof_blob_id: Set(value.proof_blob_id),
+            engagement: Set(value.engagement),
         })
     }
 }

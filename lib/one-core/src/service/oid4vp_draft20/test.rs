@@ -224,6 +224,7 @@ async fn test_presentation_definition_success() {
                     }),
                     profile: None,
                     proof_blob_id: None,
+                    engagement: None,
                 }))
             });
     }
@@ -625,6 +626,7 @@ async fn test_get_client_metadata_success() {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         proof_repository
@@ -806,6 +808,7 @@ async fn test_get_client_metadata_success_no_encryption() {
         interaction: None,
         profile: None,
         proof_blob_id: None,
+        engagement: None,
     };
     {
         proof_repository

@@ -107,6 +107,7 @@ async fn test_delete_proof_claims_success() {
             Some(&interaction),
             verifier_key,
             Some(blob.id),
+            None,
         )
         .await;
 

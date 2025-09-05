@@ -21,6 +21,7 @@ pub(super) struct ProofListItemModel {
     pub completed_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub proof_blob_id: Option<BlobId>,
+    pub engagement: Option<String>,
 
     // verifier_identifier
     pub verifier_identifier_id: Option<IdentifierId>,

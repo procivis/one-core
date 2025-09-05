@@ -44,6 +44,7 @@ async fn test_delete_proof_created_holder_success() {
             Some(&interaction),
             key,
             Some(blob.id),
+            None,
         )
         .await;
 
@@ -103,6 +104,7 @@ async fn test_delete_proof_accepted_holder_fail() {
             Some(&interaction),
             key,
             None,
+            None,
         )
         .await;
 
@@ -131,6 +133,7 @@ async fn test_delete_proof_created_issuer_success() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
             None,
         )
         .await;
@@ -182,6 +185,7 @@ async fn test_delete_proof_accepted_issuer_fail() {
             None,
             key,
             None,
+            None,
         )
         .await;
 
@@ -210,6 +214,7 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
             None,
         )
         .await;
@@ -307,6 +312,7 @@ async fn test_delete_proof_old_exchange() {
             "PROCIVIS_TEMPORARY", // this provider no longer exists
             None,
             key,
+            None,
             None,
         )
         .await;

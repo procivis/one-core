@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::fmt::Display;
 
 use core_server::endpoint::proof::dto::ClientIdSchemeRestEnum;
@@ -32,36 +33,48 @@ pub struct ProofFilters<'a> {
     pub completed_date_before: Option<OffsetDateTime>,
 }
 
+#[derive(Debug, Default)]
+pub struct CreateProofTestParams {
+    pub proof_schema_id: Cow<'static, str>,
+    pub protocol: Cow<'static, str>,
+    pub verifier_did: Cow<'static, str>,
+    pub redirect_uri: Option<&'static str>,
+    pub verifier_key: Option<Cow<'static, str>>,
+    pub profile: Option<&'static str>,
+    pub iso_mdl_engagement: Option<&'static str>,
+    pub engagement: Option<&'static str>,
+}
+
 impl ProofsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
     }
 
-    pub async fn create(
-        &self,
-        proof_schema_id: &str,
-        protocol: &str,
-        verifier_did: &str,
-        redirect_uri: Option<&str>,
-        verifier_key: Option<&str>,
-        profile: Option<&str>,
-    ) -> Response {
+    pub async fn create(&self, params: CreateProofTestParams) -> Response {
         let mut body = json!({
-          "proofSchemaId": proof_schema_id,
-          "protocol": protocol,
-          "verifierDid": verifier_did
+          "proofSchemaId": params.proof_schema_id,
+          "protocol": params.protocol,
+          "verifierDid": params.verifier_did
         });
 
-        if let Some(redirect_uri) = redirect_uri {
-            body["redirectUri"] = redirect_uri.to_string().into();
+        if let Some(redirect_uri) = params.redirect_uri {
+            body["redirectUri"] = redirect_uri.into();
         }
 
-        if let Some(verifier_key) = verifier_key {
-            body["verifierKey"] = verifier_key.to_string().into();
+        if let Some(verifier_key) = params.verifier_key {
+            body["verifierKey"] = verifier_key.into();
         }
 
-        if let Some(profile) = profile {
-            body["profile"] = profile.to_string().into();
+        if let Some(profile) = params.profile {
+            body["profile"] = profile.into();
+        }
+
+        if let Some(engagement) = params.engagement {
+            body["engagement"] = engagement.into();
+        }
+
+        if let Some(iso_mdl_engagement) = params.iso_mdl_engagement {
+            body["isoMdlEngagement"] = iso_mdl_engagement.into();
         }
 
         self.client.post("/api/proof-request/v1", body).await

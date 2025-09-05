@@ -100,6 +100,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         Some(&interaction),
         None,
         None,
+        None,
     )
     .await;
 
@@ -306,6 +307,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             Some(&interaction),
             key,
             None,
+            None,
         )
         .await;
 
@@ -382,6 +384,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             Some(&interaction),
             key,
             None,
+            None,
         )
         .await;
 
@@ -431,6 +434,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
         None,
         None,
     )
@@ -595,6 +599,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
             None,
         )
         .await;
@@ -813,6 +818,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
         None,
         None,
     )
@@ -1065,6 +1071,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             "OPENID4VP_DRAFT20",
             Some(&interaction),
             key,
+            None,
             None,
         )
         .await;

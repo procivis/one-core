@@ -706,6 +706,7 @@ pub(super) fn proof_from_create_request(
         verifier_certificate,
         interaction,
         proof_blob_id: None,
+        engagement: request.engagement,
     }
 }
 
@@ -744,6 +745,7 @@ pub fn proof_for_scan_to_verify(
             organisation: schema.organisation,
         }),
         proof_blob_id: None,
+        engagement: None,
     }
 }
 

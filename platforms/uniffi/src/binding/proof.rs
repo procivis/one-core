@@ -174,6 +174,8 @@ pub struct CreateProofRequestBindingDTO {
     pub transport: Option<Vec<String>>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub profile: Option<String>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub engagement: Option<String>,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]

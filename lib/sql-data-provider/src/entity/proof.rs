@@ -21,6 +21,7 @@ pub struct Model {
     pub completed_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub proof_blob_id: Option<BlobId>,
+    pub engagement: Option<String>,
 
     pub verifier_identifier_id: Option<IdentifierId>,
     pub holder_identifier_id: Option<IdentifierId>,

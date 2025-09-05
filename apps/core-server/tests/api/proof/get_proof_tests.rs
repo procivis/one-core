@@ -105,6 +105,7 @@ async fn test_get_proof_success() {
             None,
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -212,6 +213,7 @@ async fn test_get_proof_detached_success() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key,
+            None,
             None,
         )
         .await;
@@ -329,6 +331,7 @@ async fn test_get_proof_with_nested_claims() {
             None,
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -439,6 +442,7 @@ async fn test_get_proof_with_empty_array() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key,
+            None,
             None,
         )
         .await;
@@ -635,6 +639,7 @@ async fn test_get_proof_with_array() {
             None,
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -761,6 +766,7 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key,
+            None,
             None,
         )
         .await;
@@ -921,6 +927,7 @@ async fn test_get_proof_with_nested_optional_inputs() {
             None,
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -1052,6 +1059,7 @@ async fn test_get_proof_with_credentials() {
             None,
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -1152,6 +1160,7 @@ async fn test_get_proof_as_holder_success() {
             Some(&interaction), // Interaction is present on holder side
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -1247,6 +1256,7 @@ async fn test_get_proof_with_retain_date() {
             "OPENID4VP_DRAFT20",
             None,
             verifier_key.to_owned(),
+            None,
             None,
         )
         .await;
@@ -1368,6 +1378,7 @@ async fn test_get_proof_with_deleted_claims() {
             None,
             verifier_key,
             None,
+            None,
         )
         .await;
 
@@ -1463,6 +1474,7 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
             "OPENID4VP_DRAFT20",
             None,
             key,
+            None,
             None,
         )
         .await;
@@ -1604,6 +1616,7 @@ async fn test_get_proof_with_credentials_returns_profiles() {
             None,
             verifier_key,
             Some(test_profile.to_string()),
+            None,
             None,
         )
         .await;

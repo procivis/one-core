@@ -460,6 +460,7 @@ async fn setup_submittable_presentation(
             Some(&interaction),
             verifier_key,
             None,
+            None,
         )
         .await;
     (
@@ -693,6 +694,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         ProofRole::Holder,
         "OPENID4VP_DRAFT20",
         Some(&interaction),
+        None,
         None,
         None,
     )
@@ -1083,6 +1085,7 @@ async fn setup_submittable_presentation_dcql(
             "OPENID4VP_DRAFT25",
             Some(&interaction),
             verifier_key,
+            None,
             None,
         )
         .await;

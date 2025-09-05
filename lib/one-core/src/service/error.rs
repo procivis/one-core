@@ -671,6 +671,18 @@ pub enum ValidationError {
 
     #[error("Basic constraints violation: {0}")]
     BasicConstraintsViolation(String),
+
+    #[error("Missing configuration for verification engagement type: {0}")]
+    MissingVerificationEngagementConfig(String),
+
+    #[error("Missing engagement for ISO mDL flow")]
+    MissingEngagementForISOmDLFlow,
+
+    #[error("Invalid value of proof engagement")]
+    InvalidProofEngagement,
+
+    #[error("Engagement provided for non ISO mDL flow")]
+    EngagementProvidedForNonISOmDLFlow,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -912,6 +924,15 @@ pub enum ErrorCode {
 
     #[strum(message = "Key must not be remote")]
     BR_0076,
+
+    #[strum(message = "Verification engagement not enabled")]
+    BR_0077,
+
+    #[strum(message = "Sharing not possible with non QR_CODE engagement")]
+    BR_0078,
+
+    #[strum(message = "Engagement missing for ISO mDL flow")]
+    BR_0079,
 
     #[strum(message = "Invalid DCQL query or presentation definition")]
     BR_0083,
@@ -1335,6 +1356,9 @@ pub enum ErrorCode {
         message = "App integrity check required: proof and public key must only be provided on wallet unit activation"
     )]
     BR_0270,
+
+    #[strum(message = "Engagement provided for non ISO mDL flow")]
+    BR_0272,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1581,6 +1605,10 @@ impl ErrorCodeMixin for ValidationError {
             Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
             Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
             Self::BasicConstraintsViolation(_) => ErrorCode::BR_0250,
+            Self::MissingVerificationEngagementConfig(_) => ErrorCode::BR_0077,
+            Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,
+            Self::InvalidProofEngagement => ErrorCode::BR_0078,
+            Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
         }
     }
 }
