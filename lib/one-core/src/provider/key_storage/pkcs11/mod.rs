@@ -46,6 +46,16 @@ impl KeyStorage for PKCS11KeyProvider {
     fn key_handle(&self, _key: &Key) -> Result<KeyHandle, SignerError> {
         todo!()
     }
+
+    async fn generate_attestation(
+        &self,
+        _key: &Key,
+        _nonce: Option<String>,
+    ) -> Result<Vec<String>, KeyStorageError> {
+        return Err(KeyStorageError::UnsupportedFeature {
+            feature: Features::Attestation,
+        });
+    }
 }
 
 impl PKCS11KeyProvider {

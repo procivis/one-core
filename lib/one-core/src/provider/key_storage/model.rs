@@ -27,6 +27,8 @@ pub enum Features {
     Exportable,
     #[strum(serialize = "IMPORTABLE")]
     Importable,
+    #[strum(serialize = "ATTESTATION")]
+    Attestation,
 }
 
 pub struct StorageGeneratedKey {

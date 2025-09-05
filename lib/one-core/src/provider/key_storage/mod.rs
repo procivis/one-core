@@ -40,4 +40,11 @@ pub trait KeyStorage: Send + Sync {
 
     /// Access to key operations
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError>;
+
+    /// Generate attestation for a hardware bound key
+    async fn generate_attestation(
+        &self,
+        key: &Key,
+        nonce: Option<String>,
+    ) -> Result<Vec<String>, error::KeyStorageError>;
 }

@@ -40,6 +40,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             val builder = KeyGenParameterSpec.Builder(keyAlias, keyPurposes)
                 .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
                 .setDigests(KeyProperties.DIGEST_SHA256)
+                .setAttestationChallenge("AttestationChallenge".toByteArray(Charsets.UTF_8))
 
             var strongbox = strongBoxSupported()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && strongbox) {
@@ -121,6 +122,21 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
         } catch (e: Throwable) {
             throw NativeKeyStorageException.SignatureFailure(e.toString());
         }
+    }
+
+    override suspend fun generateAttestation(keyReference: ByteArray, nonce: String?) : List<String> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
+        }
+
+        val keyAlias = keyReference.toString(Charsets.UTF_8)
+
+        val keyStore = this.getAndroidKeyStore()
+        val certificateChain = keyStore.getCertificateChain(keyAlias)
+
+        return certificateChain
+            ?.map { android.util.Base64.encodeToString(it.encoded, android.util.Base64.NO_WRAP) }
+            ?: throw NativeKeyStorageException.Unknown("No certificate chain found for key alias `${keyAlias}`")
     }
 
     private fun strongBoxSupported(): Boolean {

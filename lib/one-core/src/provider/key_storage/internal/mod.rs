@@ -131,4 +131,14 @@ impl KeyStorage for InternalKeyProvider {
             .reconstruct_key(&key.public_key, Some(private_key), None)
             .map_err(|_| SignerError::CouldNotExtractKeyPair)
     }
+
+    async fn generate_attestation(
+        &self,
+        _key: &Key,
+        _nonce: Option<String>,
+    ) -> Result<Vec<String>, KeyStorageError> {
+        return Err(KeyStorageError::UnsupportedFeature {
+            feature: Features::Attestation,
+        });
+    }
 }

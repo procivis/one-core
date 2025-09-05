@@ -36,7 +36,11 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
             throw NativeKeyStorageError.KeyGenerationFailure(reason: error.localizedDescription);
         }
     }
-    
+
+    public func generateAttestation(keyReference: Data, nonce: String?) async throws -> [String] {
+        throw NativeKeyStorageError.Unsupported;
+    }
+
     public func sign(keyReference: Data, message: Data) async throws -> Data {
         if (!isSupported()) {
             throw NativeKeyStorageError.Unsupported;

@@ -24,6 +24,11 @@ pub trait NativeKeyStorage: Send + Sync {
     async fn generate_key(&self, key_alias: String)
     -> Result<StorageGeneratedKey, KeyStorageError>;
     async fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
+    async fn generate_attestation(
+        &self,
+        key: &[u8],
+        nonce: Option<String>,
+    ) -> Result<Vec<String>, KeyStorageError>;
 }
 
 pub struct SecureElementKeyProvider {
@@ -43,7 +48,7 @@ impl KeyStorage for SecureElementKeyProvider {
         KeyStorageCapabilities {
             algorithms: vec![KeyAlgorithmType::Ecdsa],
             security: vec![KeySecurity::Hardware],
-            features: vec![],
+            features: vec![Features::Attestation],
         }
     }
 
@@ -92,6 +97,24 @@ impl KeyStorage for SecureElementKeyProvider {
                 public: Arc::new(handle),
             },
         ))
+    }
+
+    async fn generate_attestation(
+        &self,
+        key: &Key,
+        nonce: Option<String>,
+    ) -> Result<Vec<String>, KeyStorageError> {
+        let key_reference = key
+            .key_reference
+            .as_ref()
+            .ok_or(KeyStorageError::Failed(format!(
+                "Missing key reference for key {}",
+                key.id
+            )))?;
+
+        self.native_storage
+            .generate_attestation(key_reference, nonce)
+            .await
     }
 }
 

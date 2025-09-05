@@ -77,6 +77,16 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
             },
         ))
     }
+
+    async fn generate_attestation(
+        &self,
+        _key: &Key,
+        _nonce: Option<String>,
+    ) -> Result<Vec<String>, KeyStorageError> {
+        return Err(KeyStorageError::UnsupportedFeature {
+            feature: Features::Attestation,
+        });
+    }
 }
 
 impl RemoteSecureElementKeyProvider {
