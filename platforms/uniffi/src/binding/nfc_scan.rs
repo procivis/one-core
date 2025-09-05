@@ -1,4 +1,5 @@
-use one_core::service::error::ServiceError;
+use one_core::service::nfc::dto::NfcScanRequestDTO;
+use one_dto_mapper::Into;
 
 use super::OneCoreBinding;
 use crate::error::BindingError;
@@ -9,20 +10,26 @@ impl OneCoreBinding {
     #[uniffi::method]
     pub async fn nfc_read_iso_mdl_engagement(
         &self,
-        _request: NfcScanRequestBindingDTO,
+        request: NfcScanRequestBindingDTO,
     ) -> Result<String, BindingError> {
-        Err(ServiceError::Other("Not implemented".to_string()).into())
+        let core = self.use_core().await?;
+        Ok(core
+            .nfc_service
+            .read_iso_mdl_engagement(request.into())
+            .await?)
     }
 
     /// Cancel previously started NFC scan via `nfc_read_iso_mdl_engagement`
     #[uniffi::method]
     pub async fn nfc_stop_iso_mdl_engagement(&self) -> Result<(), BindingError> {
-        Err(ServiceError::Other("Not implemented".to_string()).into())
+        let core = self.use_core().await?;
+        Ok(core.nfc_service.stop_iso_mdl_engagement().await?)
     }
 }
 
 /// Optional messages to be displayed on (iOS) system overlay
-#[derive(Clone, Debug, uniffi::Record)]
+#[derive(Clone, Debug, Into, uniffi::Record)]
+#[into(NfcScanRequestDTO)]
 pub struct NfcScanRequestBindingDTO {
     pub in_progress_message: Option<String>,
     pub failure_message: Option<String>,

@@ -29,6 +29,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::error::{
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
+use crate::provider::nfc::NfcError;
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::trust_management::error::TrustManagementError;
@@ -138,6 +139,9 @@ pub enum ServiceError {
 
     #[error("Wallet unit error: `{0}`")]
     WalletUnitAttestationError(#[from] WalletUnitAttestationError),
+
+    #[error("NFC error: `{0}`")]
+    NfcError(#[from] NfcError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1362,6 +1366,24 @@ pub enum ErrorCode {
 
     #[strum(message = "Engagement provided for non ISO mDL flow")]
     BR_0272,
+
+    #[strum(message = "NFC adapter not enabled")]
+    BR_0273,
+
+    #[strum(message = "NFC not supported")]
+    BR_0274,
+
+    #[strum(message = "Another NFC operation running")]
+    BR_0275,
+
+    #[strum(message = "NFC operation not running")]
+    BR_0276,
+
+    #[strum(message = "NFC operation cancelled")]
+    BR_0277,
+
+    #[strum(message = "NFC session closed")]
+    BR_0278,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1408,6 +1430,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::BlobStorageError(_) => ErrorCode::BR_0251,
             Self::WalletProviderError(error) => error.error_code(),
             Self::WalletUnitAttestationError(error) => error.error_code(),
+            Self::NfcError(error) => error.error_code(),
         }
     }
 }

@@ -63,6 +63,7 @@ use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::identifier::IdentifierService;
 use crate::service::key::KeyService;
+use crate::service::nfc::NfcService;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::revocation_list::RevocationListService;
@@ -168,6 +169,7 @@ pub struct OneCore {
     pub vc_api_service: VCAPIService,
     pub cache_service: CacheService,
     pub wallet_unit_service: WalletUnitService,
+    pub nfc_service: NfcService,
 }
 
 #[derive(Default)]
@@ -390,7 +392,7 @@ impl OneCore {
         ble_peripheral: Option<Arc<dyn BlePeripheral>>,
         ble_central: Option<Arc<dyn BleCentral>>,
         _nfc_hce: Option<Arc<dyn NfcHce>>,
-        _nfc_scanner: Option<Arc<dyn NfcScanner>>,
+        nfc_scanner: Option<Arc<dyn NfcScanner>>,
         mqtt_client: Option<Arc<dyn MqttClient>>,
         providers: OneCoreBuilderProviders,
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
@@ -834,6 +836,7 @@ impl OneCore {
             jsonld_service: JsonLdService::new(jsonld_caching_loader, client.clone()),
             config: config.clone(),
             cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
+            nfc_service: NfcService::new(config.clone(), nfc_scanner),
             identifier_service: IdentifierService::new(
                 data_provider.get_identifier_repository(),
                 data_provider.get_key_repository(),

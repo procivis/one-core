@@ -10,6 +10,7 @@ version           = "0.1.0"
 [dependencies]
 aes-gcm                    = { version = "0.10.3", features = ["std"] }
 anyhow.workspace           = true
+apdu-core                  = { version = "0.4.0", features = ["longer_payloads"] }
 asn1-rs.workspace          = true
 async-trait.workspace      = true
 bincode                    = { version = "1.3" }
