@@ -209,15 +209,27 @@ pub(crate) async fn prepare_sd_presentation(
     hasher: &dyn Hasher,
     holder_binding_ctx: Option<HolderBindingCtx>,
     holder_binding_fn: Option<AuthenticationFn>,
+    user_claim_path: &[String],
 ) -> Result<String, FormatterError> {
     let model::DecomposedToken {
         jwt, disclosures, ..
     } = parse_token(&presentation.token)?;
-    let disclosures = select_disclosures(presentation.disclosed_keys, disclosures, hasher)?;
+    let jwt_payload = Jwt::<Value>::decompose_token(jwt)?.payload;
+    let disclosed_keys = if !user_claim_path.is_empty() {
+        let prefix = user_claim_path.join("/");
+        presentation
+            .disclosed_keys
+            .iter()
+            .map(|disclosed_key| format!("{prefix}/{disclosed_key}",))
+            .collect()
+    } else {
+        presentation.disclosed_keys.clone()
+    };
+    let disclosures =
+        select_disclosures(&disclosed_keys, &jwt_payload.custom, disclosures, hasher)?;
     let mut token = jwt.to_owned();
     append_disclosures(&mut token, disclosures);
 
-    let jwt_payload = Jwt::<()>::decompose_token(jwt)?.payload;
     if jwt_payload.proof_of_possession_key.is_some() {
         let holder_binding_ctx = holder_binding_ctx.ok_or(FormatterError::Failed(
             "holder binding required, but no context provided".to_string(),

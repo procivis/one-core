@@ -141,7 +141,7 @@ impl SettableClaims for VcClaim {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Disclosure {
     pub salt: String,
-    pub key: String,
+    pub key: Option<String>,
     pub value: Value,
     pub disclosure_array: String,
     pub disclosure: String,

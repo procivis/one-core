@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
+use serde_json::{Map, Value};
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -12,6 +12,7 @@ use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Discl
 use crate::util::jwt::mapper::string_to_b64url_string;
 
 pub(crate) const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
+pub(crate) const SELECTIVE_DISCLOSURE_ARRAY_MARKER: &str = "...";
 
 // Reconstructs digests from disclosures
 pub(crate) fn compute_digests(
@@ -41,42 +42,133 @@ pub(crate) fn compute_digests(
 /// all parent claim disclosures need to be shared as well (so that the link to root digest inside the JWT is kept)
 /// as well as all child claims of a selected node if a whole object is being shared
 pub(crate) fn select_disclosures(
-    disclosed_keys: Vec<String>,
+    disclosed_keys: &[String],
+    token_payload: &Value,
     all_disclosures: Vec<Disclosure>,
     hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
-    // tree of all disclosures, so that we can traverse the nodes and disclose proper entries, following the claim key path
-    let whole_tree = construct_tree(&all_disclosures, hasher)?;
+    let all_digests = compute_digests(all_disclosures, hasher)?;
 
     let mut result = HashSet::new();
     for disclosed_key in disclosed_keys {
-        let mut current_node = &whole_tree;
+        let mut current_node = token_payload;
+        let mut collect_subdisclosures = true;
         for key_part in disclosed_key.split(NESTED_CLAIM_MARKER) {
-            match current_node
-                .iter()
-                .find(|node| node.disclosure.key == key_part)
-            {
-                None => {
+            match current_node {
+                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
                     return Err(FormatterError::Failed(format!(
-                        "Cannot find `{key_part}` from key `{disclosed_key}` in disclosures"
+                        "Invalid nesting: child claim `{key_part}` from key `{disclosed_key}` does not exist"
                     )));
                 }
-                Some(node) => {
-                    current_node = &node.subdisclosures;
+                Value::Array(claims) => {
+                    let index: usize = key_part.parse().map_err(|err| {
+                        FormatterError::Failed(format!(
+                            "Key `{key_part}` is not a valid array index: {err}"
+                        ))
+                    })?;
+                    let Some(child) = claims.get(index) else {
+                        return Err(FormatterError::Failed(format!(
+                            "Index `{index}` from key `{disclosed_key}` is out of bounds: array length is {}",
+                            claims.len()
+                        )));
+                    };
 
-                    // disclose node on the path from root
-                    result.insert(node.disclosure.disclosure.to_owned());
-
-                    // if desired node reached, add all transitive subdisclosures (sharing entire object claim)
-                    if disclosed_key == node.key_path {
-                        result.extend(collect_all_subdisclosures(node));
+                    // Check if this element is an array element disclosure, e.g. {"...":"w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs"}
+                    if let Some(disclosure) = array_element_disclosure(child, &all_digests) {
+                        // disclose array element
+                        result.insert(disclosure.disclosure.clone());
+                        // step into disclosed element
+                        current_node = &disclosure.value
+                    } else {
+                        // plain child
+                        current_node = child
                     }
                 }
-            };
+                Value::Object(claims) => {
+                    // check if the claim is present as plain value
+                    if let Some(child) = claims.get(key_part) {
+                        // it is, step into child and continue
+                        current_node = child;
+                        continue;
+                    }
+
+                    // check if the claim is present as a disclosure
+                    let sd_hashes = sd_hashes(claims);
+                    let disclosure = sd_hashes
+                        .iter()
+                        .filter_map(|hash| all_digests.get(hash))
+                        .find(|disclosure| {
+                            disclosure.key.as_ref().is_some_and(|key| key == key_part)
+                        });
+
+                    if let Some(disclosure) = disclosure {
+                        result.insert(disclosure.disclosure.clone());
+                        current_node = &disclosure.value;
+                        continue;
+                    }
+                    // The child claim does not exist. It could be a metadata claim, so we don't
+                    // treat this as a failure (existence of claims has already been checked at this
+                    // point). Hence, we simply stop processing this disclosed_key.
+                    collect_subdisclosures = false;
+                    break;
+                }
+            }
+        }
+        if collect_subdisclosures {
+            result.extend(collect_all_subdisclosures(current_node, &all_digests))
         }
     }
-
     Ok(Vec::from_iter(result))
+}
+
+/// Check if this element is an array element disclosure, e.g. {"...":"w0I8EKcdCtUPkGCNUrfwVp2xEgNjtoIDlOxc9-PlOhs"}
+/// and if it is, return the matching disclosure.
+fn array_element_disclosure<'a>(
+    element: &Value,
+    all_digests: &'a HashMap<String, Disclosure>,
+) -> Option<&'a Disclosure> {
+    if let Some(child_object) = element.as_object()
+        && child_object.len() == 1
+        && let Some(sd_hash) = child_object
+            .get(SELECTIVE_DISCLOSURE_ARRAY_MARKER)
+            .and_then(|value| value.as_str())
+        && let Some(disclosure) = all_digests.get(sd_hash)
+    {
+        Some(disclosure)
+    } else {
+        None
+    }
+}
+
+/// Transitively collects all disclosure strings from the whole subtree
+fn collect_all_subdisclosures(
+    claim: &Value,
+    all_digests: &HashMap<String, Disclosure>,
+) -> Vec<String> {
+    match claim {
+        // no child disclosures for flat values
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => vec![],
+        Value::Array(elements) => {
+            let mut result = vec![];
+            for element in elements {
+                let Some(disclosure) = array_element_disclosure(element, all_digests) else {
+                    continue;
+                };
+                result.push(disclosure.disclosure.clone());
+                result.extend(collect_all_subdisclosures(&disclosure.value, all_digests));
+            }
+            result
+        }
+        Value::Object(claims) => sd_hashes(claims)
+            .iter()
+            .filter_map(|hash| all_digests.get(hash))
+            .flat_map(|disclosure| {
+                let mut result = collect_all_subdisclosures(&disclosure.value, all_digests);
+                result.push(disclosure.disclosure.clone());
+                result
+            })
+            .collect(),
+    }
 }
 
 impl Disclosure {
@@ -198,114 +290,39 @@ pub(crate) struct DisclosureArray {
     pub value: Value,
 }
 
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(expecting = "expecting [<salt>, <value>] array")]
+pub(crate) struct DisclosureArrayElement {
+    pub salt: String,
+    pub value: Value,
+}
+
 pub(crate) fn parse_disclosure(
     disclosure_array: String,
     disclosure: String,
 ) -> Result<Disclosure, FormatterError> {
-    let parsed: DisclosureArray = serde_json::from_str(&disclosure_array)
-        .map_err(|e| FormatterError::Failed(e.to_string()))?;
-
-    Ok(Disclosure {
-        salt: parsed.salt,
-        key: parsed.key,
-        value: parsed.value,
-        disclosure_array,
-        disclosure,
-    })
-}
-
-#[derive(Debug, Eq, PartialEq)]
-struct DisclosureTree {
-    pub key_path: String,
-    pub disclosure: Disclosure,
-    pub subdisclosures: Vec<DisclosureTree>,
-}
-
-fn construct_tree(
-    all_disclosures: &[Disclosure],
-    hasher: &dyn Hasher,
-) -> Result<Vec<DisclosureTree>, FormatterError> {
-    let all_digests = compute_digests(all_disclosures.to_vec(), hasher)?;
-
-    // mapping disclosure -> parent disclosure (in object claim tree)
-    let mut parent_map = HashMap::new();
-    for disclosure in all_disclosures {
-        if let serde_json::Value::Object(obj) = &disclosure.value {
-            if let Some(serde_json::Value::Array(linked_digests)) =
-                obj.get(SELECTIVE_DISCLOSURE_MARKER)
-            {
-                for linked_digest in linked_digests {
-                    if let serde_json::Value::String(digest) = linked_digest {
-                        match all_digests.get(digest) {
-                            None => {
-                                // this might be a decoy disclosure digest, skipping
-                                tracing::debug!("Decoy digest: {digest}");
-                            }
-                            Some(linked_disclosure) => {
-                                parent_map.insert(
-                                    linked_disclosure.disclosure.to_owned(),
-                                    disclosure.disclosure.to_owned(),
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fn construct_node(
-        disclosure: Disclosure,
-        all_disclosures: &[Disclosure],
-        parent_map: &HashMap<String, String>,
-        parent_key_path: Option<&str>,
-    ) -> DisclosureTree {
-        let key_path = match parent_key_path {
-            Some(parent_key_path) => {
-                format!("{parent_key_path}{NESTED_CLAIM_MARKER}{}", disclosure.key)
-            }
-            None => disclosure.key.to_owned(),
-        };
-
-        let subdisclosures = all_disclosures
-            .iter()
-            .filter(|d| parent_map.get(&d.disclosure) == Some(&disclosure.disclosure))
-            .map(|subdisclosure| {
-                construct_node(
-                    subdisclosure.to_owned(),
-                    all_disclosures,
-                    parent_map,
-                    Some(&key_path),
-                )
-            })
-            .collect();
-
-        DisclosureTree {
-            key_path,
+    let parsed = match serde_json::from_str::<DisclosureArray>(&disclosure_array) {
+        Ok(DisclosureArray { salt, key, value }) => Disclosure {
+            salt,
+            key: Some(key),
+            value,
+            disclosure_array,
             disclosure,
-            subdisclosures,
+        },
+        Err(_) => {
+            let array_element_disclosure =
+                serde_json::from_str::<DisclosureArrayElement>(&disclosure_array)
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            Disclosure {
+                salt: array_element_disclosure.salt,
+                key: None,
+                value: array_element_disclosure.value,
+                disclosure_array,
+                disclosure,
+            }
         }
-    }
-
-    Ok(all_disclosures
-        .iter()
-        // level 0 disclosures
-        .filter(|disclosure| !parent_map.contains_key(&disclosure.disclosure))
-        .map(|disclosure| construct_node(disclosure.to_owned(), all_disclosures, &parent_map, None))
-        .collect())
-}
-
-/// transitively collects all disclosure strings from the whole subtree
-fn collect_all_subdisclosures(disclosure: &DisclosureTree) -> Vec<String> {
-    disclosure
-        .subdisclosures
-        .iter()
-        .flat_map(|node| {
-            let mut res = collect_all_subdisclosures(node);
-            res.push(node.disclosure.disclosure.to_owned());
-            res
-        })
-        .collect()
+    };
+    Ok(parsed)
 }
 
 fn gather_disclosures_from_sd(
@@ -324,7 +341,10 @@ fn gather_disclosures_from_sd(
                 metadata: false,
                 value: CredentialClaimValue::try_from(disclosure.value.clone())?,
             };
-            result.insert(disclosure.key.clone(), credential_claim);
+            // skip over array disclosures
+            if let Some(key) = &disclosure.key {
+                result.insert(key.clone(), credential_claim);
+            }
         }
         Ok::<_, FormatterError>(())
     })?;
@@ -332,23 +352,44 @@ fn gather_disclosures_from_sd(
     Ok(result)
 }
 
-fn gather_hashes_from_sd(sd: &CredentialClaimValue) -> Option<Vec<String>> {
-    sd.as_array().map(|array| {
-        array
+fn sd_hashes(claims: &Map<String, Value>) -> Vec<String> {
+    if let Some(sd) = claims.get(SELECTIVE_DISCLOSURE_MARKER) {
+        return sd
+            .as_array()
             .iter()
-            .filter_map(|hash| hash.value.as_str().map(str::to_string))
-            .collect()
-    })
+            .flat_map(|array| {
+                array
+                    .iter()
+                    .filter_map(|hash| hash.as_str().map(str::to_string))
+            })
+            .collect();
+    }
+    vec![]
+}
+
+pub(crate) fn gather_sd_hashes(claims: &HashMap<String, CredentialClaim>) -> Vec<String> {
+    if let Some(sd) = claims.get(SELECTIVE_DISCLOSURE_MARKER) {
+        return sd
+            .value
+            .as_array()
+            .iter()
+            .flat_map(|array| {
+                array
+                    .iter()
+                    .filter_map(|hash| hash.value.as_str().map(str::to_string))
+            })
+            .collect();
+    }
+    vec![]
 }
 
 fn gather_insertables_from_value(
     disclosures: &[(&Disclosure, (String, String))],
     map: &HashMap<String, CredentialClaim>,
 ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-    if let Some(sd) = map.get(SELECTIVE_DISCLOSURE_MARKER) {
-        if let Some(hashes) = gather_hashes_from_sd(&sd.value) {
-            return gather_disclosures_from_sd(disclosures, &hashes);
-        }
+    let sd_hashes = gather_sd_hashes(map);
+    if !sd_hashes.is_empty() {
+        return gather_disclosures_from_sd(disclosures, &sd_hashes);
     }
 
     Ok(HashMap::new())

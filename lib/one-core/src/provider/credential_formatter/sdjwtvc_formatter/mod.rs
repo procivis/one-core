@@ -183,7 +183,14 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .crypto
             .get_hasher(&jwt.payload.custom.hash_alg.unwrap_or("sha-256".to_string()))?;
 
-        prepare_sd_presentation(credential, &*hasher, holder_binding_ctx, holder_binding_fn).await
+        prepare_sd_presentation(
+            credential,
+            &*hasher,
+            holder_binding_ctx,
+            holder_binding_fn,
+            &self.user_claims_path(),
+        )
+        .await
     }
 
     async fn extract_credentials_unverified<'a>(

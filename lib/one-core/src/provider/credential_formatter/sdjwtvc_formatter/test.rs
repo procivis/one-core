@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -26,9 +26,9 @@ use crate::provider::caching_loader::vct::{
 };
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, CredentialClaimValue, CredentialData, CredentialSchema, CredentialStatus,
-    IdentifierDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublicKeySource,
-    PublishedClaim, PublishedClaimValue,
+    CredentialClaim, CredentialClaimValue, CredentialData, CredentialPresentation,
+    CredentialSchema, CredentialStatus, IdentifierDetails, Issuer, MockSignatureProvider,
+    MockTokenVerifier, PublicKeySource, PublishedClaim, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
@@ -1151,4 +1151,92 @@ async fn test_format_extract_round_trip() {
         },
     };
     assert_eq!(result.claims.claims, expected)
+}
+
+#[tokio::test]
+async fn test_format_presentation_mixed_sd_array_claim() {
+    let params = Params {
+        leeway: 60,
+        embed_layout_properties: false,
+        swiyu_mode: false,
+    };
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
+    };
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+    let formatter = SDJWTVCFormatter::new(
+        params,
+        crypto,
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+    );
+
+    let token = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDpqd2s6ZXlKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWVDSTZJbGhMU25sbWVtcDBSVlYyTTBocFZHNDVVVUpSWkdwS1oyUXlTMEpPTVhKMk5qRlVkRkJJZFVRNWFrRWlmUSMwIiwidHlwIjoidmMrc2Qtand0In0.eyJpYXQiOjE3NTcwNzU3MjgsImV4cCI6MTc1NzA3NTczOCwibmJmIjoxNzU3MDc1NzI4LCJpc3MiOiJkaWQ6andrOmV5SnJkSGtpT2lKUFMxQWlMQ0pqY25ZaU9pSkZaREkxTlRFNUlpd2llQ0k2SWxoTFNubG1lbXAwUlZWMk0waHBWRzQ1VVVKUlpHcEtaMlF5UzBKT01YSjJOakZVZEZCSWRVUTVha0VpZlEiLCJzdWIiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInZjdCI6ImNyZWRlbnRpYWwtc2NoZW1hLWlkIiwiX3NkIjpbIk9VamJWRlZ1RGhoRkRReXpJdllfd3AzQTJRVnBadjlsZ0JoRUdMYlVSTXMiLCJod1ZXdW9CeG1hcEd2RHZCdDJ1RGR6RmlfMjNIR3ZQd3hJT3lCdGNVRjZBIiwidVBCaWJWdzVOMFVqalF3cjJwSURPbTRwRlltS3MzbFVUdWQ4ZTRxajlCbyJdLCJfc2RfYWxnIjoic2hhLTI1NiJ9.4mDkXOv500AjcM-HtMLHsadP7-qb0kXlY10i6EfQzJCku4NypM_tQBlsbCQL5JJRxNqrm6BE2aetfPOmLjeABA~WyJpZWg1U1YwTjcwT2NkQkljMi00akxRIiwiYWdlIiwyMl0~WyJtY2p2TERkc1hsd2lDSDdXekd2aTVnIiwiaXNfb3Zlcl8xOCIsdHJ1ZV0~WyJSeExGd2VhQVdyeEp4XzRRVFF5VEJnIiwibWVhc3VyZW1lbnRzIixbeyJhaXIgcG9sbHV0aW9uIjoyNC42fV1d~WyJqWTFOM0R1cEJiczVuUUdRVUFCSmdRIiwibmFtZSIsIk1pa2UiXQ~WyJQWl9kRThIbXhKQ2xxVHVQUGhhOGhnIiwib2JqZWN0Iix7Il9zZCI6WyJBczVEX241c0pjaURMQlM5THNxaGlwc3doOGRzeVBrOEtiQjZERW94Q1NnIiwiWjBQaFV1V19jTnpVYnFEeC1kZFFXVV9yYzVZemxiWFlRYV9xN2FCZEpUQSJdfV0~";
+    let expected_presentation = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDpqd2s6ZXlKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWVDSTZJbGhMU25sbWVtcDBSVlYyTTBocFZHNDVVVUpSWkdwS1oyUXlTMEpPTVhKMk5qRlVkRkJJZFVRNWFrRWlmUSMwIiwidHlwIjoidmMrc2Qtand0In0.eyJpYXQiOjE3NTcwNzU3MjgsImV4cCI6MTc1NzA3NTczOCwibmJmIjoxNzU3MDc1NzI4LCJpc3MiOiJkaWQ6andrOmV5SnJkSGtpT2lKUFMxQWlMQ0pqY25ZaU9pSkZaREkxTlRFNUlpd2llQ0k2SWxoTFNubG1lbXAwUlZWMk0waHBWRzQ1VVVKUlpHcEtaMlF5UzBKT01YSjJOakZVZEZCSWRVUTVha0VpZlEiLCJzdWIiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInZjdCI6ImNyZWRlbnRpYWwtc2NoZW1hLWlkIiwiX3NkIjpbIk9VamJWRlZ1RGhoRkRReXpJdllfd3AzQTJRVnBadjlsZ0JoRUdMYlVSTXMiLCJod1ZXdW9CeG1hcEd2RHZCdDJ1RGR6RmlfMjNIR3ZQd3hJT3lCdGNVRjZBIiwidVBCaWJWdzVOMFVqalF3cjJwSURPbTRwRlltS3MzbFVUdWQ4ZTRxajlCbyJdLCJfc2RfYWxnIjoic2hhLTI1NiJ9.4mDkXOv500AjcM-HtMLHsadP7-qb0kXlY10i6EfQzJCku4NypM_tQBlsbCQL5JJRxNqrm6BE2aetfPOmLjeABA~WyJQWl9kRThIbXhKQ2xxVHVQUGhhOGhnIiwib2JqZWN0Iix7Il9zZCI6WyJBczVEX241c0pjaURMQlM5THNxaGlwc3doOGRzeVBrOEtiQjZERW94Q1NnIiwiWjBQaFV1V19jTnpVYnFEeC1kZFFXVV9yYzVZemxiWFlRYV9xN2FCZEpUQSJdfV0~WyJSeExGd2VhQVdyeEp4XzRRVFF5VEJnIiwibWVhc3VyZW1lbnRzIixbeyJhaXIgcG9sbHV0aW9uIjoyNC42fV1d~";
+    let credential_presentation = CredentialPresentation {
+        token: token.to_string(),
+        disclosed_keys: vec!["object/measurements/0/air pollution".to_string()],
+    };
+    let presentation = formatter
+        .format_credential_presentation(credential_presentation, None, None)
+        .await
+        .expect("failed to format presentation");
+    // Order of disclosures does not matter
+    assert_eq!(
+        presentation.split('~').collect::<HashSet<_>>(),
+        expected_presentation.split('~').collect::<HashSet<_>>()
+    );
+}
+
+// Adapted from https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-22.html#name-complex-structured-sd-jwt
+// with added `vct` claim to make parsing work.
+const COMPLEX_TEST_VECTOR: &str = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0.eyJfc2QiOiBbIi1hU3puSWQ5bVdNOG9jdVFvbENsbHN4VmdncTEtdkhXNE90bmhVdFZtV3ciLCAiSUticllObjN2QTdXRUZyeXN2YmRCSmpERFVfRXZRSXIwVzE4dlRScFVTZyIsICJvdGt4dVQxNG5CaXd6TkozTVBhT2l0T2w5cFZuWE9hRUhhbF94a3lOZktJIl0sInZjdCI6ICJkdW1teSIsICJpc3MiOiAiaHR0cHM6Ly9pc3N1ZXIuZXhhbXBsZS5jb20iLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2ZXJpZmllZF9jbGFpbXMiOiB7InZlcmlmaWNhdGlvbiI6IHsiX3NkIjogWyI3aDRVRTlxU2N2REtvZFhWQ3VvS2ZLQkpwVkJmWE1GX1RtQUdWYVplM1NjIiwgInZUd2UzcmFISUZZZ0ZBM3hhVUQyYU14Rno1b0RvOGlCdTA1cUtsT2c5THciXSwgInRydXN0X2ZyYW1ld29yayI6ICJkZV9hbWwiLCAiZXZpZGVuY2UiOiBbeyIuLi4iOiAidFlKMFREdWN5WlpDUk1iUk9HNHFSTzV2a1BTRlJ4RmhVRUxjMThDU2wzayJ9XX0sICJjbGFpbXMiOiB7Il9zZCI6IFsiUmlPaUNuNl93NVpIYWFka1FNcmNRSmYwSnRlNVJ3dXJSczU0MjMxRFRsbyIsICJTXzQ5OGJicEt6QjZFYW5mdHNzMHhjN2NPYW9uZVJyM3BLcjdOZFJtc01vIiwgIldOQS1VTks3Rl96aHNBYjlzeVdPNklJUTF1SGxUbU9VOHI4Q3ZKMGNJTWsiLCAiV3hoX3NWM2lSSDliZ3JUQkppLWFZSE5DTHQtdmpoWDFzZC1pZ09mXzlsayIsICJfTy13SmlIM2VuU0I0Uk9IbnRUb1FUOEptTHR6LW1oTzJmMWM4OVhvZXJRIiwgImh2RFhod21HY0pRc0JDQTJPdGp1TEFjd0FNcERzYVUwbmtvdmNLT3FXTkUiXX19LCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.QoWYWtikm-AtjmPnNVshbGXQl5raEz15PByTmZwfTQg9W2O3oR6j2tMmysTZZawdo6mNLR_PsZSI25qrUpiNTg~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgInRpbWUiLCAiMjAxMi0wNC0yM1QxODoyNVoiXQ~WyJlbHVWNU9nM2dTTklJOEVZbnN4QV9BIiwgInZlcmlmaWNhdGlvbl9wcm9jZXNzIiwgImYyNGM2Zi02ZDNmLTRlYzUtOTczZS1iMGQ4NTA2ZjNiYzciXQ~WyI2SWo3dE0tYTVpVlBHYm9TNXRtdlZBIiwgInR5cGUiLCAiZG9jdW1lbnQiXQ~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgIm1ldGhvZCIsICJwaXBwIl0~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgInRpbWUiLCAiMjAxMi0wNC0yMlQxMTozMFoiXQ~WyJBSngtMDk1VlBycFR0TjRRTU9xUk9BIiwgImRvY3VtZW50IiwgeyJ0eXBlIjogImlkY2FyZCIsICJpc3N1ZXIiOiB7Im5hbWUiOiAiU3RhZHQgQXVnc2J1cmciLCAiY291bnRyeSI6ICJERSJ9LCAibnVtYmVyIjogIjUzNTU0NTU0IiwgImRhdGVfb2ZfaXNzdWFuY2UiOiAiMjAxMC0wMy0yMyIsICJkYXRlX29mX2V4cGlyeSI6ICIyMDIwLTAzLTIyIn1d~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgeyJfc2QiOiBbIjl3cGpWUFd1RDdQSzBuc1FETDhCMDZsbWRnVjNMVnliaEh5ZFFwVE55TEkiLCAiRzVFbmhPQU9vVTlYXzZRTU52ekZYanBFQV9SYy1BRXRtMWJHX3djYUtJayIsICJJaHdGcldVQjYzUmNacTl5dmdaMFhQYzdHb3doM08ya3FYZUJJc3dnMUI0IiwgIldweFE0SFNvRXRjVG1DQ0tPZURzbEJfZW11Y1lMejJvTzhvSE5yMWJFVlEiXX1d~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgImdpdmVuX25hbWUiLCAiTWF4Il0~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImZhbWlseV9uYW1lIiwgIk1cdTAwZmNsbGVyIl0~WyJuUHVvUW5rUkZxM0JJZUFtN0FuWEZBIiwgIm5hdGlvbmFsaXRpZXMiLCBbIkRFIl1d~WyI1YlBzMUlxdVpOYTBoa2FGenp6Wk53IiwgImJpcnRoZGF0ZSIsICIxOTU2LTAxLTI4Il0~WyI1YTJXMF9OcmxFWnpmcW1rXzdQcS13IiwgInBsYWNlX29mX2JpcnRoIiwgeyJjb3VudHJ5IjogIklTIiwgImxvY2FsaXR5IjogIlx1MDBkZXlra3ZhYlx1MDBlNmphcmtsYXVzdHVyIn1d~WyJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRIiwgImFkZHJlc3MiLCB7ImxvY2FsaXR5IjogIk1heHN0YWR0IiwgInBvc3RhbF9jb2RlIjogIjEyMzQ0IiwgImNvdW50cnkiOiAiREUiLCAic3RyZWV0X2FkZHJlc3MiOiAiV2VpZGVuc3RyYVx1MDBkZmUgMjIifV0~WyJIYlE0WDhzclZXM1FEeG5JSmRxeU9BIiwgImJpcnRoX21pZGRsZV9uYW1lIiwgIlRpbW90aGV1cyJd~WyJDOUdTb3VqdmlKcXVFZ1lmb2pDYjFBIiwgInNhbHV0YXRpb24iLCAiRHIuIl0~WyJreDVrRjE3Vi14MEptd1V4OXZndnR3IiwgIm1zaXNkbiIsICI0OTEyMzQ1Njc4OSJd~";
+#[tokio::test]
+async fn test_format_presentation_complex_test_vector_sd_array_element() {
+    // Adapted from https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-22.html#appendix-A.2-39
+    // with added `vct` claim to make parsing work.
+    let expected_presentation = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImV4YW1wbGUrc2Qtand0In0.eyJfc2QiOiBbIi1hU3puSWQ5bVdNOG9jdVFvbENsbHN4VmdncTEtdkhXNE90bmhVdFZtV3ciLCAiSUticllObjN2QTdXRUZyeXN2YmRCSmpERFVfRXZRSXIwVzE4dlRScFVTZyIsICJvdGt4dVQxNG5CaXd6TkozTVBhT2l0T2w5cFZuWE9hRUhhbF94a3lOZktJIl0sInZjdCI6ICJkdW1teSIsICJpc3MiOiAiaHR0cHM6Ly9pc3N1ZXIuZXhhbXBsZS5jb20iLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2ZXJpZmllZF9jbGFpbXMiOiB7InZlcmlmaWNhdGlvbiI6IHsiX3NkIjogWyI3aDRVRTlxU2N2REtvZFhWQ3VvS2ZLQkpwVkJmWE1GX1RtQUdWYVplM1NjIiwgInZUd2UzcmFISUZZZ0ZBM3hhVUQyYU14Rno1b0RvOGlCdTA1cUtsT2c5THciXSwgInRydXN0X2ZyYW1ld29yayI6ICJkZV9hbWwiLCAiZXZpZGVuY2UiOiBbeyIuLi4iOiAidFlKMFREdWN5WlpDUk1iUk9HNHFSTzV2a1BTRlJ4RmhVRUxjMThDU2wzayJ9XX0sICJjbGFpbXMiOiB7Il9zZCI6IFsiUmlPaUNuNl93NVpIYWFka1FNcmNRSmYwSnRlNVJ3dXJSczU0MjMxRFRsbyIsICJTXzQ5OGJicEt6QjZFYW5mdHNzMHhjN2NPYW9uZVJyM3BLcjdOZFJtc01vIiwgIldOQS1VTks3Rl96aHNBYjlzeVdPNklJUTF1SGxUbU9VOHI4Q3ZKMGNJTWsiLCAiV3hoX3NWM2lSSDliZ3JUQkppLWFZSE5DTHQtdmpoWDFzZC1pZ09mXzlsayIsICJfTy13SmlIM2VuU0I0Uk9IbnRUb1FUOEptTHR6LW1oTzJmMWM4OVhvZXJRIiwgImh2RFhod21HY0pRc0JDQTJPdGp1TEFjd0FNcERzYVUwbmtvdmNLT3FXTkUiXX19LCAiX3NkX2FsZyI6ICJzaGEtMjU2In0.QoWYWtikm-AtjmPnNVshbGXQl5raEz15PByTmZwfTQg9W2O3oR6j2tMmysTZZawdo6mNLR_PsZSI25qrUpiNTg~WyIyR0xDNDJzS1F2ZUNmR2ZyeU5STjl3IiwgInRpbWUiLCAiMjAxMi0wNC0yM1QxODoyNVoiXQ~WyJQYzMzSk0yTGNoY1VfbEhnZ3ZfdWZRIiwgeyJfc2QiOiBbIjl3cGpWUFd1RDdQSzBuc1FETDhCMDZsbWRnVjNMVnliaEh5ZFFwVE55TEkiLCAiRzVFbmhPQU9vVTlYXzZRTU52ekZYanBFQV9SYy1BRXRtMWJHX3djYUtJayIsICJJaHdGcldVQjYzUmNacTl5dmdaMFhQYzdHb3doM08ya3FYZUJJc3dnMUI0IiwgIldweFE0SFNvRXRjVG1DQ0tPZURzbEJfZW11Y1lMejJvTzhvSE5yMWJFVlEiXX1d~WyJlSThaV205UW5LUHBOUGVOZW5IZGhRIiwgIm1ldGhvZCIsICJwaXBwIl0~WyJHMDJOU3JRZmpGWFE3SW8wOXN5YWpBIiwgImdpdmVuX25hbWUiLCAiTWF4Il0~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImZhbWlseV9uYW1lIiwgIk1cdTAwZmNsbGVyIl0~WyJ5MXNWVTV3ZGZKYWhWZGd3UGdTN1JRIiwgImFkZHJlc3MiLCB7ImxvY2FsaXR5IjogIk1heHN0YWR0IiwgInBvc3RhbF9jb2RlIjogIjEyMzQ0IiwgImNvdW50cnkiOiAiREUiLCAic3RyZWV0X2FkZHJlc3MiOiAiV2VpZGVuc3RyYVx1MDBkZmUgMjIifV0~";
+    let params = Params {
+        leeway: 60,
+        embed_layout_properties: false,
+        swiyu_mode: false,
+    };
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
+    };
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+    let formatter = SDJWTVCFormatter::new(
+        params,
+        crypto,
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+    );
+
+    let credential_presentation = CredentialPresentation {
+        token: COMPLEX_TEST_VECTOR.to_string(),
+        disclosed_keys: vec![
+            "verified_claims/verification/evidence/0/method".to_string(),
+            "verified_claims/verification/time".to_string(),
+            "verified_claims/claims/given_name".to_string(),
+            "verified_claims/claims/family_name".to_string(),
+            "verified_claims/claims/address".to_string(),
+        ],
+    };
+    let presentation = formatter
+        .format_credential_presentation(credential_presentation, None, None)
+        .await
+        .expect("failed to format presentation");
+    // Order of disclosures does not matter
+    assert_eq!(
+        presentation.split('~').collect::<HashSet<_>>(),
+        expected_presentation.split('~').collect::<HashSet<_>>()
+    );
 }
