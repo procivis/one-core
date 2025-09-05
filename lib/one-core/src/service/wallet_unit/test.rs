@@ -6,7 +6,8 @@ use async_trait::async_trait;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
-use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
+use shared_types::{OrganisationId, WalletUnitAttestationId, WalletUnitId};
+use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -21,6 +22,7 @@ use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::provider::os_provider::MockOSInfoProvider;
@@ -33,9 +35,9 @@ use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
 use crate::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitResponseDTO, RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitResponseDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitResponseDTO,
 };
-use crate::service::test_utilities::get_dummy_date;
+use crate::service::test_utilities::{generic_config, get_dummy_date};
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO, WalletProviderDTO,
@@ -67,7 +69,6 @@ fn mock_wallet_unit_service() -> WalletUnitService {
 async fn holder_register_success() {
     // given
     let organisation_id: OrganisationId = Uuid::new_v4().into();
-    let key_id: KeyId = Uuid::new_v4().into();
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -91,39 +92,39 @@ async fn holder_register_success() {
         });
 
     let (holder_private, holder_public) = ECDSASigner::generate_key_pair();
-    let holder_public_clone_for_repo = holder_public.clone();
-
-    let mut key_repository = MockKeyRepository::new();
-    key_repository
-        .expect_get_key()
-        .once()
-        .return_once(move |id, _| {
-            check!(id == &key_id);
-            Ok(Some(Key {
-                id: *id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                public_key: holder_public_clone_for_repo,
-                name: "holder".to_string(),
-                key_reference: None,
-                storage_type: "TEST".to_string(),
-                key_type: "ECDSA".to_string(),
-                organisation: None,
-            }))
-        });
-
     let holder_key_handle = Ecdsa
         .reconstruct_key(&holder_public, Some(holder_private.clone()), None)
         .unwrap();
 
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_create_key()
+        .once()
+        .return_once(move |dto| Ok(dto.id));
     let mut key_storage = MockKeyStorage::new();
     key_storage
+        .expect_generate_attestation_key()
+        .times(1)
+        .returning(move |_, _| {
+            Ok(StorageGeneratedKey {
+                public_key: vec![1, 2, 3, 4],
+                key_reference: Some(vec![1, 2, 3]),
+            })
+        });
+    key_storage
         .expect_key_handle()
-        .times(2)
+        .times(1)
         .returning(move |_| Ok(holder_key_handle.clone()));
+    key_storage
+        .expect_generate_attestation()
+        .times(1)
+        .returning(move |_, nonce| {
+            assert_eq!(nonce, Some("test_nonce".to_string()));
+            Ok(vec!["test_attestation".to_string()])
+        });
 
     let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
-    key_storages.insert("TEST".to_string(), Arc::new(key_storage));
+    key_storages.insert("SECURE_ELEMENT".to_string(), Arc::new(key_storage));
 
     let key_provider_impl = KeyProviderImpl::new(key_storages);
 
@@ -132,9 +133,6 @@ async fn holder_register_success() {
         .expect_get_os_name()
         .once()
         .return_once(|| OSName::Android);
-
-    let now = OffsetDateTime::now_utc();
-    let attestation_token = make_attestation_jwt(now + Duration::minutes(60)).await;
 
     let wallet_unit_attestation_id: WalletUnitAttestationId = Uuid::new_v4().into();
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
@@ -147,9 +145,19 @@ async fn holder_register_success() {
             check!(url == "https://wallet.provider/register");
             Ok(RegisterWalletUnitResponseDTO {
                 id: wallet_unit_id,
-                attestation: Some(attestation_token),
-                nonce: None,
+                attestation: None,
+                nonce: Some("test_nonce".to_string()),
             })
+        });
+
+    let now = OffsetDateTime::now_utc();
+    let jwt = make_attestation_jwt(now + Duration::minutes(60)).await;
+    wallet_provider_client
+        .expect_activate()
+        .once()
+        .return_once(move |url, _, _| {
+            check!(url == "https://wallet.provider/register");
+            Ok(ActivateWalletUnitResponseDTO { attestation: jwt })
         });
 
     let mut att_repo = MockWalletUnitAttestationRepository::new();
@@ -177,16 +185,18 @@ async fn holder_register_success() {
         key_provider: Arc::new(key_provider_impl),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         os_info_provider: Arc::new(os_info_provider),
+        config: Arc::new(generic_config().core),
         ..mock_wallet_unit_service()
     };
 
     let request = HolderRegisterWalletUnitRequestDTO {
         organisation_id,
-        key_id,
+        key_type: "EDDSA".to_string(),
         wallet_provider: WalletProviderDTO {
             name: "PROCIVIS_ONE".to_string(),
             r#type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
             url: "https://wallet.provider/register".to_string(),
+            app_integrity_check_required: true,
         },
     };
 

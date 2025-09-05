@@ -29,6 +29,8 @@ pub enum WalletProviderError {
     AppIntegrityValidationError(String),
     #[error("App integrity check required")]
     AppIntegrityCheckRequired,
+    #[error("App integrity check not required")]
+    AppIntegrityCheckNotRequired,
     #[error("Wallet unit already exists")]
     WalletUnitAlreadyExists,
 }

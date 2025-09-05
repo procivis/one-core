@@ -9,7 +9,7 @@ use one_core::model::wallet_unit::{
 use one_core::service::wallet_unit::dto::{
     AttestationKeyRequestDTO, GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO,
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 
@@ -153,27 +153,14 @@ impl OneCoreBinding {
     }
 
     #[uniffi::method]
-    pub async fn generate_attestation_key(
-        &self,
-        request: AttestationKeyRequestBindingDTO,
-    ) -> Result<String, BindingError> {
-        let core = self.use_core().await?;
-        Ok(core
-            .wallet_unit_service
-            .create_attestation_key(request.try_into()?)
-            .await?
-            .to_string())
-    }
-
-    #[uniffi::method]
     pub async fn holder_register_wallet_unit(
         &self,
         request: HolderRegisterWalletUnitRequestBindingDTO,
-    ) -> Result<(), BindingError> {
+    ) -> Result<HolderRegisterWalletUnitResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
         let result = request.try_into();
-        core.wallet_unit_service.holder_register(result?).await?;
-        Ok(())
+        let response = core.wallet_unit_service.holder_register(result?).await?;
+        Ok(response.into())
     }
 
     #[uniffi::method]
@@ -301,8 +288,17 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     organisation_id: String,
     #[try_into(infallible)]
     wallet_provider: WalletProviderBindingDTO,
-    #[try_into(with_fn = into_id)]
-    key_id: String,
+    #[try_into(infallible)]
+    key_type: String,
+}
+
+#[derive(Clone, Debug, From, uniffi::Record)]
+#[from(HolderRegisterWalletUnitResponseDTO)]
+pub struct HolderRegisterWalletUnitResponseBindingDTO {
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub id: String,
+    #[from(with_fn_ref = "ToString::to_string")]
+    pub key_id: String,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -338,6 +334,7 @@ struct WalletProviderBindingDTO {
     url: String,
     r#type: WalletProviderTypeBindingEnum,
     name: String,
+    pub app_integrity_check_required: bool,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

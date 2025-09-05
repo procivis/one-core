@@ -34,7 +34,13 @@ pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO
 #[derive(Debug, Clone)]
 pub struct HolderRegisterWalletUnitRequestDTO {
     pub organisation_id: OrganisationId,
+    pub key_type: String,
     pub wallet_provider: WalletProviderDTO,
+}
+
+#[derive(Debug, Clone)]
+pub struct HolderRegisterWalletUnitResponseDTO {
+    pub id: WalletUnitId,
     pub key_id: KeyId,
 }
 
@@ -48,6 +54,7 @@ pub struct WalletProviderDTO {
     pub name: String,
     pub r#type: WalletProviderType,
     pub url: String,
+    pub app_integrity_check_required: bool,
 }
 
 #[derive(Debug, Clone)]

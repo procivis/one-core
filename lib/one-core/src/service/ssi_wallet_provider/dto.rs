@@ -20,6 +20,17 @@ pub struct RegisterWalletUnitResponseDTO {
 }
 
 #[derive(Clone, Debug)]
+pub struct ActivateWalletUnitRequestDTO {
+    pub attestation: Vec<String>,
+    pub proof: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct ActivateWalletUnitResponseDTO {
+    pub attestation: String,
+}
+
+#[derive(Clone, Debug)]
 pub struct WalletUnitActivationRequestDTO {
     pub attestation: Vec<String>,
     pub proof: String,

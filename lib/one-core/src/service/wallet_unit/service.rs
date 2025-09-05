@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use shared_types::{KeyId, OrganisationId, WalletUnitId};
+use shared_types::{OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -8,9 +8,11 @@ use crate::common_mapper::list_response_into;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::WalletUnitStatus::Revoked;
-use crate::model::wallet_unit::{WalletUnitListQuery, WalletUnitRelations, WalletUnitStatus};
+use crate::model::wallet_unit::{
+    WalletUnitListQuery, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
+};
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
 };
@@ -18,20 +20,23 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
+use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
+    ActivateWalletUnitRequestDTO, RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO,
 };
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
-    AttestationKeyRequestDTO, GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO,
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderRegisterWalletUnitResponseDTO,
     HolderWalletUnitAttestationResponseDTO,
 };
 use crate::service::wallet_unit::error::WalletUnitAttestationError;
+use crate::service::wallet_unit::mapper::key_from_generated_key;
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{DecomposedToken, JWTPayload};
 
@@ -74,64 +79,76 @@ impl WalletUnitService {
     pub async fn holder_register(
         &self,
         request: HolderRegisterWalletUnitRequestDTO,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<HolderRegisterWalletUnitResponseDTO, ServiceError> {
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await?
             .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
-        let key = self
-            .key_repository
-            .get_key(&request.key_id, &KeyRelations::default())
-            .await?
-            .ok_or(EntityNotFoundError::Key(request.key_id))?;
+        if organisation.deactivated_at.is_some() {
+            return Err(ServiceError::from(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id),
+            ));
+        }
 
-        let key_storage = self
-            .key_provider
-            .get_key_storage(&key.storage_type)
-            .ok_or(MissingProviderError::KeyStorage(key.storage_type.clone()))?;
+        let os = WalletUnitOs::from(self.os_info_provider.get_os_name().await);
+        let key_storage_type = match os {
+            WalletUnitOs::Android | WalletUnitOs::Ios => KeyStorageType::SecureElement,
+            WalletUnitOs::Web => KeyStorageType::Internal,
+        };
+        let key_storage_id = self
+            .config
+            .key_storage
+            .iter()
+            .filter(|(_, v)| v.enabled.unwrap_or(true) && v.r#type == key_storage_type)
+            .map(|(k, _)| k)
+            .next()
+            .ok_or(MissingProviderError::KeyStorage(format!(
+                "No enabled key storage of type {key_storage_type}"
+            )))?;
 
-        let key_handle = key_storage
-            .key_handle(&key)
-            .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+        let key_type = KeyAlgorithmType::from_str(&request.key_type).map_err(|err| {
+            ServiceError::from(ValidationError::InvalidKeyAlgorithm(err.to_string()))
+        })?;
 
-        let auth_fn = self.key_provider.get_signature_provider(
-            &key,
-            None,
-            self.key_algorithm_provider.clone(),
-        )?;
+        // Ensure the key type is known and enabled
+        if let Some(key_algorithm) = self.config.key_algorithm.get(&key_type) {
+            if !key_algorithm.enabled.unwrap_or(true) {
+                return Err(ServiceError::from(ValidationError::InvalidKeyAlgorithm(
+                    request.key_type.clone(),
+                )));
+            }
+        } else {
+            return Err(ServiceError::from(ValidationError::InvalidKeyAlgorithm(
+                request.key_type.clone(),
+            )));
+        }
 
+        let result =
+            if request.wallet_provider.app_integrity_check_required && os != WalletUnitOs::Web {
+                self.register_with_integrity_check(
+                    &request,
+                    key_storage_id,
+                    key_type,
+                    os,
+                    organisation.clone(),
+                )
+                .await?
+            } else {
+                self.register_without_integrity_check(
+                    &request,
+                    key_storage_id,
+                    key_type,
+                    os,
+                    organisation.clone(),
+                )
+                .await?
+            };
+
+        let key_id = result.key.id;
+        let attestation_token: DecomposedToken<()> = Jwt::decompose_token(&result.attestation)?;
         let now = self.clock.now_utc();
-        let os_name = self.os_info_provider.get_os_name().await;
-        let signed_proof = self
-            .create_signed_key_possession_proof(
-                now,
-                &request.wallet_provider.name,
-                auth_fn,
-                &request.wallet_provider.url,
-            )
-            .await?;
-
-        let register_request = RegisterWalletUnitRequestDTO {
-            wallet_provider: request.wallet_provider.name.clone(),
-            os: os_name.into(),
-            public_key: Some(key_handle.public_key_as_jwk()?.into()),
-            proof: Some(signed_proof),
-        };
-
-        let register_response = self
-            .wallet_provider_client
-            .register(&request.wallet_provider.url, register_request)
-            .await
-            .map_err(WalletUnitAttestationError::from)?;
-
-        let Some(attestation) = register_response.attestation else {
-            unimplemented!("holder nonce handling: TODO ONE-7129")
-        };
-
-        let attestation_token: DecomposedToken<()> = Jwt::decompose_token(&attestation)?;
-
         let wallet_unit_attestation = WalletUnitAttestation {
             id: Uuid::new_v4().into(),
             created_date: now,
@@ -141,13 +158,13 @@ impl WalletUnitService {
                 .expires_at
                 .ok_or(ServiceError::MappingError("expires_at is None".to_string()))?,
             status: WalletUnitStatus::Active,
-            attestation,
-            wallet_unit_id: register_response.id,
+            attestation: result.attestation,
+            wallet_unit_id: result.wallet_unit_id,
             wallet_provider_url: request.wallet_provider.url,
             wallet_provider_type: request.wallet_provider.r#type.clone(),
             wallet_provider_name: request.wallet_provider.name,
             organisation: Some(organisation.clone()),
-            key: Some(key),
+            key: Some(result.key),
         };
 
         let wallet_unit_attestation_id = self
@@ -158,7 +175,7 @@ impl WalletUnitService {
         let wallet_unit_name = format!(
             "{}-{}-{}",
             request.wallet_provider.r#type,
-            os_name,
+            os,
             now.unix_timestamp()
         );
 
@@ -175,7 +192,169 @@ impl WalletUnitService {
                 organisation_id: Some(organisation.id),
             })
             .await?;
+        Ok(HolderRegisterWalletUnitResponseDTO {
+            id: result.wallet_unit_id,
+            key_id,
+        })
+    }
 
+    async fn register_without_integrity_check(
+        &self,
+        request: &HolderRegisterWalletUnitRequestDTO,
+        key_storage_id: &str,
+        key_type: KeyAlgorithmType,
+        os: WalletUnitOs,
+        organisation: Organisation,
+    ) -> Result<Registration, ServiceError> {
+        let key_storage = self
+            .key_provider
+            .get_key_storage(key_storage_id)
+            .ok_or(MissingProviderError::KeyStorage(key_storage_id.to_string()))?;
+
+        let key_id = Uuid::new_v4().into();
+        let key = key_storage.generate(key_id, key_type).await?;
+        let key =
+            key_from_generated_key(key_id, key_storage_id, key_type.as_ref(), organisation, key);
+
+        self.store_key(&key).await?;
+
+        let key_handle = key_storage
+            .key_handle(&key)
+            .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
+        let signed_proof = self
+            .create_signed_key_possession_proof(
+                self.clock.now_utc(),
+                &request.wallet_provider.name,
+                auth_fn,
+                &request.wallet_provider.url,
+            )
+            .await?;
+
+        let register_request = RegisterWalletUnitRequestDTO {
+            wallet_provider: request.wallet_provider.name.clone(),
+            os,
+            public_key: Some(key_handle.public_key_as_jwk()?.into()),
+            proof: Some(signed_proof),
+        };
+
+        let register_response = self.register(&request, register_request).await?;
+
+        let Some(attestation) = register_response.attestation else {
+            // integrity check was not expected, but is required
+            return Err(WalletUnitAttestationError::AppIntegrityCheckRequired.into());
+        };
+
+        Ok(Registration {
+            wallet_unit_id: register_response.id,
+            key,
+            attestation,
+        })
+    }
+
+    async fn register_with_integrity_check(
+        &self,
+        request: &HolderRegisterWalletUnitRequestDTO,
+        key_storage_id: &str,
+        key_type: KeyAlgorithmType,
+        os: WalletUnitOs,
+        organisation: Organisation,
+    ) -> Result<Registration, ServiceError> {
+        let register_request = RegisterWalletUnitRequestDTO {
+            wallet_provider: request.wallet_provider.name.clone(),
+            os,
+            public_key: None,
+            proof: None,
+        };
+        let register_response = self.register(&request, register_request).await?;
+
+        let Some(nonce) = register_response.nonce else {
+            // integrity check was expected, but is not required
+            return Err(WalletUnitAttestationError::AppIntegrityCheckNotRequired.into());
+        };
+
+        let key_storage = self
+            .key_provider
+            .get_key_storage(key_storage_id)
+            .ok_or(MissingProviderError::KeyStorage(key_storage_id.to_string()))?;
+
+        let key_id = Uuid::new_v4().into();
+        let key = key_storage
+            .generate_attestation_key(key_id, Some(nonce.clone()))
+            .await?;
+        let key =
+            key_from_generated_key(key_id, key_storage_id, key_type.as_ref(), organisation, key);
+
+        self.store_key(&key).await?;
+        let attestation = key_storage.generate_attestation(&key, Some(nonce)).await?;
+
+        let auth_fn = self.key_provider.get_signature_provider(
+            &key,
+            None,
+            self.key_algorithm_provider.clone(),
+        )?;
+        let proof = self
+            .create_signed_key_possession_proof(
+                self.clock.now_utc(),
+                &request.wallet_provider.name,
+                auth_fn,
+                &request.wallet_provider.url,
+            )
+            .await?;
+
+        let activate_request = ActivateWalletUnitRequestDTO { attestation, proof };
+
+        let activation_response = self
+            .wallet_provider_client
+            .activate(
+                &request.wallet_provider.url,
+                register_response.id,
+                activate_request,
+            )
+            .await
+            .map_err(WalletUnitAttestationError::from)?;
+
+        Ok(Registration {
+            wallet_unit_id: register_response.id,
+            key,
+            attestation: activation_response.attestation,
+        })
+    }
+
+    async fn register(
+        &self,
+        request: &&HolderRegisterWalletUnitRequestDTO,
+        register_request: RegisterWalletUnitRequestDTO,
+    ) -> Result<RegisterWalletUnitResponseDTO, WalletUnitAttestationError> {
+        self.wallet_provider_client
+            .register(&request.wallet_provider.url, register_request)
+            .await
+            .map_err(|err| match err {
+                WalletProviderClientError::Transport(_) => WalletUnitAttestationError::from(err),
+                WalletProviderClientError::IntegrityCheckRequired => {
+                    WalletUnitAttestationError::AppIntegrityCheckRequired
+                }
+                WalletProviderClientError::IntegrityCheckNotRequired => {
+                    WalletUnitAttestationError::AppIntegrityCheckNotRequired
+                }
+            })
+    }
+
+    async fn store_key(&self, key: &Key) -> Result<(), ServiceError> {
+        self.key_repository
+            .create_key(key.clone())
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    ServiceError::from(BusinessLogicError::KeyAlreadyExists)
+                }
+                err => ServiceError::from(err),
+            })?;
         Ok(())
     }
 
@@ -307,122 +486,6 @@ impl WalletUnitService {
         }
     }
 
-    /// Generates a new hardware bound key which can be used for wallet unit attestations
-    pub async fn create_attestation_key(
-        &self,
-        request: AttestationKeyRequestDTO,
-    ) -> Result<KeyId, ServiceError> {
-        // The keys require secure element key storage, check if disabled or missing
-        if self
-            .config
-            .key_storage
-            .get_if_enabled(KeyStorageType::SecureElement.as_ref())
-            .is_err()
-        {
-            return Err(ServiceError::from(ValidationError::InvalidKeyStorage(
-                KeyStorageType::SecureElement.to_string(),
-            )));
-        }
-
-        let key_type = KeyAlgorithmType::from_str(&request.key_type).map_err(|err| {
-            ServiceError::from(ValidationError::InvalidKeyAlgorithm(err.to_string()))
-        })?;
-
-        // Ensure the key type is known and enabled
-        if let Some(key_algorithm) = self.config.key_algorithm.get(&key_type) {
-            if !key_algorithm.enabled.unwrap_or_default() {
-                return Err(ServiceError::from(ValidationError::InvalidKeyAlgorithm(
-                    request.key_type.clone(),
-                )));
-            }
-        } else {
-            return Err(ServiceError::from(ValidationError::InvalidKeyAlgorithm(
-                request.key_type.clone(),
-            )));
-        }
-
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?
-            .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
-
-        if organisation.deactivated_at.is_some() {
-            return Err(ServiceError::from(
-                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id),
-            ));
-        }
-
-        let key_id = Uuid::new_v4().into();
-        let now = OffsetDateTime::now_utc();
-
-        let secure_element_key_storage = self
-            .key_provider
-            .get_key_storage(KeyStorageType::SecureElement.as_ref())
-            .ok_or(MissingProviderError::KeyStorage(
-                KeyStorageType::SecureElement.to_string(),
-            ))?;
-
-        let key = secure_element_key_storage
-            .generate_attestation_key(key_id, request.nonce)
-            .await?;
-
-        let key_entity = Key {
-            id: key_id,
-            created_date: now,
-            last_modified: now,
-            public_key: key.public_key,
-            name: request.name,
-            key_reference: key.key_reference,
-            storage_type: KeyStorageType::SecureElement.to_string(),
-            key_type: request.key_type,
-            organisation: Some(organisation),
-        };
-
-        let uuid = self
-            .key_repository
-            .create_key(key_entity.to_owned())
-            .await
-            .map_err(|err| match err {
-                DataLayerError::AlreadyExists => {
-                    ServiceError::from(BusinessLogicError::KeyAlreadyExists)
-                }
-                err => ServiceError::from(err),
-            })?;
-
-        Ok(uuid)
-    }
-
-    /// Generates an attestation for a hardware bound key
-    ///
-    /// # Arguments
-    ///
-    /// * `key_id` - Id of an existing key
-    /// * `nonce` - Nonce to be included in the signed attestation
-    pub async fn generate_attestation(
-        &self,
-        key_id: KeyId,
-        nonce: Option<String>,
-    ) -> Result<Vec<String>, ServiceError> {
-        let key = self
-            .key_repository
-            .get_key(&key_id, &KeyRelations::default())
-            .await?;
-
-        let Some(key) = key else {
-            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
-        };
-
-        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
-            MissingProviderError::KeyStorage(key.storage_type.to_owned()),
-        )?;
-
-        key_storage
-            .generate_attestation(&key, nonce)
-            .await
-            .map_err(ServiceError::from)
-    }
-
     pub async fn holder_attestation(
         &self,
         organisation_id: OrganisationId,
@@ -473,4 +536,10 @@ impl WalletUnitService {
         let signed_proof = proof.tokenize(Some(auth_fn)).await?;
         Ok(signed_proof)
     }
+}
+
+struct Registration {
+    wallet_unit_id: WalletUnitId,
+    key: Key,
+    attestation: String,
 }

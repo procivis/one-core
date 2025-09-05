@@ -102,6 +102,34 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled() {
 }
 
 #[tokio::test]
+async fn test_register_wallet_unit_fail_integrity_check_disabled_no_proof_and_pubkey() {
+    let config = indoc::indoc! {"
+      walletProvider:
+        PROCIVIS_ONE:
+            params:
+              public:
+                integrityCheck:
+                    enabled: false
+    "}
+    .to_string();
+    // given
+    let (context, org) = TestContext::new_with_organisation(Some(config)).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .register_wallet("PROCIVIS_ONE", "ANDROID", None, None)
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 400);
+    let resp_json = resp.json_value().await;
+    assert_eq!(resp_json["code"], "BR_0279");
+}
+
+#[tokio::test]
 async fn test_register_wallet_unit_successfully_integrity_check_enabled_web() {
     // given
     let (context, org) = TestContext::new_with_organisation(None).await;

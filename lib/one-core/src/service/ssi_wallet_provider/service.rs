@@ -55,6 +55,15 @@ impl SSIWalletProviderService {
         let (config, config_params) =
             self.get_wallet_provider_config_params(&request.wallet_provider)?;
 
+        if !config_params.integrity_check.enabled
+            && request.proof.is_none()
+            && request.public_key.is_none()
+        {
+            // If both, proof and public key are missing, the assumption is that the client is expecting
+            // an app integrity check with a nonce --> return specific error code to cover that case.
+            return Err(WalletProviderError::AppIntegrityCheckNotRequired.into());
+        }
+
         if config_params.integrity_check.enabled && request.os != WalletUnitOs::Web {
             if request.public_key.is_some() || request.proof.is_some() {
                 return Err(WalletProviderError::AppIntegrityCheckRequired.into());

@@ -5,8 +5,8 @@ use shared_types::WalletUnitId;
 use crate::model::wallet_unit::WalletUnitOs;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
+    RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 
 #[derive(Clone, Debug, Serialize, From)]
@@ -26,6 +26,21 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletUnitId,
     pub attestation: Option<String>,
     pub nonce: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, From)]
+#[from(ActivateWalletUnitRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivateWalletUnitRequestRestDTO {
+    pub attestation: Vec<String>,
+    pub proof: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Into)]
+#[into(ActivateWalletUnitResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ActivateWalletUnitResponseRestDTO {
+    pub attestation: String,
 }
 
 #[derive(Clone, Debug, Serialize, From)]

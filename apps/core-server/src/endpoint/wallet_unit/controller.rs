@@ -8,7 +8,8 @@ use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::wallet_unit::dto::{
     GetWalletUnitsResponseRestDTO, HolderAttestationsQueryParams,
     HolderRefreshWalletUnitRequestRestDTO, HolderRegisterWalletUnitRequestRestDTO,
-    HolderWalletUnitAttestationResponseRestDTO, ListWalletUnitsQuery, WalletUnitResponseRestDTO,
+    HolderRegisterWalletUnitResponseRestDTO, HolderWalletUnitAttestationResponseRestDTO,
+    ListWalletUnitsQuery, WalletUnitResponseRestDTO,
 };
 use crate::extractor::Qs;
 use crate::router::AppState;
@@ -65,7 +66,7 @@ pub(crate) async fn get_wallet_unit_details(
     post,
     path = "/api/wallet-unit/v1/holder-register",
     request_body = HolderRegisterWalletUnitRequestRestDTO,
-    responses(EmptyOrErrorResponse),
+    responses(OkOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO>),
     tag = "wallet_unit",
     security(
         ("bearer" = [])
@@ -81,13 +82,13 @@ pub(crate) async fn wallet_unit_holder_register(
         Json<HolderRegisterWalletUnitRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> EmptyOrErrorResponse {
+) -> OkOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO> {
     let result = state
         .core
         .wallet_unit_service
         .holder_register(request.into())
         .await;
-    EmptyOrErrorResponse::from_result(result, state, "register wallet unit")
+    OkOrErrorResponse::from_result(result, state, "register wallet unit")
 }
 
 #[utoipa::path(

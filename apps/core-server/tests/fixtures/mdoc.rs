@@ -7,7 +7,7 @@ use indoc::indoc;
 use one_core::config::core_config::{AppConfig, DatatypeConfig, InputFormat, KeyAlgorithmType};
 use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::provider::caching_loader::android_attestation_crl::{
-    AndroidAttestationCrlCache, MockAndroidAttestationCrlResolver,
+    AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
 use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use one_core::provider::credential_formatter::CredentialFormatter;
@@ -52,7 +52,9 @@ pub(crate) async fn format_mdoc_credential(
         Duration::minutes(1),
     ));
     let android_key_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
-        Arc::new(MockAndroidAttestationCrlResolver::default()),
+        Arc::new(AndroidAttestationCrlResolver::new(Arc::new(
+            ReqwestClient::default(),
+        ))),
         Arc::new(InMemoryStorage::new(HashMap::new())),
         1,
         Duration::days(1),

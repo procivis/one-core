@@ -3,7 +3,8 @@ use one_core::model::wallet_unit::{
 };
 use one_core::service::wallet_unit::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
-    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderRegisterWalletUnitResponseDTO,
+    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
@@ -113,17 +114,15 @@ pub(crate) enum SortableWalletUnitColumnRest {
     Os,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(HolderRegisterWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
     pub organisation_id: OrganisationId,
     pub wallet_provider: WalletProviderRestDTO,
-    pub key_id: KeyId,
+    pub key_type: String,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, From)]
 #[into(WalletProviderDTO)]
 #[from(WalletProviderDTO)]
@@ -132,9 +131,17 @@ pub(crate) struct WalletProviderRestDTO {
     pub url: String,
     pub r#type: WalletProviderTypeRestEnum,
     pub name: String,
+    pub app_integrity_check_required: bool,
 }
 
-#[allow(dead_code)]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(HolderRegisterWalletUnitResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct HolderRegisterWalletUnitResponseRestDTO {
+    pub id: WalletUnitId,
+    pub key_id: KeyId,
+}
+
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(HolderRefreshWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]

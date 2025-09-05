@@ -7,7 +7,8 @@ use shared_types::WalletUnitId;
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -18,6 +19,14 @@ pub trait WalletProviderClient: Send + Sync {
         wallet_provider_url: &str,
         request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, WalletProviderClientError>;
+
+    async fn activate(
+        &self,
+        wallet_provider_url: &str,
+        wallet_unit_id: WalletUnitId,
+        request: ActivateWalletUnitRequestDTO,
+    ) -> Result<ActivateWalletUnitResponseDTO, WalletProviderClientError>;
+
     async fn refresh(
         &self,
         wallet_provider_url: &str,

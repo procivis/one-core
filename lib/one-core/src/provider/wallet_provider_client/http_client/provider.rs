@@ -9,11 +9,13 @@ use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::provider::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::provider::wallet_provider_client::http_client::dto::{
+    ActivateWalletUnitRequestRestDTO, ActivateWalletUnitResponseRestDTO,
     RefreshWalletUnitRequestRestDTO, RefreshWalletUnitResponseRestDTO,
     RegisterWalletUnitRequestRestDTO, RegisterWalletUnitResponseRestDTO,
 };
 use crate::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 
 #[async_trait::async_trait]
@@ -27,9 +29,57 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             .context("url error")
             .map_err(WalletProviderClientError::Transport)?;
 
-        self.http_client
+        let response = self
+            .http_client
             .post(url.as_str())
             .json(RegisterWalletUnitRequestRestDTO::from(request))
+            .context("json error")
+            .map_err(WalletProviderClientError::Transport)?
+            .send()
+            .await
+            .context("send error")
+            .map_err(WalletProviderClientError::Transport)?;
+
+        if response.status.is_client_error() {
+            let body = serde_json::from_slice::<Value>(&response.body)
+                .map_err(|e| WalletProviderClientError::Transport(Error::JsonError(e).into()))?;
+            let cause = body
+                .get("code")
+                .ok_or(WalletProviderClientError::Transport(anyhow!(
+                    "Error missing code"
+                )))?;
+            if cause == "BR_0270" {
+                return Err(WalletProviderClientError::IntegrityCheckRequired);
+            } else if cause == "BR_0279" {
+                return Err(WalletProviderClientError::IntegrityCheckNotRequired);
+            }
+        }
+
+        response
+            .error_for_status()
+            .context("status error")
+            .map_err(WalletProviderClientError::Transport)?
+            .json::<RegisterWalletUnitResponseRestDTO>()
+            .context("parsing error")
+            .map_err(WalletProviderClientError::Transport)
+            .map(|r| r.into())
+    }
+
+    async fn activate(
+        &self,
+        wallet_provider_url: &str,
+        wallet_unit_id: WalletUnitId,
+        request: ActivateWalletUnitRequestDTO,
+    ) -> Result<ActivateWalletUnitResponseDTO, WalletProviderClientError> {
+        let url = Url::parse(
+            format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/activate").as_str(),
+        )
+        .context("url error")
+        .map_err(WalletProviderClientError::Transport)?;
+
+        self.http_client
+            .post(url.as_str())
+            .json(ActivateWalletUnitRequestRestDTO::from(request))
             .context("json error")
             .map_err(WalletProviderClientError::Transport)?
             .send()
@@ -39,7 +89,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             .error_for_status()
             .context("status error")
             .map_err(WalletProviderClientError::Transport)?
-            .json::<RegisterWalletUnitResponseRestDTO>()
+            .json::<ActivateWalletUnitResponseRestDTO>()
             .context("parsing error")
             .map_err(WalletProviderClientError::Transport)
             .map(|r| r.into())

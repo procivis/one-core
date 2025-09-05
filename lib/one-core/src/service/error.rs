@@ -1384,6 +1384,15 @@ pub enum ErrorCode {
 
     #[strum(message = "NFC session closed")]
     BR_0278,
+
+    #[strum(message = "App integrity check not required: provide proof and public key")]
+    BR_0279,
+
+    #[strum(message = "App integrity check required")]
+    BR_0280,
+
+    #[strum(message = "App integrity check not required")]
+    BR_0281,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1778,6 +1787,7 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::MissingPublicKey => ErrorCode::BR_0269,
             Self::AppIntegrityCheckRequired => ErrorCode::BR_0270,
             Self::WalletUnitAlreadyExists => ErrorCode::BR_0271,
+            Self::AppIntegrityCheckNotRequired => ErrorCode::BR_0279,
         }
     }
 }
@@ -1787,6 +1797,8 @@ impl ErrorCodeMixin for WalletUnitAttestationError {
         match self {
             WalletUnitAttestationError::WalletUnitRevoked => ErrorCode::BR_0261,
             WalletUnitAttestationError::WalletProviderClientFailure(_) => ErrorCode::BR_0264,
+            WalletUnitAttestationError::AppIntegrityCheckRequired => ErrorCode::BR_0280,
+            WalletUnitAttestationError::AppIntegrityCheckNotRequired => ErrorCode::BR_0281,
         }
     }
 }

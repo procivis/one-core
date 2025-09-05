@@ -217,6 +217,13 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'INTERNAL'
                 order: 0
                 params: null
+            SECURE_ELEMENT:
+                display: 'keyStorage.secureElement'
+                type: 'SECURE_ELEMENT'
+                order: 3
+                params:
+                  private:
+                    aliasPrefix: 'ch.procivis.one.wallet.keys'
         holderKeyStorage:
             SOFTWARE:
                 display: 'display'

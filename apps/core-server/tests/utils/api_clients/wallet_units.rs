@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
 use serde_json::json;
-use shared_types::{KeyId, OrganisationId};
+use shared_types::OrganisationId;
 
 use super::{HttpClient, Response};
 
@@ -15,7 +15,7 @@ pub struct TestHolderRegisterRequest {
     pub wallet_provider_url: Option<String>,
     pub wallet_provider_type: Option<String>,
     pub wallet_provider_name: Option<String>,
-    pub key_id: Option<KeyId>,
+    pub key_type: Option<String>,
 }
 
 #[derive(Debug, Default)]
@@ -46,9 +46,10 @@ impl WalletUnitsApi {
             "walletProvider": {
                 "url": request.wallet_provider_url.unwrap_or("http://localhost:3000".to_string()),
                 "type": request.wallet_provider_type.unwrap_or("PROCIVIS_ONE".to_string()),
-                "name": request.wallet_provider_name.unwrap_or("PROCIVIS_ONE".to_string())
+                "name": request.wallet_provider_name.unwrap_or("PROCIVIS_ONE".to_string()),
+                "appIntegrityCheckRequired": false,
             },
-            "keyId": request.key_id,
+            "keyType": request.key_type.unwrap_or("ECDSA".to_string()),
             }
         );
 
