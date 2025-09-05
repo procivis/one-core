@@ -6,8 +6,10 @@ use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
+use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::dto::RegisterWalletUnitRequestDTO;
+use crate::service::ssi_wallet_provider::error::WalletProviderError;
 
 pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,
@@ -61,4 +63,11 @@ pub(crate) fn public_key_from_wallet_unit(
     .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
     let ParsedKey { key, .. } = key_algorithm_provider.parse_jwk(&decoded_public_key)?;
     Ok(key)
+}
+
+pub(crate) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
+    match error {
+        DataLayerError::AlreadyExists => WalletProviderError::WalletUnitAlreadyExists.into(),
+        e => e.into(),
+    }
 }

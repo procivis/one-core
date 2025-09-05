@@ -36,7 +36,7 @@ use crate::service::ssi_wallet_provider::dto::{
 };
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
 use crate::service::ssi_wallet_provider::mapper::{
-    public_key_from_wallet_unit, wallet_unit_from_request,
+    map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
 use crate::service::ssi_wallet_provider::validator::validate_audience;
 use crate::util::jwt::Jwt;
@@ -155,7 +155,8 @@ impl SSIWalletProviderService {
         let wallet_unit_id = self
             .wallet_unit_repository
             .create_wallet_unit(wallet_unit)
-            .await?;
+            .await
+            .map_err(map_already_exists_error)?;
         self.create_wallet_unit_history(
             &wallet_unit_id,
             wallet_unit_name,

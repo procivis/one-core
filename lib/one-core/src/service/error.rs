@@ -1357,6 +1357,9 @@ pub enum ErrorCode {
     )]
     BR_0270,
 
+    #[strum(message = "Wallet unit already exists")]
+    BR_0271,
+
     #[strum(message = "Engagement provided for non ISO mDL flow")]
     BR_0272,
 }
@@ -1751,6 +1754,7 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::MissingProof => ErrorCode::BR_0268,
             Self::MissingPublicKey => ErrorCode::BR_0269,
             Self::AppIntegrityCheckRequired => ErrorCode::BR_0270,
+            Self::WalletUnitAlreadyExists => ErrorCode::BR_0271,
         }
     }
 }
