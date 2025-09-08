@@ -10,7 +10,7 @@ use serde::de::DeserializeOwned;
 
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
-use crate::service::ssi_wallet_provider::dto::Bundle;
+use crate::service::ssi_wallet_provider::dto::IOSBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
@@ -35,7 +35,7 @@ struct AttestationStatement {
 pub(crate) async fn validate_attestation_ios(
     attestation: &str,
     server_nonce: &str,
-    bundle: &Bundle,
+    bundle: &IOSBundle,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<KeyHandle, WalletProviderError> {
     let attestation = decode_cbor_base64::<Attestation>(attestation)?;
@@ -195,7 +195,7 @@ oyFraWVIyd/dganmrduC1bmTBGwD
         validate_attestation_ios(
             TEST_ATTESTATION,
             SERVER_NONCE,
-            &Bundle {
+            &IOSBundle {
                 bundle_id: format!("{APP_ID_PREFIX}.{BUNDLE_ID}"),
                 trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
             },

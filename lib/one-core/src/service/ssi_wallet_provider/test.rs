@@ -70,6 +70,7 @@ fn wallet_provider_config(
                 "walletLink": "https://procivis.ch",
                 "android": {
                     "bundleId": "com.procivis...",
+                    "signingCertificateFingerprints": ["test"],
                     "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
                 },
                 "ios": {

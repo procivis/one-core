@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Deserializer};
 use shared_types::{IdentifierId, WalletUnitId};
 
 use crate::model::wallet_unit::WalletUnitOs;
@@ -49,13 +49,36 @@ pub(super) struct WalletProviderParams {
     #[allow(unused)]
     pub wallet_link: String,
     #[allow(unused)]
-    pub android: Option<Bundle>,
+    pub android: Option<AndroidBundle>,
     #[allow(unused)]
-    pub ios: Option<Bundle>,
+    pub ios: Option<IOSBundle>,
     pub lifetime: Lifetime,
     pub issuer_identifier: IdentifierId,
     #[serde(default)]
     pub integrity_check: IntegrityCheck,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct AndroidBundle {
+    pub bundle_id: String,
+    #[serde(
+        rename = "signingCertificateFingerprints",
+        deserialize_with = "deserialize_signing_certificate_fingerprints"
+    )]
+    pub signing_certificate_fingerprints: Vec<String>,
+    #[serde(rename = "trustedAttestationCAs")]
+    pub trusted_attestation_cas: Vec<String>,
+}
+
+fn deserialize_signing_certificate_fingerprints<'de, D>(d: D) -> Result<Vec<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: Vec<String> = Deserialize::deserialize(d)?;
+    Ok(s.iter()
+        .map(|s| s.replace(":", "").to_lowercase())
+        .collect())
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -95,7 +118,7 @@ pub(super) struct Lifetime {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[allow(unused)]
-pub(super) struct Bundle {
+pub(super) struct IOSBundle {
     pub bundle_id: String,
     #[serde(rename = "trustedAttestationCAs")]
     pub trusted_attestation_cas: Vec<String>,

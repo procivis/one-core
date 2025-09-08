@@ -8,7 +8,7 @@ use crate::service::certificate::validator::{
     CertSelection, CertificateChainValidationOptions, CertificateValidator, CrlMode,
     ParsedCertificate,
 };
-use crate::service::ssi_wallet_provider::dto::Bundle;
+use crate::service::ssi_wallet_provider::dto::AndroidBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
 use crate::service::ssi_wallet_provider::error::WalletProviderError::AppIntegrityValidationError;
 
@@ -17,14 +17,20 @@ static ATTESTATION_EXTENSION_OID: &str = "1.3.6.1.4.1.11129.2.1.17";
 pub(crate) async fn validate_attestation_android(
     attestation: &[String],
     server_nonce: &str,
-    bundle: &Bundle,
+    bundle: &AndroidBundle,
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<KeyHandle, WalletProviderError> {
     let attestation = attestation
         .iter()
         .map(|s| format!("-----BEGIN CERTIFICATE-----\n{s}\n-----END CERTIFICATE-----"))
         .join("\n");
-    let cert = check_ca_certs(&attestation, &bundle, certificate_validator).await?;
+    let cert = check_ca_certs(
+        &attestation,
+        &bundle.trusted_attestation_cas,
+        certificate_validator,
+    )
+    .await?;
+
     let ext = cert
         .attributes
         .extensions
@@ -36,10 +42,11 @@ pub(crate) async fn validate_attestation_android(
     let extension_data = hex::decode(&ext.value).map_err(|err| {
         AppIntegrityValidationError(format!("Failed to decode extension value: {err}"))
     })?;
-    let (nonce, bundle_id) = nonce_and_bundle_id_from_attestation_extension(&extension_data)
-        .map_err(|err| {
+    let (nonce, bundle_id, signature_digests) =
+        nonce_and_bundle_id_from_attestation_extension(&extension_data).map_err(|err| {
             AppIntegrityValidationError(format!("Failed to decode extension value: {err}"))
         })?;
+    validate_signing_certificate_fingerprints(bundle, signature_digests)?;
 
     if server_nonce != nonce {
         return Err(AppIntegrityValidationError("Nonce mismatch".to_string()));
@@ -58,7 +65,7 @@ const SOFTWARE_ENFORCED_AUTHZ_TAG: Tag = Tag(709);
 
 fn nonce_and_bundle_id_from_attestation_extension(
     extension_data: &[u8],
-) -> Result<(String, String), BerError> {
+) -> Result<(String, String, Vec<String>), BerError> {
     let (_, parsed_ext) = parse_der(extension_data)?;
     let key_description = parsed_ext.as_sequence().expect("Expected DER sequence");
     if key_description.len() != 8 {
@@ -113,16 +120,40 @@ fn nonce_and_bundle_id_from_attestation_extension(
         (*String::from_utf8_lossy(appid.first().ok_or(BerError::InvalidLength)?.as_slice()?))
             .to_owned();
 
-    Ok((nonce, package_name))
+    // pull out signature digests
+    let signature_digests = appid_seq
+        .get(1)
+        .ok_or(BerError::InvalidLength)?
+        .as_set()?
+        .iter()
+        .map(|o| {
+            o.as_slice()
+                .map(|s| s.iter().map(|x| format!("{x:02X}")).collect::<String>())
+        })
+        .collect::<Result<Vec<String>, _>>()?;
+    Ok((nonce, package_name, signature_digests))
+}
+
+fn validate_signing_certificate_fingerprints(
+    bundle: &AndroidBundle,
+    signatures: Vec<String>,
+) -> Result<(), WalletProviderError> {
+    signatures
+        .iter()
+        .all(|signature| bundle.signing_certificate_fingerprints.contains(signature))
+        .then_some(())
+        .ok_or(AppIntegrityValidationError(format!(
+            "Invalid signing certificate fingerprints: {signatures:?}"
+        )))
 }
 
 async fn check_ca_certs(
     attestation: &str,
-    bundle: &&Bundle,
+    cas: &[String],
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<ParsedCertificate, WalletProviderError> {
     let mut errs = vec![];
-    for ca in &bundle.trusted_attestation_cas {
+    for ca in cas {
         let result = certificate_validator
             .validate_chain_against_ca_chain(
                 attestation.as_bytes(),
@@ -162,7 +193,6 @@ mod test {
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
     use crate::service::certificate::validator::CertificateValidatorImpl;
-    use crate::service::ssi_wallet_provider::dto::Bundle;
     use crate::util::clock::MockClock;
 
     // Test vector taken from here: https://github.com/android/keyattestation/blob/main/testdata/akita/sdk34/TEE_EC_NONE.pem
@@ -204,6 +234,11 @@ ex0SdDrx+tWUDqG8At2JHA==
         "MIIFHDCCAwSgAwIBAgIJANUP8luj8tazMA0GCSqGSIb3DQEBCwUAMBsxGTAXBgNVBAUTEGY5MjAwOWU4NTNiNmIwNDUwHhcNMTkxMTIyMjAzNzU4WhcNMzQxMTE4MjAzNzU4WjAbMRkwFwYDVQQFExBmOTIwMDllODUzYjZiMDQ1MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAr7bHgiuxpwHsK7Qui8xUFmOr75gvMsd/dTEDDJdSSxtf6An7xyqpRR90PL2abxM1dEqlXnf2tqw1Ne4Xwl5jlRfdnJLmN0pTy/4lj4/7tv0Sk3iiKkypnEUtR6WfMgH0QZfKHM1+di+y9TFRtv6y//0rb+T+W8a9nsNL/ggjnar86461qO0rOs2cXjp3kOG1FEJ5MVmFmBGtnrKpa73XpXyTqRxB/M0n1n/W9nGqC4FSYa04T6N5RIZGBN2z2MT5IKGbFlbC8UrW0DxW7AYImQQcHtGl/m00QLVWutHQoVJYnFPlXTcHYvASLu+RhhsbDmxMgJJ0mcDpvsC4PjvB+TxywElgS70vE0XmLD+OJtvsBslHZvPBKCOdT0MS+tgSOIfga+z1Z1g7+DVagf7quvmag8jfPioyKvxnK/EgsTUVi2ghzq8wm27ud/mIM7AY2qEORR8Go3TVB4HzWQgpZrt3i5MIlCaY504LzSRiigHCzAPlHws+W0rB5N+er5/2pJKnfBSDiCiFAVtCLOZ7gLiMm0jhO2B6tUXHI/+MRPjy02i59lINMRRev56GKtcd9qO/0kUJWdZTdA2XoS82ixPvZtXQpUpuL12ab+9EaDK8Z4RHJYYfCT3Q5vNAXaiWQ+8PTWm2QgBR/bkwSWc+NpUFgNPN9PvQi8WEg5UmAGMCAwEAAaNjMGEwHQYDVR0OBBYEFDZh4QB8iAUJUYtEbEf/GkzJ6k8SMB8GA1UdIwQYMBaAFDZh4QB8iAUJUYtEbEf/GkzJ6k8SMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgIEMA0GCSqGSIb3DQEBCwUAA4ICAQBOMaBc8oumXb2voc7XCWnuXKhBBK3e2KMGz39t7lA3XXRe2ZLLAkLM5y3J7tURkf5a1SutfdOyXAmeE6SRo83Uh6WszodmMkxK5GM4JGrnt4pBisu5igXEydaW7qq2CdC6DOGjG+mEkN8/TA6p3cnoL/sPyz6evdjLlSeJ8rFBH6xWyIZCbrcpYEJzXaUOEaxxXxgYz5/cTiVKN2M1G2okQBUIYSY6bjEL4aUN5cfo7ogP3UvliEo3Eo0YgwuzR2v0KR6C1cZqZJSTnghIC/vAD32KdNQ+c3N+vl2OTsUVMC1GiWkngNx1OO1+kXW+YTnnTUOtOIswUP/Vqd5SYgAImMAfY8U9/iIgkQj6T2W6FsScy94IN9fFhE1UtzmLoBIuUFsVXJMTz+Jucth+IqoWFua9v1R93/k98p41pjtFX+H8DslVgfP097vju4KDlqN64xV1grw3ZLl4CiOe/A91oeLm2UHOq6wn3esB4r2EIQKb6jTVGu5sYCcdWpXr0AUVqcABPdgL+H7qJguBw09ojm6xNIrw2OocrDKsudk/okr/AwqEyPKw9WnMlQgLIKw1rODG2NvU9oR3GVGdMkUBZutL8VuFkERQGt6vQ2OCw0sV47VMkuYbacK/xyZFiRcrPJPb41zgbQj9XAEyLKCHex0SdDrx+tWUDqG8At2JHA==",
     ];
 
+    static SIGNING_CERTIFICATE_FINGERPRINTS: [&str; 2] = [
+        "FAC61745DC0903786FB9EDE62A962B399F7348F0BB6F899B8332667591033B9C",
+        "103938EE4537E59E8EE792F654504FB8346FC6B346D0BBC4415FC339FCFC8EC1",
+    ];
+
     #[tokio::test]
     async fn validate_attestation_success() {
         let key_algorithm_provider =
@@ -231,9 +266,13 @@ ex0SdDrx+tWUDqG8At2JHA==
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
             "challenge",
-            &Bundle {
+            &AndroidBundle {
                 bundle_id: "com.google.wireless.android.security.attestationverifier.collector"
                     .to_string(),
+                signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
                 trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
             },
             &certificate_validator,
@@ -277,8 +316,12 @@ ex0SdDrx+tWUDqG8At2JHA==
                 .map(ToString::to_string)
                 .collect::<Vec<_>>(),
             "AttestationChallenge",
-            &Bundle {
+            &AndroidBundle {
                 bundle_id: "com.exampleapp".to_string(),
+                signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
                 trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
             },
             &certificate_validator,
