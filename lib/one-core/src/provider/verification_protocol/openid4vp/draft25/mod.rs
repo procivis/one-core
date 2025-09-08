@@ -52,7 +52,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
-    JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    DcqlSubmissionEudi, JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, PexSubmission, VpSubmissionData,
 };
@@ -335,10 +335,21 @@ impl OpenID4VP25HTTP {
                 })
                 .or_insert(vec![formatted_presentation.vp_token]);
         }
-        Ok((
-            VpSubmissionData::Dcql(DcqlSubmission { vp_token }),
-            encryption_info,
-        ))
+        if self.params.holder.dcql_vp_token_single_presentation {
+            let vp_token = vp_token
+                .into_iter()
+                .filter_map(|(key, value)| Some((key, value.into_iter().next()?)))
+                .collect();
+            Ok((
+                VpSubmissionData::DcqlEudi(DcqlSubmissionEudi { vp_token }),
+                encryption_info,
+            ))
+        } else {
+            Ok((
+                VpSubmissionData::Dcql(DcqlSubmission { vp_token }),
+                encryption_info,
+            ))
+        }
     }
 }
 

@@ -178,6 +178,8 @@ verificationProtocol:
         holder:
           supportedClientIdSchemes:
             [redirect_uri, verifier_attestation, did, x509_san_dns]
+          # EUDI compatibility flag for non-standard compliant vp_token formatting
+          dcqlVpTokenSinglePresentation: true
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]

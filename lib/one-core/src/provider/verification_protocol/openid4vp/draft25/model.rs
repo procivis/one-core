@@ -5,8 +5,8 @@ use url::Url;
 
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
-    OpenID4VPClientMetadata, OpenID4VPPresentationDefinition, default_presentation_url_scheme,
+    ClientIdScheme, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
+    OpenID4VPPresentationDefinition, default_presentation_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -20,7 +20,7 @@ pub(crate) struct OpenID4Vp25Params {
     #[serde(default = "default_presentation_url_scheme")]
     pub url_scheme: String,
 
-    pub holder: OpenID4VCPresentationHolderParams,
+    pub holder: OpenID4VC25PresentationHolderParams,
     pub verifier: OpenID4VC25PresentationVerifierParams,
     pub redirect_uri: OpenID4VCRedirectUriParams,
 }
@@ -31,6 +31,15 @@ pub(crate) struct OpenID4VC25PresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
     #[serde(default = "default_use_dcql")]
     pub use_dcql: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VC25PresentationHolderParams {
+    pub supported_client_id_schemes: Vec<ClientIdScheme>,
+    /// EUDI compatibility flag for non-standard compliant vp_token formatting
+    #[serde(default)]
+    pub dcql_vp_token_single_presentation: bool,
 }
 
 fn default_use_dcql() -> bool {

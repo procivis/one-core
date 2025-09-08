@@ -55,6 +55,11 @@ pub struct DcqlSubmission {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DcqlSubmissionEudi {
+    pub vp_token: HashMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PexSubmission {
     pub vp_token: String,
     pub presentation_submission: PresentationSubmissionMappingDTO,
@@ -69,6 +74,7 @@ pub struct ResponseSubmission {
 #[serde(untagged)]
 pub enum VpSubmissionData {
     Dcql(DcqlSubmission),
+    DcqlEudi(DcqlSubmissionEudi),
     Pex(PexSubmission),
     EncryptedResponse(ResponseSubmission),
 }
