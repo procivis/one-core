@@ -60,6 +60,12 @@ pub struct SDJWTFormatter {
 pub struct Params {
     pub leeway: u64,
     pub embed_layout_properties: bool,
+    #[serde(default = "default_sd_array_elements")]
+    pub sd_array_elements: bool,
+}
+
+fn default_sd_array_elements() -> bool {
+    true
 }
 
 #[async_trait]
@@ -98,6 +104,7 @@ impl CredentialFormatter for SDJWTFormatter {
             &*self.did_method_provider,
             &*self.key_algorithm_provider,
             payload_from_digests,
+            self.params.sd_array_elements,
         )
         .await
     }

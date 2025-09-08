@@ -299,6 +299,8 @@ impl OneDevCore {
                             embed_layout_properties: config
                                 .formatter_config
                                 .embed_layout_properties,
+
+                            sd_array_elements: true,
                         },
                         crypto_provider.clone(),
                         did_method_provider.clone(),

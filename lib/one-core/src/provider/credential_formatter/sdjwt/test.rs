@@ -388,7 +388,7 @@ fn test_gather_disclosures_and_objects_without_nesting() {
         "country": "DE"
     });
 
-    let (disclosures, result) = compute_object_disclosures(&test_json, &hasher).unwrap();
+    let (disclosures, result) = compute_object_disclosures(&test_json, &hasher, true).unwrap();
     let disclosures: Vec<_> = disclosures
         .iter()
         .map(|val| DisclosureArray::from_b64(val))
@@ -465,7 +465,7 @@ fn test_gather_disclosures_and_objects_with_nesting() {
         }
     });
 
-    let (disclosures, result) = compute_object_disclosures(&test_json, &hasher).unwrap();
+    let (disclosures, result) = compute_object_disclosures(&test_json, &hasher, true).unwrap();
     let disclosures: Vec<_> = disclosures
         .iter()
         .map(|val| DisclosureArray::from_b64(val))

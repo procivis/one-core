@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::{Map, Value, json};
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -188,8 +188,9 @@ impl Disclosure {
 
 // The algorithm follows: https://datatracker.ietf.org/doc/html/draft-ietf-oauth-selective-disclosure-jwt-14#section-4.2.1
 pub(crate) fn compute_object_disclosures(
-    value: &serde_json::Value,
+    value: &Value,
     hasher: &dyn Hasher,
+    sd_array_elements: bool,
 ) -> Result<(Vec<String>, Vec<String>), FormatterError> {
     let object = value.as_object().ok_or(FormatterError::JsonMapping(
         "value is not an Object".to_string(),
@@ -198,13 +199,13 @@ pub(crate) fn compute_object_disclosures(
     let mut digests = vec![];
 
     for (key, value) in object {
-        match value {
-            serde_json::Value::Object(_) => {
+        match (sd_array_elements, value) {
+            (_, Value::Object(_)) => {
                 let (nested_disclosures, nested_sd_hashes) =
-                    compute_object_disclosures(value, hasher)?;
+                    compute_object_disclosures(value, hasher, sd_array_elements)?;
                 disclosures.extend(nested_disclosures);
 
-                let nested_sd = serde_json::json!({
+                let nested_sd = json!({
                     SELECTIVE_DISCLOSURE_MARKER: nested_sd_hashes
                 });
 
@@ -217,7 +218,24 @@ pub(crate) fn compute_object_disclosures(
                 disclosures.push(disclosure);
                 digests.push(hashed_disclosure);
             }
+            (true, Value::Array(_)) => {
+                let (nested_disclosures, nested_sd_hashes) =
+                    compute_array_disclosures(value, hasher)?;
+                disclosures.extend(nested_disclosures);
 
+                let sd_elements = nested_sd_hashes
+                    .into_iter()
+                    .map(|sd_hash| json!({SELECTIVE_DISCLOSURE_ARRAY_MARKER: sd_hash}))
+                    .collect::<Vec<_>>();
+
+                let disclosure = compute_disclosure_for(key, &Value::Array(sd_elements))?;
+                let hashed_disclosure = hasher
+                    .hash_base64_url(disclosure.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(disclosure);
+                digests.push(hashed_disclosure);
+            }
             _ => {
                 let disclosure = compute_disclosure_for(key, value)?;
 
@@ -233,12 +251,82 @@ pub(crate) fn compute_object_disclosures(
 
     Ok((disclosures, digests))
 }
-
-fn compute_disclosure_for(key: &str, value: &serde_json::Value) -> Result<String, FormatterError> {
+fn compute_disclosure_for(key: &str, value: &Value) -> Result<String, FormatterError> {
     let salt = one_crypto::utilities::generate_salt_base64_16();
 
-    let array = serde_json::json!([salt, key, value]).to_string();
+    let array = json!([salt, key, value]).to_string();
 
+    string_to_b64url_string(&array)
+}
+
+pub(crate) fn compute_array_disclosures(
+    value: &Value,
+    hasher: &dyn Hasher,
+) -> Result<(Vec<String>, Vec<String>), FormatterError> {
+    let array = value.as_array().ok_or(FormatterError::JsonMapping(
+        "value is not an array".to_string(),
+    ))?;
+    let mut disclosures = vec![];
+    let mut digests = vec![];
+
+    for value in array {
+        match value {
+            Value::Object(_) => {
+                let (nested_disclosures, nested_sd_hashes) =
+                // array flag mut be true at this point, otherwise we would not deal with array disclosures at all
+                    compute_object_disclosures(value, hasher, true)?;
+                disclosures.extend(nested_disclosures);
+
+                let nested_sd = json!({
+                    SELECTIVE_DISCLOSURE_MARKER: nested_sd_hashes
+                });
+
+                let disclosure = compute_disclosure_for_array_element(&nested_sd)?;
+
+                let hashed_disclosure = hasher
+                    .hash_base64_url(disclosure.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(disclosure);
+                digests.push(hashed_disclosure);
+            }
+            Value::Array(_) => {
+                let (nested_disclosures, nested_sd_hashes) =
+                    compute_array_disclosures(value, hasher)?;
+                disclosures.extend(nested_disclosures);
+
+                let sd_elements = nested_sd_hashes
+                    .into_iter()
+                    .map(|sd_hash| json!({SELECTIVE_DISCLOSURE_ARRAY_MARKER: sd_hash}))
+                    .collect::<Vec<_>>();
+
+                let disclosure = compute_disclosure_for_array_element(&Value::Array(sd_elements))?;
+                let hashed_disclosure = hasher
+                    .hash_base64_url(disclosure.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(disclosure);
+                digests.push(hashed_disclosure);
+            }
+            _ => {
+                let disclosure = compute_disclosure_for_array_element(value)?;
+
+                let hashed_disclosure = hasher
+                    .hash_base64_url(disclosure.as_bytes())
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                disclosures.push(disclosure);
+                digests.push(hashed_disclosure);
+            }
+        }
+    }
+
+    Ok((disclosures, digests))
+}
+
+fn compute_disclosure_for_array_element(value: &Value) -> Result<String, FormatterError> {
+    let salt = one_crypto::utilities::generate_salt_base64_16();
+    let array = json!([salt, value]).to_string();
     string_to_b64url_string(&array)
 }
 
@@ -367,7 +455,7 @@ fn sd_hashes(claims: &Map<String, Value>) -> Vec<String> {
     vec![]
 }
 
-pub(crate) fn gather_sd_hashes(claims: &HashMap<String, CredentialClaim>) -> Vec<String> {
+pub(crate) fn gather_object_sd_hashes(claims: &HashMap<String, CredentialClaim>) -> Vec<String> {
     if let Some(sd) = claims.get(SELECTIVE_DISCLOSURE_MARKER) {
         return sd
             .value
@@ -383,16 +471,40 @@ pub(crate) fn gather_sd_hashes(claims: &HashMap<String, CredentialClaim>) -> Vec
     vec![]
 }
 
-fn gather_insertables_from_value(
+fn gather_insertables_from_object(
     disclosures: &[(&Disclosure, (String, String))],
     map: &HashMap<String, CredentialClaim>,
 ) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-    let sd_hashes = gather_sd_hashes(map);
+    let sd_hashes = gather_object_sd_hashes(map);
     if !sd_hashes.is_empty() {
         return gather_disclosures_from_sd(disclosures, &sd_hashes);
     }
 
     Ok(HashMap::new())
+}
+
+fn expand_array_elements_in_place(
+    disclosures: &[(&Disclosure, (String, String))],
+    array: &mut [CredentialClaim],
+) -> Result<(), FormatterError> {
+    for claim in array.iter_mut() {
+        if let Some(obj) = claim.value.as_object()
+            && obj.len() == 1
+            && let Some(sd_hash) = obj
+                .get(SELECTIVE_DISCLOSURE_ARRAY_MARKER)
+                .and_then(|value| value.value.as_str())
+            && let Some((disclosure, _)) = disclosures.iter().find(|(_, disclosure_hash)| {
+                *sd_hash == *disclosure_hash.0 || *sd_hash == *disclosure_hash.1
+            })
+        {
+            *claim = CredentialClaim {
+                selectively_disclosable: true,
+                metadata: false,
+                value: CredentialClaimValue::try_from(disclosure.value.clone())?,
+            };
+        }
+    }
+    Ok(())
 }
 
 pub fn recursively_expand_disclosures(
@@ -401,7 +513,7 @@ pub fn recursively_expand_disclosures(
 ) -> Result<(), FormatterError> {
     if let Some(map) = claims.value.as_object_mut() {
         let values: HashMap<String, CredentialClaim> =
-            gather_insertables_from_value(disclosures, map)?;
+            gather_insertables_from_object(disclosures, map)?;
 
         map.remove(SELECTIVE_DISCLOSURE_MARKER);
         map.extend(values);
@@ -409,6 +521,7 @@ pub fn recursively_expand_disclosures(
         map.iter_mut()
             .try_for_each(|(_, v)| recursively_expand_disclosures(disclosures, v))?;
     } else if let Some(array) = claims.value.as_array_mut() {
+        expand_array_elements_in_place(disclosures, array)?;
         for v in array.iter_mut() {
             recursively_expand_disclosures(disclosures, v)?;
         }

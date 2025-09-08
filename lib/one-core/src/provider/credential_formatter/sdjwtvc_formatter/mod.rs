@@ -81,6 +81,12 @@ pub struct Params {
     // Toggles SWIYU quirks, specifically the malformed `cnf` claim
     #[serde(default)]
     pub swiyu_mode: bool,
+    #[serde(default = "default_sd_array_elements")]
+    pub sd_array_elements: bool,
+}
+
+fn default_sd_array_elements() -> bool {
+    true
 }
 
 #[async_trait]
@@ -131,6 +137,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             &*self.did_method_provider,
             &*self.key_algorithm_provider,
             payload_from_digests,
+            self.params.sd_array_elements,
         )
         .await
     }

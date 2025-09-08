@@ -63,12 +63,14 @@ pub(crate) async fn format_credential<T: Serialize>(
     did_method_provider: &dyn DidMethodProvider,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
+    sd_array_elements: bool,
 ) -> Result<String, FormatterError> {
     let issuer = credential.issuer.as_url().to_string();
     let id = credential.id.clone();
     let invalid_before = credential.valid_from.or(credential.issuance_date);
     let expires_at = credential.valid_until.or(credential.expiration_date);
-    let (payload, disclosures) = format_hashed_credential(&claims, hasher, digests_to_payload)?;
+    let (payload, disclosures) =
+        format_hashed_credential(&claims, hasher, digests_to_payload, sd_array_elements)?;
 
     let proof_of_possession_key = match &additional_inputs.holder_identifier {
         Some(identifier) => match &identifier.r#type {
@@ -184,8 +186,9 @@ fn format_hashed_credential<T>(
     claims: &Value,
     hasher: &dyn Hasher,
     digests_to_payload: impl FnOnce(Vec<String>) -> Result<T, FormatterError>,
+    sd_array_elements: bool,
 ) -> Result<(T, Vec<String>), FormatterError> {
-    let (disclosures, digests) = compute_object_disclosures(claims, hasher)?;
+    let (disclosures, digests) = compute_object_disclosures(claims, hasher, sd_array_elements)?;
     let payload = digests_to_payload(digests)?;
     Ok((payload, disclosures))
 }

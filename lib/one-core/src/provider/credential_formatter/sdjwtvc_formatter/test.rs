@@ -7,7 +7,7 @@ use indexmap::IndexMap;
 use maplit::hashmap;
 use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
-use one_crypto::signer::eddsa::EDDSASigner;
+use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
@@ -127,6 +127,7 @@ async fn test_format_credential() {
             leeway,
             embed_layout_properties: false,
             swiyu_mode: false,
+            sd_array_elements: true,
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -313,6 +314,7 @@ async fn test_format_credential_swiyu() {
             leeway,
             embed_layout_properties: false,
             swiyu_mode: true,
+            sd_array_elements: true,
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -446,6 +448,7 @@ async fn test_extract_credentials() {
             leeway,
             embed_layout_properties: false,
             swiyu_mode: false,
+            sd_array_elements: true,
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -583,6 +586,7 @@ async fn test_extract_credentials_swiyu() {
             leeway,
             embed_layout_properties: false,
             swiyu_mode: true,
+            sd_array_elements: true,
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -776,6 +780,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
             leeway: 45u64,
             embed_layout_properties: false,
             swiyu_mode: false,
+            sd_array_elements: true,
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -845,6 +850,7 @@ fn test_schema_id() {
             leeway: 45u64,
             embed_layout_properties: false,
             swiyu_mode: false,
+            sd_array_elements: true,
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
@@ -885,36 +891,17 @@ fn test_schema_id() {
 }
 
 #[tokio::test]
-async fn test_format_extract_round_trip() {
+async fn test_format_extract_round_trip_non_sd_array_elements() {
     let now = OffsetDateTime::now_utc();
     let params = Params {
         leeway: 60,
         embed_layout_properties: false,
         swiyu_mode: false,
+        sd_array_elements: false,
     };
 
-    let caching_loader = DidCachingLoader::new(
-        RemoteEntityType::DidDocument,
-        Arc::new(InMemoryStorage::new(HashMap::new())),
-        100,
-        Duration::minutes(1),
-        Duration::minutes(1),
-    );
+    let (key_algorithm_provider, did_method_provider, formatter) = formatter_for_params(params);
 
-    let hashers = hashmap! {
-        "sha-256".to_string() => Arc::new(SHA256 {}) as Arc<dyn Hasher>
-    };
-    let signers = hashmap! {
-        "Ed25519".to_string() => Arc::new(EDDSASigner {}) as Arc<dyn Signer>,
-    };
-    let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
-
-    let key_alg = Eddsa;
-    let key_algorithm_provider =
-        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
-            KeyAlgorithmType::Eddsa,
-            Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
-        )])));
     let key_pair = EDDSASigner::generate_key_pair();
     let key = Key {
         id: Uuid::new_v4().into(),
@@ -1007,66 +994,7 @@ async fn test_format_extract_round_trip() {
         issuer_certificate: None,
     };
 
-    let did_method_provider = Arc::new(DidMethodProviderImpl::new(
-        caching_loader,
-        IndexMap::from_iter(vec![
-            (
-                "JWK".to_owned(),
-                Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
-            ),
-            (
-                "KEY".to_owned(),
-                Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
-            ),
-        ]),
-    ));
-
-    let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
-    vct_metadata_cache
-        .expect_get()
-        .with(eq("credential-schema-id"))
-        .return_once(|_| {
-            Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                metadata: SdJwtVcTypeMetadataResponseDTO {
-                    vct: "credential-schema-id".to_string(),
-                    name: None,
-                    display: vec![],
-                    claims: vec![],
-                    schema: None,
-                    schema_uri: None,
-                    layout_properties: None,
-                },
-                integrity: None,
-            }))
-        });
-    let formatter = SDJWTVCFormatter::new(
-        params,
-        crypto,
-        did_method_provider.clone(),
-        key_algorithm_provider.clone(),
-        Arc::new(vct_metadata_cache),
-        Arc::new(MockCertificateValidator::new()),
-        generic_config().core.datatype,
-        Arc::new(MockHttpClient::new()),
-    );
-
-    let mut auth_fn = MockSignatureProvider::new();
-    let public_key = key_pair.public.clone();
-    let private_key = key_pair.private.clone();
-    auth_fn
-        .expect_sign()
-        .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
-    auth_fn
-        .expect_get_key_id()
-        .returning(move || Some(format!("{issuer_did}#0")));
-    let public_key_clone = key_pair.public.clone();
-    auth_fn
-        .expect_get_public_key()
-        .returning(move || public_key_clone.clone());
-    auth_fn
-        .expect_jose_alg()
-        .returning(|| Some("EdDSA".to_string()));
-
+    let auth_fn = test_auth_fn(key_pair, issuer_did);
     let key_verification = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
@@ -1078,6 +1006,7 @@ async fn test_format_extract_round_trip() {
         .format_credential(credential_data, Box::new(auth_fn))
         .await
         .unwrap();
+
     let result = formatter
         .extract_credentials(token.as_str(), None, key_verification, None)
         .await
@@ -1153,12 +1082,311 @@ async fn test_format_extract_round_trip() {
     assert_eq!(result.claims.claims, expected)
 }
 
+fn test_auth_fn(key_pair: KeyPair, issuer_did: DidValue) -> MockSignatureProvider {
+    let mut auth_fn = MockSignatureProvider::new();
+    let public_key = key_pair.public.clone();
+    let private_key = key_pair.private.clone();
+    auth_fn
+        .expect_sign()
+        .returning(move |msg| EDDSASigner {}.sign(msg, &public_key.clone(), &private_key.clone()));
+    auth_fn
+        .expect_get_key_id()
+        .returning(move || Some(format!("{issuer_did}#0")));
+    auth_fn
+        .expect_get_public_key()
+        .returning(move || key_pair.public.clone());
+    auth_fn
+        .expect_jose_alg()
+        .returning(|| Some("EdDSA".to_string()));
+    auth_fn
+}
+
+#[tokio::test]
+async fn test_format_extract_round_trip_sd_array_elements() {
+    let now = OffsetDateTime::now_utc();
+    let params = Params {
+        leeway: 60,
+        embed_layout_properties: false,
+        swiyu_mode: false,
+        sd_array_elements: true,
+    };
+
+    let (key_algorithm_provider, did_method_provider, formatter) = formatter_for_params(params);
+
+    let key_pair = EDDSASigner::generate_key_pair();
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        created_date: now,
+        last_modified: now,
+        public_key: key_pair.public.clone(),
+        name: "issuer key".to_string(),
+        key_reference: None,
+        storage_type: "INTERNAL".to_string(),
+        key_type: "EDDSA".to_string(),
+        organisation: None,
+    };
+
+    let keys = vec![key];
+    let issuer_did = JWKDidMethod::new(key_algorithm_provider.clone())
+        .create(
+            None,
+            &None,
+            Some(DidKeys {
+                authentication: keys.clone(),
+                assertion_method: keys.clone(),
+                key_agreement: keys.clone(),
+                capability_invocation: keys.clone(),
+                capability_delegation: keys.clone(),
+                update_keys: None,
+            }),
+        )
+        .await
+        .unwrap()
+        .did;
+
+    let claims = vec![
+        PublishedClaim {
+            key: "age".to_string(),
+            value: PublishedClaimValue::Integer(22),
+            datatype: Some("NUMBER".to_string()),
+            array_item: false,
+        },
+        PublishedClaim {
+            key: "object/name".to_string(),
+            value: PublishedClaimValue::String("Mike".to_string()),
+            datatype: Some("STRING".to_string()),
+            array_item: false,
+        },
+        PublishedClaim {
+            key: "is_over_18".to_string(),
+            value: PublishedClaimValue::Bool(true),
+            datatype: Some("BOOLEAN".to_string()),
+            array_item: false,
+        },
+        PublishedClaim {
+            key: "object/measurements/0/air pollution".to_string(),
+            value: PublishedClaimValue::Float(24.6),
+            datatype: Some("NUMBER".to_string()),
+            array_item: true,
+        },
+    ];
+
+    let schema = CredentialSchema {
+        id: "credential-schema-id".to_string(),
+        r#type: "FallbackSchema2024".to_string(),
+        metadata: None,
+    };
+    let holder_did =
+        DidValue::from_str("did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX").unwrap();
+
+    let issuer = Issuer::Url(issuer_did.to_string().parse().unwrap());
+    let credential_subject = VcdmCredentialSubject::new(nest_claims(claims.clone()).unwrap())
+        .unwrap()
+        .with_id(holder_did.clone().into_url());
+
+    let vcdm = VcdmCredential::new_v2(issuer, credential_subject)
+        .add_credential_schema(schema)
+        .with_valid_from(now)
+        .with_valid_until(now + Duration::seconds(10));
+
+    let holder_identifier = Identifier {
+        did: Some(Did {
+            did: holder_did.clone(),
+            ..dummy_did()
+        }),
+        ..dummy_identifier()
+    };
+
+    let credential_data = CredentialData {
+        vcdm,
+        claims,
+        holder_identifier: Some(holder_identifier),
+        holder_key_id: Some(format!("{holder_did}#0")),
+        issuer_certificate: None,
+    };
+
+    let auth_fn = test_auth_fn(key_pair, issuer_did);
+    let key_verification = Box::new(KeyVerification {
+        key_algorithm_provider,
+        did_method_provider,
+        key_role: KeyRole::AssertionMethod,
+        certificate_validator: Arc::new(MockCertificateValidator::default()),
+    });
+
+    let token = formatter
+        .format_credential(credential_data, Box::new(auth_fn))
+        .await
+        .unwrap();
+
+    let result = formatter
+        .extract_credentials(token.as_str(), None, key_verification, None)
+        .await
+        .unwrap();
+
+    let expected: HashMap<String, CredentialClaim> = hashmap! {
+        "object".into() => CredentialClaim {
+            selectively_disclosable: true,
+            metadata: false,
+            value: CredentialClaimValue::Object(
+                hashmap! {
+                    "measurements".into() => CredentialClaim {
+                            selectively_disclosable: true,
+                            metadata: false,
+                            value: CredentialClaimValue::Array(vec![
+                                CredentialClaim {
+                                    selectively_disclosable: true,
+                                    metadata: false,
+                                    value: CredentialClaimValue::Object(
+                                        hashmap! {
+                                            "air pollution".into() => CredentialClaim {
+                                                selectively_disclosable: true,
+                                                metadata: false,
+                                                value: json!(24.6).try_into().unwrap(),
+                                            },
+                                        }
+                                    )
+                                }
+                            ])
+                        },
+                    "name".into() => CredentialClaim {
+                            selectively_disclosable: true,
+                            metadata: false,
+                            value: json!("Mike").try_into().unwrap(),
+                        },
+                }
+            )
+        },
+        "age".into() => CredentialClaim {
+            selectively_disclosable: true,
+            metadata: false,
+            value: json!(22).try_into().unwrap(),
+        },
+        "is_over_18".into() => CredentialClaim {
+            selectively_disclosable: true,
+            metadata: false,
+            value: json!(true).try_into().unwrap(),
+        },
+        "iss".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(
+                result.issuer.did_value().unwrap().as_str()
+            ).try_into().unwrap(),
+        },
+        "vct".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String("credential-schema-id".to_string()),
+        },
+        "nbf".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(result.invalid_before.unwrap().unix_timestamp()).try_into().unwrap(),
+
+        },
+        "iat".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: json!(result.issuance_date.unwrap().unix_timestamp()).try_into().unwrap(),
+
+        },
+        "sub".into() => CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value: CredentialClaimValue::String(
+                "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX".to_owned(),
+            ),
+        },
+        "exp".into()=> CredentialClaim {
+            selectively_disclosable: false,
+            metadata: true,
+            value:
+                json!(result.valid_until.unwrap().unix_timestamp()).try_into().unwrap(),
+        },
+    };
+    assert_eq!(result.claims.claims, expected)
+}
+
+fn formatter_for_params(
+    params: Params,
+) -> (
+    Arc<KeyAlgorithmProviderImpl>,
+    Arc<DidMethodProviderImpl>,
+    SDJWTVCFormatter,
+) {
+    let caching_loader = DidCachingLoader::new(
+        RemoteEntityType::DidDocument,
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        100,
+        Duration::minutes(1),
+        Duration::minutes(1),
+    );
+
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256 {}) as Arc<dyn Hasher>
+    };
+    let signers = hashmap! {
+        "Ed25519".to_string() => Arc::new(EDDSASigner {}) as Arc<dyn Signer>,
+    };
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
+    let key_alg = Eddsa;
+    let key_algorithm_provider =
+        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+            KeyAlgorithmType::Eddsa,
+            Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
+        )])));
+    let did_method_provider = Arc::new(DidMethodProviderImpl::new(
+        caching_loader,
+        IndexMap::from_iter(vec![
+            (
+                "JWK".to_owned(),
+                Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+            ),
+            (
+                "KEY".to_owned(),
+                Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
+            ),
+        ]),
+    ));
+
+    let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
+    vct_metadata_cache
+        .expect_get()
+        .with(eq("credential-schema-id"))
+        .return_once(|_| {
+            Ok(Some(SdJwtVcTypeMetadataCacheItem {
+                metadata: SdJwtVcTypeMetadataResponseDTO {
+                    vct: "credential-schema-id".to_string(),
+                    name: None,
+                    display: vec![],
+                    claims: vec![],
+                    schema: None,
+                    schema_uri: None,
+                    layout_properties: None,
+                },
+                integrity: None,
+            }))
+        });
+    let formatter = SDJWTVCFormatter::new(
+        params,
+        crypto,
+        did_method_provider.clone(),
+        key_algorithm_provider.clone(),
+        Arc::new(vct_metadata_cache),
+        Arc::new(MockCertificateValidator::new()),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+    );
+    (key_algorithm_provider, did_method_provider, formatter)
+}
+
 #[tokio::test]
 async fn test_format_presentation_mixed_sd_array_claim() {
     let params = Params {
         leeway: 60,
         embed_layout_properties: false,
         swiyu_mode: false,
+        sd_array_elements: true,
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1204,6 +1432,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         leeway: 60,
         embed_layout_properties: false,
         swiyu_mode: false,
+        sd_array_elements: true,
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>

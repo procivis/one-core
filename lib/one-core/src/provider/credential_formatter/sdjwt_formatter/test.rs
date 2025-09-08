@@ -1,9 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use assert2::let_assert;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use maplit::hashmap;
 use mockall::predicate::eq;
+use one_crypto::hasher::sha256::SHA256;
 use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::json;
 use shared_types::DidValue;
@@ -22,7 +24,9 @@ use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialSchema, CredentialStatus,
     Features, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource, PublishedClaim,
 };
-use crate::provider::credential_formatter::sdjwt::disclosures::DisclosureArray;
+use crate::provider::credential_formatter::sdjwt::disclosures::{
+    DisclosureArray, DisclosureArrayElement,
+};
 use crate::provider::credential_formatter::sdjwt::test::get_credential_data;
 use crate::provider::credential_formatter::sdjwt_formatter::{Params, VcClaim};
 use crate::provider::credential_formatter::vcdm::{
@@ -43,6 +47,13 @@ impl From<&str> for DisclosureArray {
 }
 
 impl DisclosureArray {
+    pub fn from_b64(value: &str) -> Self {
+        let part_decoded = Base64UrlSafeNoPadding::decode_to_vec(value, None).unwrap();
+        serde_json::from_slice(&part_decoded).unwrap()
+    }
+}
+
+impl DisclosureArrayElement {
     pub fn from_b64(value: &str) -> Self {
         let part_decoded = Base64UrlSafeNoPadding::decode_to_vec(value, None).unwrap();
         serde_json::from_slice(&part_decoded).unwrap()
@@ -100,6 +111,7 @@ async fn test_format_credential_a() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            sd_array_elements: true,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -278,6 +290,7 @@ async fn test_format_credential_with_array() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            sd_array_elements: false,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -361,6 +374,139 @@ async fn test_format_credential_with_array() {
 }
 
 #[tokio::test]
+async fn test_format_credential_with_array_sd() {
+    let claim1 = "\"array_item\"";
+    let claim2 = ("array", "[\"array_item\"]");
+    let claim3 = ("nested", "nested_item");
+    let claim4 = "root";
+    let claim5 = ("root_item", "root_item");
+
+    let mut crypto = MockCryptoProvider::default();
+    crypto
+        .expect_get_hasher()
+        .once()
+        .with(eq("sha-256"))
+        .returning(move |_| Ok(Arc::new(SHA256)));
+
+    let leeway = 45u64;
+
+    let credential_data = get_credential_data_with_array(
+        CredentialStatus {
+            id: Some("did:status:id".parse().unwrap()),
+            r#type: "TYPE".to_string(),
+            status_purpose: Some("PURPOSE".to_string()),
+            additional_fields: HashMap::from([("Field1".to_owned(), "Val1".into())]),
+        },
+        "http://base_url",
+    );
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    let holder_did = credential_data
+        .holder_identifier
+        .as_ref()
+        .and_then(|identifier| identifier.did.as_ref().map(|did| did.did.clone()))
+        .unwrap();
+
+    let did_document = dummy_did_document(&holder_did);
+    did_method_provider
+        .expect_resolve()
+        .return_once(move |_| Ok(did_document));
+
+    let sd_formatter = SDJWTFormatter {
+        crypto: Arc::new(crypto),
+        did_method_provider: Arc::new(did_method_provider),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        params: Params {
+            leeway,
+            embed_layout_properties: false,
+            sd_array_elements: true,
+        },
+        client: Arc::new(MockHttpClient::new()),
+    };
+
+    let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
+
+    let result = sd_formatter
+        .format_credential(credential_data, Box::new(auth_fn))
+        .await;
+
+    assert!(result.is_ok());
+
+    let token = result.unwrap();
+
+    let parts: Vec<&str> = token.split('~').collect();
+    assert_eq!(parts.len(), 7);
+
+    assert_eq!("", parts[6]);
+
+    // array element disclosure
+    let part = DisclosureArrayElement::from_b64(parts[1]);
+    assert_eq!(part.value.to_string(), claim1);
+
+    // array disclosure with nested element disclosure objects
+    let part = DisclosureArray::from_b64(parts[2]);
+    assert_eq!(part.key, claim2.0);
+    let_assert!(Some(arr) = part.value.as_array());
+    let_assert!(Some(obj) = arr[0].as_object());
+    assert_eq!(obj.len(), 1);
+    assert!(obj.contains_key("..."));
+
+    let part = DisclosureArray::from_b64(parts[3]);
+    assert_eq!(part.key, claim3.0);
+    assert_eq!(part.value, claim3.1);
+
+    let part = DisclosureArray::from_b64(parts[4]);
+    assert_eq!(part.key, claim4);
+    // expect two subdisclosures
+    assert_eq!(part.value["_sd"].as_array().unwrap().len(), 2);
+    let part = DisclosureArray::from_b64(parts[5]);
+    assert_eq!(part.key, claim5.0);
+    assert_eq!(part.value, claim5.1);
+
+    let jwt_parts: Vec<&str> = parts[0].splitn(3, '.').collect();
+
+    assert_eq!(
+        jwt_parts[0],
+        &Base64UrlSafeNoPadding::encode_to_string(
+            r##"{"alg":"ES256","kid":"#key0","typ":"SD_JWT"}"##
+        )
+        .unwrap()
+    );
+    assert_eq!(
+        jwt_parts[2],
+        &Base64UrlSafeNoPadding::encode_to_string(r#"ABC"#).unwrap()
+    );
+
+    let payload: JWTPayload<VcClaim> = serde_json::from_str(
+        &String::from_utf8(Base64UrlSafeNoPadding::decode_to_vec(jwt_parts[1], None).unwrap())
+            .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(payload.issuer, Some(String::from("did:issuer:test")));
+    assert_eq!(payload.subject, Some(String::from("did:example:123")));
+    assert_eq!(
+        payload.proof_of_possession_key,
+        Some(ProofOfPossessionKey {
+            key_id: None,
+            jwk: ProofOfPossessionJwk::Jwk {
+                jwk: dummy_jwk().into()
+            },
+        })
+    );
+
+    let vc = payload.custom.vc;
+    assert_eq!(
+        vc.credential_subject[0].claims["_sd"]
+            .value
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[tokio::test]
 async fn test_extract_credentials() {
     let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.ewogICJpYXQiOiAxNjk5MjcwMjY2LAogICJleHAiOiAxNzYyMzQyMjY2LAogICJuYmYiOiAxNjk5MjcwMjIxLAogICJpc3MiOiAiZGlkOmlzc3Vlcjp0ZXN0IiwKICAic3ViIjogImRpZDpob2xkZXI6dGVzdCIsCiAgImp0aSI6ICI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLAogICJ2YyI6IHsKICAgICJAY29udGV4dCI6IFsKICAgICAgImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwKICAgICAgImh0dHBzOi8vd3d3LnR5cGUxLWNvbnRleHQuY29tL3YxIgogICAgXSwKICAgICJ0eXBlIjogWwogICAgICAiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLAogICAgICAiVHlwZTEiCiAgICBdLAogICAgImNyZWRlbnRpYWxTdWJqZWN0IjogewogICAgICAiX3NkIjogWwogICAgICAgICJyWmp5eEY0ekU3ZmRSbWtjVVQ4SGtyOF9JSFNCZXMxejFwWldQMnZMQlJFIiwKICAgICAgICAiS0dQbGRsUEIzOTV4S0pSaks4azJLNVV2c0VuczlRaEw3TzdKVXU1OUVSayIKICAgICAgXQogICAgfSwKICAgICJjcmVkZW50aWFsU3RhdHVzIjogewogICAgICAiaWQiOiAiaHR0cHM6Ly93d3cudGVzdC12Yy5jb20vc3RhdHVzL2lkIiwKICAgICAgInR5cGUiOiAiVFlQRSIsCiAgICAgICJzdGF0dXNQdXJwb3NlIjogIlBVUlBPU0UiLAogICAgICAiRmllbGQxIjogIlZhbDEiCiAgICB9CiAgfSwKICAiX3NkX2FsZyI6ICJzaGEtMjU2Igp9";
     let token = format!(
@@ -402,6 +548,7 @@ async fn test_extract_credentials() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            sd_array_elements: true,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -569,6 +716,7 @@ async fn test_extract_credentials_with_array() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            sd_array_elements: true,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -686,6 +834,7 @@ async fn test_extract_credentials_with_array_stripped() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            sd_array_elements: true,
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -822,6 +971,7 @@ fn test_get_capabilities() {
         params: Params {
             leeway: 123u64,
             embed_layout_properties: false,
+            sd_array_elements: true,
         },
         client: Arc::new(MockHttpClient::new()),
     };
