@@ -171,3 +171,14 @@ credentialIssuer:
         issuer: https://eudiw-issuer.eudi.dev.procivis-one.com
       private:
         clientId: procivis-wallet-dev
+  NIC_PID_FLOW:
+    display:
+      en: NIC Issuer
+      de: NIC Issuer
+    order: 1
+    enabled: true
+    params:
+      public:
+        issuer: https://eudiw.regtest.nic.cz
+      private:
+        clientId: procivis-wallet-dev
