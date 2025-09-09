@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use ProofStateEnum::{Created, Pending, Requested, Retracted};
@@ -358,13 +359,22 @@ impl ProofService {
                 )
                 .await;
         } else if exchange_type == VerificationProtocolType::IsoMdl {
+            let iso_mdl_engagement = request
+                .iso_mdl_engagement
+                .ok_or(ValidationError::InvalidMdlParameters)?;
+            let engagement_type = VerificationEngagement::from_str(
+                request
+                    .engagement
+                    .as_ref()
+                    .ok_or(ValidationError::InvalidMdlParameters)?,
+            )
+            .map_err(|_| ValidationError::InvalidMdlParameters)?;
             return self
                 .handle_iso_mdl_verifier(
                     proof_schema,
                     request.protocol,
-                    request
-                        .iso_mdl_engagement
-                        .ok_or(ValidationError::InvalidMdlParameters)?,
+                    iso_mdl_engagement,
+                    engagement_type,
                     request.profile,
                 )
                 .await;
@@ -772,10 +782,12 @@ impl ProofService {
                 })?;
 
             let bytes_payload = nfc_message.to_buffer().map_err(|err| {
-                ServiceError::Other(format!("Failed to parse NFC payload: {err}"))
+                ServiceError::Other(format!("Failed to generate NFC payload: {err}"))
             })?;
-            nfc_hce_provider.start_host_data(bytes_payload).await?;
-            Some(nfc_hce_provider)
+            nfc_hce_provider
+                .start_host_data(bytes_payload.clone())
+                .await?;
+            Some((nfc_hce_provider, bytes_payload))
         } else {
             None
         };

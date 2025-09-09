@@ -17,7 +17,9 @@ use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::device_engagement::DeviceEngagement;
 use crate::common_mapper::secret_slice;
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
+    Handover, SessionTranscript,
+};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::util::mdoc::EmbeddedCbor;
 
@@ -375,11 +377,12 @@ fn x25519_from_cose_key(key: CoseKey) -> anyhow::Result<x25519_dalek::PublicKey>
 pub(crate) fn create_session_transcript_bytes(
     device_engagement_bytes: EmbeddedCbor<DeviceEngagement>,
     e_reader_key_bytes: EmbeddedCbor<EReaderKey>,
+    handover: Option<Handover>,
 ) -> Result<EmbeddedCbor<SessionTranscript>, VerificationProtocolError> {
     let session_transcript = SessionTranscript {
         device_engagement_bytes: Some(device_engagement_bytes),
         e_reader_key_bytes: Some(e_reader_key_bytes),
-        handover: None,
+        handover,
     };
 
     EmbeddedCbor::new(session_transcript)

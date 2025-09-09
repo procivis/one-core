@@ -25,6 +25,8 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
 };
 use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
 use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
 };
@@ -114,7 +116,7 @@ pub(crate) async fn receive_mdl_request(
     mut interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
     proof_id: ProofId,
-    nfc: Option<Arc<dyn NfcHce>>,
+    nfc: Option<(Arc<dyn NfcHce>, Vec<u8>)>,
 ) -> Result<(), ServiceError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
@@ -141,12 +143,33 @@ pub(crate) async fn receive_mdl_request(
                 }
 
                 let result = async {
+                    let (engagement, handover) = match nfc {
+                        None => (VerificationEngagement::QrCode, None),
+                        Some((nfc_hce, select_message)) => {
+                            match nfc_hce
+                                .stop_host_data()
+                                .await
+                                .map_err(|e| VerificationProtocolError::Transport(e.into()))?
+                            {
+                                true => (
+                                    VerificationEngagement::NFC,
+                                    Some(Handover::Nfc(NFCHandover {
+                                        select_message: Bstr(select_message),
+                                        request_message: None,
+                                    })),
+                                ),
+                                false => (VerificationEngagement::QrCode, None),
+                            }
+                        }
+                    };
+
                     let session_establishment =
                         read_request(&peripheral, &info, interaction_data.service_uuid).await?;
 
                     let session_transcript_bytes = create_session_transcript_bytes(
                         device_engagement.clone(),
                         session_establishment.e_reader_key.clone(),
+                        handover,
                     )?;
 
                     let (sk_device, sk_reader) = key_pair
@@ -188,20 +211,6 @@ pub(crate) async fn receive_mdl_request(
                         .context("interaction serialization error")
                         .map_err(VerificationProtocolError::Other)?,
                     );
-
-                    let engagement = match nfc {
-                        None => VerificationEngagement::QrCode,
-                        Some(nfc_hce) => {
-                            match nfc_hce
-                                .stop_host_data()
-                                .await
-                                .map_err(|e| VerificationProtocolError::Transport(e.into()))?
-                            {
-                                true => VerificationEngagement::NFC,
-                                false => VerificationEngagement::QrCode,
-                            }
-                        }
-                    };
 
                     interaction_repository
                         .update_interaction(interaction.into())

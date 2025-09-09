@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use uuid::Uuid;
 
 use super::common::EDeviceKey;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
 use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -69,15 +70,40 @@ impl DeviceEngagement {
         let data =
             Base64UrlSafeNoPadding::decode_to_vec(&qr_code_content[QR_CODE_PREFIX.len()..], None)?;
 
-        let tagged_value = ciborium::tag::Required::<_, 24>(Bstr(data));
-        let mut bytes: Vec<u8> = vec![];
-        ciborium::into_writer(&tagged_value, &mut bytes)?;
+        EmbeddedCbor::<DeviceEngagement>::from_raw_cbor(data)
+    }
 
-        Ok(ciborium::from_reader(bytes.as_slice())?)
+    // currently only NFC static handover supported
+    pub(crate) fn parse_nfc(
+        nfc_select_message: &str,
+    ) -> anyhow::Result<(EmbeddedCbor<DeviceEngagement>, NFCHandover)> {
+        let select_message = Base64UrlSafeNoPadding::decode_to_vec(nfc_select_message, None)?;
+        let ndef_message = ndef_rs::NdefMessage::decode(&select_message)?;
+
+        let device_engagement_record = ndef_message
+            .records()
+            .iter()
+            .find(|record| record.record_type() == b"iso.org:18013:deviceengagement")
+            .ok_or(anyhow!("Device engagement NDEF record not found"))?;
+        let data = device_engagement_record.payload().to_vec();
+        Ok((
+            EmbeddedCbor::<DeviceEngagement>::from_raw_cbor(data)?,
+            NFCHandover {
+                select_message: Bstr(select_message),
+                request_message: None,
+            },
+        ))
     }
 }
 
 impl EmbeddedCbor<DeviceEngagement> {
+    fn from_raw_cbor(cbor_data: Vec<u8>) -> anyhow::Result<Self> {
+        let tagged_value = ciborium::tag::Required::<_, 24>(Bstr(cbor_data));
+        let mut bytes: Vec<u8> = vec![];
+        ciborium::into_writer(&tagged_value, &mut bytes)?;
+        Ok(ciborium::from_reader(bytes.as_slice())?)
+    }
+
     pub(crate) fn generate_qr_code(&self) -> anyhow::Result<String> {
         let ciborium::tag::Required::<_, 24>(Bstr(embedded_cbor)) =
             ciborium::from_reader(self.bytes())?;

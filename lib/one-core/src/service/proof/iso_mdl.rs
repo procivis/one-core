@@ -3,9 +3,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::config::core_config::TransportType;
+use crate::config::core_config::{TransportType, VerificationEngagement};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::verification_protocol::iso_mdl::ble_verifier::{
     setup_verifier_session, start_client,
 };
@@ -20,10 +21,22 @@ impl ProofService {
         schema: ProofSchema,
         exchange: String,
         iso_mdl_engagement: String,
+        engagement_type: VerificationEngagement,
         profile: Option<String>,
     ) -> Result<ProofId, ServiceError> {
-        let device_engagement = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
-            .map_err(|err| ServiceError::Other(err.to_string()))?;
+        let (device_engagement, handover) = match engagement_type {
+            VerificationEngagement::QrCode => (
+                DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
+                    .map_err(|err| ServiceError::Other(err.to_string()))?,
+                None,
+            ),
+            VerificationEngagement::NFC => {
+                let (device_engagement, handover) =
+                    DeviceEngagement::parse_nfc(&iso_mdl_engagement)
+                        .map_err(|err| ServiceError::Other(err.to_string()))?;
+                (device_engagement, Some(Handover::Nfc(handover)))
+            }
+        };
 
         let transport = self
             .config
@@ -43,7 +56,7 @@ impl ProofService {
             .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
             .clone();
 
-        let verifier_session = setup_verifier_session(device_engagement, &schema)?;
+        let verifier_session = setup_verifier_session(device_engagement, &schema, handover)?;
 
         let now = OffsetDateTime::now_utc();
         let proof = Proof {

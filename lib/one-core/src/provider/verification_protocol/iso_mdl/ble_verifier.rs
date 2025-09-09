@@ -28,7 +28,9 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
+    Handover, SessionTranscript,
+};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::certificate_repository::CertificateRepository;
@@ -54,14 +56,18 @@ pub(crate) struct VerifierSession {
 pub(crate) fn setup_verifier_session(
     device_engagement: EmbeddedCbor<DeviceEngagement>,
     schema: &ProofSchema,
+    handover: Option<Handover>,
 ) -> Result<VerifierSession, VerificationProtocolError> {
     let key_pair = KeyAgreement::<EReaderKey>::new();
 
     let reader_key = EmbeddedCbor::new(key_pair.reader_key().clone())
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let session_transcript_bytes =
-        create_session_transcript_bytes(device_engagement.to_owned(), reader_key.to_owned())?;
+    let session_transcript_bytes = create_session_transcript_bytes(
+        device_engagement.to_owned(),
+        reader_key.to_owned(),
+        handover,
+    )?;
 
     let (sk_device, sk_reader) = key_pair
         .derive_session_keys(
