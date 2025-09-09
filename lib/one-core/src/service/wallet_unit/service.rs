@@ -1,10 +1,13 @@
-use shared_types::{OrganisationId, WalletUnitId};
+use std::str::FromStr;
+
+use shared_types::{KeyId, OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::common_mapper::list_response_into;
+use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::key::KeyRelations;
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::wallet_unit::WalletUnitStatus::Revoked;
 use crate::model::wallet_unit::{WalletUnitListQuery, WalletUnitRelations, WalletUnitStatus};
@@ -15,14 +18,18 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
-use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
+use crate::repository::error::DataLayerError;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+};
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
 };
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
-    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitAttestationResponseDTO,
+    AttestationKeyRequestDTO, GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO,
+    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
+    HolderWalletUnitAttestationResponseDTO,
 };
 use crate::service::wallet_unit::error::WalletUnitAttestationError;
 use crate::util::jwt::Jwt;
@@ -298,6 +305,122 @@ impl WalletUnitService {
                 Err(WalletUnitAttestationError::WalletUnitRevoked.into())
             }
         }
+    }
+
+    /// Generates a new hardware bound key which can be used for wallet unit attestations
+    pub async fn create_attestation_key(
+        &self,
+        request: AttestationKeyRequestDTO,
+    ) -> Result<KeyId, ServiceError> {
+        // The keys require secure element key storage, check if disabled or missing
+        if self
+            .config
+            .key_storage
+            .get_if_enabled(KeyStorageType::SecureElement.as_ref())
+            .is_err()
+        {
+            return Err(ServiceError::from(ValidationError::InvalidKeyStorage(
+                KeyStorageType::SecureElement.to_string(),
+            )));
+        }
+
+        let key_type = KeyAlgorithmType::from_str(&request.key_type).map_err(|err| {
+            ServiceError::from(ValidationError::InvalidKeyAlgorithm(err.to_string()))
+        })?;
+
+        // Ensure the key type is known and enabled
+        if let Some(key_algorithm) = self.config.key_algorithm.get(&key_type) {
+            if !key_algorithm.enabled.unwrap_or_default() {
+                return Err(ServiceError::from(ValidationError::InvalidKeyAlgorithm(
+                    request.key_type.clone(),
+                )));
+            }
+        } else {
+            return Err(ServiceError::from(ValidationError::InvalidKeyAlgorithm(
+                request.key_type.clone(),
+            )));
+        }
+
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?
+            .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
+
+        if organisation.deactivated_at.is_some() {
+            return Err(ServiceError::from(
+                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id),
+            ));
+        }
+
+        let key_id = Uuid::new_v4().into();
+        let now = OffsetDateTime::now_utc();
+
+        let secure_element_key_storage = self
+            .key_provider
+            .get_key_storage(KeyStorageType::SecureElement.as_ref())
+            .ok_or(MissingProviderError::KeyStorage(
+                KeyStorageType::SecureElement.to_string(),
+            ))?;
+
+        let key = secure_element_key_storage
+            .generate_attestation_key(key_id, request.nonce)
+            .await?;
+
+        let key_entity = Key {
+            id: key_id,
+            created_date: now,
+            last_modified: now,
+            public_key: key.public_key,
+            name: request.name,
+            key_reference: key.key_reference,
+            storage_type: KeyStorageType::SecureElement.to_string(),
+            key_type: request.key_type,
+            organisation: Some(organisation),
+        };
+
+        let uuid = self
+            .key_repository
+            .create_key(key_entity.to_owned())
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    ServiceError::from(BusinessLogicError::KeyAlreadyExists)
+                }
+                err => ServiceError::from(err),
+            })?;
+
+        Ok(uuid)
+    }
+
+    /// Generates an attestation for a hardware bound key
+    ///
+    /// # Arguments
+    ///
+    /// * `key_id` - Id of an existing key
+    /// * `nonce` - Nonce to be included in the signed attestation
+    pub async fn generate_attestation(
+        &self,
+        key_id: KeyId,
+        nonce: Option<String>,
+    ) -> Result<Vec<String>, ServiceError> {
+        let key = self
+            .key_repository
+            .get_key(&key_id, &KeyRelations::default())
+            .await?;
+
+        let Some(key) = key else {
+            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
+        };
+
+        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
+            MissingProviderError::KeyStorage(key.storage_type.to_owned()),
+        )?;
+
+        key_storage
+            .generate_attestation(&key, nonce)
+            .await
+            .map_err(ServiceError::from)
     }
 
     pub async fn holder_attestation(

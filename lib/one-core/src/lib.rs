@@ -845,7 +845,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 did_service,
                 certificate_service,
-                config,
+                config.clone(),
             ),
             wallet_unit_service: WalletUnitService::new(
                 data_provider.get_organisation_repository(),
@@ -859,6 +859,7 @@ impl OneCore {
                 Arc::new(OSInfoProviderImpl),
                 Arc::new(DefaultClock),
                 providers.core_base_url,
+                config,
             ),
         })
     }

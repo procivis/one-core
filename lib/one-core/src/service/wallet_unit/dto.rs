@@ -7,6 +7,13 @@ pub use crate::model::wallet_unit::{
     WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus,
 };
 
+pub struct AttestationKeyRequestDTO {
+    pub organisation_id: OrganisationId,
+    pub name: String,
+    pub key_type: String,
+    pub nonce: Option<String>,
+}
+
 #[derive(From)]
 #[from(WalletUnit)]
 pub struct GetWalletUnitResponseDTO {

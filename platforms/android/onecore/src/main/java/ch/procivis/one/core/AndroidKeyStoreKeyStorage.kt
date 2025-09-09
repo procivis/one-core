@@ -18,6 +18,10 @@ import java.util.Arrays
 
 class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage {
     override suspend fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
+        return generateKeyInner(keyAlias, null)
+    }
+
+    private suspend fun generateKeyInner(keyAlias: String, nonce: String?): GeneratedKeyBindingDto {
         try {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
                 throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
@@ -40,7 +44,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             val builder = KeyGenParameterSpec.Builder(keyAlias, keyPurposes)
                 .setAlgorithmParameterSpec(ECGenParameterSpec("secp256r1"))
                 .setDigests(KeyProperties.DIGEST_SHA256)
-                .setAttestationChallenge("AttestationChallenge".toByteArray(Charsets.UTF_8))
+
+            if (nonce != null) {
+                builder.setAttestationChallenge(nonce.toByteArray(Charsets.UTF_8))
+            }
 
             var strongbox = strongBoxSupported()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && strongbox) {
@@ -86,6 +93,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
         } catch (e: Throwable) {
             throw NativeKeyStorageException.KeyGenerationFailure(e.toString());
         }
+    }
+
+    override suspend fun generateAttestationKey(keyAlias: String, nonce: String?): GeneratedKeyBindingDto {
+        return generateKeyInner(keyAlias, nonce)
     }
 
     override suspend fun sign(keyReference: ByteArray, message: ByteArray): ByteArray {

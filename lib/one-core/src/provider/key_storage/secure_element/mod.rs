@@ -24,6 +24,11 @@ pub trait NativeKeyStorage: Send + Sync {
     async fn generate_key(&self, key_alias: String)
     -> Result<StorageGeneratedKey, KeyStorageError>;
     async fn sign(&self, key_reference: &[u8], message: &[u8]) -> Result<Vec<u8>, SignerError>;
+    async fn generate_attestation_key(
+        &self,
+        key_alias: String,
+        nonce: Option<String>,
+    ) -> Result<StorageGeneratedKey, KeyStorageError>;
     async fn generate_attestation(
         &self,
         key: &[u8],
@@ -97,6 +102,18 @@ impl KeyStorage for SecureElementKeyProvider {
                 public: Arc::new(handle),
             },
         ))
+    }
+
+    async fn generate_attestation_key(
+        &self,
+        key_id: KeyId,
+        nonce: Option<String>,
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
+        let key_alias = format!("{}.{}", self.params.alias_prefix, key_id);
+
+        self.native_storage
+            .generate_attestation_key(key_alias, nonce)
+            .await
     }
 
     async fn generate_attestation(

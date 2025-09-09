@@ -7,8 +7,9 @@ use one_core::model::wallet_unit::{
     WalletUnitOs, WalletUnitStatus,
 };
 use one_core::service::wallet_unit::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
-    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    AttestationKeyRequestDTO, GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO,
+    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
+    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 
@@ -149,6 +150,19 @@ impl OneCoreBinding {
             .get_wallet_unit_list(query)
             .await?
             .into())
+    }
+
+    #[uniffi::method]
+    pub async fn generate_attestation_key(
+        &self,
+        request: AttestationKeyRequestBindingDTO,
+    ) -> Result<String, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .wallet_unit_service
+            .create_attestation_key(request.try_into()?)
+            .await?
+            .to_string())
     }
 
     #[uniffi::method]
@@ -324,4 +338,17 @@ struct WalletProviderBindingDTO {
     url: String,
     r#type: WalletProviderTypeBindingEnum,
     name: String,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = AttestationKeyRequestDTO, Error = ServiceError)]
+pub struct AttestationKeyRequestBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    #[try_into(infallible)]
+    pub name: String,
+    #[try_into(infallible)]
+    pub key_type: String,
+    #[try_into(infallible)]
+    pub nonce: Option<String>,
 }

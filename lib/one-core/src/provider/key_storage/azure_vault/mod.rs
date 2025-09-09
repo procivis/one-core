@@ -154,6 +154,16 @@ impl KeyStorage for AzureVaultKeyProvider {
         ))
     }
 
+    async fn generate_attestation_key(
+        &self,
+        _key_id: KeyId,
+        _nonce: Option<String>,
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
+        return Err(KeyStorageError::UnsupportedFeature {
+            feature: Features::Attestation,
+        });
+    }
+
     async fn generate_attestation(
         &self,
         _key: &Key,

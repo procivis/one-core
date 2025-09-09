@@ -5,6 +5,7 @@
 import Foundation
 import CryptoKit
 import LocalAuthentication
+import DeviceCheck
 
 public class SecureEnclaveKeyStorage: NativeKeyStorage {
     public init() {}
@@ -38,7 +39,42 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
     }
 
     public func generateAttestation(keyReference: Data, nonce: String?) async throws -> [String] {
-        throw NativeKeyStorageError.Unsupported;
+        guard isAttestationSupported() else {
+            throw NativeKeyStorageError.Unsupported
+        }
+
+        guard #available(iOS 14.0, *) else {
+            throw NativeKeyStorageError.Unsupported
+        }
+
+        guard let nonce = nonce, let nonceData = nonce.data(using: .utf8) else {
+            throw NativeKeyStorageError.KeyGenerationFailure(reason: "Invalid nonce \(nonce ?? "nil")")
+        }
+        guard let keyId = String(data: keyReference, encoding: .utf8) else {
+            throw NativeKeyStorageError.KeyGenerationFailure(reason: "Invalid key reference format for App Attest")
+        }
+        let hash = Data(SHA256.hash(data: nonceData))
+        do {
+            let attestationData = try await DCAppAttestService.shared.attestKey(keyId, clientDataHash: hash)
+            return [attestationData.base64EncodedString()]
+        } catch let error as NSError {
+            if error.domain == "com.apple.devicecheck.error" {
+                switch error.code {
+                case 1:
+                    throw NativeKeyStorageError.Unknown(reason: "Device Check service unavailable")
+                case 2:
+                    throw NativeKeyStorageError.KeyGenerationFailure(reason: "Invalid key ID or client data hash for App Attest service")
+                case 3:
+                    throw NativeKeyStorageError.Unknown(reason: "Device Check feature disabled")
+                case 4:
+                    throw NativeKeyStorageError.Unknown(reason: "Device Check server unavailable")
+                default:
+                    throw NativeKeyStorageError.Unknown(reason: "Device Check error \(error.code): \(error.localizedDescription)")
+                }
+            } else {
+                throw NativeKeyStorageError.Unknown(reason: error.localizedDescription)
+            }
+        }
     }
 
     public func sign(keyReference: Data, message: Data) async throws -> Data {
@@ -55,6 +91,29 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
         }
     }
 
+    public func generateAttestationKey(keyAlias: String, nonce: String?) async throws -> GeneratedKeyBindingDto {
+        guard #available(iOS 14.0, *) else {
+            throw NativeKeyStorageError.Unsupported
+        }
+
+        guard isAttestationSupported() else {
+            throw NativeKeyStorageError.Unsupported
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            DCAppAttestService.shared.generateKey { keyId, error in
+                if let error = error {
+                    continuation.resume(throwing: NativeKeyStorageError.KeyGenerationFailure(reason: error.localizedDescription))
+                } else if let keyId = keyId {
+                    let keyReference = keyId.data(using: .utf8) ?? Data()
+                    continuation.resume(returning: GeneratedKeyBindingDto(keyReference: keyReference, publicKey: Data()))
+                } else {
+                    continuation.resume(throwing: NativeKeyStorageError.KeyGenerationFailure(reason: "No key ID returned"))
+                }
+            }
+        }
+    }
+
     private func isSupported() -> Bool {
         #if targetEnvironment(simulator)
             return false
@@ -62,4 +121,16 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
             return SecureEnclave.isAvailable
         #endif
     }
-}
+
+    private func isAttestationSupported() -> Bool {
+        #if targetEnvironment(simulator)
+            return false
+        #else
+            if #available(iOS 14.0, *) {
+                return DCAppAttestService.shared.isSupported
+            } else {
+                return false
+            }
+        #endif
+    }
+  }

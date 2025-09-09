@@ -19,6 +19,11 @@ pub trait NativeKeyStorage: Send + Sync {
         key_reference: Vec<u8>,
         message: Vec<u8>,
     ) -> Result<Vec<u8>, NativeKeyStorageError>;
+    async fn generate_attestation_key(
+        &self,
+        key_alias: String,
+        nonce: Option<String>,
+    ) -> Result<GeneratedKeyBindingDTO, NativeKeyStorageError>;
     async fn generate_attestation(
         &self,
         key_reference: Vec<u8>,
@@ -50,6 +55,18 @@ impl one_core::provider::key_storage::secure_element::NativeKeyStorage for Nativ
             .sign(key_reference.into(), message.to_owned())
             .await
             .map_err(SignerError::from)
+    }
+
+    async fn generate_attestation_key(
+        &self,
+        key_alias: String,
+        nonce: Option<String>,
+    ) -> Result<StorageGeneratedKey, KeyStorageError> {
+        Ok(self
+            .0
+            .generate_attestation_key(key_alias, nonce)
+            .await?
+            .into())
     }
 
     async fn generate_attestation(

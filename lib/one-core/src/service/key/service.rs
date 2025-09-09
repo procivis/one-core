@@ -51,43 +51,13 @@ impl KeyService {
         key.try_into()
     }
 
-    /// Generates an attestation for a hardware bound key
-    ///
-    /// # Arguments
-    ///
-    /// * `key_id` - Id of an existing key
-    /// * `nonce` - Nonce to be included in the signed attestation
-    pub async fn generate_attestation(
-        &self,
-        key_id: KeyId,
-        nonce: Option<String>,
-    ) -> Result<Vec<String>, ServiceError> {
-        let key = self
-            .key_repository
-            .get_key(&key_id, &KeyRelations::default())
-            .await?;
-
-        let Some(key) = key else {
-            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
-        };
-
-        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
-            MissingProviderError::KeyStorage(key.storage_type.to_owned()),
-        )?;
-
-        key_storage
-            .generate_attestation(&key, nonce)
-            .await
-            .map_err(ServiceError::from)
-    }
-
     /// Generates a new random key with data provided in arguments
     ///
     /// # Arguments
     ///
     /// * `request` - key data
     pub async fn create_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
-        validate_generate_request(&request, &self.config)?;
+        validate_generate_request(&request.key_type, &request.storage_type, &self.config)?;
 
         let organisation = self
             .organisation_repository

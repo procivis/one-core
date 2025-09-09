@@ -41,6 +41,13 @@ pub trait KeyStorage: Send + Sync {
     /// Access to key operations
     fn key_handle(&self, key: &Key) -> Result<KeyHandle, SignerError>;
 
+    // Generate hardware bound key for wallet unit attestations
+    async fn generate_attestation_key(
+        &self,
+        key_id: KeyId,
+        nonce: Option<String>,
+    ) -> Result<model::StorageGeneratedKey, error::KeyStorageError>;
+
     /// Generate attestation for a hardware bound key
     async fn generate_attestation(
         &self,

@@ -10,7 +10,7 @@ use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId}
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::WalletUnitStatus;
@@ -59,6 +59,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         os_info_provider: Arc::new(MockOSInfoProvider::default()),
         clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
+        config: Arc::new(CoreConfig::default()),
     }
 }
 

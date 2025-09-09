@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::config::core_config::CoreConfig;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::os_provider::OSInfoProvider;
@@ -32,6 +33,7 @@ pub struct WalletUnitService {
     os_info_provider: Arc<dyn OSInfoProvider>,
     clock: Arc<dyn Clock>,
     base_url: Option<String>,
+    config: Arc<CoreConfig>,
 }
 
 impl WalletUnitService {
@@ -48,6 +50,7 @@ impl WalletUnitService {
         os_info_provider: Arc<dyn OSInfoProvider>,
         clock: Arc<dyn Clock>,
         base_url: Option<String>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             wallet_provider_client,
@@ -61,6 +64,7 @@ impl WalletUnitService {
             history_repository,
             clock,
             base_url,
+            config,
         }
     }
 }
