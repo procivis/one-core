@@ -75,7 +75,8 @@ fn wallet_provider_config(
                 },
                 "ios": {
                     "bundleId": "com.procivis...",
-                    "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
+                    "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."],
+                    "enforceProductionBuild": true
                 },
                 "lifetime": {
                   "expirationTime": 60,

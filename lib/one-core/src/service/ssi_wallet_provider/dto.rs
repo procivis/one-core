@@ -122,4 +122,5 @@ pub(super) struct IOSBundle {
     pub bundle_id: String,
     #[serde(rename = "trustedAttestationCAs")]
     pub trusted_attestation_cas: Vec<String>,
+    pub enforce_production_build: bool,
 }

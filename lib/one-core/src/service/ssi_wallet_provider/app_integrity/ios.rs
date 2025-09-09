@@ -15,6 +15,9 @@ use crate::service::ssi_wallet_provider::error::WalletProviderError;
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
 
+static APPATEST_DEVELOP: &[u8] = "appattestdevelop".as_bytes();
+static APPATEST_PRODUCTION: &[u8] = concat!("appattest", "\0\0\0\0\0\0\0").as_bytes();
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Attestation {
@@ -39,6 +42,14 @@ pub(crate) async fn validate_attestation_ios(
     certificate_validator: &dyn CertificateValidator,
 ) -> Result<KeyHandle, WalletProviderError> {
     let attestation = decode_cbor_base64::<Attestation>(attestation)?;
+
+    if attestation.auth_data.len() < 55 {
+        return Err(AppIntegrityValidationError(format!(
+            "Invalid auth data length: must be at least 55 bytes but was only {} bytes",
+            attestation.auth_data.len()
+        )));
+    }
+
     let attestation_cert = validate_against_ca_certs(
         certificate_validator,
         &bundle.trusted_attestation_cas,
@@ -51,6 +62,9 @@ pub(crate) async fn validate_attestation_ios(
         &attestation_cert,
     )?;
 
+    // See https://www.w3.org/TR/webauthn/#sctn-attestation for a diagram of the layout of
+    // authenticator data.
+
     // RP_ID is the first 32 bytes of the authenticator data, which must be equal to the app id hash.
     let rp_id = &attestation.auth_data[..32];
     let app_id_hash = SHA256
@@ -60,19 +74,70 @@ pub(crate) async fn validate_attestation_ios(
         return Err(AppIntegrityValidationError("App id mismatch".to_string()));
     }
 
+    // Signature counter of the particular key
+    let counter = u32::from_be_bytes(attestation.auth_data[33..37].try_into().map_err(|err| {
+        AppIntegrityValidationError(format!(
+            "Failed to read signature counter from authenticator data: {err}"
+        ))
+    })?);
+    if counter != 0 {
+        return Err(AppIntegrityValidationError(format!(
+            "Invalid signature counter: must be 0 but was {counter}"
+        )));
+    }
+
+    // Either appattestdevelop or appattest (zero padded)
+    let aaguid = &attestation.auth_data[37..53];
+    if !(aaguid == APPATEST_PRODUCTION
+        || !bundle.enforce_production_build && aaguid == APPATEST_DEVELOP)
+    {
+        return Err(AppIntegrityValidationError("Invalid AAGUID".to_string()));
+    }
+    let credential_id_len =
+        u16::from_be_bytes(attestation.auth_data[53..55].try_into().map_err(|err| {
+            AppIntegrityValidationError(format!(
+                "Failed to read credential id length from authenticator data: {err}"
+            ))
+        })?) as usize;
+
+    if attestation.auth_data.len() < 55 + credential_id_len {
+        return Err(AppIntegrityValidationError(format!(
+            "Invalid credential id length: credential id does not fit in auth data by {} bytes",
+            55 + credential_id_len - attestation.auth_data.len()
+        )));
+    }
+    let credential_id = &attestation.auth_data[55..(55 + credential_id_len)];
+    let cn = attestation_cert
+        .subject_common_name
+        .ok_or(AppIntegrityValidationError(
+            "Missing common name in attestation certificate".to_string(),
+        ))?;
+    if credential_id
+        != hex::decode(cn).map_err(|err| {
+            AppIntegrityValidationError(format!("Failed to decode common name: {err}"))
+        })?
+    {
+        return Err(AppIntegrityValidationError(
+            "Credential id mismatch".to_string(),
+        ));
+    }
+
     Ok(attestation_cert.public_key)
 }
 
 fn validate_nonce(
-    auth_data: Vec<u8>,
+    mut auth_data: Vec<u8>,
     server_nonce: &str,
     attestation_cert: &ParsedCertificate,
 ) -> Result<(), WalletProviderError> {
-    let mut client_data = auth_data;
-    client_data.extend_from_slice(server_nonce.as_bytes());
-    let nonce = SHA256
-        .hash(&client_data)
+    let client_data_hash = SHA256
+        .hash(server_nonce.as_bytes())
         .map_err(|err| AppIntegrityValidationError(format!("Failed to hash: {err}")))?;
+    auth_data.extend(client_data_hash);
+    let nonce = SHA256
+        .hash(&auth_data)
+        .map_err(|err| AppIntegrityValidationError(format!("Failed to hash: {err}")))?;
+
     let ext = attestation_cert
         .attributes
         .extensions
@@ -154,7 +219,6 @@ mod tests {
     use crate::service::certificate::validator::CertificateValidatorImpl;
     use crate::util::clock::MockClock;
 
-    // Official test vector: https://developer.apple.com/documentation/devicecheck/attestation-object-validation-guide
     static APPLE_ATTESTATION_CA: &str = "-----BEGIN CERTIFICATE-----
 MIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw
 JAYDVQQDDB1BcHBsZSBBcHAgQXR0ZXN0YXRpb24gUm9vdCBDQTETMBEGA1UECgwK
@@ -169,13 +233,11 @@ CgYIKoZIzj0EAwMDaAAwZQIwQgFGnByvsiVbpTKwSga0kP0e8EeDS4+sQmTvb7vn
 53O5+FRXgeLhpJ06ysC5PrOyAjEAp5U4xDgEgllF7En3VcE3iexZZtKeYnpqtijV
 oyFraWVIyd/dganmrduC1bmTBGwD
 -----END CERTIFICATE-----";
-    static TEST_ATTESTATION: &str = "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";
-    static APP_ID_PREFIX: &str = "0352187391";
-    static BUNDLE_ID: &str = "com.apple.example_app_attest";
-    static SERVER_NONCE: &str = "test_server_challenge";
 
+    // Attestation produced by Eugenius test phone
+    const EXAMPLE_APP_ATTESTATION: &str = "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";
     #[tokio::test]
-    async fn validate_attestation_success() {
+    async fn validate_attestation_success_example_app() {
         let key_algorithm_provider =
             Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
                 KeyAlgorithmType::Ecdsa,
@@ -202,7 +264,7 @@ oyFraWVIyd/dganmrduC1bmTBGwD
         let mut clock = MockClock::new();
         clock
             .expect_now_utc()
-            .returning(|| datetime!(2024-04-18 0:00 UTC)); // a date the test vector happens to be valid at
+            .returning(|| datetime!(2025-09-09 0:00 UTC)); // a date the test vector happens to be valid at
         let certificate_validator = CertificateValidatorImpl::new(
             key_algorithm_provider,
             crl_cache,
@@ -210,11 +272,12 @@ oyFraWVIyd/dganmrduC1bmTBGwD
             android_key_attestation_crl_cache,
         );
         validate_attestation_ios(
-            TEST_ATTESTATION,
-            SERVER_NONCE,
+            EXAMPLE_APP_ATTESTATION,
+            "test",
             &IOSBundle {
-                bundle_id: format!("{APP_ID_PREFIX}.{BUNDLE_ID}"),
+                bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
                 trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
+                enforce_production_build: false,
             },
             &certificate_validator,
         )
