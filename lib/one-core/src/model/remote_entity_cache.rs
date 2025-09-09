@@ -31,6 +31,7 @@ pub enum CacheType {
     JsonSchema,
     TrustList,
     X509Crl,
+    AndroidAttestationCrl,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

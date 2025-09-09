@@ -142,6 +142,9 @@ mod tests {
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
+    use crate::provider::caching_loader::android_attestation_crl::{
+        AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
+    };
     use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
     use crate::provider::http_client::reqwest_client::ReqwestClient;
     use crate::provider::key_algorithm::KeyAlgorithm;
@@ -186,12 +189,26 @@ oyFraWVIyd/dganmrduC1bmTBGwD
             Duration::days(1),
             Duration::days(1),
         ));
+        let android_key_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
+            Arc::new(AndroidAttestationCrlResolver::new(Arc::new(
+                ReqwestClient::default(),
+            ))),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            1,
+            Duration::days(1),
+            Duration::days(1),
+        ));
+
         let mut clock = MockClock::new();
         clock
             .expect_now_utc()
             .returning(|| datetime!(2024-04-18 0:00 UTC)); // a date the test vector happens to be valid at
-        let certificate_validator =
-            CertificateValidatorImpl::new(key_algorithm_provider, crl_cache, Arc::new(clock));
+        let certificate_validator = CertificateValidatorImpl::new(
+            key_algorithm_provider,
+            crl_cache,
+            Arc::new(clock),
+            android_key_attestation_crl_cache,
+        );
         validate_attestation_ios(
             TEST_ATTESTATION,
             SERVER_NONCE,

@@ -14,6 +14,7 @@ pub(crate) enum CacheTypeRestEnum {
     JsonSchema,
     TrustList,
     X509Crl,
+    AndroidAttestationCrl,
 }
 
 #[derive(Clone, Deserialize, Debug, Default, IntoParams, PartialEq, Eq)]

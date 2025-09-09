@@ -53,4 +53,7 @@ pub enum CacheType {
 
     #[sea_orm(string_value = "X509_CRL")]
     X509Crl,
+
+    #[sea_orm(string_value = "ANDROID_ATTESTATION_CRL")]
+    AndroidAttestationCrl,
 }

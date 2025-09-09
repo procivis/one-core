@@ -11,6 +11,9 @@ use one_core::config::core_config::{
     FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigValidationError};
+use one_core::provider::caching_loader::android_attestation_crl::{
+    AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
+};
 use one_core::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
 use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
@@ -503,6 +506,9 @@ async fn initialize(
                 data_repository.to_owned(),
             )?);
 
+            let android_key_attestation_crl_cache =
+                Arc::new(initialize_android_key_attestation_crl_cache()?);
+
             let formatter_provider_creator: FormatterProviderCreator = {
                 let caching_loader = caching_loader.clone();
                 let vct_type_metadata_cache = vct_type_metadata_cache.clone();
@@ -812,6 +818,7 @@ async fn initialize(
                         key_algorithm_provider.clone(),
                         x509_crl_cache,
                         Arc::new(DefaultClock),
+                        android_key_attestation_crl_cache,
                     )))
                 })
             };
@@ -1066,6 +1073,24 @@ fn initialize_x509_crl_cache(
         config.cache_size as usize,
         config.cache_refresh_timeout,
         config.refresh_after,
+    ))
+}
+
+fn initialize_android_key_attestation_crl_cache() -> Result<AndroidAttestationCrlCache, SDKError> {
+    let client: Arc<dyn HttpClient> = {
+        let client = reqwest::Client::builder()
+            .build()
+            .expect("Failed to create reqwest::Client");
+
+        Arc::new(ReqwestClient::new(client))
+    };
+
+    Ok(AndroidAttestationCrlCache::new(
+        Arc::new(AndroidAttestationCrlResolver::new(client)),
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        1,
+        Duration::days(1),
+        Duration::days(1),
     ))
 }
 

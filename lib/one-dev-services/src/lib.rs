@@ -96,6 +96,9 @@ use indexmap::IndexMap;
 use model::{CredentialFormat, DidMethodType, StorageType};
 use one_core::config::core_config;
 use one_core::provider::caching_loader::CachingLoader;
+use one_core::provider::caching_loader::android_attestation_crl::{
+    AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
+};
 use one_core::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use one_core::provider::credential_formatter::json_ld_bbsplus::{
@@ -330,17 +333,26 @@ impl OneDevCore {
         let did_service = DidService::new(did_method_provider.clone(), Some(universal_resolver));
 
         let x509_crl_cache = Arc::new(X509CrlCache::new(
-            Arc::new(X509CrlResolver::new(client)),
+            Arc::new(X509CrlResolver::new(client.clone())),
             Arc::new(InMemoryStorage::new(HashMap::new())),
             config.caching_config.x509_crl.cache_size,
             config.caching_config.x509_crl.cache_refresh_timeout,
             config.caching_config.x509_crl.refresh_after,
         ));
 
+        let android_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
+            Arc::new(AndroidAttestationCrlResolver::new(client)),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            1,
+            time::Duration::days(1),
+            time::Duration::days(1),
+        ));
+
         let certificate_validator = Arc::new(CertificateValidatorImpl::new(
             key_algorithm_provider.clone(),
             x509_crl_cache,
             Arc::new(DefaultClock),
+            android_attestation_crl_cache,
         ));
 
         let credential_service = CredentialService::new(

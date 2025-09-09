@@ -181,11 +181,16 @@ mod test {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    use maplit::hashmap;
     use time::Duration;
     use time::macros::datetime;
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
+    use crate::provider::caching_loader::android_attestation_crl::{
+        AndroidAttestationCrlCache, AndroidCertificateInfo, AndroidKeyAttestationsCrl,
+        CertificateStatus, MockAndroidAttestationCrlResolver,
+    };
     use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
     use crate::provider::http_client::reqwest_client::ReqwestClient;
     use crate::provider::key_algorithm::KeyAlgorithm;
@@ -254,12 +259,23 @@ ex0SdDrx+tWUDqG8At2JHA==
             Duration::days(1),
             Duration::days(1),
         ));
+        let android_key_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
+            Arc::new(MockAndroidAttestationCrlResolver::default()),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            1,
+            Duration::days(1),
+            Duration::days(1),
+        ));
         let mut clock = MockClock::new();
         clock
             .expect_now_utc()
             .returning(|| datetime!(2024-10-01 0:00 UTC)); // a date the test vector happens to be valid at
-        let certificate_validator =
-            CertificateValidatorImpl::new(key_algorithm_provider, crl_cache, Arc::new(clock));
+        let certificate_validator = CertificateValidatorImpl::new(
+            key_algorithm_provider,
+            crl_cache,
+            Arc::new(clock),
+            android_key_attestation_crl_cache,
+        );
         validate_attestation_android(
             &ATTESTATION_CHAIN
                 .iter()
@@ -304,12 +320,23 @@ ex0SdDrx+tWUDqG8At2JHA==
             Duration::days(1),
             Duration::days(1),
         ));
+        let android_key_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
+            Arc::new(MockAndroidAttestationCrlResolver::default()),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            1,
+            Duration::days(1),
+            Duration::days(1),
+        ));
         let mut clock = MockClock::new();
         clock
             .expect_now_utc()
             .returning(|| datetime!(2025-09-05 0:00 UTC)); // a date the test vector happens to be valid at
-        let certificate_validator =
-            CertificateValidatorImpl::new(key_algorithm_provider, crl_cache, Arc::new(clock));
+        let certificate_validator = CertificateValidatorImpl::new(
+            key_algorithm_provider,
+            crl_cache,
+            Arc::new(clock),
+            android_key_attestation_crl_cache,
+        );
         validate_attestation_android(
             &EXAMPLE_APP_ATTESTATION
                 .iter()
@@ -328,5 +355,73 @@ ex0SdDrx+tWUDqG8At2JHA==
         )
         .await
         .expect("Failed to validate attestation");
+    }
+
+    #[tokio::test]
+    async fn validate_attestation_failure_mid_chain_cert_revoked() {
+        let key_algorithm_provider =
+            Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+                KeyAlgorithmType::Ecdsa,
+                Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
+            )])));
+
+        let crl_cache = Arc::new(X509CrlCache::new(
+            Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            100,
+            Duration::days(1),
+            Duration::days(1),
+        ));
+        let android_key_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
+            Arc::new(MockAndroidAttestationCrlResolver {
+                crl: AndroidKeyAttestationsCrl {
+                    entries: hashmap! {
+                         "388266760658996860e".into() => AndroidCertificateInfo {
+                            status: CertificateStatus::Revoked,
+                            reason: None,
+                            expires: None,
+                            description: None
+                        },
+                    },
+                },
+            }),
+            Arc::new(InMemoryStorage::new(HashMap::new())),
+            1,
+            Duration::days(1),
+            Duration::days(1),
+        ));
+        let mut clock = MockClock::new();
+        clock
+            .expect_now_utc()
+            .returning(|| datetime!(2024-10-01 0:00 UTC)); // a date the test vector happens to be valid at
+        let certificate_validator = CertificateValidatorImpl::new(
+            key_algorithm_provider,
+            crl_cache,
+            Arc::new(clock),
+            android_key_attestation_crl_cache,
+        );
+        let result = validate_attestation_android(
+            &ATTESTATION_CHAIN
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>(),
+            "challenge",
+            &AndroidBundle {
+                bundle_id: "com.google.wireless.android.security.attestationverifier.collector"
+                    .to_string(),
+                signing_certificate_fingerprints: SIGNING_CERTIFICATE_FINGERPRINTS
+                    .iter()
+                    .map(ToString::to_string)
+                    .collect(),
+                trusted_attestation_cas: vec![GOOGLE_CA.to_string()],
+            },
+            &certificate_validator,
+        )
+        .await;
+
+        assert!(matches!(
+            result,
+            Err(WalletProviderError::AppIntegrityValidationError(_))
+        ));
     }
 }

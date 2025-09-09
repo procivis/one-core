@@ -29,4 +29,5 @@ pub enum CacheTypeBindingDTO {
     JsonSchema,
     TrustList,
     X509Crl,
+    AndroidAttestationCrl,
 }

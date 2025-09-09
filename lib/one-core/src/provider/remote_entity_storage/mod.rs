@@ -68,6 +68,7 @@ pub enum RemoteEntityType {
     JsonSchema,
     TrustList,
     X509Crl,
+    AndroidAttestationCrl,
 }
 
 #[derive(Clone, Error, Debug)]

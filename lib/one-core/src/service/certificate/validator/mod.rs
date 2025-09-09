@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::model::certificate::CertificateState;
+use crate::provider::caching_loader::android_attestation_crl::AndroidAttestationCrlCache;
 use crate::provider::caching_loader::x509_crl::X509CrlCache;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -137,6 +138,7 @@ pub struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crl_cache: Arc<X509CrlCache>,
     clock: Arc<dyn Clock>,
+    android_attestation_crl_cache: Arc<AndroidAttestationCrlCache>,
 }
 
 impl CertificateValidatorImpl {
@@ -144,11 +146,13 @@ impl CertificateValidatorImpl {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         crl_cache: Arc<X509CrlCache>,
         clock: Arc<dyn Clock>,
+        android_attestation_crl_cache: Arc<AndroidAttestationCrlCache>,
     ) -> Self {
         Self {
             key_algorithm_provider,
             crl_cache,
             clock,
+            android_attestation_crl_cache,
         }
     }
 }
@@ -160,6 +164,7 @@ mod tests {
     use x509_parser::pem::Pem;
 
     use super::*;
+    use crate::provider::caching_loader::android_attestation_crl::AndroidAttestationCrlResolver;
     use crate::provider::caching_loader::x509_crl::X509CrlResolver;
     use crate::provider::http_client::{
         Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
@@ -228,16 +233,25 @@ STsfRXkSUfgzmbAsuDE=
                 RequestBuilder::new(Arc::new(client), Method::Get, CRL_URL)
             });
 
+        let http_client = Arc::new(mock_http_client);
+        let remote_entity_storage = Arc::new(mock_remote_entity_storage);
         let validator = CertificateValidatorImpl::new(
             Arc::new(key_algorithm),
             Arc::new(X509CrlCache::new(
-                Arc::new(X509CrlResolver::new(Arc::new(mock_http_client))),
-                Arc::new(mock_remote_entity_storage),
+                Arc::new(X509CrlResolver::new(http_client.clone())),
+                remote_entity_storage.clone(),
                 100,
                 Duration::days(1),
                 Duration::days(1),
             )),
             Arc::new(DefaultClock),
+            Arc::new(AndroidAttestationCrlCache::new(
+                Arc::new(AndroidAttestationCrlResolver::new(http_client)),
+                remote_entity_storage,
+                100,
+                Duration::days(1),
+                Duration::days(1),
+            )),
         );
 
         let pem = Pem::iter_from_buffer(CERTIFICATE.as_bytes())

@@ -7,6 +7,7 @@ use x509_parser::prelude::{
 };
 
 use super::{CertificateValidatorImpl, CrlMode};
+use crate::provider::caching_loader::android_attestation_crl::CertificateStatus;
 use crate::provider::caching_loader::{CachingLoaderError, ResolverError};
 use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
@@ -34,7 +35,16 @@ impl CertificateValidatorImpl {
                 }
             }
             CrlMode::AndroidAttestation => {
-                // TODO ONE-7189: Implement Android attestation revocation check
+                let crl = self
+                    .android_attestation_crl_cache
+                    .get()
+                    .await
+                    .map_err(|e| ValidationError::CRLCheckFailed(e.to_string()))?;
+                let entry_id = certificate.serial.to_str_radix(16).to_lowercase();
+                let entry_status = crl.entries.get(&entry_id).map(|info| &info.status);
+                return Ok(entry_status.is_some_and(|status| {
+                    *status == CertificateStatus::Revoked || *status == CertificateStatus::Suspended
+                }));
             }
         }
 

@@ -6,6 +6,9 @@ use indexmap::IndexMap;
 use indoc::indoc;
 use one_core::config::core_config::{AppConfig, DatatypeConfig, InputFormat, KeyAlgorithmType};
 use one_core::model::certificate::{Certificate, CertificateState};
+use one_core::provider::caching_loader::android_attestation_crl::{
+    AndroidAttestationCrlCache, MockAndroidAttestationCrlResolver,
+};
 use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use one_core::provider::credential_formatter::CredentialFormatter;
 use one_core::provider::credential_formatter::mdoc_formatter::{MdocFormatter, Params};
@@ -47,6 +50,13 @@ pub(crate) async fn format_mdoc_credential(
         100,
         Duration::minutes(1),
         Duration::minutes(1),
+    ));
+    let android_key_attestation_crl_cache = Arc::new(AndroidAttestationCrlCache::new(
+        Arc::new(MockAndroidAttestationCrlResolver::default()),
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        1,
+        Duration::days(1),
+        Duration::days(1),
     ));
 
     let key_alg_eddsa = Eddsa;
@@ -108,6 +118,7 @@ pub(crate) async fn format_mdoc_credential(
             key_algorithm_provider.clone(),
             crl_cache,
             Arc::new(DefaultClock),
+            android_key_attestation_crl_cache,
         )) as _,
         did_method_provider.clone(),
         datatype_config(),
