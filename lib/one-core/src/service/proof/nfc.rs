@@ -26,7 +26,7 @@ pub(super) fn create_nfc_payload(
     let mut nfc_message = NdefMessage::default();
     nfc_message.add_record(
         DeviceEngagementRecord {
-            device_engagement_bytes: device_engagement.into_bytes(),
+            device_engagement: device_engagement.inner_bytes()?,
         }
         .try_into()?,
     );
@@ -161,7 +161,7 @@ impl TryInto<NdefRecord> for HandoverSelectRecord {
 }
 
 pub(super) struct DeviceEngagementRecord {
-    pub(super) device_engagement_bytes: Vec<u8>,
+    pub(super) device_engagement: Vec<u8>,
 }
 
 impl RecordPayload for DeviceEngagementRecord {
@@ -170,7 +170,7 @@ impl RecordPayload for DeviceEngagementRecord {
     }
 
     fn payload(&self) -> Cow<'_, [u8]> {
-        self.device_engagement_bytes.clone().into()
+        self.device_engagement.clone().into()
     }
 }
 

@@ -239,6 +239,13 @@ impl<T> EmbeddedCbor<T> {
     pub(crate) fn into_inner(self) -> T {
         self.inner
     }
+
+    pub(crate) fn inner_bytes(&self) -> anyhow::Result<Vec<u8>> {
+        let Required::<_, EMBEDDED_CBOR_TAG>(Bstr(embedded_cbor)) =
+            ciborium::from_reader(self.original_bytes.as_slice())?;
+
+        Ok(embedded_cbor)
+    }
 }
 
 impl<T: Serialize> Serialize for EmbeddedCbor<T> {

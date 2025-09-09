@@ -428,6 +428,26 @@ mod test {
         );
     }
 
+    #[test]
+    fn test_device_engagement_parse_nfc() {
+        let select_message = hex!("9c1e510469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a30063312e30018201d8185828a30101200421582058ab3a35f030c957dbcae8062bf10768a83b80e5ca0b89b9d945b43812c0113a0281830201a300f501f40a509dbd8e030e73412d979324552b59970a110211487315d1020b61630103424c4501046d646f635a2015036170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f62424c45021c0011070a97592b552493972d41730e038ebd9d"
+        )
+        .to_vec();
+        let engagement = "nB5RBGlzby5vcmc6MTgwMTM6ZGV2aWNlZW5nYWdlbWVudG1kb2OjAGMxLjABggHYGFgoowEBIAQhWCBYqzo18DDJV9vK6AYr8QdoqDuA5coLibnZRbQ4EsAROgKBgwIBowD1AfQKUJ29jgMOc0Etl5MkVStZlwoRAhFIcxXRAgthYwEDQkxFAQRtZG9jWiAVA2FwcGxpY2F0aW9uL3ZuZC5ibHVldG9vdGgubGUub29iQkxFAhwAEQcKl1krVSSTly1Bcw4Djr2d";
+        let (device_engagement, handover) = DeviceEngagement::parse_nfc(engagement).unwrap();
+        assert_eq!(handover.select_message.0, select_message);
+        assert_eq!(handover.request_message, None);
+        assert_eq!(
+            device_engagement.inner().device_retrieval_methods,
+            vec![DeviceRetrievalMethod {
+                retrieval_options: RetrievalOptions::Ble(BleOptions {
+                    peripheral_server_uuid: uuid!("9dbd8e03-0e73-412d-9793-24552b59970a"),
+                    peripheral_server_mac_address: None,
+                }),
+            }]
+        );
+    }
+
     fn get_example_engagement() -> DeviceEngagement {
         let pk = x25519_dalek::PublicKey::from(&x25519_dalek::EphemeralSecret::random_from_rng(
             get_rng(),
