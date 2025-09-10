@@ -559,6 +559,19 @@ fn test_parse_disclosure() {
         )
         .unwrap()
     );
+
+    let array_disclosure = Disclosure {
+        salt: "123".to_string(),
+        key: None,
+        value: serde_json::Value::String("789".to_string()),
+        disclosure_array: r#"["123","789"]"#.to_string(),
+        disclosure: "not passed".to_string(),
+    };
+    let array_disclosure_str = r#"["123","789"]"#;
+    assert_eq!(
+        array_disclosure,
+        parse_disclosure(array_disclosure_str.to_owned(), "not passed".to_owned()).unwrap()
+    );
 }
 
 fn generic_disclosures() -> (Value, Vec<Disclosure>) {
@@ -604,7 +617,8 @@ fn test_select_disclosures_nested() {
         disclosures[0].disclosure.to_string(),
         disclosures[2].disclosure.to_string(),
     ]);
-    let result = select_disclosures(&["obj/str".into()], &payload, disclosures, &SHA256).unwrap();
+    let result =
+        select_disclosures(vec!["obj/str".into()], &payload, disclosures, &SHA256).unwrap();
     assert_eq!(expected, HashSet::from_iter(result));
 }
 
@@ -614,7 +628,7 @@ fn test_select_disclosures_root() {
     let expected =
         HashSet::<String>::from_iter(disclosures.iter().map(|d| d.disclosure.to_string()));
 
-    let result = select_disclosures(&["obj".into()], &payload, disclosures, &SHA256).unwrap();
+    let result = select_disclosures(vec!["obj".into()], &payload, disclosures, &SHA256).unwrap();
     assert_eq!(expected, HashSet::from_iter(result));
 }
 
@@ -674,16 +688,92 @@ fn test_select_disclosures_nested_structure_with_similar_nodes() {
     ]);
 
     let result =
-        select_disclosures(&["obj1/value".into()], &payload, disclosures, &SHA256).unwrap();
+        select_disclosures(vec!["obj1/value".into()], &payload, disclosures, &SHA256).unwrap();
 
     assert_eq!(expected, HashSet::from_iter(result));
+}
+
+#[test]
+fn test_select_disclosures_array_single_element() {
+    let payload = json!({
+        "_sd": [
+            SHA256
+            .hash_base64_url("WyJIeDRIOWRVY0kxeWF5ZTNVaHpKRFB3IiwiZmFtaWx5X25hbWUiLCJoZWxsbyJd".as_bytes())
+            .unwrap(),
+            SHA256
+            .hash_base64_url("WyJVa1U5bzFYUndPWFpHd0ZGNG01ZDN3IiwiZ2l2ZW5fbmFtZSIsIndvcmxkIl0".as_bytes())
+            .unwrap(),
+            SHA256
+            .hash_base64_url("WyJwZ2dWYll6enU2b09HWHJtTlZHUEhQIiwib2JqMiIseyJfc2QiOlsiT1lyLUUydzYwWWt1R21UcWZ4WjFrclljelZQUW5ONEQyWnJXQk5RNzNlNCJdfV0".as_bytes())
+            .unwrap()
+        ]
+    });
+    let disclosures = vec![
+        Disclosure {
+            salt: "Hx4H9dUcI1yaye3UhzJDPw".to_string(),
+            key: Some("family_name".to_string()),
+            value: Value::String("hello".to_string()),
+            disclosure_array: "[\"Hx4H9dUcI1yaye3UhzJDPw\",\"family_name\",\"hello\"]".to_string(),
+            disclosure: "WyJIeDRIOWRVY0kxeWF5ZTNVaHpKRFB3IiwiZmFtaWx5X25hbWUiLCJoZWxsbyJd".to_string()
+        },
+        Disclosure {
+            salt: "UkU9o1XRwOXZGwFF4m5d3w".to_string(),
+            key: Some("given_name".to_string()),
+            value: Value::String("world".to_string()),
+            disclosure_array: "[\"UkU9o1XRwOXZGwFF4m5d3w\",\"given_name\",\"world\"]".to_string(),
+            disclosure: "WyJVa1U5bzFYUndPWFpHd0ZGNG01ZDN3IiwiZ2l2ZW5fbmFtZSIsIndvcmxkIl0".to_string(),
+        },
+        Disclosure {
+            salt: "mom2J1prRcgzVHkHRyakUg".to_string(),
+            key: Some("nationalities".to_string()),
+            value: json!([{"...":"XI314_y7Hz4fKiEf8bUtJLUUWDB03kMZeoulLMCX7YA"},{"...":"oj0XASw1WO8_i3_owTiTxXWdZftGKtC607Jvgu9VNuA"},{"...":"2R_-JsPI71SPzQqxbLHZ3kU_ySD7VgGb5EI_WTFPYWE"}]),
+            disclosure_array: "[\"mom2J1prRcgzVHkHRyakUg\",\"nationalities\",[{\"...\":\"XI314_y7Hz4fKiEf8bUtJLUUWDB03kMZeoulLMCX7YA\"},{\"...\":\"oj0XASw1WO8_i3_owTiTxXWdZftGKtC607Jvgu9VNuA\"},{\"...\":\"2R_-JsPI71SPzQqxbLHZ3kU_ySD7VgGb5EI_WTFPYWE\"}]]".to_string(),
+            disclosure: "WyJwZ2dWYll6enU2b09HWHJtTlZHUEhQIiwib2JqMiIseyJfc2QiOlsiT1lyLUUydzYwWWt1R21UcWZ4WjFrclljelZQUW5ONEQyWnJXQk5RNzNlNCJdfV0".to_string()
+        },
+        Disclosure {
+            salt: "-jeyFyo1aSTutQtmYqlaEw".to_string(),
+            key: None,
+            value: Value::String("CH".to_string()),
+            disclosure_array: "[\"-jeyFyo1aSTutQtmYqlaEw\",\"CH\"]".to_string(),
+            disclosure: "WyItamV5RnlvMWFTVHV0UXRtWXFsYUV3IiwiQ0giXQ".to_string(),
+        },
+        Disclosure {
+            salt: "ES_SJMWR7rBpvw4Xo5yxyQ".to_string(),
+            key: None,
+            value: Value::String("IT".to_string()),
+            disclosure_array: "[\"ES_SJMWR7rBpvw4Xo5yxyQ\",\"IT\"]".to_string(),
+            disclosure: "WyJFU19TSk1XUjdyQnB2dzRYbzV5eHlRIiwiSVQiXQ".to_string(),
+        },
+        Disclosure {
+            salt: "FzQhCdY-3kbCiL52L394YA".to_string(),
+            key: None,
+            value: Value::String("FR".to_string()),
+            disclosure_array: "[\"FzQhCdY-3kbCiL52L394YA\",\"FR\"]".to_string(),
+            disclosure: "WyJGelFoQ2RZLTNrYkNpTDUyTDM5NFlBIiwiRlIiXQ".to_string(),
+        }
+    ];
+    let expected = HashSet::<String>::from_iter([
+        disclosures[2].disclosure.to_string(),
+        disclosures[4].disclosure.to_string(),
+    ]);
+
+    let result = select_disclosures(
+        vec!["nationalities".into(), "nationalities/1".into()],
+        &payload,
+        disclosures,
+        &SHA256,
+    )
+    .unwrap();
+
+    assert_eq!(HashSet::from_iter(result), expected);
 }
 
 #[test]
 fn test_select_disclosures_returns_empty_when_disclosed_key_not_found_in_disclosures() {
     let (payload, disclosures) = generic_disclosures();
 
-    let disclosures = select_disclosures(&["abcd".into()], &payload, disclosures, &SHA256).unwrap();
+    let disclosures =
+        select_disclosures(vec!["abcd".into()], &payload, disclosures, &SHA256).unwrap();
     assert!(disclosures.is_empty());
 }
 

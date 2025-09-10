@@ -228,8 +228,7 @@ pub(crate) async fn prepare_sd_presentation(
     } else {
         presentation.disclosed_keys.clone()
     };
-    let disclosures =
-        select_disclosures(&disclosed_keys, &jwt_payload.custom, disclosures, hasher)?;
+    let disclosures = select_disclosures(disclosed_keys, &jwt_payload.custom, disclosures, hasher)?;
     let mut token = jwt.to_owned();
     append_disclosures(&mut token, disclosures);
 
