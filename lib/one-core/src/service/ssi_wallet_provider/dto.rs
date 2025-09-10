@@ -88,7 +88,7 @@ where
 {
     let s: Vec<String> = Deserialize::deserialize(d)?;
     Ok(s.iter()
-        .map(|s| s.replace(":", "").to_lowercase())
+        .map(|s| s.replace(":", "").to_uppercase())
         .collect())
 }
 
