@@ -293,7 +293,8 @@ impl WalletUnitService {
         self.store_key(&key).await?;
         let attestation = key_storage.generate_attestation(&key, Some(nonce)).await?;
 
-        let auth_fn = self.key_provider.get_signature_provider(
+        // Use SignatureProvider that uses the attestation key and the key_storage.sign_with_attestation_key method
+        let auth_fn = self.key_provider.get_attestation_signature_provider(
             &key,
             None,
             self.key_algorithm_provider.clone(),

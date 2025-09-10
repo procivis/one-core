@@ -54,4 +54,11 @@ pub trait KeyStorage: Send + Sync {
         key: &Key,
         nonce: Option<String>,
     ) -> Result<Vec<String>, error::KeyStorageError>;
+
+    // Generate a signed assertion, using a hardware bound attestation key
+    async fn sign_with_attestation_key(
+        &self,
+        key: &Key,
+        data: &[u8],
+    ) -> Result<Vec<u8>, error::KeyStorageError>;
 }

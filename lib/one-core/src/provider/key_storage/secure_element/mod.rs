@@ -34,6 +34,11 @@ pub trait NativeKeyStorage: Send + Sync {
         key: &[u8],
         nonce: Option<String>,
     ) -> Result<Vec<String>, KeyStorageError>;
+    async fn sign_with_attestation_key(
+        &self,
+        key: &[u8],
+        message: &[u8],
+    ) -> Result<Vec<u8>, KeyStorageError>;
 }
 
 pub struct SecureElementKeyProvider {
@@ -131,6 +136,24 @@ impl KeyStorage for SecureElementKeyProvider {
 
         self.native_storage
             .generate_attestation(key_reference, nonce)
+            .await
+    }
+
+    async fn sign_with_attestation_key(
+        &self,
+        key: &Key,
+        message: &[u8],
+    ) -> Result<Vec<u8>, KeyStorageError> {
+        let key_reference = key
+            .key_reference
+            .as_ref()
+            .ok_or(KeyStorageError::Failed(format!(
+                "Missing key reference for key {}",
+                key.id
+            )))?;
+
+        self.native_storage
+            .sign_with_attestation_key(key_reference, message)
             .await
     }
 }

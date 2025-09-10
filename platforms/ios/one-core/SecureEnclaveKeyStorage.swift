@@ -114,6 +114,31 @@ public class SecureEnclaveKeyStorage: NativeKeyStorage {
         }
     }
 
+    public func signWithAttestationKey(keyReference: Data, message: Data) async throws -> Data {
+        guard #available(iOS 14.0, *) else {
+            throw NativeKeyStorageError.Unsupported
+        }
+
+        guard isAttestationSupported() else {
+            throw NativeKeyStorageError.Unsupported
+        }
+
+        guard let keyId = String(data: keyReference, encoding: .utf8) else {
+            throw NativeKeyStorageError.KeyGenerationFailure(reason: "Invalid key reference format for App Attest")
+        }
+
+        let clientDataHash = Data(SHA256.hash(data: message))
+        return try await withCheckedThrowingContinuation { continuation in
+            DCAppAttestService.shared.generateAssertion(keyId, clientDataHash: clientDataHash) { signature, error in
+                if let error = error {
+                    continuation.resume(throwing: NativeKeyStorageError.SignatureFailure(reason: error.localizedDescription))
+                } else if let signature = signature {
+                    continuation.resume(returning: signature)
+                }
+            }
+        }
+    }
+
     private func isSupported() -> Bool {
         #if targetEnvironment(simulator)
             return false

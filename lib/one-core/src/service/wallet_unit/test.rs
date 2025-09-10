@@ -91,10 +91,7 @@ async fn holder_register_success() {
             }))
         });
 
-    let (holder_private, holder_public) = ECDSASigner::generate_key_pair();
-    let holder_key_handle = Ecdsa
-        .reconstruct_key(&holder_public, Some(holder_private.clone()), None)
-        .unwrap();
+    let (_holder_private, _holder_public) = ECDSASigner::generate_key_pair();
 
     let mut key_repository = MockKeyRepository::new();
     key_repository
@@ -112,16 +109,16 @@ async fn holder_register_success() {
             })
         });
     key_storage
-        .expect_key_handle()
-        .times(1)
-        .returning(move |_| Ok(holder_key_handle.clone()));
-    key_storage
         .expect_generate_attestation()
         .times(1)
         .returning(move |_, nonce| {
             assert_eq!(nonce, Some("test_nonce".to_string()));
             Ok(vec!["test_attestation".to_string()])
         });
+    key_storage
+        .expect_sign_with_attestation_key()
+        .times(1)
+        .returning(move |_, _| Ok(vec![1, 2, 3, 4, 5]));
 
     let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
     key_storages.insert("SECURE_ELEMENT".to_string(), Arc::new(key_storage));

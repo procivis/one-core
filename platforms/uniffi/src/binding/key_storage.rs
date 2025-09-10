@@ -29,6 +29,11 @@ pub trait NativeKeyStorage: Send + Sync {
         key_reference: Vec<u8>,
         nonce: Option<String>,
     ) -> Result<Vec<String>, NativeKeyStorageError>;
+    async fn sign_with_attestation_key(
+        &self,
+        key_reference: Vec<u8>,
+        message: Vec<u8>,
+    ) -> Result<Vec<u8>, NativeKeyStorageError>;
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]
@@ -76,6 +81,17 @@ impl one_core::provider::key_storage::secure_element::NativeKeyStorage for Nativ
     ) -> Result<Vec<String>, KeyStorageError> {
         self.0
             .generate_attestation(key_reference.into(), nonce)
+            .await
+            .map_err(KeyStorageError::from)
+    }
+
+    async fn sign_with_attestation_key(
+        &self,
+        key_reference: &[u8],
+        message: &[u8],
+    ) -> Result<Vec<u8>, KeyStorageError> {
+        self.0
+            .sign_with_attestation_key(key_reference.into(), message.into())
             .await
             .map_err(KeyStorageError::from)
     }

@@ -38,6 +38,24 @@ pub trait KeyProvider: Send + Sync {
             key_algorithm_provider,
         }))
     }
+
+    fn get_attestation_signature_provider(
+        &self,
+        key: &Key,
+        jwk_key_id: Option<String>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    ) -> Result<AuthenticationFn, KeyStorageProviderError> {
+        let key_storage = self.get_key_storage(&key.storage_type).ok_or(
+            KeyStorageProviderError::InvalidKeyStorage(key.storage_type.clone()),
+        )?;
+
+        Ok(Box::new(AttestationSignatureProvider {
+            key: key.to_owned(),
+            key_storage,
+            jwk_key_id,
+            key_algorithm_provider,
+        }))
+    }
 }
 
 pub struct KeyProviderImpl {
@@ -54,6 +72,24 @@ impl KeyProvider for KeyProviderImpl {
     fn get_key_storage(&self, format: &str) -> Option<Arc<dyn KeyStorage>> {
         self.storages.get(format).cloned()
     }
+
+    fn get_attestation_signature_provider(
+        &self,
+        key: &Key,
+        jwk_key_id: Option<String>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    ) -> Result<AuthenticationFn, KeyStorageProviderError> {
+        let key_storage = self.get_key_storage(&key.storage_type).ok_or(
+            KeyStorageProviderError::InvalidKeyStorage(key.storage_type.clone()),
+        )?;
+
+        Ok(Box::new(AttestationSignatureProvider {
+            key: key.to_owned(),
+            key_storage,
+            jwk_key_id,
+            key_algorithm_provider,
+        }))
+    }
 }
 
 pub(crate) struct SignatureProviderImpl {
@@ -63,10 +99,48 @@ pub(crate) struct SignatureProviderImpl {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
+pub(crate) struct AttestationSignatureProvider {
+    pub key: Key,
+    pub key_storage: Arc<dyn KeyStorage>,
+    pub jwk_key_id: Option<String>,
+    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+}
+
 #[async_trait::async_trait]
 impl SignatureProvider for SignatureProviderImpl {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
         self.key_handle.sign(message).await
+    }
+
+    fn get_key_id(&self) -> Option<String> {
+        self.jwk_key_id.to_owned()
+    }
+
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        self.key
+            .key_algorithm_type()
+            .ok_or(self.key.key_type.to_owned())
+    }
+
+    fn jose_alg(&self) -> Option<String> {
+        self.key
+            .key_algorithm_type()
+            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
+            .and_then(|key_algorithm| key_algorithm.issuance_jose_alg_id())
+    }
+
+    fn get_public_key(&self) -> Vec<u8> {
+        self.key.public_key.to_owned()
+    }
+}
+
+#[async_trait::async_trait]
+impl SignatureProvider for AttestationSignatureProvider {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        self.key_storage
+            .sign_with_attestation_key(&self.key, message)
+            .await
+            .map_err(|e| SignerError::CouldNotSign(e.to_string()))
     }
 
     fn get_key_id(&self) -> Option<String> {

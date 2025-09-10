@@ -150,6 +150,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             ?: throw NativeKeyStorageException.Unknown("No certificate chain found for key alias `${keyAlias}`")
     }
 
+    override suspend fun signWithAttestationKey(keyReference: ByteArray, message: ByteArray): ByteArray {
+        return sign(keyReference, message)
+    }
+
     private fun strongBoxSupported(): Boolean {
         var strongbox = false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {

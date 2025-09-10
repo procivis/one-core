@@ -97,6 +97,16 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
             feature: Features::Attestation,
         });
     }
+
+    async fn sign_with_attestation_key(
+        &self,
+        _key: &Key,
+        _data: &[u8],
+    ) -> Result<Vec<u8>, KeyStorageError> {
+        return Err(KeyStorageError::UnsupportedFeature {
+            feature: Features::Attestation,
+        });
+    }
 }
 
 impl RemoteSecureElementKeyProvider {
