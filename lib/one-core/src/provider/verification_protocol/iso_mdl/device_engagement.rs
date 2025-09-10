@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use uuid::Uuid;
 
 use super::common::EDeviceKey;
+use super::nfc::{BLE_RECORD_TYPE, BLECarrierConfigurationRecord, DEVICE_ENGAGMENT_RECORD_TYPE};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
 use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
@@ -14,6 +15,7 @@ use crate::util::mdoc::{Bstr, EmbeddedCbor};
 pub(crate) struct DeviceEngagement {
     // pub version: DeviceEngagementVersion,
     pub security: Security,
+    // empty vector means missing entry in CBOR
     pub device_retrieval_methods: Vec<DeviceRetrievalMethod>,
     // ServerRetrievalMethods and ProtocolInfo ignored/not implemented
 }
@@ -76,21 +78,42 @@ impl DeviceEngagement {
     // currently only NFC static handover supported
     pub(crate) fn parse_nfc(
         nfc_select_message: &str,
-    ) -> anyhow::Result<(EmbeddedCbor<DeviceEngagement>, NFCHandover)> {
+    ) -> anyhow::Result<(
+        EmbeddedCbor<DeviceEngagement>,
+        NFCHandover,
+        DeviceRetrievalMethod,
+    )> {
         let select_message = Base64UrlSafeNoPadding::decode_to_vec(nfc_select_message, None)?;
         let ndef_message = ndef_rs::NdefMessage::decode(&select_message)?;
 
         let device_engagement_record = ndef_message
             .records()
             .iter()
-            .find(|record| record.record_type() == b"iso.org:18013:deviceengagement")
+            .find(|record| record.record_type() == DEVICE_ENGAGMENT_RECORD_TYPE)
             .ok_or(anyhow!("Device engagement NDEF record not found"))?;
-        let data = device_engagement_record.payload().to_vec();
+        let device_engagement_cbor = device_engagement_record.payload().to_vec();
+
+        let ble: BLECarrierConfigurationRecord = ndef_message
+            .records()
+            .iter()
+            .find(|record| record.record_type() == BLE_RECORD_TYPE)
+            .ok_or(anyhow!("BLE NDEF record not found"))?
+            .try_into()?;
+
         Ok((
-            EmbeddedCbor::<DeviceEngagement>::from_raw_cbor(data)?,
+            EmbeddedCbor::<DeviceEngagement>::from_raw_cbor(device_engagement_cbor)?,
             NFCHandover {
                 select_message: Bstr(select_message),
                 request_message: None,
+            },
+            DeviceRetrievalMethod {
+                retrieval_options: RetrievalOptions::Ble(BleOptions {
+                    peripheral_server_uuid: ble.peripheral_service_uuid,
+                    peripheral_server_mac_address: ble
+                        .peripheral_mac_address
+                        .as_ref()
+                        .map(deserialize_mac_address),
+                }),
             },
         ))
     }
@@ -120,13 +143,18 @@ impl Serialize for DeviceEngagement {
     where
         S: Serializer,
     {
-        cbor!({
-            0 => DEVICE_ENGAGEMENT_VERSION,
-            1 => self.security,
-            2 => self.device_retrieval_methods
-        })
-        .map_err(ser::Error::custom)?
-        .serialize(serializer)
+        let mut entries = vec![
+            (0.into(), DEVICE_ENGAGEMENT_VERSION.into()),
+            (1.into(), cbor!(self.security).map_err(ser::Error::custom)?),
+        ];
+        if !self.device_retrieval_methods.is_empty() {
+            entries.push((
+                2.into(),
+                cbor!(self.device_retrieval_methods).map_err(ser::Error::custom)?,
+            ));
+        }
+
+        ciborium::Value::Map(entries).serialize(serializer)
     }
 }
 
@@ -151,13 +179,13 @@ impl<'de> Deserialize<'de> for DeviceEngagement {
 
         let security = get_cbor_map_value(&map, 1)
             .ok_or(de::Error::custom("Missing DeviceEngagement security"))?;
-        let device_retrieval_methods = get_cbor_map_value(&map, 2)
-            .ok_or(de::Error::custom(
-                "Missing DeviceEngagement device_retrieval_methods",
-            ))?
-            .to_owned()
-            .into_array()
-            .map_err(|_| de::Error::custom("Invalid DeviceEngagement device_retrieval_methods"))?;
+        let device_retrieval_methods = if let Some(value) = get_cbor_map_value(&map, 2) {
+            value.to_owned().into_array().map_err(|_| {
+                de::Error::custom("Invalid DeviceEngagement device_retrieval_methods")
+            })?
+        } else {
+            vec![]
+        };
 
         Ok(DeviceEngagement {
             security: deserialize_security::<D>(security.to_owned())?,
@@ -433,19 +461,41 @@ mod test {
         let select_message = hex!("9c1e510469736f2e6f72673a31383031333a646576696365656e676167656d656e746d646f63a30063312e30018201d8185828a30101200421582058ab3a35f030c957dbcae8062bf10768a83b80e5ca0b89b9d945b43812c0113a0281830201a300f501f40a509dbd8e030e73412d979324552b59970a110211487315d1020b61630103424c4501046d646f635a2015036170706c69636174696f6e2f766e642e626c7565746f6f74682e6c652e6f6f62424c45021c0011070a97592b552493972d41730e038ebd9d"
         )
         .to_vec();
-        let engagement = "nB5RBGlzby5vcmc6MTgwMTM6ZGV2aWNlZW5nYWdlbWVudG1kb2OjAGMxLjABggHYGFgoowEBIAQhWCBYqzo18DDJV9vK6AYr8QdoqDuA5coLibnZRbQ4EsAROgKBgwIBowD1AfQKUJ29jgMOc0Etl5MkVStZlwoRAhFIcxXRAgthYwEDQkxFAQRtZG9jWiAVA2FwcGxpY2F0aW9uL3ZuZC5ibHVldG9vdGgubGUub29iQkxFAhwAEQcKl1krVSSTly1Bcw4Djr2d";
-        let (device_engagement, handover) = DeviceEngagement::parse_nfc(engagement).unwrap();
+        let (_device_engagement, handover, device_retrieval_method) = DeviceEngagement::parse_nfc(
+            &Base64UrlSafeNoPadding::encode_to_string(&select_message).unwrap(),
+        )
+        .unwrap();
         assert_eq!(handover.select_message.0, select_message);
         assert_eq!(handover.request_message, None);
+
         assert_eq!(
-            device_engagement.inner().device_retrieval_methods,
-            vec![DeviceRetrievalMethod {
+            device_retrieval_method,
+            DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
                     peripheral_server_uuid: uuid!("9dbd8e03-0e73-412d-9793-24552b59970a"),
                     peripheral_server_mac_address: None,
                 }),
-            }]
+            }
         );
+    }
+
+    #[test]
+    fn test_device_engagement_nfc_iso_example() {
+        // ISO 18013-5, D.3.3
+        let data = hex!(
+            "91020f487315d10209616301013001046d646f631a200c016170706c69636174696f6e2f766e642e626c756574\
+             6f6f74682e6c652e6f6f6230081b28128b37282801021c015c1e580469736f2e6f72673a31383031333a646576\
+             696365656e676167656d656e746d646f63a20063312e30018201d818584ba4010220012158205a88d182bce5f4\
+             2efa59943f33359d2e8a968ff289d93e5fa444b624343167fe225820b16e8cf858ddc7690407ba61d4c338237a8\
+             cfcf3de6aa672fc60a557aa32fc67"
+        )
+        .to_vec();
+
+        // failing due to unsupported BLE mode
+        let failure =
+            DeviceEngagement::parse_nfc(&Base64UrlSafeNoPadding::encode_to_string(data).unwrap())
+                .unwrap_err();
+        assert_eq!(failure.to_string(), "Other error: Unsupported BLE role [1]");
     }
 
     fn get_example_engagement() -> DeviceEngagement {

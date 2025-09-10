@@ -24,17 +24,27 @@ impl ProofService {
         engagement_type: VerificationEngagement,
         profile: Option<String>,
     ) -> Result<ProofId, ServiceError> {
-        let (device_engagement, handover) = match engagement_type {
-            VerificationEngagement::QrCode => (
-                DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
-                    .map_err(|err| ServiceError::Other(err.to_string()))?,
-                None,
-            ),
+        let (device_engagement, handover, device_retrieval_method) = match engagement_type {
+            VerificationEngagement::QrCode => {
+                let device_engagement = DeviceEngagement::parse_qr_code(&iso_mdl_engagement)
+                    .map_err(|err| ServiceError::Other(err.to_string()))?;
+                let device_retrieval_method = device_engagement
+                    .inner()
+                    .device_retrieval_methods
+                    .first()
+                    .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
+                    .clone();
+                (device_engagement, None, device_retrieval_method)
+            }
             VerificationEngagement::NFC => {
-                let (device_engagement, handover) =
+                let (device_engagement, handover, device_retrieval_method) =
                     DeviceEngagement::parse_nfc(&iso_mdl_engagement)
                         .map_err(|err| ServiceError::Other(err.to_string()))?;
-                (device_engagement, Some(Handover::Nfc(handover)))
+                (
+                    device_engagement,
+                    Some(Handover::Nfc(handover)),
+                    device_retrieval_method,
+                )
             }
         };
 
@@ -48,13 +58,6 @@ impl ProofService {
             .ble
             .as_ref()
             .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
-
-        let device_retrieval_method = device_engagement
-            .inner()
-            .device_retrieval_methods
-            .first()
-            .ok_or_else(|| ServiceError::Other("no device retrival method".into()))?
-            .clone();
 
         let verifier_session = setup_verifier_session(device_engagement, &schema, handover)?;
 

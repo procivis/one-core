@@ -57,12 +57,13 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
-    MdocBleHolderInteractionData, receive_mdl_request, start_mdl_server,
+    MdocBleHolderInteractionData, NfcHceSession, receive_mdl_request, start_mdl_server,
 };
 use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgreement};
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
+use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_payload;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::credential::dto::CredentialFilterValue;
@@ -70,7 +71,6 @@ use crate::service::credential_schema::validator::validate_wallet_storage_type_s
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::proof::nfc::create_nfc_payload;
 use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
@@ -743,7 +743,7 @@ impl ProofService {
         let now = OffsetDateTime::now_utc();
         let server = start_mdl_server(ble).await?;
         let key_pair = KeyAgreement::<EDeviceKey>::new();
-        let device_engagement = DeviceEngagement {
+        let mut device_engagement = DeviceEngagement {
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
@@ -756,13 +756,14 @@ impl ProofService {
             }],
         };
 
-        let device_engagement = device_engagement
+        let device_engagement_bytes = device_engagement
+            .clone()
             .into_cbor()
             .map_err(|err| ServiceError::Other(err.to_string()))?;
 
         let qr_code = if engagements.contains(&VerificationEngagement::QrCode.to_string()) {
             Some(
-                device_engagement
+                device_engagement_bytes
                     .generate_qr_code()
                     .map_err(|err| ServiceError::Other(err.to_string()))?,
             )
@@ -776,10 +777,18 @@ impl ProofService {
                 .clone()
                 .ok_or(ServiceError::Other("NFC HCE provider is missing".into()))?;
 
-            let nfc_message = create_nfc_payload(server.clone(), device_engagement.clone())
+            // NFC device engagement does not contain device retrieval methods
+            let device_engagement_bytes = {
+                device_engagement.device_retrieval_methods = vec![];
+                device_engagement
+                    .into_cbor()
+                    .map_err(|err| ServiceError::Other(err.to_string()))?
+            };
+
+            let nfc_message = create_nfc_payload(server.clone(), device_engagement_bytes.clone())
                 .map_err(|err| {
-                    ServiceError::Other(format!("Failed to create NFC payload: {err}"))
-                })?;
+                ServiceError::Other(format!("Failed to create NFC payload: {err}"))
+            })?;
 
             let bytes_payload = nfc_message.to_buffer().map_err(|err| {
                 ServiceError::Other(format!("Failed to generate NFC payload: {err}"))
@@ -787,7 +796,11 @@ impl ProofService {
             nfc_hce_provider
                 .start_host_data(bytes_payload.clone())
                 .await?;
-            Some((nfc_hce_provider, bytes_payload))
+            Some(NfcHceSession {
+                hce: nfc_hce_provider,
+                select_message: bytes_payload,
+                device_engagement: device_engagement_bytes,
+            })
         } else {
             None
         };
@@ -845,7 +858,7 @@ impl ProofService {
 
         receive_mdl_request(
             ble,
-            device_engagement,
+            device_engagement_bytes,
             key_pair,
             self.interaction_repository.clone(),
             interaction,

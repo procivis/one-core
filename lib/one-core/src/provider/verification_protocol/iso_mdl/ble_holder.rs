@@ -106,17 +106,23 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
     })
 }
 
+pub(crate) struct NfcHceSession {
+    pub hce: Arc<dyn NfcHce>,
+    pub select_message: Vec<u8>,
+    pub device_engagement: EmbeddedCbor<DeviceEngagement>,
+}
+
 /// Waits for verifier connection + reads device request
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
-    device_engagement: EmbeddedCbor<DeviceEngagement>,
+    qr_device_engagement: EmbeddedCbor<DeviceEngagement>,
     key_pair: KeyAgreement<EDeviceKey>,
     interaction_repository: Arc<dyn InteractionRepository>,
     mut interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
     proof_id: ProofId,
-    nfc: Option<(Arc<dyn NfcHce>, Vec<u8>)>,
+    nfc: Option<NfcHceSession>,
 ) -> Result<(), ServiceError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
@@ -143,22 +149,36 @@ pub(crate) async fn receive_mdl_request(
                 }
 
                 let result = async {
-                    let (engagement, handover) = match nfc {
-                        None => (VerificationEngagement::QrCode, None),
-                        Some((nfc_hce, select_message)) => {
-                            match nfc_hce
+                    let (engagement_type, handover, device_engagement) = match nfc {
+                        None => {
+                            // NFC not used, the engagement must have been via QR-code
+                            (VerificationEngagement::QrCode, None, qr_device_engagement)
+                        }
+                        Some(NfcHceSession {
+                            hce,
+                            select_message,
+                            device_engagement: nfc_device_engagement,
+                        }) => {
+                            match hce
                                 .stop_host_data()
                                 .await
                                 .map_err(|e| VerificationProtocolError::Transport(e.into()))?
                             {
-                                true => (
-                                    VerificationEngagement::NFC,
-                                    Some(Handover::Nfc(NFCHandover {
-                                        select_message: Bstr(select_message),
-                                        request_message: None,
-                                    })),
-                                ),
-                                false => (VerificationEngagement::QrCode, None),
+                                true => {
+                                    // the NFC select message was read by a remote device, continue as NFC engaged
+                                    (
+                                        VerificationEngagement::NFC,
+                                        Some(Handover::Nfc(NFCHandover {
+                                            select_message: Bstr(select_message),
+                                            request_message: None,
+                                        })),
+                                        nfc_device_engagement,
+                                    )
+                                }
+                                false => {
+                                    // no NFC contact, the engagement must have been via QR-code
+                                    (VerificationEngagement::QrCode, None, qr_device_engagement)
+                                }
                             }
                         }
                     };
@@ -167,7 +187,7 @@ pub(crate) async fn receive_mdl_request(
                         read_request(&peripheral, &info, interaction_data.service_uuid).await?;
 
                     let session_transcript_bytes = create_session_transcript_bytes(
-                        device_engagement.clone(),
+                        device_engagement,
                         session_establishment.e_reader_key.clone(),
                         handover,
                     )?;
@@ -223,7 +243,7 @@ pub(crate) async fn receive_mdl_request(
                             &proof_id,
                             UpdateProofRequest {
                                 state: Some(ProofStateEnum::Requested),
-                                engagement: Some(Some(engagement.to_string())),
+                                engagement: Some(Some(engagement_type.to_string())),
                                 ..Default::default()
                             },
                             None,

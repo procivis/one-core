@@ -121,7 +121,6 @@ impl ProofService {
     }
 }
 
-mod nfc;
 #[cfg(test)]
 mod test;
 mod validator;

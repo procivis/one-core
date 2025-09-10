@@ -53,6 +53,7 @@ pub(crate) mod ble_holder;
 pub(crate) mod ble_verifier;
 pub(crate) mod common;
 pub(crate) mod device_engagement;
+pub(crate) mod nfc;
 mod session;
 
 #[cfg(test)]
