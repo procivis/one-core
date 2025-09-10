@@ -28,7 +28,9 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::{EntityNotFoundError, ErrorCodeMixin, ServiceError};
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
 use crate::service::ssi_wallet_provider::app_integrity::android::validate_attestation_android;
-use crate::service::ssi_wallet_provider::app_integrity::ios::validate_attestation_ios;
+use crate::service::ssi_wallet_provider::app_integrity::ios::{
+    validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig,
+};
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
     RegisterWalletUnitResponseDTO, WalletProviderParams, WalletUnitActivationRequestDTO,
@@ -84,7 +86,14 @@ impl SSIWalletProviderService {
             let public_key = self
                 .parse_jwk(&proof.header.algorithm, &public_key_jwk)
                 .await?;
-            self.verify_proof(&proof, &public_key, LEEWAY).await?;
+            self.verify_proof(
+                &proof,
+                &public_key,
+                request.os,
+                config_params.integrity_check.enabled,
+                LEEWAY,
+            )
+            .await?;
             self.create_wallet_unit_with_attestation(request, config, config_params, public_key_jwk)
                 .await
         }
@@ -272,8 +281,14 @@ impl SSIWalletProviderService {
             }
         };
         let proof = Jwt::<()>::decompose_token(&request.proof)?;
-        self.verify_proof(&proof, &attested_public_key, LEEWAY)
-            .await?;
+        self.verify_proof(
+            &proof,
+            &attested_public_key,
+            wallet_unit.os,
+            config_params.integrity_check.enabled,
+            LEEWAY,
+        )
+        .await?;
 
         let jwk = attested_public_key.public_key_as_jwk()?;
         let encoded_public_key = serde_json::to_string(&jwk)
@@ -400,7 +415,14 @@ impl SSIWalletProviderService {
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let proof = Jwt::<()>::decompose_token(&request.proof)?;
-        self.verify_proof(&proof, &key, LEEWAY).await?;
+        self.verify_proof(
+            &proof,
+            &key,
+            wallet_unit.os,
+            config_params.integrity_check.enabled,
+            LEEWAY,
+        )
+        .await?;
 
         let now = self.clock.now_utc();
         if let Some(last_issuance) = wallet_unit.last_issuance
@@ -586,14 +608,24 @@ impl SSIWalletProviderService {
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))
     }
 
-    async fn verify_proof(
+    pub(super) async fn verify_proof(
         &self,
         proof: &DecomposedToken<()>,
         public_key: &KeyHandle,
+        wallet_unit_os: WalletUnitOs,
+        integrity_check_enabled: bool,
         leeway: u64,
     ) -> Result<(), ServiceError> {
+        let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
+            (true, WalletUnitOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)?,
+            _ => (
+                proof.unverified_jwt.as_bytes().to_vec(),
+                proof.signature.clone(),
+            ),
+        };
+
         public_key
-            .verify(proof.unverified_jwt.as_bytes(), &proof.signature)
+            .verify(&msg, &signature)
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
         validate_issuance_time(&proof.payload.issued_at, leeway)?;
 

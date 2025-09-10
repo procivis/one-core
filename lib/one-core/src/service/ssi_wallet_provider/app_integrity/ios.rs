@@ -5,13 +5,16 @@ use ct_codecs::{Base64, Decoder};
 use itertools::Itertools;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use one_crypto::utilities::ecdsa_sig_from_der;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::dto::IOSBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::util::jwt::model::DecomposedToken;
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
 
@@ -197,16 +200,41 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Wall
     })
 }
 
+pub(crate) fn webauthn_signed_jwt_to_msg_and_sig(
+    proof: &DecomposedToken<()>,
+) -> Result<(Vec<u8>, Vec<u8>), ServiceError> {
+    #[derive(Debug, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct WebAuthnSignature {
+        signature: Vec<u8>,
+        authenticator_data: Vec<u8>,
+    }
+    let webauthn_sig: WebAuthnSignature =
+        ciborium::de::from_reader(&proof.signature[..]).map_err(|err| {
+            AppIntegrityValidationError(format!("Failed to deserialize webauthn signature: {err}"))
+        })?;
+    let mut msg = webauthn_sig.authenticator_data;
+    msg.extend(SHA256.hash(proof.unverified_jwt.as_bytes()).map_err(|e| {
+        WalletProviderError::CouldNotVerifyProof(format!("failed to hash token payload: {e}"))
+    })?);
+    let msg = SHA256.hash(&msg).unwrap();
+    let sig = ecdsa_sig_from_der(&webauthn_sig.signature).unwrap();
+    Ok((msg, sig))
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    use serde_json::json;
     use time::Duration;
     use time::macros::datetime;
+    use uuid::Uuid;
 
     use super::*;
-    use crate::config::core_config::KeyAlgorithmType;
+    use crate::config;
+    use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
     };
@@ -216,8 +244,11 @@ mod tests {
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-    use crate::service::certificate::validator::CertificateValidatorImpl;
-    use crate::util::clock::MockClock;
+    use crate::service::certificate::validator::{
+        CertificateValidationOptions, CertificateValidatorImpl,
+    };
+    use crate::util::clock::{Clock, DefaultClock, MockClock};
+    use crate::util::jwt::Jwt;
 
     static APPLE_ATTESTATION_CA: &str = "-----BEGIN CERTIFICATE-----
 MIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw
@@ -238,6 +269,73 @@ oyFraWVIyd/dganmrduC1bmTBGwD
     const EXAMPLE_APP_ATTESTATION: &str = "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";
     #[tokio::test]
     async fn validate_attestation_success_example_app() {
+        let mut clock = MockClock::new();
+        clock
+            .expect_now_utc()
+            .returning(|| datetime!(2025-09-09 0:00 UTC)); // a date the test vector happens to be valid at
+        let certificate_validator = test_cert_validator(Arc::new(clock));
+        validate_attestation_ios(
+            EXAMPLE_APP_ATTESTATION,
+            "test",
+            &IOSBundle {
+                bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
+                trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
+                enforce_production_build: false,
+            },
+            &certificate_validator,
+        )
+        .await
+        .expect("Failed to validate attestation");
+    }
+
+    #[tokio::test]
+    async fn ios_verify_proof() {
+        let certificate_validator = test_cert_validator(Arc::new(DefaultClock));
+
+        let mut config = CoreConfig::default();
+        config
+            .wallet_provider
+            .insert("PROCIVIS_ONE".to_string(), wallet_provider_config());
+        let cert = "-----BEGIN CERTIFICATE-----
+MIIDVjCCAtygAwIBAgIGAZkzmWcEMAoGCCqGSM49BAMCME8xIzAhBgNVBAMMGkFw
+cGxlIEFwcCBBdHRlc3RhdGlvbiBDQSAxMRMwEQYDVQQKDApBcHBsZSBJbmMuMRMw
+EQYDVQQIDApDYWxpZm9ybmlhMB4XDTI1MDkwOTEyMjgzNVoXDTI2MDkwMjAyNDkz
+NVowgZExSTBHBgNVBAMMQGY4ZDY2NjUzMWY3OTEzMjRmOWM3ZTNlZGY5NzcxODUx
+MmM3NGNjNjBmYTU0N2NjMzUyNDg5MzkzOWE4OTVmNzExGjAYBgNVBAsMEUFBQSBD
+ZXJ0aWZpY2F0aW9uMRMwEQYDVQQKDApBcHBsZSBJbmMuMRMwEQYDVQQIDApDYWxp
+Zm9ybmlhMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEobAMbYiHydF3WSoObUym
+coesxE3im6rg8F1qxuzxdDBoQFu/ntccaRLNE42Rd+dfxZfp8kHJcQG8K8d8Px6o
+0aOCAV8wggFbMAwGA1UdEwEB/wQCMAAwDgYDVR0PAQH/BAQDAgTwMIGXBgkqhkiG
+92NkCAUEgYkwgYakAwIBCr+JMAMCAQG/iTEDAgEAv4kyAwIBAb+JMwMCAQG/iTQn
+BCVBR0czVjZRTjRHLmNoLnByb2NpdmlzLm9uZS53YWxsZXQuZGV2pQYEBHNrcyC/
+iTYDAgEFv4k3AwIBAL+JOQMCAQC/iToDAgEAv4k7AwIBAKoDAgEAv4k8BgIEc2tz
+IDBsBgkqhkiG92NkCAcEXzBdv4p4CAQGMTcuNy4xv4hQBwIFAP////6/inkJBAcx
+LjAuMTk4v4p7CAQGMjFIMjE2v4p8AgQAv4p9CAQGMTcuNy4xv4p+AwIBAL+LDBAE
+DjIxLjguMjE2LjAuMCwwMDMGCSqGSIb3Y2QIAgQmMCShIgQgDpxJC18owzGw4R7G
+tMMde/ll2kJYeF3eAHwtaerFM3swCgYIKoZIzj0EAwIDaAAwZQIxAJdPLI6+5fJk
+2KdiPNA6v1oBFVWJu2WsAbLSKi1cV2xCCZgeYR6CyEFkd5FVhSgKvwIwX4iUzd61
+Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
+-----END CERTIFICATE-----";
+        let certificate = certificate_validator
+            .parse_pem_chain(
+                cert.as_bytes(),
+                CertificateValidationOptions {
+                    require_root_termination: false,
+                    validate_path_length: false,
+                    validity_check: false,
+                },
+            )
+            .await
+            .unwrap();
+        let token = "eyJhbGciOiJFUzI1NiIsInR5cCI6Imp3dCJ9.eyJpYXQiOjE3NTc1MDczMTUsImV4cCI6MTc1NzUxMDkxNSwibmJmIjoxNzU3NTA3MzE1LCJhdWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20ifQ.omlzaWduYXR1cmVYRzBFAiEA_o4x5n1J9431oVI5HsFGfhH61g9jWLt2VuNs07s0RMECIG_aWSIG588XX8EspngSqexII8K33wx_wTbebInJCsC1cWF1dGhlbnRpY2F0b3JEYXRhWCVOsS8PJU7JWJfhD8KV_wtxOAB6WNUU_jplnvvKx-WFWkAAAAAB";
+        let proof = Jwt::<()>::decompose_token(token).unwrap();
+        let (msg, sig) = webauthn_signed_jwt_to_msg_and_sig(&proof).unwrap();
+
+        let result = certificate.public_key.verify(&msg, &sig);
+        assert!(result.is_ok());
+    }
+
+    fn test_cert_validator(clock: Arc<dyn Clock>) -> CertificateValidatorImpl {
         let key_algorithm_provider =
             Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
                 KeyAlgorithmType::Ecdsa,
@@ -260,28 +358,41 @@ oyFraWVIyd/dganmrduC1bmTBGwD
             Duration::days(1),
             Duration::days(1),
         ));
-
-        let mut clock = MockClock::new();
-        clock
-            .expect_now_utc()
-            .returning(|| datetime!(2025-09-09 0:00 UTC)); // a date the test vector happens to be valid at
-        let certificate_validator = CertificateValidatorImpl::new(
+        CertificateValidatorImpl::new(
             key_algorithm_provider,
             crl_cache,
-            Arc::new(clock),
+            clock,
             android_key_attestation_crl_cache,
-        );
-        validate_attestation_ios(
-            EXAMPLE_APP_ATTESTATION,
-            "test",
-            &IOSBundle {
-                bundle_id: "AGG3V6QN4G.ch.procivis.one.wallet.dev".to_string(),
-                trusted_attestation_cas: vec![APPLE_ATTESTATION_CA.to_string()],
-                enforce_production_build: false,
-            },
-            &certificate_validator,
         )
-        .await
-        .expect("Failed to validate attestation");
+    }
+
+    fn wallet_provider_config() -> Fields<config::core_config::WalletProviderType> {
+        Fields {
+            r#type: config::core_config::WalletProviderType::ProcivisOne,
+            display: "display".into(),
+            order: None,
+            enabled: Some(true),
+            capabilities: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "walletName": "Procivis One Trial Wallet",
+                    "walletLink": "https://procivis.ch",
+                    "ios": {
+                        "bundleId": "com.procivis...",
+                        "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."],
+                        "enforceProductionBuild": true
+                    },
+                    "lifetime": {
+                      "expirationTime": 60,
+                      "minimumRefreshTime": 60
+                    },
+                    "issuerIdentifier": Uuid::new_v4(),
+                    "integrityCheck": {
+                        "enabled": true
+                    }
+                })),
+                private: None,
+            }),
+        }
     }
 }
