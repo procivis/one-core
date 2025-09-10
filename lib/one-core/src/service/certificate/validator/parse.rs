@@ -1,5 +1,6 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use time::Duration;
 use x509_parser::oid_registry::{OID_EC_P256, OID_KEY_TYPE_EC_PUBLIC_KEY, OID_SIG_ED25519};
 use x509_parser::pem::Pem;
 use x509_parser::prelude::{ASN1Time, X509Certificate};
@@ -17,6 +18,8 @@ use crate::service::certificate::validator::CertificateValidationOptions;
 use crate::service::certificate::validator::x509_extension::validate_key_usage;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
 use crate::util::x509::{authority_key_identifier, subject_key_identifier};
+
+const LEEWAY: Duration = Duration::seconds(60);
 
 #[async_trait::async_trait]
 impl CertificateValidator for CertificateValidatorImpl {
@@ -71,10 +74,7 @@ impl CertificateValidator for CertificateValidatorImpl {
                 self.validate_path_length(&certs)?;
             }
 
-            if !current
-                .validity()
-                .is_valid_at(ASN1Time::from(self.clock.now_utc()))
-            {
+            if !self.is_valid_with_leeway(current, LEEWAY) {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
@@ -134,13 +134,12 @@ impl CertificateValidator for CertificateValidatorImpl {
                 result = Some(res);
             }
 
-            let now = ASN1Time::from(self.clock.now_utc());
-            if !current.validity().is_valid_at(now) {
+            if !self.is_valid_with_leeway(current, LEEWAY) {
                 let result = result.ok_or(ValidationError::CertificateParsingFailed(
                     "No certificates specified".to_string(),
                 ))?;
 
-                return if now < current.validity.not_before {
+                return if ASN1Time::from(self.clock.now_utc()) < current.validity.not_before {
                     Ok((CertificateState::NotYetActive, result))
                 } else {
                     Ok((CertificateState::Expired, result))
@@ -412,10 +411,7 @@ impl CertificateValidatorImpl {
         let mut chain = certs.iter().peekable();
         while let Some(current_cert) = chain.next() {
             validate_key_usage(current_cert)?;
-            if !current_cert
-                .validity()
-                .is_valid_at(ASN1Time::from(self.clock.now_utc()))
-            {
+            if !self.is_valid_with_leeway(current_cert, LEEWAY) {
                 return Err(ValidationError::CertificateNotValid.into());
             }
 
@@ -488,6 +484,12 @@ impl CertificateValidatorImpl {
             ValidationError::InvalidCaCertificateChain("Certificate chain is empty".to_string())
                 .into(),
         )
+    }
+
+    fn is_valid_with_leeway(&self, current: &X509Certificate, leeway: Duration) -> bool {
+        let now = self.clock.now_utc();
+        current.validity().is_valid_at(ASN1Time::from(now - leeway))
+            || current.validity().is_valid_at(ASN1Time::from(now + leeway))
     }
 }
 
