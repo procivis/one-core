@@ -418,7 +418,7 @@ Support for the recently published [FIPS-204][fips] is planned for the near futu
   - [OID4VP over BLE][ble]; optimized version of Draft 00
   - OID4VP over MQTT; proprietary adaptation of "OID4VP over BLE" via MQTT channel
 - ISO/IEC 18013
-  - [18013-5][iso5]: QR code engagement and offline device retrieval over BLE
+  - [18013-5][iso5]: Device engagement using either NFC or QR Code, data retrieval using BLE
   - [18013-7][iso7]: Online data retrieval via OID4VP
 
 ### Key storage

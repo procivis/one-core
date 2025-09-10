@@ -111,8 +111,10 @@ pub(crate) struct CreateProofRequestRestDTO {
     #[into(with_fn = convert_inner)]
     #[schema(example = json!(["HTTP"]), nullable = false)]
     pub transport: Option<Vec<String>>,
-    /// Optional profile to associate with this proof request
+    /// Optional profile to associate with this proof request.
     pub profile: Option<String>,
+    /// Not for use via the API; for mobile configurations to specify device
+    /// engagement type.
     #[into(with_fn = convert_inner)]
     pub engagement: Option<String>,
 }

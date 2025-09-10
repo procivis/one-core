@@ -30,6 +30,7 @@ use crate::utils::{TimestampFormat, into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
+    /// For verifiers, creates a proof request.
     #[uniffi::method]
     pub async fn create_proof(
         &self,
@@ -100,6 +101,9 @@ impl OneCoreBinding {
         Ok(())
     }
 
+    /// For wallets, initiates device engagement for offline flows. Reference
+    /// the `verificationEngagement` entry of your configuration for your
+    /// options for `engagement`.
     #[uniffi::method]
     pub async fn propose_proof(
         &self,
@@ -150,6 +154,11 @@ impl OneCoreBinding {
     }
 }
 
+/// If protocol is `ISO_MDL`, specify the device engagement type
+/// by referencing an entry from `verificationEngagement` of your
+/// configuration. `iso_mdl_engagement` accepts either QR code content
+/// (for QR device engagement) or NFC engagement parameters from
+/// `nfc_read_iso_mdl_engagement`.
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateProofRequestDTO, Error = ServiceError)]
 pub struct CreateProofRequestBindingDTO {
