@@ -1,3 +1,5 @@
+app:
+  traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error,core_server::middleware=trace"
 walletProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE
