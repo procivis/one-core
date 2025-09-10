@@ -131,6 +131,12 @@ impl OneCoreBinding {
                 )
             });
 
+            let credential_schema_ids = query
+                .credential_schema_ids
+                .map(|ids| ids.into_iter().map(into_id).collect::<Result<Vec<_>, _>>())
+                .transpose()?
+                .map(CredentialFilterValue::CredentialSchemaIds);
+
             let created_date_after = query
                 .created_date_after
                 .map(|date| {
@@ -213,6 +219,7 @@ impl OneCoreBinding {
                 & ids
                 & states
                 & profile
+                & credential_schema_ids
                 & created_date_after
                 & created_date_before
                 & last_modified_after
@@ -312,6 +319,7 @@ pub struct CredentialListQueryBindingDTO {
     pub ids: Option<Vec<String>>,
     pub status: Option<Vec<CredentialStateBindingEnum>>,
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
+    pub credential_schema_ids: Option<Vec<String>>,
 
     pub created_date_after: Option<String>,
     pub created_date_before: Option<String>,

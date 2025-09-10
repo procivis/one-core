@@ -181,6 +181,7 @@ pub enum CredentialFilterValue {
     OrganisationId(OrganisationId),
     Role(CredentialRole),
     CredentialIds(Vec<CredentialId>),
+    CredentialSchemaIds(Vec<CredentialSchemaId>),
     State(Vec<crate::model::credential::CredentialStateEnum>),
     SuspendEndDate(ValueComparison<OffsetDateTime>),
     Profile(StringMatch),

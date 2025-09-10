@@ -1111,3 +1111,71 @@ async fn test_get_list_credential_filter_by_date() {
         revoked_credential.id.to_string()
     );
 }
+
+#[tokio::test]
+async fn test_get_list_credential_filter_by_schema_ids() {
+    // GIVEN
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema1 = context
+        .db
+        .credential_schemas
+        .create("test 1", &organisation, "NONE", Default::default())
+        .await;
+
+    let credential_schema2 = context
+        .db
+        .credential_schemas
+        .create("test 2", &organisation, "NONE", Default::default())
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema1,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema2,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            None,
+            Some(Filters {
+                credential_schema_ids: Some(vec![credential_schema1.schema_id.clone()]),
+                ..Default::default()
+            }),
+            None,
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+
+    assert_eq!(credentials["totalItems"], 1);
+    assert_eq!(credentials["totalPages"], 1);
+    assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
+    credentials["values"][0]["id"].assert_eq(&credential.id);
+}

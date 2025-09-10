@@ -274,6 +274,9 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(rename = "searchType[]", inline, nullable = false)]
     pub search_type: Option<Vec<SearchType>>,
 
+    #[param(rename = "credentialSchemaIds[]", inline, nullable = false)]
+    pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
+
     /// Return only credentials which were created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]

@@ -19,6 +19,7 @@ pub struct Filters {
     pub search_text: Option<String>,
     pub search_type: Option<Vec<String>>,
     pub profile: Option<String>,
+    pub credential_schema_ids: Option<Vec<String>>,
 
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
@@ -99,6 +100,13 @@ impl CredentialsApi {
                 .fold(String::new(), |url, search_type| {
                     url + &format!("&searchType[]={search_type}")
                 });
+
+            url += &filters.credential_schema_ids.iter().flatten().fold(
+                String::new(),
+                |url, credential_schema_id| {
+                    url + &format!("&credentialSchemaIds[]={credential_schema_id}")
+                },
+            );
 
             if let Some(date) = filters.created_date_after {
                 url += &format!("&{}", query_time_urlencoded("createdDateAfter", date));
