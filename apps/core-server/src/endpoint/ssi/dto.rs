@@ -45,6 +45,7 @@ use time::OffsetDateTime;
 use url::Url;
 use utoipa::ToSchema;
 
+use crate::deserialize::one_or_many;
 use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRestDTO;
 use crate::endpoint::trust_entity::dto::{
     TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
@@ -79,6 +80,7 @@ pub(crate) struct DidDocumentRestDTO {
 pub(crate) struct DidServiceEndointRestDTO {
     pub id: String,
     #[serde_as(as = "OneOrMany<_>")]
+    #[schema(schema_with = one_or_many::<String>)]
     pub r#type: Vec<String>,
     pub service_endpoint: serde_json::Value,
 }
@@ -518,6 +520,7 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WalletUnitActivationRequestRestDTO {
     #[serde_as(as = "OneOrMany<_>")]
+    #[schema(schema_with = one_or_many::<String>)]
     pub attestation: Vec<String>,
     pub proof: String,
 }

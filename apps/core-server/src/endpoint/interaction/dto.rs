@@ -12,7 +12,6 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
 use strum::Display;
 use url::Url;
@@ -165,7 +164,6 @@ impl<T> From<SingleOrArray<T>> for Vec<T> {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]
-#[serde_as]
 pub(crate) struct PresentationSubmitRequestRestDTO {
     pub interaction_id: Uuid,
     #[into(with_fn = convert_inner_of_inner)]
