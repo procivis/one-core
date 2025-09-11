@@ -44,7 +44,7 @@ impl CertificateValidator for CertificateValidatorImpl {
             .iter()
             .zip(certs.iter().skip(1).map(Some).chain(std::iter::once(None)))
         {
-            validate_key_usage(current)?;
+            validate_key_usage(current, &validation_context.required_end_cert_key_usage)?;
             if result.is_none() {
                 let subject_common_name = current
                     .subject
@@ -410,7 +410,7 @@ impl CertificateValidatorImpl {
         let mut is_ca_chain = false;
         let mut chain = certs.iter().peekable();
         while let Some(current_cert) = chain.next() {
-            validate_key_usage(current_cert)?;
+            validate_key_usage(current_cert, &None)?;
             if !self.is_valid_with_leeway(current_cert, LEEWAY) {
                 return Err(ValidationError::CertificateNotValid.into());
             }

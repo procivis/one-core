@@ -93,10 +93,15 @@ pub enum CrlMode {
     AndroidAttestation,
 }
 
+pub enum EnforceKeyUsage {
+    DigitalSignature,
+}
+
 pub struct CertificateValidationOptions {
     pub require_root_termination: bool,
     pub validate_path_length: bool,
     pub validity_check: bool,
+    pub required_end_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
 }
 
 impl CertificateValidationOptions {
@@ -106,6 +111,7 @@ impl CertificateValidationOptions {
             require_root_termination: false,
             validate_path_length: false,
             validity_check: false,
+            required_end_cert_key_usage: None,
         }
     }
 
@@ -115,20 +121,25 @@ impl CertificateValidationOptions {
     /// * correctly signed by the parent cert in the chain
     /// * part of a chain that terminates to a root CA
     /// * path length is valid
-    pub fn full_validation() -> Self {
+    /// * key usage is validated
+    pub fn full_validation(required_end_cert_key_usage: Option<Vec<EnforceKeyUsage>>) -> Self {
         Self {
             require_root_termination: true,
             validate_path_length: true,
             validity_check: true,
+            required_end_cert_key_usage,
         }
     }
 
     /// Only signature and revocation checks are performed
-    pub fn signature_and_revocation() -> Self {
+    pub fn signature_and_revocation(
+        required_end_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
+    ) -> Self {
         Self {
             require_root_termination: false,
             validate_path_length: false,
             validity_check: true,
+            required_end_cert_key_usage,
         }
     }
 }

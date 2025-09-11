@@ -17,7 +17,7 @@ use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CertificateDetails;
 use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+    CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::util::cose::CoseSign1;
 
@@ -326,7 +326,9 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
     let chain = encode_many_config(&pems, EncodeConfig::new().set_line_ending(LineEnding::LF));
 
     let validation_context = if verify {
-        CertificateValidationOptions::signature_and_revocation()
+        CertificateValidationOptions::signature_and_revocation(Some(vec![
+            EnforceKeyUsage::DigitalSignature,
+        ]))
     } else {
         CertificateValidationOptions::no_validation()
     };

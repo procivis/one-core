@@ -406,11 +406,10 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     let chain = x5c_into_pem_chain(x5c).map_err(|err| {
                         FormatterError::Failed(format!("failed to parse x5c header param: {err}"))
                     })?;
+                    let validation_options =
+                        CertificateValidationOptions::signature_and_revocation(None);
                     let ParsedCertificate { attributes, .. } = certificate_validator
-                        .parse_pem_chain(
-                            chain.as_bytes(),
-                            CertificateValidationOptions::signature_and_revocation(),
-                        )
+                        .parse_pem_chain(chain.as_bytes(), validation_options)
                         .await
                         .map_err(|err| {
                             FormatterError::Failed(format!(

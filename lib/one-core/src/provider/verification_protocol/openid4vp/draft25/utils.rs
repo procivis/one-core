@@ -55,7 +55,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     } = certificate_validator
         .parse_pem_chain(
             pem_chain.as_bytes(),
-            CertificateValidationOptions::signature_and_revocation(),
+            CertificateValidationOptions::signature_and_revocation(None),
         )
         .await
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;

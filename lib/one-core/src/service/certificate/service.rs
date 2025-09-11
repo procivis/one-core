@@ -12,7 +12,7 @@ use crate::model::certificate::{
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterCondition;
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::certificate::validator::CertificateValidationOptions;
+use crate::service::certificate::validator::{CertificateValidationOptions, EnforceKeyUsage};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
@@ -58,7 +58,9 @@ impl CertificateService {
             .validator
             .parse_pem_chain(
                 request.chain.as_bytes(),
-                CertificateValidationOptions::signature_and_revocation(),
+                CertificateValidationOptions::signature_and_revocation(Some(vec![
+                    EnforceKeyUsage::DigitalSignature,
+                ])),
             )
             .await?;
 

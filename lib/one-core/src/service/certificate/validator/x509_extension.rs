@@ -7,6 +7,7 @@ use x509_parser::prelude::{
 use x509_parser::x509::X509Name;
 
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
+use crate::service::certificate::validator::EnforceKeyUsage;
 use crate::service::error::ValidationError;
 
 pub(super) fn parse(
@@ -55,26 +56,54 @@ pub(super) fn parse(
 }
 
 /// Validates key usage constraints according to RFC 5280 section 4.2.1.3
-/// We expect the CA certificate to have keyCertSign usage
-/// End-entity certificates must have digitalSignature usage
-pub(super) fn validate_key_usage(certificate: &X509Certificate) -> Result<(), ValidationError> {
+/// CA certificates must have keyCertSign usage (always enforced)
+/// End-entity certificates:
+/// If required_end_entity_key_usages is Some, the key usage extension must be present and contain the specified usages
+/// If required_end_entity_key_usages is None, the key usage extension is optional
+pub(super) fn validate_key_usage(
+    certificate: &X509Certificate,
+    required_end_entity_key_usages: &Option<Vec<EnforceKeyUsage>>,
+) -> Result<(), ValidationError> {
     let key_usage = certificate
         .key_usage()
-        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
-        .ok_or(ValidationError::KeyUsageViolation(
-            "Certificate missing Key Usage extension".to_string(),
+        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?;
+
+    // Always validate CA certificates regardless of the enforcement flag
+    if certificate.is_ca() {
+        let key_usage = key_usage.ok_or(ValidationError::KeyUsageViolation(
+            "CA certificate missing Key Usage extension".to_string(),
         ))?;
 
-    if certificate.is_ca() {
         if !key_usage.value.key_cert_sign() {
             return Err(ValidationError::KeyUsageViolation(
                 "CA certificate missing keyCertSign usage".to_string(),
             ));
         }
-    } else if !key_usage.value.digital_signature() {
-        return Err(ValidationError::KeyUsageViolation(
-            "End-entity certificate missing DigitalSignature usage".to_string(),
-        ));
+    } else {
+        match (required_end_entity_key_usages, key_usage) {
+            // If required_end_entity_key_usages is Some, the key usage extension must be present and contain the specified usages
+            (Some(required_key_usages), Some(key_usage)) => {
+                for required_key_usage in required_key_usages {
+                    match required_key_usage {
+                        EnforceKeyUsage::DigitalSignature => {
+                            if !key_usage.value.digital_signature() {
+                                return Err(ValidationError::KeyUsageViolation(
+                                    "End-entity certificate missing DigitalSignature usage"
+                                        .to_string(),
+                                ));
+                            }
+                        }
+                    }
+                }
+            }
+            (Some(_), None) => {
+                return Err(ValidationError::KeyUsageViolation(
+                    "End-entity certificate missing Key Usage extension".to_string(),
+                ));
+            }
+            // If required_end_entity_key_usages is None, the key usage extension is optional
+            (None, _) => {}
+        }
     }
 
     Ok(())

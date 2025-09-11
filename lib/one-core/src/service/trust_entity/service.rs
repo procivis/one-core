@@ -124,7 +124,7 @@ impl TrustEntityService {
             .certificate_validator
             .parse_pem_chain(
                 content.as_bytes(),
-                CertificateValidationOptions::full_validation(),
+                CertificateValidationOptions::full_validation(None),
             )
             .await?;
 
@@ -433,7 +433,7 @@ impl TrustEntityService {
                         .certificate_validator
                         .parse_pem_chain(
                             content.as_bytes(),
-                            CertificateValidationOptions::full_validation(),
+                            CertificateValidationOptions::full_validation(None),
                         )
                         .await?;
                     if entity.entity_key != TrustEntityKey::try_from(&cert)? {
