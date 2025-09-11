@@ -47,6 +47,7 @@ pub struct HolderRegisterWalletUnitResponseDTO {
 #[derive(Debug, Clone)]
 pub struct HolderRefreshWalletUnitRequestDTO {
     pub organisation_id: OrganisationId,
+    pub app_integrity_check_required: bool,
 }
 
 #[derive(Debug, Clone)]

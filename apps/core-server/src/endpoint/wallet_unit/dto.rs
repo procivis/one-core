@@ -147,6 +147,7 @@ pub struct HolderRegisterWalletUnitResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRefreshWalletUnitRequestRestDTO {
     pub organisation_id: OrganisationId,
+    pub app_integrity_check_required: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, utoipa::IntoParams)]

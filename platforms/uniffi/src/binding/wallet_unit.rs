@@ -306,6 +306,8 @@ pub struct HolderRegisterWalletUnitResponseBindingDTO {
 pub struct HolderRefreshWalletUnitRequestBindingDTO {
     #[try_into(with_fn = into_id)]
     organisation_id: String,
+    #[try_into(infallible)]
+    pub app_integrity_check_required: bool,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

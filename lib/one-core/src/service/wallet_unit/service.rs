@@ -391,11 +391,21 @@ impl WalletUnitService {
             return Err(WalletUnitAttestationError::WalletUnitRevoked.into());
         }
 
-        let auth_fn = self.key_provider.get_signature_provider(
-            key,
-            None,
-            self.key_algorithm_provider.clone(),
-        )?;
+        let os = WalletUnitOs::from(self.os_info_provider.get_os_name().await);
+
+        let auth_fn = if request.app_integrity_check_required && os != WalletUnitOs::Web {
+            self.key_provider.get_attestation_signature_provider(
+                key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )?
+        } else {
+            self.key_provider.get_signature_provider(
+                key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )?
+        };
 
         let now = self.clock.now_utc();
         let signed_proof = self

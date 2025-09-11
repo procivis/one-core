@@ -21,6 +21,7 @@ pub struct TestHolderRegisterRequest {
 #[derive(Debug, Default)]
 pub struct TestHolderRefreshRequest {
     pub organization_id: Option<OrganisationId>,
+    pub app_integrity_check_required: bool,
 }
 
 impl WalletUnitsApi {
@@ -61,7 +62,8 @@ impl WalletUnitsApi {
     pub async fn holder_refresh(&self, request: TestHolderRefreshRequest) -> Response {
         let body = json!(
             {
-            "organisationId": request.organization_id
+            "organisationId": request.organization_id,
+            "appIntegrityCheckRequired": request.app_integrity_check_required,
             }
         );
 

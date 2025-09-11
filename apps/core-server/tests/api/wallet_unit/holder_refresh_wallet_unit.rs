@@ -97,6 +97,7 @@ async fn holder_refresh_wallet_unit_successfully() {
         .wallet_units
         .holder_refresh(TestHolderRefreshRequest {
             organization_id: Some(org.id),
+            app_integrity_check_required: false,
         })
         .await;
 
@@ -194,6 +195,7 @@ async fn holder_refresh_wallet_unit_failed_when_revoked() {
         .wallet_units
         .holder_refresh(TestHolderRefreshRequest {
             organization_id: Some(org.id),
+            app_integrity_check_required: false,
         })
         .await;
 

@@ -306,8 +306,8 @@ async fn holder_refresh_success_active() {
     let mut os_info_provider = MockOSInfoProvider::new();
     os_info_provider
         .expect_get_os_name()
-        .once()
-        .return_once(|| OSName::Android);
+        .times(2)
+        .returning(|| OSName::Android);
 
     let service = WalletUnitService {
         wallet_provider_client: Arc::new(wallet_provider_client),
@@ -319,7 +319,10 @@ async fn holder_refresh_success_active() {
         ..mock_wallet_unit_service()
     };
 
-    let request = HolderRefreshWalletUnitRequestDTO { organisation_id };
+    let request = HolderRefreshWalletUnitRequestDTO {
+        organisation_id,
+        app_integrity_check_required: false,
+    };
 
     // when
     let result = service.holder_refresh(request).await;
