@@ -50,7 +50,6 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     /// wallet user must input a transaction code to receive the offered credential.
     /// This code is typically sent through a separate channel such as SMS or email.
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
-    #[schema(value_type = Object)]
     /// Metadata for selecting an appropriate key.
     pub credential_configurations_supported:
         Option<HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>>,
@@ -67,7 +66,6 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     pub interaction_id: Uuid,
     /// Offered credential.
     pub credential_ids: Vec<CredentialId>,
-    #[schema(value_type = Object)]
     #[from(with_fn = convert_inner)]
     /// Metadata for selecting an appropriate key.
     pub credential_configurations_supported:
@@ -79,12 +77,11 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
 #[from(CredentialConfigurationSupportedResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialConfigurationSupportedResponseRestDTO {
-    #[schema(value_type = Object)]
     #[from(with_fn = convert_inner_of_inner)]
     pub proof_types_supported: Option<HashMap<String, ProofTypeSupported>>,
 }
 
-#[derive(Clone, Debug, Serialize, Default, From)]
+#[derive(Clone, Debug, Serialize, ToSchema, Default, From)]
 #[from(OpenID4VCIProofTypeSupported)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofTypeSupported {
