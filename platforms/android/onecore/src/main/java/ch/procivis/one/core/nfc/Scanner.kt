@@ -13,9 +13,10 @@ import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
+import kotlin.time.Duration.Companion.seconds
 
-
-class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : NfcScanner {
+class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : NfcScanner,
+    NfcAdapter.ReaderCallback {
     companion object {
         private const val TAG = "NFCScanner"
     }
@@ -30,8 +31,12 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
         return mNfcAdapter != null
     }
 
-    private var mTech: IsoDep? = null // connected tag session
-    private var mScanInProgress: Activity? = null // activity within which the scanning is happening
+    // connected tag session
+    private var mTech: IsoDep? = null
+
+    // activity within which the scanning is happening
+    // continuation present if tag not yet discovered
+    private var mScanInProgress: Pair<Activity, Continuation<Unit>?>? = null
 
     override suspend fun scan(message: String?) {
         return exceptionWrapper {
@@ -41,18 +46,25 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
             if (!isEnabled()) {
                 throw NfcException.NotEnabled()
             }
-            val activity = activityAccessor.getCurrentActivity() ?: throw NfcException.NotEnabled()
-
-            synchronized(this) {
-                if (mScanInProgress != null) {
-                    throw NfcException.AlreadyStarted()
-                }
-                mScanInProgress = activity
-            }
+            val activity = activityAccessor.getCurrentActivity()
+                ?: throw NfcException.Unknown("Activity not available")
 
             return@exceptionWrapper suspendCoroutine { continuation ->
                 try {
-                    scanInternal(activity, continuation)
+                    synchronized(this) {
+                        if (mScanInProgress != null) {
+                            throw NfcException.AlreadyStarted()
+                        }
+                        mScanInProgress = Pair(activity, continuation)
+                    }
+
+                    Log.d(TAG, "enableReaderMode")
+                    mNfcAdapter.enableReaderMode(
+                        activity,
+                        this,
+                        NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B,
+                        null
+                    )
                 } catch (e: Throwable) {
                     synchronized(this) {
                         mScanInProgress = null
@@ -63,41 +75,47 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
         }
     }
 
-    private fun scanInternal(activity: Activity, continuation: Continuation<Unit>) {
-        mNfcAdapter.enableReaderMode(
-            activity,
-            { tag ->
-                {
-                    try {
-                        onTagDiscovered(tag)
-                        continuation.resume(Unit)
-                    } catch (e: Throwable) {
-                        synchronized(this) {
-                            mScanInProgress = null
-                        }
-                        continuation.resumeWithException(e)
-                        mNfcAdapter.disableReaderMode(activity)
-                    }
-                }
-            },
-            NfcAdapter.FLAG_READER_SKIP_NDEF_CHECK + NfcAdapter.FLAG_READER_NFC_A + NfcAdapter.FLAG_READER_NFC_B,
-            null
-        )
+    override fun onTagDiscovered(tag: Tag?) {
+        var continuation: Continuation<Unit>? = null
+        var activity: Activity? = null
+        try {
+            Log.d(TAG, "onTagDiscovered $tag")
+            if (tag == null) {
+                return
+            }
+
+            synchronized(this) {
+                activity = mScanInProgress?.first ?: throw NfcException.Unknown("No scan running")
+                continuation =
+                    mScanInProgress?.second ?: throw NfcException.Unknown("A tag already connected")
+                mScanInProgress = Pair(activity, null)
+            }
+            connect(tag)
+            continuation?.resume(Unit)
+        } catch (e: Throwable) {
+            Log.w(TAG, "Failed to process discovered tag: $e")
+            if (activity != null) {
+                mNfcAdapter.disableReaderMode(activity)
+            }
+            synchronized(this) {
+                mScanInProgress = null
+            }
+            continuation?.resumeWithException(e)
+        }
     }
 
-    private fun onTagDiscovered(tag: Tag) {
-        Log.d(TAG, "Tag discovered: $tag")
+    private fun connect(tag: Tag) {
         val tech = IsoDep.get(tag)
-
         if (tech == null) {
             throw NfcException.Unknown("Not an IsoDep tag")
         }
 
-        tech.connect()
-
         synchronized(this) {
             mTech = tech
         }
+
+        tech.connect()
+        tech.timeout = 5.seconds.inWholeMilliseconds.toInt()
     }
 
     override suspend fun setMessage(message: String) {
@@ -105,24 +123,27 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
     }
 
     override suspend fun cancelScan() {
+        Log.d(TAG, "cancelScan")
         return exceptionWrapper {
             synchronized(this) {
-                if (mScanInProgress != null) {
-                    mNfcAdapter.disableReaderMode(mScanInProgress)
-                    mScanInProgress = null
-                }
-
                 try {
                     mTech?.close()
                     mTech = null
                 } catch (e: Throwable) {
                     Log.wtf(TAG, "Closing tech failed: $e")
                 }
+
+                if (mScanInProgress != null) {
+                    mNfcAdapter.disableReaderMode(mScanInProgress?.first)
+                    mScanInProgress?.second?.resumeWithException(NfcException.Cancelled())
+                    mScanInProgress = null
+                }
             }
         }
     }
 
     override suspend fun transceive(commandApdu: ByteArray): ByteArray {
+        Log.d(TAG, "transceive ${commandApdu.size}")
         return exceptionWrapper {
             val tech = synchronized(this) {
                 return@synchronized mTech ?: throw NfcException.SessionClosed()
@@ -132,7 +153,9 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
                 throw NfcException.SessionClosed()
             }
 
-            return@exceptionWrapper tech.transceive(commandApdu)
+            val response = tech.transceive(commandApdu)
+            Log.d(TAG, "response ${response.size}")
+            return@exceptionWrapper response
         }
     }
 }
