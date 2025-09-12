@@ -356,16 +356,12 @@ impl SSIHolderService {
                     .as_ref()
                     .ok_or(ServiceError::MappingError("claims missing".to_string()))?
                 {
-                    let claim_schema = claim.schema.as_ref().ok_or(ServiceError::MappingError(
-                        "claim_schema missing".to_string(),
-                    ))?;
-
                     for key in &submitted_keys {
                         // handle nested path by checking the prefix
-                        if claim_schema
-                            .key
+                        if claim
+                            .path
                             .starts_with(&format!("{key}{NESTED_CLAIM_MARKER}"))
-                            || claim_schema.key == *key
+                            || claim.path == *key
                                 && submitted_claims.iter().all(|c| c.id != claim.id)
                         {
                             submitted_claims.push(claim.to_owned());
