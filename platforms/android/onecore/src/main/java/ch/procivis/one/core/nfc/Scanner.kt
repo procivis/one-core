@@ -85,10 +85,11 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
             }
 
             synchronized(this) {
-                activity = mScanInProgress?.first ?: throw NfcException.Unknown("No scan running")
+                val a = mScanInProgress?.first ?: throw NfcException.Unknown("No scan running")
+                activity = a
                 continuation =
                     mScanInProgress?.second ?: throw NfcException.Unknown("A tag already connected")
-                mScanInProgress = Pair(activity, null)
+                mScanInProgress = Pair(a, null)
             }
             connect(tag)
             continuation?.resume(Unit)
