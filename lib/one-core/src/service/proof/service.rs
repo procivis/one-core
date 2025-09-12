@@ -540,10 +540,6 @@ impl ProofService {
     ) -> Result<EntityShareResponseDTO, ServiceError> {
         let proof = self.get_proof_with_state(id).await?;
 
-        if proof.engagement.is_some() {
-            return Err(ValidationError::InvalidProofEngagement.into());
-        }
-
         match proof.state {
             Created => {
                 self.proof_repository
@@ -561,6 +557,14 @@ impl ProofService {
             state => {
                 return Err(BusinessLogicError::InvalidProofState { state }.into());
             }
+        }
+
+        if proof
+            .engagement
+            .as_ref()
+            .is_some_and(|engagement| engagement != DEFAULT_ENGAGEMENT)
+        {
+            return Err(ValidationError::InvalidProofEngagement.into());
         }
 
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(

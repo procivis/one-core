@@ -3913,7 +3913,7 @@ async fn test_share_proof_invalid_state() {
 async fn test_share_proof_fails_when_engagement_is_present() {
     // given
     let proof_id = Uuid::new_v4().into();
-    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
+    let mut proof = construct_proof_with_state(&proof_id, ProofStateEnum::Pending);
     proof.engagement = Some("SOME_ENGAGEMENT".to_string());
 
     let mut proof_repository = MockProofRepository::default();
