@@ -12,8 +12,6 @@ walletProvider:
         android:
           bundleId: ch.procivis.one.wallet.dev
           signingCertificateFingerprints: [
-            "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C",
-            "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52",
             "FF:F9:BC:4E:E9:D7:10:AF:4F:B4:C2:7C:63:85:01:A6:A2:99:09:3C:F1:56:9E:E3:60:00:31:15:91:70:EA:E9"
           ]
           trustedAttestationCAs: [
