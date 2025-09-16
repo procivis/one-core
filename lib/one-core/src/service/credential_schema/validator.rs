@@ -27,17 +27,34 @@ pub(crate) async fn credential_schema_already_exists(
     name: &str,
     schema_id: Option<String>,
     organisation_id: OrganisationId,
-) -> Result<(), ServiceError> {
+) -> Result<UniquenessCheckResult, ServiceError> {
     let credential_schemas = repository
         .get_credential_schema_list(
-            create_unique_name_check_request(name, schema_id, organisation_id)?,
+            create_unique_name_check_request(name, schema_id.clone(), organisation_id)?,
             &Default::default(),
         )
         .await?;
-    if credential_schemas.total_items > 0 {
-        return Err(BusinessLogicError::CredentialSchemaAlreadyExists.into());
+
+    if let Some(schema_id) = schema_id {
+        if credential_schemas
+            .values
+            .iter()
+            .any(|cs| cs.schema_id == schema_id)
+        {
+            return Ok(UniquenessCheckResult::SchemaIdConflict);
+        }
     }
-    Ok(())
+    if credential_schemas.values.iter().any(|cs| cs.name == name) {
+        Ok(UniquenessCheckResult::NameConflict)
+    } else {
+        Ok(UniquenessCheckResult::Ok)
+    }
+}
+
+pub(crate) enum UniquenessCheckResult {
+    SchemaIdConflict,
+    NameConflict,
+    Ok,
 }
 
 pub(crate) fn validate_create_request(

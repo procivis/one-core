@@ -17,6 +17,7 @@ use crate::service::credential_schema::dto::{
 use crate::service::credential_schema::mapper::{
     claim_schema_from_metadata_claim_schema, from_create_request_with_id,
 };
+use crate::service::credential_schema::validator::UniquenessCheckResult;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -49,13 +50,19 @@ impl CredentialSchemaService {
             false,
         )?;
 
-        super::validator::credential_schema_already_exists(
+        match super::validator::credential_schema_already_exists(
             &*self.credential_schema_repository,
             &request.name,
             request.schema_id.clone(),
             request.organisation_id,
         )
-        .await?;
+        .await?
+        {
+            UniquenessCheckResult::SchemaIdConflict | UniquenessCheckResult::NameConflict => {
+                return Err(BusinessLogicError::CredentialSchemaAlreadyExists.into());
+            }
+            UniquenessCheckResult::Ok => {}
+        };
 
         super::validator::check_claims_presence_in_layout_properties(&request)?;
         super::validator::check_background_properties(&request)?;

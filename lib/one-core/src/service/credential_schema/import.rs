@@ -1,3 +1,9 @@
+use time::OffsetDateTime;
+use time::format_description::well_known::Iso8601;
+use time::format_description::well_known::iso8601::{
+    Config, EncodedConfig, FormattedComponents, TimePrecision,
+};
+
 use super::dto::ImportCredentialSchemaRequestSchemaDTO;
 use super::mapper::{claim_schema_from_metadata_claim_schema, from_create_request_with_id};
 use crate::config::core_config::CoreConfig;
@@ -7,7 +13,15 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::common_mapper::regenerate_credential_schema_uuids;
-use crate::service::error::{MissingProviderError, ServiceError};
+use crate::service::credential_schema::validator::UniquenessCheckResult;
+use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+
+const DATE_TIME_NO_MILLIS: EncodedConfig = Config::DEFAULT
+    .set_formatted_components(FormattedComponents::DateTime)
+    .set_time_precision(TimePrecision::Second {
+        decimal_digits: None,
+    })
+    .encode();
 
 pub(crate) async fn import_credential_schema(
     request: ImportCredentialSchemaRequestSchemaDTO,
@@ -18,7 +32,7 @@ pub(crate) async fn import_credential_schema(
     revocation_method_provider: &dyn RevocationMethodProvider,
 ) -> Result<CredentialSchema, ServiceError> {
     let credential_schema_id = request.id.into();
-    let create_request = request.to_owned().into();
+    let mut create_request = request.to_owned().into();
 
     let formatter = formatter_provider
         .get_credential_formatter(&request.format)
@@ -31,13 +45,30 @@ pub(crate) async fn import_credential_schema(
         true,
     )?;
 
-    super::validator::credential_schema_already_exists(
+    match super::validator::credential_schema_already_exists(
         repository,
         &create_request.name,
         create_request.schema_id.clone(),
         organisation.id,
     )
-    .await?;
+    .await?
+    {
+        UniquenessCheckResult::SchemaIdConflict => {
+            return Err(BusinessLogicError::CredentialSchemaAlreadyExists.into());
+        }
+        UniquenessCheckResult::NameConflict => {
+            create_request.name = format!(
+                "{}_{}",
+                create_request.name,
+                OffsetDateTime::now_utc()
+                    .format(&Iso8601::<DATE_TIME_NO_MILLIS>)
+                    .map_err(|e| ServiceError::MappingError(format!(
+                        "Failed to format date: {e}"
+                    )))?
+            );
+        }
+        UniquenessCheckResult::Ok => {}
+    }
 
     super::validator::check_claims_presence_in_layout_properties(&create_request)?;
     super::validator::check_background_properties(&create_request)?;

@@ -76,7 +76,7 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-        name: "".to_string(),
+        name: "testName".to_string(),
         format: "".to_string(),
         revocation_method: "".to_string(),
         external_schema: false,
@@ -1049,7 +1049,7 @@ async fn test_create_credential_schema_unique_name_error() {
 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
-            name: "cred".to_string(),
+            name: "testName".to_string(),
             format: "JWT".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             revocation_method: "NONE".to_string(),
