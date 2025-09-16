@@ -22,7 +22,6 @@ variables:
   CARGO_UNSTABLE_GC: "true"
   BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
 
-
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
   # - AAD_SERVICE_PRINCIPAL_CLIENT_SECRET: Application secret. Use for RBAC SP kubelogin
@@ -71,18 +70,6 @@ stages:
 before_script:
   - *app_settings
 
-.rule:run_tests:
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: never
-    - when: manual
-
-.rule:except_main_branch:
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH || $CI_COMMIT_TAG =~ $CI_TAG_PATTERN
-      when: never
-    - when: on_success
-
 
 .cargo_tests:
   stage: test
@@ -106,8 +93,6 @@ before_script:
 
 .run_tests:
   stage: extra_tests
-  needs:
-    - job: "build_image: [procivis]"
   variables:
     CORE_IMAGE_TAG: ${APP_VERSION}
     CHECK_LINT: false
@@ -196,11 +181,9 @@ build_image:
   dependencies: []
   extends:
     - .docker_publish
-    - .rule:default
   variables:
+    APP_FLAVOR: procivis
     EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
-  parallel:
-    matrix: !reference [ .one_core, clients_matrix ]
 
 build_image_acr:
   stage: build
@@ -379,25 +362,19 @@ sdk:update_doc_sdk_version:
       EOF
 
 
-tests:e2e:
-  when: manual
-  variables:
-    FE_E2E_TEST: true
-  extends:
-    - .run_tests
-    - .rule:manual_main_or_tag
-
 tests:api:
   variables:
     API_TEST: "CORE"
   extends:
     - .run_tests
-    - .rule:only_main_or_tag
+  rules:
+    - when: on_success
+      needs:
+        - job: build_image
+
 
 .deploy_trigger:
   stage: deploy
-  needs:
-    - job: "build_image: [procivis]"
   trigger:
     project: procivis/one/one-operations
     branch: main
@@ -412,6 +389,8 @@ tests:api:
 
 deploy:dev:
   resource_group: core-dev
+  needs:
+    - job: build_image
   extends:
     - .deploy_trigger
     - .rule:deploy:dev
@@ -449,6 +428,17 @@ deploy:canivc:
     K8S_NAMESPACE: canivc
     DEPLOY_ENVIRONMENT: Canivc
 
+deploy:trial:
+  extends:
+    - .deploy_trigger
+    - .rule:deploy:demo
+  variables:
+    VALUES_PATH: values/trial
+    K8S_NAMESPACE: trial
+    RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
+    CLUSTER_NAME: $DEMO_CLUSTER_NAME
+    DEPLOY_ENVIRONMENT: Trial
+
 generate_docs:test:
   stage: generate_docs
   extends:
@@ -461,38 +451,6 @@ generate_docs:test:
   variables:
     DEPLOY_IMAGE_TAG: $APP_VERSION
     OPENAPI_DOCS_URL: https://core.test.procivis-one.com/api-docs/openapi.yaml
-
-tests:build_image:
-  stage: tests
-  dependencies: []
-  variables:
-    EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
-  extends:
-    - .docker_publish
-    - .rule:except_main_branch
-
-trigger_tests:e2e:
-  stage: tests
-  when: manual
-  variables:
-    FE_E2E_TEST: true
-  needs:
-    - job: tests:build_image
-      artifacts: true
-  extends:
-    - .run_tests
-    - .rule:run_tests
-
-trigger_tests:api:
-  stage: tests
-  variables:
-    API_TEST: "CORE"
-  needs:
-    - job: tests:build_image
-      artifacts: true
-  extends:
-    - .run_tests
-    - .rule:except_main_branch
 
 dtrack:generate-bom:
   stage: scan
