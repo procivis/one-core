@@ -34,22 +34,29 @@ impl NfcService {
         let result = read_select_handover(nfc_scanner.as_ref()).await;
 
         // reading finished - display result
-        let final_message = match &result {
-            Ok(_) => request.success_message,
-            Err(_) => request.failure_message,
-        };
-
-        if let Some(final_message) = final_message {
-            nfc_scanner
-                .set_message(final_message)
-                .await
-                .unwrap_or_else(|err| {
-                    tracing::warn!("Failed to write final message: {err}");
-                });
+        if result.is_ok() {
+            if let Some(final_message) = request.success_message {
+                nfc_scanner
+                    .set_message(final_message)
+                    .await
+                    .unwrap_or_else(|err| {
+                        tracing::warn!("Failed to write final message: {err}");
+                    });
+            }
         }
 
+        let error_message = match &result {
+            Ok(_) => None,
+            Err(err) => Some(request.failure_message.unwrap_or(err.to_string())),
+        };
+
         // done - close session
-        let _unused = nfc_scanner.cancel_scan().await;
+        nfc_scanner
+            .cancel_scan(error_message)
+            .await
+            .unwrap_or_else(|err| {
+                tracing::warn!("Failed to close scanner: {err}");
+            });
 
         result
     }
@@ -59,7 +66,7 @@ impl NfcService {
             return Err(ServiceError::Other("Not supported".to_string()));
         };
 
-        nfc_scanner.cancel_scan().await.map_err(Into::into)
+        nfc_scanner.cancel_scan(None).await.map_err(Into::into)
     }
 }
 

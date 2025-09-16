@@ -123,8 +123,8 @@ class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : Nf
         throw NfcException.NotSupported()
     }
 
-    override suspend fun cancelScan() {
-        Log.d(TAG, "cancelScan")
+    override suspend fun cancelScan(errorMessage: String?) {
+        Log.d(TAG, "cancelScan, errorMessage: $errorMessage")
         return exceptionWrapper {
             synchronized(this) {
                 try {

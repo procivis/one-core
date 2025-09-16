@@ -73,13 +73,17 @@ extension NFCScanner: NfcScanner {
         }
     }
 
-    public func cancelScan() async throws {
+    public func cancelScan(errorMessage: String?) async throws {
         try lock.withLock {
             guard let session = activeSession else {
                 throw NfcError.NotStarted
             }
 
-            session.invalidate()
+            if let errorMessage = errorMessage {
+                session.invalidate(errorMessage: errorMessage)
+            } else {
+                session.invalidate()
+            }
             activeSession = nil
         }
     }

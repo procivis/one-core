@@ -9,11 +9,11 @@ pub trait NfcScanner: Send + Sync {
     /// Check whether NFC scanning is supported on the device
     async fn is_supported(&self) -> Result<bool, NfcError>;
 
-    /// Check whether NFC adapter is enabled on the device (android only)
+    /// Check whether NFC adapter is enabled on the device (android only, iOS always enabled)
     async fn is_enabled(&self) -> Result<bool, NfcError>;
 
     /// Starts scanning for ISO 7816-4 NFC tag
-    /// * `message` - UI message to display on the NFC overlay (iOS)
+    /// * `message` - UI message to display on the system NFC overlay (iOS)
     ///
     /// This function returns when:
     /// * an IsoDep tag is scanned and session established
@@ -21,12 +21,13 @@ pub trait NfcScanner: Send + Sync {
     /// * or on failure
     async fn scan(&self, message: Option<String>) -> Result<(), NfcError>;
 
-    /// Update UI message on the NFC scanner overlay (iOS) - previously set via `scan`
+    /// Update UI message on the system NFC scanner overlay (iOS) - previously set via `scan`
     async fn set_message(&self, message: String) -> Result<(), NfcError>;
 
     /// Stops scanning previously started via `scan`
     /// or disconnects the established session
-    async fn cancel_scan(&self) -> Result<(), NfcError>;
+    /// * `error_message` - error UI message to display on the system NFC overlay (iOS)
+    async fn cancel_scan(&self, error_message: Option<String>) -> Result<(), NfcError>;
 
     /// Send APDU request and wait for response APDU
     async fn transceive(&self, command_apdu: Vec<u8>) -> Result<Vec<u8>, NfcError>;
@@ -48,8 +49,11 @@ impl one_core::provider::nfc::scanner::NfcScanner for NfcScannerWrapper {
     async fn set_message(&self, message: String) -> Result<(), one_core::provider::nfc::NfcError> {
         self.0.set_message(message).await.map_err(Into::into)
     }
-    async fn cancel_scan(&self) -> Result<(), one_core::provider::nfc::NfcError> {
-        self.0.cancel_scan().await.map_err(Into::into)
+    async fn cancel_scan(
+        &self,
+        error_message: Option<String>,
+    ) -> Result<(), one_core::provider::nfc::NfcError> {
+        self.0.cancel_scan(error_message).await.map_err(Into::into)
     }
     async fn transceive(
         &self,

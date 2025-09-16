@@ -24,7 +24,7 @@ pub trait NfcScanner: Send + Sync {
 
     /// Stops scanning previously started via `scan`
     /// or disconnects the established session
-    async fn cancel_scan(&self) -> Result<(), NfcError>;
+    async fn cancel_scan(&self, error_message: Option<String>) -> Result<(), NfcError>;
 
     /// Send APDU request and wait for response APDU
     async fn transceive(&self, command_apdu: Vec<u8>) -> Result<Vec<u8>, NfcError>;
