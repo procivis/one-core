@@ -17,7 +17,8 @@ use crate::common_mapper::{
     get_or_create_did_and_identifier, get_or_create_key_identifier,
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
-use crate::config::core_config::IssuanceProtocolType;
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{self, IssuanceProtocolType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -32,12 +33,11 @@ use crate::model::organisation::OrganisationRelations;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::issuance_protocol::model::OpenID4VCIParams;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIDraft13Params, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINotificationEvent,
     OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
@@ -50,7 +50,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::service::{
 };
 use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::oid4vci_draft13::mapper::interaction_data_to_dto;
 use crate::service::oid4vci_draft13::validator::{
@@ -246,14 +246,12 @@ impl OID4VCIDraft13Service {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let params: OpenID4VCIParams = self.config.issuance_protocol.get(&credential.protocol)?;
+        let enable_credential_preview =
+            enable_credential_preview_from_config(&self.config, &credential.protocol)?;
 
-        let credential_subject = credentials_format(
-            wallet_storage_type,
-            &claims,
-            params.enable_credential_preview,
-        )
-        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let credential_subject =
+            credentials_format(wallet_storage_type, &claims, enable_credential_preview)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         Ok(create_credential_offer(
             url,
@@ -746,5 +744,34 @@ pub(crate) fn credentials_format(
                     }),
             ),
         }),
+    })
+}
+
+fn enable_credential_preview_from_config(
+    config: &core_config::CoreConfig,
+    issuance_protocol: &str,
+) -> Result<bool, ServiceError> {
+    let fields = config
+        .issuance_protocol
+        .get_fields(issuance_protocol)
+        .map_err(ServiceError::ConfigValidationError)?;
+
+    Ok(match fields.r#type {
+        core_config::IssuanceProtocolType::OpenId4VciDraft13 => {
+            let params = fields
+                .deserialize::<OpenID4VCIDraft13Params>()
+                .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                    key: issuance_protocol.to_string(),
+                    source,
+                })?;
+            params.enable_credential_preview
+        }
+        core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu => false,
+        core_config::IssuanceProtocolType::OpenId4VciFinal1_0 => {
+            // this should not happen, we are in the draft13 service
+            return Err(ServiceError::Validation(
+                ValidationError::InvalidExchangeOperation,
+            ));
+        }
     })
 }

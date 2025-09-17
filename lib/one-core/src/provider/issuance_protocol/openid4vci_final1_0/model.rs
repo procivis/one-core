@@ -3,7 +3,7 @@ use std::fmt;
 
 use indexmap::IndexMap;
 use one_dto_mapper::{Into, convert_inner};
-use secrecy::SecretString;
+use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
@@ -16,8 +16,45 @@ use crate::model::credential_schema::{
 };
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
-use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
+use crate::provider::issuance_protocol::model::{
+    OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCRedirectUriParams,
+    OpenID4VCRejectionIdentifierParams, default_enable_credential_preview,
+    default_issuance_url_scheme,
+};
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
+use crate::util::params::deserialize_encryption_key;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCIFinal1Params {
+    pub pre_authorized_code_expires_in: u64,
+    pub token_expires_in: u64,
+    pub refresh_expires_in: u64,
+    #[serde(default)]
+    pub credential_offer_by_value: bool,
+    #[serde(deserialize_with = "deserialize_encryption_key")]
+    pub encryption: SecretSlice<u8>,
+
+    #[serde(default = "default_issuance_url_scheme")]
+    pub url_scheme: String,
+
+    pub redirect_uri: OpenID4VCRedirectUriParams,
+
+    pub nonce: Option<OpenID4VCNonceParams>,
+
+    pub rejection_identifier: Option<OpenID4VCRejectionIdentifierParams>,
+
+    #[serde(default = "default_enable_credential_preview")]
+    pub enable_credential_preview: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VCNonceParams {
+    #[serde(deserialize_with = "deserialize_encryption_key")]
+    pub signing_key: SecretSlice<u8>,
+    pub expiration: Option<u64>,
+}
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -113,6 +150,11 @@ pub struct OpenID4VCITokenResponseDTO {
     #[serde(default)]
     pub refresh_token_expires_in: Option<Timestamp>,
     pub c_nonce: Option<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct OpenID4VCINonceResponseDTO {
+    pub c_nonce: String,
 }
 
 #[skip_serializing_none]

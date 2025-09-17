@@ -8,9 +8,9 @@ use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINotificationEvent,
-    OpenID4VCINotificationRequestDTO, OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCIProofRequestDTO,
-    OpenID4VCITokenResponseDTO,
+    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINonceResponseDTO,
+    OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use one_core::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
@@ -287,4 +287,10 @@ pub(crate) struct OpenID4VCIPreAuthorizedGrantRestDTO {
 pub(crate) struct OpenID4VCIAuthorizationCodeGrantRestDTO {
     pub issuer_state: Option<String>,
     pub authorization_server: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCINonceResponseDTO)]
+pub(crate) struct OpenID4VCINonceResponseRestDTO {
+    pub c_nonce: String,
 }

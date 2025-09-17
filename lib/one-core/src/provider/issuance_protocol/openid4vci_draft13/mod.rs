@@ -63,9 +63,8 @@ use crate::provider::issuance_protocol::mapper::{
     get_issued_credential_update, interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIParams,
-    OpenID4VCIProofTypeSupported, OpenID4VCRejectionIdentifierParams, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIProofTypeSupported,
+    OpenID4VCRejectionIdentifierParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
     HandleInvitationOperations, HandleInvitationOperationsAccess,
@@ -78,8 +77,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIDraft13Params,
+    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO, OpenID4VCIProofRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
@@ -145,7 +144,7 @@ pub(crate) struct OpenID4VCI13 {
     base_url: Option<String>,
     protocol_base_url: Option<String>,
     config: Arc<CoreConfig>,
-    params: OpenID4VCIParams,
+    params: OpenID4VCIDraft13Params,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
 }
@@ -167,7 +166,7 @@ impl OpenID4VCI13 {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
-        params: OpenID4VCIParams,
+        params: OpenID4VCIDraft13Params,
         handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
     ) -> Self {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
@@ -208,7 +207,7 @@ impl OpenID4VCI13 {
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
-        params: OpenID4VCIParams,
+        params: OpenID4VCIDraft13Params,
         protocol_version: &str,
         handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
     ) -> Self {

@@ -40,16 +40,15 @@ use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, OpenID4VCIParams, OpenID4VCRedirectUriParams,
-    OpenID4VCRejectionIdentifierParams,
+    InvitationResponseEnum, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     extract_offered_claims, get_parent_claim_paths,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrants,
-    OpenID4VCIPreAuthorizedCodeGrant,
+    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIDraft13Params,
+    OpenID4VCIGrants, OpenID4VCIPreAuthorizedCodeGrant,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
@@ -92,7 +91,7 @@ struct TestInputs {
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub config: CoreConfig,
-    pub params: Option<OpenID4VCIParams>,
+    pub params: Option<OpenID4VCIDraft13Params>,
     pub handle_invitation_operations: MockHandleInvitationOperations,
 }
 
@@ -112,7 +111,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
-        inputs.params.unwrap_or(OpenID4VCIParams {
+        inputs.params.unwrap_or(OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -493,7 +492,7 @@ async fn test_generate_share_credentials_offer_by_value() {
     let credential = generic_credential_did();
 
     let protocol = setup_protocol(TestInputs {
-        params: Some(OpenID4VCIParams {
+        params: Some(OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: true,
@@ -1307,7 +1306,7 @@ async fn test_holder_reject_credential() {
         did_method_provider,
         key_algorithm_provider,
         config: dummy_config(),
-        params: Some(OpenID4VCIParams {
+        params: Some(OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: true,
@@ -2474,8 +2473,8 @@ async fn test_generate_share_credentials_custom_scheme() {
     assert!(result.url.starts_with(url_scheme));
 }
 
-fn test_params(issuance_url_scheme: &str) -> OpenID4VCIParams {
-    OpenID4VCIParams {
+fn test_params(issuance_url_scheme: &str) -> OpenID4VCIDraft13Params {
+    OpenID4VCIDraft13Params {
         pre_authorized_code_expires_in: 10,
         token_expires_in: 10,
         credential_offer_by_value: true,

@@ -367,6 +367,9 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             .route(
                 "/ssi/openid4vci/final-1.0/{id}/notification",
                 post(ssi::issuance::final1_0::controller::oid4vci_final1_0_credential_notification),
+            ).route(
+                "/ssi/openid4vci/final-1.0/{id}/nonce",
+                post(ssi::issuance::final1_0::controller::oid4vci_final1_0_nonce),
             )
             .route(
                 "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-credential-issuer",

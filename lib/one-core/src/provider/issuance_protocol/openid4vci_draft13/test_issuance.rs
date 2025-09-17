@@ -36,9 +36,10 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::{OpenID4VCIParams, OpenID4VCRedirectUriParams};
+use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
@@ -241,7 +242,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
-        OpenID4VCIParams {
+        OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -446,7 +447,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
-        OpenID4VCIParams {
+        OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -631,7 +632,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
-        OpenID4VCIParams {
+        OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -731,7 +732,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),
         Arc::new(config),
-        OpenID4VCIParams {
+        OpenID4VCIDraft13Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,

@@ -17,7 +17,9 @@ use super::dto::{
     OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::endpoint::ssi::issuance::final1_0::dto::OpenID4VCINotificationRequestRestDTO;
+use crate::endpoint::ssi::issuance::final1_0::dto::{
+    OpenID4VCINonceResponseRestDTO, OpenID4VCINotificationRequestRestDTO,
+};
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -403,6 +405,46 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    post,
+    path = "/ssi/openid4vci/final-1.0/{id}/nonce",
+    params(
+        ("id" = String, Path, description = "Issuance protocol id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OpenID4VCINonceResponseRestDTO),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "openid4vci-final1_0",
+    summary = "OID4VC - Generate nonce",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn oid4vci_final1_0_nonce(
+    state: State<AppState>,
+    WithRejection(Path(issuance_protocol_id), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .oid4vci_final1_0_service
+        .generate_nonce(&issuance_protocol_id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OpenID4VCINonceResponseRestDTO::from(value)),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()

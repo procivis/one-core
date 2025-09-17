@@ -21,11 +21,12 @@ use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIParams,
-    OpenID4VCRedirectUriParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRedirectUriParams, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperations;
+use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -50,7 +51,7 @@ pub(crate) struct OpenID4VCISwiyuParams {
     pub redirect_uri: OpenID4VCRedirectUriParams,
 }
 
-impl From<OpenID4VCISwiyuParams> for OpenID4VCIParams {
+impl From<OpenID4VCISwiyuParams> for OpenID4VCIDraft13Params {
     fn from(value: OpenID4VCISwiyuParams) -> Self {
         Self {
             pre_authorized_code_expires_in: value.pre_authorized_code_expires_in,

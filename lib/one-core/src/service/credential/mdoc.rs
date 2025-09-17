@@ -3,7 +3,7 @@ use one_crypto::encryption::{decrypt_string, encrypt_string};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use time::OffsetDateTime;
 
-use crate::config::core_config;
+use crate::config::{ConfigValidationError, core_config};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
@@ -15,12 +15,13 @@ use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::OpenID4VCIParams;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    HolderInteractionData, OpenID4VCICredentialRequestDTO, OpenID4VCIProofRequestDTO,
-    OpenID4VCITokenResponseDTO,
+    HolderInteractionData, OpenID4VCICredentialRequestDTO, OpenID4VCIDraft13Params,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
 use crate::service::error::{MissingProviderError, ServiceError};
@@ -226,12 +227,42 @@ fn encryption_key_from_config(
     config: &core_config::CoreConfig,
     credential: &Credential,
 ) -> Result<SecretSlice<u8>, ServiceError> {
-    let params: OpenID4VCIParams = config
+    let fields = config
         .issuance_protocol
-        .get(&credential.protocol)
+        .get_fields(&credential.protocol)
         .map_err(ServiceError::ConfigValidationError)?;
-    Ok(params.encryption)
+
+    Ok(match fields.r#type {
+        core_config::IssuanceProtocolType::OpenId4VciDraft13 => {
+            let params = fields
+                .deserialize::<OpenID4VCIDraft13Params>()
+                .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                    key: credential.protocol.to_string(),
+                    source,
+                })?;
+            params.encryption
+        }
+        core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
+            let params = fields
+                .deserialize::<OpenID4VCISwiyuParams>()
+                .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                    key: credential.protocol.to_string(),
+                    source,
+                })?;
+            params.encryption
+        }
+        core_config::IssuanceProtocolType::OpenId4VciFinal1_0 => {
+            let params = fields
+                .deserialize::<OpenID4VCIFinal1Params>()
+                .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                    key: credential.protocol.to_string(),
+                    source,
+                })?;
+            params.encryption
+        }
+    })
 }
+
 async fn check_access_token(
     credential: &Credential,
     interactions: &dyn InteractionRepository,

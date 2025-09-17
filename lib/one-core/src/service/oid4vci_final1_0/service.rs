@@ -1,22 +1,30 @@
 use std::str::FromStr;
 
 use indexmap::IndexMap;
-use one_crypto::utilities;
+use one_crypto::{SignerError, utilities};
 use one_dto_mapper::convert_inner;
-use secrecy::SecretString;
+use secrecy::{ExposeSecret, SecretSlice, SecretString};
+use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, CredentialSchemaId};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use tokio_util::either::Either;
 use uuid::Uuid;
 
+use super::OID4VCIFinal1_0Service;
 use super::dto::OpenID4VCICredentialResponseDTO;
+use super::mapper::interaction_data_to_dto;
+use super::validator::{
+    throw_if_access_token_invalid, throw_if_credential_request_invalid, validate_config_entity,
+    validate_config_entity_presence,
+};
 use crate::common_mapper::{
     IdentifierRole, get_exchange_param_pre_authorization_expires_in,
     get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
     get_or_create_did_and_identifier, get_or_create_key_identifier,
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
-use crate::config::core_config::IssuanceProtocolType;
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{IssuanceProtocolType, KeyAlgorithmType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -28,18 +36,18 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
+use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::issuance_protocol::model::OpenID4VCIParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINotificationEvent,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent,
     OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    Timestamp,
+    OpenID4VCNonceParams, Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
@@ -51,13 +59,9 @@ use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
-use crate::service::oid4vci_final1_0::mapper::interaction_data_to_dto;
-use crate::service::oid4vci_final1_0::validator::{
-    throw_if_access_token_invalid, throw_if_credential_request_invalid,
-    validate_config_entity_presence,
-};
 use crate::service::ssi_validator::validate_issuance_protocol_type;
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::JWTPayload;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
@@ -245,7 +249,8 @@ impl OID4VCIFinal1_0Service {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let params: OpenID4VCIParams = self.config.issuance_protocol.get(&credential.protocol)?;
+        let params: OpenID4VCIFinal1Params =
+            self.config.issuance_protocol.get(&credential.protocol)?;
 
         let credential_subject = credentials_format(
             wallet_storage_type,
@@ -715,6 +720,21 @@ impl OID4VCIFinal1_0Service {
 
         Ok(response)
     }
+
+    pub async fn generate_nonce(
+        &self,
+        protocol_id: &str,
+    ) -> Result<OpenID4VCINonceResponseDTO, ServiceError> {
+        validate_config_entity(&self.config, protocol_id)?;
+
+        let params: OpenID4VCIFinal1Params = self.config.issuance_protocol.get(protocol_id)?;
+        let Some(params) = params.nonce else {
+            return Err(ConfigValidationError::TypeNotFound(protocol_id.to_string()).into());
+        };
+
+        let c_nonce = generate_nonce(params, self.base_url.to_owned()).await?;
+        Ok(OpenID4VCINonceResponseDTO { c_nonce })
+    }
 }
 
 pub(crate) fn credentials_format(
@@ -746,4 +766,68 @@ pub(crate) fn credentials_format(
             ),
         }),
     })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NonceJwtPayload {
+    context: String,
+}
+
+impl Default for NonceJwtPayload {
+    fn default() -> Self {
+        Self {
+            context: "issuance-openidvci-final-1.0-nonce".to_string(),
+        }
+    }
+}
+
+async fn generate_nonce(
+    params: OpenID4VCNonceParams,
+    base_url: Option<String>,
+) -> Result<String, ServiceError> {
+    let expiration = params.expiration.unwrap_or(300);
+    let now = OffsetDateTime::now_utc();
+
+    let payload = JWTPayload::<NonceJwtPayload> {
+        jwt_id: Some(Uuid::new_v4().to_string()),
+        issued_at: Some(now),
+        expires_at: Some(now + Duration::seconds(expiration as _)),
+        issuer: base_url,
+        ..Default::default()
+    };
+    let jwt = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload);
+
+    Ok(jwt
+        .tokenize(Some(Box::new(HS256Signer {
+            signing_key: params.signing_key,
+        })))
+        .await?)
+}
+
+struct HS256Signer {
+    pub signing_key: SecretSlice<u8>,
+}
+
+#[async_trait::async_trait]
+impl SignatureProvider for HS256Signer {
+    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
+        utilities::create_hmac(self.signing_key.expose_secret(), message)
+            .ok_or(SignerError::CouldNotSign("HMAC failure".to_string()))
+    }
+
+    fn get_key_id(&self) -> Option<String> {
+        None
+    }
+
+    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
+        Err("HS256".to_string())
+    }
+
+    fn jose_alg(&self) -> Option<String> {
+        Some("HS256".to_string())
+    }
+
+    fn get_public_key(&self) -> Vec<u8> {
+        Default::default()
+    }
 }

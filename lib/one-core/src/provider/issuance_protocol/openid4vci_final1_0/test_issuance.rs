@@ -9,6 +9,7 @@ use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::OpenID4VCIFinal1_0;
 use crate::config::core_config::{
     CoreConfig, DatatypeType, Fields, FormatType, Params, RevocationType,
 };
@@ -36,9 +37,9 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::{OpenID4VCIParams, OpenID4VCRedirectUriParams};
-use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
-use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
+use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
+use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::MockHandleInvitationOperations;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
@@ -226,7 +227,7 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
-    let provider = OpenID4VCI13::new(
+    let provider = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
@@ -241,7 +242,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
-        OpenID4VCIParams {
+        OpenID4VCIFinal1Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -252,6 +253,7 @@ async fn test_issuer_submit_succeeds() {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
+            nonce: None,
             rejection_identifier: None,
             enable_credential_preview: true,
         },
@@ -431,7 +433,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
-    let service = OpenID4VCI13::new(
+    let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
@@ -446,7 +448,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
-        OpenID4VCIParams {
+        OpenID4VCIFinal1Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -457,6 +459,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
+            nonce: None,
             rejection_identifier: None,
             enable_credential_preview: true,
         },
@@ -616,7 +619,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         },
     );
 
-    let service = OpenID4VCI13::new(
+    let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
@@ -631,7 +634,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
-        OpenID4VCIParams {
+        OpenID4VCIFinal1Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -642,6 +645,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
+            nonce: None,
             rejection_identifier: None,
             enable_credential_preview: true,
         },
@@ -716,7 +720,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         },
     );
 
-    let service = OpenID4VCI13::new(
+    let service = OpenID4VCIFinal1_0::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
@@ -731,7 +735,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),
         Arc::new(config),
-        OpenID4VCIParams {
+        OpenID4VCIFinal1Params {
             pre_authorized_code_expires_in: 10,
             token_expires_in: 10,
             credential_offer_by_value: false,
@@ -742,6 +746,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
+            nonce: None,
             rejection_identifier: None,
             enable_credential_preview: true,
         },

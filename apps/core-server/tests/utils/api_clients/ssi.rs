@@ -212,4 +212,9 @@ impl SSIApi {
 
         self.client.post_form(&url, &form_data).await
     }
+
+    pub async fn generate_nonce(&self, issuance_protocol: &str) -> Response {
+        let url = format!("/ssi/openid4vci/final-1.0/{issuance_protocol}/nonce");
+        self.client.post(&url, None).await
+    }
 }

@@ -115,3 +115,18 @@ pub(super) fn validate_config_entity_presence(
         Ok(())
     }
 }
+
+pub(super) fn validate_config_entity(
+    config: &CoreConfig,
+    protocol_id: &str,
+) -> Result<(), ConfigValidationError> {
+    let fields = config.issuance_protocol.get_fields(protocol_id)?;
+    if fields.r#type != IssuanceProtocolType::OpenId4VciFinal1_0 {
+        return Err(ConfigValidationError::InvalidType(
+            IssuanceProtocolType::OpenId4VciFinal1_0.to_string(),
+            fields.r#type.to_string(),
+        ));
+    }
+
+    Ok(())
+}

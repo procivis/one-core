@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, OrganisationId};
@@ -17,29 +16,6 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-use crate::util::params::deserialize_encryption_key;
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4VCIParams {
-    pub pre_authorized_code_expires_in: u64,
-    pub token_expires_in: u64,
-    pub refresh_expires_in: u64,
-    #[serde(default)]
-    pub credential_offer_by_value: bool,
-    #[serde(deserialize_with = "deserialize_encryption_key")]
-    pub encryption: SecretSlice<u8>,
-
-    #[serde(default = "default_issuance_url_scheme")]
-    pub url_scheme: String,
-
-    pub redirect_uri: OpenID4VCRedirectUriParams,
-
-    pub rejection_identifier: Option<OpenID4VCRejectionIdentifierParams>,
-
-    #[serde(default = "default_enable_credential_preview")]
-    pub enable_credential_preview: bool,
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,11 +32,11 @@ pub(crate) struct OpenID4VCRedirectUriParams {
 }
 
 // Apparently the indirection via functions is required: https://github.com/serde-rs/serde/issues/368
-fn default_issuance_url_scheme() -> String {
+pub(super) fn default_issuance_url_scheme() -> String {
     "openid-credential-offer".to_string()
 }
 
-fn default_enable_credential_preview() -> bool {
+pub(super) fn default_enable_credential_preview() -> bool {
     true
 }
 
