@@ -42,7 +42,7 @@ impl OrganisationsApi {
 
     pub async fn upsert(&self, id: &impl Display, params: UpsertParams) -> Response {
         self.client
-            .put(
+            .patch(
                 &format!("/api/organisation/v1/{id}"),
                 Some(serde_json::to_value(params).unwrap()),
             )
