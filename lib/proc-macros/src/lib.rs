@@ -1,11 +1,7 @@
-//! Code in this crate is _heavily_ inspired by the serde_with_macros crate.
-
-use darling::ast::NestedMeta;
-use darling::{Error, FromMeta};
 use proc_macro::TokenStream;
-use proc_macro2::{Span, TokenStream as TokenStream2};
-use quote::quote;
-use syn::{Field, Fields, ItemEnum, ItemStruct, Type, parse_quote};
+
+mod options_not_nullable;
+mod permission_check;
 
 /// Marks all optional fields in the struct as `#[schema(nullable = false)]` and also adds a
 /// `#[serde_with::skip_serializing_none]` to the struct.
@@ -46,171 +42,30 @@ use syn::{Field, Fields, ItemEnum, ItemStruct, Type, parse_quote};
 /// [`Option`].
 #[proc_macro_attribute]
 pub fn options_not_nullable(args: TokenStream, input: TokenStream) -> TokenStream {
-    #[derive(FromMeta)]
-    struct SerdeContainerOptions {
-        skip_serializing_none: Option<bool>,
-    }
-
-    match NestedMeta::parse_meta_list(args.into()) {
-        Ok(list) => {
-            let container_options = match SerdeContainerOptions::from_list(&list) {
-                Ok(v) => v,
-                Err(e) => {
-                    return TokenStream::from(e.write_errors());
-                }
-            };
-
-            let res = apply_function_to_struct_and_enum_fields(input, |field| {
-                add_utoipa_nullable_false(field)
-            })
-            .unwrap_or_else(Error::write_errors);
-
-            // if not explicitly disabled also add the serde skip_serializing_none attribute
-            let res = match container_options.skip_serializing_none {
-                Some(false) => res,
-                _ => {
-                    quote!(
-                        #[serde_with::skip_serializing_none]
-                        #res
-                    )
-                }
-            };
-
-            TokenStream::from(res)
-        }
-        Err(e) => TokenStream::from(Error::from(e).write_errors()),
-    }
+    options_not_nullable::options_not_nullable(args, input)
 }
 
-/// Add the `schema(nullable = false)` annotation to a field of a struct
-fn add_utoipa_nullable_false(field: &mut Field) -> Result<(), Error> {
-    if !is_std_option(&field.ty) {
-        return Ok(());
-    }
-
-    let has_schema = field_has_attribute(field, "schema");
-    // Do nothing if `schema`  is already present
-    if has_schema {
-        return Ok(());
-    }
-
-    // Add the `schema` attribute
-    let attr = parse_quote!(
-        #[schema(nullable = false)]
-    );
-    field.attrs.push(attr);
-    Ok(())
-}
-
-fn is_std_option(type_: &Type) -> bool {
-    match type_ {
-        Type::Array(_)
-        | Type::BareFn(_)
-        | Type::ImplTrait(_)
-        | Type::Infer(_)
-        | Type::Macro(_)
-        | Type::Never(_)
-        | Type::Ptr(_)
-        | Type::Reference(_)
-        | Type::Slice(_)
-        | Type::TraitObject(_)
-        | Type::Tuple(_)
-        | Type::Verbatim(_) => false,
-
-        Type::Group(syn::TypeGroup { elem, .. })
-        | Type::Paren(syn::TypeParen { elem, .. })
-        | Type::Path(syn::TypePath {
-            qself: Some(syn::QSelf { ty: elem, .. }),
-            ..
-        }) => is_std_option(elem),
-
-        Type::Path(syn::TypePath { qself: None, path }) => {
-            (path.leading_colon.is_none()
-                && path.segments.len() == 1
-                && path.segments[0].ident == "Option")
-                || (path.segments.len() == 3
-                    && (path.segments[0].ident == "std" || path.segments[0].ident == "core")
-                    && path.segments[1].ident == "option"
-                    && path.segments[2].ident == "Option")
-        }
-        _ => false,
-    }
-}
-
-fn field_has_attribute(field: &Field, namespace: &str) -> bool {
-    for attr in &field.attrs {
-        if attr.path().is_ident(namespace) {
-            return true;
-        }
-    }
-    false
-}
-
-/// Apply function on every field of structs or enums
-fn apply_function_to_struct_and_enum_fields<F>(
-    input: TokenStream,
-    function: F,
-) -> Result<TokenStream2, Error>
-where
-    F: Copy,
-    F: Fn(&mut Field) -> Result<(), Error>,
-{
-    if let Ok(mut input) = syn::parse::<ItemStruct>(input.clone()) {
-        apply_on_fields(&mut input.fields, function)?;
-        Ok(quote!(#input))
-    } else if let Ok(mut input) = syn::parse::<ItemEnum>(input) {
-        let errors = input
-            .variants
-            .iter_mut()
-            .map(|variant| apply_on_fields(&mut variant.fields, function))
-            .filter_map(|res| res.err())
-            .collect::<Vec<_>>();
-        if errors.is_empty() {
-            Ok(quote!(#input))
-        } else {
-            Err(Error::multiple(errors))
-        }
-    } else {
-        Err(
-            Error::custom("The attribute can only be applied to struct or enum definitions.")
-                .with_span(&Span::call_site()),
-        )
-    }
-}
-
-/// Handle a single struct or a single enum variant
-fn apply_on_fields<F>(fields: &mut Fields, function: F) -> Result<(), Error>
-where
-    F: Fn(&mut Field) -> Result<(), Error>,
-{
-    match fields {
-        // simple, no fields, do nothing
-        Fields::Unit => Ok(()),
-        Fields::Named(fields) => {
-            let errors: Vec<Error> = fields
-                .named
-                .iter_mut()
-                .map(|field| function(field).map_err(|err| err.with_span(&field)))
-                .filter_map(|res| res.err())
-                .collect();
-            if errors.is_empty() {
-                Ok(())
-            } else {
-                Err(Error::multiple(errors))
-            }
-        }
-        Fields::Unnamed(fields) => {
-            let errors: Vec<Error> = fields
-                .unnamed
-                .iter_mut()
-                .map(|field| function(field).map_err(|err| err.with_span(&field)))
-                .filter_map(|res| res.err())
-                .collect();
-            if errors.is_empty() {
-                Ok(())
-            } else {
-                Err(Error::multiple(errors))
-            }
-        }
-    }
+/// Add permission check to request handler. Only usable within the `one-core` crate, as it assumes
+/// the existence of the `permission_check` function.
+///
+/// # Usage
+///
+/// ```ignore
+/// #[require_permissions(Permission::DummyPermission, Permission::DummyPermission2)]
+/// pub(crate) async fn post_request(
+///     state: State<AppState>,
+///     WithRejection(Json(request), _): WithRejection<Json<RequestRestDTO>, ErrorResponseRestDTO>,
+/// ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+///     todo!(handler code)
+/// }
+/// ```
+///
+/// # Limitations
+/// Takes a list of `Permission` enum variants as arguments, anything is valid that could also be
+/// passed to `vec![]`.
+/// The handler must not already have an argument called `authorized` and must return any
+/// `<HappyCase>OrErrorResponse` DTO.
+#[proc_macro_attribute]
+pub fn require_permissions(args: TokenStream, input: TokenStream) -> TokenStream {
+    permission_check::require_permissions(args, input)
 }

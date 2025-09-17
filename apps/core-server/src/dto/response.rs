@@ -220,6 +220,12 @@ impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<VecResponse<T>> {
     }
 }
 
+impl<T> From<ErrorResponse> for OkOrErrorResponse<T> {
+    fn from(value: ErrorResponse) -> Self {
+        Self::Error(value)
+    }
+}
+
 pub(crate) enum CreatedOrErrorResponse<T> {
     Created(T),
     Error(ErrorResponse),
@@ -270,6 +276,12 @@ impl<T: ToSchema> utoipa::IntoResponses for CreatedOrErrorResponse<T> {
     }
 }
 
+impl<T> From<ErrorResponse> for CreatedOrErrorResponse<T> {
+    fn from(value: ErrorResponse) -> Self {
+        Self::Error(value)
+    }
+}
+
 pub(crate) enum EmptyOrErrorResponse {
     NoContent,
     Error(ErrorResponse),
@@ -313,5 +325,11 @@ impl utoipa::IntoResponses for EmptyOrErrorResponse {
         struct SuccessResponse;
 
         with_error_responses::<SuccessResponse>()
+    }
+}
+
+impl From<ErrorResponse> for EmptyOrErrorResponse {
+    fn from(value: ErrorResponse) -> Self {
+        Self::Error(value)
     }
 }

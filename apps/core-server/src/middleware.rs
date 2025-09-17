@@ -13,9 +13,12 @@ use sentry::{Hub, SentryFutureExt};
 use tracing::trace;
 
 use crate::ServerConfig;
+use crate::permissions::Permission;
 
 #[derive(Debug, Clone)]
-pub struct Authorized {}
+pub struct Authorized {
+    pub permissions: Vec<Permission>,
+}
 
 pub struct HttpRequestContext<'a> {
     pub path: &'a str,
@@ -94,7 +97,10 @@ pub async fn bearer_check(
     let token = split.next().unwrap_or_default();
 
     if auth_type == "Bearer" && !token.is_empty() && token == config.auth_token {
-        request.extensions_mut().insert(Authorized {});
+        request.extensions_mut().insert(Authorized {
+            // TODO: Fill in permissions if in STS-Token-Mode
+            permissions: vec![],
+        });
     } else {
         tracing::warn!("Could not authorize request. Incorrect authorization method or token.");
         return Err(StatusCode::UNAUTHORIZED);
