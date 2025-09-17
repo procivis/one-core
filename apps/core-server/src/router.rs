@@ -349,7 +349,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_issuer_metadata),
             )
             .route(
-                "/ssi/openid4vci/final-1.0/{id}/.well-known/openid-configuration",
+                "/.well-known/openid-configuration/ssi/openid4vci/final-1.0/{id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_service_discovery),
             )
             .route(

@@ -71,7 +71,7 @@ pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
 
 #[utoipa::path(
     get,
-    path = "/ssi/openid4vci/final-1.0/{id}/.well-known/openid-configuration",
+    path = "/.well-known/openid-configuration/ssi/openid4vci/final-1.0/{id}",
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
