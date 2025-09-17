@@ -79,8 +79,8 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
     OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO, OpenID4VCIProofRequestDTO,
-    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
@@ -484,6 +484,38 @@ impl OpenID4VCIFinal1_0 {
             .map_err(IssuanceProtocolError::Transport)
     }
 
+    async fn holder_fetch_nonce(
+        &self,
+        interaction_data: &HolderInteractionData,
+    ) -> Result<String, IssuanceProtocolError> {
+        let nonce_endpoint =
+            interaction_data
+                .nonce_endpoint
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "nonce endpoint is missing".to_string(),
+                ))?;
+
+        let response: OpenID4VCINonceResponseDTO = self
+            .client
+            .post(nonce_endpoint.as_str())
+            .send()
+            .await
+            .context("Error during nonce_endpoint response")
+            .map_err(IssuanceProtocolError::Transport)?
+            .error_for_status()
+            .context("status error")
+            .map_err(IssuanceProtocolError::Transport)?
+            .json()
+            .map_err(|error| {
+                IssuanceProtocolError::Failed(format!(
+                    "Failed decoding credential offer json {error}"
+                ))
+            })?;
+
+        Ok(response.c_nonce)
+    }
+
     async fn holder_process_accepted_credential(
         &self,
         issuer_response: SubmitIssuerResponse,
@@ -883,6 +915,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             deserialize_interaction_data(interaction.data.as_ref())?;
 
         let token_response = self.holder_fetch_token(&interaction_data, tx_code).await?;
+        let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 
         // only mdoc credentials support refreshing, do not store the tokens otherwise
         if format_type == FormatType::Mdoc {
@@ -906,7 +939,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             interaction_data.refresh_token_expires_at = token_response
                 .refresh_token_expires_in
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
-            interaction_data.nonce = token_response.c_nonce.clone();
         }
 
         let data = serialize_interaction_data(&interaction_data)?;
@@ -943,7 +975,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &holder_did.did,
                 key,
                 schema,
-                token_response.c_nonce,
+                Some(nonce),
                 auth_fn,
                 token_response.access_token.expose_secret(),
             )
@@ -1112,6 +1144,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 None,
             )
             .await?;
+        let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 
         // request credential and then notify deletion
         let access_token = token_response.access_token.expose_secret();
@@ -1121,7 +1154,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &holder_did,
                 jwk,
                 schema,
-                token_response.c_nonce,
+                Some(nonce),
                 auth_fn,
                 access_token,
             )
@@ -1207,7 +1240,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 access_token_expires_at: None,
                 refresh_token_hash: None,
                 refresh_token_expires_at: None,
-                nonce: None,
                 notification_id: None
             }),
         })
@@ -1806,6 +1838,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         issuer_url: issuer_metadata.credential_issuer.clone(),
         credential_endpoint: issuer_metadata.credential_endpoint.clone(),
         notification_endpoint: issuer_metadata.notification_endpoint.to_owned(),
+        nonce_endpoint: issuer_metadata.nonce_endpoint.to_owned(),
         token_endpoint: Some(token_endpoint),
         grants: Some(grants),
         continue_issuance,
@@ -1819,7 +1852,6 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         cryptographic_binding_methods_supported: credential_config
             .cryptographic_binding_methods_supported
             .clone(),
-        nonce: None,
     };
     let data = serialize_interaction_data(&holder_data)?;
 

@@ -66,6 +66,8 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub notification_endpoint: Option<String>,
     #[serde(default)]
+    pub nonce_endpoint: Option<String>,
+    #[serde(default)]
     pub grants: Option<OpenID4VCIGrants>,
     #[serde(default)]
     pub continue_issuance: Option<ContinueIssuanceDTO>,
@@ -75,8 +77,6 @@ pub(crate) struct HolderInteractionData {
     pub access_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
     pub refresh_token: Option<Vec<u8>>,
-    #[serde(default)]
-    pub nonce: Option<String>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
@@ -149,10 +149,9 @@ pub struct OpenID4VCITokenResponseDTO {
     pub refresh_token: Option<SecretString>,
     #[serde(default)]
     pub refresh_token_expires_in: Option<Timestamp>,
-    pub c_nonce: Option<String>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCINonceResponseDTO {
     pub c_nonce: String,
 }
@@ -206,7 +205,6 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub refresh_token_hash: Option<Vec<u8>>,
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
-    pub nonce: Option<String>,
     pub notification_id: Option<String>,
 }
 

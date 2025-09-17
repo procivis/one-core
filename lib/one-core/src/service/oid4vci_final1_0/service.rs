@@ -346,7 +346,7 @@ impl OID4VCIFinal1_0Service {
                     key_role: KeyRole::Authentication,
                     certificate_validator: self.certificate_validator.clone(),
                 }),
-                &interaction_data.nonce,
+                &None, // TODO: ONE-7232: check incoming nonce
             )
             .await
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;

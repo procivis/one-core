@@ -589,6 +589,7 @@ async fn test_holder_accept_credential_success() {
             issuer_url: mock_server.uri(),
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
@@ -600,7 +601,6 @@ async fn test_holder_accept_credential_success() {
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
-            nonce: None,
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
@@ -628,6 +628,17 @@ async fn test_holder_accept_credential_success() {
                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
                    "refresh_token": "321",
                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "c_nonce": "123"
             }
         )))
         .expect(1)
@@ -788,6 +799,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             issuer_url: mock_server.uri(),
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: None,
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
@@ -799,7 +811,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
-            nonce: None,
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
@@ -827,6 +838,17 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
                    "refresh_token": "321",
                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                   "c_nonce": "123"
             }
         )))
         .expect(1)
@@ -997,6 +1019,7 @@ async fn test_holder_accept_expired_credential_fails() {
             issuer_url: mock_server.uri(),
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
@@ -1008,7 +1031,6 @@ async fn test_holder_accept_expired_credential_fails() {
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
-            nonce: None,
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
@@ -1036,6 +1058,17 @@ async fn test_holder_accept_expired_credential_fails() {
                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
                    "refresh_token": "321",
                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "c_nonce": "123"
             }
         )))
         .expect(1)
@@ -1183,6 +1216,7 @@ async fn test_holder_reject_credential() {
             issuer_url: mock_server.uri(),
             credential_endpoint: format!("{}/credential", mock_server.uri()),
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
+            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
@@ -1194,7 +1228,6 @@ async fn test_holder_reject_credential() {
             access_token: None,
             access_token_expires_at: None,
             refresh_token: None,
-            nonce: None,
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
@@ -1222,6 +1255,17 @@ async fn test_holder_reject_credential() {
                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
                    "refresh_token": "321",
                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "c_nonce": "123"
             }
         )))
         .expect(1)
