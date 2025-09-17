@@ -21,6 +21,7 @@ pub mod build_info {
     pub use build::*;
 }
 mod middleware;
+mod session;
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(default, rename_all = "camelCase")]

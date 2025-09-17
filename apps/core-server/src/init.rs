@@ -88,6 +88,7 @@ use time::Duration;
 use tracing_subscriber::prelude::*;
 
 use crate::did_config::{DidUniversalParams, DidWebParams, DidWebVhParams};
+use crate::session::CoreServerSessionProvider;
 use crate::{ServerConfig, build_info, did_config};
 
 pub async fn initialize_core(
@@ -695,6 +696,7 @@ pub async fn initialize_core(
 
     OneCoreBuilder::new(app_config.core.clone())
         .with_base_url(app_config.app.core_base_url.to_owned())
+        .with_session_provider(Arc::new(CoreServerSessionProvider))
         .with_crypto(crypto)
         .with_jsonld_caching_loader(caching_loader)
         .with_data_provider_creator(storage_creator)

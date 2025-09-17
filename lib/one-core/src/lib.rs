@@ -40,6 +40,7 @@ use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
+use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::{
     BlobStorageProviderImpl, blob_storage_providers_from_config,
 };
@@ -81,6 +82,7 @@ pub mod service;
 
 pub mod common_mapper;
 mod common_validator;
+pub mod proto;
 pub mod util;
 
 pub type DidMethodCreator = Box<
@@ -174,7 +176,6 @@ pub struct OneCore {
     pub nfc_service: NfcService,
 }
 
-#[derive(Default)]
 pub struct OneCoreBuilderProviders {
     pub core_base_url: Option<String>,
     pub crypto: Option<Arc<dyn CryptoProvider>>,
@@ -185,7 +186,25 @@ pub struct OneCoreBuilderProviders {
     pub presentation_formatter_provider: Option<Arc<dyn PresentationFormatterProvider>>,
     pub revocation_method_provider: Option<Arc<dyn RevocationMethodProvider>>,
     pub certificate_validator: Option<Arc<dyn CertificateValidator>>,
+    pub session_provider: Arc<dyn SessionProvider>,
     //repository and providers that we initialize as we build
+}
+
+impl Default for OneCoreBuilderProviders {
+    fn default() -> Self {
+        Self {
+            core_base_url: None,
+            crypto: None,
+            did_method_provider: None,
+            key_algorithm_provider: None,
+            key_storage_provider: None,
+            credential_formatter_provider: None,
+            presentation_formatter_provider: None,
+            revocation_method_provider: None,
+            certificate_validator: None,
+            session_provider: Arc::new(NoSessionProvider),
+        }
+    }
 }
 
 #[derive(Default)]
@@ -226,6 +245,11 @@ impl OneCoreBuilder {
             core_config,
             ..Default::default()
         }
+    }
+
+    pub fn with_session_provider(mut self, session_provider: Arc<dyn SessionProvider>) -> Self {
+        self.providers.session_provider = session_provider;
+        self
     }
 
     pub fn with_crypto(mut self, crypto: Arc<dyn CryptoProvider>) -> Self {
