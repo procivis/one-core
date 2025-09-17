@@ -11,7 +11,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCITokenRequestDTO,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

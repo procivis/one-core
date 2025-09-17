@@ -11,7 +11,7 @@ use crate::config::validator::datatype::{DatatypeValidationError, validate_datat
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::model::FormatterCapabilities;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
+use crate::provider::issuance_protocol::model::OpenID4VCIParams;
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
@@ -104,7 +104,9 @@ pub(super) fn validate_redirect_uri(
 ) -> Result<(), ServiceError> {
     let fields = config.issuance_protocol.get_fields(exchange)?;
     match fields.r#type {
-        IssuanceProtocolType::OpenId4VciDraft13 | IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
+        IssuanceProtocolType::OpenId4VciDraft13
+        | IssuanceProtocolType::OpenId4VciDraft13Swiyu
+        | IssuanceProtocolType::OpenId4VciFinal1_0 => {
             if let Some(redirect_uri) = redirect_uri {
                 let exchange_params: OpenID4VCIParams = config.issuance_protocol.get(exchange)?;
                 let params = exchange_params.redirect_uri;

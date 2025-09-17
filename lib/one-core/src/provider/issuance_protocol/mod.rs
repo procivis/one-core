@@ -1,13 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use IssuanceProtocolType::OpenId4VciDraft13;
 use dto::IssuanceProtocolCapabilities;
 use error::IssuanceProtocolError;
-use indexmap::IndexMap;
-use openid4vci_draft13::model::{
-    OpenID4VCICredentialValueDetails, OpenID4VCIIssuerMetadataResponseDTO,
-};
+use openid4vci_final1_0::OpenID4VCIFinal1_0;
 use serde::Serialize;
 use serde::de::Deserialize;
 use serde_json::json;
@@ -15,7 +11,6 @@ use shared_types::CredentialId;
 use url::Url;
 
 use crate::config::ConfigValidationError;
-use crate::config::core_config::IssuanceProtocolType::OpenId4VciDraft13Swiyu;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
 use crate::model::claim::Claim;
 use crate::model::credential::Credential;
@@ -25,15 +20,13 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
+use crate::provider::issuance_protocol::model::{InvitationResponseEnum, OpenID4VCIParams};
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIParams, ShareResponse,
-    SubmitIssuerResponse, UpdateResponse,
-};
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::{
     OpenID4VCI13Swiyu, OpenID4VCISwiyuParams,
 };
@@ -41,6 +34,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
@@ -50,9 +44,12 @@ use crate::service::storage_proxy::StorageAccess;
 pub mod dto;
 pub mod error;
 mod mapper;
+pub mod model;
 pub mod openid4vci_draft13;
 pub mod openid4vci_draft13_swiyu;
+pub mod openid4vci_final1_0;
 pub(crate) mod provider;
+use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse};
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -75,10 +72,12 @@ pub(crate) fn issuance_protocol_providers_from_config(
     issuance_config: &mut IssuanceProtocolConfig,
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
+    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -100,24 +99,67 @@ pub(crate) fn issuance_protocol_providers_from_config(
             }
         })?;
         let protocol: Arc<dyn IssuanceProtocol> = match fields.r#type {
-            OpenId4VciDraft13 => Arc::new(OpenID4VCI13::new(
-                client.clone(),
-                credential_repository.clone(),
-                validity_credential_repository.clone(),
-                revocation_list_repository.clone(),
-                history_repository.clone(),
-                formatter_provider.clone(),
-                revocation_method_provider.clone(),
-                did_method_provider.clone(),
-                key_algorithm_provider.clone(),
-                key_provider.clone(),
-                certificate_validator.clone(),
-                blob_storage_provider.clone(),
-                core_base_url.clone(),
-                config.clone(),
-                params,
-            )),
-            OpenId4VciDraft13Swiyu => {
+            IssuanceProtocolType::OpenId4VciFinal1_0 => {
+                // TODO this should come from the config params
+                validate_url_scheme_unique(
+                    &mut openid_url_schemes,
+                    name,
+                    "openid-credential-offer-final1".to_string(),
+                )?;
+                let handle_operations = openid4vci_final1_0::handle_invitation_operations::HandleInvitationOperationsImpl::new(
+                    credential_schema_repository.clone(),
+                    vct_type_metadata_cache.clone(),
+                    client.clone(),
+                    formatter_provider.clone(),
+                );
+
+                Arc::new(OpenID4VCIFinal1_0::new(
+                    client.clone(),
+                    credential_repository.clone(),
+                    validity_credential_repository.clone(),
+                    revocation_list_repository.clone(),
+                    history_repository.clone(),
+                    formatter_provider.clone(),
+                    revocation_method_provider.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    key_provider.clone(),
+                    certificate_validator.clone(),
+                    blob_storage_provider.clone(),
+                    core_base_url.clone(),
+                    config.clone(),
+                    params,
+                    Arc::new(handle_operations),
+                ))
+            }
+            IssuanceProtocolType::OpenId4VciDraft13 => {
+                let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
+                    credential_schema_repository.clone(),
+                    vct_type_metadata_cache.clone(),
+                    client.clone(),
+                    formatter_provider.clone(),
+                );
+
+                Arc::new(OpenID4VCI13::new(
+                    client.clone(),
+                    credential_repository.clone(),
+                    validity_credential_repository.clone(),
+                    revocation_list_repository.clone(),
+                    history_repository.clone(),
+                    formatter_provider.clone(),
+                    revocation_method_provider.clone(),
+                    did_method_provider.clone(),
+                    key_algorithm_provider.clone(),
+                    key_provider.clone(),
+                    certificate_validator.clone(),
+                    blob_storage_provider.clone(),
+                    core_base_url.clone(),
+                    config.clone(),
+                    params,
+                    Arc::new(handle_operations),
+                ))
+            }
+            IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
                 let params = fields
                     .deserialize::<OpenID4VCISwiyuParams>()
                     .map_err(|source| ConfigValidationError::FieldsDeserialization {
@@ -125,6 +167,14 @@ pub(crate) fn issuance_protocol_providers_from_config(
                         source,
                     })?;
                 validate_url_scheme_unique(&mut openid_url_schemes, name, "swiyu".to_string())?;
+
+                let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
+                    credential_schema_repository.clone(),
+                    vct_type_metadata_cache.clone(),
+                    client.clone(),
+                    formatter_provider.clone(),
+                );
+
                 Arc::new(OpenID4VCI13Swiyu::new(
                     client.clone(),
                     credential_repository.clone(),
@@ -141,6 +191,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     core_base_url.clone(),
                     config.clone(),
                     params,
+                    Arc::new(handle_operations),
                 ))
             }
         };
@@ -179,33 +230,6 @@ pub(crate) struct BuildCredentialSchemaResponse {
     pub schema: CredentialSchema,
 }
 
-/// Interface to be implemented in order to use an exchange protocol.
-#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-#[allow(clippy::too_many_arguments)]
-#[async_trait::async_trait]
-pub(crate) trait HandleInvitationOperations: Send + Sync {
-    /// Utilizes custom logic to find out credential schema
-    /// type and id from credential offer
-    fn find_schema_data(
-        &self,
-        credential_config: &openid4vci_draft13::model::OpenID4VCICredentialConfigurationData,
-        offer_id: &str,
-    ) -> Result<BasicSchemaData, IssuanceProtocolError>;
-
-    /// Allows use of custom logic to create new credential schema for
-    /// incoming credential
-    async fn create_new_schema(
-        &self,
-        schema_data: BasicSchemaData,
-        claim_keys: &IndexMap<String, OpenID4VCICredentialValueDetails>,
-        credential_id: &CredentialId,
-        credential_config: &openid4vci_draft13::model::OpenID4VCICredentialConfigurationData,
-        issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
-        organisation: Organisation,
-    ) -> Result<BuildCredentialSchemaResponse, IssuanceProtocolError>;
-}
-pub(crate) type HandleInvitationOperationsAccess = dyn HandleInvitationOperations;
-
 /// This trait contains methods for exchanging credentials between issuers and holders
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -222,7 +246,6 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         url: Url,
         organisation: Organisation,
         storage_access: &StorageAccess,
-        handle_invitation_operations: &HandleInvitationOperationsAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError>;
 
@@ -264,7 +287,6 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
         storage_access: &StorageAccess,
-        handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError>;
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities;

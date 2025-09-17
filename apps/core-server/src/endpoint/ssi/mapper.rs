@@ -1,5 +1,5 @@
 use one_core::model::key::PublicKeyJwk;
-use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::service::key::dto::PublicKeyJwkDTO;
 
 use super::dto::PublicKeyJwkRestDTO;

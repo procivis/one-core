@@ -112,6 +112,23 @@ issuanceProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+  OPENID4VCI_FINAL1:
+    display: protocol.openIdFinal1
+    order: 3
+    type: "OPENID4VCI_FINAL1"
+    params:
+      public:
+        preAuthorizedCodeExpiresIn: 300
+        tokenExpiresIn: 86400
+        urlScheme: openid-credential-offer-final1
+        refreshExpiresIn: 7776000 # 90 days in seconds
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+      private:
+        rejectionIdentifier:
+          didMethod: KEY
+          keyAlgorithm: ECDSA
 verificationProtocol:
   OPENID4VP_DRAFT20:
     display: "exchange.openid4vp20"

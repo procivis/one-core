@@ -9,7 +9,6 @@ use time::OffsetDateTime;
 use tokio_util::either::Either;
 use uuid::Uuid;
 
-use super::OID4VCIDraft13Service;
 use super::dto::OpenID4VCICredentialResponseDTO;
 use crate::common_mapper::{
     IdentifierRole, get_exchange_param_pre_authorization_expires_in,
@@ -33,8 +32,8 @@ use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
 use crate::provider::issuance_protocol::model::OpenID4VCIParams;
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_proof_types_supported;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
@@ -42,8 +41,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::provider::issuance_protocol::openid4vci_draft13::service::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     create_credential_offer, create_issuer_metadata_response, create_service_discovery_response,
     get_credential_schema_base_url, oidc_issuer_create_token, parse_access_token,
     parse_refresh_token,
@@ -52,8 +51,9 @@ use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::service::oid4vci_draft13::mapper::interaction_data_to_dto;
-use crate::service::oid4vci_draft13::validator::{
+use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
+use crate::service::oid4vci_final1_0::mapper::interaction_data_to_dto;
+use crate::service::oid4vci_final1_0::validator::{
     throw_if_access_token_invalid, throw_if_credential_request_invalid,
     validate_config_entity_presence,
 };
@@ -62,7 +62,7 @@ use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
-impl OID4VCIDraft13Service {
+impl OID4VCIFinal1_0Service {
     pub async fn get_issuer_metadata(
         &self,
         credential_schema_id: &CredentialSchemaId,
@@ -206,7 +206,7 @@ impl OID4VCIDraft13Service {
             .get_fields(&credential.protocol)?
             .r#type;
 
-        if issuance_protocol_type != IssuanceProtocolType::OpenId4VciDraft13 {
+        if issuance_protocol_type != IssuanceProtocolType::OpenId4VciFinal1_0 {
             return Err(OpenID4VCIError::InvalidRequest.into());
         }
         let credential_schema = credential

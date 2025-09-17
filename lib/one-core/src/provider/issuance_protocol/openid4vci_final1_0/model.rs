@@ -270,6 +270,7 @@ pub(crate) enum CredentialSchemaCodeTypeEnum {
     Mrz,
     QrCode,
 }
+
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct OpenID4VCICredentialOfferDTO {

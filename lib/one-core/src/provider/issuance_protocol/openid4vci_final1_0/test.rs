@@ -43,16 +43,18 @@ use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, OpenID4VCIParams, OpenID4VCRedirectUriParams,
     OpenID4VCRejectionIdentifierParams,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::MockHandleInvitationOperations;
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
     extract_offered_claims, get_parent_claim_paths,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIGrants,
     OpenID4VCIPreAuthorizedCodeGrant,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
-use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
+use crate::provider::issuance_protocol::openid4vci_final1_0::service::create_credential_offer;
+use crate::provider::issuance_protocol::openid4vci_final1_0::{
+    IssuanceProtocolError, OpenID4VCIFinal1_0,
+};
 use crate::provider::issuance_protocol::{
     BasicSchemaData, BuildCredentialSchemaResponse, IssuanceProtocol,
 };
@@ -72,7 +74,7 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
-use crate::service::oid4vci_draft13::service::credentials_format;
+use crate::service::oid4vci_final1_0::service::credentials_format;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
@@ -96,8 +98,8 @@ struct TestInputs {
     pub handle_invitation_operations: MockHandleInvitationOperations,
 }
 
-fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
-    OpenID4VCI13::new(
+fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
+    OpenID4VCIFinal1_0::new(
         Arc::new(ReqwestClient::default()),
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),
@@ -264,7 +266,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(),
+        protocol: "OPENID4VCI_FINAL1".to_string(),
         redirect_uri: None,
         role: CredentialRole::Issuer,
         state: CredentialStateEnum::Created,
@@ -344,7 +346,7 @@ fn dummy_config() -> CoreConfig {
 
 #[tokio::test]
 async fn test_generate_offer_did() {
-    let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
+    let protocol_base_url = "BASE_URL/ssi/openid4vci/final-1.0".to_string();
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential_did();
 
@@ -366,7 +368,7 @@ async fn test_generate_offer_did() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
+        "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_did": "did:example:123",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
@@ -389,7 +391,7 @@ async fn test_generate_offer_did() {
 
 #[tokio::test]
 async fn test_generate_offer_certificate() {
-    let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
+    let protocol_base_url = "BASE_URL/ssi/openid4vci/final-1.0".to_string();
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential_certificate();
 
@@ -411,7 +413,7 @@ async fn test_generate_offer_certificate() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
+            "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_certificate": "<dummy test cert chain>",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
@@ -434,7 +436,7 @@ async fn test_generate_offer_certificate() {
 
 #[tokio::test]
 async fn test_generate_offer_claims_without_values() {
-    let protocol_base_url = "BASE_URL/ssi/openid4vci/draft-13".to_string();
+    let protocol_base_url = "BASE_URL/ssi/openid4vci/final-1.0".to_string();
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential_certificate();
 
@@ -456,7 +458,7 @@ async fn test_generate_offer_claims_without_values() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": "BASE_URL/ssi/openid4vci/draft-13/c322aa7f-9803-410d-b891-939b279fb965",
+            "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
             "issuer_certificate": "<dummy test cert chain>",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
@@ -484,7 +486,7 @@ async fn test_generate_share_credentials() {
     let result = protocol.issuer_share_credential(&credential).await.unwrap();
     assert_eq!(
         result.url,
-        "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+        "openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Ffinal-1.0%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
     );
 }
 
@@ -514,7 +516,7 @@ async fn test_generate_share_credentials_offer_by_value() {
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Fdraft-13%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Ffinal-1.0%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     );
     assert!(
         result
@@ -1364,7 +1366,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let mock_server = MockServer::start().await;
     let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
     let credential_schema_id = credential.schema.clone().unwrap().id;
-    let credential_issuer = format!("{issuer_url}ssi/openid4vci/draft-13/{credential_schema_id}");
+    let credential_issuer = format!("{issuer_url}ssi/openid4vci/final-1.0/{credential_schema_id}");
 
     let mut credential_offer = json!({
         "credential_issuer": credential_issuer,
@@ -1391,7 +1393,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{}/offer/{}",
+            "/ssi/openid4vci/final-1.0/{}/offer/{}",
             credential_schema_id, credential.id
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
@@ -1402,7 +1404,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         let token_endpoint = format!("{credential_issuer}/token");
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -1428,7 +1430,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     } else {
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
             )))
             .respond_with(ResponseTemplate::new(404))
             .expect(1)
@@ -1437,7 +1439,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     }
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+            "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-credential-issuer"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1496,7 +1498,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             })
         });
 
-    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Fdraft-13%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
+    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
 
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
@@ -1510,6 +1512,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let InvitationResponseEnum::Credential { credentials, .. } = result else {
         panic!("Invalid response type");
     };
+
     assert_eq!(credentials.len(), 1);
 
     if let Some(issuer_did) = issuer_did {
@@ -1557,13 +1560,13 @@ async fn inner_continue_issuance_test(
     let mock_server = MockServer::start().await;
     let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
     let credential_schema_id = credential.schema.clone().unwrap().id;
-    let credential_issuer = format!("{issuer_url}ssi/openid4vci/draft-13/{credential_schema_id}");
+    let credential_issuer = format!("{issuer_url}ssi/openid4vci/final-1.0/{credential_schema_id}");
 
     if openid_configuration_enabled {
         let token_endpoint = format!("{credential_issuer}/token");
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -1589,7 +1592,7 @@ async fn inner_continue_issuance_test(
     } else {
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
             )))
             .respond_with(ResponseTemplate::new(404))
             .expect(1)
@@ -1598,7 +1601,7 @@ async fn inner_continue_issuance_test(
     }
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+            "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-credential-issuer"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {

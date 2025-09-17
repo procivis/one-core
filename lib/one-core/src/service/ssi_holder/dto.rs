@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
 
 use crate::model::interaction::InteractionId;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    OpenID4VCIProofTypeSupported, OpenID4VCITxCode,
-};
+use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
 
 #[derive(Clone, Debug)]
 pub struct PresentationSubmitRequestDTO {

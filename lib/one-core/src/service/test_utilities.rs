@@ -111,6 +111,20 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                             allowedSchemes: [ https ]
                     private:
                         encryption: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'
+            OPENID4VCI_FINAL1:
+                display: 'display.openid4vciFinal1'
+                order: 2
+                type: 'OPENID4VCI_FINAL1'
+                params:
+                    public:
+                        preAuthorizedCodeExpiresIn: 300
+                        tokenExpiresIn: 86400
+                        refreshExpiresIn: 886400
+                        redirectUri:
+                            enabled: true
+                            allowedSchemes: [ https ]
+                    private:
+                        encryption: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'
         verificationProtocol:
             OPENID4VP_DRAFT20:
                 display: 'display'

@@ -17,14 +17,15 @@ use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIParams,
     OpenID4VCRedirectUriParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::{HandleInvitationOperationsAccess, IssuanceProtocol};
+use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
+use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperations;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -87,6 +88,7 @@ impl OpenID4VCI13Swiyu {
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCISwiyuParams,
+        handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
     ) -> Self {
         Self {
             inner: OpenID4VCI13::new_with_custom_version(
@@ -106,6 +108,7 @@ impl OpenID4VCI13Swiyu {
                 config,
                 params.into(),
                 OID4VCI_DRAFT13_SWIYU_VERSION,
+                handle_invitation_operations,
             ),
         }
     }
@@ -122,17 +125,10 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         url: Url,
         organisation: Organisation,
         storage_access: &StorageAccess,
-        handle_invitation_operations: &HandleInvitationOperationsAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         self.inner
-            .holder_handle_invitation(
-                url,
-                organisation,
-                storage_access,
-                handle_invitation_operations,
-                redirect_uri,
-            )
+            .holder_handle_invitation(url, organisation, storage_access, redirect_uri)
             .await
     }
 
@@ -196,15 +192,9 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         continue_issuance_dto: ContinueIssuanceDTO,
         organisation: Organisation,
         storage_access: &StorageAccess,
-        handle_invitation_operations: &HandleInvitationOperationsAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
         self.inner
-            .holder_continue_issuance(
-                continue_issuance_dto,
-                organisation,
-                storage_access,
-                handle_invitation_operations,
-            )
+            .holder_continue_issuance(continue_issuance_dto, organisation, storage_access)
             .await
     }
 

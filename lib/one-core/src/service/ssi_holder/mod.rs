@@ -3,7 +3,6 @@ use std::sync::Arc;
 use super::certificate::validator::CertificateValidator;
 use crate::config::core_config;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
-use crate::provider::caching_loader::vct::VctTypeMetadataCache;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -56,7 +55,6 @@ pub struct SSIHolderService {
     certificate_validator: Arc<dyn CertificateValidator>,
     config: Arc<core_config::CoreConfig>,
     client: Arc<dyn HttpClient>,
-    vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
@@ -83,7 +81,6 @@ impl SSIHolderService {
         certificate_validator: Arc<dyn CertificateValidator>,
         config: Arc<core_config::CoreConfig>,
         client: Arc<dyn HttpClient>,
-        vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
     ) -> Self {
         Self {
@@ -107,7 +104,6 @@ impl SSIHolderService {
             certificate_validator,
             config,
             client,
-            vct_type_metadata_cache,
             blob_storage_provider,
         }
     }

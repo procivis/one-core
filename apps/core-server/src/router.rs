@@ -345,6 +345,30 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 post(ssi::issuance::draft13::controller::oid4vci_draft13_credential_notification),
             )
             .route(
+                "/ssi/openid4vci/final-1.0/{id}/.well-known/openid-credential-issuer",
+                get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_issuer_metadata),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0/{id}/.well-known/openid-configuration",
+                get(ssi::issuance::final1_0::controller::oid4vci_final1_0_service_discovery),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0/{credential_schema_id}/offer/{credential_id}",
+                get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_credential_offer),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0/{id}/token",
+                post(ssi::issuance::final1_0::controller::oid4vci_final1_0_create_token),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0/{id}/credential",
+                post(ssi::issuance::final1_0::controller::oid4vci_final1_0_create_credential),
+            )
+            .route(
+                "/ssi/openid4vci/final-1.0/{id}/notification",
+                post(ssi::issuance::final1_0::controller::oid4vci_final1_0_credential_notification),
+            )
+            .route(
                 "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-credential-issuer",
                 get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_get_issuer_metadata),
             )

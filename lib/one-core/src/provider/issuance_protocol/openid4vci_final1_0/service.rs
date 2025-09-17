@@ -29,8 +29,8 @@ use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCICredentialConfigurationData;
-use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCICredentialConfigurationData;
+use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
     throw_if_interaction_created_date, throw_if_interaction_pre_authorized_code_used,
     throw_if_token_request_invalid, validate_refresh_token,
 };
@@ -247,7 +247,7 @@ pub(crate) fn create_service_discovery_response(
 }
 
 pub(crate) fn get_protocol_base_url(base_url: &str) -> String {
-    format!("{base_url}/ssi/openid4vci/draft-13")
+    format!("{base_url}/ssi/openid4vci/final-1.0")
 }
 
 pub(crate) fn get_credential_schema_base_url(

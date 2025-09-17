@@ -20,10 +20,10 @@ use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
     create_claims_from_credential_definition, extract_offered_claims, parse_mdoc_schema_claims,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     CreateCredentialSchemaRequestDTO, OpenID4VCICredentialValueDetails,
     OpenID4VCIIssuerMetadataResponseDTO,
 };

@@ -26,7 +26,6 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
-use crate::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialSubject, DetailCredential, IdentifierDetails,
@@ -36,7 +35,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
@@ -45,7 +44,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -1643,7 +1641,7 @@ async fn test_continue_issuance() {
     issuance_protocol
         .expect_holder_continue_issuance()
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
                 credentials: vec![credential.clone()],
@@ -1753,7 +1751,6 @@ async fn test_initiate_issuance_pkce() {
 
 fn mock_ssi_holder_service() -> SSIHolderService {
     let client = Arc::new(ReqwestClient::default());
-    let remote_entity_storage = Arc::new(MockRemoteEntityStorage::new());
 
     SSIHolderService {
         credential_repository: Arc::new(MockCredentialRepository::new()),
@@ -1776,14 +1773,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         blob_storage_provider: Arc::new(MockBlobStorageProvider::new()),
         certificate_validator: Arc::new(MockCertificateValidator::new()),
         config: Arc::new(generic_config().core),
-        client: client.clone(),
-        vct_type_metadata_cache: Arc::new(VctTypeMetadataCache::new(
-            Arc::new(VctTypeMetadataResolver::new(client)),
-            remote_entity_storage,
-            0,
-            Duration::seconds(60),
-            Duration::seconds(60),
-        )),
+        client,
     }
 }
 

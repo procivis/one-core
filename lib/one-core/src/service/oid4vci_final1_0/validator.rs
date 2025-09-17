@@ -6,7 +6,7 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::service::error::ServiceError;
@@ -106,10 +106,10 @@ pub(super) fn validate_config_entity_presence(
     if !config
         .issuance_protocol
         .iter()
-        .any(|(_, v)| v.r#type == IssuanceProtocolType::OpenId4VciDraft13)
+        .any(|(_, v)| v.r#type == IssuanceProtocolType::OpenId4VciFinal1_0)
     {
         Err(ConfigValidationError::EntryNotFound(
-            "No exchange method with type OPENID4VC".to_string(),
+            "No exchange method with type OPENID4VCI_FINAL1".to_string(),
         ))
     } else {
         Ok(())

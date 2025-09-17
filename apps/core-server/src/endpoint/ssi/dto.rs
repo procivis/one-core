@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use one_core::provider::did_method::dto::{
     DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO,
 };
-use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
 use one_core::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseAlgorithm,

@@ -4,8 +4,13 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
+use super::{IssuanceProtocol, IssuanceProtocolError, StorageAccess};
+use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
+pub mod handle_invitation_operations;
 use anyhow::Context;
 use async_trait::async_trait;
+use handle_invitation_operations::HandleInvitationOperations;
 use indexmap::IndexMap;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
@@ -18,9 +23,6 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
-use super::{IssuanceProtocol, IssuanceProtocolError, StorageAccess};
-use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
@@ -67,14 +69,12 @@ use crate::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCRejectionIdentifierParams, ShareResponse,
     SubmitIssuerResponse, UpdateResponse,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
-    HandleInvitationOperations, HandleInvitationOperationsAccess,
-};
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::HandleInvitationOperationsAccess;
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
     create_credential, extract_offered_claims, get_credential_offer_url,
     parse_credential_issuer_params,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
@@ -83,11 +83,11 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO, OpenID4VCIProofRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::provider::issuance_protocol::openid4vci_draft13::service::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     create_credential_offer, get_protocol_base_url,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::validator::validate_issuer;
+use crate::provider::issuance_protocol::openid4vci_final1_0::validator::validate_issuer;
 use crate::provider::issuance_protocol::{
     BuildCredentialSchemaResponse, deserialize_interaction_data, serialize_interaction_data,
 };
@@ -107,7 +107,7 @@ use crate::service::certificate::validator::{
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
-use crate::service::oid4vci_draft13::service::credentials_format;
+use crate::service::oid4vci_final1_0::service::credentials_format;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
@@ -116,7 +116,6 @@ use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
-pub mod handle_invitation_operations;
 pub(crate) mod mapper;
 pub mod model;
 pub mod proof_formatter;
@@ -130,7 +129,7 @@ pub mod validator;
 const CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY: &str = "credential_offer";
 const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 
-pub(crate) struct OpenID4VCI13 {
+pub(crate) struct OpenID4VCIFinal1_0 {
     client: Arc<dyn HttpClient>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
@@ -150,7 +149,7 @@ pub(crate) struct OpenID4VCI13 {
     handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
 }
 
-impl OpenID4VCI13 {
+impl OpenID4VCIFinal1_0 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         client: Arc<dyn HttpClient>,
@@ -171,50 +170,6 @@ impl OpenID4VCI13 {
         handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
     ) -> Self {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
-        Self {
-            client,
-            credential_repository,
-            validity_credential_repository,
-            revocation_list_repository,
-            history_repository,
-            formatter_provider,
-            revocation_provider,
-            did_method_provider,
-            key_algorithm_provider,
-            key_provider,
-            base_url,
-            protocol_base_url,
-            config,
-            params,
-            certificate_validator,
-            blob_storage_provider,
-            handle_invitation_operations,
-        }
-    }
-
-    #[allow(clippy::too_many_arguments)]
-    pub fn new_with_custom_version(
-        client: Arc<dyn HttpClient>,
-        credential_repository: Arc<dyn CredentialRepository>,
-        validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-        revocation_list_repository: Arc<dyn RevocationListRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
-        revocation_provider: Arc<dyn RevocationMethodProvider>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        key_provider: Arc<dyn KeyProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
-        blob_storage_provider: Arc<dyn BlobStorageProvider>,
-        base_url: Option<String>,
-        config: Arc<CoreConfig>,
-        params: OpenID4VCIParams,
-        protocol_version: &str,
-        handle_invitation_operations: Arc<dyn HandleInvitationOperations>,
-    ) -> Self {
-        let protocol_base_url = base_url
-            .as_ref()
-            .map(|url| format!("{url}/ssi/openid4vci/{protocol_version}"));
         Self {
             client,
             credential_repository,
@@ -861,7 +816,7 @@ impl OpenID4VCI13 {
 }
 
 #[async_trait]
-impl IssuanceProtocol for OpenID4VCI13 {
+impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     fn holder_can_handle(&self, url: &Url) -> bool {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
@@ -889,9 +844,9 @@ impl IssuanceProtocol for OpenID4VCI13 {
             &*self.client,
             &*self.certificate_validator,
             storage_access,
-            &*self.handle_invitation_operations,
             redirect_uri,
             &self.config,
+            &*self.handle_invitation_operations,
         )
         .await
     }
@@ -1545,9 +1500,9 @@ async fn handle_credential_invitation(
     client: &dyn HttpClient,
     certificate_validator: &dyn CertificateValidator,
     storage_access: &StorageAccess,
-    handle_invitation_operations: &HandleInvitationOperationsAccess,
     redirect_uri: Option<String>,
     config: &CoreConfig,
+    handle_invitation_operations: &HandleInvitationOperationsAccess,
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
@@ -1709,8 +1664,8 @@ async fn handle_credential_invitation(
             issuer_certificate,
             credential_offer.credential_subject.as_ref(),
             storage_access,
-            handle_invitation_operations,
             None,
+            handle_invitation_operations,
         )
         .await?;
 
@@ -1784,8 +1739,8 @@ async fn handle_continue_issuance(
             None,
             None,
             storage_access,
-            handle_invitation_operations,
             Some(continue_issuance_dto),
+            handle_invitation_operations,
         )
         .await?;
 
@@ -1808,8 +1763,8 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     issuer_certificate: Option<Certificate>,
     credential_subject: Option<&ExtendedSubjectDTO>,
     storage_access: &StorageAccess,
-    handle_invitation_operations: &HandleInvitationOperationsAccess,
     continue_issuance: Option<ContinueIssuanceDTO>,
+    handle_invitation_operations: &HandleInvitationOperationsAccess,
 ) -> Result<
     (
         InteractionId,

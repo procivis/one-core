@@ -33,10 +33,9 @@ use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
-use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
-use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO, CredentialIssuerParams,
     CredentialSchemaDetailResponseDTO, OpenID4VCICredentialValueDetails,
 };
@@ -879,7 +878,7 @@ pub(crate) fn create_credential(
         issuance_date: None,
         last_modified: now,
         deleted_at: None,
-        protocol: "OPENID4VCI_DRAFT13".to_string(), // this will be rewritten later in SSIHolderService
+        protocol: "OPENID4VCI_FINAL1".to_string(), // this will be rewritten later in SSIHolderService
         redirect_uri,
         role: CredentialRole::Holder,
         state: CredentialStateEnum::Pending,
@@ -1019,20 +1018,20 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
     }
 }
 
-impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
-    fn from(value: CredentialSchemaClaim) -> Self {
-        Self {
-            id: value.schema.id,
-            created_date: value.schema.created_date,
-            last_modified: value.schema.last_modified,
-            key: value.schema.key,
-            datatype: value.schema.data_type,
-            required: value.required,
-            array: value.schema.array,
-            claims: vec![],
-        }
-    }
-}
+// impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
+//     fn from(value: CredentialSchemaClaim) -> Self {
+//         Self {
+//             id: value.schema.id,
+//             created_date: value.schema.created_date,
+//             last_modified: value.schema.last_modified,
+//             key: value.schema.key,
+//             datatype: value.schema.data_type,
+//             required: value.required,
+//             array: value.schema.array,
+//             claims: vec![],
+//         }
+//     }
+// }
 
 pub(super) fn credentials_supported_mdoc(
     schema: CredentialSchema,

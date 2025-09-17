@@ -34,12 +34,11 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl;
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::{
+use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, OpenID4VCIProofTypeSupported, OpenID4VCITxCode, SubmitIssuerResponse,
     UpdateResponse,
 };
+use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::{
     IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
@@ -493,22 +492,8 @@ impl SSIHolderService {
             self.key_algorithm_provider.clone(),
         );
 
-        let handle_operations = HandleInvitationOperationsImpl::new(
-            organisation.clone(),
-            self.credential_schema_repository.clone(),
-            self.vct_type_metadata_cache.clone(),
-            self.client.clone(),
-            self.formatter_provider.clone(),
-        );
-
         let result = issuance_protocol
-            .holder_handle_invitation(
-                url,
-                organisation,
-                &storage_access,
-                &handle_operations,
-                redirect_uri,
-            )
+            .holder_handle_invitation(url, organisation, &storage_access, redirect_uri)
             .await?;
 
         match result {
@@ -808,15 +793,7 @@ impl SSIHolderService {
             self.key_algorithm_provider.clone(),
         );
 
-        let handle_operations = HandleInvitationOperationsImpl::new(
-            organisation.clone(),
-            self.credential_schema_repository.clone(),
-            self.vct_type_metadata_cache.clone(),
-            self.client.clone(),
-            self.formatter_provider.clone(),
-        );
-
-        let issuance_protocol::openid4vci_draft13::model::ContinueIssuanceResponseDTO {
+        let issuance_protocol::model::ContinueIssuanceResponseDTO {
             credentials,
             interaction_id,
             mut issuer_proof_type_supported,
@@ -845,7 +822,6 @@ impl SSIHolderService {
                 },
                 organisation,
                 &storage_access,
-                &handle_operations,
             )
             .await?;
 

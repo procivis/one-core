@@ -36,7 +36,7 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::IssuanceProtocolCapabilities;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
+use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;

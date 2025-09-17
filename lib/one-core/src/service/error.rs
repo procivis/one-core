@@ -22,9 +22,8 @@ use crate::model::revocation_list::RevocationListId;
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
-use crate::provider::issuance_protocol::error::{IssuanceProtocolError, TxCodeError};
-use crate::provider::issuance_protocol::openid4vci_draft13::error::{
-    OpenID4VCIError, OpenIDIssuanceError,
+use crate::provider::issuance_protocol::error::{
+    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError, TxCodeError,
 };
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;

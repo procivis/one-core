@@ -37,7 +37,7 @@ use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialClaim, CredentialClaimValue, IdentifierDetails,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIParams;
+use crate::provider::issuance_protocol::model::OpenID4VCIParams;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;

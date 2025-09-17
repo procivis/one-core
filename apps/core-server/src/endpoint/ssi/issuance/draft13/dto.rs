@@ -1,6 +1,7 @@
 use indexmap::IndexMap;
 use one_core::common_mapper::{opt_secret_string, secret_string};
-use one_core::provider::issuance_protocol::openid4vci_draft13::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::error::OpenID4VCIError;
+use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
@@ -9,7 +10,7 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINotificationEvent,
     OpenID4VCINotificationRequestDTO, OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCIProofRequestDTO,
-    OpenID4VCIProofTypeSupported, OpenID4VCITokenResponseDTO,
+    OpenID4VCITokenResponseDTO,
 };
 use one_core::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};

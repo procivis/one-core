@@ -65,6 +65,7 @@ use crate::service::identifier::IdentifierService;
 use crate::service::key::KeyService;
 use crate::service::nfc::NfcService;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
+use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::revocation_list::RevocationListService;
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
@@ -157,6 +158,7 @@ pub struct OneCore {
     pub revocation_list_service: RevocationListService,
     pub oid4vci_draft13_service: OID4VCIDraft13Service,
     pub oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService,
+    pub oid4vci_final1_0_service: OID4VCIFinal1_0Service,
     pub oid4vp_draft20_service: OID4VPDraft20Service,
     pub oid4vp_draft25_service: OID4VPDraft25Service,
     pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
@@ -494,10 +496,12 @@ impl OneCore {
             &mut core_config.issuance_protocol,
             providers.core_base_url.clone(),
             data_provider.get_credential_repository(),
+            data_provider.get_credential_schema_repository(),
             data_provider.get_validity_credential_repository(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_history_repository(),
             credential_formatter_provider.clone(),
+            vct_type_metadata_cache,
             key_provider.clone(),
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
@@ -631,6 +635,25 @@ impl OneCore {
                 certificate_validator.clone(),
             ),
             oid4vci_draft13_service: OID4VCIDraft13Service::new(
+                providers.core_base_url.clone(),
+                data_provider.get_credential_schema_repository(),
+                data_provider.get_credential_repository(),
+                data_provider.get_interaction_repository(),
+                data_provider.get_revocation_list_repository(),
+                data_provider.get_validity_credential_repository(),
+                data_provider.get_key_repository(),
+                config.clone(),
+                issuance_provider.clone(),
+                key_provider.clone(),
+                data_provider.get_did_repository(),
+                data_provider.get_identifier_repository(),
+                did_method_provider.clone(),
+                key_algorithm_provider.clone(),
+                credential_formatter_provider.clone(),
+                revocation_method_provider.clone(),
+                certificate_validator.clone(),
+            ),
+            oid4vci_final1_0_service: OID4VCIFinal1_0Service::new(
                 providers.core_base_url.clone(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
@@ -818,7 +841,6 @@ impl OneCore {
                 certificate_validator.clone(),
                 config.clone(),
                 client.clone(),
-                vct_type_metadata_cache,
                 blob_storage_provider,
             ),
             ssi_wallet_provider_service: SSIWalletProviderService::new(

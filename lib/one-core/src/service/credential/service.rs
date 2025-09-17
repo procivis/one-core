@@ -27,7 +27,7 @@ use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
-use crate::provider::issuance_protocol::openid4vci_draft13::model::ShareResponse;
+use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
 };

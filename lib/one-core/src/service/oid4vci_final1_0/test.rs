@@ -12,7 +12,7 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::OID4VCIDraft13Service;
+use super::OID4VCIFinal1_0Service;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -35,7 +35,7 @@ use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
 use crate::provider::issuance_protocol::model::SubmitIssuerResponse;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::*;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
@@ -75,8 +75,8 @@ struct Mocks {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
-    OID4VCIDraft13Service::new(
+fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
+    OID4VCIFinal1_0Service::new(
         Some("http://127.0.0.1:3000".to_string()),
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
@@ -591,7 +591,7 @@ async fn test_create_token() {
         .returning(move |_, _| Ok(Some(clone.clone())));
 
     let credential = dummy_credential(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
         false,
         Some(schema.clone()),
@@ -709,7 +709,7 @@ async fn test_create_token_pre_authorized_code_used() {
             .once()
             .return_once(move |_, _| {
                 Ok(vec![dummy_credential(
-                    "OPENID4VCI_DRAFT13",
+                    "OPENID4VCI_FINAL1",
                     CredentialStateEnum::Pending,
                     true,
                     Some(clone),
@@ -766,7 +766,7 @@ async fn test_create_token_wrong_credential_state() {
             .once()
             .return_once(move |_, _| {
                 Ok(vec![dummy_credential(
-                    "OPENID4VCI_DRAFT13",
+                    "OPENID4VCI_FINAL1",
                     CredentialStateEnum::Offered,
                     false,
                     Some(clone),
@@ -811,7 +811,7 @@ async fn test_create_credential_success() {
 
     let schema = generic_credential_schema();
     let credential = dummy_credential(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
         true,
         Some(schema.clone()),
@@ -1016,7 +1016,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
     let mut schema = generic_credential_schema();
     schema.format = "SD_JWT_VC".to_string();
     let credential = dummy_credential(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
         true,
         Some(schema.clone()),
@@ -1215,7 +1215,7 @@ async fn test_create_credential_success_mdoc() {
         ..generic_credential_schema()
     };
     let credential = dummy_credential(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
         true,
         Some(schema.clone()),
@@ -1824,7 +1824,7 @@ async fn test_create_credential_issuer_failed() {
 
     let schema = generic_credential_schema();
     let credential = dummy_credential(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
         true,
         Some(schema.clone()),
@@ -2038,7 +2038,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         });
 
     let credential = dummy_credential(
-        "OPENID4VCI_DRAFT13",
+        "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
         false,
         Some(schema.clone()),
@@ -2129,7 +2129,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
             Some(refresh_token_expires_at),
         )),
         ..dummy_credential(
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             CredentialStateEnum::Accepted,
             false,
             Some(schema.clone()),
@@ -2216,7 +2216,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             Some(refresh_token_expires_at),
         )),
         ..dummy_credential(
-            "OPENID4VCI_DRAFT13",
+            "OPENID4VCI_FINAL1",
             CredentialStateEnum::Accepted,
             false,
             Some(schema.clone()),
