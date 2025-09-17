@@ -23,7 +23,7 @@ async fn test_get_credential_issuer_metadata_jwt() {
     let resp = context
         .api
         .ssi
-        .openid_credential_issuer(credential_schema.id)
+        .openid_credential_issuer_draft13(credential_schema.id)
         .await;
 
     // THEN
@@ -76,7 +76,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt() {
     let resp = context
         .api
         .ssi
-        .openid_credential_issuer(credential_schema.id)
+        .openid_credential_issuer_draft13(credential_schema.id)
         .await;
 
     // THEN
@@ -130,7 +130,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt_vc() {
     let resp = context
         .api
         .ssi
-        .openid_credential_issuer(credential_schema.id)
+        .openid_credential_issuer_draft13(credential_schema.id)
         .await;
 
     // THEN
@@ -186,7 +186,7 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
     let resp = context
         .api
         .ssi
-        .openid_credential_issuer(credential_schema.id)
+        .openid_credential_issuer_draft13(credential_schema.id)
         .await;
 
     // THEN

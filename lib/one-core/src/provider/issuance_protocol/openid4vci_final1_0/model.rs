@@ -58,6 +58,7 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_issuer: String,
     pub authorization_servers: Option<Vec<String>>,
     pub credential_endpoint: String,
+    pub nonce_endpoint: Option<String>,
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,

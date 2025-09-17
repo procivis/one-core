@@ -345,7 +345,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 post(ssi::issuance::draft13::controller::oid4vci_draft13_credential_notification),
             )
             .route(
-                "/ssi/openid4vci/final-1.0/{id}/.well-known/openid-credential-issuer",
+                "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_issuer_metadata),
             )
             .route(

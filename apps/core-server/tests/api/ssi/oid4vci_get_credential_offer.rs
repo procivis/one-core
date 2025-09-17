@@ -525,7 +525,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
     let resp = context
         .api
         .ssi
-        .openid_credential_issuer(credential_schema.id)
+        .openid_credential_issuer_draft13(credential_schema.id)
         .await;
 
     // THEN

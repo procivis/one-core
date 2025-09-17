@@ -30,6 +30,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
+    pub nonce_endpoint: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
 }
 

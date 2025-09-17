@@ -37,6 +37,7 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
                 .map(|(key, value)| (key, value.into()))
                 .collect(),
             display: convert_inner_of_inner(value.display),
+            nonce_endpoint: value.nonce_endpoint,
         }
     }
 }

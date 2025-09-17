@@ -75,7 +75,6 @@ impl OID4VCIFinal1_0Service {
                 .ok_or(ServiceError::MappingError(
                     "Host URL not specified".to_string(),
                 ))?;
-        let base_url = get_credential_schema_base_url(credential_schema_id, protocol_base_url);
 
         let schema = self
             .credential_schema_repository
@@ -117,7 +116,7 @@ impl OID4VCIFinal1_0Service {
             .collect();
 
         create_issuer_metadata_response(
-            &base_url,
+            protocol_base_url,
             &oidc_format,
             &schema,
             &self.config,

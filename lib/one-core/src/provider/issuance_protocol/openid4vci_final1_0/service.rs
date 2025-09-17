@@ -36,7 +36,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
 };
 
 pub(crate) fn create_issuer_metadata_response(
-    schema_base_url: &str,
+    base_url: &str,
     oidc_format: &str,
     schema: &CredentialSchema,
     config: &CoreConfig,
@@ -52,10 +52,13 @@ pub(crate) fn create_issuer_metadata_response(
         proof_types_supported,
         credential_signing_alg_values_supported,
     )?;
+
+    let schema_base_url = get_credential_schema_base_url(&schema.id, base_url);
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
         authorization_servers: None,
         credential_endpoint: format!("{schema_base_url}/credential"),
+        nonce_endpoint: Some(format!("{base_url}/nonce")),
         notification_endpoint: Some(format!("{schema_base_url}/notification")),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
