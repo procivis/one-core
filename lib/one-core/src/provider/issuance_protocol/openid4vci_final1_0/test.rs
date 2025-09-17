@@ -605,6 +605,7 @@ async fn test_holder_accept_credential_success() {
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
+            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         };
 
         credential.interaction = Some(Interaction {
@@ -623,11 +624,11 @@ async fn test_holder_accept_credential_success() {
         .and(path("/token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                   "access_token": "321",
-                   "token_type": "bearer",
-                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                   "refresh_token": "321",
-                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "access_token": "321",
+                "token_type": "bearer",
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": "321",
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -649,7 +650,7 @@ async fn test_holder_accept_credential_success() {
         .and(path("/credential"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                "credential": "credential",
+                "credentials": [{"credential": "credential"}],
                 "notification_id": "notification_id"
             }
         )))
@@ -815,6 +816,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
+            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         };
 
         credential.interaction = Some(Interaction {
@@ -833,11 +835,11 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .and(path("/token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                   "access_token": "321",
-                   "token_type": "bearer",
-                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                   "refresh_token": "321",
-                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "access_token": "321",
+                "token_type": "bearer",
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": "321",
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -848,7 +850,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .and(path("/nonce"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                   "c_nonce": "123"
+                "c_nonce": "123"
             }
         )))
         .expect(1)
@@ -859,7 +861,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .and(path("/credential"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                "credential": "credential",
+                "credentials": [{"credential": "credential"}],
                 "notification_id": "notification_id"
             }
         )))
@@ -1035,6 +1037,7 @@ async fn test_holder_accept_expired_credential_fails() {
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
+            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         };
 
         credential.interaction = Some(Interaction {
@@ -1053,11 +1056,11 @@ async fn test_holder_accept_expired_credential_fails() {
         .and(path("/token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                   "access_token": "321",
-                   "token_type": "bearer",
-                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                   "refresh_token": "321",
-                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "access_token": "321",
+                "token_type": "bearer",
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": "321",
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -1079,7 +1082,7 @@ async fn test_holder_accept_expired_credential_fails() {
         .and(path("/credential"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                "credential": "credential",
+                "credentials": [{"credential": "credential"}],
                 "notification_id": "notification_id"
             }
         )))
@@ -1232,6 +1235,7 @@ async fn test_holder_reject_credential() {
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
+            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         };
 
         credential.interaction = Some(Interaction {
@@ -1250,11 +1254,11 @@ async fn test_holder_reject_credential() {
         .and(path("/token"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                   "access_token": "321",
-                   "token_type": "bearer",
-                   "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                   "refresh_token": "321",
-                   "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "access_token": "321",
+                "token_type": "bearer",
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": "321",
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
             }
         )))
         .expect(1)
@@ -1276,7 +1280,7 @@ async fn test_holder_reject_credential() {
         .and(path("/credential"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
-                "credential": "credential",
+                "credentials": [{"credential": "credential"}],
                 "notification_id": "notification_id"
             }
         )))

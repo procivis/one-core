@@ -13,13 +13,11 @@ use super::dto::{
     OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
     OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
     OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
-    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
+    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCINonceResponseRestDTO,
+    OpenID4VCINotificationRequestRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::endpoint::ssi::issuance::final1_0::dto::{
-    OpenID4VCINonceResponseRestDTO, OpenID4VCINotificationRequestRestDTO,
-};
 use crate::router::AppState;
 
 #[utoipa::path(

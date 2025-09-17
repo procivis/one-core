@@ -1,14 +1,17 @@
-use one_dto_mapper::{From, Into};
 use serde::Deserialize;
 
-use crate::provider::issuance_protocol::model::SubmitIssuerResponse;
-
-#[derive(Clone, Debug, Deserialize, Into, From)]
-#[into(SubmitIssuerResponse)]
-#[from(SubmitIssuerResponse)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCICredentialResponseDTO {
-    pub credential: String,
     #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
+
+    pub credentials: Option<Vec<OpenID4VCICredentialResponseEntryDTO>>,
+    pub transaction_id: Option<String>,
+    pub interval: Option<u64>,
     pub notification_id: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OpenID4VCICredentialResponseEntryDTO {
+    pub credential: String,
 }

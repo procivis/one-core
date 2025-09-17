@@ -4,14 +4,11 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
-use super::{IssuanceProtocol, IssuanceProtocolError, StorageAccess};
-use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
-pub mod handle_invitation_operations;
 use anyhow::Context;
 use async_trait::async_trait;
 use handle_invitation_operations::HandleInvitationOperations;
 use indexmap::IndexMap;
+use maplit::hashmap;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use secrecy::ExposeSecret;
@@ -23,6 +20,35 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
+use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
+use super::error::TxCodeError;
+use super::mapper::{get_issued_credential_update, interaction_from_handle_invitation};
+use super::model::{
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIProofTypeSupported,
+    OpenID4VCRejectionIdentifierParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+};
+use super::openid4vci_final1_0::handle_invitation_operations::HandleInvitationOperationsAccess;
+use super::openid4vci_final1_0::mapper::{
+    create_credential, extract_offered_claims, get_credential_offer_url,
+    parse_credential_issuer_params,
+};
+use super::openid4vci_final1_0::model::{
+    ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
+    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
+    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+};
+use super::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
+use super::openid4vci_final1_0::service::{create_credential_offer, get_protocol_base_url};
+use super::openid4vci_final1_0::validator::validate_issuer;
+use super::{
+    BuildCredentialSchemaResponse, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
+    deserialize_interaction_data, serialize_interaction_data,
+};
+use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
@@ -59,37 +85,6 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
-use crate::provider::issuance_protocol::dto::Features;
-use crate::provider::issuance_protocol::error::TxCodeError;
-use crate::provider::issuance_protocol::mapper::{
-    get_issued_credential_update, interaction_from_handle_invitation,
-};
-use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIProofTypeSupported,
-    OpenID4VCRejectionIdentifierParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
-};
-use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::HandleInvitationOperationsAccess;
-use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
-    create_credential, extract_offered_claims, get_credential_offer_url,
-    parse_credential_issuer_params,
-};
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
-    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
-    OpenID4VCIProofRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-};
-use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
-use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
-    create_credential_offer, get_protocol_base_url,
-};
-use crate::provider::issuance_protocol::openid4vci_final1_0::validator::validate_issuer;
-use crate::provider::issuance_protocol::{
-    BuildCredentialSchemaResponse, deserialize_interaction_data, serialize_interaction_data,
-};
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::{KeyProvider, SignatureProviderImpl};
@@ -106,15 +101,17 @@ use crate::service::certificate::validator::{
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
+use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
 use crate::service::oid4vci_final1_0::service::credentials_format;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
+use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
+pub mod handle_invitation_operations;
 pub(crate) mod mapper;
 pub mod model;
 pub mod proof_formatter;
@@ -710,21 +707,10 @@ impl OpenID4VCIFinal1_0 {
         interaction_data: &HolderInteractionData,
         holder_did: &DidValue,
         holder_key: PublicKeyJwk,
-        schema: &CredentialSchema,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
         access_token: &str,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
-        let format_type = self
-            .config
-            .format
-            .get_fields(&schema.format)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            .r#type;
-
-        let oid4vc_format = map_to_openid4vp_format(&format_type)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
         // Very basic support for JWK as crypto binding method for EUDI
         let jwk = match interaction_data
             .cryptographic_binding_methods_supported
@@ -762,27 +748,12 @@ impl OpenID4VCIFinal1_0 {
         .await
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        let (credential_definition, doctype) = match oid4vc_format {
-            "mso_mdoc" => (None, Some(schema.schema_id.to_owned())),
-            _ => (
-                Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                None,
-            ),
-        };
-
         let body = OpenID4VCICredentialRequestDTO {
-            format: oid4vc_format.to_owned(),
-            vct: (schema.schema_type == CredentialSchemaType::SdJwtVc)
-                .then_some(schema.schema_id.to_owned()),
-            doctype,
-            proof: OpenID4VCIProofRequestDTO {
-                proof_type: "jwt".to_string(),
-                jwt: proof_jwt,
-            },
-            credential_definition,
+            credential_identifier: None,
+            credential_configuration_id: Some(
+                interaction_data.credential_configuration_id.to_owned(),
+            ),
+            proofs: Some(hashmap! {"jwt".to_string() => vec![proof_jwt]}),
         };
 
         let response = self
@@ -802,10 +773,26 @@ impl OpenID4VCIFinal1_0 {
             .context("status error")
             .map_err(IssuanceProtocolError::Transport)?;
 
-        response
+        let response: OpenID4VCICredentialResponseDTO = response
             .json()
             .context("parsing error")
-            .map_err(IssuanceProtocolError::Transport)
+            .map_err(IssuanceProtocolError::Transport)?;
+
+        Ok(SubmitIssuerResponse {
+            credential: response
+                .credentials
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing credential".to_string(),
+                ))?
+                .first()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing credential".to_string(),
+                ))?
+                .credential
+                .to_owned(),
+            redirect_uri: response.redirect_uri,
+            notification_id: response.notification_id,
+        })
     }
 
     async fn upsert_credential_blob(
@@ -974,7 +961,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &interaction_data,
                 &holder_did.did,
                 key,
-                schema,
                 Some(nonce),
                 auth_fn,
                 token_response.access_token.expose_secret(),
@@ -1048,10 +1034,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         };
 
         // issue the credential and then immediately notify its deletion to mimic user rejection
-        let schema = credential
-            .schema
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
         // construct a temporary in-memory key/did
         let key_algorithm = self
@@ -1153,7 +1135,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &interaction_data,
                 &holder_did,
                 jwk,
-                schema,
                 Some(nonce),
                 auth_fn,
                 access_token,
@@ -1852,6 +1833,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         cryptographic_binding_methods_supported: credential_config
             .cryptographic_binding_methods_supported
             .clone(),
+        credential_configuration_id: configuration_id.to_owned(),
     };
     let data = serialize_interaction_data(&holder_data)?;
 

@@ -11,7 +11,7 @@ use tokio_util::either::Either;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
-use super::dto::OpenID4VCICredentialResponseDTO;
+use super::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCICredentialResponseEntryDTO};
 use super::mapper::interaction_data_to_dto;
 use super::validator::{
     throw_if_access_token_invalid, throw_if_credential_request_invalid, validate_config_entity,
@@ -337,16 +337,21 @@ impl OID4VCIFinal1_0Service {
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
 
-        let (holder_identifier, holder_key_id) = if request.proof.proof_type == "jwt" {
+        let (holder_identifier, holder_key_id) = if let Some(jwt) = request
+            .proofs
+            .as_ref()
+            .and_then(|proofs| proofs.get("jwt"))
+            .and_then(|jwts| jwts.first())
+        {
             let verified_proof = OpenID4VCIProofJWTFormatter::verify_proof(
-                &request.proof.jwt,
+                jwt,
                 Box::new(KeyVerification {
                     key_algorithm_provider: self.key_algorithm_provider.clone(),
                     did_method_provider: self.did_method_provider.clone(),
                     key_role: KeyRole::Authentication,
                     certificate_validator: self.certificate_validator.clone(),
                 }),
-                &None, // TODO: ONE-7232: check incoming nonce
+                &None, // TODO: ONE-6733: check incoming nonce
             )
             .await
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
@@ -422,7 +427,15 @@ impl OID4VCIFinal1_0Service {
                         .await?;
                 }
 
-                Ok(issued_credential.into())
+                Ok(OpenID4VCICredentialResponseDTO {
+                    redirect_uri: issued_credential.redirect_uri,
+                    credentials: Some(vec![OpenID4VCICredentialResponseEntryDTO {
+                        credential: issued_credential.credential,
+                    }]),
+                    transaction_id: None,
+                    interval: None,
+                    notification_id: issued_credential.notification_id,
+                })
             }
             Err(err @ IssuanceProtocolError::Suspended)
             | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {

@@ -83,6 +83,8 @@ pub(crate) struct HolderInteractionData {
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
+
+    pub credential_configuration_id: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -219,17 +221,9 @@ pub struct OpenID4VCICredentialDefinitionRequestDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCICredentialRequestDTO {
-    pub format: String,
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    pub doctype: Option<String>,
-    pub vct: Option<String>,
-    pub proof: OpenID4VCIProofRequestDTO,
-}
-
-#[derive(Clone, Debug, Serialize)]
-pub struct OpenID4VCIProofRequestDTO {
-    pub proof_type: String,
-    pub jwt: String,
+    pub credential_configuration_id: Option<String>,
+    pub credential_identifier: Option<String>,
+    pub proofs: Option<HashMap<String, Vec<String>>>,
 }
 
 #[derive(Clone, Debug, Serialize)]

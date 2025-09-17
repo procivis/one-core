@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use maplit::hashmap;
 use mockall::predicate::{always, eq};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -986,23 +987,21 @@ async fn test_create_credential_success() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
 
     let result = result.unwrap();
-    assert_eq!("xyz", result.credential);
+    assert_eq!(
+        "xyz",
+        result.credentials.unwrap().first().unwrap().credential
+    );
 }
 
 #[tokio::test]
@@ -1184,21 +1183,21 @@ async fn test_create_credential_success_sd_jwt_vc() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "vc+sd-jwt".to_string(),
-                credential_definition: None,
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
-                },
-                vct: Some(schema.schema_id),
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
 
-    //assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!("xyz", result.credential);
+    assert_eq!(
+        "xyz",
+        result.credentials.unwrap().first().unwrap().credential
+    );
 }
 
 #[tokio::test]
@@ -1383,25 +1382,26 @@ async fn test_create_credential_success_mdoc() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "mso_mdoc".to_string(),
-                credential_definition: None,
-                doctype: Some(schema.schema_id),
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
-    assert_eq!("xyz", result.credential);
+    assert_eq!(
+        "xyz",
+        result.credentials.unwrap().first().unwrap().credential
+    );
 }
 
 #[tokio::test]
-async fn test_create_credential_format_invalid() {
+async fn test_create_credential_configuration_id_invalid() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let schema = generic_credential_schema();
@@ -1424,158 +1424,11 @@ async fn test_create_credential_format_invalid() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "some_string".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
+                credential_identifier: None,
+                credential_configuration_id: Some("invalid".to_string()),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() => vec!["".to_string()]
                 }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
-            },
-        )
-        .await;
-
-    assert!(result.is_err());
-    assert!(matches!(
-        result,
-        Err(ServiceError::OpenIDIssuanceError(
-            OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
-        ))
-    ));
-}
-
-#[tokio::test]
-async fn test_create_credential_format_invalid_for_credential_schema() {
-    let mut repository = MockCredentialSchemaRepository::default();
-
-    let schema = generic_credential_schema();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-    let service = setup_service(Mocks {
-        credential_schema_repository: repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(
-            &schema.id,
-            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            OpenID4VCICredentialRequestDTO {
-                format: "vc+sd-jwt".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
-            },
-        )
-        .await;
-
-    assert!(result.is_err());
-    assert!(matches!(
-        result,
-        Err(ServiceError::OpenID4VCIError(
-            OpenID4VCIError::UnsupportedCredentialFormat
-        ))
-    ));
-}
-
-#[tokio::test]
-async fn test_create_credential_invalid_vct_for_credential_schema() {
-    let mut repository = MockCredentialSchemaRepository::default();
-
-    let mut schema = generic_credential_schema();
-    schema.format = "SD_JWT_VC".to_string();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-    let service = setup_service(Mocks {
-        credential_schema_repository: repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(
-            &schema.id,
-            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            OpenID4VCICredentialRequestDTO {
-                format: "vc+sd-jwt".to_string(),
-                credential_definition: None,
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: Some("not-schema-id".to_string()),
-            },
-        )
-        .await;
-    assert!(result.is_err());
-    assert!(matches!(
-        result,
-        Err(ServiceError::OpenID4VCIError(
-            OpenID4VCIError::UnsupportedCredentialType
-        ))
-    ));
-}
-
-#[tokio::test]
-async fn test_create_credential_format_invalid_credential_definition() {
-    let mut repository = MockCredentialSchemaRepository::default();
-
-    let schema = generic_credential_schema();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(eq(schema.id.to_owned()), always())
-            .returning(move |_, _| Ok(Some(clone.clone())));
-    }
-    let service = setup_service(Mocks {
-        credential_schema_repository: repository,
-        config: generic_config().core,
-        ..Default::default()
-    });
-
-    let result = service
-        .create_credential(
-            &schema.id,
-            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
-            OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["some string".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
             },
         )
         .await;
@@ -1613,17 +1466,12 @@ async fn test_create_credential_format_invalid_bearer_token() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
@@ -1670,17 +1518,12 @@ async fn test_create_credential_pre_authorized_code_not_used() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
@@ -1727,17 +1570,12 @@ async fn test_create_credential_interaction_data_invalid() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
             OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
@@ -1792,17 +1630,12 @@ async fn test_create_credential_access_token_expired() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "".to_string(),
-                    jwt: "".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
@@ -1996,17 +1829,12 @@ async fn test_create_credential_issuer_failed() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                format: "jwt_vc_json".to_string(),
-                credential_definition: Some(OpenID4VCICredentialDefinitionRequestDTO {
-                    r#type: vec!["VerifiableCredential".to_string()],
-                    credential_subject: None,
-                }),
-                doctype: None,
-                proof: OpenID4VCIProofRequestDTO {
-                    proof_type: "jwt".to_string(),
-                    jwt: "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string(),
-                },
-                vct: None,
+                credential_identifier: None,
+                credential_configuration_id: Some(schema.schema_id),
+                proofs: Some(hashmap! {
+                    "jwt".to_string() =>
+                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
+                    }),
             },
         )
         .await;
