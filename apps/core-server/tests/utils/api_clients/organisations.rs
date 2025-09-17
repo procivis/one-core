@@ -1,12 +1,25 @@
 use std::fmt::Display;
 
+use serde::Serialize;
 use serde_json::json;
+use serde_with::skip_serializing_none;
+use shared_types::IdentifierId;
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
 
 pub struct OrganisationsApi {
     client: HttpClient,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpsertParams {
+    pub deactivate: Option<bool>,
+    pub name: Option<String>,
+    pub wallet_provider: Option<Option<String>>,
+    pub wallet_provider_issuer: Option<Option<IdentifierId>>,
 }
 
 impl OrganisationsApi {
@@ -27,23 +40,12 @@ impl OrganisationsApi {
         self.client.post("/api/organisation/v1", body).await
     }
 
-    pub async fn upsert(
-        &self,
-        id: &impl Display,
-        name: Option<&str>,
-        deactivate: Option<bool>,
-    ) -> Response {
-        let mut body = json!({});
-
-        if let Some(deactivate) = deactivate {
-            body["deactivate"] = json!(deactivate);
-        }
-
-        if let Some(name) = name {
-            body["name"] = json!(name);
-        }
+    pub async fn upsert(&self, id: &impl Display, params: UpsertParams) -> Response {
         self.client
-            .put(&format!("/api/organisation/v1/{id}"), body)
+            .put(
+                &format!("/api/organisation/v1/{id}"),
+                Some(serde_json::to_value(params).unwrap()),
+            )
             .await
     }
 

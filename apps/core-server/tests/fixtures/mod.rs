@@ -168,6 +168,8 @@ pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     };
 
     data_layer

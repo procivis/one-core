@@ -34,8 +34,8 @@ impl From<Identifier> for ActiveModel {
     }
 }
 
-impl From<entity::identifier::Model> for Identifier {
-    fn from(value: entity::identifier::Model) -> Self {
+impl From<identifier::Model> for Identifier {
+    fn from(value: identifier::Model) -> Self {
         Self {
             id: value.id,
             created_date: value.created_date,
@@ -51,6 +51,8 @@ impl From<entity::identifier::Model> for Identifier {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
             }),
             did: None,
             key: None,

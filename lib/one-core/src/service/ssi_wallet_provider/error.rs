@@ -33,4 +33,10 @@ pub enum WalletProviderError {
     AppIntegrityCheckNotRequired,
     #[error("Wallet unit already exists")]
     WalletUnitAlreadyExists,
+    #[error("Wallet provider not associated with any organisation")]
+    WalletProviderNotAssociatedWithOrganisation,
+    #[error("Invalid wallet provider")]
+    WalletProviderNotConfigured,
+    #[error("Wallet provider organisation disabled")]
+    WalletProviderOrganisationDisabled,
 }

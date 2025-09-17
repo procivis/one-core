@@ -24,12 +24,15 @@ async fn activate_wallet_unit_nonce_expired() {
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            public_key: Some(holder_public_jwk),
-            status: Some(WalletUnitStatus::Pending),
-            nonce: Some(nonce.to_string()),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                public_key: Some(holder_public_jwk),
+                status: Some(WalletUnitStatus::Pending),
+                nonce: Some(nonce.to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // when
@@ -66,13 +69,16 @@ async fn activate_wallet_unit_attestation_invalid() {
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            public_key: None,
-            status: Some(WalletUnitStatus::Pending),
-            nonce: Some("nonce-1234".to_string()),
-            last_modified: Some(OffsetDateTime::now_utc()),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                public_key: None,
+                status: Some(WalletUnitStatus::Pending),
+                nonce: Some("nonce-1234".to_string()),
+                last_modified: Some(OffsetDateTime::now_utc()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // when
@@ -106,10 +112,13 @@ async fn activate_wallet_unit_nonce_wrong_state() {
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            public_key: Some(holder_public_jwk),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                public_key: Some(holder_public_jwk),
+                ..Default::default()
+            },
+        )
         .await;
 
     // when

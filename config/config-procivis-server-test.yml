@@ -27,4 +27,3 @@ walletProvider:
         lifetime:
           expirationTime: 86400 # 24*60*60 seconds
           minimumRefreshTime: 60
-        issuerIdentifier: UUID # -> use ES256 key

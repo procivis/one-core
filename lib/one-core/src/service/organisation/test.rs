@@ -8,6 +8,7 @@ use uuid::Uuid;
 use super::OrganisationService;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
+use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::organisation::dto::CreateOrganisationRequestDTO;
@@ -16,6 +17,8 @@ use crate::service::test_utilities::dummy_organisation;
 fn setup_service(organisation_repository: MockOrganisationRepository) -> OrganisationService {
     OrganisationService {
         organisation_repository: Arc::new(organisation_repository),
+        identifier_repository: Arc::new(MockIdentifierRepository::new()),
+        core_config: Arc::new(Default::default()),
     }
 }
 

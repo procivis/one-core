@@ -9,7 +9,7 @@ use crate::utils::db_clients::wallet_units::TestWalletUnit;
 #[tokio::test]
 async fn test_list_wallet_unit_success() {
     // GIVEN
-    let context = TestContext::new(None).await;
+    let (context, org) = TestContext::new_with_organisation(None).await;
 
     for i in 1..15 {
         let holder_key_pair = Ecdsa.generate_key().unwrap();
@@ -17,11 +17,14 @@ async fn test_list_wallet_unit_success() {
         context
             .db
             .wallet_units
-            .create(TestWalletUnit {
-                name: Some(format!("wallet_{i}")),
-                public_key: Some(holder_public_jwk),
-                ..Default::default()
-            })
+            .create(
+                org.clone(),
+                TestWalletUnit {
+                    name: Some(format!("wallet_{i}")),
+                    public_key: Some(holder_public_jwk),
+                    ..Default::default()
+                },
+            )
             .await;
     }
 
@@ -51,16 +54,19 @@ async fn test_list_wallet_unit_success() {
 #[tokio::test]
 async fn test_list_wallet_unit_revoked_success() {
     // GIVEN
-    let context = TestContext::new(None).await;
+    let (context, org) = TestContext::new_with_organisation(None).await;
 
     for i in 1..10 {
         context
             .db
             .wallet_units
-            .create(TestWalletUnit {
-                name: Some(format!("wallet_{i}")),
-                ..Default::default()
-            })
+            .create(
+                org.clone(),
+                TestWalletUnit {
+                    name: Some(format!("wallet_{i}")),
+                    ..Default::default()
+                },
+            )
             .await;
     }
 
@@ -68,10 +74,13 @@ async fn test_list_wallet_unit_revoked_success() {
         context
             .db
             .wallet_units
-            .create(TestWalletUnit {
-                status: Some(WalletUnitStatus::Revoked),
-                ..Default::default()
-            })
+            .create(
+                org.clone(),
+                TestWalletUnit {
+                    status: Some(WalletUnitStatus::Revoked),
+                    ..Default::default()
+                },
+            )
             .await;
     }
 

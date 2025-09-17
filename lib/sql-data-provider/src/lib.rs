@@ -266,7 +266,10 @@ impl DataLayer {
 
         let blob_repository = Arc::new(BlobProvider::new(db.clone()));
 
-        let wallet_unit_repository = Arc::new(WalletUnitProvider { db: db.clone() });
+        let wallet_unit_repository = Arc::new(WalletUnitProvider {
+            db: db.clone(),
+            organisation_repository: organisation_repository.clone(),
+        });
 
         let wallet_unit_attestation_repository = Arc::new(WalletUnitAttestationProvider {
             db: db.clone(),

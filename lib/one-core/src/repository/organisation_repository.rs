@@ -22,5 +22,10 @@ pub trait OrganisationRepository: Send + Sync {
         relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError>;
 
+    async fn get_organisation_for_wallet_provider(
+        &self,
+        wallet_provider: &str,
+    ) -> Result<Option<Organisation>, DataLayerError>;
+
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError>;
 }

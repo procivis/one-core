@@ -23,7 +23,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         &self,
         request: WalletUnit,
     ) -> Result<WalletUnitId, DataLayerError> {
-        let wallet_unit = wallet_unit::ActiveModel::from(request)
+        let wallet_unit = wallet_unit::ActiveModel::try_from(request)?
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -34,14 +34,30 @@ impl WalletUnitRepository for WalletUnitProvider {
     async fn get_wallet_unit(
         &self,
         id: &WalletUnitId,
-        _relations: &WalletUnitRelations,
+        relations: &WalletUnitRelations,
     ) -> Result<Option<WalletUnit>, DataLayerError> {
-        let wallet_unit = wallet_unit::Entity::find_by_id(id)
+        let Some(wallet_unit) = wallet_unit::Entity::find_by_id(id)
             .one(&self.db)
             .await
-            .map_err(to_data_layer_error)?;
+            .map_err(to_data_layer_error)?
+        else {
+            return Ok(None);
+        };
+        let organisation_id = wallet_unit.organisation_id;
+        let mut wallet_unit = WalletUnit::from(wallet_unit);
 
-        Ok(convert_inner(wallet_unit))
+        if let Some(org_relations) = &relations.organisation {
+            let org = self
+                .organisation_repository
+                .get_organisation(&organisation_id, org_relations)
+                .await?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "wallet_unit-organisation",
+                    id: organisation_id.to_string(),
+                })?;
+            wallet_unit.organisation = Some(org);
+        }
+        Ok(Some(wallet_unit))
     }
 
     async fn get_wallet_unit_list(

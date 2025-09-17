@@ -949,10 +949,21 @@ impl TryFrom<UpsertOrganisationRequestBindingDTO> for UpsertOrganisationRequestD
     type Error = ErrorResponseBindingDTO;
 
     fn try_from(value: UpsertOrganisationRequestBindingDTO) -> Result<Self, Self::Error> {
+        let wallet_provider_issuer = value
+            .wallet_provider_issuer
+            .map(|val| {
+                Option::<String>::from(val)
+                    .map(|val| into_id(&val))
+                    .transpose()
+            })
+            .transpose()?;
+
         Ok(Self {
             id: into_id(&value.id)?,
             name: value.name,
             deactivate: value.deactivate,
+            wallet_provider: convert_inner(value.wallet_provider),
+            wallet_provider_issuer,
         })
     }
 }

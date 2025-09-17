@@ -8,11 +8,11 @@ use crate::utils::field_match::FieldHelpers;
 #[tokio::test]
 async fn test_get_wallet_unit_success() {
     // GIVEN
-    let context = TestContext::new(None).await;
+    let (context, org) = TestContext::new_with_organisation(None).await;
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit::default())
+        .create(org, TestWalletUnit::default())
         .await;
 
     // WHEN
@@ -37,14 +37,17 @@ async fn test_get_wallet_unit_success() {
 #[tokio::test]
 async fn test_get_revoked_wallet_unit_success() {
     // GIVEN
-    let context = TestContext::new(None).await;
+    let (context, org) = TestContext::new_with_organisation(None).await;
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            status: Some(WalletUnitStatus::Revoked),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                status: Some(WalletUnitStatus::Revoked),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN

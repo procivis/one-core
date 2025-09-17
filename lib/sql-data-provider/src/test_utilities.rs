@@ -356,6 +356,8 @@ pub async fn insert_organisation_to_database(
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
         deactivated_at: NotSet,
+        wallet_provider: NotSet,
+        wallet_provider_issuer: NotSet,
     }
     .insert(database)
     .await?;
@@ -590,6 +592,8 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     }
 }
 

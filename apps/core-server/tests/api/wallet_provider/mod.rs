@@ -1,8 +1,7 @@
 use std::ops::Add;
-use std::str::FromStr;
 
 use one_core::model::identifier::{IdentifierState, IdentifierType};
-use one_core::model::organisation::Organisation;
+use one_core::model::organisation::{Organisation, UpdateOrganisationRequest};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::model::GeneratedKey;
@@ -12,7 +11,6 @@ use one_core::util::jwt::{Jwt, JwtPublicKeyInfo};
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use time::{Duration, OffsetDateTime};
-use uuid::Uuid;
 
 use crate::fixtures::{TestingIdentifierParams, TestingKeyParams};
 use crate::utils::context::TestContext;
@@ -81,17 +79,12 @@ async fn create_wallet_unit_attestation_issuer_identifier(
             },
         )
         .await;
-    context
+    let identifier = context
         .db
         .identifiers
         .create(
             org,
             TestingIdentifierParams {
-                id: Some(
-                    Uuid::from_str("dea4b53c-4d0e-4d93-ae81-2c996996a2fe") // has to match config walletProvider.PROCIVIS_ONE.params.public.issuerIdentifier
-                        .unwrap()
-                        .into(),
-                ),
                 r#type: Some(IdentifierType::Key),
                 state: Some(IdentifierState::Active),
                 key: Some(issuer_key),
@@ -99,5 +92,16 @@ async fn create_wallet_unit_attestation_issuer_identifier(
                 ..Default::default()
             },
         )
+        .await;
+    context
+        .db
+        .organisations
+        .update(UpdateOrganisationRequest {
+            id: org.id,
+            name: None,
+            deactivate: None,
+            wallet_provider: Some(Some("PROCIVIS_ONE".to_string())),
+            wallet_provider_issuer: Some(Some(identifier.id)),
+        })
         .await;
 }

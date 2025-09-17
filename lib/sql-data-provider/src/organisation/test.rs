@@ -37,6 +37,8 @@ async fn test_create_organisation() {
         created_date: now,
         last_modified: now,
         deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     };
 
     let result = repository.create_organisation(organisation).await;
@@ -111,6 +113,8 @@ async fn test_update_organisation() {
         id: org_id,
         name: Some("name".to_string()),
         deactivate: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     };
 
     let result = repository.update_organisation(request).await;

@@ -88,6 +88,8 @@ async fn holder_register_success() {
                 last_modified: get_dummy_date(),
                 name: "Org".to_string(),
                 deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
             }))
         });
 
@@ -253,6 +255,8 @@ async fn holder_refresh_success_active() {
                 last_modified: get_dummy_date(),
                 name: "Org".to_string(),
                 deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
             };
             move |id, _rels| {
                 check!(id == &organisation_id);

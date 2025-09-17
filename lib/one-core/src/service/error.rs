@@ -451,6 +451,12 @@ pub enum BusinessLogicError {
 
     #[error("Presentation submission must contain at least one credential")]
     EmptyPresentationSubmission,
+
+    #[error("Identifier does not belong to this organisation")]
+    IdentifierOrganisationMismatch,
+
+    #[error("Wallet provider is already associated to organisation `{0}`")]
+    WalletProviderAlreadyAssociated(OrganisationId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1392,6 +1398,18 @@ pub enum ErrorCode {
 
     #[strum(message = "App integrity check not required")]
     BR_0281,
+
+    #[strum(message = "Wallet provider already associated")]
+    BR_0283,
+
+    #[strum(message = "Wallet provider not configured")]
+    BR_0284,
+
+    #[strum(message = "Identifier does not belong to this organisation")]
+    BR_0285,
+
+    #[strum(message = "Wallet provider not associated with any organisation")]
+    BR_0286,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1563,6 +1581,8 @@ impl ErrorCodeMixin for BusinessLogicError {
             }
             Self::EmptyPresentationSubmission => ErrorCode::BR_0246,
             Self::CertificateAlreadyExists => ErrorCode::BR_0247,
+            Self::IdentifierOrganisationMismatch => ErrorCode::BR_0248,
+            Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
         }
     }
 }
@@ -1787,6 +1807,10 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::AppIntegrityCheckRequired => ErrorCode::BR_0270,
             Self::WalletUnitAlreadyExists => ErrorCode::BR_0271,
             Self::AppIntegrityCheckNotRequired => ErrorCode::BR_0279,
+            Self::WalletProviderNotConfigured | Self::WalletProviderOrganisationDisabled => {
+                ErrorCode::BR_0284
+            }
+            Self::WalletProviderNotAssociatedWithOrganisation => ErrorCode::BR_0286,
         }
     }
 }

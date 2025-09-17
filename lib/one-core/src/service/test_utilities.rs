@@ -460,6 +460,8 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     }
 }
 

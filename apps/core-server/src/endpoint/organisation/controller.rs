@@ -1,7 +1,6 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
-use one_core::service::organisation::dto::UpsertOrganisationRequestDTO;
 use shared_types::OrganisationId;
 
 use super::dto::{
@@ -12,6 +11,7 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{
     CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
 };
+use crate::endpoint::organisation::mapper::upsert_request_from_request;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -96,7 +96,7 @@ pub(crate) async fn post_organisation(
 }
 
 #[utoipa::path(
-    put,
+    patch,
     path = "/api/organisation/v1/{id}",
     params(
         ("id" = OrganisationId, Path, description = "Organization id")
@@ -114,7 +114,7 @@ pub(crate) async fn post_organisation(
     "},
 )]
 #[axum::debug_handler]
-pub(crate) async fn put_organisation(
+pub(crate) async fn patch_organisation(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,
     WithRejection(Json(request), _): WithRejection<
@@ -122,15 +122,10 @@ pub(crate) async fn put_organisation(
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
-    let request = UpsertOrganisationRequestDTO {
-        id,
-        name: request.name,
-        deactivate: request.deactivate,
-    };
     let result = state
         .core
         .organisation_service
-        .upsert_organisation(request)
+        .upsert_organisation(upsert_request_from_request(id, request))
         .await;
     EmptyOrErrorResponse::from_result(result, state, "upserting organization")
 }

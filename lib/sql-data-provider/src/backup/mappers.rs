@@ -71,6 +71,8 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                     created_date: value.organisation_created_date,
                     last_modified: value.organisation_last_modified,
                     deactivated_at: value.organisation_deactivated_at,
+                    wallet_provider: value.organisation_wallet_provider,
+                    wallet_provider_issuer: value.organisation_wallet_provider_issuer,
                 }),
                 // todo: this should be fixed in another ticket
                 layout_type: LayoutType::Card,

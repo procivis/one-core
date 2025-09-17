@@ -41,8 +41,14 @@ impl OrganisationsDB {
                 id: *id,
                 name: None,
                 deactivate: Some(true),
+                wallet_provider: None,
+                wallet_provider_issuer: None,
             })
             .await
             .unwrap();
+    }
+
+    pub async fn update(&self, request: UpdateOrganisationRequest) {
+        self.repository.update_organisation(request).await.unwrap();
     }
 }

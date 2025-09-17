@@ -8,6 +8,9 @@ use super::dto::{
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::organisation::validator::{
+    validate_wallet_provider, validate_wallet_provider_issuer,
+};
 
 impl OrganisationService {
     /// Returns all existing organisations
@@ -68,6 +71,24 @@ impl OrganisationService {
         &self,
         request: UpsertOrganisationRequestDTO,
     ) -> Result<(), ServiceError> {
+        if let Some(Some(issuer)) = request.wallet_provider_issuer {
+            let org = self
+                .organisation_repository
+                .get_organisation(&request.id, &Default::default())
+                .await?;
+            let id = org.as_ref().map(|org| &org.id);
+            validate_wallet_provider_issuer(id, issuer, &*self.identifier_repository).await?;
+        }
+
+        if let Some(Some(wallet_provider)) = &request.wallet_provider {
+            validate_wallet_provider(
+                wallet_provider,
+                &self.core_config,
+                &*self.organisation_repository,
+            )
+            .await?;
+        }
+
         let result = self
             .organisation_repository
             .update_organisation(request.clone().into())

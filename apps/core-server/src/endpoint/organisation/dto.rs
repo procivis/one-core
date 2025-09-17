@@ -4,7 +4,7 @@ use one_core::service::organisation::dto::{
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::OrganisationId;
+use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -21,7 +21,6 @@ pub(crate) struct CreateOrganisationRequestRestDTO {
     pub name: Option<String>,
 }
 
-#[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UpsertOrganisationRequestRestDTO {
@@ -29,6 +28,10 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     pub name: Option<String>,
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    pub wallet_provider: Option<Option<String>>,
+    #[serde(default, with = "::serde_with::rust::double_option")]
+    pub wallet_provider_issuer: Option<Option<IdentifierId>>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -53,4 +56,6 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time_option")]
     pub deactivated_at: Option<OffsetDateTime>,
+    pub wallet_provider: Option<String>,
+    pub wallet_provider_issuer: Option<IdentifierId>,
 }

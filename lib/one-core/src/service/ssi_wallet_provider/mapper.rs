@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::{Fields, WalletProviderType};
 use crate::model::key::PublicKeyJwk;
+use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
@@ -13,6 +14,7 @@ use crate::service::ssi_wallet_provider::error::WalletProviderError;
 
 pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,
+    organisation: Organisation,
     config: &Fields<WalletProviderType>,
     public_key: Option<&PublicKeyJwk>,
     now: OffsetDateTime,
@@ -39,6 +41,7 @@ pub(crate) fn wallet_unit_from_request(
         wallet_provider_type: config.r#type.into(),
         public_key: encoded_public_key,
         nonce,
+        organisation: Some(organisation),
     })
 }
 

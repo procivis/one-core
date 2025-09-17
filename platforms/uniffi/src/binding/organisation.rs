@@ -1,4 +1,5 @@
 use super::OneCoreBinding;
+use crate::binding::mapper::OptionalString;
 use crate::error::BindingError;
 
 #[uniffi::export(async_runtime = "tokio")]
@@ -40,4 +41,6 @@ pub struct UpsertOrganisationRequestBindingDTO {
     pub id: String,
     pub name: Option<String>,
     pub deactivate: Option<bool>,
+    pub wallet_provider: Option<OptionalString>,
+    pub wallet_provider_issuer: Option<OptionalString>,
 }

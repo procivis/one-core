@@ -8,6 +8,7 @@ use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use crate::config;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+use crate::model::organisation::{Organisation, OrganisationRelations};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WalletUnit {
@@ -22,6 +23,9 @@ pub struct WalletUnit {
     pub public_key: Option<String>,
     pub last_issuance: Option<OffsetDateTime>,
     pub nonce: Option<String>,
+
+    // Relations:
+    pub organisation: Option<Organisation>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display)]
@@ -45,12 +49,15 @@ pub enum WalletUnitStatus {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into(config::core_config::WalletProviderType)]
 #[from(config::core_config::WalletProviderType)]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum WalletProviderType {
     ProcivisOne,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
-pub struct WalletUnitRelations {}
+pub struct WalletUnitRelations {
+    pub organisation: Option<OrganisationRelations>,
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SortableWalletUnitColumn {

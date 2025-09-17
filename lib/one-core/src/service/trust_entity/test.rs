@@ -150,6 +150,8 @@ async fn test_create_trust_entity_success() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
             }))
         });
 
@@ -221,6 +223,8 @@ async fn test_create_trust_entity_failed_only_one_entity_can_be_created_for_one_
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 deactivated_at: None,
+                wallet_provider: None,
+                wallet_provider_issuer: None,
             }))
         });
 
@@ -462,6 +466,8 @@ async fn test_publisher_get_remote_trust_entity_success() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     });
 
     test_data
@@ -481,6 +487,8 @@ async fn test_publisher_get_remote_trust_entity_success() {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         deactivated_at: None,
+        wallet_provider: None,
+        wallet_provider_issuer: None,
     });
 
     test_data

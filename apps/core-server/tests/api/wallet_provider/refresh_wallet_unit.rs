@@ -24,10 +24,13 @@ async fn test_refresh_wallet_unit_successfully() {
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            public_key: Some(holder_public_jwk),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                public_key: Some(holder_public_jwk),
+                ..Default::default()
+            },
+        )
         .await;
 
     let proof =
@@ -95,11 +98,14 @@ async fn test_refresh_wallet_unit_failed_with_revoked_wallet_unit() {
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            public_key: Some(holder_public_jwk),
-            status: Some(WalletUnitStatus::Revoked),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                public_key: Some(holder_public_jwk),
+                status: Some(WalletUnitStatus::Revoked),
+                ..Default::default()
+            },
+        )
         .await;
 
     let proof =
@@ -142,11 +148,14 @@ async fn test_refresh_wallet_unit_failed_with_refresh_before_minimum_refresh_tim
     let wallet_unit = context
         .db
         .wallet_units
-        .create(TestWalletUnit {
-            public_key: Some(holder_public_jwk),
-            last_issuance: Some(Some(now)),
-            ..Default::default()
-        })
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                public_key: Some(holder_public_jwk),
+                last_issuance: Some(Some(now)),
+                ..Default::default()
+            },
+        )
         .await;
 
     let proof =

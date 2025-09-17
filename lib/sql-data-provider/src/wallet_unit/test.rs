@@ -1,5 +1,6 @@
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
+use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, UpdateWalletUnitRequest, WalletProviderType, WalletUnit,
     WalletUnitFilterValue, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
@@ -7,53 +8,50 @@ use one_core::model::wallet_unit::{
 };
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use sea_orm::{ActiveModelTrait, Set};
-use shared_types::WalletUnitId;
+use shared_types::{OrganisationId, WalletUnitId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::WalletUnitProvider;
 use crate::entity::wallet_unit::{self};
-use crate::test_utilities::{get_dummy_date, setup_test_data_layer_and_connection};
+use crate::test_utilities::{
+    get_dummy_date, insert_organisation_to_database, setup_test_data_layer_and_connection,
+};
 
 struct TestSetup {
     pub provider: WalletUnitProvider,
-    pub wallet_unit_id: WalletUnitId,
+    pub wallet_unit_ids: Vec<WalletUnitId>,
+    pub organisation_id: OrganisationId,
 }
 
-async fn setup() -> TestSetup {
+async fn setup(n: usize) -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let wallet_unit_id = insert_wallet_unit_to_database(&db, None).await;
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+    let mut wallet_unit_ids = vec![];
+    for i in 0..n {
+        let wallet_unit_id =
+            insert_wallet_unit_to_database(&db, organisation_id, format!("wallet{i}")).await;
+        wallet_unit_ids.push(wallet_unit_id);
+    }
 
     TestSetup {
-        provider: WalletUnitProvider { db },
-        wallet_unit_id,
-    }
-}
-
-struct TestListSetup {
-    pub provider: WalletUnitProvider,
-    pub wallet_unit_ids: Vec<WalletUnitId>,
-}
-
-async fn setup_list() -> TestListSetup {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let db = data_layer.db;
-
-    let wallet_unit_id1 = insert_wallet_unit_to_database(&db, Some("wallet1")).await;
-    let wallet_unit_id2 = insert_wallet_unit_to_database(&db, Some("wallet2")).await;
-    let wallet_unit_id3 = insert_wallet_unit_to_database(&db, Some("wallet3")).await;
-
-    TestListSetup {
-        provider: WalletUnitProvider { db },
-        wallet_unit_ids: vec![wallet_unit_id1, wallet_unit_id2, wallet_unit_id3],
+        provider: WalletUnitProvider {
+            db,
+            organisation_repository: data_layer.organisation_repository,
+        },
+        organisation_id,
+        wallet_unit_ids,
     }
 }
 
 async fn insert_wallet_unit_to_database(
     db: &sea_orm::DatabaseConnection,
-    name: Option<&str>,
+    organisation_id: OrganisationId,
+    name: String,
 ) -> WalletUnitId {
     let id: WalletUnitId = Uuid::new_v4().into();
     let now = get_dummy_date();
@@ -66,13 +64,14 @@ async fn insert_wallet_unit_to_database(
         created_date: Set(now),
         last_modified: Set(now),
         last_issuance: Set(Some(now)),
-        name: Set(name.unwrap_or("test_wallet").to_string()),
+        name: Set(name),
         os: Set(wallet_unit::WalletUnitOs::Android),
         status: Set(wallet_unit::WalletUnitStatus::Active),
         wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
         wallet_provider_name: Set("Test Provider Name".to_string()),
         public_key: Set(Some(format!("test_public_key_{unique_suffix}"))),
         nonce: Set(None),
+        organisation_id: Set(organisation_id),
     }
     .insert(db)
     .await
@@ -81,7 +80,7 @@ async fn insert_wallet_unit_to_database(
     id
 }
 
-fn dummy_wallet_unit(id: WalletUnitId) -> WalletUnit {
+fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
     let now = get_dummy_date();
     WalletUnit {
         id,
@@ -95,18 +94,25 @@ fn dummy_wallet_unit(id: WalletUnitId) -> WalletUnit {
         wallet_provider_name: "Test Provider Name".to_string(),
         public_key: Some(format!("test_public_key_{id}")),
         nonce: None,
+        organisation: Some(Organisation {
+            id: org,
+            name: "dummy org".to_string(),
+            created_date: now,
+            last_modified: now,
+            deactivated_at: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+        }),
     }
 }
 
 #[tokio::test]
 async fn test_create_wallet_unit_success() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider {
-        db: data_layer.db.clone(),
-    };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-    let wallet_unit = dummy_wallet_unit(wallet_unit_id);
+    let wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
 
     let result = provider.create_wallet_unit(wallet_unit.clone()).await;
     assert!(result.is_ok());
@@ -137,18 +143,18 @@ async fn test_create_wallet_unit_success() {
 
 #[tokio::test]
 async fn test_create_wallet_unit_duplicate_id() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-    let wallet_unit1 = dummy_wallet_unit(wallet_unit_id);
+    let wallet_unit1 = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
 
     // Create first wallet unit
     let result1 = provider.create_wallet_unit(wallet_unit1).await;
     assert!(result1.is_ok());
 
     // Try to create second wallet unit with same ID - should fail
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id, Uuid::new_v4().into());
     wallet_unit2.public_key = Some(format!("different_key_{wallet_unit_id}"));
 
     let result2 = provider.create_wallet_unit(wallet_unit2).await;
@@ -157,20 +163,20 @@ async fn test_create_wallet_unit_duplicate_id() {
 
 #[tokio::test]
 async fn test_create_wallet_unit_duplicate_public_key() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
 
-    let wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
 
     // Create first wallet unit
     let result1 = provider.create_wallet_unit(wallet_unit1.clone()).await;
     assert!(result1.is_ok());
 
     // Try to create second wallet unit with same public key - should fail
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.public_key = wallet_unit1.public_key; // Same public key
 
     let result2 = provider.create_wallet_unit(wallet_unit2).await;
@@ -179,12 +185,12 @@ async fn test_create_wallet_unit_duplicate_public_key() {
 
 #[tokio::test]
 async fn test_create_wallet_unit_different_statuses() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Test creating with ACTIVE status
     let active_id: WalletUnitId = Uuid::new_v4().into();
-    let mut active_wallet_unit = dummy_wallet_unit(active_id);
+    let mut active_wallet_unit = dummy_wallet_unit(active_id, test_setup.organisation_id);
     active_wallet_unit.status = WalletUnitStatus::Active;
 
     let result_active = provider.create_wallet_unit(active_wallet_unit).await;
@@ -192,7 +198,7 @@ async fn test_create_wallet_unit_different_statuses() {
 
     // Test creating with REVOKED status
     let revoked_id: WalletUnitId = Uuid::new_v4().into();
-    let mut revoked_wallet_unit = dummy_wallet_unit(revoked_id);
+    let mut revoked_wallet_unit = dummy_wallet_unit(revoked_id, test_setup.organisation_id);
     revoked_wallet_unit.status = WalletUnitStatus::Revoked;
 
     let result_revoked = provider.create_wallet_unit(revoked_wallet_unit).await;
@@ -216,12 +222,12 @@ async fn test_create_wallet_unit_different_statuses() {
 
 #[tokio::test]
 async fn test_create_wallet_unit_different_os_types() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Test creating with ANDROID OS
     let android_id: WalletUnitId = Uuid::new_v4().into();
-    let mut android_wallet_unit = dummy_wallet_unit(android_id);
+    let mut android_wallet_unit = dummy_wallet_unit(android_id, test_setup.organisation_id);
     android_wallet_unit.os = WalletUnitOs::Android;
 
     let result_android = provider.create_wallet_unit(android_wallet_unit).await;
@@ -229,7 +235,7 @@ async fn test_create_wallet_unit_different_os_types() {
 
     // Test creating with iOS OS
     let ios_id: WalletUnitId = Uuid::new_v4().into();
-    let mut ios_wallet_unit = dummy_wallet_unit(ios_id);
+    let mut ios_wallet_unit = dummy_wallet_unit(ios_id, test_setup.organisation_id);
     ios_wallet_unit.os = WalletUnitOs::Ios;
 
     let result_ios = provider.create_wallet_unit(ios_wallet_unit).await;
@@ -253,15 +259,15 @@ async fn test_create_wallet_unit_different_os_types() {
 
 #[tokio::test]
 async fn test_create_and_list_wallet_units() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create multiple wallet units
     let mut created_ids = Vec::new();
 
     for i in 0..3 {
         let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = format!("wallet_{i}");
 
         let result = provider.create_wallet_unit(wallet_unit).await;
@@ -297,12 +303,12 @@ async fn test_create_and_list_wallet_units() {
 async fn test_get_wallet_unit_success() {
     let TestSetup {
         provider,
-        wallet_unit_id,
+        wallet_unit_ids,
         ..
-    } = setup().await;
+    } = setup(1).await;
 
     let result = provider
-        .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
+        .get_wallet_unit(&wallet_unit_ids[0], &WalletUnitRelations::default())
         .await;
 
     assert!(result.is_ok());
@@ -310,8 +316,8 @@ async fn test_get_wallet_unit_success() {
     assert!(wallet_unit.is_some());
 
     let wallet_unit = wallet_unit.unwrap();
-    assert_eq!(wallet_unit.id, wallet_unit_id);
-    assert_eq!(wallet_unit.name, "test_wallet");
+    assert_eq!(wallet_unit.id, wallet_unit_ids[0]);
+    assert_eq!(wallet_unit.name, "wallet0");
     assert_eq!(wallet_unit.os, WalletUnitOs::Android);
     assert_eq!(wallet_unit.status, WalletUnitStatus::Active);
     assert_eq!(
@@ -329,7 +335,7 @@ async fn test_get_wallet_unit_success() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_missing() {
-    let TestSetup { provider, .. } = setup().await;
+    let TestSetup { provider, .. } = setup(0).await;
 
     let result = provider
         .get_wallet_unit(&Uuid::new_v4().into(), &WalletUnitRelations::default())
@@ -341,11 +347,11 @@ async fn test_get_wallet_unit_missing() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_no_filters() {
-    let TestListSetup {
+    let TestSetup {
         provider,
         wallet_unit_ids,
         ..
-    } = setup_list().await;
+    } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -374,7 +380,7 @@ async fn test_get_wallet_unit_list_no_filters() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_pagination() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -397,7 +403,7 @@ async fn test_get_wallet_unit_list_with_pagination() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_name_filter() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -426,7 +432,7 @@ async fn test_get_wallet_unit_list_with_name_filter() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_status_filter() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -454,7 +460,7 @@ async fn test_get_wallet_unit_list_with_status_filter() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_sorting() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -479,16 +485,16 @@ async fn test_get_wallet_unit_list_with_sorting() {
 
     // Check that names are sorted in ascending order
     let names: Vec<&String> = data.values.iter().map(|wu| &wu.name).collect();
-    assert_eq!(names, vec!["wallet1", "wallet2", "wallet3"]);
+    assert_eq!(names, vec!["wallet0", "wallet1", "wallet2"]);
 }
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_ids_filter() {
-    let TestListSetup {
+    let TestSetup {
         provider,
         wallet_unit_ids,
         ..
-    } = setup_list().await;
+    } = setup(3).await;
 
     let target_ids = vec![wallet_unit_ids[0], wallet_unit_ids[2]];
 
@@ -516,7 +522,7 @@ async fn test_get_wallet_unit_list_with_ids_filter() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_wallet_provider_type_filter() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -546,7 +552,7 @@ async fn test_get_wallet_unit_list_with_wallet_provider_type_filter() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_with_os_filter() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -570,7 +576,7 @@ async fn test_get_wallet_unit_list_with_os_filter() {
 
 #[tokio::test]
 async fn test_get_wallet_unit_list_empty_result() {
-    let TestListSetup { provider, .. } = setup_list().await;
+    let TestSetup { provider, .. } = setup(3).await;
 
     let query = WalletUnitListQuery {
         pagination: Some(ListPagination {
@@ -595,14 +601,12 @@ async fn test_get_wallet_unit_list_empty_result() {
 
 #[tokio::test]
 async fn test_update_wallet_unit_status_success() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider {
-        db: data_layer.db.clone(),
-    };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create a wallet unit first with ACTIVE status
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
     wallet_unit.status = WalletUnitStatus::Active;
     let original_name = wallet_unit.name.clone();
     let original_os = wallet_unit.os;
@@ -653,8 +657,8 @@ async fn test_update_wallet_unit_status_success() {
 
 #[tokio::test]
 async fn test_update_wallet_unit_nonexistent() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     let nonexistent_id: WalletUnitId = Uuid::new_v4().into();
     let update_request = UpdateWalletUnitRequest {
@@ -673,14 +677,12 @@ async fn test_update_wallet_unit_nonexistent() {
 
 #[tokio::test]
 async fn test_update_wallet_unit_empty_request() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider {
-        db: data_layer.db.clone(),
-    };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create a wallet unit first
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-    let wallet_unit = dummy_wallet_unit(wallet_unit_id);
+    let wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
     let original_status = wallet_unit.status;
     provider.create_wallet_unit(wallet_unit).await.unwrap();
 
@@ -713,14 +715,12 @@ async fn test_update_wallet_unit_empty_request() {
 
 #[tokio::test]
 async fn test_update_wallet_unit_status_changes() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider {
-        db: data_layer.db.clone(),
-    };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet unit with ACTIVE status
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
     wallet_unit.status = WalletUnitStatus::Active;
     provider.create_wallet_unit(wallet_unit).await.unwrap();
 
@@ -767,13 +767,11 @@ async fn test_update_wallet_unit_status_changes() {
 
 #[tokio::test]
 async fn test_update_wallet_unit_public_key_changes() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider {
-        db: data_layer.db.clone(),
-    };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
     wallet_unit.public_key = None;
     provider.create_wallet_unit(wallet_unit).await.unwrap();
     let created_wallet_unit = provider
@@ -808,14 +806,14 @@ async fn test_update_wallet_unit_public_key_changes() {
 
 #[tokio::test]
 async fn test_update_and_list_wallet_units() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create multiple wallet units
     let mut wallet_unit_ids = Vec::new();
     for i in 0..3 {
         let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = format!("wallet_{i}");
         wallet_unit.status = WalletUnitStatus::Active;
 
@@ -866,14 +864,14 @@ async fn test_update_and_list_wallet_units() {
 
 #[tokio::test]
 async fn test_sort_by_name_ascending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different names
     let names = vec!["zebra_wallet", "alpha_wallet", "beta_wallet"];
     for name in &names {
         let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = name.to_string();
         provider.create_wallet_unit(wallet_unit).await.unwrap();
     }
@@ -903,14 +901,14 @@ async fn test_sort_by_name_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_name_descending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different names
     let names = vec!["zebra_wallet", "alpha_wallet", "beta_wallet"];
     for name in &names {
         let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = name.to_string();
         provider.create_wallet_unit(wallet_unit).await.unwrap();
     }
@@ -940,18 +938,18 @@ async fn test_sort_by_name_descending() {
 
 #[tokio::test]
 async fn test_sort_by_status_ascending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different statuses
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "revoked_wallet".to_string();
     wallet_unit1.status = WalletUnitStatus::Revoked;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "active_wallet".to_string();
     wallet_unit2.status = WalletUnitStatus::Active;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
@@ -979,18 +977,18 @@ async fn test_sort_by_status_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_status_descending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different statuses
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "revoked_wallet".to_string();
     wallet_unit1.status = WalletUnitStatus::Revoked;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "active_wallet".to_string();
     wallet_unit2.status = WalletUnitStatus::Active;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
@@ -1018,18 +1016,18 @@ async fn test_sort_by_status_descending() {
 
 #[tokio::test]
 async fn test_sort_by_os_ascending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different OS values
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "ios_wallet".to_string();
     wallet_unit1.os = WalletUnitOs::Ios;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "android_wallet".to_string();
     wallet_unit2.os = WalletUnitOs::Android;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
@@ -1057,18 +1055,18 @@ async fn test_sort_by_os_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_os_descending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different OS values
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "ios_wallet".to_string();
     wallet_unit1.os = WalletUnitOs::Ios;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "android_wallet".to_string();
     wallet_unit2.os = WalletUnitOs::Android;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
@@ -1096,12 +1094,12 @@ async fn test_sort_by_os_descending() {
 
 #[tokio::test]
 async fn test_sort_by_created_date_ascending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with sufficient delay to ensure different timestamps
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "first_wallet".to_string();
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
@@ -1109,7 +1107,7 @@ async fn test_sort_by_created_date_ascending() {
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "second_wallet".to_string();
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
 
@@ -1147,12 +1145,12 @@ async fn test_sort_by_created_date_ascending() {
 
 #[tokio::test]
 async fn test_sort_by_created_date_descending() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with sufficient delay to ensure different timestamps
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "first_wallet".to_string();
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
@@ -1160,7 +1158,7 @@ async fn test_sort_by_created_date_descending() {
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "second_wallet".to_string();
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
 
@@ -1199,17 +1197,17 @@ async fn test_sort_by_created_date_descending() {
 
 #[tokio::test]
 async fn test_sort_by_last_modified_after_updates() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create two wallet units
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "first_wallet".to_string();
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "second_wallet".to_string();
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
 
@@ -1251,14 +1249,14 @@ async fn test_sort_by_last_modified_after_updates() {
 
 #[tokio::test]
 async fn test_sort_with_pagination() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create 5 wallet units with alphabetical names
     let names = vec!["echo", "alpha", "delta", "bravo", "charlie"];
     for name in &names {
         let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
-        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id);
+        let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
         wallet_unit.name = name.to_string();
         provider.create_wallet_unit(wallet_unit).await.unwrap();
     }
@@ -1314,24 +1312,24 @@ async fn test_sort_with_pagination() {
 
 #[tokio::test]
 async fn test_sort_with_filtering() {
-    let data_layer = setup_test_data_layer_and_connection().await;
-    let provider = WalletUnitProvider { db: data_layer.db };
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
 
     // Create wallet units with different statuses and names
     let wallet_unit_id1: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1);
+    let mut wallet_unit1 = dummy_wallet_unit(wallet_unit_id1, test_setup.organisation_id);
     wallet_unit1.name = "zebra_active".to_string();
     wallet_unit1.status = WalletUnitStatus::Active;
     provider.create_wallet_unit(wallet_unit1).await.unwrap();
 
     let wallet_unit_id2: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2);
+    let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
     wallet_unit2.name = "alpha_active".to_string();
     wallet_unit2.status = WalletUnitStatus::Active;
     provider.create_wallet_unit(wallet_unit2).await.unwrap();
 
     let wallet_unit_id3: WalletUnitId = Uuid::new_v4().into();
-    let mut wallet_unit3 = dummy_wallet_unit(wallet_unit_id3);
+    let mut wallet_unit3 = dummy_wallet_unit(wallet_unit_id3, test_setup.organisation_id);
     wallet_unit3.name = "beta_revoked".to_string();
     wallet_unit3.status = WalletUnitStatus::Revoked;
     provider.create_wallet_unit(wallet_unit3).await.unwrap();

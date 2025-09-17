@@ -15,6 +15,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::util::clock::Clock;
@@ -22,6 +23,7 @@ use crate::util::clock::Clock;
 #[allow(dead_code)]
 #[derive(Clone)]
 pub struct SSIWalletProviderService {
+    organisation_repository: Arc<dyn OrganisationRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
@@ -36,6 +38,7 @@ pub struct SSIWalletProviderService {
 impl SSIWalletProviderService {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
+        organisation_repository: Arc<dyn OrganisationRepository>,
         wallet_unit_repository: Arc<dyn WalletUnitRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
@@ -47,6 +50,7 @@ impl SSIWalletProviderService {
         base_url: Option<String>,
     ) -> Self {
         Self {
+            organisation_repository,
             wallet_unit_repository,
             identifier_repository,
             history_repository,

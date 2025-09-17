@@ -1,5 +1,8 @@
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::wallet_unit::{SortableWalletUnitColumn, WalletUnitFilterValue};
+use one_core::model::wallet_unit::{
+    SortableWalletUnitColumn, WalletProviderType, WalletUnit, WalletUnitFilterValue, WalletUnitOs,
+    WalletUnitStatus,
+};
 use sea_orm::sea_query::SimpleExpr;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
@@ -9,6 +12,25 @@ use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_string_match_condition,
 };
+
+impl From<wallet_unit::Model> for WalletUnit {
+    fn from(value: wallet_unit::Model) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            last_modified: value.last_modified,
+            os: WalletUnitOs::from(value.os),
+            status: WalletUnitStatus::from(value.status),
+            wallet_provider_type: WalletProviderType::from(value.wallet_provider_type),
+            wallet_provider_name: value.wallet_provider_name,
+            public_key: value.public_key,
+            last_issuance: value.last_issuance,
+            name: value.name,
+            organisation: None,
+            nonce: value.nonce,
+        }
+    }
+}
 
 impl IntoSortingColumn for SortableWalletUnitColumn {
     fn get_column(&self) -> SimpleExpr {

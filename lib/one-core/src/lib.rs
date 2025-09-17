@@ -617,6 +617,8 @@ impl OneCore {
             ),
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
+                data_provider.get_identifier_repository(),
+                config.clone(),
             ),
             credential_service,
             did_service: did_service.clone(),
@@ -844,6 +846,7 @@ impl OneCore {
                 blob_storage_provider,
             ),
             ssi_wallet_provider_service: SSIWalletProviderService::new(
+                data_provider.get_organisation_repository(),
                 data_provider.get_wallet_unit_repository(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_history_repository(),

@@ -47,7 +47,6 @@ walletProvider:
         lifetime:
           expirationTime: 86400 # 24*60*60 seconds
           minimumRefreshTime: 60
-        issuerIdentifier: dea4b53c-4d0e-4d93-ae81-2c996996a2fe # -> use ES256 key
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"

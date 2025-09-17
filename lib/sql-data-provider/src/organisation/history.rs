@@ -64,7 +64,10 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
             )))?;
 
         let mut history_actions = vec![];
-        if request.name.is_some() {
+        if request.name.is_some()
+            || request.wallet_provider_issuer.is_some()
+            || request.wallet_provider.is_some()
+        {
             history_actions.push(HistoryAction::Updated);
         }
 
@@ -106,6 +109,15 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
         relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError> {
         self.inner.get_organisation(id, relations).await
+    }
+
+    async fn get_organisation_for_wallet_provider(
+        &self,
+        wallet_provider: &str,
+    ) -> Result<Option<Organisation>, DataLayerError> {
+        self.inner
+            .get_organisation_for_wallet_provider(wallet_provider)
+            .await
     }
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {

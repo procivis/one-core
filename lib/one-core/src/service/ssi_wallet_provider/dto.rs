@@ -1,5 +1,5 @@
 use serde::{Deserialize, Deserializer};
-use shared_types::{IdentifierId, WalletUnitId};
+use shared_types::WalletUnitId;
 
 use crate::model::wallet_unit::WalletUnitOs;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -64,7 +64,6 @@ pub(super) struct WalletProviderParams {
     #[allow(unused)]
     pub ios: Option<IOSBundle>,
     pub lifetime: Lifetime,
-    pub issuer_identifier: IdentifierId,
     #[serde(default)]
     pub integrity_check: IntegrityCheck,
 }

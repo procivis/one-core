@@ -16,6 +16,8 @@ impl From<CreateOrganisationRequestDTO> for Organisation {
             created_date: now,
             last_modified: now,
             deactivated_at: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
         }
     }
 }

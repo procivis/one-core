@@ -186,7 +186,7 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             .route(
                 "/api/organisation/v1/{id}",
                 get(organisation::controller::get_organisation)
-                    .put(organisation::controller::put_organisation),
+                    .put(organisation::controller::patch_organisation),
             )
             .route("/api/did/v1/{id}", get(did::controller::get_did))
             .route(

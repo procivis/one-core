@@ -2,6 +2,7 @@ use std::ops::Sub;
 use std::sync::Arc;
 
 use one_core::model::key::PublicKeyJwk;
+use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::{
     GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs,
     WalletUnitRelations, WalletUnitStatus,
@@ -30,7 +31,11 @@ impl WalletUnitsDB {
         Self { repository }
     }
 
-    pub async fn create(&self, test_wallet_unit: TestWalletUnit) -> WalletUnit {
+    pub async fn create(
+        &self,
+        organisation: Organisation,
+        test_wallet_unit: TestWalletUnit,
+    ) -> WalletUnit {
         let six_hours_ago = OffsetDateTime::now_utc().sub(Duration::days(1));
 
         let wallet_unit = WalletUnit {
@@ -49,6 +54,7 @@ impl WalletUnitsDB {
                 .last_issuance
                 .unwrap_or(Some(six_hours_ago)),
             nonce: test_wallet_unit.nonce,
+            organisation: Some(organisation),
         };
 
         self.repository

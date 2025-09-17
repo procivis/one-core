@@ -12,6 +12,8 @@ impl From<Organisation> for organisation::ActiveModel {
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
             deactivated_at: Set(value.deactivated_at),
+            wallet_provider: Set(value.wallet_provider),
+            wallet_provider_issuer: Set(value.wallet_provider_issuer),
         }
     }
 }
@@ -29,6 +31,16 @@ impl From<UpdateOrganisationRequest> for organisation::ActiveModel {
                 Some(true) => Set(Some(OffsetDateTime::now_utc())),
                 Some(false) => Set(None),
                 _ => Unchanged(Default::default()),
+            },
+            wallet_provider: match value.wallet_provider {
+                None => Unchanged(Default::default()),
+                Some(None) => Set(None),
+                Some(Some(value)) => Set(Some(value)),
+            },
+            wallet_provider_issuer: match value.wallet_provider_issuer {
+                None => Unchanged(Default::default()),
+                Some(None) => Set(None),
+                Some(Some(value)) => Set(Some(value)),
             },
             ..Default::default()
         }

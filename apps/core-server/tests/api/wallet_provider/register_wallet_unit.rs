@@ -263,3 +263,63 @@ async fn test_register_wallet_unit_fail_on_duplicate_public_key() {
     let resp_json = resp.json_value().await;
     assert_eq!(resp_json["code"], "BR_0271");
 }
+
+#[tokio::test]
+async fn test_register_wallet_unit_provider_no_org() {
+    // given
+    let (context, _) = TestContext::new_with_organisation(None).await;
+
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
+
+    let proof =
+        create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
+            .await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .register_wallet(
+            "PROCIVIS_ONE",
+            "WEB",
+            Some(&holder_public_jwk),
+            Some(&proof),
+        )
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0286");
+}
+
+#[tokio::test]
+async fn test_register_wallet_unit_provider_org_disabled() {
+    // given
+    let (context, org) = TestContext::new_with_organisation(None).await;
+    create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
+    context.db.organisations.deactivate(&org.id).await;
+
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
+
+    let proof =
+        create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
+            .await;
+
+    // when
+    let resp = context
+        .api
+        .wallet_provider
+        .register_wallet(
+            "PROCIVIS_ONE",
+            "WEB",
+            Some(&holder_public_jwk),
+            Some(&proof),
+        )
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0284");
+}

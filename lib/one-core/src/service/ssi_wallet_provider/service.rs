@@ -19,6 +19,7 @@ use crate::model::history::{
 };
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
 };
@@ -40,7 +41,9 @@ use crate::service::ssi_wallet_provider::error::WalletProviderError;
 use crate::service::ssi_wallet_provider::mapper::{
     map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
-use crate::service::ssi_wallet_provider::validator::validate_audience;
+use crate::service::ssi_wallet_provider::validator::{
+    validate_audience, validate_org_wallet_provider,
+};
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -55,7 +58,16 @@ impl SSIWalletProviderService {
         request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let (config, config_params) =
-            self.get_wallet_provider_config_params(&request.wallet_provider)?;
+            self.get_wallet_provider_config_params(request.wallet_provider.as_ref())?;
+
+        let Some(organisation) = self
+            .organisation_repository
+            .get_organisation_for_wallet_provider(request.wallet_provider.as_ref())
+            .await?
+        else {
+            return Err(WalletProviderError::WalletProviderNotAssociatedWithOrganisation.into());
+        };
+        let issuer = validate_org_wallet_provider(&organisation, &request.wallet_provider)?;
 
         if !config_params.integrity_check.enabled
             && request.proof.is_none()
@@ -70,7 +82,8 @@ impl SSIWalletProviderService {
             if request.public_key.is_some() || request.proof.is_some() {
                 return Err(WalletProviderError::AppIntegrityCheckRequired.into());
             }
-            self.create_integrity_check_nonce(request, config).await
+            self.create_integrity_check_nonce(request, organisation, config)
+                .await
         } else {
             let proof = Jwt::<()>::decompose_token(
                 request
@@ -94,20 +107,34 @@ impl SSIWalletProviderService {
                 LEEWAY,
             )
             .await?;
-            self.create_wallet_unit_with_attestation(request, config, config_params, public_key_jwk)
-                .await
+            self.create_wallet_unit_with_attestation(
+                request,
+                issuer,
+                organisation,
+                config,
+                config_params,
+                public_key_jwk,
+            )
+            .await
         }
     }
 
     async fn create_integrity_check_nonce(
         &self,
         request: RegisterWalletUnitRequestDTO,
+        organisation: Organisation,
         config: &Fields<WalletProviderType>,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
-        let wallet_unit =
-            wallet_unit_from_request(request, config, None, now, Some(nonce.clone()))?;
+        let wallet_unit = wallet_unit_from_request(
+            request,
+            organisation,
+            config,
+            None,
+            now,
+            Some(nonce.clone()),
+        )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let wallet_unit_id = self
             .wallet_unit_repository
@@ -158,17 +185,30 @@ impl SSIWalletProviderService {
     async fn create_wallet_unit_with_attestation(
         &self,
         request: RegisterWalletUnitRequestDTO,
+        issuer: IdentifierId,
+        organisation: Organisation,
         config: &Fields<WalletProviderType>,
         config_params: WalletProviderParams,
         public_key_jwk: PublicKeyJwk,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let wallet_provider = request.wallet_provider.clone();
-        let wallet_unit =
-            wallet_unit_from_request(request, config, Some(&public_key_jwk), now, None)?;
+        let wallet_unit = wallet_unit_from_request(
+            request,
+            organisation,
+            config,
+            Some(&public_key_jwk),
+            now,
+            None,
+        )?;
         let wallet_unit_name = wallet_unit.name.clone();
         let (signed_attestation, attestation_hash) = self
-            .sign_attestation(&config_params, public_key_jwk, &wallet_provider)
+            .sign_attestation(
+                issuer,
+                &config_params,
+                public_key_jwk,
+                wallet_provider.as_ref(),
+            )
             .await?;
         let wallet_unit_id = self
             .wallet_unit_repository
@@ -192,12 +232,13 @@ impl SSIWalletProviderService {
 
     async fn sign_attestation(
         &self,
+        issuer: IdentifierId,
         config_params: &WalletProviderParams,
         public_key_jwk: PublicKeyJwk,
         wallet_provider: &str,
     ) -> Result<(String, String), ServiceError> {
         let now = self.clock.now_utc();
-        let auth_fn = self.get_auth_fn(config_params.issuer_identifier).await?;
+        let auth_fn = self.get_auth_fn(issuer).await?;
         let attestation = self.create_attestation(
             now,
             wallet_provider,
@@ -221,7 +262,12 @@ impl SSIWalletProviderService {
     ) -> Result<WalletUnitActivationResponseDTO, ServiceError> {
         let wallet_unit = self
             .wallet_unit_repository
-            .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
+            .get_wallet_unit(
+                &wallet_unit_id,
+                &WalletUnitRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
             .await?
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
@@ -236,8 +282,16 @@ impl SSIWalletProviderService {
         let Some(wallet_unit_nonce) = &wallet_unit.nonce else {
             return Err(WalletProviderError::MissingWalletUnitAttestationNonce.into());
         };
+        let Some(organisation) = &wallet_unit.organisation else {
+            return Err(ServiceError::MappingError(format!(
+                "Missing organisation on wallet unit `{}`",
+                wallet_unit.id
+            )));
+        };
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
+        let issuer_identifier =
+            validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         if wallet_unit.last_modified
             + Duration::seconds(config_params.integrity_check.timeout as i64)
@@ -294,7 +348,12 @@ impl SSIWalletProviderService {
         let encoded_public_key = serde_json::to_string(&jwk)
             .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
         let (signed_attestation, attestation_hash) = self
-            .sign_attestation(&config_params, jwk, &wallet_unit.wallet_provider_name)
+            .sign_attestation(
+                issuer_identifier,
+                &config_params,
+                jwk,
+                &wallet_unit.wallet_provider_name,
+            )
             .await?;
 
         self.wallet_unit_repository
@@ -406,12 +465,25 @@ impl SSIWalletProviderService {
     ) -> Result<RefreshWalletUnitResponseDTO, ServiceError> {
         let wallet_unit = self
             .wallet_unit_repository
-            .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
+            .get_wallet_unit(
+                &wallet_unit_id,
+                &WalletUnitRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
             .await?
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
+        let Some(organisation) = &wallet_unit.organisation else {
+            return Err(ServiceError::MappingError(format!(
+                "Missing organisation on wallet unit `{}`",
+                wallet_unit.id
+            )));
+        };
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
+        let issuer_identifier =
+            validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let proof = Jwt::<()>::decompose_token(&request.proof)?;
@@ -439,6 +511,7 @@ impl SSIWalletProviderService {
 
         let (signed_attestation, attestation_hash) = self
             .sign_attestation(
+                issuer_identifier,
                 &config_params,
                 key.public_key_as_jwk()?,
                 &wallet_unit.wallet_provider_name,

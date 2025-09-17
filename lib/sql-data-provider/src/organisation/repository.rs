@@ -5,7 +5,7 @@ use one_core::model::organisation::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use one_dto_mapper::convert_inner;
-use sea_orm::EntityTrait;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
@@ -50,6 +50,19 @@ impl OrganisationRepository for OrganisationProvider {
             .map_err(to_data_layer_error)?;
 
         Ok(convert_inner(organisation))
+    }
+
+    async fn get_organisation_for_wallet_provider(
+        &self,
+        wallet_provider: &str,
+    ) -> Result<Option<Organisation>, DataLayerError> {
+        let organisations: Option<organisation::Model> = organisation::Entity::find()
+            .filter(organisation::Column::WalletProvider.eq(wallet_provider))
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(convert_inner(organisations))
     }
 
     async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {

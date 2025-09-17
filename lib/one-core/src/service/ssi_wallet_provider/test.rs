@@ -17,6 +17,7 @@ use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
 use crate::model::history::HistoryMetadata;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
+use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs};
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -27,6 +28,7 @@ use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
@@ -42,6 +44,7 @@ const BASE_URL: &str = "https://localhost";
 
 fn mock_ssi_wallet_service() -> SSIWalletProviderService {
     SSIWalletProviderService {
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
         wallet_unit_repository: Arc::new(MockWalletUnitRepository::default()),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
@@ -55,7 +58,6 @@ fn mock_ssi_wallet_service() -> SSIWalletProviderService {
 }
 
 fn wallet_provider_config(
-    issuer_identifier_id: IdentifierId,
     integrity_check_enabled: bool,
 ) -> Fields<config::core_config::WalletProviderType> {
     Fields {
@@ -82,7 +84,6 @@ fn wallet_provider_config(
                   "expirationTime": 60,
                   "minimumRefreshTime": 60
                 },
-                "issuerIdentifier": issuer_identifier_id,
                 "integrityCheck": {
                     "enabled": integrity_check_enabled
                 }
@@ -98,10 +99,26 @@ async fn test_register_wallet_unit() {
     let mut config = CoreConfig::default();
     let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
 
+    let procivis_one_provider = "PROCIVIS_ONE";
     config.wallet_provider.insert(
-        "PROCIVIS_ONE".to_string(),
-        wallet_provider_config(issuer_identifier_id, false),
+        procivis_one_provider.to_string(),
+        wallet_provider_config(false),
     );
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation_for_wallet_provider()
+        .returning(move |_| {
+            Ok(Some(Organisation {
+                id: Uuid::new_v4().into(),
+                name: "test org".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                deactivated_at: None,
+                wallet_provider: Some(procivis_one_provider.to_string()),
+                wallet_provider_issuer: Some(issuer_identifier_id),
+            }))
+        });
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -176,6 +193,7 @@ async fn test_register_wallet_unit() {
         });
 
     let ssi_wallet_provider_service = SSIWalletProviderService {
+        organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         wallet_unit_repository: Arc::new(wallet_unit_repository),
         identifier_repository: Arc::new(identifier_repository),
@@ -187,7 +205,7 @@ async fn test_register_wallet_unit() {
 
     let (proof, holder_jwk) = create_proof().await;
     let request = RegisterWalletUnitRequestDTO {
-        wallet_provider: "PROCIVIS_ONE".to_string(),
+        wallet_provider: procivis_one_provider.to_string(),
         os: WalletUnitOs::Android,
         public_key: Some(holder_jwk.public_key_as_jwk().unwrap().into()),
         proof: Some(proof),
@@ -209,11 +227,26 @@ async fn test_register_wallet_unit_integrity_check() {
     // given
     let mut config = CoreConfig::default();
     let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
-
+    let procivis_one_provider = "PROCIVIS_ONE";
     config.wallet_provider.insert(
-        "PROCIVIS_ONE".to_string(),
-        wallet_provider_config(issuer_identifier_id, true),
+        procivis_one_provider.to_string(),
+        wallet_provider_config(true),
     );
+
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation_for_wallet_provider()
+        .returning(move |_| {
+            Ok(Some(Organisation {
+                id: Uuid::new_v4().into(),
+                name: "test org".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                deactivated_at: None,
+                wallet_provider: Some(procivis_one_provider.to_string()),
+                wallet_provider_issuer: Some(issuer_identifier_id),
+            }))
+        });
 
     let mut wallet_unit_repository = MockWalletUnitRepository::new();
     wallet_unit_repository
@@ -272,6 +305,7 @@ async fn test_register_wallet_unit_integrity_check() {
         .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let ssi_wallet_provider_service = SSIWalletProviderService {
+        organisation_repository: Arc::new(organisation_repository),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         wallet_unit_repository: Arc::new(wallet_unit_repository),
         identifier_repository: Arc::new(identifier_repository),
@@ -304,10 +338,10 @@ async fn test_refresh_wallet_unit_success() {
     // given
     let mut config = CoreConfig::default();
     let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
-
+    let procivis_one_provider = "PROCIVIS_ONE";
     config.wallet_provider.insert(
-        "PROCIVIS_ONE".to_string(),
-        wallet_provider_config(issuer_identifier_id, false),
+        procivis_one_provider.to_string(),
+        wallet_provider_config(false),
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -406,6 +440,15 @@ async fn test_refresh_wallet_unit_success() {
                     // ensure refresh window has passed
                     last_issuance: Some(now.sub(Duration::minutes(120))),
                     nonce: None,
+                    organisation: Some(Organisation {
+                        id: Uuid::new_v4().into(),
+                        name: "test org".to_string(),
+                        created_date: get_dummy_date(),
+                        last_modified: get_dummy_date(),
+                        deactivated_at: None,
+                        wallet_provider: Some(procivis_one_provider.to_string()),
+                        wallet_provider_issuer: Some(issuer_identifier_id),
+                    }),
                 }))
             }
         });
