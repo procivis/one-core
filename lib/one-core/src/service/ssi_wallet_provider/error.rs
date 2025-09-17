@@ -39,4 +39,8 @@ pub enum WalletProviderError {
     WalletProviderNotConfigured,
     #[error("Wallet provider organisation disabled")]
     WalletProviderOrganisationDisabled,
+    #[error("Wallet unit must be active")]
+    WalletUnitMustBeActive,
+    #[error("Wallet unit must be pending")]
+    WalletUnitMustBePending,
 }

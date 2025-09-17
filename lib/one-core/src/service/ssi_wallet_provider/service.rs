@@ -718,4 +718,49 @@ impl SSIWalletProviderService {
         validate_audience(audience, self.base_url.as_deref())?;
         Ok(())
     }
+
+    pub async fn revoke_wallet_unit(&self, id: &WalletUnitId) -> Result<(), ServiceError> {
+        let wallet_unit = self
+            .wallet_unit_repository
+            .get_wallet_unit(id, &WalletUnitRelations::default())
+            .await?
+            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+
+        if wallet_unit.status != WalletUnitStatus::Active {
+            return Err(WalletProviderError::WalletUnitMustBeActive.into());
+        }
+
+        self.wallet_unit_repository
+            .update_wallet_unit(
+                id,
+                UpdateWalletUnitRequest {
+                    status: Some(WalletUnitStatus::Revoked),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        self.create_wallet_unit_history(id, wallet_unit.name, HistoryAction::Revoked, None)
+            .await;
+        Ok(())
+    }
+
+    pub async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), ServiceError> {
+        let wallet_unit = self
+            .wallet_unit_repository
+            .get_wallet_unit(id, &WalletUnitRelations::default())
+            .await?
+            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+
+        if wallet_unit.status != WalletUnitStatus::Pending {
+            return Err(WalletProviderError::WalletUnitMustBePending.into());
+        }
+
+        self.wallet_unit_repository.delete_wallet_unit(id).await?;
+        let _unused = self
+            .history_repository
+            .delete_history_by_entity_id((*id).into())
+            .await
+            .inspect_err(|e| tracing::warn!("Failed to write wallet unit history: {e}"));
+        Ok(())
+    }
 }

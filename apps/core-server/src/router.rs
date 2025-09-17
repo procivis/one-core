@@ -287,7 +287,12 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
             )
             .route(
                 "/api/wallet-unit/v1/{id}",
-                get(wallet_unit::controller::get_wallet_unit_details),
+                get(wallet_unit::controller::get_wallet_unit_details)
+                    .delete(wallet_unit::controller::remove_wallet_unit),
+            )
+            .route(
+                "/api/wallet-unit/v1/{id}/revoke",
+                post(wallet_unit::controller::revoke_wallet_unit),
             )
             .route(
                 "/api/trust-entity/remote/v1/{did_id}",

@@ -28,4 +28,6 @@ pub trait WalletUnitRepository: Send + Sync {
         id: &WalletUnitId,
         request: UpdateWalletUnitRequest,
     ) -> Result<(), DataLayerError>;
+
+    async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), DataLayerError>;
 }

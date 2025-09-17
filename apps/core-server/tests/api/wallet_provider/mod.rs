@@ -18,6 +18,8 @@ use crate::utils::context::TestContext;
 mod activate_wallet_unit;
 mod refresh_wallet_unit;
 mod register_wallet_unit;
+mod remove_wallet_unit;
+mod revoke_wallet_unit;
 
 async fn create_key_possession_proof(key: &GeneratedKey, aud: String) -> String {
     let now = OffsetDateTime::now_utc();

@@ -64,4 +64,19 @@ impl WalletProviderApi {
             )
             .await
     }
+
+    pub async fn revoke_wallet_unit(&self, wallet_unit_id: WalletUnitId) -> Response {
+        self.client
+            .post(
+                &format!("/api/wallet-unit/v1/{wallet_unit_id}/revoke"),
+                None,
+            )
+            .await
+    }
+
+    pub async fn delete_wallet_unit(&self, wallet_unit_id: WalletUnitId) -> Response {
+        self.client
+            .delete(&format!("/api/wallet-unit/v1/{wallet_unit_id}"))
+            .await
+    }
 }

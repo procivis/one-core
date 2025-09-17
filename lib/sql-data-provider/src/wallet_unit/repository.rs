@@ -128,4 +128,12 @@ impl WalletUnitRepository for WalletUnitProvider {
 
         Ok(())
     }
+
+    async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), DataLayerError> {
+        wallet_unit::Entity::delete_by_id(id)
+            .exec(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
+        Ok(())
+    }
 }

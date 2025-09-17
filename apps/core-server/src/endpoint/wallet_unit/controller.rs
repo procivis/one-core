@@ -64,6 +64,58 @@ pub(crate) async fn get_wallet_unit_details(
 
 #[utoipa::path(
     post,
+    path = "/api/wallet-unit/v1/{id}/revoke",
+    params(
+        ("id" = WalletUnitId, Path, description = "Wallet unit id")
+    ),
+    responses(OkOrErrorResponse<WalletUnitResponseRestDTO>),
+    tag = "wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Revokes a wallet unit",
+    description = "Revokes a given wallet unit.",
+)]
+pub(crate) async fn revoke_wallet_unit(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .ssi_wallet_provider_service
+        .revoke_wallet_unit(&id)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "revoking wallet unit")
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/wallet-unit/v1/{id}",
+    params(
+        ("id" = WalletUnitId, Path, description = "Wallet unit id")
+    ),
+    responses(OkOrErrorResponse<WalletUnitResponseRestDTO>),
+    tag = "wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Permanently removes a wallet unit",
+    description = "Permanently removes  a given wallet unit.",
+)]
+pub(crate) async fn remove_wallet_unit(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .ssi_wallet_provider_service
+        .delete_wallet_unit(&id)
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "deleting wallet unit")
+}
+
+#[utoipa::path(
+    post,
     path = "/api/wallet-unit/v1/holder-register",
     request_body = HolderRegisterWalletUnitRequestRestDTO,
     responses(OkOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO>),

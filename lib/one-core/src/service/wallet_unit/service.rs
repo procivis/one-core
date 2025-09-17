@@ -9,7 +9,6 @@ use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::wallet_unit::WalletUnitStatus::Revoked;
 use crate::model::wallet_unit::{
     WalletUnitListQuery, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
 };
@@ -474,7 +473,7 @@ impl WalletUnitService {
                     .update_wallet_attestation(
                         &wallet_unit_attestation.id,
                         UpdateWalletUnitAttestationRequest {
-                            status: Some(Revoked),
+                            status: Some(WalletUnitStatus::Revoked),
                             ..Default::default()
                         },
                     )

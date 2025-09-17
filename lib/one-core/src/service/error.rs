@@ -943,6 +943,9 @@ pub enum ErrorCode {
     #[strum(message = "Engagement missing for ISO mDL flow")]
     BR_0079,
 
+    #[strum(message = "Wallet unit must be active")]
+    BR_0081,
+
     #[strum(message = "Invalid DCQL query or presentation definition")]
     BR_0083,
 
@@ -1131,6 +1134,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Validity constraint out of range")]
     BR_0166,
+
+    #[strum(message = "Wallet unit must be in pending")]
+    BR_0168,
 
     #[strum(message = "User Provided incorrect user code")]
     BR_0169,
@@ -1811,6 +1817,8 @@ impl ErrorCodeMixin for WalletProviderError {
                 ErrorCode::BR_0284
             }
             Self::WalletProviderNotAssociatedWithOrganisation => ErrorCode::BR_0286,
+            Self::WalletUnitMustBeActive => ErrorCode::BR_0081,
+            Self::WalletUnitMustBePending => ErrorCode::BR_0168,
         }
     }
 }
