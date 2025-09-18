@@ -362,6 +362,19 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
+                       .name("wallet_unit")
+                       .description(Some(indoc::formatdoc! {"
+                Manage Wallet Unit Attestations issued by the system.
+
+                Wallets use the `holder-` endpoints to manage its attestation.
+            "}))
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Wallet units")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
                        .name("jsonld")
                        .description(Some(indoc::formatdoc! {"
                 Operations for credentials formatted with JSON-LD.
