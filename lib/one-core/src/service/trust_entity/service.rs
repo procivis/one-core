@@ -534,10 +534,10 @@ impl TrustEntityService {
         )
         .await?;
 
-        let token_issuer = jwt.payload.issuer.ok_or(ValidationError::Unauthorized)?;
+        let token_issuer = jwt.payload.issuer.ok_or(ValidationError::Forbidden)?;
 
         if token_issuer != did_value.as_str() {
-            return Err(ValidationError::Unauthorized.into());
+            return Err(ValidationError::Forbidden.into());
         }
 
         Ok(())

@@ -53,7 +53,7 @@ impl ErrorResponse {
             | ServiceError::BusinessLogic(BusinessLogicError::MissingTrustEntity(_)) => {
                 Self::NotFound(response)
             }
-            ServiceError::Validation(ValidationError::Unauthorized) => Self::Forbidden,
+            ServiceError::Validation(ValidationError::Forbidden) => Self::Forbidden,
             ServiceError::Validation(_)
             | ServiceError::ValidationError(_)
             | ServiceError::BusinessLogic(_)

@@ -588,8 +588,8 @@ pub enum ValidationError {
     #[error("ValidityConstraintOutOfRange")]
     ValidityConstraintOutOfRange,
 
-    #[error("Unauthorized")]
-    Unauthorized,
+    #[error("Forbidden")]
+    Forbidden,
 
     #[error("Invalid update request")]
     InvalidUpdateRequest,
@@ -1155,7 +1155,7 @@ pub enum ErrorCode {
     #[strum(message = "Invalid create trust anchor request")]
     BR_0177,
 
-    #[strum(message = "Unauthorized")]
+    #[strum(message = "Forbidden")]
     BR_0178,
 
     #[strum(message = "Multiple matching trust anchors")]
@@ -1633,7 +1633,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::TransportsCombinationNotAllowed => ErrorCode::BR_0159,
             Self::InvalidTransportType { .. } => ErrorCode::BR_0112,
             Self::ValidityConstraintOutOfRange => ErrorCode::BR_0166,
-            Self::Unauthorized => ErrorCode::BR_0178,
+            Self::Forbidden => ErrorCode::BR_0178,
             Self::InvalidUpdateRequest => ErrorCode::BR_0181,
             Self::DeserializationError(_) => ErrorCode::BR_0189,
             Self::InvalidRedirectUri => ErrorCode::BR_0192,
