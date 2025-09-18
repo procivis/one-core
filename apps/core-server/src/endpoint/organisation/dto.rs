@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
@@ -57,5 +58,6 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     #[serde(serialize_with = "front_time_option")]
     pub deactivated_at: Option<OffsetDateTime>,
     pub wallet_provider: Option<String>,
-    pub wallet_provider_issuer: Option<IdentifierId>,
+    #[from(with_fn = convert_inner)]
+    pub wallet_provider_issuer: Option<GetIdentifierListItemResponseRestDTO>,
 }

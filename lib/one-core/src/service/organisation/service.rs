@@ -1,13 +1,17 @@
-use one_dto_mapper::convert_inner;
-use shared_types::OrganisationId;
+use std::collections::HashMap;
+
+use shared_types::{IdentifierId, OrganisationId};
 
 use super::OrganisationService;
 use super::dto::{
     CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, UpsertOrganisationRequestDTO,
 };
+use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
+use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::OrganisationRelations;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::organisation::mapper::detail_from_model;
 use crate::service::organisation::validator::{
     validate_wallet_provider, validate_wallet_provider_issuer,
 };
@@ -18,7 +22,46 @@ impl OrganisationService {
         &self,
     ) -> Result<Vec<GetOrganisationDetailsResponseDTO>, ServiceError> {
         let organisations = self.organisation_repository.get_organisation_list().await?;
-        Ok(convert_inner(organisations))
+
+        let wallet_provider_issuers: Vec<IdentifierId> = organisations
+            .iter()
+            .filter_map(|organisation| {
+                organisation
+                    .wallet_provider_issuer
+                    .as_ref()
+                    .map(|issuer| *issuer)
+            })
+            .collect();
+
+        let identifiers: HashMap<IdentifierId, Identifier> = if wallet_provider_issuers.is_empty() {
+            Default::default()
+        } else {
+            self.identifier_repository
+                .get_identifier_list(IdentifierListQuery {
+                    filtering: Some(
+                        IdentifierFilterValue::Ids(wallet_provider_issuers).condition(),
+                    ),
+                    ..Default::default()
+                })
+                .await?
+                .values
+                .into_iter()
+                .map(|identifier| (identifier.id, identifier))
+                .collect()
+        };
+
+        Ok(organisations
+            .into_iter()
+            .map(|organisation| {
+                let wallet_provider_issuer = organisation
+                    .wallet_provider_issuer
+                    .as_ref()
+                    .and_then(|issuer| identifiers.get(issuer))
+                    .map(ToOwned::to_owned);
+
+                detail_from_model(organisation, wallet_provider_issuer)
+            })
+            .collect())
     }
 
     /// Returns details of an organisation
@@ -39,7 +82,21 @@ impl OrganisationService {
             return Err(EntityNotFoundError::Organisation(*id).into());
         };
 
-        Ok(organisation.into())
+        let wallet_provider_issuer =
+            if let Some(identifier_id) = &organisation.wallet_provider_issuer {
+                Some(
+                    self.identifier_repository
+                        .get(*identifier_id, &Default::default())
+                        .await?
+                        .ok_or(ServiceError::MappingError(format!(
+                            "Identifier not found: {identifier_id}"
+                        )))?,
+                )
+            } else {
+                None
+            };
+
+        Ok(detail_from_model(organisation, wallet_provider_issuer))
     }
 
     /// Accepts optional Uuid and optional name of new organisation

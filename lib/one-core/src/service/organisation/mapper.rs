@@ -1,9 +1,10 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
 use crate::service::organisation::dto::{
-    CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
+    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, UpsertOrganisationRequestDTO,
 };
 
 impl From<CreateOrganisationRequestDTO> for Organisation {
@@ -28,5 +29,20 @@ impl From<UpsertOrganisationRequestDTO> for CreateOrganisationRequestDTO {
             id: Some(request.id),
             name: request.name,
         }
+    }
+}
+
+pub(super) fn detail_from_model(
+    organisation: Organisation,
+    wallet_provider_issuer: Option<Identifier>,
+) -> GetOrganisationDetailsResponseDTO {
+    GetOrganisationDetailsResponseDTO {
+        id: organisation.id,
+        name: organisation.name,
+        created_date: organisation.created_date,
+        last_modified: organisation.last_modified,
+        deactivated_at: organisation.deactivated_at,
+        wallet_provider: organisation.wallet_provider,
+        wallet_provider_issuer: wallet_provider_issuer.map(Into::into),
     }
 }

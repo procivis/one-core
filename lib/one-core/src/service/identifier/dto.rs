@@ -25,7 +25,7 @@ pub struct GetIdentifierResponseDTO {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct GetIdentifierListItemResponseDTO {
     pub id: IdentifierId,

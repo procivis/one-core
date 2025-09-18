@@ -1,8 +1,9 @@
-use one_dto_mapper::{From, Into};
+use one_dto_mapper::Into;
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::model::organisation::{Organisation, UpdateOrganisationRequest};
+use crate::model::organisation::UpdateOrganisationRequest;
+use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CreateOrganisationRequestDTO {
@@ -20,8 +21,7 @@ pub struct UpsertOrganisationRequestDTO {
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, From)]
-#[from(Organisation)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GetOrganisationDetailsResponseDTO {
     pub id: OrganisationId,
     pub name: String,
@@ -29,5 +29,5 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub last_modified: OffsetDateTime,
     pub deactivated_at: Option<OffsetDateTime>,
     pub wallet_provider: Option<String>,
-    pub wallet_provider_issuer: Option<IdentifierId>,
+    pub wallet_provider_issuer: Option<GetIdentifierListItemResponseDTO>,
 }

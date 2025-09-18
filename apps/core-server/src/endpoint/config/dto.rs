@@ -44,6 +44,7 @@ pub(crate) struct ConfigRestDTO {
     /// OpenID4VCI authorization code flow
     pub credential_issuer: HashMap<String, Value>,
     pub verification_engagement: HashMap<String, Value>,
+    pub wallet_provider: HashMap<String, Value>,
 }
 
 impl From<ConfigDTO> for ConfigRestDTO {
@@ -67,6 +68,7 @@ impl From<ConfigDTO> for ConfigRestDTO {
             frontend: HashMap::new(),
             credential_issuer: config.credential_issuer,
             verification_engagement: config.verification_engagement,
+            wallet_provider: config.wallet_provider,
         }
     }
 }
