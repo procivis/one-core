@@ -39,6 +39,8 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
@@ -121,6 +123,7 @@ struct Repositories {
     pub key_repository: MockKeyRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub nfc_hce_provider: Option<MockNfcHce>,
+    pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -155,6 +158,9 @@ fn setup_service(repositories: Repositories) -> ProofService {
             let m: Arc<dyn NfcHce> = Arc::new(m);
             m
         }),
+        repositories
+            .session_provider
+            .unwrap_or(Arc::new(NoSessionProvider)),
     )
 }
 
@@ -701,7 +707,7 @@ async fn test_get_proof_with_array_holder() {
                 deactivated: false,
                 log: None,
             }),
-            organisation: Some(organisation),
+            organisation: Some(organisation.clone()),
             ..dummy_identifier()
         }),
         holder_identifier: Some(Identifier {
@@ -710,7 +716,14 @@ async fn test_get_proof_with_array_holder() {
         }),
         verifier_key: None,
         verifier_certificate: None,
-        interaction: None,
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            host: None,
+            data: None,
+            organisation: Some(organisation),
+        }),
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
@@ -965,7 +978,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 deactivated: false,
                 log: None,
             }),
-            organisation: Some(organisation),
+            organisation: Some(organisation.clone()),
             ..dummy_identifier()
         }),
         holder_identifier: Some(Identifier {
@@ -974,7 +987,14 @@ async fn test_get_proof_with_array_in_object_holder() {
         }),
         verifier_key: None,
         verifier_certificate: None,
-        interaction: None,
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            host: None,
+            data: None,
+            organisation: Some(organisation),
+        }),
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
@@ -1253,7 +1273,14 @@ async fn test_get_proof_with_object_array_holder() {
         }),
         verifier_key: None,
         verifier_certificate: None,
-        interaction: None,
+        interaction: Some(Interaction {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            host: None,
+            data: None,
+            organisation: Some(dummy_organisation(None)),
+        }),
         role: ProofRole::Holder,
         profile: None,
         proof_blob_id: None,
@@ -2310,18 +2337,22 @@ async fn test_get_proof_list_success() {
         ..Default::default()
     });
 
+    let organisation_id = Uuid::new_v4().into();
     let result = service
-        .get_proof_list(GetProofQueryDTO {
-            filtering: ProofFilterValue::OrganisationId(Uuid::new_v4().into())
-                .condition()
-                .into(),
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 1,
-            }),
-            sorting: None,
-            include: None,
-        })
+        .get_proof_list(
+            &organisation_id,
+            GetProofQueryDTO {
+                filtering: ProofFilterValue::OrganisationId(organisation_id)
+                    .condition()
+                    .into(),
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                sorting: None,
+                include: None,
+            },
+        )
         .await;
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -2364,7 +2395,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2457,7 +2488,7 @@ async fn test_create_proof_using_invalid_did_method() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2584,7 +2615,7 @@ async fn test_create_proof_using_identifier() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2714,7 +2745,7 @@ async fn test_create_proof_without_related_key() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2849,7 +2880,7 @@ async fn test_create_proof_with_related_key() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -2987,7 +3018,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![proof_input_schema]),
             }))
         });
@@ -3120,7 +3151,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -3227,7 +3258,7 @@ async fn test_create_proof_failed_incompatible_exchange() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -3289,7 +3320,7 @@ async fn test_create_proof_did_deactivated_error() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -3382,7 +3413,7 @@ async fn test_create_proof_schema_deleted() {
                 deleted_at: Some(OffsetDateTime::now_utc()),
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: None,
             }))
         });
@@ -3429,7 +3460,7 @@ async fn test_create_proof_failed_scan_to_verify_in_unsupported_exchange() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -3513,7 +3544,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                 deleted_at: None,
                 name: "proof schema".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: Some(vec![generic_proof_input_schema()]),
             }))
         });
@@ -3981,7 +4012,13 @@ async fn test_delete_proof_ok_for_allowed_state(
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations::default()),
+                        interaction: Some(InteractionRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                        }),
+                        schema: Some(ProofSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            proof_inputs: None,
+                        }),
                         ..Default::default()
                     }
         })
@@ -4052,7 +4089,13 @@ async fn test_delete_proof_ok_for_requested_state() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations::default()),
+                        interaction: Some(InteractionRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                        }),
+                        schema: Some(ProofSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            proof_inputs: None,
+                        }),
                         ..Default::default()
                     }
         })
@@ -4116,7 +4159,13 @@ async fn test_delete_proof_fails_for_invalid_state(
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations::default()),
+                        interaction: Some(InteractionRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                        }),
+                        schema: Some(ProofSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            proof_inputs: None,
+                        }),
                         ..Default::default()
                     }
         })
@@ -4154,7 +4203,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         host: None,
-        organisation: None,
+        organisation: Some(dummy_organisation(None)),
         data: Some({
             let data = BLEOpenID4VPInteractionData {
                 client_id: "did:example:123".to_string(),
@@ -4214,7 +4263,13 @@ async fn test_retract_proof_with_bluetooth_ok() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations::default()),
+                        interaction: Some(InteractionRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                        }),
+                        schema: Some(ProofSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            proof_inputs: None,
+                        }),
                         ..Default::default()
                     }
         })
@@ -4275,7 +4330,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         last_modified: OffsetDateTime::now_utc(),
         host: None,
         data: None,
-        organisation: None,
+        organisation: Some(dummy_organisation(None)),
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4298,7 +4353,13 @@ async fn test_retract_proof_success_holder_iso_mdl() {
             id == &proof_id
                 && relations
                     == &ProofRelations {
-                        interaction: Some(InteractionRelations::default()),
+                        interaction: Some(InteractionRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                        }),
+                        schema: Some(ProofSchemaRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            proof_inputs: None,
+                        }),
                         ..Default::default()
                     }
         })
@@ -4328,4 +4389,136 @@ async fn test_retract_proof_success_holder_iso_mdl() {
 
     let result = service.delete_proof(proof_id).await;
     assert!(result.is_ok());
+}
+
+#[tokio::test]
+async fn test_create_proof_session_org_mismatch() {
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .once()
+        .returning(|id, _| {
+            Ok(Some(ProofSchema {
+                id: id.to_owned(),
+                imported_source_url: Some("CORE_URL".to_string()),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                deleted_at: Some(OffsetDateTime::now_utc()),
+                name: "proof schema".to_string(),
+                expire_duration: 0,
+                organisation: Some(dummy_organisation(None)),
+                input_schemas: None,
+            }))
+        });
+    let service = setup_service(Repositories {
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        proof_schema_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_proof(CreateProofRequestDTO {
+            proof_schema_id: Uuid::new_v4().into(),
+            verifier_did_id: Some(Uuid::new_v4().into()),
+            verifier_identifier_id: None,
+            protocol: "OPENID4VP_DRAFT20".to_string(),
+            redirect_uri: None,
+            verifier_key: None,
+            verifier_certificate: None,
+            scan_to_verify: Some(ScanToVerifyRequestDTO {
+                credential: "credential".to_string(),
+                barcode: "barcode".to_string(),
+                barcode_type: ScanToVerifyBarcodeTypeEnum::MRZ,
+            }),
+            iso_mdl_engagement: None,
+            transport: None,
+            profile: None,
+            engagement: None,
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_list_proof_session_org_mismatch() {
+    let service = setup_service(Repositories {
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        ..Default::default()
+    });
+
+    let result = service
+        .get_proof_list(
+            &Uuid::new_v4().into(),
+            GetProofQueryDTO {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_proof_ops_session_org_mismatch() {
+    let proof_id = Uuid::new_v4().into();
+    let proof = construct_proof_with_state(&proof_id, ProofStateEnum::Created);
+    let mut proof_repository = MockProofRepository::default();
+    proof_repository
+        .expect_get_proof()
+        .returning(move |_, _| Ok(Some(proof.clone())));
+    let service = setup_service(Repositories {
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        proof_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service.get_proof(&proof_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service
+        .share_proof(&proof_id, ShareProofRequestDTO { params: None })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service.delete_proof(proof_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service.delete_proof_claims(proof_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service.get_proof_presentation_definition(&proof_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service
+        .propose_proof("exchange".to_string(), Uuid::new_v4().into(), vec![])
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
 }

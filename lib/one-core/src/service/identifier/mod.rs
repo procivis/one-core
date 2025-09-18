@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use super::error::ErrorCode;
 use crate::config::core_config;
+use crate::proto::session_provider::SessionProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -12,6 +13,8 @@ use crate::service::did::DidService;
 pub mod dto;
 pub(crate) mod mapper;
 pub mod service;
+#[cfg(test)]
+mod test;
 mod validator;
 
 #[derive(Clone)]
@@ -24,9 +27,11 @@ pub struct IdentifierService {
 
     did_service: DidService,
     certificate_service: CertificateService,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl IdentifierService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         identifier_repository: Arc<dyn IdentifierRepository>,
         key_repository: Arc<dyn KeyRepository>,
@@ -35,6 +40,7 @@ impl IdentifierService {
         did_service: DidService,
         certificate_service: CertificateService,
         config: Arc<core_config::CoreConfig>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             identifier_repository,
@@ -44,6 +50,7 @@ impl IdentifierService {
             did_service,
             certificate_service,
             config,
+            session_provider,
         }
     }
 }

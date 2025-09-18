@@ -5,11 +5,14 @@ use regex::Regex;
 use url::Url;
 
 use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_validator::throw_if_org_relation_not_matching_session;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::protocol::validate_protocol_type;
+use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
@@ -17,6 +20,19 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFi
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+
+pub(super) fn throw_if_credential_schema_not_in_session_org(
+    credential: &Credential,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    let schema = credential
+        .schema
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "credential_schema is None".to_string(),
+        ))?;
+    throw_if_org_relation_not_matching_session(schema.organisation.as_ref(), session_provider)
+}
 
 pub(crate) fn validate_create_request(
     exchange: &str,

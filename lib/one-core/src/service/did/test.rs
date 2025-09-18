@@ -17,9 +17,11 @@ use crate::model::did::{
 use crate::model::key::{Key, KeyRelations};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::caching_loader::CachingLoader;
 use crate::provider::did_method::model::{DidCapabilities, Operation};
-use crate::provider::did_method::provider::DidMethodProviderImpl;
+use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::{DidCreated, DidMethod, DidUpdate, MockDidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -36,7 +38,7 @@ use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO, Did
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
-use crate::service::test_utilities::{dummy_identifier, dummy_organisation};
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
 fn setup_service(
     did_repository: MockDidRepository,
@@ -73,6 +75,7 @@ fn setup_service(
             did: did_config,
             ..CoreConfig::default()
         }),
+        Arc::new(NoSessionProvider),
     )
 }
 
@@ -187,12 +190,13 @@ async fn test_get_did_missing() {
 
 #[tokio::test]
 async fn test_get_did_list() {
+    let organisation_id = Uuid::new_v4().into();
     let did = Did {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
-        organisation: Some(dummy_organisation(None)),
+        organisation: Some(dummy_organisation(Some(organisation_id))),
         did: "did:key:abc".parse().unwrap(),
         did_type: DidType::Local,
         did_method: "KEY".to_string(),
@@ -224,13 +228,16 @@ async fn test_get_did_list() {
     );
 
     let result = service
-        .get_did_list(DidListQuery {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 1,
-            }),
-            ..Default::default()
-        })
+        .get_did_list(
+            &organisation_id,
+            DidListQuery {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 1,
+                }),
+                ..Default::default()
+            },
+        )
         .await;
 
     assert!(result.is_ok());
@@ -610,5 +617,124 @@ async fn test_update_did_fail_reactivation() {
         Err(ServiceError::BusinessLogic(
             BusinessLogicError::DidDeactivation(DidDeactivationError::CannotBeReactivated { .. })
         ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_did_fail_session_org_mismatch() {
+    let service = DidService {
+        did_repository: Arc::new(MockDidRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+        identifier_repository: Arc::new(MockIdentifierRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
+        did_method_provider: Arc::new(MockDidMethodProvider::default()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
+        key_provider: Arc::new(MockKeyProvider::default()),
+        config: Arc::new(generic_config().core),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+    let create_request = CreateDidRequestDTO {
+        name: "".to_string(),
+        organisation_id: Uuid::new_v4().into(),
+        did_method: "".to_string(),
+        keys: CreateDidRequestKeysDTO {
+            authentication: vec![],
+            assertion_method: vec![],
+            key_agreement: vec![],
+            capability_invocation: vec![],
+            capability_delegation: vec![],
+        },
+        params: None,
+    };
+
+    let result = service.create_did(create_request.clone()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service.create_did_without_identifier(create_request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_list_did_fail_session_org_mismatch() {
+    let service = DidService {
+        did_repository: Arc::new(MockDidRepository::default()),
+        key_repository: Arc::new(MockKeyRepository::default()),
+        identifier_repository: Arc::new(MockIdentifierRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
+        did_method_provider: Arc::new(MockDidMethodProvider::default()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
+        key_provider: Arc::new(MockKeyProvider::default()),
+        config: Arc::new(generic_config().core),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service
+        .get_did_list(
+            &Uuid::new_v4().into(),
+            DidListQuery {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_did_ops_session_org_mismatch() {
+    let did = Did {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: "name".to_string(),
+        organisation: Some(dummy_organisation(None)),
+        did: "did:web:abc".parse().unwrap(),
+        did_type: DidType::Local,
+        did_method: "KEY".to_string(),
+        keys: None,
+        deactivated: false,
+        log: None,
+    };
+    let mut did_repository = MockDidRepository::default();
+    did_repository
+        .expect_get_did()
+        .returning(move |_, _| Ok(Some(did.clone())));
+    let service = DidService {
+        did_repository: Arc::new(did_repository),
+        key_repository: Arc::new(MockKeyRepository::default()),
+        identifier_repository: Arc::new(MockIdentifierRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
+        did_method_provider: Arc::new(MockDidMethodProvider::default()),
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
+        key_provider: Arc::new(MockKeyProvider::default()),
+        config: Arc::new(generic_config().core),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service.get_did(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .update_did(
+            &Uuid::new_v4().into(),
+            DidPatchRequestDTO { deactivated: None },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
     ));
 }

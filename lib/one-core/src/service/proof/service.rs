@@ -17,12 +17,15 @@ use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
 };
 use super::validator::{
-    validate_did_and_format_compatibility, validate_holder_engagements, validate_mdl_exchange,
-    validate_redirect_uri, validate_verification_key_storage_compatibility,
-    validate_verifier_engagement,
+    throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
+    validate_holder_engagements, validate_mdl_exchange, validate_redirect_uri,
+    validate_verification_key_storage_compatibility, validate_verifier_engagement,
 };
 use crate::common_mapper::list_response_try_into;
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::common_validator::{
+    throw_if_latest_proof_state_not_eq, throw_if_org_not_matching_session,
+    throw_if_org_relation_not_matching_session,
+};
 use crate::config::core_config::{TransportType, VerificationEngagement, VerificationProtocolType};
 use crate::config::validator::protocol::{
     validate_identifier, validate_protocol_did_compatibility, validate_protocol_type,
@@ -150,6 +153,8 @@ impl ProofService {
             return Err(EntityNotFoundError::Proof(*id).into());
         };
 
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+
         let history_event = self
             .history_repository
             .get_history_list(HistoryListQuery {
@@ -216,6 +221,7 @@ impl ProofService {
             )
             .await?
             .ok_or(EntityNotFoundError::Proof(*id))?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         if proof.role != ProofRole::Holder {
             return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
@@ -260,8 +266,10 @@ impl ProofService {
     /// * `query` - query parameters
     pub async fn get_proof_list(
         &self,
+        organisation_id: &OrganisationId,
         query: GetProofQueryDTO,
     ) -> Result<GetProofListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         let result = self.proof_repository.get_proof_list(query).await?;
         list_response_try_into(result)
     }
@@ -312,6 +320,10 @@ impl ProofService {
             )
             .await?
             .ok_or(BusinessLogicError::MissingProofSchema { proof_schema_id })?;
+        throw_if_org_relation_not_matching_session(
+            proof_schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         // ONE-843: cannot create proof based on deleted schema
         if proof_schema.deleted_at.is_some() {
@@ -540,6 +552,7 @@ impl ProofService {
         request: ShareProofRequestDTO,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
         let proof = self.get_proof_with_state(id).await?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         match proof.state {
             Created => {
@@ -643,6 +656,13 @@ impl ProofService {
                         claim: ClaimRelations::default(),
                         credential: Some(CredentialRelations::default()),
                     }),
+                    schema: Some(ProofSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: None,
+                    }),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
                     ..Default::default()
                 },
             )
@@ -650,6 +670,7 @@ impl ProofService {
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
                 proof_id,
             )))?;
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         let credential_ids = proof
             .claims
@@ -719,6 +740,7 @@ impl ProofService {
         organisation_id: OrganisationId,
         engagements: Vec<String>,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)?;
         validate_protocol_type(&exchange, &self.config.verification_protocol)?;
         validate_holder_engagements(&engagements, &self.config.verification_engagement)?;
         let exchange_type = self
@@ -899,7 +921,13 @@ impl ProofService {
             .get_proof(
                 &proof_id,
                 &ProofRelations {
-                    interaction: Some(Default::default()),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                    }),
+                    schema: Some(ProofSchemaRelations {
+                        organisation: Some(OrganisationRelations::default()),
+                        proof_inputs: None,
+                    }),
                     ..Default::default()
                 },
             )
@@ -907,6 +935,7 @@ impl ProofService {
         else {
             return Err(EntityNotFoundError::Proof(proof_id).into());
         };
+        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         match proof.state {
             Created | Pending => {

@@ -3,13 +3,16 @@ use std::str::FromStr;
 use url::Url;
 
 use super::dto::CreateProofRequestDTO;
+use crate::common_validator::throw_if_org_relation_not_matching_session;
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
 };
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::key::Key;
+use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofSchema;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
@@ -17,6 +20,24 @@ use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
+
+pub(super) fn throw_if_proof_not_in_session_org(
+    proof: &Proof,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    let organisation = if let Some(schema) = proof.schema.as_ref() {
+        // verifier case
+        schema.organisation.as_ref()
+    } else if let Some(interaction) = proof.interaction.as_ref() {
+        // holder case
+        interaction.organisation.as_ref()
+    } else {
+        return Err(ServiceError::MappingError(
+            "proof organisation could not be determined".to_string(),
+        ));
+    };
+    throw_if_org_relation_not_matching_session(organisation, session_provider)
+}
 
 pub(super) fn validate_format_and_exchange_protocol_compatibility(
     exchange: &str,

@@ -1,10 +1,13 @@
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::IdentifierService;
 use super::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
+};
+use crate::common_validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
 use crate::config::core_config;
 use crate::model::certificate::CertificateRelations;
@@ -55,6 +58,10 @@ impl IdentifierService {
         let Some(identifier) = identifier else {
             return Err(EntityNotFoundError::Identifier(*id).into());
         };
+        throw_if_org_relation_not_matching_session(
+            identifier.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         let mut certificates = None;
         if identifier.r#type == IdentifierType::Certificate {
@@ -88,8 +95,10 @@ impl IdentifierService {
     /// * `query` - query parameters
     pub async fn get_identifier_list(
         &self,
+        organisation_id: &OrganisationId,
         query: IdentifierListQuery,
     ) -> Result<GetIdentifierListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         Ok(self
             .identifier_repository
             .get_identifier_list(query)
@@ -106,6 +115,7 @@ impl IdentifierService {
         &self,
         request: CreateIdentifierRequestDTO,
     ) -> Result<IdentifierId, ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &Default::default())
@@ -246,6 +256,23 @@ impl IdentifierService {
     ///
     /// * `id` - Identifier uuid
     pub async fn delete_identifier(&self, id: &IdentifierId) -> Result<(), ServiceError> {
+        let identifier = self
+            .identifier_repository
+            .get(
+                *id,
+                &IdentifierRelations {
+                    organisation: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?;
+        let Some(identifier) = identifier else {
+            return Err(EntityNotFoundError::Identifier(*id).into());
+        };
+        throw_if_org_relation_not_matching_session(
+            identifier.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
         self.identifier_repository
             .delete(id)
             .await

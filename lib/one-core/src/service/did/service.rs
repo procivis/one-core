@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Deref;
 
-use shared_types::{DidId, DidValue, KeyId};
+use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -14,6 +14,9 @@ use super::mapper::{
     did_from_did_request, did_update_to_update_request, identifier_from_did, map_did_to_did_keys,
 };
 use super::validator::validate_deactivation_request;
+use crate::common_validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{Did, DidListQuery, DidRelations, RelatedKey};
@@ -141,10 +144,13 @@ impl DidService {
                 },
             )
             .await?;
-
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
         };
+        throw_if_org_relation_not_matching_session(
+            did.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         did.try_into()
     }
@@ -156,8 +162,10 @@ impl DidService {
     /// * `query` - query parameters
     pub async fn get_did_list(
         &self,
+        organisation_id: &OrganisationId,
         query: DidListQuery,
     ) -> Result<GetDidListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         let result = self.did_repository.get_did_list(query).await?;
         Ok(result.into())
     }
@@ -181,6 +189,7 @@ impl DidService {
         &self,
         request: CreateDidRequestDTO,
     ) -> Result<(Did, OffsetDateTime), ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         validate_did_method(&request.did_method, &self.config.did)?;
 
         let did_method_key = &request.did_method;
@@ -325,6 +334,10 @@ impl DidService {
         let Some(did) = did else {
             return Err(EntityNotFoundError::Did(*id).into());
         };
+        throw_if_org_relation_not_matching_session(
+            did.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         let did_method_key = &did.did_method;
         let did_method = self

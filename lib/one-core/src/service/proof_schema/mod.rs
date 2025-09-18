@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -26,6 +27,7 @@ pub struct ProofSchemaService {
     config: Arc<core_config::CoreConfig>,
     base_url: Option<String>,
     client: Arc<dyn HttpClient>,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl ProofSchemaService {
@@ -40,6 +42,7 @@ impl ProofSchemaService {
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
         client: Arc<dyn HttpClient>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             proof_schema_repository,
@@ -51,6 +54,7 @@ impl ProofSchemaService {
             config,
             base_url,
             client,
+            session_provider,
         }
     }
 }

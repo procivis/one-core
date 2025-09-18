@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::history_repository::HistoryRepository;
@@ -21,6 +22,7 @@ pub struct KeyService {
     config: Arc<core_config::CoreConfig>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     history_repository: Arc<dyn HistoryRepository>,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl KeyService {
@@ -31,6 +33,7 @@ impl KeyService {
         config: Arc<core_config::CoreConfig>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         history_repository: Arc<dyn HistoryRepository>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             key_repository,
@@ -39,6 +42,7 @@ impl KeyService {
             config,
             key_algorithm_provider,
             history_repository,
+            session_provider,
         }
     }
 }

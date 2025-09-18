@@ -3,6 +3,7 @@ use url::Url;
 
 use super::SSIHolderService;
 use super::dto::HandleInvitationResultDTO;
+use crate::common_validator::throw_if_org_not_matching_session;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 
 impl SSIHolderService {
@@ -13,6 +14,7 @@ impl SSIHolderService {
         transport: Option<Vec<String>>,
         redirect_uri: Option<String>,
     ) -> Result<HandleInvitationResultDTO, ServiceError> {
+        throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)?;
         let organisation = self
             .organisation_repository
             .get_organisation(&organisation_id, &Default::default())

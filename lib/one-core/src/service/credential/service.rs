@@ -1,12 +1,16 @@
-use shared_types::CredentialId;
+use shared_types::{CredentialId, OrganisationId};
 use uuid::Uuid;
 
 use super::mapper::credential_detail_response_from_model;
 use super::validator::{
-    validate_format_and_did_method_compatibility, validate_redirect_uri, verify_suspension_support,
+    throw_if_credential_schema_not_in_session_org, validate_format_and_did_method_compatibility,
+    validate_redirect_uri, verify_suspension_support,
 };
 use crate::common_mapper::list_response_try_into;
-use crate::common_validator::{throw_if_credential_state_eq, throw_if_state_not_in};
+use crate::common_validator::{
+    throw_if_credential_state_eq, throw_if_org_not_matching_session,
+    throw_if_org_relation_not_matching_session, throw_if_state_not_in,
+};
 use crate::config::core_config::RevocationType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::model::certificate::CertificateRelations;
@@ -117,6 +121,10 @@ impl CredentialService {
         else {
             return Err(EntityNotFoundError::CredentialSchema(request.credential_schema_id).into());
         };
+        throw_if_org_relation_not_matching_session(
+            schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         validate_wallet_storage_type_supported(schema.wallet_storage_type, &self.config)?;
 
@@ -249,6 +257,10 @@ impl CredentialService {
             .ok_or(ServiceError::MappingError(
                 "credential_schema is None".to_string(),
             ))?;
+        throw_if_org_relation_not_matching_session(
+            schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         let revocation_type = self
             .config
@@ -311,6 +323,7 @@ impl CredentialService {
             .await?;
 
         let credential = credential.ok_or(EntityNotFoundError::Credential(*credential_id))?;
+        throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)?;
 
         if credential.deleted_at.is_some() {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
@@ -329,8 +342,7 @@ impl CredentialService {
             credential,
             &self.config,
             mdoc_validity_credentials,
-        )
-        .map_err(|err| ServiceError::ResponseMapping(err.to_string()))?;
+        )?;
 
         if response.schema.revocation_method == "LVVC" {
             let latest_lvvc = self
@@ -353,8 +365,10 @@ impl CredentialService {
     /// * `query` - query parameters
     pub async fn get_credential_list(
         &self,
+        organisation_id: &OrganisationId,
         query: GetCredentialQueryDTO,
     ) -> Result<GetCredentialListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         let result = self
             .credential_repository
             .get_credential_list(query)
@@ -441,6 +455,15 @@ impl CredentialService {
         if credential.deleted_at.is_some() {
             return Err(EntityNotFoundError::Credential(*credential_id).into());
         }
+        let Some(credential_schema) = credential.schema.as_ref() else {
+            return Err(ServiceError::MappingError(
+                "Missing credential schema".to_string(),
+            ));
+        };
+        throw_if_org_relation_not_matching_session(
+            credential_schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         match credential.state {
             CredentialStateEnum::Created | CredentialStateEnum::Pending => {
@@ -460,11 +483,6 @@ impl CredentialService {
         }
 
         let credential_exchange = &credential.protocol;
-        let Some(credential_schema) = credential.schema.as_ref() else {
-            return Err(ServiceError::MappingError(
-                "Missing credential schema".to_string(),
-            ));
-        };
 
         let Some(organisation) = &credential_schema.organisation else {
             return Err(ServiceError::MappingError(
@@ -617,6 +635,11 @@ impl CredentialService {
                 "credential schema is None".to_string(),
             ))?;
 
+        throw_if_org_relation_not_matching_session(
+            credential_schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
+
         verify_suspension_support(credential_schema, &revocation_state)?;
 
         let current_state = &credential.state;
@@ -744,11 +767,11 @@ impl CredentialService {
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::Credential(credential_id),
             ))?;
+        throw_if_credential_schema_not_in_session_org(&credential, &*self.session_provider)?;
 
         if credential.deleted_at.is_some() {
             return Err(EntityNotFoundError::Credential(credential_id).into());
         }
-
         if credential.role != CredentialRole::Holder {
             return Err(BusinessLogicError::RevocationCheckNotAllowedForRole {
                 role: credential.role,

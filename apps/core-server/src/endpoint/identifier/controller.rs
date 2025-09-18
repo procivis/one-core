@@ -120,10 +120,11 @@ pub(crate) async fn get_identifier_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetIdentifierQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetIdentifierListResponseRestDTO> {
+    let organisation_id = query.filter.organisation_id;
     let result = state
         .core
         .identifier_service
-        .get_identifier_list(query.into())
+        .get_identifier_list(&organisation_id, query.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "getting identifiers")
 }

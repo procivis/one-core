@@ -5,6 +5,7 @@ use uuid::Uuid;
 use super::CertificateService;
 use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
 use super::validator::ParsedCertificate;
+use crate::common_validator::throw_if_org_not_matching_session;
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
     CertificateState,
@@ -33,6 +34,17 @@ impl CertificateService {
             )
             .await?
             .ok_or(EntityNotFoundError::Certificate(id))?;
+
+        throw_if_org_not_matching_session(
+            certificate
+                .organisation_id
+                .as_ref()
+                .ok_or(ServiceError::MappingError(format!(
+                    "missing organisation on certificate {}",
+                    certificate.id
+                )))?,
+            &*self.session_provider,
+        )?;
 
         Ok(certificate.try_into()?)
     }

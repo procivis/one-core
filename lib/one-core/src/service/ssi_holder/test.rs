@@ -6,6 +6,7 @@ use mockall::predicate::eq;
 use one_dto_mapper::try_convert_inner;
 use regex::Regex;
 use serde_json::json;
+use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -25,6 +26,8 @@ use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -64,7 +67,7 @@ use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
-use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_holder::dto::{
     InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceRequestDTO,
@@ -338,7 +341,7 @@ async fn test_submit_proof_succeeds() {
             Ok(Some(Credential {
                 id: credential_id,
                 claims: Some(vec![]),
-                ..dummy_credential()
+                ..dummy_credential(None)
             }))
         });
 
@@ -541,7 +544,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
             Ok(Some(Credential {
                 id: *credential_id,
                 claims: Some(vec![]),
-                ..dummy_credential()
+                ..dummy_credential(None)
             }))
         });
 
@@ -762,7 +765,7 @@ async fn test_submit_proof_succeeds_with_did() {
             Ok(Some(Credential {
                 id: credential_id,
                 claims: Some(vec![]),
-                ..dummy_credential()
+                ..dummy_credential(None)
             }))
         });
 
@@ -968,7 +971,7 @@ async fn test_submit_proof_repeating_claims() {
                         metadata: false,
                     }),
                 }]),
-                ..dummy_credential()
+                ..dummy_credential(None)
             }))
         });
 
@@ -1161,6 +1164,7 @@ async fn test_accept_credential() {
                 did_method: "KEY".to_string(),
                 ..dummy_did()
             }),
+            organisation: Some(dummy_organisation(None)),
             ..dummy_identifier()
         }))
     });
@@ -1197,7 +1201,7 @@ async fn test_accept_credential() {
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential()]));
+        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
     credential_repository
         .expect_update_credential()
         .once()
@@ -1332,6 +1336,7 @@ async fn test_accept_credential_with_did() {
                     did_method: "KEY".to_string(),
                     ..dummy_did()
                 }),
+                organisation: Some(dummy_organisation(None)),
                 ..dummy_identifier()
             }))
         });
@@ -1368,7 +1373,7 @@ async fn test_accept_credential_with_did() {
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential()]));
+        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
     credential_repository
         .expect_update_credential()
         .once()
@@ -1495,7 +1500,7 @@ async fn test_reject_credential() {
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential()]));
+        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
     credential_repository
         .expect_update_credential()
         .once()
@@ -1604,7 +1609,7 @@ async fn test_initiate_issuance() {
 async fn test_continue_issuance() {
     // given
     let organisation = dummy_organisation(None);
-    let credential = dummy_credential();
+    let credential = dummy_credential(None);
     let credential_id = credential.id;
     let interaction_id = Uuid::new_v4();
 
@@ -1774,10 +1779,11 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         certificate_validator: Arc::new(MockCertificateValidator::new()),
         config: Arc::new(generic_config().core),
         client,
+        session_provider: Arc::new(NoSessionProvider),
     }
 }
 
-fn dummy_credential() -> Credential {
+fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
     Credential {
         id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
@@ -1841,7 +1847,7 @@ fn dummy_credential() -> Credential {
                 },
                 required: true,
             }]),
-            organisation: Some(dummy_organisation(None)),
+            organisation: Some(dummy_organisation(organisation_id)),
             deleted_at: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -1855,10 +1861,204 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
-            organisation: None,
+            organisation: Some(dummy_organisation(organisation_id)),
         }),
         revocation_list: None,
         key: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
     }
+}
+
+#[tokio::test]
+async fn test_handle_invitation_session_org_mismatch() {
+    // given
+    let service = SSIHolderService {
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+        ..mock_ssi_holder_service()
+    };
+
+    // when
+    let result = service
+        .handle_invitation(
+            "https://localhost:3000/some_path".parse().unwrap(),
+            Uuid::new_v4().into(),
+            None,
+            None,
+        )
+        .await;
+
+    // then
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_accept_credential_identifier_org_mismatch() {
+    let identifier_id = Uuid::new_v4().into();
+    let organisation_id = Uuid::new_v4().into();
+    let session_organisation_id = Uuid::new_v4().into();
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().return_once(move |_, _| {
+        Ok(Some(Identifier {
+            id: identifier_id,
+            did: Some(Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: dummy_key(),
+                    reference: "1".to_string(),
+                }]),
+                did_method: "KEY".to_string(),
+                ..dummy_did()
+            }),
+            organisation: Some(dummy_organisation(Some(organisation_id))),
+            ..dummy_identifier()
+        }))
+    });
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![dummy_credential(Some(session_organisation_id))]));
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(StaticSessionProvider(Session {
+            organisation_id: session_organisation_id,
+            user_id: "test-user".to_string(),
+        })),
+        ..mock_ssi_holder_service()
+    };
+
+    let result = service
+        .accept_credential(&Uuid::new_v4(), None, Some(identifier_id), None, None)
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_accept_credential_credential_org_mismatch() {
+    let identifier_id = Uuid::new_v4().into();
+    let organisation_id = Uuid::new_v4().into();
+    let session_organisation_id = Uuid::new_v4().into();
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().return_once(move |_, _| {
+        Ok(Some(Identifier {
+            id: identifier_id,
+            did: Some(Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: dummy_key(),
+                    reference: "1".to_string(),
+                }]),
+                did_method: "KEY".to_string(),
+                ..dummy_did()
+            }),
+            organisation: Some(dummy_organisation(Some(session_organisation_id))),
+            ..dummy_identifier()
+        }))
+    });
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![dummy_credential(Some(organisation_id))]));
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(StaticSessionProvider(Session {
+            organisation_id: session_organisation_id,
+            user_id: "test-user".to_string(),
+        })),
+        ..mock_ssi_holder_service()
+    };
+
+    let result = service
+        .accept_credential(&Uuid::new_v4(), None, Some(identifier_id), None, None)
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_reject_credential_credential_org_mismatch() {
+    let identifier_id = Uuid::new_v4().into();
+    let organisation_id = Uuid::new_v4().into();
+    let session_organisation_id = Uuid::new_v4().into();
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository.expect_get().return_once(move |_, _| {
+        Ok(Some(Identifier {
+            id: identifier_id,
+            did: Some(Did {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: dummy_key(),
+                    reference: "1".to_string(),
+                }]),
+                did_method: "KEY".to_string(),
+                ..dummy_did()
+            }),
+            organisation: Some(dummy_organisation(Some(session_organisation_id))),
+            ..dummy_identifier()
+        }))
+    });
+    let mut credential_repository = MockCredentialRepository::new();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![dummy_credential(Some(organisation_id))]));
+    let service = SSIHolderService {
+        credential_repository: Arc::new(credential_repository),
+        identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(StaticSessionProvider(Session {
+            organisation_id: session_organisation_id,
+            user_id: "test-user".to_string(),
+        })),
+        ..mock_ssi_holder_service()
+    };
+
+    let result = service.reject_credential(&Uuid::new_v4()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_initiate_issuance_session_org_mismatch() {
+    // given
+    let service = SSIHolderService {
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+        ..mock_ssi_holder_service()
+    };
+
+    // when
+    let result = service
+        .initiate_issuance(InitiateIssuanceRequestDTO {
+            organisation_id: Uuid::new_v4().into(),
+            protocol: "".to_string(),
+            issuer: "".to_string(),
+            client_id: "".to_string(),
+            redirect_uri: None,
+            scope: None,
+            authorization_details: None,
+            issuer_state: None,
+            authorization_server: None,
+        })
+        .await;
+
+    // then
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
 }

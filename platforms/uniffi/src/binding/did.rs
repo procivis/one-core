@@ -30,6 +30,7 @@ impl OneCoreBinding {
     ) -> Result<DidListBindingDTO, BindingError> {
         let core = self.use_core().await?;
 
+        let organisation_id = into_id(&query.organisation_id)?;
         let condition = {
             let exact = query.exact.unwrap_or_default();
             let get_string_match_type = |column| {
@@ -40,8 +41,7 @@ impl OneCoreBinding {
                 }
             };
 
-            let organisation =
-                DidFilterValue::OrganisationId(into_id(&query.organisation_id)?).condition();
+            let organisation = DidFilterValue::OrganisationId(organisation_id).condition();
 
             let name = query.name.map(|name| {
                 DidFilterValue::Name(StringMatch {
@@ -95,18 +95,21 @@ impl OneCoreBinding {
 
         Ok(core
             .did_service
-            .get_did_list(DidListQuery {
-                pagination: Some(ListPagination {
-                    page: query.page,
-                    page_size: query.page_size,
-                }),
-                sorting: query.sort.map(|column| ListSorting {
-                    column: column.into(),
-                    direction: convert_inner(query.sort_direction),
-                }),
-                filtering: Some(condition),
-                include: None,
-            })
+            .get_did_list(
+                &organisation_id,
+                DidListQuery {
+                    pagination: Some(ListPagination {
+                        page: query.page,
+                        page_size: query.page_size,
+                    }),
+                    sorting: query.sort.map(|column| ListSorting {
+                        column: column.into(),
+                        direction: convert_inner(query.sort_direction),
+                    }),
+                    filtering: Some(condition),
+                    include: None,
+                },
+            )
             .await?
             .into())
     }

@@ -60,10 +60,11 @@ pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetProofSchemaQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofSchemaListResponseRestDTO> {
+    let organisation_id = query.filter.organisation_id;
     let result = state
         .core
         .proof_schema_service
-        .get_proof_schema_list(query.into())
+        .get_proof_schema_list(&organisation_id, query.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "getting proof schemas")
 }

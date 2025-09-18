@@ -5,6 +5,9 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::common_mapper::list_response_into;
+use crate::common_validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyRelations};
@@ -51,9 +54,18 @@ impl WalletUnitService {
     ) -> Result<GetWalletUnitResponseDTO, ServiceError> {
         let result = self
             .wallet_unit_repository
-            .get_wallet_unit(id, &WalletUnitRelations::default())
+            .get_wallet_unit(
+                id,
+                &WalletUnitRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
             .await?
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+        throw_if_org_relation_not_matching_session(
+            result.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         Ok(result.into())
     }
@@ -65,8 +77,10 @@ impl WalletUnitService {
     /// * `query` - query parameters
     pub async fn get_wallet_unit_list(
         &self,
+        organisation_id: &OrganisationId,
         query: WalletUnitListQuery,
     ) -> Result<GetWalletUnitListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         let result = self
             .wallet_unit_repository
             .get_wallet_unit_list(query)
@@ -79,6 +93,7 @@ impl WalletUnitService {
         &self,
         request: HolderRegisterWalletUnitRequestDTO,
     ) -> Result<HolderRegisterWalletUnitResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
@@ -362,6 +377,7 @@ impl WalletUnitService {
         &self,
         request: HolderRefreshWalletUnitRequestDTO,
     ) -> Result<(), ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         let wallet_unit_attestation: WalletUnitAttestation = self
             .wallet_unit_attestation_repository
             .get_wallet_unit_attestation_by_organisation(

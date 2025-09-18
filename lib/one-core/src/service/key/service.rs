@@ -4,13 +4,16 @@ use std::sync::Arc;
 use anyhow::{Context, bail};
 use one_crypto::signer::ecdsa::ECDSASigner;
 use rcgen::{KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519, RemoteKeyPair};
-use shared_types::KeyId;
+use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyRequestDTO, PrivateKeyJwkDTO};
 use super::mapper::request_to_certificate_params;
+use crate::common_validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
@@ -47,6 +50,10 @@ impl KeyService {
         let Some(key) = key else {
             return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
         };
+        throw_if_org_relation_not_matching_session(
+            key.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         key.try_into()
     }
@@ -57,6 +64,7 @@ impl KeyService {
     ///
     /// * `request` - key data
     pub async fn create_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         validate_generate_request(&request.key_type, &request.storage_type, &self.config)?;
 
         let organisation = self
@@ -120,8 +128,10 @@ impl KeyService {
     /// * `query` - query parameters
     pub async fn get_key_list(
         &self,
+        organisation_id: &OrganisationId,
         query: KeyListQuery,
     ) -> Result<GetKeyListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         let result = self.key_repository.get_key_list(query).await?;
 
         Ok(result.into())
@@ -150,7 +160,10 @@ impl KeyService {
         let Some(key) = key else {
             return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
         };
-
+        throw_if_org_relation_not_matching_session(
+            key.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
         validate_key_algorithm_for_csr(&key, &*self.key_algorithm_provider)?;
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(

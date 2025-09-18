@@ -8,6 +8,7 @@ pub(crate) mod validator;
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -23,9 +24,11 @@ pub struct CredentialSchemaService {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     config: Arc<core_config::CoreConfig>,
     core_base_url: Option<String>,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl CredentialSchemaService {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         core_base_url: Option<String>,
         repository: Arc<dyn CredentialSchemaRepository>,
@@ -34,6 +37,7 @@ impl CredentialSchemaService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         config: Arc<core_config::CoreConfig>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             credential_schema_repository: repository,
@@ -43,6 +47,7 @@ impl CredentialSchemaService {
             revocation_method_provider,
             config,
             core_base_url,
+            session_provider,
         }
     }
 }

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use super::error::ErrorCode;
 use crate::config::core_config;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -27,6 +28,7 @@ pub struct DidService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
     config: Arc<core_config::CoreConfig>,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl DidService {
@@ -40,6 +42,7 @@ impl DidService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
         config: Arc<core_config::CoreConfig>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
             did_repository,
@@ -50,6 +53,7 @@ impl DidService {
             key_algorithm_provider,
             key_provider,
             config,
+            session_provider,
         }
     }
 }

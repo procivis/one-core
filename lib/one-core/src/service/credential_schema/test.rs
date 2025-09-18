@@ -22,6 +22,8 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -45,7 +47,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{
-    dummy_organisation, generic_config, generic_formatter_capabilities,
+    dummy_organisation, generic_config, generic_formatter_capabilities, get_dummy_date,
 };
 
 fn setup_service(
@@ -64,6 +66,7 @@ fn setup_service(
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(config),
+        Arc::new(NoSessionProvider),
     )
 }
 
@@ -238,17 +241,21 @@ async fn test_get_credential_schema_list_success() {
         generic_config().core,
     );
 
+    let organisation_id = Uuid::new_v4().into();
     let result = service
-        .get_credential_schema_list(GetCredentialSchemaQueryDTO {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 5,
-            }),
-            filtering: Some(
-                CredentialSchemaFilterValue::OrganisationId(Uuid::new_v4().into()).condition(),
-            ),
-            ..Default::default()
-        })
+        .get_credential_schema_list(
+            &organisation_id,
+            GetCredentialSchemaQueryDTO {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 5,
+                }),
+                filtering: Some(
+                    CredentialSchemaFilterValue::OrganisationId(organisation_id).condition(),
+                ),
+                ..Default::default()
+            },
+        )
         .await;
 
     assert!(result.is_ok());
@@ -3061,4 +3068,133 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
     );
     assert2::assert!(claim_name == "location");
     assert2::assert!(data_type == "OBJECT");
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_fail_session_org_mismatch() {
+    let service = CredentialSchemaService {
+        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::default()),
+        history_repository: Arc::new(MockHistoryRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::default()),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
+        config: Arc::new(generic_config().core),
+        core_base_url: None,
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".to_string(),
+            wallet_storage_type: None,
+            revocation_method: "NONE".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            external_schema: false,
+            claims: vec![],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+            allow_suspension: None,
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_list_credential_schema_fail_session_org_mismatch() {
+    let service = CredentialSchemaService {
+        credential_schema_repository: Arc::new(MockCredentialSchemaRepository::default()),
+        history_repository: Arc::new(MockHistoryRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::default()),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
+        config: Arc::new(generic_config().core),
+        core_base_url: None,
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service
+        .get_credential_schema_list(
+            &Uuid::new_v4().into(),
+            GetCredentialSchemaQueryDTO {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_credential_schema_ops_session_org_mismatch() {
+    let mut schema_repository = MockCredentialSchemaRepository::default();
+    schema_repository
+        .expect_get_credential_schema()
+        .returning(|_, _| Ok(Some(generic_credential_schema())));
+    let service = CredentialSchemaService {
+        credential_schema_repository: Arc::new(schema_repository),
+        history_repository: Arc::new(MockHistoryRepository::default()),
+        organisation_repository: Arc::new(MockOrganisationRepository::default()),
+        formatter_provider: Arc::new(MockCredentialFormatterProvider::default()),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
+        config: Arc::new(generic_config().core),
+        core_base_url: None,
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+    };
+
+    let result = service.get_credential_schema(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .delete_credential_schema(&Uuid::new_v4().into())
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .share_credential_schema(&Uuid::new_v4().into())
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .import_credential_schema(ImportCredentialSchemaRequestDTO {
+            organisation_id: Uuid::new_v4().into(),
+            schema: ImportCredentialSchemaRequestSchemaDTO {
+                id: Uuid::new_v4(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "".to_string(),
+                format: "".to_string(),
+                revocation_method: "".to_string(),
+                organisation_id: Uuid::new_v4(),
+                claims: vec![],
+                external_schema: false,
+                wallet_storage_type: None,
+                schema_id: "".to_string(),
+                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
+                imported_source_url: "".to_string(),
+                layout_type: None,
+                layout_properties: None,
+                allow_suspension: None,
+            },
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
 }

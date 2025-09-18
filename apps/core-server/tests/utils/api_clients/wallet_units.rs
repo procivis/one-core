@@ -24,9 +24,18 @@ pub struct TestHolderRefreshRequest {
     pub app_integrity_check_required: bool,
 }
 
-#[derive(Default)]
 pub struct ListFilters {
+    pub organisation_id: OrganisationId,
     pub attestation: Option<String>,
+}
+
+impl ListFilters {
+    pub fn new(organisation_id: OrganisationId) -> Self {
+        Self {
+            organisation_id,
+            attestation: None,
+        }
+    }
 }
 
 impl WalletUnitsApi {
@@ -35,9 +44,13 @@ impl WalletUnitsApi {
     }
 
     pub async fn list(&self, list_filters: ListFilters) -> Response {
-        let ListFilters { attestation } = list_filters;
+        let ListFilters {
+            attestation,
+            organisation_id,
+        } = list_filters;
 
-        let mut url = "/api/wallet-unit/v1?page=0&pageSize=50".to_string();
+        let mut url =
+            format!("/api/wallet-unit/v1?organisationId={organisation_id}&page=0&pageSize=50");
         if let Some(attestation) = attestation {
             url += &format!("&attestation={attestation}")
         }

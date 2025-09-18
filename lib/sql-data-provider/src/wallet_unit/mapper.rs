@@ -11,7 +11,7 @@ use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
 use crate::entity::{history, wallet_unit};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
-    get_comparison_condition, get_string_match_condition,
+    get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 
 impl From<wallet_unit::Model> for WalletUnit {
@@ -48,6 +48,9 @@ impl IntoSortingColumn for SortableWalletUnitColumn {
 impl IntoFilterCondition for WalletUnitFilterValue {
     fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
+            Self::OrganisationId(organisation_id) => {
+                get_equals_condition(wallet_unit::Column::OrganisationId, organisation_id)
+            }
             Self::Name(string_match) => {
                 get_string_match_condition(wallet_unit::Column::Name, string_match)
             }

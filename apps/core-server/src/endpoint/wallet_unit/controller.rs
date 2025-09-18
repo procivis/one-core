@@ -32,6 +32,7 @@ pub(crate) async fn get_wallet_unit_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListWalletUnitsQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetWalletUnitsResponseRestDTO> {
+    let organisation_id = query.filter.organisation_id;
     let query = match query.try_into() {
         Ok(q) => q,
         Err(e) => {
@@ -46,7 +47,7 @@ pub(crate) async fn get_wallet_unit_list(
     let result = state
         .core
         .wallet_unit_service
-        .get_wallet_unit_list(query)
+        .get_wallet_unit_list(&organisation_id, query)
         .await;
     OkOrErrorResponse::from_result(result, state, "getting wallet unit list")
 }

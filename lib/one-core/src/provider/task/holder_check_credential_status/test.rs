@@ -19,6 +19,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
+use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -203,6 +204,7 @@ struct Repositories {
     pub config: Arc<CoreConfig>,
     pub lvvc_repository: Arc<MockValidityCredentialRepository>,
     pub blob_storage_provider: Arc<MockBlobStorageProvider>,
+    pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -225,6 +227,9 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(ReqwestClient::default()),
         repositories.certificate_validator,
         repositories.blob_storage_provider,
+        repositories
+            .session_provider
+            .unwrap_or(Arc::new(NoSessionProvider)),
     )
 }
 

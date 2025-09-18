@@ -48,15 +48,14 @@ impl OneCoreBinding {
         &self,
         query: CredentialSchemaListQueryBindingDTO,
     ) -> Result<CredentialSchemaListBindingDTO, BindingError> {
+        let organisation_id = into_id(&query.organisation_id)?;
         let sorting = query.sort.map(|sort_by| ListSorting {
             column: sort_by.into(),
             direction: query.sort_direction.map(Into::into),
         });
 
-        let mut conditions = vec![
-            CredentialSchemaFilterValue::OrganisationId(into_id(&query.organisation_id)?)
-                .condition(),
-        ];
+        let mut conditions =
+            vec![CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()];
 
         let exact = query.exact.unwrap_or_default();
         let get_string_match_type = |column| {
@@ -138,17 +137,20 @@ impl OneCoreBinding {
         let core = self.use_core().await?;
         Ok(core
             .credential_schema_service
-            .get_credential_schema_list(GetCredentialSchemaQueryDTO {
-                pagination: Some(ListPagination {
-                    page: query.page,
-                    page_size: query.page_size,
-                }),
-                filtering: Some(ListFilterCondition::And(conditions)),
-                sorting,
-                include: query
-                    .include
-                    .map(|incl| incl.into_iter().map(Into::into).collect()),
-            })
+            .get_credential_schema_list(
+                &organisation_id,
+                GetCredentialSchemaQueryDTO {
+                    pagination: Some(ListPagination {
+                        page: query.page,
+                        page_size: query.page_size,
+                    }),
+                    filtering: Some(ListFilterCondition::And(conditions)),
+                    sorting,
+                    include: query
+                        .include
+                        .map(|incl| incl.into_iter().map(Into::into).collect()),
+                },
+            )
             .await?
             .into())
     }

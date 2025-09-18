@@ -53,6 +53,7 @@ impl OneCoreBinding {
     ) -> Result<GetIdentifierListBindingDTO, BindingError> {
         let core = self.use_core().await?;
 
+        let organisation_id = into_id(&query.organisation_id)?;
         let condition = {
             let exact = query.exact.unwrap_or_default();
             let get_string_match_type = |column| {
@@ -63,8 +64,7 @@ impl OneCoreBinding {
                 }
             };
 
-            let organisation =
-                IdentifierFilterValue::OrganisationId(into_id(&query.organisation_id)?).condition();
+            let organisation = IdentifierFilterValue::OrganisationId(organisation_id).condition();
 
             let name = query.name.map(|name| {
                 IdentifierFilterValue::Name(StringMatch {
@@ -165,7 +165,7 @@ impl OneCoreBinding {
 
         Ok(core
             .identifier_service
-            .get_identifier_list(query)
+            .get_identifier_list(&organisation_id, query)
             .await?
             .into())
     }

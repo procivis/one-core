@@ -70,7 +70,12 @@ pub(crate) async fn get_did_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetDidQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetDidsResponseRestDTO> {
-    let result = state.core.did_service.get_did_list(query.into()).await;
+    let organisation_id = query.filter.organisation_id;
+    let result = state
+        .core
+        .did_service
+        .get_did_list(&organisation_id, query.into())
+        .await;
     OkOrErrorResponse::from_result(result, state, "getting dids")
 }
 

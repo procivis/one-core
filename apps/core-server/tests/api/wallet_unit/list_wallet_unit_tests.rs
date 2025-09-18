@@ -5,6 +5,7 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use similar_asserts::assert_eq;
+use uuid::Uuid;
 
 use crate::api_wallet_unit_tests::create_wallet_unit_attestation;
 use crate::utils::api_clients::wallet_units::ListFilters;
@@ -35,7 +36,11 @@ async fn test_list_wallet_unit_success() {
     }
 
     // WHEN
-    let resp = context.api.wallet_units.list(Default::default()).await;
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters::new(org.id))
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -91,7 +96,11 @@ async fn test_list_wallet_unit_revoked_success() {
     }
 
     // WHEN
-    let resp = context.api.wallet_units.list(Default::default()).await;
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters::new(org.id))
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
@@ -163,6 +172,7 @@ async fn test_list_wallet_unit_by_attestation_success() {
         .api
         .wallet_units
         .list(ListFilters {
+            organisation_id: organisation.id,
             attestation: Some(attestation),
         })
         .await;
@@ -193,7 +203,11 @@ async fn test_list_wallet_unit_empty_success() {
     let context = TestContext::new(None).await;
 
     // WHEN
-    let resp = context.api.wallet_units.list(Default::default()).await;
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters::new(Uuid::new_v4().into()))
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);

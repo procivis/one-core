@@ -99,7 +99,12 @@ pub(crate) async fn get_key_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetKeyQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetKeyListResponseRestDTO> {
-    let result = state.core.key_service.get_key_list(query.into()).await;
+    let organisation_id = query.filter.organisation_id;
+    let result = state
+        .core
+        .key_service
+        .get_key_list(&organisation_id, query.into())
+        .await;
 
     match result {
         Err(error) => {

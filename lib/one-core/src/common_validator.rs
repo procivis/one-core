@@ -1,11 +1,14 @@
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
+use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::proto::session_provider::SessionProvider;
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 pub(crate) fn throw_if_credential_state_eq(
     credential: &Credential,
@@ -19,6 +22,33 @@ pub(crate) fn throw_if_credential_state_eq(
         .into());
     }
     Ok(())
+}
+
+pub(crate) fn throw_if_org_not_matching_session(
+    organisation_id: &OrganisationId,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    let Some(session) = session_provider.session() else {
+        return Ok(());
+    };
+    if &session.organisation_id != organisation_id {
+        return Err(ValidationError::Forbidden.into());
+    }
+    Ok(())
+}
+
+pub(crate) fn throw_if_org_relation_not_matching_session(
+    org_relation: Option<&Organisation>,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    throw_if_org_not_matching_session(
+        &org_relation
+            .ok_or(ServiceError::MappingError(
+                "organisation is None".to_string(),
+            ))?
+            .id,
+        session_provider,
+    )
 }
 
 pub(crate) fn throw_if_credential_state_not_eq(

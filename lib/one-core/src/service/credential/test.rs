@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
+use std::vec;
 
 use mockall::predicate::*;
 use serde_json::json;
@@ -26,6 +27,8 @@ use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
+use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::proto::session_provider::{NoSessionProvider, Session, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -86,6 +89,7 @@ struct Repositories {
     pub lvvc_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
 fn setup_service(repositories: Repositories) -> CredentialService {
@@ -108,6 +112,9 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(ReqwestClient::default()),
         Arc::new(repositories.certificate_validator),
         Arc::new(repositories.blob_storage_provider),
+        repositories
+            .session_provider
+            .unwrap_or(Arc::new(NoSessionProvider)),
     )
 }
 
@@ -401,18 +408,20 @@ async fn test_get_credential_list_success() {
         ..Default::default()
     });
 
+    let organisation_id = Uuid::new_v4().into();
     let result = service
-        .get_credential_list(GetCredentialQueryDTO {
-            pagination: Some(ListPagination {
-                page: 0,
-                page_size: 5,
-            }),
-            sorting: None,
-            filtering: Some(
-                CredentialFilterValue::OrganisationId(Uuid::new_v4().into()).condition(),
-            ),
-            include: None,
-        })
+        .get_credential_list(
+            &organisation_id,
+            GetCredentialQueryDTO {
+                pagination: Some(ListPagination {
+                    page: 0,
+                    page_size: 5,
+                }),
+                sorting: None,
+                filtering: Some(CredentialFilterValue::OrganisationId(organisation_id).condition()),
+                include: None,
+            },
+        )
         .await;
 
     assert!(result.is_ok());
@@ -575,7 +584,7 @@ async fn test_get_credential_fail_credential_schema_is_none() {
     });
 
     let result = service.get_credential(&credential.id).await;
-    assert!(result.is_err_and(|e| matches!(e, ServiceError::ResponseMapping(_))));
+    assert!(result.is_err_and(|e| matches!(e, ServiceError::MappingError(_))));
 }
 
 #[tokio::test]
@@ -5569,4 +5578,131 @@ async fn test_create_credential_number_named_claims() {
     test_create_credential_array(claim_schemas.to_owned(), claims)
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_credential_session_org_mismatch() {
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: Uuid::new_v4().into(), // unrelated org
+        user_id: "user-id".to_string(),
+    });
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get()
+        .return_once(|_, _| Ok(Some(generic_credential().issuer_identifier.unwrap())));
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .return_once(|_, _| Ok(Some(generic_credential().schema.unwrap())));
+    let service = setup_service(Repositories {
+        credential_schema_repository,
+        config: generic_config().core,
+        identifier_repository,
+        session_provider: Some(Arc::new(session_provider)),
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(CreateCredentialRequestDTO {
+            credential_schema_id: Uuid::new_v4().into(),
+            issuer: Some(Uuid::new_v4().into()),
+            issuer_did: None,
+            issuer_key: None,
+            issuer_certificate: None,
+            protocol: "OPENID4VCI_DRAFT13".to_string(),
+            claim_values: vec![],
+            redirect_uri: None,
+            profile: None,
+        })
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ))
+}
+
+#[tokio::test]
+async fn test_list_credential_session_org_mismatch() {
+    let service = setup_service(Repositories {
+        config: generic_config().core,
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        ..Default::default()
+    });
+
+    let result = service
+        .get_credential_list(
+            &Uuid::new_v4().into(),
+            GetCredentialQueryDTO {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ))
+}
+
+#[tokio::test]
+async fn test_credential_ops_session_org_mismatch() {
+    let mut credential_repository = MockCredentialRepository::default();
+    credential_repository
+        .expect_get_credential()
+        .returning(|_, _| Ok(Some(generic_credential())));
+    let service = setup_service(Repositories {
+        credential_repository,
+        config: generic_config().core,
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        ..Default::default()
+    });
+
+    let result = service.get_credential(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service.delete_credential(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service.share_credential(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .suspend_credential(
+            &Uuid::new_v4().into(),
+            SuspendCredentialRequestDTO {
+                suspend_end_date: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service.reactivate_credential(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .check_revocation(vec![Uuid::new_v4().into()], false)
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service.revoke_credential(&Uuid::new_v4().into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ))
 }

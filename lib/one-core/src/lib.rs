@@ -564,6 +564,7 @@ impl OneCore {
             data_provider.get_certificate_repository(),
             data_provider.get_key_repository(),
             certificate_validator.clone(),
+            providers.session_provider.clone(),
         );
 
         let did_service = DidService::new(
@@ -575,6 +576,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             key_provider.clone(),
             config.clone(),
+            providers.session_provider.clone(),
         );
 
         let credential_service = CredentialService::new(
@@ -596,6 +598,7 @@ impl OneCore {
             client.clone(),
             certificate_validator.clone(),
             blob_storage_provider.clone(),
+            providers.session_provider.clone(),
         );
 
         let task_providers = tasks_from_config(
@@ -779,6 +782,7 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
+                providers.session_provider.clone(),
             ),
             history_service: HistoryService::new(data_provider.get_history_repository()),
             key_service: KeyService::new(
@@ -788,6 +792,7 @@ impl OneCore {
                 config.clone(),
                 key_algorithm_provider.clone(),
                 data_provider.get_history_repository(),
+                providers.session_provider.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(
                 data_provider.get_proof_schema_repository(),
@@ -799,6 +804,7 @@ impl OneCore {
                 config.clone(),
                 providers.core_base_url.clone(),
                 client.clone(),
+                providers.session_provider.clone(),
             ),
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),
@@ -826,6 +832,7 @@ impl OneCore {
                 data_provider.get_key_repository().clone(),
                 blob_storage_provider.clone(),
                 nfc_hce,
+                providers.session_provider.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 data_provider.get_credential_schema_repository(),
@@ -868,6 +875,7 @@ impl OneCore {
                 config.clone(),
                 client.clone(),
                 blob_storage_provider,
+                providers.session_provider.clone(),
             ),
             ssi_wallet_provider_service: SSIWalletProviderService::new(
                 data_provider.get_organisation_repository(),
@@ -895,6 +903,7 @@ impl OneCore {
                 did_service,
                 certificate_service,
                 config.clone(),
+                providers.session_provider.clone(),
             ),
             wallet_unit_service: WalletUnitService::new(
                 data_provider.get_organisation_repository(),
@@ -909,6 +918,7 @@ impl OneCore {
                 Arc::new(DefaultClock),
                 providers.core_base_url,
                 config,
+                providers.session_provider.clone(),
             ),
         })
     }

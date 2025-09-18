@@ -1,14 +1,42 @@
+use crate::common_validator::throw_if_org_relation_not_matching_session;
 use crate::config::core_config::{self, CoreConfig};
 use crate::config::validator::protocol::validate_protocol_type;
+use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::dto::InitiateIssuanceRequestDTO;
+
+pub(super) fn validate_credentials_match_session_organisation(
+    credentials: &[Credential],
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    credentials
+        .iter()
+        .map(|cred| {
+            throw_if_org_relation_not_matching_session(
+                cred.schema
+                    .as_ref()
+                    .ok_or(MappingError(format!(
+                        "Credential schema is missing on credential `{}`",
+                        cred.id
+                    )))?
+                    .organisation
+                    .as_ref(),
+                session_provider,
+            )?;
+            Ok::<_, ServiceError>(())
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(())
+}
 
 pub(super) fn validate_holder_capabilities(
     config: &core_config::CoreConfig,

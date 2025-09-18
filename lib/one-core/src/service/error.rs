@@ -121,9 +121,6 @@ pub enum ServiceError {
     #[error(transparent)]
     KeyStorageProvider(#[from] KeyStorageProviderError),
 
-    #[error("Response mapping error: {0}")]
-    ResponseMapping(String),
-
     #[error("Revocation error: {0}")]
     Revocation(#[from] RevocationError),
 
@@ -892,9 +889,6 @@ pub enum ErrorCode {
     #[strum(message = "Database error")]
     BR_0054,
 
-    #[strum(message = "Response mapping error")]
-    BR_0055,
-
     #[strum(message = "Invalid formatter type")]
     BR_0056,
 
@@ -1436,7 +1430,6 @@ impl ErrorCodeMixin for ServiceError {
             Self::Validation(error) => error.error_code(),
             Self::Repository(error) => error.error_code(),
             Self::MissingProvider(error) => error.error_code(),
-            Self::ResponseMapping(_) => ErrorCode::BR_0055,
             Self::IssuanceProtocolError(error) => error.error_code(),
             Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,

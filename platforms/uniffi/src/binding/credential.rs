@@ -41,6 +41,7 @@ impl OneCoreBinding {
         query: CredentialListQueryBindingDTO,
     ) -> Result<CredentialListBindingDTO, BindingError> {
         let core = self.use_core().await?;
+        let organisation_id = into_id(&query.organisation_id)?;
 
         let condition = {
             if query.name.is_some() && query.search_type.is_some() && query.search_text.is_some() {
@@ -59,8 +60,7 @@ impl OneCoreBinding {
                 }
             };
 
-            let organisation =
-                CredentialFilterValue::OrganisationId(into_id(&query.organisation_id)?).condition();
+            let organisation = CredentialFilterValue::OrganisationId(organisation_id).condition();
 
             let name = query.name.map(|name| {
                 CredentialFilterValue::CredentialSchemaName(StringMatch {
@@ -232,18 +232,21 @@ impl OneCoreBinding {
 
         Ok(core
             .credential_service
-            .get_credential_list(GetCredentialQueryDTO {
-                pagination: Some(ListPagination {
-                    page: query.page,
-                    page_size: query.page_size,
-                }),
-                sorting: query.sort.map(|column| ListSorting {
-                    column: column.into(),
-                    direction: convert_inner(query.sort_direction),
-                }),
-                filtering: Some(condition),
-                include: query.include.map(convert_inner),
-            })
+            .get_credential_list(
+                &organisation_id,
+                GetCredentialQueryDTO {
+                    pagination: Some(ListPagination {
+                        page: query.page,
+                        page_size: query.page_size,
+                    }),
+                    sorting: query.sort.map(|column| ListSorting {
+                        column: column.into(),
+                        direction: convert_inner(query.sort_direction),
+                    }),
+                    filtering: Some(condition),
+                    include: query.include.map(convert_inner),
+                },
+            )
             .await?
             .into())
     }

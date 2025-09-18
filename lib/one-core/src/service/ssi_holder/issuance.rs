@@ -14,7 +14,10 @@ use super::dto::{
     HandleInvitationResultDTO,
 };
 use crate::common_mapper::value_to_model_claims;
-use crate::common_validator::throw_if_credential_state_not_eq;
+use crate::common_validator::{
+    throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
+    throw_if_org_relation_not_matching_session,
+};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -52,7 +55,8 @@ use crate::service::ssi_holder::dto::{
     OpenIDAuthorizationCodeFlowInteractionData,
 };
 use crate::service::ssi_holder::validator::{
-    validate_holder_capabilities, validate_initiate_issuance_request,
+    validate_credentials_match_session_organisation, validate_holder_capabilities,
+    validate_initiate_issuance_request,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::history::log_history_event_credential;
@@ -99,12 +103,15 @@ impl SSIHolderService {
             .into());
         }
 
+        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
+
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => self
                 .identifier_repository
                 .get_from_did_id(
                     did_id,
                     &IdentifierRelations {
+                        organisation: Some(OrganisationRelations::default()),
                         did: Some(DidRelations {
                             keys: Some(Default::default()),
                             ..Default::default()
@@ -119,6 +126,7 @@ impl SSIHolderService {
                 .get(
                     identifier_id,
                     &IdentifierRelations {
+                        organisation: Some(OrganisationRelations::default()),
                         did: Some(DidRelations {
                             keys: Some(Default::default()),
                             ..Default::default()
@@ -134,13 +142,14 @@ impl SSIHolderService {
                 return Err(BusinessLogicError::OverlappingHolderDidWithIdentifier.into());
             }
         };
+        throw_if_org_relation_not_matching_session(
+            identifier.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
-        let did = identifier
-            .did
-            .to_owned()
-            .ok_or(ServiceError::BusinessLogic(
-                BusinessLogicError::IncompatibleHolderIdentifier,
-            ))?;
+        let did = identifier.did.to_owned().ok_or(BusinessLogic(
+            BusinessLogicError::IncompatibleHolderIdentifier,
+        ))?;
 
         let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
         let selected_key = match key_id {
@@ -210,7 +219,7 @@ impl SSIHolderService {
         &self,
         credential: &Credential,
         holder_did: &Did,
-        holder_identifer: &Identifier,
+        holder_identifier: &Identifier,
         key_security: &[KeySecurity],
         selected_key: &Key,
         holder_jwk_key_id: &str,
@@ -264,7 +273,7 @@ impl SSIHolderService {
         validate_holder_capabilities(
             &self.config,
             holder_did,
-            holder_identifer,
+            holder_identifier,
             selected_key,
             &formatter.get_capabilities(),
             self.key_algorithm_provider.as_ref(),
@@ -324,7 +333,7 @@ impl SSIHolderService {
                 credential.id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Accepted),
-                    holder_identifier_id: Some(holder_identifer.id),
+                    holder_identifier_id: Some(holder_identifier.id),
                     key: Some(selected_key.id),
                     claims: Some(claims),
                     credential_blob_id: Some(blob_id),
@@ -420,7 +429,7 @@ impl SSIHolderService {
             }
             .into());
         }
-
+        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
         let mut result: Result<(), ServiceError> = Ok(());
 
         for credential in credentials {
@@ -656,6 +665,7 @@ impl SSIHolderService {
         &self,
         request: InitiateIssuanceRequestDTO,
     ) -> Result<InitiateIssuanceResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         validate_initiate_issuance_request(&request, &self.config)?;
 
         let Some(organisation) = self
@@ -764,6 +774,10 @@ impl SSIHolderService {
             .await?
             .ok_or(EntityNotFoundError::Interaction(interaction_id))?;
 
+        throw_if_org_relation_not_matching_session(
+            interaction.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
         let issuance: OpenIDAuthorizationCodeFlowInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 

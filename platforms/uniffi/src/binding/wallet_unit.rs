@@ -40,7 +40,9 @@ impl OneCoreBinding {
         query: WalletUnitListQueryBindingDTO,
     ) -> Result<WalletUnitListBindingDTO, BindingError> {
         let core = self.use_core().await?;
+        let organisation_id = into_id(&query.organisation_id)?;
         let condition = {
+            let organisation = WalletUnitFilterValue::OrganisationId(organisation_id);
             let exact = query.exact.unwrap_or_default();
 
             let name = query.name.map(|name| {
@@ -133,6 +135,7 @@ impl OneCoreBinding {
                 .transpose()?;
 
             ListFilterCondition::<WalletUnitFilterValue>::default()
+                & organisation
                 & name
                 & ids
                 & status
@@ -161,7 +164,7 @@ impl OneCoreBinding {
         };
         Ok(core
             .wallet_unit_service
-            .get_wallet_unit_list(query)
+            .get_wallet_unit_list(&organisation_id, query)
             .await?
             .into())
     }
@@ -267,6 +270,7 @@ pub struct WalletUnitListQueryBindingDTO {
     pub sort: Option<SortableWalletUnitColumnBindingEnum>,
     pub sort_direction: Option<SortDirection>,
 
+    pub organisation_id: String,
     pub name: Option<String>,
     pub exact: Option<Vec<ExactWalletUnitFilterColumnBindingEnum>>,
     pub ids: Option<Vec<String>>,

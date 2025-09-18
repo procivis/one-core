@@ -24,6 +24,8 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
+use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     Features, FormatterCapabilities, SelectiveDisclosure,
@@ -67,6 +69,7 @@ struct Repositories {
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub history_repository: MockHistoryRepository,
     pub config: Option<CoreConfig>,
+    pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
 fn setup_service(mut repositories: Repositories) -> ProofSchemaService {
@@ -85,6 +88,9 @@ fn setup_service(mut repositories: Repositories) -> ProofSchemaService {
         config: Arc::new(repositories.config.unwrap_or(generic_config().core)),
         base_url: Some("BASE_URL".to_string()),
         client: Arc::new(MockHttpClient::new()),
+        session_provider: repositories
+            .session_provider
+            .unwrap_or(Arc::new(NoSessionProvider)),
     }
 }
 
@@ -188,15 +194,16 @@ async fn test_get_proof_schema_list_success() {
         ..Default::default()
     });
 
+    let organisation_id = Uuid::new_v4().into();
     let query = GetProofSchemaQueryDTO {
         pagination: Some(ListPagination {
             page: 0,
             page_size: 1,
         }),
-        filtering: Some(ProofSchemaFilterValue::OrganisationId(Uuid::new_v4().into()).condition()),
+        filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
         ..Default::default()
     };
-    let result = service.get_proof_schema_list(query).await;
+    let result = service.get_proof_schema_list(&organisation_id, query).await;
 
     assert!(result.is_ok());
     let result = result.unwrap();
@@ -221,15 +228,16 @@ async fn test_get_proof_schema_list_failure() {
         ..Default::default()
     });
 
+    let organisation_id = Uuid::new_v4().into();
     let query = GetProofSchemaQueryDTO {
         pagination: Some(ListPagination {
             page: 0,
             page_size: 1,
         }),
-        filtering: Some(ProofSchemaFilterValue::OrganisationId(Uuid::new_v4().into()).condition()),
+        filtering: Some(ProofSchemaFilterValue::OrganisationId(organisation_id).condition()),
         ..Default::default()
     };
-    let result = service.get_proof_schema_list(query).await;
+    let result = service.get_proof_schema_list(&organisation_id, query).await;
 
     assert!(matches!(
         result,
@@ -252,7 +260,7 @@ async fn test_delete_proof_schema_success() {
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: None,
             }))
         });
@@ -293,7 +301,7 @@ async fn test_delete_proof_schema_failure() {
                 deleted_at: None,
                 name: "name".to_string(),
                 expire_duration: 0,
-                organisation: None,
+                organisation: Some(dummy_organisation(None)),
                 input_schemas: None,
             }))
         });
@@ -1487,6 +1495,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(http_client),
+        session_provider: Arc::new(NoSessionProvider),
     };
 
     service
@@ -1695,6 +1704,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(http_client),
+        session_provider: Arc::new(NoSessionProvider),
     };
 
     service
@@ -1857,6 +1867,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(MockHttpClient::new()),
+        session_provider: Arc::new(NoSessionProvider),
     };
 
     service
@@ -1936,6 +1947,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(MockHttpClient::new()),
+        session_provider: Arc::new(NoSessionProvider),
     };
 
     let result = service
@@ -2442,6 +2454,105 @@ async fn test_create_proof_schema_verify_nested_no_disclosure_success() {
             .await
             .is_ok()
     );
+}
+
+#[tokio::test]
+async fn test_create_proof_schema_failure_session_org_mismatch() {
+    let service = setup_service(Repositories {
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        ..Default::default()
+    });
+
+    let result = service
+        .create_proof_schema(CreateProofSchemaRequestDTO {
+            name: "".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            expire_duration: None,
+            proof_input_schemas: vec![],
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service
+        .import_proof_schema(ImportProofSchemaRequestDTO {
+            schema: ImportProofSchemaDTO {
+                id: Uuid::new_v4().into(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                name: "".to_string(),
+                organisation_id: Uuid::new_v4().into(),
+                expire_duration: 0,
+                proof_input_schemas: vec![],
+                imported_source_url: "".to_string(),
+            },
+            organisation_id: Uuid::new_v4().into(),
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_list_proof_schema_failure_session_org_mismatch() {
+    let service = setup_service(Repositories {
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        ..Default::default()
+    });
+
+    let result = service
+        .get_proof_schema_list(
+            &Uuid::new_v4().into(),
+            GetProofSchemaQueryDTO {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_proof_schema_ops_failure_session_org_mismatch() {
+    let proof_schema = generic_proof_schema();
+    let schema_id = proof_schema.id;
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema()
+        .returning(move |_id, _relations| Ok(Some(proof_schema.clone())));
+
+    let service = setup_service(Repositories {
+        proof_schema_repository,
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        ..Default::default()
+    });
+
+    let result = service.get_proof_schema(&schema_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service.delete_proof_schema(&schema_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service.share_proof_schema(schema_id).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
 }
 
 async fn test_create_proof_schema_verify_nested_generic(

@@ -64,7 +64,11 @@ impl OneCoreBinding {
         query: ProofListQueryBindingDTO,
     ) -> Result<ProofListBindingDTO, BindingError> {
         let core = self.use_core().await?;
-        let proofs = core.proof_service.get_proof_list(query.try_into()?).await?;
+        let organisation_id = into_id(query.organisation_id.clone())?;
+        let proofs = core
+            .proof_service
+            .get_proof_list(&organisation_id, query.try_into()?)
+            .await?;
         Ok(proofs.into())
     }
 

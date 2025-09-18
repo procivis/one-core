@@ -85,6 +85,8 @@ pub(crate) enum WalletProviderTypeRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
+    /// Specify the organization from which to return wallet units.
+    pub organisation_id: OrganisationId,
     /// Return only wallet units with a name starting with this string.
     #[param(nullable = false)]
     pub name: Option<String>,

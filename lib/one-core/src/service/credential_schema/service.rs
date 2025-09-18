@@ -1,8 +1,11 @@
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
 use super::import::import_credential_schema;
 use crate::common_mapper::list_response_into;
+use crate::common_validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::HistoryAction;
@@ -33,6 +36,7 @@ impl CredentialSchemaService {
         &self,
         request: CreateCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         let core_base_url = self
             .core_base_url
             .as_ref()
@@ -156,6 +160,11 @@ impl CredentialSchemaService {
             .await?
             .ok_or(BusinessLogicError::MissingCredentialSchema)?;
 
+        throw_if_org_relation_not_matching_session(
+            credential_schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
+
         self.credential_schema_repository
             .delete_credential_schema(&credential_schema)
             .await
@@ -193,6 +202,11 @@ impl CredentialSchemaService {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
+        throw_if_org_relation_not_matching_session(
+            schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
+
         if schema.deleted_at.is_some() {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         }
@@ -207,8 +221,10 @@ impl CredentialSchemaService {
     /// * `query` - query parameters
     pub async fn get_credential_schema_list(
         &self,
+        organisation_id: &OrganisationId,
         query: GetCredentialSchemaQueryDTO,
     ) -> Result<GetCredentialSchemaListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
         let result = self
             .credential_schema_repository
             .get_credential_schema_list(query, &Default::default())
@@ -225,6 +241,7 @@ impl CredentialSchemaService {
         &self,
         request: ImportCredentialSchemaRequestDTO,
     ) -> Result<CredentialSchemaId, ServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
@@ -281,6 +298,11 @@ impl CredentialSchemaService {
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::CredentialSchema(*credential_schema_id),
             ))?;
+
+        throw_if_org_relation_not_matching_session(
+            credential_schema.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
 
         log_history_event_credential_schema(
             &*self.history_repository,

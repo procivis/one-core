@@ -10,16 +10,18 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
+use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
-use crate::provider::key_storage::provider::KeyProviderImpl;
+use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
     KeyRequestDTO,
@@ -46,6 +48,7 @@ fn setup_service(
         Arc::new(config),
         Arc::new(key_algorithm_provider),
         Arc::new(history_repository),
+        Arc::new(NoSessionProvider),
     )
 }
 
@@ -202,7 +205,7 @@ async fn test_get_key_list() {
         include: None,
     };
 
-    let result = service.get_key_list(query).await;
+    let result = service.get_key_list(&org_id.into(), query).await;
 
     assert!(result.is_ok());
 
@@ -281,5 +284,94 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
         Err(ServiceError::BusinessLogic(
             BusinessLogicError::UnsupportedKeyTypeForCSR
         ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_key_session_org_mismatch() {
+    let service = KeyService::new(
+        Arc::new(MockKeyRepository::default()),
+        Arc::new(MockOrganisationRepository::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(generic_config().core),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockHistoryRepository::new()),
+        Arc::new(StaticSessionProvider::new_random()),
+    );
+
+    let result = service
+        .create_key(KeyRequestDTO {
+            organisation_id: Uuid::new_v4().into(),
+            key_type: "".to_string(),
+            key_params: Default::default(),
+            name: "".to_string(),
+            storage_type: "".to_string(),
+            storage_params: Default::default(),
+        })
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_list_key_session_org_mismatch() {
+    let service = KeyService::new(
+        Arc::new(MockKeyRepository::default()),
+        Arc::new(MockOrganisationRepository::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(generic_config().core),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockHistoryRepository::new()),
+        Arc::new(StaticSessionProvider::new_random()),
+    );
+
+    let result = service
+        .get_key_list(
+            &Uuid::new_v4().into(),
+            KeyListQuery {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn test_key_ops_session_org_mismatch() {
+    let mut repository = MockKeyRepository::default();
+    let key_id = Uuid::new_v4();
+    repository
+        .expect_get_key()
+        .returning(move |_, _| Ok(Some(generic_key("NAME", key_id))));
+
+    let service = KeyService::new(
+        Arc::new(repository),
+        Arc::new(MockOrganisationRepository::new()),
+        Arc::new(MockKeyProvider::new()),
+        Arc::new(generic_config().core),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockHistoryRepository::new()),
+        Arc::new(StaticSessionProvider::new_random()),
+    );
+
+    let result = service.get_key(&key_id.into()).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+    let result = service
+        .generate_csr(&key_id.into(), generic_csr_request())
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
     ));
 }

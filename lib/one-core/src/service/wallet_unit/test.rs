@@ -14,10 +14,14 @@ use uuid::Uuid;
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit::WalletUnitStatus;
+use crate::model::wallet_unit::{
+    WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitStatus,
+};
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation,
 };
+use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -34,10 +38,11 @@ use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
+use crate::service::error::{ServiceError, ValidationError};
 use crate::service::ssi_wallet_provider::dto::{
     ActivateWalletUnitResponseDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitResponseDTO,
 };
-use crate::service::test_utilities::{generic_config, get_dummy_date};
+use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO, WalletProviderDTO,
@@ -62,6 +67,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
+        session_provider: Arc::new(NoSessionProvider),
     }
 }
 
@@ -375,6 +381,97 @@ async fn holder_attestation_success() {
     let dto = result.unwrap();
     check!(dto.status == WalletUnitStatus::Active);
     check!(dto.wallet_provider_name == "PROCIVIS_ONE");
+}
+
+#[tokio::test]
+async fn holder_wallet_unit_ops_session_org_mismatch() {
+    // given
+    let service = WalletUnitService {
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+        config: Arc::new(generic_config().core),
+        ..mock_wallet_unit_service()
+    };
+
+    let request = HolderRegisterWalletUnitRequestDTO {
+        organisation_id: Uuid::new_v4().into(),
+        key_type: "EDDSA".to_string(),
+        wallet_provider: WalletProviderDTO {
+            name: "PROCIVIS_ONE".to_string(),
+            r#type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+            url: "https://wallet.provider/register".to_string(),
+            app_integrity_check_required: true,
+        },
+    };
+    let result = service.holder_register(request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let request = HolderRefreshWalletUnitRequestDTO {
+        organisation_id: Uuid::new_v4().into(),
+        app_integrity_check_required: false,
+    };
+    let result = service.holder_refresh(request).await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+
+    let result = service
+        .get_wallet_unit_list(
+            &Uuid::new_v4().into(),
+            WalletUnitListQuery {
+                pagination: None,
+                sorting: None,
+                filtering: None,
+                include: None,
+            },
+        )
+        .await;
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
+}
+
+#[tokio::test]
+async fn holder_get_wallet_unit_session_org_mismatch() {
+    let wallet_unit = WalletUnit {
+        id: Uuid::new_v4().into(),
+        name: "".to_string(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        os: WalletUnitOs::Ios,
+        status: WalletUnitStatus::Active,
+        wallet_provider_type: WalletProviderType::ProcivisOne,
+        wallet_provider_name: "test provider".to_string(),
+        public_key: None,
+        last_issuance: None,
+        nonce: None,
+        organisation: Some(dummy_organisation(None)),
+    };
+    let mut wallet_unit_repository = MockWalletUnitRepository::new();
+    wallet_unit_repository
+        .expect_get_wallet_unit()
+        .returning(move |_, _| Ok(Some(wallet_unit.clone())));
+
+    // given
+    let service = WalletUnitService {
+        wallet_unit_repository: Arc::new(wallet_unit_repository),
+        session_provider: Arc::new(StaticSessionProvider::new_random()),
+        config: Arc::new(generic_config().core),
+        ..mock_wallet_unit_service()
+    };
+
+    // when
+    let result = service.get_wallet_unit(&Uuid::new_v4().into()).await;
+
+    // then
+    assert!(matches!(
+        result,
+        Err(ServiceError::Validation(ValidationError::Forbidden))
+    ));
 }
 
 async fn make_attestation_jwt(exp: OffsetDateTime) -> String {

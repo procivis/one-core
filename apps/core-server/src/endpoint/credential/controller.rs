@@ -94,6 +94,7 @@ pub(crate) async fn get_credential_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
+    let org_id = query.filter.organisation_id;
     let filtering = match query.filter.try_into() {
         Ok(v) => v,
         Err(err) => {
@@ -121,7 +122,7 @@ pub(crate) async fn get_credential_list(
     let result = state
         .core
         .credential_service
-        .get_credential_list(filters)
+        .get_credential_list(&org_id, filters)
         .await;
 
     OkOrErrorResponse::from_result(result, state, "getting credential list")

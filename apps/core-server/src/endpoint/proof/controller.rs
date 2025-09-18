@@ -112,7 +112,12 @@ pub(crate) async fn get_proofs(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetProofQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofsResponseRestDTO> {
-    let result = state.core.proof_service.get_proof_list(query.into()).await;
+    let organisation_id = query.filter.organisation_id;
+    let result = state
+        .core
+        .proof_service
+        .get_proof_list(&organisation_id, query.into())
+        .await;
     OkOrErrorResponse::from_result(result, state, "getting proofs")
 }
 

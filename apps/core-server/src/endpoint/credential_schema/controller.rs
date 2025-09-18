@@ -82,10 +82,11 @@ pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialSchemasResponseDTO> {
+    let organisation_id = query.filter.organisation_id;
     let result = state
         .core
         .credential_schema_service
-        .get_credential_schema_list(query.into())
+        .get_credential_schema_list(&organisation_id, query.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "getting credential schemas")
 }

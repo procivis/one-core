@@ -1,6 +1,6 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
-use shared_types::WalletUnitId;
+use shared_types::{OrganisationId, WalletUnitId};
 use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 
@@ -70,6 +70,7 @@ pub enum SortableWalletUnitColumn {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum WalletUnitFilterValue {
+    OrganisationId(OrganisationId),
     Name(StringMatch),
     Ids(Vec<WalletUnitId>),
     Status(Vec<WalletUnitStatus>),
