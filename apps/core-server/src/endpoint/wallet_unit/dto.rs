@@ -100,6 +100,9 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
     /// Return only wallet units with the specified wallet provider type.
     #[param(rename = "walletProviderType[]", inline, nullable = false)]
     pub wallet_provider_type: Option<Vec<String>>,
+    /// Return only the wallet unit with the specified attestation.
+    #[param(rename = "attestation", inline, nullable = false)]
+    pub attestation: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]

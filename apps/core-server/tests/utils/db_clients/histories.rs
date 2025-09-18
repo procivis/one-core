@@ -61,6 +61,30 @@ impl HistoriesDB {
         history
     }
 
+    pub async fn create_without_organisation(&self, params: TestingHistoryParams) -> History {
+        let now = OffsetDateTime::now_utc();
+
+        let history_id = params.id.unwrap_or(HistoryId::from(Uuid::new_v4()));
+        let history = History {
+            id: history_id.to_owned(),
+            created_date: params.created_date.unwrap_or(now),
+            action: params.action.unwrap_or(HistoryAction::Accepted),
+            entity_id: Some(params.entity_id.unwrap_or(Uuid::new_v4().into())),
+            entity_type: params.entity_type.unwrap_or(HistoryEntityType::Credential),
+            metadata: params.metadata,
+            organisation_id: None,
+            name: params.name.unwrap_or_default(),
+            target: params.target,
+        };
+
+        self.repository
+            .create_history(history.clone())
+            .await
+            .unwrap();
+
+        history
+    }
+
     pub async fn get_by_entity_id(&self, entity_id: &EntityId) -> GetHistoryList {
         let query = HistoryListQuery {
             pagination: Some(ListPagination {

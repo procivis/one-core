@@ -1,13 +1,14 @@
+use one_core::model::history::HistoryMetadata;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, WalletProviderType, WalletUnit, WalletUnitFilterValue, WalletUnitOs,
     WalletUnitStatus,
 };
-use sea_orm::sea_query::SimpleExpr;
 use sea_orm::sea_query::query::IntoCondition;
-use sea_orm::{ColumnTrait, IntoSimpleExpr};
+use sea_orm::sea_query::{Query, SimpleExpr};
+use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
 
-use crate::entity::wallet_unit;
+use crate::entity::{history, wallet_unit};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
     get_comparison_condition, get_string_match_condition,
@@ -45,7 +46,7 @@ impl IntoSortingColumn for SortableWalletUnitColumn {
 }
 
 impl IntoFilterCondition for WalletUnitFilterValue {
-    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> Condition {
         match self {
             Self::Name(string_match) => {
                 get_string_match_condition(wallet_unit::Column::Name, string_match)
@@ -70,6 +71,31 @@ impl IntoFilterCondition for WalletUnitFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
+            Self::AttestationHash(attestation_hash) => {
+                let history_metadata = HistoryMetadata::WalletUnitJWT(attestation_hash);
+                let history_metadata_json = serde_json::to_string(&history_metadata)
+                    .expect("Failed to serialize history metadata");
+                wallet_unit::Column::Id
+                    .in_subquery(
+                        Query::select()
+                            .column(history::Column::EntityId)
+                            .from(history::Entity)
+                            .cond_where(
+                                Condition::all()
+                                    .add(
+                                        history::Column::EntityType
+                                            .eq(history::HistoryEntityType::WalletUnit),
+                                    )
+                                    .add(history::Column::Action.is_in([
+                                        history::HistoryAction::Created,
+                                        history::HistoryAction::Updated,
+                                    ]))
+                                    .add(history::Column::Metadata.eq(history_metadata_json)),
+                            )
+                            .to_owned(),
+                    )
+                    .into_condition()
+            }
             Self::CreatedDate(comparison) => {
                 get_comparison_condition(wallet_unit::Column::CreatedDate, comparison)
             }

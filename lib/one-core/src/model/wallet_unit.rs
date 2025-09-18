@@ -75,6 +75,7 @@ pub enum WalletUnitFilterValue {
     Status(Vec<WalletUnitStatus>),
     WalletProviderType(Vec<String>),
     Os(Vec<WalletUnitOs>),
+    AttestationHash(String),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
 }

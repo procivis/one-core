@@ -24,15 +24,25 @@ pub struct TestHolderRefreshRequest {
     pub app_integrity_check_required: bool,
 }
 
+#[derive(Default)]
+pub struct ListFilters {
+    pub attestation: Option<String>,
+}
+
 impl WalletUnitsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
     }
 
-    pub async fn list(&self) -> Response {
-        // Wallet unit list requires query parameters, so provide minimal defaults
-        let url = "/api/wallet-unit/v1?page=0&pageSize=50";
-        self.client.get(url).await
+    pub async fn list(&self, list_filters: ListFilters) -> Response {
+        let ListFilters { attestation } = list_filters;
+
+        let mut url = "/api/wallet-unit/v1?page=0&pageSize=50".to_string();
+        if let Some(attestation) = attestation {
+            url += &format!("&attestation={attestation}")
+        }
+
+        self.client.get(&url).await
     }
 
     pub async fn get(&self, id: &impl Display) -> Response {

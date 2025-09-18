@@ -11,6 +11,8 @@ use one_core::service::wallet_unit::dto::{
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
     HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
+use one_crypto::Hasher;
+use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::{From, Into, TryInto, convert_inner};
 
 use crate::ServiceError;
@@ -80,6 +82,17 @@ impl OneCoreBinding {
                 .os
                 .map(|os| WalletUnitFilterValue::Os(os.iter().map(|o| o.clone().into()).collect()));
 
+            let attestation = if let Some(attestation) = query.attestation {
+                let attestation_hash = SHA256.hash_base64(attestation.as_bytes()).map_err(|e| {
+                    ServiceError::MappingError(format!(
+                        "Could not hash wallet unit attestation: {e}"
+                    ))
+                })?;
+                Some(WalletUnitFilterValue::AttestationHash(attestation_hash))
+            } else {
+                None
+            };
+
             let created_date_after = query
                 .created_date_after
                 .map(|date| {
@@ -125,6 +138,7 @@ impl OneCoreBinding {
                 & status
                 & wallet_provider_type
                 & os
+                & attestation
                 & created_date_after
                 & created_date_before
                 & last_modified_after
@@ -259,6 +273,7 @@ pub struct WalletUnitListQueryBindingDTO {
     pub status: Option<Vec<WalletUnitStatusBindingEnum>>,
     pub wallet_provider_type: Option<Vec<WalletProviderTypeBindingEnum>>,
     pub os: Option<Vec<WalletUnitOsBindingEnum>>,
+    pub attestation: Option<String>,
     pub created_date_after: Option<String>,
     pub created_date_before: Option<String>,
     pub last_modified_after: Option<String>,
