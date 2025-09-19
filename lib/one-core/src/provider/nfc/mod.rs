@@ -3,8 +3,11 @@ use thiserror::Error;
 
 use crate::service::error::{ErrorCode, ErrorCodeMixin};
 
+pub(crate) mod apdu;
+pub(crate) mod command;
 pub mod hce;
 pub mod scanner;
+pub(crate) mod static_handover_handler;
 
 #[derive(Debug, Error, Serialize, Deserialize, Clone)]
 pub enum NfcError {

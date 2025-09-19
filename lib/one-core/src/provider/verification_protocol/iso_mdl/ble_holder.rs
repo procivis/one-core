@@ -24,6 +24,7 @@ use crate::provider::bluetooth_low_energy::low_level::dto::{
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
 use crate::provider::nfc::hce::NfcHce;
+use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
@@ -107,6 +108,7 @@ pub(crate) async fn start_mdl_server(ble: &BleWaiter) -> Result<ServerInfo, Serv
 }
 
 pub(crate) struct NfcHceSession {
+    pub handler: Arc<NfcStaticHandoverHandler>,
     pub hce: Arc<dyn NfcHce>,
     pub select_message: Vec<u8>,
     pub device_engagement: EmbeddedCbor<DeviceEngagement>,
@@ -155,13 +157,17 @@ pub(crate) async fn receive_mdl_request(
                             (VerificationEngagement::QrCode, None, qr_device_engagement)
                         }
                         Some(NfcHceSession {
+                            handler,
                             hce,
                             select_message,
                             device_engagement: nfc_device_engagement,
                         }) => {
-                            match hce
-                                .stop_host_data()
+                            hce.stop_hosting(true)
                                 .await
+                                .map_err(|e| VerificationProtocolError::Transport(e.into()))?;
+
+                            match handler
+                                .message_read()
                                 .map_err(|e| VerificationProtocolError::Transport(e.into()))?
                             {
                                 true => {

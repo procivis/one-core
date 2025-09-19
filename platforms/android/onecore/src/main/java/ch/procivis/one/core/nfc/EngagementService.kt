@@ -11,153 +11,55 @@ class EngagementService : HostApduService() {
     companion object {
         private const val TAG = "NFCEngagementService"
 
-        private val CAPABILITY_CONTAINER = byteArrayOf(
-            0x00.toByte(), 0x0f.toByte(), // CCLEN, length of the CC file (15 bytes)
-            0x20.toByte(), // Mapping Version 2.0
-        ).plus(toLengthBytes(Constant.Apdu.MAX_R_APDU))
-            .plus(toLengthBytes(Constant.Apdu.MAX_C_APDU))
-            .plus(
-                byteArrayOf(
-                    0x04.toByte(), // T field of the NDEF File Control TLV
-                    0x06.toByte(), // L field of the NDEF File Control TLV
-                )
-            ).plus(Constant.HceFile.NDEF_FILE_ID).plus(
-                byteArrayOf(
-                    0xFF.toByte(), 0xFE.toByte(), // Maximum NDEF file size of 65534 bytes
-                    0x00.toByte(), // Read access without any security
-                    0xFF.toByte(), // no Write access (read-only)
-                )
-            )
-
-        // Big-endian 2-byte representation
-        private fun toLengthBytes(value: Int): ByteArray {
-            return byteArrayOf(toByte(value / 0x100), toByte(value))
-        }
-
-        private fun toByte(value: Int): Byte {
-            return (value and 0xff).toByte()
-        }
+        private val RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND = byteArrayOf(0x6a.toByte(), 0x82.toByte())
     }
 
-    private var mNDEFFile: ByteArray? = null; // nlen + handoverSelect message
-    private var mSelectedFile: ByteArray? = null;
-    private var mMessageRead: Boolean = false;
+    private val eventBus = EventBus.getDefault()
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         Log.d(TAG, "onStartCommand: flags: $flags, startId: $startId")
-        if (!intent.hasExtra("data")) {
-            return START_STICKY;
+        if (!eventBus.isRegistered(this)) {
+            eventBus.register(this)
         }
+        return START_STICKY
+    }
 
-        val data = intent.getByteArrayExtra("data")
-            ?: return START_STICKY
-
-        mNDEFFile = toLengthBytes(data.size).plus(data);
-        mMessageRead = false
-
-        EventBus.getDefault().register(this);
-        return START_STICKY;
+    override fun onDestroy() {
+        Log.d(TAG, "onDestroy")
+        super.onDestroy()
+        eventBus.unregister(this)
     }
 
     @Subscribe
-    fun onStopRequest(event: StopHceRequest) {
+    fun onStopRequest(event: HCE.StopHostingRequest) {
         Log.d(TAG, "onStopRequest");
-        mNDEFFile = null;
-        EventBus.getDefault().unregister(this);
-        EventBus.getDefault().post(StopHceResponse(mMessageRead))
+        eventBus.unregister(this)
         this.stopSelf()
     }
 
+    @Subscribe
+    fun onResponse(event: HCE.ApduResponse) {
+        Log.d(TAG, "onResponse: ${event.response.size}")
+        sendResponseApdu(event.response)
+    }
+
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
-        //
-        // The following flow is based on Appendix E "Example of Mapping Version 2.0 Command Flow"
-        // in the NFC Forum specification
-        //
-        Log.d(TAG, "processCommandApdu() | incoming commandApdu: $commandApdu")
+        Log.d(TAG, "processCommandApdu | incoming commandApdu: ${commandApdu.size}")
 
-        if (mNDEFFile == null) {
-            Log.d(TAG, "Currently not available")
-            return Constant.HceResponse.A_NOT_AVAILABLE;
+        // no handler available
+        if (!eventBus.hasSubscriberForEvent(HCE.ApduCommand::class.java)) {
+            Log.w(TAG, "no subscriber")
+            return RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND
         }
 
-        val command = try {
-            Util.CommandApdu.decode(commandApdu)
-        } catch (e: Throwable) {
-            Log.wtf(TAG, "processCommandApdu() | invalid command: $e")
-            return Constant.HceResponse.A_ERROR
-        }
+        eventBus.post(HCE.ApduCommand(commandApdu))
 
-        if (command.cla != 0x00) {
-            Log.wtf(TAG, "processCommandApdu() | invalid command CLA: ${command.cla}")
-            return Constant.HceResponse.A_ERROR
-        }
-
-        if (command.ins == Constant.Apdu.INS_SELECT) {
-            // First command: NDEF Tag Application select (Section 5.5.2 in NFC Forum spec)
-            if ((command.p == Constant.Apdu.PARAMS_SELECT_APPLICATION) && command.payload.contentEquals(
-                    Constant.ENGAGEMENT_APPLICATION
-                )
-            ) {
-                Log.d(TAG, "SELECT_APPLICATION triggered.")
-                mSelectedFile = null;
-                return Constant.HceResponse.A_OKAY
-            }
-
-            // Select file (CC or NDEF)
-            if (command.p == Constant.Apdu.PARAMS_SELECT_FILE) {
-                if (command.payload.contentEquals(Constant.HceFile.CAPABILITY_CONTAINER_ID)) {
-                    Log.d(TAG, "SELECT CC triggered.")
-                    mSelectedFile = CAPABILITY_CONTAINER;
-                    return Constant.HceResponse.A_OKAY
-                }
-
-                if (command.payload.contentEquals(Constant.HceFile.NDEF_FILE_ID)) {
-                    Log.d(TAG, "SELECT NDEF triggered.")
-                    mSelectedFile = mNDEFFile;
-                    mMessageRead = true
-                    return Constant.HceResponse.A_OKAY
-                }
-            }
-        }
-
-        if (command.ins == Constant.Apdu.INS_READ_BINARY) {
-            val selectedFile = mSelectedFile;
-            if (selectedFile == null) {
-                Log.wtf(TAG, "NDEF_READ_BINARY - No file selected")
-                return Constant.HceResponse.A_ERROR
-            }
-
-            val higher = command.p.first and 0xFF
-            val lower = command.p.second and 0xFF
-            val offset = ((higher shl 8) or lower)
-            val expectedLength = command.le
-
-            Log.d(TAG, "NDEF_READ_BINARY triggered.")
-            Log.d(TAG, "READ_BINARY - OFFSET: $offset - LEN: $expectedLength")
-
-            if (selectedFile.size <= offset) {
-                Log.wtf(TAG, "NDEF_READ_BINARY - OFFSET: $offset outside bounds")
-                return Constant.HceResponse.A_ERROR
-            }
-            val returnedLength =
-                if (selectedFile.size < offset + expectedLength) selectedFile.size - offset else expectedLength;
-            val slicedData = selectedFile.sliceArray(offset until offset + returnedLength)
-            val response = slicedData.plus(Constant.HceResponse.A_OKAY)
-
-            Log.i(
-                TAG,
-                "NDEF_READ_BINARY triggered. Our Response: " + Util.bytesToHex(response)
-            )
-            return response
-        }
-
-        // We're doing something outside our scope
-        Log.wtf(TAG, "processCommandApdu() | unknown command")
-        return Constant.HceResponse.A_ERROR
+        // the response will be sent asynchronously
+        return null
     }
 
     override fun onDeactivated(reason: Int) {
-        Log.i(TAG, "onDeactivated(), Reason: $reason")
-        mSelectedFile = null;
+        Log.i(TAG, "onDeactivated, reason: $reason")
+        eventBus.post(HCE.DisconnectEvent())
     }
 }

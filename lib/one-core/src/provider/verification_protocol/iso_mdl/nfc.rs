@@ -19,8 +19,8 @@ pub(super) const BLE_RECORD_TYPE: &[u8] = b"application/vnd.bluetooth.le.oob";
 const ALTERNATIVE_CARRIER_RECORD_TYPE: &[u8] = b"ac";
 const HANDOVER_SELECT_RECORD_TYPE: &[u8] = b"Hs";
 
-pub(crate) fn create_nfc_payload(
-    server: ServerInfo,
+pub(crate) fn create_nfc_handover_select_message(
+    server: &ServerInfo,
     device_engagement: EmbeddedCbor<DeviceEngagement>,
 ) -> Result<NdefMessage, ndef_rs::error::NdefError> {
     let alternative_carrier_record = AlternativeCarrierRecord {
@@ -48,8 +48,8 @@ pub(crate) fn create_nfc_payload(
     nfc_message.add_record(
         BLECarrierConfigurationRecord {
             peripheral_service_uuid: server.service_uuid,
-            peripheral_mac_address: if let Some(mac) = server.mac_address {
-                Some(serialize_mac_address(&mac)?)
+            peripheral_mac_address: if let Some(mac) = server.mac_address.as_ref() {
+                Some(serialize_mac_address(mac)?)
             } else {
                 None
             },

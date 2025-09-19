@@ -3,6 +3,9 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use super::NfcService;
 use super::dto::NfcScanRequestDTO;
 use crate::config::core_config::VerificationEngagement;
+use crate::provider::nfc::NfcError;
+use crate::provider::nfc::apdu::Response;
+use crate::provider::nfc::command::KnownCommand;
 use crate::provider::nfc::scanner::NfcScanner;
 use crate::service::error::{ServiceError, ValidationError};
 
@@ -73,13 +76,17 @@ impl NfcService {
 async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, ServiceError> {
     selection(
         scanner,
-        command::select_application(&ndef_id::MDOC_ENGAGEMENT_APPLICATION_ID),
+        KnownCommand::SelectApplication {
+            application_id: ndef_id::MDOC_ENGAGEMENT_APPLICATION_ID.to_vec(),
+        },
     )
     .await?;
 
     selection(
         scanner,
-        command::select_file(&ndef_id::CAPABILITY_CONTAINER_FILE_ID),
+        KnownCommand::SelectFile {
+            file_id: ndef_id::CAPABILITY_CONTAINER_FILE_ID,
+        },
     )
     .await?;
 
@@ -91,45 +98,72 @@ async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, Servic
         )));
     }
 
-    let ndef_file_id = &capability_container.as_slice()[9..11];
-    selection(scanner, command::select_file(ndef_file_id)).await?;
+    let ndef_file_id: [u8; 2] = capability_container.as_slice()[9..11]
+        .try_into()
+        .map_err(|e: std::array::TryFromSliceError| ServiceError::MappingError(e.to_string()))?;
+    selection(
+        scanner,
+        KnownCommand::SelectFile {
+            file_id: ndef_file_id,
+        },
+    )
+    .await?;
 
     let ndef_length = read(scanner, 0, 2).await?;
     let ndef_length = u16::from_be_bytes(ndef_length.try_into().map_err(|bytes| {
         ServiceError::MappingError(format!("Could not parse ndef length: {bytes:?}"))
     })?);
 
-    let ndef = read(scanner, 2, ndef_length).await?;
+    let ndef = read(scanner, 2, ndef_length as _).await?;
     tracing::debug!("Handover Select message: {ndef:?}");
 
     Base64UrlSafeNoPadding::encode_to_string(ndef)
         .map_err(|e| ServiceError::MappingError(e.to_string()))
 }
 
-async fn selection(session: &dyn NfcScanner, command: Vec<u8>) -> Result<(), ServiceError> {
-    let data = session.transceive(command).await?;
-
-    if data != response::SUCCESS {
+async fn selection(session: &dyn NfcScanner, command: KnownCommand) -> Result<(), ServiceError> {
+    let response = run_command(session, command).await?;
+    if !response.is_success() {
         return Err(ServiceError::Other(format!(
-            "APDU selection failed: {data:?}"
+            "APDU selection failed: {response:?}"
         )));
     }
 
     Ok(())
 }
 
-async fn read(session: &dyn NfcScanner, offset: u16, length: u16) -> Result<Vec<u8>, ServiceError> {
-    let mut data = session
-        .transceive(command::read_binary(offset, length))
-        .await?;
-
-    let status = data.split_off(data.len() - 2);
-
-    if status != response::SUCCESS {
-        return Err(ServiceError::Other(format!("APDU read failed: {status:?}")));
+async fn read(
+    session: &dyn NfcScanner,
+    offset: u16,
+    length: usize,
+) -> Result<Vec<u8>, ServiceError> {
+    let response = run_command(session, KnownCommand::ReadBinary { offset, length }).await?;
+    if !response.is_success() {
+        return Err(ServiceError::Other(format!(
+            "APDU read failed: {response:?}"
+        )));
     }
 
-    Ok(data)
+    Ok(response.payload)
+}
+
+async fn run_command(
+    session: &dyn NfcScanner,
+    command: KnownCommand,
+) -> Result<Response, NfcError> {
+    session
+        .transceive(
+            command
+                .try_into()
+                .map_err(|err: anyhow::Error| NfcError::Unknown {
+                    reason: err.to_string(),
+                })?,
+        )
+        .await?
+        .try_into()
+        .map_err(|err: anyhow::Error| NfcError::Unknown {
+            reason: err.to_string(),
+        })
 }
 
 mod ndef_id {
@@ -137,40 +171,4 @@ mod ndef_id {
         [0xD2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01];
 
     pub(super) const CAPABILITY_CONTAINER_FILE_ID: [u8; 2] = [0xE1, 0x03];
-}
-
-mod command {
-    use apdu_core::Command;
-
-    const INS_SELECT: u8 = 0xA4;
-    const INS_READ_BINARY: u8 = 0xB0;
-
-    type Params = (u8, u8);
-    const SELECT_APPLICATION: Params = (0x04, 0x00);
-    const SELECT_FILE: Params = (0x00, 0x0C);
-
-    pub(super) fn select_application(application_id: &[u8]) -> Vec<u8> {
-        Command::new_with_payload(
-            0x00,
-            INS_SELECT,
-            SELECT_APPLICATION.0,
-            SELECT_APPLICATION.1,
-            application_id,
-        )
-        .into()
-    }
-
-    pub(super) fn select_file(file_id: &[u8]) -> Vec<u8> {
-        Command::new_with_payload(0x00, INS_SELECT, SELECT_FILE.0, SELECT_FILE.1, file_id).into()
-    }
-
-    pub(super) fn read_binary(offset: u16, length: u16) -> Vec<u8> {
-        let [p1, p2] = offset.to_be_bytes();
-        Command::new_with_le(0x00, INS_READ_BINARY, p1, p2, length).into()
-    }
-}
-
-mod response {
-    type SW1_2 = [u8; 2];
-    pub(super) const SUCCESS: SW1_2 = [0x90, 0x00];
 }

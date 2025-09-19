@@ -52,6 +52,7 @@ use crate::model::proof_schema::{
 };
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::nfc::NfcError;
+use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, ShareResponse,
 };
@@ -63,7 +64,7 @@ use crate::provider::verification_protocol::iso_mdl::common::{EDeviceKey, KeyAgr
 use crate::provider::verification_protocol::iso_mdl::device_engagement::{
     BleOptions, DeviceEngagement, DeviceRetrievalMethod, RetrievalOptions, Security,
 };
-use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_payload;
+use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
 use crate::service::credential::dto::CredentialFilterValue;
@@ -745,7 +746,7 @@ impl ProofService {
             .ok_or_else(|| ServiceError::Other("BLE is missing in service".into()))?;
 
         let now = OffsetDateTime::now_utc();
-        let server = start_mdl_server(ble).await?;
+        let ble_server = start_mdl_server(ble).await?;
         let key_pair = KeyAgreement::<EDeviceKey>::new();
         let mut device_engagement = DeviceEngagement {
             security: Security {
@@ -754,8 +755,8 @@ impl ProofService {
             },
             device_retrieval_methods: vec![DeviceRetrievalMethod {
                 retrieval_options: RetrievalOptions::Ble(BleOptions {
-                    peripheral_server_uuid: server.service_uuid,
-                    peripheral_server_mac_address: server.mac_address.clone(),
+                    peripheral_server_uuid: ble_server.service_uuid,
+                    peripheral_server_mac_address: ble_server.mac_address.clone(),
                 }),
             }],
         };
@@ -789,20 +790,24 @@ impl ProofService {
                     .map_err(|err| ServiceError::Other(err.to_string()))?
             };
 
-            let nfc_message = create_nfc_payload(server.clone(), device_engagement_bytes.clone())
-                .map_err(|err| {
-                ServiceError::Other(format!("Failed to create NFC payload: {err}"))
-            })?;
+            let select_message =
+                create_nfc_handover_select_message(&ble_server, device_engagement_bytes.clone())
+                    .map_err(|err| {
+                        ServiceError::Other(format!("Failed to create NFC payload: {err}"))
+                    })?
+                    .to_buffer()
+                    .map_err(|err| {
+                        ServiceError::Other(format!("Failed to generate NFC payload: {err}"))
+                    })?;
 
-            let bytes_payload = nfc_message.to_buffer().map_err(|err| {
-                ServiceError::Other(format!("Failed to generate NFC payload: {err}"))
-            })?;
+            let handler = Arc::new(NfcStaticHandoverHandler::new(select_message.clone())?);
             nfc_hce_provider
-                .start_host_data(bytes_payload.clone())
+                .start_hosting(handler.to_owned(), None)
                 .await?;
             Some(NfcHceSession {
+                handler,
                 hce: nfc_hce_provider,
-                select_message: bytes_payload,
+                select_message,
                 device_engagement: device_engagement_bytes,
             })
         } else {
@@ -813,8 +818,8 @@ impl ProofService {
 
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
             organisation_id,
-            service_uuid: server.service_uuid,
-            continuation_task_id: server.task_id,
+            service_uuid: ble_server.service_uuid,
+            continuation_task_id: ble_server.task_id,
             session: None,
         })
         .context("interaction serialization error")
@@ -882,7 +887,7 @@ impl ProofService {
     pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ServiceError> {
         if let Some(nfc_hce_provider) = &self.nfc_hce_provider {
             if nfc_hce_provider.is_supported().await? && nfc_hce_provider.is_enabled().await? {
-                match nfc_hce_provider.stop_host_data().await {
+                match nfc_hce_provider.stop_hosting(false).await {
                     Ok(_) | Err(NfcError::NotStarted) => {}
                     Err(err) => tracing::error!("Failed to stop NFC host data: {err}"),
                 }
