@@ -7,7 +7,8 @@ use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
+    OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::service::error::ServiceError;
 
@@ -15,7 +16,10 @@ pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
 ) -> Result<(), ServiceError> {
-    if let Some(credential_configuration_id) = &request.credential_configuration_id {
+    if let OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+        credential_configuration_id,
+    ) = &request.credential
+    {
         if &schema.schema_id != credential_configuration_id {
             return Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::UnsupportedCredentialType,
@@ -67,19 +71,4 @@ pub(super) fn validate_config_entity_presence(
     } else {
         Ok(())
     }
-}
-
-pub(super) fn validate_config_entity(
-    config: &CoreConfig,
-    protocol_id: &str,
-) -> Result<(), ConfigValidationError> {
-    let fields = config.issuance_protocol.get_fields(protocol_id)?;
-    if fields.r#type != IssuanceProtocolType::OpenId4VciFinal1_0 {
-        return Err(ConfigValidationError::InvalidType(
-            IssuanceProtocolType::OpenId4VciFinal1_0.to_string(),
-            fields.r#type.to_string(),
-        ));
-    }
-
-    Ok(())
 }

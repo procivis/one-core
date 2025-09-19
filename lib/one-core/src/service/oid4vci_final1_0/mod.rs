@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
-use crate::config::core_config::IssuanceProtocolType;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::get_protocol_base_url;
@@ -21,13 +20,13 @@ use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;
+mod nonce;
 pub mod service;
 pub mod validator;
 
 #[derive(Clone)]
 pub struct OID4VCIFinal1_0Service {
     protocol_base_url: Option<String>,
-    protocol_type: IssuanceProtocolType,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
@@ -71,7 +70,6 @@ impl OID4VCIFinal1_0Service {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
             protocol_base_url,
-            protocol_type: IssuanceProtocolType::OpenId4VciFinal1_0,
             credential_schema_repository,
             credential_repository,
             interaction_repository,

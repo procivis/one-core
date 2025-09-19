@@ -2,7 +2,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
-use maplit::hashmap;
 use mockall::predicate::{always, eq};
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -38,9 +37,11 @@ use crate::provider::issuance_protocol::error::{
 use crate::provider::issuance_protocol::model::SubmitIssuerResponse;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::*;
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::provider::key_algorithm::eddsa::Eddsa;
+use crate::provider::key_algorithm::key::{
+    KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -216,6 +217,21 @@ fn dummy_credential(
         profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
     }
+}
+
+fn mock_key_algorithm() -> Arc<dyn KeyAlgorithm> {
+    let mut algorithm = MockKeyAlgorithm::new();
+    algorithm
+        .expect_algorithm_type()
+        .returning(|| KeyAlgorithmType::Eddsa);
+    algorithm.expect_parse_jwk().returning(|_| {
+        let mut handle = MockSignaturePublicKeyHandle::new();
+        handle.expect_verify().returning(|_, _| Ok(()));
+        Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+            Arc::new(handle),
+        )))
+    });
+    Arc::new(algorithm)
 }
 
 #[tokio::test]
@@ -802,6 +818,9 @@ async fn test_create_token_wrong_credential_state() {
     ));
 }
 
+// const NONCE: &str = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NTgyNjU2NDMsImV4cCI6MTc1OTI2NTY0MywiaXNzIjoiaHR0cDovLzEyNy4wLjAuMTozMDAwIiwianRpIjoiYTRiMTQ5NzYtYzQ2MS00OWNkLWEyODItYzBmZjcyMGY3YTYyIiwiY29udGV4dCI6Imlzc3VhbmNlLW9wZW5pZHZjaS1maW5hbC0xLjAtbm9uY2UifQ.PUxwKSNPckGQueNFQMLBmDfm9yjJJnw8cA-ZPAuHgTg";
+const PROOF_JWT: &str = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20iLCJub25jZSI6ImV5SmhiR2NpT2lKSVV6STFOaUlzSW5SNWNDSTZJa3BYVkNKOS5leUpwWVhRaU9qRTNOVGd5TmpVMk5ETXNJbVY0Y0NJNk1UYzFPVEkyTlRZME15d2lhWE56SWpvaWFIUjBjRG92THpFeU55NHdMakF1TVRvek1EQXdJaXdpYW5ScElqb2lZVFJpTVRRNU56WXRZelEyTVMwME9XTmtMV0V5T0RJdFl6Qm1aamN5TUdZM1lUWXlJaXdpWTI5dWRHVjRkQ0k2SW1semMzVmhibU5sTFc5d1pXNXBaSFpqYVMxbWFXNWhiQzB4TGpBdGJtOXVZMlVpZlEuUFV4d0tTTlBja0dRdWVORlFNTEJtRGZtOXlqSkpudzhjQS1aUEF1SGdUZyJ9.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw";
+
 #[tokio::test]
 async fn test_create_credential_success() {
     let mut repository = MockCredentialSchemaRepository::default();
@@ -919,7 +938,7 @@ async fn test_create_credential_success() {
             .returning(move |_, _| Ok(()));
     }
 
-    let key_algorithm = { Arc::new(Eddsa) };
+    let key_algorithm = mock_key_algorithm();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -987,12 +1006,12 @@ async fn test_create_credential_success() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1115,7 +1134,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .returning(move |_, _| Ok(()));
     }
 
-    let key_algorithm = { Arc::new(Eddsa) };
+    let key_algorithm = mock_key_algorithm();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -1183,12 +1202,12 @@ async fn test_create_credential_success_sd_jwt_vc() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1314,7 +1333,7 @@ async fn test_create_credential_success_mdoc() {
             .returning(move |_, _| Ok(()));
     }
 
-    let key_algorithm = { Arc::new(Eddsa) };
+    let key_algorithm = mock_key_algorithm();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -1382,12 +1401,12 @@ async fn test_create_credential_success_mdoc() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1424,11 +1443,12 @@ async fn test_create_credential_configuration_id_invalid() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some("invalid".to_string()),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() => vec!["".to_string()]
-                }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    "invalid".to_string(),
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1466,12 +1486,12 @@ async fn test_create_credential_format_invalid_bearer_token() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1518,12 +1538,12 @@ async fn test_create_credential_pre_authorized_code_not_used() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1570,12 +1590,12 @@ async fn test_create_credential_interaction_data_invalid() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.123",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1630,12 +1650,12 @@ async fn test_create_credential_access_token_expired() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;
@@ -1761,7 +1781,7 @@ async fn test_create_credential_issuer_failed() {
             .returning(move |_, _| Ok(()));
     }
 
-    let key_algorithm = { Arc::new(Eddsa) };
+    let key_algorithm = mock_key_algorithm();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_jose_alg()
@@ -1829,12 +1849,12 @@ async fn test_create_credential_issuer_failed() {
             &schema.id,
             "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
             OpenID4VCICredentialRequestDTO {
-                credential_identifier: None,
-                credential_configuration_id: Some(schema.schema_id),
-                proofs: Some(hashmap! {
-                    "jwt".to_string() =>
-                        vec!["eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDprZXk6ejZNa3NXcnBvWXRkRjVka1VzZnhpZXZMc0oxaWpkcGtZdm9KcXliVUVjWXllTVJlI2tleS0xIiwidHlwIjoib3BlbmlkNHZjaS1wcm9vZitqd3QifQ.eyJpYXQiOjE3NDE3NzM2OTksImF1ZCI6Imh0dHBzOi8vZXhhbXBsZS5jb20ifQ.9or3jJO7ZKVfajqQa3ef21v45IdFuBsICzW6f2UA-dfPXWlyZToW6NYeMGofo2dxoY7CrkuX5vrCVPNMlaSZBw".to_string()]
-                    }),
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
             },
         )
         .await;

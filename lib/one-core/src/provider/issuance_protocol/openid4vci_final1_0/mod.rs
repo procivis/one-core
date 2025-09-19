@@ -8,7 +8,6 @@ use anyhow::Context;
 use async_trait::async_trait;
 use handle_invitation_operations::HandleInvitationOperations;
 use indexmap::IndexMap;
-use maplit::hashmap;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use secrecy::ExposeSecret;
@@ -85,6 +84,9 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
+};
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::{KeyProvider, SignatureProviderImpl};
@@ -749,11 +751,10 @@ impl OpenID4VCIFinal1_0 {
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let body = OpenID4VCICredentialRequestDTO {
-            credential_identifier: None,
-            credential_configuration_id: Some(
+            credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
                 interaction_data.credential_configuration_id.to_owned(),
             ),
-            proofs: Some(hashmap! {"jwt".to_string() => vec![proof_jwt]}),
+            proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![proof_jwt])),
         };
 
         let response = self

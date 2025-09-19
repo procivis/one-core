@@ -221,9 +221,25 @@ pub struct OpenID4VCICredentialDefinitionRequestDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize)]
 pub struct OpenID4VCICredentialRequestDTO {
-    pub credential_configuration_id: Option<String>,
-    pub credential_identifier: Option<String>,
-    pub proofs: Option<HashMap<String, Vec<String>>>,
+    #[serde(flatten)]
+    pub credential: OpenID4VCICredentialRequestIdentifier,
+    pub proofs: Option<OpenID4VCICredentialRequestProofs>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OpenID4VCICredentialRequestIdentifier {
+    CredentialConfigurationId(String),
+    CredentialIdentifier(String),
+}
+
+/// <https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-proof-types>
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OpenID4VCICredentialRequestProofs {
+    Jwt(Vec<String>),
+    DiVp(Vec<String>),
+    Attestation([String; 1]),
 }
 
 #[derive(Clone, Debug, Serialize)]

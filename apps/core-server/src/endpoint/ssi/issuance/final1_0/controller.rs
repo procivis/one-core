@@ -10,9 +10,9 @@ use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
-    OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
+    OpenID4VCICredentialOfferRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
     OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    OpenID4VCIFinal1CredentialRequestRestDTO, OpenID4VCIFinal1CredentialResponseRestDTO,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCINonceResponseRestDTO,
     OpenID4VCINotificationRequestRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO,
@@ -247,12 +247,12 @@ pub(crate) async fn oid4vci_final1_0_create_token(
 #[utoipa::path(
     post,
     path = "/ssi/openid4vci/final-1.0/{id}/credential",
-    request_body(content = OpenID4VCICredentialRequestRestDTO, description = "Credential request"),
+    request_body(content = OpenID4VCIFinal1CredentialRequestRestDTO, description = "Credential request"),
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VCICredentialResponseRestDTO),
+        (status = 200, description = "OK", body = OpenID4VCIFinal1CredentialResponseRestDTO),
         (status = 400, description = "OIDC credential errors", body = OpenID4VCIErrorResponseRestDTO),
         (status = 404, description = "Credential schema not found"),
         (status = 409, description = "Wrong credential state"),
@@ -279,7 +279,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
         ErrorResponseRestDTO,
     >,
     WithRejection(Json(request), _): WithRejection<
-        Json<OpenID4VCICredentialRequestRestDTO>,
+        Json<OpenID4VCIFinal1CredentialRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
@@ -293,7 +293,7 @@ pub(crate) async fn oid4vci_final1_0_create_credential(
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(OpenID4VCICredentialResponseRestDTO::from(value)),
+            Json(OpenID4VCIFinal1CredentialResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::OpenID4VCIError(error)) => {

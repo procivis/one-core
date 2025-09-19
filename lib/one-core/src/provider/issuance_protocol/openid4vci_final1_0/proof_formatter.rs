@@ -27,8 +27,7 @@ impl OpenID4VCIProofJWTFormatter {
     pub async fn verify_proof(
         jwt: &str,
         verifier: Box<dyn TokenVerifier>,
-        expected_nonce: &Option<String>,
-    ) -> Result<Either<(DidValue, String), PublicKeyJwk>, FormatterError> {
+    ) -> Result<(Either<(DidValue, String), PublicKeyJwk>, Option<String>), FormatterError> {
         let DecomposedToken::<ProofOfPossession> {
             header,
             payload,
@@ -47,13 +46,6 @@ impl OpenID4VCIProofJWTFormatter {
                 return Err(FormatterError::CouldNotVerify(
                     "Missing proof.jwt type".to_string(),
                 ));
-            }
-        }
-        if let Some(expected_nonce) = expected_nonce {
-            if payload.custom.nonce.as_ref() != Some(expected_nonce) {
-                return Err(FormatterError::CouldNotVerify(format!(
-                    "invalid or missing nonce: expected: {expected_nonce}"
-                )));
             }
         }
 
@@ -124,7 +116,7 @@ impl OpenID4VCIProofJWTFormatter {
                 Either::Right(jwk)
             }
         };
-        Ok(result)
+        Ok((result, payload.custom.nonce))
     }
 
     pub async fn format_proof(
@@ -172,6 +164,7 @@ mod test {
     use std::collections::HashMap;
     use std::sync::Arc;
 
+    use similar_asserts::assert_eq;
     use uuid::Uuid;
 
     use super::*;
@@ -203,7 +196,7 @@ mod test {
         .await
         .unwrap();
 
-        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier(), &None)
+        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
             .await
             .unwrap();
     }
@@ -223,33 +216,10 @@ mod test {
         .await
         .unwrap();
 
-        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier(), &Some("nonce".to_string()))
+        let (_, nonce) = OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
             .await
             .unwrap();
-    }
-
-    #[tokio::test]
-    async fn test_format_then_verify_proof_with_jwk_invalid_nonce() {
-        let auth_fn = auth_fn();
-        let jwk = pk_jwk();
-
-        let proof = OpenID4VCIProofJWTFormatter::format_proof(
-            "https://example.com".to_string(),
-            None,
-            Some(jwk.into()),
-            Some("nonce".to_string()),
-            auth_fn,
-        )
-        .await
-        .unwrap();
-
-        let result = OpenID4VCIProofJWTFormatter::verify_proof(
-            &proof,
-            verifier(),
-            &Some("invalid_nonce".to_string()),
-        )
-        .await;
-        assert!(matches!(result, Err(FormatterError::CouldNotVerify(_))));
+        assert_eq!(nonce, Some("nonce".to_string()));
     }
 
     #[track_caller]

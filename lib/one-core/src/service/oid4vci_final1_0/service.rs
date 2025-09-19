@@ -1,20 +1,20 @@
 use std::str::FromStr;
 
 use indexmap::IndexMap;
-use one_crypto::{SignerError, utilities};
+use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
-use secrecy::{ExposeSecret, SecretSlice, SecretString};
-use serde::{Deserialize, Serialize};
+use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId};
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use tokio_util::either::Either;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
 use super::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCICredentialResponseEntryDTO};
 use super::mapper::interaction_data_to_dto;
+use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
-    throw_if_access_token_invalid, throw_if_credential_request_invalid, validate_config_entity,
+    throw_if_access_token_invalid, throw_if_credential_request_invalid,
     validate_config_entity_presence,
 };
 use crate::common_mapper::{
@@ -24,7 +24,7 @@ use crate::common_mapper::{
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{IssuanceProtocolType, KeyAlgorithmType};
+use crate::config::core_config::IssuanceProtocolType;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -36,18 +36,18 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
-use crate::provider::credential_formatter::model::SignatureProvider;
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent,
-    OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    OpenID4VCNonceParams, Timestamp,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestProofs,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
@@ -60,8 +60,6 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::ssi_validator::validate_issuance_protocol_type;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::JWTPayload;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
@@ -335,59 +333,69 @@ impl OID4VCIFinal1_0Service {
             );
         };
 
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            &credential.protocol,
+        )?;
 
-        let (holder_identifier, holder_key_id) = if let Some(jwt) = request
-            .proofs
-            .as_ref()
-            .and_then(|proofs| proofs.get("jwt"))
-            .and_then(|jwts| jwts.first())
-        {
-            let verified_proof = OpenID4VCIProofJWTFormatter::verify_proof(
-                jwt,
-                Box::new(KeyVerification {
-                    key_algorithm_provider: self.key_algorithm_provider.clone(),
-                    did_method_provider: self.did_method_provider.clone(),
-                    key_role: KeyRole::Authentication,
-                    certificate_validator: self.certificate_validator.clone(),
-                }),
-                &None, // TODO: ONE-6733: check incoming nonce
-            )
-            .await
-            .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
+        let Some(OpenID4VCICredentialRequestProofs::Jwt(jwts)) = request.proofs.as_ref() else {
+            return Err(OpenID4VCIError::InvalidOrMissingProof.into());
+        };
+        let Some(jwt) = jwts.first() else {
+            return Err(OpenID4VCIError::InvalidOrMissingProof.into());
+        };
 
-            match verified_proof {
-                Either::Left((holder_did_value, holder_key_id)) => {
-                    let (_, identifier) = get_or_create_did_and_identifier(
-                        &*self.did_method_provider,
-                        &*self.did_repository,
-                        &*self.identifier_repository,
-                        &schema.organisation,
-                        &holder_did_value,
-                        IdentifierRole::Holder,
-                    )
-                    .await?;
-                    Ok((identifier, holder_key_id))
-                }
-                Either::Right(jwk) => {
-                    let (key, identifier) = get_or_create_key_identifier(
-                        self.key_repository.as_ref(),
-                        self.key_algorithm_provider.as_ref(),
-                        self.identifier_repository.as_ref(),
-                        schema.organisation.as_ref(),
-                        &jwk,
-                        IdentifierRole::Holder,
-                    )
-                    .await?;
+        let (verified_proof, nonce) = OpenID4VCIProofJWTFormatter::verify_proof(
+            jwt,
+            Box::new(KeyVerification {
+                key_algorithm_provider: self.key_algorithm_provider.clone(),
+                did_method_provider: self.did_method_provider.clone(),
+                key_role: KeyRole::Authentication,
+                certificate_validator: self.certificate_validator.clone(),
+            }),
+        )
+        .await
+        .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
 
-                    Ok((identifier, key.id.to_string()))
-                }
+        let params: OpenID4VCIFinal1Params =
+            self.config.issuance_protocol.get(&credential.protocol)?;
+        let Some(params) = params.nonce else {
+            return Err(ConfigValidationError::TypeNotFound(credential.protocol.to_owned()).into());
+        };
+        validate_nonce(
+            params,
+            self.base_url.to_owned(),
+            &nonce.ok_or(FormatterError::CouldNotVerify("Missing nonce".to_string()))?,
+        )?;
+
+        let (holder_identifier, holder_key_id) = match verified_proof {
+            Either::Left((holder_did_value, holder_key_id)) => {
+                let (_, identifier) = get_or_create_did_and_identifier(
+                    &*self.did_method_provider,
+                    &*self.did_repository,
+                    &*self.identifier_repository,
+                    &schema.organisation,
+                    &holder_did_value,
+                    IdentifierRole::Holder,
+                )
+                .await?;
+                (identifier, holder_key_id)
             }
-        } else {
-            Err(ServiceError::OpenID4VCIError(
-                OpenID4VCIError::InvalidOrMissingProof,
-            ))
-        }?;
+            Either::Right(jwk) => {
+                let (key, identifier) = get_or_create_key_identifier(
+                    self.key_repository.as_ref(),
+                    self.key_algorithm_provider.as_ref(),
+                    self.identifier_repository.as_ref(),
+                    schema.organisation.as_ref(),
+                    &jwk,
+                    IdentifierRole::Holder,
+                )
+                .await?;
+
+                (identifier, key.id.to_string())
+            }
+        };
 
         self.credential_repository
             .update_credential(
@@ -663,7 +671,11 @@ impl OID4VCIFinal1_0Service {
             .first()
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
-        validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            &credential.protocol,
+        )?;
 
         let mut interaction = credential
             .interaction
@@ -738,7 +750,11 @@ impl OID4VCIFinal1_0Service {
         &self,
         protocol_id: &str,
     ) -> Result<OpenID4VCINonceResponseDTO, ServiceError> {
-        validate_config_entity(&self.config, protocol_id)?;
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            protocol_id,
+        )?;
 
         let params: OpenID4VCIFinal1Params = self.config.issuance_protocol.get(protocol_id)?;
         let Some(params) = params.nonce else {
@@ -779,68 +795,4 @@ pub(crate) fn credentials_format(
             ),
         }),
     })
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct NonceJwtPayload {
-    context: String,
-}
-
-impl Default for NonceJwtPayload {
-    fn default() -> Self {
-        Self {
-            context: "issuance-openidvci-final-1.0-nonce".to_string(),
-        }
-    }
-}
-
-async fn generate_nonce(
-    params: OpenID4VCNonceParams,
-    base_url: Option<String>,
-) -> Result<String, ServiceError> {
-    let expiration = params.expiration.unwrap_or(300);
-    let now = OffsetDateTime::now_utc();
-
-    let payload = JWTPayload::<NonceJwtPayload> {
-        jwt_id: Some(Uuid::new_v4().to_string()),
-        issued_at: Some(now),
-        expires_at: Some(now + Duration::seconds(expiration as _)),
-        issuer: base_url,
-        ..Default::default()
-    };
-    let jwt = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload);
-
-    Ok(jwt
-        .tokenize(Some(Box::new(HS256Signer {
-            signing_key: params.signing_key,
-        })))
-        .await?)
-}
-
-struct HS256Signer {
-    pub signing_key: SecretSlice<u8>,
-}
-
-#[async_trait::async_trait]
-impl SignatureProvider for HS256Signer {
-    async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {
-        utilities::create_hmac(self.signing_key.expose_secret(), message)
-            .ok_or(SignerError::CouldNotSign("HMAC failure".to_string()))
-    }
-
-    fn get_key_id(&self) -> Option<String> {
-        None
-    }
-
-    fn get_key_algorithm(&self) -> Result<KeyAlgorithmType, String> {
-        Err("HS256".to_string())
-    }
-
-    fn jose_alg(&self) -> Option<String> {
-        Some("HS256".to_string())
-    }
-
-    fn get_public_key(&self) -> Vec<u8> {
-        Default::default()
-    }
 }

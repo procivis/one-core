@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use indexmap::IndexMap;
 use one_core::common_mapper::{opt_secret_string, secret_string};
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
@@ -7,7 +5,8 @@ use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
+    OpenID4VCICredentialRequestProofs, OpenID4VCICredentialSubjectItem,
     OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINonceResponseDTO,
@@ -137,12 +136,31 @@ pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub credential_subject: Option<OpenID4VCICredentialSubjectItem>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCICredentialRequestDTO)]
-pub(crate) struct OpenID4VCICredentialRequestRestDTO {
-    pub credential_configuration_id: Option<String>,
-    pub credential_identifier: Option<String>,
-    pub proofs: Option<HashMap<String, Vec<String>>>,
+pub(crate) struct OpenID4VCIFinal1CredentialRequestRestDTO {
+    #[serde(flatten)]
+    pub credential: OpenID4VCICredentialRequestIdentifierRest,
+    #[into(with_fn = convert_inner)]
+    pub proofs: Option<OpenID4VCICredentialRequestProofsRest>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(OpenID4VCICredentialRequestIdentifier)]
+#[serde(rename_all = "camelCase")]
+pub(crate) enum OpenID4VCICredentialRequestIdentifierRest {
+    CredentialConfigurationId(String),
+    CredentialIdentifier(String),
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(OpenID4VCICredentialRequestProofs)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum OpenID4VCICredentialRequestProofsRest {
+    Jwt(Vec<String>),
+    DiVp(Vec<String>),
+    Attestation([String; 1]),
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -209,7 +227,7 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialResponseDTO)]
-pub(crate) struct OpenID4VCICredentialResponseRestDTO {
+pub(crate) struct OpenID4VCIFinal1CredentialResponseRestDTO {
     #[serde(rename = "redirectUri")]
     pub redirect_uri: Option<String>,
 
