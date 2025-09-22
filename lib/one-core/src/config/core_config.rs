@@ -24,10 +24,9 @@ type Dict<K, V> = BTreeMap<K, V>;
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 pub struct NoCustomConfig;
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AppCustomConfigSerdeDTO<Custom> {
-    #[serde(default)]
     pub(super) app: Custom,
 }
 
@@ -167,7 +166,7 @@ impl InputFormat {
 
 impl<Custom> AppConfig<Custom>
 where
-    Custom: Serialize + DeserializeOwned + Default,
+    Custom: Serialize + DeserializeOwned,
 {
     pub fn from_files(files: &[impl AsRef<std::path::Path>]) -> Result<Self, ConfigParsingError> {
         let mut inputs: Vec<InputFormat> = Vec::with_capacity(files.len());

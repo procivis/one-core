@@ -81,7 +81,7 @@ pub mod repository;
 pub mod service;
 
 pub mod common_mapper;
-mod common_validator;
+pub mod common_validator;
 pub mod proto;
 pub mod util;
 

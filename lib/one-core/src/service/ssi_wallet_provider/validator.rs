@@ -1,25 +1,7 @@
 use shared_types::IdentifierId;
 
 use crate::model::organisation::Organisation;
-use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
-
-pub(crate) fn validate_audience(
-    audience: &[String],
-    expected: Option<&str>,
-) -> Result<(), ServiceError> {
-    let Some(expected) = expected else {
-        return Ok(());
-    };
-
-    let contains = audience.iter().any(|s| s.as_str() == expected);
-    if !contains {
-        return Err(ServiceError::ValidationError(format!(
-            "{expected} is not intended audience",
-        )));
-    }
-    Ok(())
-}
 
 pub(crate) fn validate_org_wallet_provider(
     organisation: &Organisation,

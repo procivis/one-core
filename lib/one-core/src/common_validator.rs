@@ -91,7 +91,7 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
     Ok(())
 }
 
-pub(crate) fn validate_issuance_time(
+pub fn validate_issuance_time(
     issued_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
@@ -106,7 +106,7 @@ pub(crate) fn validate_issuance_time(
     Ok(())
 }
 
-pub(crate) fn validate_not_before_time(
+pub fn validate_not_before_time(
     not_before: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
@@ -123,7 +123,7 @@ pub(crate) fn validate_not_before_time(
     Ok(())
 }
 
-pub(crate) fn validate_expiration_time(
+pub fn validate_expiration_time(
     expires_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
@@ -134,6 +134,16 @@ pub(crate) fn validate_expiration_time(
     let now = OffsetDateTime::now_utc();
     if *expires_at < now.sub(Duration::from_secs(leeway)) {
         return Err(ServiceError::ValidationError("Expired".to_owned()));
+    }
+    Ok(())
+}
+
+pub fn validate_audience(audience: &[String], expected: &str) -> Result<(), ServiceError> {
+    let contains = audience.iter().any(|s| s.as_str() == expected);
+    if !contains {
+        return Err(ServiceError::ValidationError(format!(
+            "Invalid audience. Expected: {expected}, actual: {audience:?}",
+        )));
     }
     Ok(())
 }

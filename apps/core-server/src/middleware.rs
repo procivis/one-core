@@ -13,6 +13,7 @@ use sentry::{Hub, SentryFutureExt};
 use tracing::trace;
 
 use crate::ServerConfig;
+use crate::authentication::Authentication;
 use crate::permissions::Permission;
 
 #[derive(Debug, Clone)]
@@ -75,37 +76,64 @@ pub async fn sentry_layer(
     .await
 }
 
-pub async fn bearer_check(
-    Extension(config): Extension<Arc<ServerConfig>>,
+pub async fn authorization_check(
+    Extension(authentication): Extension<Authentication>,
     mut request: Request<Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
+    match authentication {
+        Authentication::None => {
+            request.extensions_mut().insert(Authorized {
+                permissions: vec![],
+            });
+        }
+        Authentication::Static(static_token) => {
+            let token = extract_auth_token(&request)?;
+            if !token.is_empty() && token == static_token {
+                request.extensions_mut().insert(Authorized {
+                    permissions: vec![],
+                });
+            } else {
+                tracing::warn!(
+                    "Could not authorize request. Incorrect authorization method or token."
+                );
+                return Err(StatusCode::UNAUTHORIZED);
+            }
+        }
+        Authentication::SecurityTokenService(security_token_service) => {
+            let token = extract_auth_token(&request)?;
+            security_token_service
+                .validate_sts_token::<()>(token)
+                .await
+                .inspect_err(|e| {
+                    tracing::warn!("Could not authorize request. Invalid token. Cause: {e}")
+                })
+                .map_err(|_| StatusCode::UNAUTHORIZED)?;
+            request.extensions_mut().insert(Authorized {
+                permissions: vec![],
+            });
+        }
+    }
+    Ok(next.run(request).await)
+}
+
+fn extract_auth_token(request: &Request<Body>) -> Result<&str, StatusCode> {
     let auth_header = request
         .headers()
         .get("Authorization")
         .and_then(|header| header.to_str().ok());
 
     let auth_header = if let Some(auth_header) = auth_header {
-        auth_header.to_owned()
+        auth_header
     } else {
         tracing::warn!("Authorization header not found.");
         return Err(StatusCode::UNAUTHORIZED);
     };
 
-    let mut split = auth_header.split(' ');
-    let auth_type = split.next().unwrap_or_default();
-    let token = split.next().unwrap_or_default();
-
-    if auth_type == "Bearer" && !token.is_empty() && token == config.auth_token {
-        request.extensions_mut().insert(Authorized {
-            // TODO: Fill in permissions if in STS-Token-Mode
-            permissions: vec![],
-        });
-    } else {
-        tracing::warn!("Could not authorize request. Incorrect authorization method or token.");
-        return Err(StatusCode::UNAUTHORIZED);
-    }
-    Ok(next.run(request).await)
+    let token = auth_header
+        .strip_prefix("Bearer ")
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+    Ok(token)
 }
 
 pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {

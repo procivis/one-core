@@ -16,6 +16,11 @@ app:
   enableServerInfo: true
   enableOpenApi: true
   enableWalletProvider: true
+  auth:
+    mode: STS
+    stsTokenValidation:
+      aud: one-core
+      ttlJwks: 600
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"

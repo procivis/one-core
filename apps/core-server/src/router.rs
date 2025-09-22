@@ -18,6 +18,7 @@ use tracing::{Span, info, info_span, warn};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::ServerConfig;
+use crate::authentication::{Authentication, authentication};
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
@@ -46,7 +47,10 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
     let addr = listener.local_addr().expect("Invalid TCP listener");
     info!("Starting server at http://{addr}");
 
-    let router = router(state, config);
+    let authentication = authentication(&config)
+        .await
+        .expect("Failed to initialize authentication");
+    let router = router(state, config, authentication);
 
     axum::serve(
         tokio::net::TcpListener::from_std(listener)
@@ -57,7 +61,7 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
     .expect("Failed to start axum server");
 }
 
-fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
+fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentication) -> Router {
     let mut openapi_documentation = if config.enable_open_api {
         Some(gen_openapi_documentation(config.clone()))
     } else {
@@ -315,7 +319,8 @@ fn router(state: AppState, config: Arc<ServerConfig>) -> Router {
                 "/api/wallet-unit/v1/holder-attestation",
                 get(wallet_unit::controller::wallet_unit_holder_attestation),
             )
-            .layer(middleware::from_fn(crate::middleware::bearer_check))
+            .layer(middleware::from_fn(crate::middleware::authorization_check))
+            .layer(Extension(authentication))
     } else {
         if let Some(paths) = openapi_paths.as_mut() {
             paths.shift_remove("/api");

@@ -133,6 +133,10 @@ pub(crate) async fn format_mdoc_credential(
 
 pub fn datatype_config() -> DatatypeConfig {
     let config = indoc! {"
+        app:
+            auth:
+                mode: 'STATIC'
+                staticToken: 'test'
         datatype:
             STRING:
                 display: 'display'

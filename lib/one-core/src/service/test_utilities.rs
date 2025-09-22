@@ -34,6 +34,10 @@ pub struct CustomConfig {}
 
 pub fn generic_config() -> AppConfig<CustomConfig> {
     let config = indoc! {"
+        app:
+            auth:
+                mode: STATIC
+                staticToken: \"test\"
         transport:
             HTTP:
                 type: 'HTTP'

@@ -1,6 +1,5 @@
 app:
   databaseUrl: "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core"
-  authToken: "test"
   coreBaseUrl: "http://0.0.0.0:3000"
   serverIp: "0.0.0.0"
   serverPort: 3000
@@ -15,6 +14,9 @@ app:
   enableExternalEndpoints: true
   enableManagementEndpoints: true
   enableWalletProvider: true
+  auth:
+    mode: STATIC
+    staticToken: "test"
 walletProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE

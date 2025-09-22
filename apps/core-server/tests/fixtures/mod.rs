@@ -3,7 +3,7 @@ pub(crate) mod mdoc;
 
 use std::str::FromStr;
 
-use core_server::ServerConfig;
+use core_server::{AuthMode, ServerConfig};
 use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
 use one_core::model::blob::{Blob, BlobType};
@@ -112,9 +112,14 @@ pub fn create_config(
 
     let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::parse(configs).unwrap();
 
+    if let AuthMode::Static { static_token } = &mut app_config.app.auth {
+        if static_token.is_empty() {
+            *static_token = "test".to_string();
+        }
+    }
+
     app_config.app = ServerConfig {
         database_url: std::env::var("ONE_app__databaseUrl").unwrap_or("sqlite::memory:".into()),
-        auth_token: "test".to_string(),
         core_base_url: core_base_url.into(),
         server_ip: None,
         server_port: None,

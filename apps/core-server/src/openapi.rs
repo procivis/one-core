@@ -6,23 +6,22 @@ use utoipa::openapi::{Contact, ExternalDocs, Server, Tag};
 use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
-use crate::ServerConfig;
 use crate::build_info::{APP_VERSION, build};
+use crate::{AuthMode, ServerConfig};
 
 pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
     #[derive(OpenApi)]
-    #[openapi(
-        components(schemas(shared_types::EntityId)),
-        modifiers(&SecurityAddon),
-    )]
+    #[openapi(components(schemas(shared_types::EntityId)))]
     struct ApiDoc;
 
     struct ApiDocModifier {
         config: Arc<ServerConfig>,
     }
 
-    struct SecurityAddon;
+    struct SecurityAddon {
+        config: Arc<ServerConfig>,
+    }
 
     impl Modify for ApiDocModifier {
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
@@ -45,15 +44,20 @@ pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::op
     impl Modify for SecurityAddon {
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
             let components = openapi.components.as_mut().expect("OpenAPI Components");
-            components.add_security_scheme(
-                "bearer",
-                SecurityScheme::Http(
-                    HttpBuilder::new()
-                        .scheme(HttpAuthScheme::Bearer)
-                        .description(Some("Local management access token"))
-                        .build(),
-                ),
-            );
+            match self.config.auth {
+                AuthMode::InsecureNone => {}
+                AuthMode::Static { .. } | AuthMode::SecurityTokenService { .. } => {
+                    components.add_security_scheme(
+                        "bearer",
+                        SecurityScheme::Http(
+                            HttpBuilder::new()
+                                .scheme(HttpAuthScheme::Bearer)
+                                .description(Some("Local management access token"))
+                                .build(),
+                        ),
+                    );
+                }
+            }
             components.add_security_scheme(
                 "openID4VCI",
                 SecurityScheme::Http(
@@ -83,6 +87,10 @@ pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::op
         config: config.clone(),
     };
     modifier.modify(&mut docs);
+    let security_addon = SecurityAddon {
+        config: config.clone(),
+    };
+    security_addon.modify(&mut docs);
     docs.info.title = "Procivis One Core API".into();
     docs.info.description = Some(indoc::formatdoc! {"
             The Procivis One Core API enables the full lifecycle of credentials.

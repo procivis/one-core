@@ -89,6 +89,17 @@ pub enum PublicKeyJwk {
     Mlwe(PublicKeyJwkMlweData),
 }
 
+impl PublicKeyJwk {
+    pub fn kid(&self) -> Option<&str> {
+        match self {
+            PublicKeyJwk::Okp(data) | PublicKeyJwk::Ec(data) => data.kid.as_deref(),
+            PublicKeyJwk::Oct(data) => data.kid.as_deref(),
+            PublicKeyJwk::Mlwe(data) => data.kid.as_deref(),
+            PublicKeyJwk::Rsa(data) => data.kid.as_deref(),
+        }
+    }
+}
+
 /// see: <https://datatracker.ietf.org/doc/html/rfc7517#section-4.2>
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
 pub enum JwkUse {

@@ -8,7 +8,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::common_validator::{
-    validate_expiration_time, validate_issuance_time, validate_not_before_time,
+    validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{Fields, KeyAlgorithmType, WalletProviderType};
@@ -41,9 +41,7 @@ use crate::service::ssi_wallet_provider::error::WalletProviderError;
 use crate::service::ssi_wallet_provider::mapper::{
     map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
-use crate::service::ssi_wallet_provider::validator::{
-    validate_audience, validate_org_wallet_provider,
-};
+use crate::service::ssi_wallet_provider::validator::validate_org_wallet_provider;
 use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -715,7 +713,9 @@ impl SSIWalletProviderService {
         let Some(audience) = proof.payload.audience.as_ref() else {
             return Err(WalletProviderError::CouldNotVerifyProof("Missing aud".to_string()).into());
         };
-        validate_audience(audience, self.base_url.as_deref())?;
+        if let Some(expected_audience) = self.base_url.as_deref() {
+            validate_audience(audience, expected_audience)?;
+        }
         Ok(())
     }
 

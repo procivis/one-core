@@ -1,4 +1,4 @@
-use core_server::ServerConfig;
+use core_server::{AuthMode, ServerConfig};
 use one_core::config::core_config::{AppConfig, InputFormat};
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -28,6 +28,10 @@ async fn test_server_starts_with_base_config() {
 
     let set_encryption_key = Some(
         indoc::indoc! {"
+        app:
+            auth:
+                mode: STATIC
+                staticToken: \"test\"
         keyStorage:
             INTERNAL:
                 params:
@@ -65,13 +69,25 @@ async fn test_server_starts_with_base_config() {
         } else {
             database_url
         },
-        auth_token: "test".to_string(),
+        server_ip: Default::default(),
+        server_port: Default::default(),
+        trace_json: Default::default(),
         core_base_url: "http://0.0.0.0:3000".into(),
+        sentry_dsn: Default::default(),
+        sentry_environment: Default::default(),
         trace_level: Some("debug,hyper=error,sea_orm=info,sqlx::query=error".into()),
         hide_error_response_cause: true,
         allow_insecure_http_transport: true,
         insecure_vc_api_endpoints_enabled: true,
-        ..Default::default()
+        enable_metrics: Default::default(),
+        enable_server_info: Default::default(),
+        enable_open_api: Default::default(),
+        enable_external_endpoints: Default::default(),
+        enable_management_endpoints: Default::default(),
+        enable_wallet_provider: Default::default(),
+        auth: AuthMode::Static {
+            static_token: "test".to_string(),
+        },
     };
     let db_conn = fixtures::create_db(&app_config).await;
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

@@ -33,6 +33,7 @@ pub fn permission_check(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::AuthMode;
 
     #[test]
     fn check_permissions_success() {
@@ -80,7 +81,6 @@ mod test {
             server_ip: None,
             server_port: None,
             trace_json: None,
-            auth_token: "".to_string(),
             core_base_url: "".to_string(),
             sentry_dsn: None,
             sentry_environment: None,
@@ -94,6 +94,7 @@ mod test {
             enable_external_endpoints: false,
             enable_management_endpoints: false,
             enable_wallet_provider: false,
+            auth: AuthMode::InsecureNone,
         }
     }
 }
