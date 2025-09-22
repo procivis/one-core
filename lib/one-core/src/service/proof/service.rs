@@ -75,6 +75,7 @@ use crate::service::credential_schema::validator::validate_wallet_storage_type_s
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::proof::dto::ProposeProofRequestDTO;
 use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
@@ -736,21 +737,19 @@ impl ProofService {
 
     pub async fn propose_proof(
         &self,
-        exchange: String,
-        organisation_id: OrganisationId,
-        engagements: Vec<String>,
+        request: ProposeProofRequestDTO,
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)?;
-        validate_protocol_type(&exchange, &self.config.verification_protocol)?;
-        validate_holder_engagements(&engagements, &self.config.verification_engagement)?;
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
+        validate_protocol_type(&request.protocol, &self.config.verification_protocol)?;
+        validate_holder_engagements(&request.engagement, &self.config.verification_engagement)?;
         let exchange_type = self
             .config
             .verification_protocol
-            .get_fields(&exchange)?
+            .get_fields(&request.protocol)?
             .r#type;
         if exchange_type != VerificationProtocolType::IsoMdl {
             return Err(ValidationError::InvalidExchangeType {
-                value: exchange,
+                value: request.protocol,
                 source: anyhow::anyhow!("propose_proof"),
             }
             .into());
@@ -788,7 +787,10 @@ impl ProofService {
             .into_cbor()
             .map_err(|err| ServiceError::Other(err.to_string()))?;
 
-        let qr_code = if engagements.contains(&VerificationEngagement::QrCode.to_string()) {
+        let qr_code = if request
+            .engagement
+            .contains(&VerificationEngagement::QrCode.to_string())
+        {
             Some(
                 device_engagement_bytes
                     .generate_qr_code()
@@ -798,7 +800,10 @@ impl ProofService {
             None
         };
 
-        let nfc = if engagements.contains(&VerificationEngagement::NFC.to_string()) {
+        let nfc = if request
+            .engagement
+            .contains(&VerificationEngagement::NFC.to_string())
+        {
             let nfc_hce_provider = self
                 .nfc_hce_provider
                 .clone()
@@ -824,7 +829,7 @@ impl ProofService {
 
             let handler = Arc::new(NfcStaticHandoverHandler::new(select_message.clone())?);
             nfc_hce_provider
-                .start_hosting(handler.to_owned(), None)
+                .start_hosting(handler.to_owned(), request.ui_message)
                 .await?;
             Some(NfcHceSession {
                 handler,
@@ -839,7 +844,7 @@ impl ProofService {
         let interaction_id = Uuid::new_v4();
 
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
-            organisation_id,
+            organisation_id: request.organisation_id,
             service_uuid: ble_server.service_uuid,
             continuation_task_id: ble_server.task_id,
             session: None,
@@ -849,7 +854,7 @@ impl ProofService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation(&organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
             .await?;
 
         let interaction = add_new_interaction(
@@ -867,7 +872,7 @@ impl ProofService {
                 id: Uuid::new_v4().into(),
                 created_date: now,
                 last_modified: now,
-                protocol: exchange,
+                protocol: request.protocol,
                 redirect_uri: None,
                 state: Pending,
                 role: ProofRole::Holder,

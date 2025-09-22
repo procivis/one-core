@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use one_core::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
-use one_core::service::proof::dto::ProposeProofResponseDTO;
+use one_core::service::proof::dto::{ProposeProofRequestDTO, ProposeProofResponseDTO};
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
     InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
@@ -200,12 +200,15 @@ pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
     pub submit_claims: Vec<String>,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(ProposeProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProposeProofRequestRestDTO {
     pub protocol: String,
     pub organisation_id: OrganisationId,
     pub engagement: Vec<String>,
+    pub ui_message: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

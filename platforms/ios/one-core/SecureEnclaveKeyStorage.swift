@@ -1,7 +1,3 @@
-//
-//  SecureEnclaveKeyStorage.swift
-//
-
 import Foundation
 import CryptoKit
 import LocalAuthentication

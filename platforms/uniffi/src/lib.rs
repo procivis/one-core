@@ -198,8 +198,10 @@ async fn initialize(
         );
 
         #[cfg(target_os = "ios")]
-        let subscriber =
-            subscriber.with(tracing_oslog::OsLogger::new("ProcivisOneCore", "default"));
+        let subscriber = subscriber.with(tracing_oslog::OsLogger::new(
+            "ch.procivis.one.core",
+            "default",
+        ));
 
         #[allow(unused_must_use)]
         subscriber.try_init();

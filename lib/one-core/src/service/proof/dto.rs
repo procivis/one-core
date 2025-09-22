@@ -158,3 +158,11 @@ pub struct ShareProofRequestDTO {
 pub struct ShareProofRequestParamsDTO {
     pub client_id_scheme: Option<ClientIdScheme>,
 }
+
+#[derive(Clone, Debug)]
+pub struct ProposeProofRequestDTO {
+    pub protocol: String,
+    pub organisation_id: OrganisationId,
+    pub engagement: Vec<String>,
+    pub ui_message: Option<String>,
+}

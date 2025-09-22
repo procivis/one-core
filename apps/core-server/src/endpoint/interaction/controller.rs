@@ -208,15 +208,7 @@ pub(crate) async fn propose_proof(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<ProposeProofResponseRestDTO> {
-    let result = state
-        .core
-        .proof_service
-        .propose_proof(
-            request.protocol,
-            request.organisation_id,
-            request.engagement,
-        )
-        .await;
+    let result = state.core.proof_service.propose_proof(request.into()).await;
     CreatedOrErrorResponse::from_result(result, state, "proposing proof")
 }
 

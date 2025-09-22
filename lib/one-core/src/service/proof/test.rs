@@ -11,6 +11,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofService;
+use super::dto::{
+    CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
+    ProposeProofRequestDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
+    ShareProofRequestDTO,
+};
 use crate::config::core_config::{
     CoreConfig, Fields, IdentifierType, KeyStorageType, TransportType, VerificationProtocolType,
 };
@@ -87,10 +92,6 @@ use crate::repository::validity_credential_repository::MockValidityCredentialRep
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
-use crate::service::proof::dto::{
-    CreateProofRequestDTO, GetProofQueryDTO, ProofClaimValueDTO, ProofFilterValue,
-    ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO, ShareProofRequestDTO,
 };
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
@@ -4523,7 +4524,12 @@ async fn test_proof_ops_session_org_mismatch() {
     ));
 
     let result = service
-        .propose_proof("exchange".to_string(), Uuid::new_v4().into(), vec![])
+        .propose_proof(ProposeProofRequestDTO {
+            protocol: "exchange".to_string(),
+            organisation_id: Uuid::new_v4().into(),
+            engagement: vec![],
+            ui_message: None,
+        })
         .await;
     assert!(matches!(
         result,

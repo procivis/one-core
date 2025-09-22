@@ -1,7 +1,3 @@
-//
-//  NFCScanner.swift
-//
-
 import Foundation
 import CoreNFC
 

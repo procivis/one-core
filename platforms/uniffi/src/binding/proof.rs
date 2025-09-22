@@ -10,8 +10,8 @@ use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO,
-    ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
-    ShareProofRequestDTO, ShareProofRequestParamsDTO,
+    ProposeProofRequestDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
+    ScanToVerifyRequestDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
@@ -111,14 +111,12 @@ impl OneCoreBinding {
     #[uniffi::method]
     pub async fn propose_proof(
         &self,
-        exchange: String,
-        organisation_id: String,
-        engagement: Vec<String>,
+        request: ProposeProofRequestBindingDTO,
     ) -> Result<ProposeProofResponseBindingDTO, BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .proof_service
-            .propose_proof(exchange, into_id(&organisation_id)?, engagement)
+            .propose_proof(request.try_into()?)
             .await?
             .into())
     }
@@ -345,6 +343,19 @@ pub struct PresentationSubmitCredentialRequestBindingDTO {
     pub credential_id: String,
     #[try_into(infallible)]
     pub submit_claims: Vec<String>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = ProposeProofRequestDTO, Error = ServiceError)]
+pub struct ProposeProofRequestBindingDTO {
+    #[try_into(infallible)]
+    pub protocol: String,
+    #[try_into(with_fn_ref = into_id)]
+    pub organisation_id: String,
+    #[try_into(infallible)]
+    pub engagement: Vec<String>,
+    #[try_into(infallible)]
+    pub ui_message: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

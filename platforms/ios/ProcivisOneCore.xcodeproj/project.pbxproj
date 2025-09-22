@@ -14,6 +14,7 @@
 		33CBDF2C2D915319006768C1 /* IOSBLEPeripheral.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF2B2D915319006768C1 /* IOSBLEPeripheral.swift */; };
 		33CBDF302D91539D006768C1 /* ProcivisOneCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CBDF2F2D91539D006768C1 /* ProcivisOneCore.swift */; };
 		33E15DED2B11096D0085370C /* ProcivisOneCoreFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 339F03CE2B10FD3D00FF10ED /* ProcivisOneCoreFFI.xcframework */; };
+		33ED481B2E810A3100B39A51 /* NFCHCE.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33ED481A2E810A3100B39A51 /* NFCHCE.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -25,6 +26,7 @@
 		33CBDF292D915312006768C1 /* IOSBLEModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IOSBLEModels.swift; path = "one-core/IOSBLEModels.swift"; sourceTree = SOURCE_ROOT; };
 		33CBDF2B2D915319006768C1 /* IOSBLEPeripheral.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IOSBLEPeripheral.swift; path = "one-core/IOSBLEPeripheral.swift"; sourceTree = SOURCE_ROOT; };
 		33CBDF2F2D91539D006768C1 /* ProcivisOneCore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProcivisOneCore.swift; path = ../../target/uniffi/ios/ProcivisOneCore.swift; sourceTree = SOURCE_ROOT; };
+		33ED481A2E810A3100B39A51 /* NFCHCE.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = NFCHCE.swift; path = "one-core/NFCHCE.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -61,6 +63,7 @@
 			children = (
 				33CBDF252D9152C1006768C1 /* SecureEnclaveKeyStorage.swift */,
 				33CBDF252D9152C2006768C1 /* NFCScanner.swift */,
+				33ED481A2E810A3100B39A51 /* NFCHCE.swift */,
 				33CBDF272D915308006768C1 /* IOSBLECentral.swift */,
 				33CBDF292D915312006768C1 /* IOSBLEModels.swift */,
 				33CBDF2B2D915319006768C1 /* IOSBLEPeripheral.swift */,
@@ -159,6 +162,7 @@
 				33CBDF262D9152C1006768C1 /* SecureEnclaveKeyStorage.swift in Sources */,
 				33CBDF262D9152C2006768C1 /* NFCScanner.swift in Sources */,
 				33CBDF302D91539D006768C1 /* ProcivisOneCore.swift in Sources */,
+				33ED481B2E810A3100B39A51 /* NFCHCE.swift in Sources */,
 				33CBDF282D915308006768C1 /* IOSBLECentral.swift in Sources */,
 				33CBDF2A2D915312006768C1 /* IOSBLEModels.swift in Sources */,
 				33CBDF2C2D915319006768C1 /* IOSBLEPeripheral.swift in Sources */,
