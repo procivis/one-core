@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 use shared_types::{DidId, TrustEntityId};
 
 use super::dto::{
@@ -13,6 +14,7 @@ use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErr
 use crate::endpoint::ssi::dto::PatchTrustEntityRequestRestDTO;
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -27,6 +29,7 @@ use crate::router::AppState;
     summary = "Create a trust entity",
     description = "Adds a trust entity to a trust anchor.",
 )]
+#[require_permissions(Permission::TrustEntityCreate)]
 pub(crate) async fn create_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -66,6 +69,7 @@ pub(crate) async fn create_trust_entity(
     summary = "Update a trust entity",
     description = "Updates a trust entity in a trust anchor.",
 )]
+#[require_permissions(Permission::TrustEntityEdit)]
 pub(crate) async fn update_trust_entity(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustEntityId>, ErrorResponseRestDTO>,
@@ -106,6 +110,7 @@ pub(crate) async fn update_trust_entity(
     summary = "Retrieve a trust entity",
     description = "Returns details on a given trust entity.",
 )]
+#[require_permissions(Permission::TrustEntityDetail)]
 pub(crate) async fn get_trust_entity_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustEntityId>, ErrorResponseRestDTO>,
@@ -127,6 +132,7 @@ pub(crate) async fn get_trust_entity_details(
     summary = "List trust entities",
     description = "Returns a list of trust entities in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::TrustEntityList)]
 pub(crate) async fn get_trust_entities(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListTrustEntitiesQuery>, ErrorResponseRestDTO>,
@@ -151,6 +157,7 @@ pub(crate) async fn get_trust_entities(
     summary = "Create a remote trust entity",
     description = "Create a trust entity inside a remote trust anchor",
 )]
+#[require_permissions(Permission::TrustEntityCreate)]
 pub(crate) async fn create_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -191,6 +198,7 @@ pub(crate) async fn create_remote_trust_entity(
     summary = "Update a remote trust entity",
     description = "Updates a trust entity inside a remote trust anchor.",
 )]
+#[require_permissions(Permission::TrustEntityEdit)]
 pub(crate) async fn update_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
@@ -231,6 +239,7 @@ pub(crate) async fn update_remote_trust_entity(
     summary = "Retrieve a remote trust entity",
     description = "Returns details of a remote trust entity.",
 )]
+#[require_permissions(Permission::TrustEntityDetail)]
 pub(crate) async fn get_remote_trust_entity(
     state: State<AppState>,
     WithRejection(Path(did_id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,

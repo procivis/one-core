@@ -2,11 +2,13 @@ use axum::extract::State;
 use axum::response::IntoResponse;
 use axum_extra::extract::WithRejection;
 use one_dto_mapper::convert_inner;
+use proc_macros::require_permissions;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::EmptyOrErrorResponse;
 use crate::endpoint::cache::dto::DeleteCacheQuery;
 use crate::extractor::QsOpt;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -25,7 +27,7 @@ use crate::router::AppState;
         Related guide: [Caching](/configure/caching)
     "},
 )]
-#[axum::debug_handler]
+#[require_permissions(Permission::CacheDelete)]
 pub(crate) async fn prune_cache(
     state: State<AppState>,
     WithRejection(QsOpt(query), _): WithRejection<QsOpt<DeleteCacheQuery>, ErrorResponseRestDTO>,

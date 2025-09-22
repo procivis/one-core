@@ -1,11 +1,13 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
+use proc_macros::require_permissions;
 use shared_types::DidValue;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::ssi::dto::DidDocumentRestDTO;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -24,6 +26,7 @@ use crate::router::AppState;
         Resolves a DID to its DID document, returning its verification relationships.
     "},
 )]
+#[require_permissions(Permission::DidResolve)]
 pub(crate) async fn resolve_did(
     state: State<AppState>,
     WithRejection(Path(did_value), _): WithRejection<Path<DidValue>, ErrorResponseRestDTO>,

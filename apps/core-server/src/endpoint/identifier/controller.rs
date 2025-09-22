@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
+use proc_macros::require_permissions;
 use shared_types::IdentifierId;
 
 use super::dto::{
@@ -13,6 +14,7 @@ use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -27,6 +29,7 @@ use crate::router::AppState;
     summary = "Create an identifier",
     description = "Creates a new identifier of the specified type.",
 )]
+#[require_permissions(Permission::IdentifierCreate)]
 pub(crate) async fn post_identifier(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -57,6 +60,7 @@ pub(crate) async fn post_identifier(
     summary = "Retrieve an identifier",
     description = "Returns detailed information about an identifier.",
 )]
+#[require_permissions(Permission::IdentifierDetail)]
 pub(crate) async fn get_identifier(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<IdentifierId>, ErrorResponseRestDTO>,
@@ -95,6 +99,7 @@ pub(crate) async fn get_identifier(
     summary = "Delete an identifier",
     description = "Deletes an identifier.",
 )]
+#[require_permissions(Permission::IdentifierDelete)]
 pub(crate) async fn delete_identifier(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<IdentifierId>, ErrorResponseRestDTO>,
@@ -116,6 +121,7 @@ pub(crate) async fn delete_identifier(
     summary = "List identifiers",
     description = "Returns a list of identifiers within an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::IdentifierList)]
 pub(crate) async fn get_identifier_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetIdentifierQuery>, ErrorResponseRestDTO>,
@@ -150,6 +156,7 @@ pub(crate) async fn get_identifier_list(
     decide how to proceed with any given interaction.
 "},
 )]
+#[require_permissions(Permission::TrustEntityDetail)]
 pub(crate) async fn resolve_trust_entity(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

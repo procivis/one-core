@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 use shared_types::ProofSchemaId;
 
 use super::dto::{
@@ -11,6 +12,7 @@ use crate::dto::common::{EntityResponseRestDTO, GetProofSchemaListResponseRestDT
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -29,6 +31,7 @@ use crate::router::AppState;
         Related guide: [Proof schemas](/proof-schemas)
     "},
 )]
+#[require_permissions(Permission::ProofSchemaCreate)]
 pub(crate) async fn post_proof_schema(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -56,6 +59,7 @@ pub(crate) async fn post_proof_schema(
     summary = "Retrieve proof schemas",
     description = "Returns a list of proof schemas. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::ProofSchemaList)]
 pub(crate) async fn get_proof_schemas(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetProofSchemaQuery>, ErrorResponseRestDTO>,
@@ -83,6 +87,7 @@ pub(crate) async fn get_proof_schemas(
     summary = "Retrieve proof schema",
     description = "Returns detailed information about a proof schema.",
 )]
+#[require_permissions(Permission::ProofSchemaDetail)]
 pub(crate) async fn get_proof_schema_detail(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
@@ -105,6 +110,7 @@ pub(crate) async fn get_proof_schema_detail(
     summary = "Delete a proof schema",
     description = "Deletes a proof schema.",
 )]
+#[require_permissions(Permission::ProofSchemaDelete)]
 pub(crate) async fn delete_proof_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
@@ -131,6 +137,7 @@ pub(crate) async fn delete_proof_schema(
     summary = "Share proof schema",
     description = "Generates a url to share a proof schema with a mobile verifier.",
 )]
+#[require_permissions(Permission::ProofSchemaShare)]
 pub(crate) async fn share_proof_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofSchemaId>, ErrorResponseRestDTO>,
@@ -155,6 +162,7 @@ pub(crate) async fn share_proof_schema(
         the uuid of the mobile verifier's organization, to import the proof schema.
     "},
 )]
+#[require_permissions(Permission::ProofSchemaCreate)]
 pub(crate) async fn import_proof_schema(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

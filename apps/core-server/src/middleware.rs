@@ -10,11 +10,22 @@ use axum::response::IntoResponse;
 use headers::HeaderValue;
 use http_body_util::BodyExt;
 use sentry::{Hub, SentryFutureExt};
+use serde::Deserialize;
+use shared_types::OrganisationId;
 use tracing::trace;
 
 use crate::ServerConfig;
 use crate::authentication::Authentication;
 use crate::permissions::Permission;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StsToken {
+    #[allow(unused)]
+    pub organisation_id: Option<OrganisationId>,
+    #[serde(default)]
+    pub permissions: Vec<Permission>,
+}
 
 #[derive(Debug, Clone)]
 pub struct Authorized {
@@ -102,15 +113,15 @@ pub async fn authorization_check(
         }
         Authentication::SecurityTokenService(security_token_service) => {
             let token = extract_auth_token(&request)?;
-            security_token_service
-                .validate_sts_token::<()>(token)
+            let decomposed_token = security_token_service
+                .validate_sts_token::<StsToken>(token)
                 .await
                 .inspect_err(|e| {
                     tracing::warn!("Could not authorize request. Invalid token. Cause: {e}")
                 })
                 .map_err(|_| StatusCode::UNAUTHORIZED)?;
             request.extensions_mut().insert(Authorized {
-                permissions: vec![],
+                permissions: decomposed_token.payload.custom.permissions,
             });
         }
     }

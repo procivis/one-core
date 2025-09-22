@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 use shared_types::{OrganisationId, WalletUnitId};
 
 use crate::dto::error::ErrorResponseRestDTO;
@@ -12,6 +13,7 @@ use crate::endpoint::wallet_unit::dto::{
     ListWalletUnitsQuery, WalletUnitResponseRestDTO,
 };
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -28,6 +30,7 @@ use crate::router::AppState;
     Returns a list of wallet units.
 "},
 )]
+#[require_permissions(Permission::WalletUnitList)]
 pub(crate) async fn get_wallet_unit_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListWalletUnitsQuery>, ErrorResponseRestDTO>,
@@ -66,6 +69,7 @@ pub(crate) async fn get_wallet_unit_list(
     summary = "Retrieve a wallet unit",
     description = "Returns details on a given wallet unit.",
 )]
+#[require_permissions(Permission::WalletUnitDetail)]
 pub(crate) async fn get_wallet_unit_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
@@ -88,6 +92,7 @@ pub(crate) async fn get_wallet_unit_details(
     summary = "Revokes a wallet unit",
     description = "Revokes a given wallet unit.",
 )]
+#[require_permissions(Permission::WalletUnitRevoke)]
 pub(crate) async fn revoke_wallet_unit(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
@@ -114,6 +119,7 @@ pub(crate) async fn revoke_wallet_unit(
     summary = "Permanently removes a wallet unit",
     description = "Permanently removes  a given wallet unit.",
 )]
+#[require_permissions(Permission::WalletUnitDelete)]
 pub(crate) async fn remove_wallet_unit(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
@@ -140,6 +146,7 @@ pub(crate) async fn remove_wallet_unit(
         Register wallet unit and fetch attestation.
     "},
 )]
+#[require_permissions(Permission::WalletAttestationCreate)]
 pub(crate) async fn wallet_unit_holder_register(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -169,6 +176,7 @@ pub(crate) async fn wallet_unit_holder_register(
         Refreshes wallet unit attestation.
     "},
 )]
+#[require_permissions(Permission::WalletAttestationEdit)]
 pub(crate) async fn wallet_unit_holder_refresh(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -204,6 +212,7 @@ pub(crate) async fn wallet_unit_holder_refresh(
         Retrieve wallet unit attestation.
     "},
 )]
+#[require_permissions(Permission::WalletAttestationDetail)]
 pub(crate) async fn wallet_unit_holder_attestation(
     state: State<AppState>,
     WithRejection(Query(query_params), _): WithRejection<

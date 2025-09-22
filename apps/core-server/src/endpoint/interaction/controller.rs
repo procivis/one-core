@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::State;
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 
 use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
@@ -13,6 +14,7 @@ use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErr
 use crate::endpoint::interaction::dto::{
     InitiateIssuanceRequestRestDTO, InitiateIssuanceResponseRestDTO, ProposeProofResponseRestDTO,
 };
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -34,6 +36,7 @@ use crate::router::AppState;
         use the [initiate-issuance](/reference/core/initiate-issuance) endpoint.
     "},
 )]
+#[require_permissions(Permission::InteractionIssuance, Permission::InteractionProof)]
 pub(crate) async fn handle_invitation(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -71,6 +74,7 @@ pub(crate) async fn handle_invitation(
         `didId` is deprecated.
     "},
 )]
+#[require_permissions(Permission::InteractionIssuance)]
 pub(crate) async fn issuance_accept(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -104,6 +108,7 @@ pub(crate) async fn issuance_accept(
     summary = "Reject issuance",
     description = "Rejects an offered credential.",
 )]
+#[require_permissions(Permission::InteractionIssuance)]
 pub(crate) async fn issuance_reject(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -131,6 +136,7 @@ pub(crate) async fn issuance_reject(
     summary = "Reject presentation",
     description = "Rejects a request to submit credentials.",
 )]
+#[require_permissions(Permission::InteractionProof)]
 pub(crate) async fn presentation_reject(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -163,6 +169,7 @@ pub(crate) async fn presentation_reject(
         `didId` is deprecated.
     "},
 )]
+#[require_permissions(Permission::InteractionProof)]
 pub(crate) async fn presentation_submit(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -193,6 +200,7 @@ pub(crate) async fn presentation_submit(
         device engagement for offline flows. See the SDK.
     "},
 )]
+#[require_permissions(Permission::InteractionProof)]
 pub(crate) async fn propose_proof(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -226,6 +234,7 @@ pub(crate) async fn propose_proof(
         For wallets, starts the OpenID4VCI Authorization Code Flow.
     "},
 )]
+#[require_permissions(Permission::InteractionIssuance)]
 pub(crate) async fn initiate_issuance(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -256,6 +265,7 @@ pub(crate) async fn initiate_issuance(
         completing authorization.
     "},
 )]
+#[require_permissions(Permission::InteractionIssuance)]
 pub(crate) async fn continue_issuance(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

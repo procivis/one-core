@@ -4,6 +4,7 @@ use axum_extra::extract::WithRejection;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::GetCredentialQueryDTO;
 use one_dto_mapper::convert_inner;
+use proc_macros::require_permissions;
 use shared_types::CredentialId;
 
 use super::dto::{
@@ -21,6 +22,7 @@ use crate::endpoint::credential::dto::{
     SuspendCredentialRequestRestDTO,
 };
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -46,6 +48,7 @@ use crate::router::AppState;
         method is `NONE`, the credential can be deleted in any state.
     "},
 )]
+#[require_permissions(Permission::CredentialDelete)]
 pub(crate) async fn delete_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -68,6 +71,7 @@ pub(crate) async fn delete_credential(
     summary = "Retrieve a credential",
     description = "Returns detailed information about a credential.",
 )]
+#[require_permissions(Permission::CredentialDetail)]
 pub(crate) async fn get_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -90,6 +94,7 @@ pub(crate) async fn get_credential(
     summary = "List credentials",
     description = "Returns a list of credentials within an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::CredentialList)]
 pub(crate) async fn get_credential_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialQuery>, ErrorResponseRestDTO>,
@@ -150,6 +155,7 @@ pub(crate) async fn get_credential_list(
     Related guide: [Issuance workflow](/issue)
 "},
 )]
+#[require_permissions(Permission::CredentialIssue)]
 pub(crate) async fn post_credential(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -183,6 +189,7 @@ pub(crate) async fn post_credential(
         Related guide: [Manage credential status](/issue/manage-status)
     "},
 )]
+#[require_permissions(Permission::CredentialReactivate)]
 pub(crate) async fn reactivate_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -212,6 +219,7 @@ pub(crate) async fn reactivate_credential(
         Related guide: [Manage credential status](/issue/manage-status)
     "},
 )]
+#[require_permissions(Permission::CredentialRevoke)]
 pub(crate) async fn revoke_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -238,6 +246,7 @@ pub(crate) async fn revoke_credential(
         Related guide: [Manage credential status](/issue/manage-status)
     "},
 )]
+#[require_permissions(Permission::CredentialSuspend)]
 pub(crate) async fn suspend_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -268,6 +277,7 @@ pub(crate) async fn suspend_credential(
     summary = "Issue a credential",
     description = "Creates a share endpoint URL. A wallet holder can use this to access the offered credential.",
 )]
+#[require_permissions(Permission::CredentialShare)]
 pub(crate) async fn share_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
@@ -308,6 +318,7 @@ pub(crate) async fn share_credential(
         Related guide: [Caching](/configure/caching)
     "},
 )]
+#[require_permissions(Permission::CredentialEdit)]
 pub(crate) async fn revocation_check(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

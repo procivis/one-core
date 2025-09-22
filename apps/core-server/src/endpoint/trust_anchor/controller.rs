@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 use shared_types::TrustAnchorId;
 
 use crate::dto::common::{EntityResponseRestDTO, GetTrustAnchorListResponseRestDTO};
@@ -10,6 +11,7 @@ use crate::endpoint::trust_anchor::dto::{
     CreateTrustAnchorRequestRestDTO, GetTrustAnchorResponseRestDTO, ListTrustAnchorsQuery,
 };
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -30,6 +32,7 @@ use crate::router::AppState;
     configurations of the same type.
 "},
 )]
+#[require_permissions(Permission::TrustAnchorCreate)]
 pub(crate) async fn create_trust_anchor(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -59,6 +62,7 @@ pub(crate) async fn create_trust_anchor(
     summary = "Retrieve a trust anchor",
     description = "Returns details on a given trust anchor.",
 )]
+#[require_permissions(Permission::TrustAnchorDetail)]
 pub(crate) async fn get_trust_anchor(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustAnchorId>, ErrorResponseRestDTO>,
@@ -79,6 +83,7 @@ pub(crate) async fn get_trust_anchor(
     summary = "List trust anchors",
     description = "Returns a list of trust anchors in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::TrustAnchorList)]
 pub(crate) async fn get_trust_anchors(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListTrustAnchorsQuery>, ErrorResponseRestDTO>,
@@ -108,6 +113,7 @@ pub(crate) async fn get_trust_anchors(
         are also deleted.
     "},
 )]
+#[require_permissions(Permission::TrustAnchorDelete)]
 pub(crate) async fn delete_trust_anchor(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<TrustAnchorId>, ErrorResponseRestDTO>,

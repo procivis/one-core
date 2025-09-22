@@ -31,7 +31,7 @@ pub(crate) fn throw_if_org_not_matching_session(
     let Some(session) = session_provider.session() else {
         return Ok(());
     };
-    if &session.organisation_id != organisation_id {
+    if session.organisation_id.ok_or(ValidationError::Forbidden)? != *organisation_id {
         return Err(ValidationError::Forbidden.into());
     }
     Ok(())

@@ -1926,7 +1926,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
         credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
         session_provider: Arc::new(StaticSessionProvider(Session {
-            organisation_id: session_organisation_id,
+            organisation_id: Some(session_organisation_id),
             user_id: "test-user".to_string(),
         })),
         ..mock_ssi_holder_service()
@@ -1973,7 +1973,7 @@ async fn test_accept_credential_credential_org_mismatch() {
         credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
         session_provider: Arc::new(StaticSessionProvider(Session {
-            organisation_id: session_organisation_id,
+            organisation_id: Some(session_organisation_id),
             user_id: "test-user".to_string(),
         })),
         ..mock_ssi_holder_service()
@@ -2020,7 +2020,7 @@ async fn test_reject_credential_credential_org_mismatch() {
         credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
         session_provider: Arc::new(StaticSessionProvider(Session {
-            organisation_id: session_organisation_id,
+            organisation_id: Some(session_organisation_id),
             user_id: "test-user".to_string(),
         })),
         ..mock_ssi_holder_service()

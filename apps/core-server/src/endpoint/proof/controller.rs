@@ -3,6 +3,7 @@ use axum::extract::rejection::JsonRejection;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::{ServiceError, ValidationError};
+use proc_macros::require_permissions;
 use shared_types::ProofId;
 
 use super::dto::{
@@ -15,6 +16,7 @@ use crate::dto::common::{
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -34,6 +36,7 @@ use crate::router::AppState;
         endpoint, the presentation definition endpoint takes the resulting `proofId` and filters the wallet, returning credentials which match the verifier's request.
     "},
 )]
+#[require_permissions(Permission::ProofDetail)]
 pub(crate) async fn get_proof_presentation_definition(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -60,6 +63,7 @@ pub(crate) async fn get_proof_presentation_definition(
     summary = "Retrieve a proof request",
     description = "Returns detailed information about a proof request.",
 )]
+#[require_permissions(Permission::ProofDetail)]
 pub(crate) async fn get_proof_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -88,6 +92,7 @@ pub(crate) async fn get_proof_details(
     Related guide: [Manage proof requests](/verify/manage-proofs)
 "},
 )]
+#[require_permissions(Permission::ProofDelete)]
 pub(crate) async fn delete_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -108,6 +113,7 @@ pub(crate) async fn delete_proof(
     summary = "List proof requests",
     description = "Returns a list of proof requests in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::ProofList)]
 pub(crate) async fn get_proofs(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetProofQuery>, ErrorResponseRestDTO>,
@@ -145,6 +151,7 @@ pub(crate) async fn get_proofs(
     Related guide: [Verify workflow](/verify)
 "},
 )]
+#[require_permissions(Permission::ProofIssue)]
 pub(crate) async fn post_proof(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -180,7 +187,7 @@ pub(crate) async fn post_proof(
         scheme is specified the default scheme from the configuration will be used.
     "},
 )]
-#[axum::debug_handler]
+#[require_permissions(Permission::ProofShare)]
 pub(crate) async fn share_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
@@ -221,6 +228,7 @@ pub(crate) async fn share_proof(
         holder. The proof request metadata and related history entries are still accessible.
     "},
 )]
+#[require_permissions(Permission::ProofClaimsDelete)]
 pub(crate) async fn delete_proof_claims(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,

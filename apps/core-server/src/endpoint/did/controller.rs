@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
+use proc_macros::require_permissions;
 use shared_types::DidId;
 
 use super::dto::{
@@ -12,6 +13,7 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -28,6 +30,7 @@ use crate::router::AppState;
     summary = "Retrieve a DID",
     description = "Returns detailed information about a DID.",
 )]
+#[require_permissions(Permission::DidDetail)]
 pub(crate) async fn get_did(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
@@ -66,6 +69,7 @@ pub(crate) async fn get_did(
     summary = "List DIDs",
     description = "Returns a list of DIDs within an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::DidList)]
 pub(crate) async fn get_did_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetDidQuery>, ErrorResponseRestDTO>,
@@ -99,6 +103,7 @@ pub(crate) async fn get_did_list(
         Related guide: [DIDs](/dids)
     "},
 )]
+#[require_permissions(Permission::DidCreate)]
 pub(crate) async fn post_did(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -138,6 +143,7 @@ pub(crate) async fn post_did(
         guide for a list of supported DID methods which allow deactivation.
     "},
 )]
+#[require_permissions(Permission::DidDeactivate)]
 pub(crate) async fn update_did(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,
@@ -164,6 +170,7 @@ pub(crate) async fn update_did(
     summary = "Retrieve the matching trust entity for a DID",
     description = "Returns details on the matching trust entity for a DID.",
 )]
+#[require_permissions(Permission::TrustEntityDetail)]
 pub(crate) async fn get_did_trust_entity(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<DidId>, ErrorResponseRestDTO>,

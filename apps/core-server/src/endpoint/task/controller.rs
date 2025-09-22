@@ -1,10 +1,12 @@
 use axum::Json;
 use axum::extract::State;
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 
 use super::dto::{TaskRequestRestDTO, TaskResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -24,6 +26,7 @@ use crate::router::AppState;
         Related guide: [Configuration](/configure)
     "},
 )]
+#[require_permissions(Permission::TaskCreate)]
 pub(crate) async fn post_task(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<TaskRequestRestDTO>, ErrorResponseRestDTO>,

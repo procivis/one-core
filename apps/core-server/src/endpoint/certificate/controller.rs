@@ -1,11 +1,13 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
+use proc_macros::require_permissions;
 use shared_types::CertificateId;
 
 use super::dto::CertificateResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -22,6 +24,7 @@ use crate::router::AppState;
     summary = "Get a certificate",
     description = "Retrieves detailed information about a certificate.",
 )]
+#[require_permissions(Permission::IdentifierDetail)]
 pub(crate) async fn get_certificate(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CertificateId>, ErrorResponseRestDTO>,

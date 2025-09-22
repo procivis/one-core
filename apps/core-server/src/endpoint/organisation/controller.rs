@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 use shared_types::OrganisationId;
 
 use super::dto::{
@@ -12,6 +13,7 @@ use crate::dto::response::{
     CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
 };
 use crate::endpoint::organisation::mapper::upsert_request_from_request;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -28,6 +30,7 @@ use crate::router::AppState;
     summary = "Retrieve organization",
     description = "Returns information about an organization.",
 )]
+#[require_permissions(Permission::StsOrganisationDetail)]
 pub(crate) async fn get_organisation(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,
@@ -47,6 +50,7 @@ pub(crate) async fn get_organisation(
     summary = "List organizations",
     description = "Returns a list of organizations in the system.",
 )]
+#[require_permissions(Permission::StsOrganisationList)]
 pub(crate) async fn get_organisations(
     state: State<AppState>,
 ) -> OkOrErrorResponse<VecResponse<GetOrganisationDetailsResponseRestDTO>> {
@@ -79,7 +83,7 @@ pub(crate) async fn get_organisations(
         supports the creation of as many organizations as is needed.
     "},
 )]
-#[axum::debug_handler]
+#[require_permissions(Permission::StsOrganisationCreate)]
 pub(crate) async fn post_organisation(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -113,7 +117,7 @@ pub(crate) async fn post_organisation(
         a new organization using the provided UUID and name.
     "},
 )]
-#[axum::debug_handler]
+#[require_permissions(Permission::StsOrganisationEdit)]
 pub(crate) async fn patch_organisation(
     state: State<AppState>,
     Path(id): Path<OrganisationId>,

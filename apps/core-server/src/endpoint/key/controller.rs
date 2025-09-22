@@ -3,6 +3,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
+use proc_macros::require_permissions;
 use shared_types::KeyId;
 
 use super::dto::GetKeyQuery;
@@ -15,6 +16,7 @@ use crate::endpoint::key::dto::{
 };
 use crate::extractor::Qs;
 use crate::mapper::list_try_from;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -31,6 +33,7 @@ use crate::router::AppState;
     summary = "Retrieve key",
     description = "Returns detailed information about a key.",
 )]
+#[require_permissions(Permission::KeyDetail)]
 pub(crate) async fn get_key(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<KeyId>, ErrorResponseRestDTO>,
@@ -75,6 +78,7 @@ pub(crate) async fn get_key(
     Related guide: [Keys](/keys)
 "},
 )]
+#[require_permissions(Permission::KeyCreate)]
 pub(crate) async fn post_key(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<KeyRequestRestDTO>, ErrorResponseRestDTO>,
@@ -95,6 +99,7 @@ pub(crate) async fn post_key(
     summary = "List keys",
     description = "Returns a list of keys created in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::KeyList)]
 pub(crate) async fn get_key_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetKeyQuery>, ErrorResponseRestDTO>,
@@ -144,6 +149,7 @@ pub(crate) async fn get_key_list(
         Related guide: [ISO mdoc configuration](/configure/iso-mdoc)
     "},
 )]
+#[require_permissions(Permission::KeyGenerateCsr)]
 pub(crate) async fn generate_csr(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<KeyId>, ErrorResponseRestDTO>,

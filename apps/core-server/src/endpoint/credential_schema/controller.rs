@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use proc_macros::require_permissions;
 use shared_types::CredentialSchemaId;
 
 use super::dto::{
@@ -12,6 +13,7 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -28,6 +30,7 @@ use crate::router::AppState;
     summary = "Delete a credential schema",
     description = "Deletes a credential schema.",
 )]
+#[require_permissions(Permission::CredentialSchemaDelete)]
 pub(crate) async fn delete_credential_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
@@ -54,6 +57,7 @@ pub(crate) async fn delete_credential_schema(
     summary = "Retrieve credential schema",
     description = "Retrieves detailed information about a credential schema.",
 )]
+#[require_permissions(Permission::CredentialSchemaDetail)]
 pub(crate) async fn get_credential_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
@@ -78,6 +82,7 @@ pub(crate) async fn get_credential_schema(
     summary = "List credential schemas",
     description = "Returns a list of credential schemas in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
 )]
+#[require_permissions(Permission::CredentialSchemaList)]
 pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
@@ -111,6 +116,7 @@ pub(crate) async fn get_credential_schema_list(
         to import the credential schema.
     "},
 )]
+#[require_permissions(Permission::CredentialSchemaCreate)]
 pub(crate) async fn import_credential_schema(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -156,6 +162,7 @@ pub(crate) async fn import_credential_schema(
         Related guide: [Credential schemas](/credential-schemas)
     "},
 )]
+#[require_permissions(Permission::CredentialSchemaCreate)]
 pub(crate) async fn post_credential_schema(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -198,6 +205,7 @@ pub(crate) async fn post_credential_schema(
         schema and [import](../core/import-credential-schema.api.mdx) it to use it in proof schema creation.
     "},
 )]
+#[require_permissions(Permission::CredentialSchemaShare)]
 pub(crate) async fn share_credential_schema(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,

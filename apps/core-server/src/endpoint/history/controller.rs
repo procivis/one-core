@@ -1,6 +1,7 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
+use proc_macros::require_permissions;
 use shared_types::HistoryId;
 
 use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
@@ -8,6 +9,7 @@ use crate::dto::common::GetHistoryListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
 use crate::extractor::Qs;
+use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -26,6 +28,7 @@ use crate::router::AppState;
         Related guide: [History](/history)
     "},
 )]
+#[require_permissions(Permission::HistoryList)]
 pub(crate) async fn get_history_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetHistoryQuery>, ErrorResponseRestDTO>,
@@ -53,6 +56,7 @@ pub(crate) async fn get_history_list(
     summary = "Retrieve history entry",
     description = "Returns details on a single event.",
 )]
+#[require_permissions(Permission::HistoryDetail)]
 pub(crate) async fn get_history_entry(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HistoryId>, ErrorResponseRestDTO>,

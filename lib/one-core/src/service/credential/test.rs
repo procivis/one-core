@@ -28,7 +28,7 @@ use crate::model::list_filter::ListFilterValue as _;
 use crate::model::list_query::ListPagination;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::session_provider::test::StaticSessionProvider;
-use crate::proto::session_provider::{NoSessionProvider, Session, SessionProvider};
+use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -5582,10 +5582,6 @@ async fn test_create_credential_number_named_claims() {
 
 #[tokio::test]
 async fn test_create_credential_session_org_mismatch() {
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: Uuid::new_v4().into(), // unrelated org
-        user_id: "user-id".to_string(),
-    });
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
         .expect_get()
@@ -5598,7 +5594,7 @@ async fn test_create_credential_session_org_mismatch() {
         credential_schema_repository,
         config: generic_config().core,
         identifier_repository,
-        session_provider: Some(Arc::new(session_provider)),
+        session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
         ..Default::default()
     });
 

@@ -15,7 +15,7 @@ impl SessionProvider for NoSessionProvider {
 
 #[derive(Debug, Clone)]
 pub struct Session {
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     pub user_id: String,
 }
 
@@ -31,7 +31,7 @@ pub mod test {
     impl StaticSessionProvider {
         pub fn new_random() -> Self {
             Self(Session {
-                organisation_id: Uuid::new_v4().into(),
+                organisation_id: Some(Uuid::new_v4().into()),
                 user_id: format!("test-user-{}", Uuid::new_v4()),
             })
         }
