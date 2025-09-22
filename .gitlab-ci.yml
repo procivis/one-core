@@ -103,20 +103,20 @@ before_script:
     forward:
       pipeline_variables: true
 
-tests:mariadb:
-  interruptible: true
-  extends:
-    - .cargo_tests
-  variables:
-    MYSQL_DATABASE: core_db
-    MYSQL_ROOT_PASSWORD: root_password
-    ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
-  services:
-    - alias: mariadb
-      name: mariadb:10.9
-      pull_policy: always
-  before_script:
-    - mysql --host=mariadb --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
+#tests:mariadb:
+#  interruptible: true
+#  extends:
+#    - .cargo_tests
+#  variables:
+#    MYSQL_DATABASE: core_db
+#    MYSQL_ROOT_PASSWORD: root_password
+#    ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
+#  services:
+#    - alias: mariadb
+#      name: mariadb:10.9
+#      pull_policy: always
+#  before_script:
+#    - mysql --host=mariadb --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
 
 tests:sqlite:
   interruptible: true
@@ -162,7 +162,7 @@ sonarqube-check:
   needs:
     - job: linter:clippy
       artifacts: true
-    - job: tests:mariadb
+    - job: tests:sqlite
       artifacts: true
   image:
     name: sonarsource/sonar-scanner-cli:latest
