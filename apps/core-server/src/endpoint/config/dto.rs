@@ -7,43 +7,61 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-#[schema(example = json!({"format": {}, "identifier": {}, "issuanceProtocol": {}, "verificationProtocol": {}, "transport": {}, "revocation": {}, "did": {}, "datatype": {}, "keyAlgorithm": {}, "keyStorage": {}, "trustManagement": {}, "cacheEntities": {}, "frontend": {}}))]
 pub(crate) struct ConfigRestDTO {
     /// Credential formats for issuing, holding and verifying.
+    #[schema(example = json!({}))]
     pub format: HashMap<String, Value>,
     /// Identifier types to associate entities to schemas, credentials, trust lists and proofs.
+    #[schema(example = json!({}))]
     pub identifier: HashMap<String, Value>,
     /// Protocols for the issuance of credentials.
+    #[schema(example = json!({}))]
     pub issuance_protocol: HashMap<String, Value>,
     /// Protocols for the verification of credentials.
+    #[schema(example = json!({}))]
     pub verification_protocol: HashMap<String, Value>,
     /// Transport protocols over which to communicate.
+    #[schema(example = json!({}))]
     pub transport: HashMap<String, Value>,
     /// Revocation methods for credential status.
+    #[schema(example = json!({}))]
     pub revocation: HashMap<String, Value>,
     /// DID methods used for identifying agents.
+    #[schema(example = json!({}))]
     pub did: HashMap<String, Value>,
     /// Datatypes for claim validation.
+    #[schema(example = json!({}))]
     pub datatype: HashMap<String, Value>,
     /// Key algorithms used for signatures.
+    #[schema(example = json!({}))]
     pub key_algorithm: HashMap<String, Value>,
     /// Holder binding key storage types.
+    #[schema(example = json!({}))]
     pub holder_key_storage: HashMap<String, Value>,
     /// How keys are stored.
+    #[schema(example = json!({}))]
     pub key_storage: HashMap<String, Value>,
     /// Trust management solutions.
+    #[schema(example = json!({}))]
     pub trust_management: HashMap<String, Value>,
     /// Entities held in temporary storage.
+    #[schema(example = json!({}))]
     pub cache_entities: HashMap<String, Value>,
     /// Maintenance tasks
+    #[schema(example = json!({}))]
     pub task: HashMap<String, Value>,
     /// Blob storage
+    #[schema(example = json!({}))]
     pub blob_storage: HashMap<String, Value>,
     /// Frontend configuration
+    #[schema(example = json!({}))]
     pub frontend: HashMap<String, Value>,
     /// OpenID4VCI authorization code flow
+    #[schema(example = json!({}))]
     pub credential_issuer: HashMap<String, Value>,
+    #[schema(example = json!({}))]
     pub verification_engagement: HashMap<String, Value>,
+    #[schema(example = json!({}))]
     pub wallet_provider: HashMap<String, Value>,
 }
 
