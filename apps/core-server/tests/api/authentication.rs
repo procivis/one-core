@@ -299,7 +299,7 @@ async fn test_sts_authentication_fails_invalid_signature() {
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
-            invalid_before: Some(now + Duration::from_secs(5)),
+            invalid_before: None,
             issuer: Some("bff".to_string()),
             subject: Some(Uuid::new_v4().to_string()),
             audience: Some(vec!["core".to_string()]),
@@ -328,7 +328,7 @@ async fn test_sts_authentication_fails_signed_with_different_kid() {
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
-            invalid_before: Some(now + Duration::from_secs(5)),
+            invalid_before: None,
             issuer: Some("bff".to_string()),
             subject: Some(Uuid::new_v4().to_string()),
             audience: Some(vec!["core".to_string()]),
