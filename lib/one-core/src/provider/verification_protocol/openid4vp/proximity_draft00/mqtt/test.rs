@@ -182,7 +182,7 @@ async fn test_handle_invitation_success() {
     mock_storage_access
         .expect_update_interaction()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut auth_fn = MockSignatureProvider::new();
     auth_fn

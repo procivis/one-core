@@ -58,6 +58,8 @@ pub enum OpenID4VCIError {
     InvalidRequest,
     #[error("invalid_token")]
     InvalidToken,
+    #[error("invalid_nonce")]
+    InvalidNonce,
     #[error("invalid_or_missing_proof")]
     InvalidOrMissingProof,
     #[error("unsupported_credential_format")]

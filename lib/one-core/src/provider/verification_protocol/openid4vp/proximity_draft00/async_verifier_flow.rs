@@ -10,7 +10,6 @@ use tokio_util::sync::CancellationToken;
 use crate::config::core_config::TransportType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
-use crate::model::organisation::Organisation;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -72,7 +71,6 @@ pub(crate) struct AsyncVerifierFlowParams {
     pub proof_repository: Arc<dyn ProofRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
     pub key_agreement: KeyAgreementKey,
-    pub organisation: Organisation,
     pub cancellation_token: CancellationToken,
 }
 
@@ -199,12 +197,13 @@ async fn verifier_flow_internal<C, S>(
     )?;
     params
         .interaction_repository
-        .update_interaction(UpdateInteractionRequest {
-            id: params.interaction_id,
-            host: None,
-            data: Some(interaction_data),
-            organisation: Some(params.organisation),
-        })
+        .update_interaction(
+            params.interaction_id,
+            UpdateInteractionRequest {
+                data: Some(Some(interaction_data)),
+                ..Default::default()
+            },
+        )
         .await
         .map_err(|err| {
             VerificationProtocolError::Failed(format!("failed to update interaction: {err}"))

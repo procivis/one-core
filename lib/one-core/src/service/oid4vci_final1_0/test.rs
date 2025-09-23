@@ -181,6 +181,7 @@ fn dummy_interaction(
         host: Some("http://host-base-url".parse().unwrap()),
         data: Some(data.to_string().into_bytes()),
         organisation: None,
+        nonce_id: None,
     }
 }
 
@@ -630,7 +631,7 @@ async fn test_create_token() {
     interaction_repository
         .expect_update_interaction()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -867,12 +868,15 @@ async fn test_create_credential_success() {
                     None,
                 )))
             });
+        interaction_repository
+            .expect_get_interaction_by_nonce_id()
+            .return_once(|_| Ok(None));
 
         interaction_repository
             .expect_update_interaction()
             .once()
-            .withf(move |request| request.id == interaction_id)
-            .returning(|_| Ok(()));
+            .withf(move |id, _| *id == interaction_id)
+            .returning(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1069,6 +1073,9 @@ async fn test_create_credential_success_sd_jwt_vc() {
                     None,
                 )))
             });
+        interaction_repository
+            .expect_get_interaction_by_nonce_id()
+            .return_once(|_| Ok(None));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1268,6 +1275,9 @@ async fn test_create_credential_success_mdoc() {
                     None,
                 )))
             });
+        interaction_repository
+            .expect_get_interaction_by_nonce_id()
+            .return_once(|_| Ok(None));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1712,6 +1722,9 @@ async fn test_create_credential_issuer_failed() {
                     None,
                 )))
             });
+        interaction_repository
+            .expect_get_interaction_by_nonce_id()
+            .returning(|_| Ok(None));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1867,6 +1880,132 @@ async fn test_create_credential_issuer_failed() {
 }
 
 #[tokio::test]
+async fn test_create_credential_nonce_reused() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
+
+    let schema = generic_credential_schema();
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Pending,
+        true,
+        Some(schema.clone()),
+    );
+
+    {
+        let clone = schema.clone();
+        repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(eq(schema.id.to_owned()), always())
+            .returning(move |_, _| Ok(Some(clone.clone())));
+
+        let clone = credential.clone();
+        credential_repository
+            .expect_get_credentials_by_interaction_id()
+            .once()
+            .return_once(move |_, _| Ok(vec![clone]));
+
+        interaction_repository
+            .expect_get_interaction()
+            .once()
+            .return_once(|_, _| {
+                Ok(Some(dummy_interaction(
+                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    true,
+                    None,
+                    None,
+                    None,
+                )))
+            });
+        interaction_repository
+            .expect_get_interaction_by_nonce_id()
+            .returning(|_| Ok(Some(dummy_interaction(None, false, None, None, None))));
+    }
+
+    let key_algorithm = mock_key_algorithm();
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .with(eq("EdDSA"))
+        .once()
+        .returning({
+            let key_algorithm = key_algorithm.clone();
+            move |_| Some((KeyAlgorithmType::Eddsa, key_algorithm.clone()))
+        });
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Eddsa))
+        .once()
+        .returning({
+            let key_algorithm = key_algorithm.clone();
+            move |_| Some(key_algorithm.clone())
+        });
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_resolve()
+        .once()
+        .returning(move |did_value| {
+            Ok(DidDocument {
+                context: serde_json::Value::Null,
+                id: did_value.clone(),
+                verification_method: vec![DidVerificationMethod {
+                    id: format!("{did_value}#key-1"),
+                    r#type: "".to_string(),
+                    controller: did_value.to_string(),
+                    // proof.jwt did key
+                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                        alg: None,
+                        r#use: None,
+                        kid: None,
+                        crv: "Ed25519".to_string(),
+                        x: "whP_b7GlegxzU0Q1J6fNV3XDxYuPMkdt7oIA-1dnkE0".to_string(),
+                        y: None,
+                    }),
+                }],
+                authentication: Some(vec![format!("{did_value}#key-1")]),
+                assertion_method: None,
+                key_agreement: None,
+                capability_invocation: None,
+                capability_delegation: None,
+                also_known_as: None,
+                service: None,
+            })
+        });
+
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        credential_repository,
+        interaction_repository,
+        config: generic_config().core,
+        key_algorithm_provider,
+        did_method_provider,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_credential(
+            &schema.id,
+            "3fa85f64-5717-4562-b3fc-2c963f66afa6.asdfasdfasdf",
+            OpenID4VCICredentialRequestDTO {
+                credential: OpenID4VCICredentialRequestIdentifier::CredentialConfigurationId(
+                    schema.schema_id,
+                ),
+                proofs: Some(OpenID4VCICredentialRequestProofs::Jwt(vec![
+                    PROOF_JWT.to_string(),
+                ])),
+            },
+        )
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce))
+    ));
+}
+
+#[tokio::test]
 async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
@@ -1908,7 +2047,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     interaction_repository
         .expect_update_interaction()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
         credential_schema_repository,
@@ -1996,7 +2135,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     interaction_repository
         .expect_update_interaction()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
         credential_schema_repository,

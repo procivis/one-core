@@ -178,6 +178,7 @@ fn dummy_interaction(
         host: Some("http://host-base-url".parse().unwrap()),
         data: Some(data.to_string().into_bytes()),
         organisation: None,
+        nonce_id: None,
     }
 }
 
@@ -612,7 +613,7 @@ async fn test_create_token() {
     interaction_repository
         .expect_update_interaction()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -850,8 +851,8 @@ async fn test_create_credential_success() {
         interaction_repository
             .expect_update_interaction()
             .once()
-            .withf(move |request| request.id == interaction_id)
-            .returning(|_| Ok(()));
+            .withf(move |id, _| *id == interaction_id)
+            .returning(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -2059,7 +2060,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     interaction_repository
         .expect_update_interaction()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
         credential_schema_repository,
@@ -2147,7 +2148,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     interaction_repository
         .expect_update_interaction()
         .once()
-        .return_once(|_| Ok(()));
+        .return_once(|_, _| Ok(()));
 
     let service = setup_service(Mocks {
         credential_schema_repository,

@@ -507,6 +507,7 @@ fn dummy_credential() -> Credential {
             data: Some(b"interaction data".to_vec()),
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,
+            nonce_id: None,
         }),
         key: None,
         revocation_list: None,

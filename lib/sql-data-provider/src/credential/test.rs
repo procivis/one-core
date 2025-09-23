@@ -1099,6 +1099,7 @@ async fn test_update_credential_success() {
                 host: Some("https://host.co".parse().unwrap()),
                 data: None,
                 organisation: None,
+                nonce_id: None,
             }))
         });
 
@@ -1130,7 +1131,7 @@ async fn test_update_credential_success() {
         .unwrap();
 
     let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &[], organisation_id)
+        &insert_interaction(&db, "host", &[], organisation_id, None)
             .await
             .unwrap(),
     )
@@ -1235,6 +1236,7 @@ async fn test_update_credential_success_no_claims() {
                 host: Some("https://host.co".parse().unwrap()),
                 data: None,
                 organisation: None,
+                nonce_id: None,
             }))
         });
 
@@ -1266,7 +1268,7 @@ async fn test_update_credential_success_no_claims() {
         .unwrap();
 
     let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &[], organisation_id)
+        &insert_interaction(&db, "host", &[], organisation_id, None)
             .await
             .unwrap(),
     )

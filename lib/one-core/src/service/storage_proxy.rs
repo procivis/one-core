@@ -43,7 +43,11 @@ pub(crate) trait StorageProxy: Send + Sync {
     async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId>;
 
     /// Store an interaction with a chosen storage layer.
-    async fn update_interaction(&self, request: UpdateInteractionRequest) -> anyhow::Result<()>;
+    async fn update_interaction(
+        &self,
+        id: InteractionId,
+        request: UpdateInteractionRequest,
+    ) -> anyhow::Result<()>;
 
     /// Get a credential schema from a chosen storage layer.
     async fn get_schema(
@@ -148,9 +152,13 @@ impl StorageProxy for StorageProxyImpl {
             .context("Create interaction error")
     }
 
-    async fn update_interaction(&self, request: UpdateInteractionRequest) -> anyhow::Result<()> {
+    async fn update_interaction(
+        &self,
+        id: InteractionId,
+        request: UpdateInteractionRequest,
+    ) -> anyhow::Result<()> {
         self.interactions
-            .update_interaction(request)
+            .update_interaction(id, request)
             .await
             .context("failed to update interaction")
     }

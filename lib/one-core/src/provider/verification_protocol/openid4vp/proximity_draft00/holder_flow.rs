@@ -111,12 +111,13 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
         .interaction_data_from_authz_request(presentation_request.payload.custom, context)?;
 
     storage_access
-        .update_interaction(UpdateInteractionRequest {
-            id: interaction_id,
-            host: None,
-            data: Some(interaction_data),
-            organisation: Some(organisation),
-        })
+        .update_interaction(
+            interaction_id,
+            UpdateInteractionRequest {
+                data: Some(Some(interaction_data)),
+                ..Default::default()
+            },
+        )
         .await
         .map_err(|e| {
             VerificationProtocolError::Failed(format!("failed to update interaction data: {e}"))

@@ -583,6 +583,7 @@ pub async fn create_interaction_with_id(
         host: Some(Url::parse(host).unwrap()),
         data: Some(data.into()),
         organisation: Some(organisation.to_owned()),
+        nonce_id: None,
     };
 
     data_layer

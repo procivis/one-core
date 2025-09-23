@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use one_crypto::{SignerError, utilities};
 use secrecy::{ExposeSecret, SecretSlice};
 use serde::{Deserialize, Serialize};
@@ -55,7 +57,7 @@ pub(super) fn validate_nonce(
     params: OpenID4VCNonceParams,
     base_url: Option<String>,
     nonce: &str,
-) -> Result<(), ServiceError> {
+) -> Result<Uuid, ServiceError> {
     let DecomposedToken::<NonceJwtPayload> {
         header,
         payload,
@@ -87,6 +89,12 @@ pub(super) fn validate_nonce(
         .into());
     }
 
+    let id = payload.jwt_id.ok_or(FormatterError::CouldNotVerify(
+        "Missing nonce_id".to_string(),
+    ))?;
+    let id = Uuid::from_str(&id)
+        .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid nonce_id: {e}")))?;
+
     let expected_signature = utilities::create_hmac(
         params.signing_key.expose_secret(),
         unverified_jwt.as_bytes(),
@@ -96,7 +104,7 @@ pub(super) fn validate_nonce(
         return Err(FormatterError::CouldNotVerify("Invalid nonce signature".to_string()).into());
     }
 
-    Ok(())
+    Ok(id)
 }
 
 struct HS256Signer {

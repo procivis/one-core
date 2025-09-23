@@ -723,6 +723,7 @@ async fn test_get_proof_with_array_holder() {
             host: None,
             data: None,
             organisation: Some(organisation),
+            nonce_id: None,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -994,6 +995,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             host: None,
             data: None,
             organisation: Some(organisation),
+            nonce_id: None,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -1280,6 +1282,7 @@ async fn test_get_proof_with_object_array_holder() {
             host: None,
             data: None,
             organisation: Some(dummy_organisation(None)),
+            nonce_id: None,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -3991,6 +3994,7 @@ async fn test_delete_proof_ok_for_allowed_state(
         host: None,
         data: Some(vec![]),
         organisation: None,
+        nonce_id: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4068,6 +4072,7 @@ async fn test_delete_proof_ok_for_requested_state() {
         host: None,
         data: Some(vec![]),
         organisation: None,
+        nonce_id: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4148,6 +4153,7 @@ async fn test_delete_proof_fails_for_invalid_state(
         host: None,
         data: None,
         organisation: None,
+        nonce_id: None,
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4242,6 +4248,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
 
             serde_json::to_vec(&data).unwrap()
         }),
+        nonce_id: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4331,6 +4338,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         host: None,
         data: None,
         organisation: Some(dummy_organisation(None)),
+        nonce_id: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();

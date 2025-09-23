@@ -410,13 +410,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed("Missing verifier key".to_string()),
         )?;
 
-        let organisation = proof
-            .schema
-            .as_ref()
-            .and_then(|schema| schema.organisation.as_ref())
-            .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?
-            .clone();
-
         let interaction_id = Uuid::new_v4();
         let key_agreement = KeyAgreementKey::new_random();
 
@@ -441,7 +434,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             proof_repository: self.proof_repository.clone(),
             interaction_repository: self.interaction_repository.clone(),
             key_agreement: key_agreement.clone(),
-            organisation,
             // notification to cancel the other flow (if any) when one is selected
             cancellation_token: Default::default(),
         };
@@ -687,6 +679,7 @@ pub(super) async fn create_interaction_and_proof(
         host: None,
         data: interaction_data,
         organisation: Some(organisation),
+        nonce_id: None,
     };
 
     let interaction_id = storage_access

@@ -407,12 +407,13 @@ impl OID4VCIDraft13Service {
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
                     self.interaction_repository
-                        .update_interaction(UpdateInteractionRequest {
-                            id: interaction.id,
-                            data: Some(data),
-                            host: interaction.host,
-                            organisation: interaction.organisation,
-                        })
+                        .update_interaction(
+                            interaction.id,
+                            UpdateInteractionRequest {
+                                data: Some(Some(data)),
+                                ..Default::default()
+                            },
+                        )
                         .await?;
                 }
 
@@ -709,7 +710,7 @@ impl OID4VCIDraft13Service {
         interaction.data = Some(data);
 
         self.interaction_repository
-            .update_interaction(interaction.into())
+            .update_interaction(interaction.id, interaction.into())
             .await?;
 
         Ok(response)

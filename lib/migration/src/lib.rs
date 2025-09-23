@@ -155,6 +155,7 @@ mod m20250904_111452_wallet_unit_nullable_pubkey;
 mod m20250911_133704_add_org_to_wallet_unit;
 mod m20250911_140445_add_wallet_unit_provider_config_to_org;
 mod m20250916_140953_add_metadata_index_to_history;
+mod m20250919_095358_nonce_id;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -312,6 +313,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250911_133704_add_org_to_wallet_unit::Migration),
             Box::new(m20250911_140445_add_wallet_unit_provider_config_to_org::Migration),
             Box::new(m20250916_140953_add_metadata_index_to_history::Migration),
+            Box::new(m20250919_095358_nonce_id::Migration),
         ]
     }
 }

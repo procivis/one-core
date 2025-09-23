@@ -103,6 +103,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: None,
                     organisation: None,
+                    nonce_id: None,
                 }),
                 ..dummy_proof()
             }))
@@ -174,6 +175,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                         host: Some("http://www.host.co".parse().unwrap()),
                         data: None,
                         organisation: None,
+                        nonce_id: None,
                     }),
                     ..dummy_proof()
                 }))
@@ -223,6 +225,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: None,
                     organisation: None,
+                    nonce_id: None,
                 }),
                 ..dummy_proof()
             }))
@@ -317,6 +320,7 @@ async fn test_submit_proof_succeeds() {
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
+                    nonce_id: None,
                 }),
                 ..dummy_proof()
             }))
@@ -519,6 +523,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
+                    nonce_id: None,
                 }),
                 ..dummy_proof()
             }))
@@ -741,6 +746,7 @@ async fn test_submit_proof_succeeds_with_did() {
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
+                    nonce_id: None,
                 }),
                 ..dummy_proof()
             }))
@@ -942,6 +948,7 @@ async fn test_submit_proof_repeating_claims() {
                     host: Some("http://www.host.co".parse().unwrap()),
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
+                    nonce_id: None,
                 }),
                 ..dummy_proof()
             }))
@@ -1639,6 +1646,7 @@ async fn test_continue_issuance() {
                 host: Some("http://test.test/".parse().unwrap()),
                 data: Some(serde_json::to_vec(&interaction_data).unwrap()),
                 organisation: Some(organisation.clone()),
+                nonce_id: None,
             }))
         });
 
@@ -1862,6 +1870,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
             organisation: Some(dummy_organisation(organisation_id)),
+            nonce_id: None,
         }),
         revocation_list: None,
         key: None,

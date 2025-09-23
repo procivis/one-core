@@ -33,5 +33,6 @@ pub(crate) fn interaction_from_handle_invitation(
         host: Some(host),
         data,
         organisation,
+        nonce_id: None,
     }
 }

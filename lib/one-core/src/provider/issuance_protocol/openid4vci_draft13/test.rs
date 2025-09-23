@@ -315,6 +315,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             data: Some(vec![1, 2, 3]),
             last_modified: now,
             organisation: None,
+            nonce_id: None,
         }),
         key: None,
         revocation_list: None,
@@ -610,6 +611,7 @@ async fn test_holder_accept_credential_success() {
             host: Some(mock_server.uri().parse().unwrap()),
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
+            nonce_id: None,
         });
 
         credential
@@ -686,7 +688,7 @@ async fn test_holder_accept_credential_success() {
 
     storage_access
         .expect_update_interaction()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     storage_access
         .expect_get_did_by_value()
@@ -809,6 +811,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             host: Some(mock_server.uri().parse().unwrap()),
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
+            nonce_id: None,
         });
 
         credential
@@ -883,7 +886,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
     storage_access
         .expect_update_interaction()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     storage_access
         .expect_get_key_by_raw_key_and_type()
@@ -1018,6 +1021,7 @@ async fn test_holder_accept_expired_credential_fails() {
             host: Some(mock_server.uri().parse().unwrap()),
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
+            nonce_id: None,
         });
 
         credential
@@ -1095,7 +1099,7 @@ async fn test_holder_accept_expired_credential_fails() {
 
     storage_access
         .expect_update_interaction()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     key_provider
         .expect_get_signature_provider()
@@ -1204,6 +1208,7 @@ async fn test_holder_reject_credential() {
             host: Some(mock_server.uri().parse().unwrap()),
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
+            nonce_id: None,
         });
 
         credential

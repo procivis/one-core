@@ -239,7 +239,7 @@ pub(crate) async fn receive_mdl_request(
                     );
 
                     interaction_repository
-                        .update_interaction(interaction.into())
+                        .update_interaction(interaction.id, interaction.into())
                         .await
                         .context("failed to save interaction")
                         .map_err(VerificationProtocolError::Other)?;

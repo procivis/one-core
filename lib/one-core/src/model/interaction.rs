@@ -1,4 +1,3 @@
-use one_dto_mapper::From;
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -13,20 +12,29 @@ pub struct Interaction {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub host: Option<Url>, // base URL like: `https://core.dev.one-trust-solution.com`
-    pub data: Option<Vec<u8>>, // empty for credential offer, json-serialized `Vec<ProofClaimSchema>` for proof request
+    pub data: Option<Vec<u8>>,
     pub organisation: Option<Organisation>,
+    pub nonce_id: Option<Uuid>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, From)]
-#[from(Interaction)]
+#[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateInteractionRequest {
-    pub id: InteractionId,
-    pub host: Option<Url>, // base URL like: `https://core.dev.one-trust-solution.com`
-    pub data: Option<Vec<u8>>, // empty for credential offer, json-serialized `Vec<ProofClaimSchema>` for proof request
-    pub organisation: Option<Organisation>,
+    pub host: Option<Option<Url>>, // base URL like: `https://core.dev.one-trust-solution.com`
+    pub data: Option<Option<Vec<u8>>>,
+    pub nonce_id: Option<Option<Uuid>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct InteractionRelations {
     pub organisation: Option<OrganisationRelations>,
+}
+
+impl From<Interaction> for UpdateInteractionRequest {
+    fn from(value: Interaction) -> Self {
+        Self {
+            host: Some(value.host),
+            data: Some(value.data),
+            nonce_id: Some(value.nonce_id),
+        }
+    }
 }

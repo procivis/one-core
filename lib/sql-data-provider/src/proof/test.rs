@@ -153,7 +153,7 @@ async fn setup(
     .unwrap();
 
     let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &[1, 2, 3], organisation_id)
+        &insert_interaction(&db, "host", &[1, 2, 3], organisation_id, None)
             .await
             .unwrap(),
     )
@@ -498,6 +498,7 @@ async fn test_get_proof_with_relations() {
                 data: Some(vec![1, 2, 3]),
                 host: Some("http://www.host.co".parse().unwrap()),
                 organisation: None,
+                nonce_id: None,
             }))
         });
 
@@ -776,6 +777,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 data: Some(vec![1, 2, 3]),
                 host: Some("http://www.host.co/".parse().unwrap()),
                 organisation: None,
+                nonce_id: None,
             }))
         });
 

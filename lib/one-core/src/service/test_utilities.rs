@@ -356,6 +356,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
             organisation: None,
+            nonce_id: None,
         }),
         revocation_list: None,
         key: None,

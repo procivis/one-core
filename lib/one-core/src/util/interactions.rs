@@ -31,6 +31,7 @@ pub async fn add_new_interaction(
         host,
         data,
         organisation,
+        nonce_id: None,
     };
 
     interaction_repository

@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use super::error::DataLayerError;
 use crate::model::interaction::{
     Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
@@ -13,6 +15,7 @@ pub trait InteractionRepository: Send + Sync {
 
     async fn update_interaction(
         &self,
+        id: InteractionId,
         request: UpdateInteractionRequest,
     ) -> Result<(), DataLayerError>;
 
@@ -20,6 +23,11 @@ pub trait InteractionRepository: Send + Sync {
         &self,
         id: &InteractionId,
         relations: &InteractionRelations,
+    ) -> Result<Option<Interaction>, DataLayerError>;
+
+    async fn get_interaction_by_nonce_id(
+        &self,
+        nonce_id: Uuid,
     ) -> Result<Option<Interaction>, DataLayerError>;
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;

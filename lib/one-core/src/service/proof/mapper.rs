@@ -746,6 +746,7 @@ pub fn proof_for_scan_to_verify(
             host: None,
             data: Some(interaction_data),
             organisation: schema.organisation,
+            nonce_id: None,
         }),
         proof_blob_id: None,
         engagement: None,

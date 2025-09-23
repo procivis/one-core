@@ -934,7 +934,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         interaction.data = Some(data);
 
         storage_access
-            .update_interaction(interaction.into())
+            .update_interaction(interaction.id, interaction.into())
             .await
             .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 

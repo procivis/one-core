@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
 
-use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
@@ -57,7 +57,7 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
         .await
         .unwrap();
 
-    let id = insert_interaction(&setup.db, host.as_str(), &data, organisation_id)
+    let id = insert_interaction(&setup.db, host.as_str(), &data, organisation_id, None)
         .await
         .unwrap();
 
@@ -82,6 +82,7 @@ async fn test_create_interaction() {
     let organisation = dummy_organisation(Some(organisation_id));
 
     let id = Uuid::new_v4();
+    let nonce_id = Uuid::new_v4();
     let interaction = Interaction {
         id,
         created_date: get_dummy_date(),
@@ -89,6 +90,7 @@ async fn test_create_interaction() {
         host: Some("http://www.host.co".parse().unwrap()),
         data: Some(vec![1, 2, 3]),
         organisation: Some(organisation),
+        nonce_id: Some(nonce_id),
     };
 
     let result = setup.provider.create_interaction(interaction).await;
@@ -99,6 +101,7 @@ async fn test_create_interaction() {
     let model = get_interaction(&setup.db, &id).await.unwrap();
     assert_eq!(model.host, Some("http://www.host.co/".to_owned()));
     assert_eq!(model.data, Some(vec![1, 2, 3]));
+    assert_eq!(model.nonce_id, Some(nonce_id));
 }
 
 #[tokio::test]
@@ -115,6 +118,62 @@ async fn test_get_interaction() {
 
     assert_eq!(interaction.data, Some(setup.data));
     assert_eq!(interaction.host, Some(setup.host));
+}
+
+#[tokio::test]
+async fn test_get_interaction_by_nonce_id() {
+    let setup = setup(Repositories::default()).await;
+
+    let result = setup
+        .provider
+        .get_interaction_by_nonce_id(Uuid::new_v4())
+        .await
+        .unwrap();
+    assert_eq!(result, None);
+
+    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
+        .await
+        .unwrap();
+    let nonce_id = Uuid::new_v4();
+    let interaction_id = insert_interaction(
+        &setup.db,
+        "http://www.host.co/",
+        &[],
+        organisation_id,
+        Some(nonce_id),
+    )
+    .await
+    .unwrap();
+
+    let result = setup
+        .provider
+        .get_interaction_by_nonce_id(nonce_id)
+        .await
+        .unwrap();
+    assert_eq!(result.unwrap().id.to_string(), interaction_id);
+}
+
+#[tokio::test]
+async fn test_update_interaction() {
+    let setup = setup_with_interaction().await;
+
+    let nonce_id = Uuid::new_v4();
+    setup
+        .provider
+        .update_interaction(
+            setup.interaction_id,
+            UpdateInteractionRequest {
+                nonce_id: Some(Some(nonce_id)),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap();
+
+    let result = get_interaction(&setup.db, &setup.interaction_id)
+        .await
+        .unwrap();
+    assert_eq!(result.nonce_id, Some(nonce_id));
 }
 
 #[tokio::test]

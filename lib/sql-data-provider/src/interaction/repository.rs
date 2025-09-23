@@ -6,7 +6,8 @@ use one_core::model::interaction::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
-use sea_orm::{ActiveModelTrait, EntityTrait};
+use sea_orm::ActiveValue::Unchanged;
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
 use uuid::Uuid;
 
 use super::InteractionProvider;
@@ -30,9 +31,11 @@ impl InteractionRepository for InteractionProvider {
 
     async fn update_interaction(
         &self,
+        id: InteractionId,
         request: UpdateInteractionRequest,
     ) -> Result<(), DataLayerError> {
-        let model: interaction::ActiveModel = request.try_into()?;
+        let mut model: interaction::ActiveModel = request.into();
+        model.id = Unchanged(id.to_string());
         model
             .update(&self.db)
             .await
@@ -73,6 +76,21 @@ impl InteractionRepository for InteractionProvider {
         let interaction = interaction_from_models(interaction, organisation)?;
 
         Ok(Some(interaction))
+    }
+
+    async fn get_interaction_by_nonce_id(
+        &self,
+        nonce_id: Uuid,
+    ) -> Result<Option<Interaction>, DataLayerError> {
+        let interaction = interaction::Entity::find()
+            .filter(interaction::Column::NonceId.eq(nonce_id))
+            .one(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        interaction
+            .map(|model| interaction_from_models(model, None))
+            .transpose()
     }
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {

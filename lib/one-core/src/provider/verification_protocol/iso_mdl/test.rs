@@ -176,6 +176,7 @@ async fn test_presentation_reject_ok() {
             data: Some(interaction_data),
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,
+            nonce_id: None,
         }),
         profile: None,
         proof_blob_id: None,

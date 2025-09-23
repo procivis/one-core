@@ -204,6 +204,7 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
     InvalidGrant,
     InvalidRequest,
     InvalidToken,
+    InvalidNonce,
     InvalidOrMissingProof,
     UnsupportedCredentialFormat,
     UnsupportedCredentialType,

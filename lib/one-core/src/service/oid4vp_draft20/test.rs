@@ -221,6 +221,7 @@ async fn test_presentation_definition_success() {
                         host: None,
                         data: Some(interaction_data),
                         organisation: None,
+                        nonce_id: None,
                     }),
                     profile: None,
                     proof_blob_id: None,
@@ -308,6 +309,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         host: None,
         data: Some(interaction_data_serialized),
         organisation: None,
+        nonce_id: None,
     };
 
     let interaction_id_copy = interaction_id.to_owned();

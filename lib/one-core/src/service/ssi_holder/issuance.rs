@@ -725,6 +725,7 @@ impl SSIHolderService {
                 host: None,
                 data: Some(data),
                 organisation: Some(organisation),
+                nonce_id: None,
             })
             .await?;
 

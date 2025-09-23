@@ -30,6 +30,7 @@ impl InteractionsDB {
             host: Some(Url::parse(host).unwrap()),
             data: Some(data.into()),
             organisation: Some(organisation.to_owned()),
+            nonce_id: None,
         };
 
         self.repository

@@ -33,7 +33,6 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -347,16 +346,26 @@ impl OID4VCIFinal1_0Service {
         .await
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
 
+        let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
         let params: OpenID4VCIFinal1Params =
             self.config.issuance_protocol.get(&credential.protocol)?;
         let Some(params) = params.nonce else {
             return Err(ConfigValidationError::TypeNotFound(credential.protocol.to_owned()).into());
         };
-        validate_nonce(
-            params,
-            self.base_url.to_owned(),
-            &nonce.ok_or(FormatterError::CouldNotVerify("Missing nonce".to_string()))?,
-        )?;
+        let nonce_id = validate_nonce(params, self.base_url.to_owned(), &nonce).map_err(|e| {
+            tracing::info!("Nonce validation failed: {e}");
+            OpenID4VCIError::InvalidNonce
+        })?;
+
+        if self
+            .interaction_repository
+            .get_interaction_by_nonce_id(nonce_id)
+            .await?
+            .is_some()
+        {
+            // nonce is reused
+            return Err(OpenID4VCIError::InvalidNonce.into());
+        }
 
         let (holder_identifier, holder_key_id) = match verified_proof {
             Either::Left((holder_did_value, holder_key_id)) => {
@@ -415,12 +424,14 @@ impl OID4VCIFinal1_0Service {
                         .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
                     self.interaction_repository
-                        .update_interaction(UpdateInteractionRequest {
-                            id: interaction.id,
-                            data: Some(data),
-                            host: interaction.host,
-                            organisation: interaction.organisation,
-                        })
+                        .update_interaction(
+                            interaction.id,
+                            UpdateInteractionRequest {
+                                data: Some(Some(data)),
+                                nonce_id: Some(Some(nonce_id)),
+                                ..Default::default()
+                            },
+                        )
                         .await?;
                 }
 
@@ -729,7 +740,7 @@ impl OID4VCIFinal1_0Service {
         interaction.data = Some(data);
 
         self.interaction_repository
-            .update_interaction(interaction.into())
+            .update_interaction(interaction.id, interaction.into())
             .await?;
 
         Ok(response)
