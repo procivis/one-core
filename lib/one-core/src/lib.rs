@@ -530,6 +530,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
             did_method_provider.clone(),
+            providers.session_provider.clone(),
             certificate_validator.clone(),
             client.clone(),
             blob_storage_provider.clone(),

@@ -5,6 +5,7 @@ use one_core::model::credential_schema::{
     GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
+use one_core::proto::session_provider::{SessionExt, SessionProvider};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -15,6 +16,7 @@ use uuid::Uuid;
 pub struct CredentialSchemaHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn CredentialSchemaRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 #[async_trait::async_trait]
@@ -53,8 +55,7 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
                 entity_type: HistoryEntityType::CredentialSchema,
                 metadata: None,
                 organisation_id: Some(organisation.id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await;
 

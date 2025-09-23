@@ -10,6 +10,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::session_provider::SessionExt;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::credential_schema::dto::{
@@ -133,6 +134,7 @@ impl CredentialSchemaService {
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Created,
+            self.session_provider.session().user(),
         )
         .await;
 
@@ -270,6 +272,7 @@ impl CredentialSchemaService {
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Imported,
+            self.session_provider.session().user(),
         )
         .await;
 
@@ -308,6 +311,7 @@ impl CredentialSchemaService {
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Shared,
+            self.session_provider.session().user(),
         )
         .await;
 

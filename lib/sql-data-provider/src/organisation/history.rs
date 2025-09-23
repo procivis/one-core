@@ -4,6 +4,7 @@ use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::organisation::{
     Organisation, OrganisationRelations, UpdateOrganisationRequest,
 };
+use one_core::proto::session_provider::{SessionExt, SessionProvider};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -17,6 +18,7 @@ use crate::mapper::to_data_layer_error;
 pub struct OrganisationHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn OrganisationRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 #[async_trait::async_trait]
@@ -39,8 +41,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
                 entity_type: HistoryEntityType::Organisation,
                 metadata: None,
                 organisation_id: Some(organisation_id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await;
 
@@ -94,8 +95,7 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
                     entity_type: HistoryEntityType::Organisation,
                     metadata: None,
                     organisation_id: Some(request.id),
-                    //TODO: pass user
-                    user: None,
+                    user: self.session_provider.session().user(),
                 })
                 .await;
 

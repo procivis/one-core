@@ -145,9 +145,12 @@ pub async fn initialize_core(
         Ok(Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms)))
     });
 
+    let session_provider = Arc::new(CoreServerSessionProvider);
+
     let data_repository = Arc::new(DataLayer::build(
         db_conn,
         vec!["INTERNAL".to_string(), "AZURE_VAULT".to_owned()],
+        session_provider.clone(),
     ));
 
     let storage_creator: DataProviderCreator = {
@@ -696,7 +699,7 @@ pub async fn initialize_core(
 
     OneCoreBuilder::new(app_config.core.clone())
         .with_base_url(app_config.app.core_base_url.to_owned())
-        .with_session_provider(Arc::new(CoreServerSessionProvider))
+        .with_session_provider(session_provider)
         .with_crypto(crypto)
         .with_jsonld_caching_loader(caching_loader)
         .with_data_provider_creator(storage_creator)

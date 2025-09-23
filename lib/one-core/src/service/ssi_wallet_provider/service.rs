@@ -173,7 +173,6 @@ impl SSIWalletProviderService {
                 entity_type: HistoryEntityType::WalletUnit,
                 metadata,
                 organisation_id: None,
-                //TODO: pass user
                 user: None,
             })
             .await;

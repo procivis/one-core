@@ -18,6 +18,7 @@ use crate::model::wallet_unit::{
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
 };
+use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -204,8 +205,7 @@ impl WalletUnitService {
                 entity_type: HistoryEntityType::WalletUnitAttestation,
                 metadata: None,
                 organisation_id: Some(organisation.id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await?;
         Ok(HolderRegisterWalletUnitResponseDTO {
@@ -482,8 +482,7 @@ impl WalletUnitService {
                         entity_type: HistoryEntityType::WalletUnitAttestation,
                         metadata: None,
                         organisation_id: Some(organisation.id),
-                        //TODO: pass user
-                        user: None,
+                        user: self.session_provider.session().user(),
                     })
                     .await?;
                 Ok(())
@@ -509,8 +508,7 @@ impl WalletUnitService {
                         entity_type: HistoryEntityType::WalletUnitAttestation,
                         metadata: None,
                         organisation_id: Some(organisation.id),
-                        //TODO: pass user
-                        user: None,
+                        user: self.session_provider.session().user(),
                     })
                     .await?;
                 Err(WalletUnitAttestationError::WalletUnitRevoked.into())

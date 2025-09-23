@@ -9,6 +9,7 @@ use one_core::model::credential_schema::CredentialSchemaRelations;
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierRelations;
 use one_core::model::interaction::InteractionId;
+use one_core::proto::session_provider::{SessionExt, SessionProvider};
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -21,6 +22,7 @@ use crate::credential::mapper::target_from_credential;
 pub struct CredentialHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn CredentialRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 impl CredentialHistoryDecorator {
@@ -90,8 +92,7 @@ impl CredentialHistoryDecorator {
             entity_type: HistoryEntityType::Credential,
             metadata: None,
             organisation_id: Some(organisation.id),
-            //TODO: pass user
-            user: None,
+            user: self.session_provider.session().user(),
         };
         let result = self.history_repository.create_history(entry).await;
 

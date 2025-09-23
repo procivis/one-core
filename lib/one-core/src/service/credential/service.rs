@@ -29,6 +29,7 @@ use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
+use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::ShareResponse;
@@ -538,6 +539,7 @@ impl CredentialService {
             &*self.history_repository,
             &credential,
             HistoryAction::Shared,
+            self.session_provider.session().user(),
         )
         .await;
 
@@ -867,6 +869,7 @@ impl CredentialService {
                         &*self.history_repository,
                         &credential,
                         HistoryAction::Reactivated,
+                        self.session_provider.session().user(),
                     )
                     .await;
                 }
@@ -1007,6 +1010,7 @@ impl CredentialService {
                     &*self.history_repository,
                     &credential,
                     HistoryAction::Reactivated,
+                    self.session_provider.session().user(),
                 )
                 .await;
             }

@@ -6,6 +6,7 @@ use one_core::model::certificate::{
     UpdateCertificateRequest,
 };
 use one_core::model::history::{History, HistoryAction, HistoryEntityType};
+use one_core::proto::session_provider::{SessionExt, SessionProvider};
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
@@ -18,6 +19,7 @@ use crate::entity::identifier;
 
 pub struct CertificateHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
     pub inner: Arc<dyn CertificateRepository>,
     pub db: DatabaseConnection,
 }
@@ -54,8 +56,7 @@ impl CertificateHistoryDecorator {
                 entity_type: HistoryEntityType::Certificate,
                 metadata: None,
                 organisation_id: Some(organisation_id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await;
 

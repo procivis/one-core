@@ -7,7 +7,7 @@ pub trait SessionProvider: Send + Sync {
     fn session(&self) -> Option<Session>;
 }
 
-pub(crate) struct NoSessionProvider;
+pub struct NoSessionProvider;
 
 impl SessionProvider for NoSessionProvider {
     fn session(&self) -> Option<Session> {
@@ -35,7 +35,16 @@ impl Display for Session {
     }
 }
 
-#[cfg(test)]
+pub trait SessionExt {
+    fn user(self) -> Option<String>;
+}
+
+impl SessionExt for Option<Session> {
+    fn user(self) -> Option<String> {
+        self.map(|session| session.user_id)
+    }
+}
+
 pub mod test {
     use uuid::Uuid;
 
@@ -50,6 +59,12 @@ pub mod test {
                 organisation_id: Some(Uuid::new_v4().into()),
                 user_id: format!("test-user-{}", Uuid::new_v4()),
             })
+        }
+    }
+
+    impl Default for StaticSessionProvider {
+        fn default() -> Self {
+            Self::new_random()
         }
     }
 

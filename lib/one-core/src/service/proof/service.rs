@@ -53,6 +53,7 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::nfc::NfcError;
 use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
@@ -642,7 +643,13 @@ impl ProofService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
-        log_history_event_proof(&*self.history_repository, &proof, HistoryAction::Shared).await;
+        log_history_event_proof(
+            &*self.history_repository,
+            &proof,
+            HistoryAction::Shared,
+            self.session_provider.session().user(),
+        )
+        .await;
 
         Ok(EntityShareResponseDTO { url })
     }

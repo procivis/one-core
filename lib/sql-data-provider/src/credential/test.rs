@@ -18,6 +18,8 @@ use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::OrganisationRelations;
+use one_core::proto::session_provider::test::StaticSessionProvider;
+use one_core::proto::session_provider::{MockSessionProvider, Session, SessionProvider};
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
 };
@@ -234,6 +236,7 @@ struct Repositories {
     pub revocation_list_repository: Arc<dyn RevocationListRepository>,
     pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 impl Default for Repositories {
@@ -246,6 +249,7 @@ impl Default for Repositories {
             revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
             certificate_repository: Arc::new(MockCertificateRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
+            session_provider: Arc::new(MockSessionProvider::default()),
         }
     }
 }
@@ -268,6 +272,7 @@ fn credential_repository(
     CredentialHistoryDecorator {
         history_repository: Arc::new(HistoryProvider { db }),
         inner: Arc::new(credential_provider),
+        session_provider: repositories.session_provider,
     }
 }
 
@@ -299,12 +304,18 @@ async fn test_create_credential_success() {
         .expect_get_credential_schema()
         .return_once(move |_, _| credential_schema_result);
 
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: None,
+        user_id: "testUserId".to_string(),
+    });
+
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
             claim_repository: Arc::new(claim_repository),
             credential_schema_repository: Arc::new(schema_repository),
             identifier_repository: Arc::new(identifier_repository),
+            session_provider: Arc::new(session_provider),
             ..Repositories::default()
         }),
     );
@@ -407,9 +418,15 @@ async fn test_create_credential_empty_claims() {
         .times(1)
         .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: None,
+        user_id: "testUserId".to_string(),
+    });
+
     let repositories = Repositories {
         credential_schema_repository: Arc::new(credential_schema_repository),
         identifier_repository: Arc::new(identifier_repository),
+        session_provider: Arc::new(session_provider),
         ..Repositories::default()
     };
     let provider = credential_repository(db.clone(), Some(repositories));
@@ -1103,6 +1120,11 @@ async fn test_update_credential_success() {
             }))
         });
 
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: None,
+        user_id: "testUserId".to_string(),
+    });
+
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
@@ -1110,6 +1132,7 @@ async fn test_update_credential_success() {
             claim_repository: Arc::new(claim_repository),
             interaction_repository: Arc::new(interaction_repository),
             identifier_repository: Arc::new(identifier_repository),
+            session_provider: Arc::new(session_provider),
             ..Repositories::default()
         }),
     );
@@ -1179,6 +1202,7 @@ async fn test_update_credential_success() {
         history[0].action,
         crate::entity::history::HistoryAction::Pending
     );
+    assert_eq!(history[0].user, Some("testUserId".to_string()))
 }
 
 #[tokio::test]
@@ -1240,6 +1264,11 @@ async fn test_update_credential_success_no_claims() {
             }))
         });
 
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: None,
+        user_id: "testUserId".to_string(),
+    });
+
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
@@ -1247,6 +1276,7 @@ async fn test_update_credential_success_no_claims() {
             claim_repository: Arc::new(claim_repository),
             interaction_repository: Arc::new(interaction_repository),
             identifier_repository: Arc::new(identifier_repository),
+            session_provider: Arc::new(session_provider),
             ..Repositories::default()
         }),
     );
@@ -1317,6 +1347,7 @@ async fn test_update_credential_success_no_claims() {
         history[0].action,
         crate::entity::history::HistoryAction::Pending
     );
+    assert_eq!(history[0].user, Some("testUserId".to_string()))
 }
 
 #[tokio::test]

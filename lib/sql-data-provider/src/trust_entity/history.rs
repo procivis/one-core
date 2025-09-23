@@ -6,6 +6,7 @@ use one_core::model::organisation::OrganisationRelations;
 use one_core::model::trust_entity::{
     TrustEntity, TrustEntityRelations, TrustEntityState, UpdateTrustEntityRequest,
 };
+use one_core::proto::session_provider::{SessionExt, SessionProvider};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
@@ -19,6 +20,7 @@ use uuid::Uuid;
 pub struct TrustEntityHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn TrustEntityRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 #[async_trait::async_trait]
@@ -180,8 +182,7 @@ impl TrustEntityHistoryDecorator {
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
                 organisation_id: trust_entity.organisation.map(|o| o.id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await
     }
@@ -202,8 +203,7 @@ impl TrustEntityHistoryDecorator {
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
                 organisation_id: entity.organisation.map(|o| o.id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await
     }

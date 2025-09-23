@@ -18,6 +18,7 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::session_provider::SessionExt;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
@@ -198,8 +199,7 @@ impl KeyService {
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
                 organisation_id: Some(key.organisation.ok_or(DataLayerError::MappingError)?.id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await;
 

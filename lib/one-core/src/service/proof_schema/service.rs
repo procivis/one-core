@@ -31,6 +31,7 @@ use crate::model::proof_schema::{
     ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
     ProofSchemaRelations,
 };
+use crate::proto::session_provider::SessionExt;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
@@ -212,6 +213,7 @@ impl ProofSchemaService {
             &*self.history_repository,
             &proof_schema,
             HistoryAction::Created,
+            self.session_provider.session().user(),
         )
         .await;
 
@@ -284,6 +286,7 @@ impl ProofSchemaService {
             &*self.history_repository,
             &proof_schema,
             HistoryAction::Shared,
+            self.session_provider.session().user(),
         )
         .await;
 
@@ -382,6 +385,7 @@ impl ProofSchemaService {
             &*self.history_repository,
             &proof_schema,
             HistoryAction::Imported,
+            self.session_provider.session().user(),
         )
         .await;
 
@@ -423,6 +427,7 @@ impl ProofSchemaService {
             &*self.history_repository,
             &credential_schema,
             HistoryAction::Imported,
+            self.session_provider.session().user(),
         )
         .await;
 

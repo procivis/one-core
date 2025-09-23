@@ -33,6 +33,7 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
@@ -342,8 +343,13 @@ impl SSIHolderService {
             )
             .await?;
 
-        log_history_event_credential(&*self.history_repository, credential, HistoryAction::Issued)
-            .await;
+        log_history_event_credential(
+            &*self.history_repository,
+            credential,
+            HistoryAction::Issued,
+            self.session_provider.session().user(),
+        )
+        .await;
 
         Ok(())
     }

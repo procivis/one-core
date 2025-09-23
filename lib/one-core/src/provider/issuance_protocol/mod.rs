@@ -53,6 +53,8 @@ pub mod openid4vci_final1_0;
 pub(crate) mod provider;
 use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse};
 
+use crate::proto::session_provider::SessionProvider;
+
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
 ) -> Result<DataDTO, IssuanceProtocolError> {
@@ -84,6 +86,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    session_provider: Arc<dyn SessionProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -126,6 +129,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
+                    session_provider.clone(),
                     certificate_validator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
@@ -165,6 +169,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
+                    session_provider.clone(),
                     certificate_validator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
@@ -202,6 +207,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     key_provider.clone(),
                     certificate_validator.clone(),
                     blob_storage_provider.clone(),
+                    session_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),
                     params,

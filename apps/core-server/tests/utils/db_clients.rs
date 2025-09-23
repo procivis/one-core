@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use identifiers::IdentifiersDB;
+use one_core::proto::session_provider::test::StaticSessionProvider;
 use one_core::repository::DataRepository;
 use sql_data_provider::{DataLayer, DbConn};
 
@@ -66,7 +69,11 @@ pub struct DbClient {
 
 impl DbClient {
     pub fn new(db: DbConn) -> Self {
-        let layer = DataLayer::build(db.clone(), vec![]);
+        let layer = DataLayer::build(
+            db.clone(),
+            vec![],
+            Arc::new(StaticSessionProvider::new_random()),
+        );
         Self {
             db_conn: db,
             organisations: OrganisationsDB::new(layer.get_organisation_repository()),

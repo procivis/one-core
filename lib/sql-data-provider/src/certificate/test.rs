@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use one_core::model::certificate::{Certificate, CertificateState, UpdateCertificateRequest};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::proto::session_provider::Session;
+use one_core::proto::session_provider::test::StaticSessionProvider;
 use one_core::repository::certificate_repository::CertificateRepository;
 use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::key_repository::MockKeyRepository;
@@ -47,9 +49,15 @@ async fn setup(repositories: Repositories) -> TestSetup {
     .await
     .unwrap();
 
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: None,
+        user_id: "testUserId".to_string(),
+    });
+
     TestSetup {
         provider: CertificateHistoryDecorator {
             history_repository: Arc::new(repositories.history_repository),
+            session_provider: Arc::new(session_provider),
             inner: Arc::new(CertificateProvider {
                 db: db.clone(),
                 key_repository: Arc::new(MockKeyRepository::default()),
@@ -101,7 +109,8 @@ async fn test_get_certificate() {
         .expect_create_history()
         .once()
         .withf(|request| {
-            request.entity_type == HistoryEntityType::Certificate
+            request.user == Some("testUserId".to_string())
+                && request.entity_type == HistoryEntityType::Certificate
                 && request.action == HistoryAction::Created
         })
         .returning(|_| Ok(Uuid::new_v4().into()));
@@ -156,7 +165,8 @@ async fn test_update_certificate() {
         .expect_create_history()
         .once()
         .withf(|request| {
-            request.entity_type == HistoryEntityType::Certificate
+            request.user == Some("testUserId".to_string())
+                && request.entity_type == HistoryEntityType::Certificate
                 && request.action == HistoryAction::Created
         })
         .returning(|_| Ok(Uuid::new_v4().into()));

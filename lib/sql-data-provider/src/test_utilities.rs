@@ -1,11 +1,13 @@
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::Arc;
 
 use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
 use one_core::model::organisation::Organisation;
+use one_core::proto::session_provider::test::StaticSessionProvider;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
@@ -404,7 +406,11 @@ pub async fn get_proof_schema_with_id(
 
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
     let db_conn = db_conn(database_url, true).await.unwrap();
-    DataLayer::build(db_conn, vec![])
+    DataLayer::build(
+        db_conn,
+        vec![],
+        Arc::new(StaticSessionProvider::new_random()),
+    )
 }
 
 pub async fn insert_did_key(

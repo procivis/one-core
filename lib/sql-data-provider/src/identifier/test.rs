@@ -11,6 +11,8 @@ use one_core::model::identifier::{
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
+use one_core::proto::session_provider::Session;
+use one_core::proto::session_provider::test::StaticSessionProvider;
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
@@ -77,6 +79,11 @@ async fn setup(repositories: Repositories) -> TestSetup {
         organisation: Some(organisation.clone()),
     };
 
+    let session_provider = StaticSessionProvider(Session {
+        organisation_id: None,
+        user_id: "testUserId".to_string(),
+    });
+
     TestSetup {
         provider: IdentifierHistoryDecorator {
             history_repository: Arc::new(repositories.history_repository),
@@ -87,6 +94,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
                 key_repository: Arc::new(MockKeyRepository::default()),
                 certificate_repository: Arc::new(MockCertificateRepository::default()),
             }),
+            session_provider: Arc::new(session_provider),
         },
         organisation,
         did,
@@ -109,7 +117,8 @@ async fn test_create_and_delete_identifier() {
         .expect_create_history()
         .once()
         .withf(|request| {
-            request.entity_type == HistoryEntityType::Identifier
+            request.user == Some("testUserId".to_string())
+                && request.entity_type == HistoryEntityType::Identifier
                 && request.action == HistoryAction::Deleted
         })
         .returning(|_| Ok(Uuid::new_v4().into()));
@@ -168,7 +177,8 @@ async fn test_get_identifier() {
         .expect_create_history()
         .once()
         .withf(|request| {
-            request.entity_type == HistoryEntityType::Identifier
+            request.user == Some("testUserId".to_string())
+                && request.entity_type == HistoryEntityType::Identifier
                 && request.action == HistoryAction::Created
         })
         .returning(|_| Ok(Uuid::new_v4().into()));
@@ -248,7 +258,8 @@ async fn test_get_identifier_list() {
         .expect_create_history()
         .times(2)
         .withf(|request| {
-            request.entity_type == HistoryEntityType::Identifier
+            request.user == Some("testUserId".to_string())
+                && request.entity_type == HistoryEntityType::Identifier
                 && request.action == HistoryAction::Created
         })
         .returning(|_| Ok(Uuid::new_v4().into()));

@@ -29,6 +29,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -90,6 +91,7 @@ struct TestInputs {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
+    pub session_provider: StaticSessionProvider,
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub config: CoreConfig,
@@ -109,6 +111,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
+        Arc::new(inputs.session_provider),
         Arc::new(inputs.certificate_validator),
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),

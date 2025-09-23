@@ -14,6 +14,7 @@ use identifier::history::IdentifierHistoryDecorator;
 use interaction::InteractionProvider;
 use key::history::KeyHistoryDecorator;
 use migration::runner::run_migrations;
+use one_core::proto::session_provider::SessionProvider;
 use one_core::repository::DataRepository;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::blob_repository::BlobRepository;
@@ -120,7 +121,11 @@ pub struct DataLayer {
 }
 
 impl DataLayer {
-    pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
+    pub fn build(
+        db: DbConn,
+        exportable_storages: Vec<String>,
+        session_provider: Arc<dyn SessionProvider>,
+    ) -> Self {
         let history_repository = Arc::new(HistoryProvider { db: db.clone() });
 
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
@@ -134,6 +139,7 @@ impl DataLayer {
         let organisation_repository = Arc::new(OrganisationHistoryDecorator {
             inner: organisation_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let interaction_repository = Arc::new(InteractionProvider {
@@ -150,6 +156,7 @@ impl DataLayer {
         let credential_schema_repository = Arc::new(CredentialSchemaHistoryDecorator {
             history_repository: history_repository.clone(),
             inner: credential_schema_repository,
+            session_provider: session_provider.clone(),
         });
 
         let key_repository = Arc::new(KeyProvider {
@@ -160,6 +167,7 @@ impl DataLayer {
         let key_repository = Arc::new(KeyHistoryDecorator {
             inner: key_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider { db: db.clone() });
@@ -173,6 +181,7 @@ impl DataLayer {
         let did_repository = Arc::new(DidHistoryDecorator {
             inner: did_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let certificate_repository = Arc::new(CertificateProvider {
@@ -185,6 +194,7 @@ impl DataLayer {
             inner: certificate_repository,
             history_repository: history_repository.clone(),
             db: db.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let identifier_repository = Arc::new(IdentifierProvider {
@@ -198,6 +208,7 @@ impl DataLayer {
         let identifier_repository = Arc::new(IdentifierHistoryDecorator {
             inner: identifier_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {
@@ -210,6 +221,7 @@ impl DataLayer {
         let proof_schema_repository = Arc::new(ProofSchemaHistoryDecorator {
             inner: proof_schema_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let revocation_list_repository = Arc::new(RevocationListProvider {
@@ -227,6 +239,7 @@ impl DataLayer {
         let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
             inner: trust_entity_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let credential_repository = Arc::new(CredentialProvider {
@@ -243,6 +256,7 @@ impl DataLayer {
         let credential_repository = Arc::new(CredentialHistoryDecorator {
             inner: credential_repository,
             history_repository: history_repository.clone(),
+            session_provider: session_provider.clone(),
         });
 
         let proof_repository = Arc::new(ProofProvider {
@@ -259,6 +273,7 @@ impl DataLayer {
         let proof_repository = Arc::new(ProofHistoryDecorator {
             history_repository: history_repository.clone(),
             inner: proof_repository,
+            session_provider: session_provider.clone(),
         });
 
         let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));

@@ -10,6 +10,7 @@ use one_core::model::proof::{
     GetProofList, GetProofQuery, Proof, ProofRelations, UpdateProofRequest,
 };
 use one_core::model::proof_schema::ProofSchemaRelations;
+use one_core::proto::session_provider::{SessionExt, SessionProvider};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::history_repository::HistoryRepository;
 use one_core::repository::proof_repository::ProofRepository;
@@ -22,6 +23,7 @@ use crate::proof::mapper::{organisation_id_from_proof, target_from_proof};
 pub struct ProofHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub inner: Arc<dyn ProofRepository>,
+    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 impl ProofHistoryDecorator {
@@ -79,8 +81,7 @@ impl ProofHistoryDecorator {
                 entity_type: HistoryEntityType::Proof,
                 metadata: error_info.map(HistoryMetadata::ErrorMetadata),
                 organisation_id: Some(organisation_id),
-                //TODO: pass user
-                user: None,
+                user: self.session_provider.session().user(),
             })
             .await?;
         Ok(())

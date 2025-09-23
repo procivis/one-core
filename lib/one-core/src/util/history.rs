@@ -17,6 +17,7 @@ pub(crate) fn history_event(
     entity_type: HistoryEntityType,
     action: HistoryAction,
     target: Option<String>,
+    user: Option<String>,
 ) -> History {
     History {
         id: Uuid::new_v4().into(),
@@ -28,8 +29,7 @@ pub(crate) fn history_event(
         entity_type,
         metadata: None,
         organisation_id: Some(organisation_id),
-        //TODO: pass user
-        user: None,
+        user,
     }
 }
 
@@ -37,6 +37,7 @@ pub(crate) async fn log_history_event_credential(
     history_repository: &dyn HistoryRepository,
     credential: &Credential,
     event: HistoryAction,
+    user: Option<String>,
 ) {
     // Try schema first, then holder_did
     let organisation_id = if let Some(id) = credential
@@ -78,6 +79,7 @@ pub(crate) async fn log_history_event_credential(
             HistoryEntityType::Credential,
             event,
             target_from_credential(credential),
+            user,
         ))
         .await;
     if let Err(err) = result {
@@ -92,6 +94,7 @@ pub(crate) async fn log_history_event_credential_schema(
     history_repository: &dyn HistoryRepository,
     schema: &CredentialSchema,
     event: HistoryAction,
+    user: Option<String>,
 ) {
     let Some(ref organisation) = schema.organisation else {
         warn!(
@@ -109,6 +112,7 @@ pub(crate) async fn log_history_event_credential_schema(
             HistoryEntityType::CredentialSchema,
             event,
             None,
+            user,
         ))
         .await;
     if let Err(err) = result {
@@ -123,6 +127,7 @@ pub(crate) async fn log_history_event_proof(
     history_repository: &dyn HistoryRepository,
     proof: &Proof,
     event: HistoryAction,
+    user: Option<String>,
 ) {
     // Try schema first, then holder_did, then verifier_did
     let organisation_id = if let Some(id) = proof
@@ -169,6 +174,7 @@ pub(crate) async fn log_history_event_proof(
             HistoryEntityType::Proof,
             event,
             target_from_proof(proof),
+            user,
         ))
         .await;
     if let Err(err) = result {
@@ -183,6 +189,7 @@ pub(crate) async fn log_history_event_proof_schema(
     history_repository: &dyn HistoryRepository,
     proof_schema: &ProofSchema,
     event: HistoryAction,
+    user: Option<String>,
 ) {
     let Some(ref organisation) = proof_schema.organisation else {
         warn!(
@@ -200,6 +207,7 @@ pub(crate) async fn log_history_event_proof_schema(
             HistoryEntityType::ProofSchema,
             event,
             None,
+            user,
         ))
         .await;
     if let Err(err) = result {

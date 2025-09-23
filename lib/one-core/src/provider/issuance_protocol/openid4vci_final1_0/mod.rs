@@ -73,6 +73,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -139,6 +140,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    session_provider: Arc<dyn SessionProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
     protocol_base_url: Option<String>,
@@ -161,6 +163,7 @@ impl OpenID4VCIFinal1_0 {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        session_provider: Arc<dyn SessionProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
@@ -180,6 +183,7 @@ impl OpenID4VCIFinal1_0 {
             did_method_provider,
             key_algorithm_provider,
             key_provider,
+            session_provider,
             base_url,
             protocol_base_url,
             config,
@@ -1420,6 +1424,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     &*self.history_repository,
                     &credential,
                     HistoryAction::Issued,
+                    self.session_provider.session().user(),
                 )
                 .await;
 
@@ -1451,6 +1456,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     &*self.history_repository,
                     &credential,
                     HistoryAction::Issued,
+                    self.session_provider.session().user(),
                 )
                 .await;
 
