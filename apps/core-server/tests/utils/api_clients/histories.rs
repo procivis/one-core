@@ -13,6 +13,7 @@ impl HistoriesApi {
         Self { client }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn list(
         &self,
         page: u64,
@@ -21,6 +22,7 @@ impl HistoriesApi {
         credential_schema_id: Option<CredentialSchemaId>,
         entity_types: Option<Vec<String>>,
         actions: Option<Vec<String>>,
+        user: Option<&str>,
     ) -> Response {
         let schema_param = match credential_schema_id {
             None => "".to_string(),
@@ -48,6 +50,10 @@ impl HistoriesApi {
                 .join("&");
             url.push_str(&format!("&{actions_as_string}"));
         }
+        if let Some(user) = user {
+            url.push_str(&format!("&user={user}"));
+        }
+
         self.client.get(&url).await
     }
 

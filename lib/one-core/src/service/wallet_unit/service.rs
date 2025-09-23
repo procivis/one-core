@@ -204,6 +204,8 @@ impl WalletUnitService {
                 entity_type: HistoryEntityType::WalletUnitAttestation,
                 metadata: None,
                 organisation_id: Some(organisation.id),
+                //TODO: pass user
+                user: None,
             })
             .await?;
         Ok(HolderRegisterWalletUnitResponseDTO {
@@ -480,6 +482,8 @@ impl WalletUnitService {
                         entity_type: HistoryEntityType::WalletUnitAttestation,
                         metadata: None,
                         organisation_id: Some(organisation.id),
+                        //TODO: pass user
+                        user: None,
                     })
                     .await?;
                 Ok(())
@@ -505,6 +509,8 @@ impl WalletUnitService {
                         entity_type: HistoryEntityType::WalletUnitAttestation,
                         metadata: None,
                         organisation_id: Some(organisation.id),
+                        //TODO: pass user
+                        user: None,
                     })
                     .await?;
                 Err(WalletUnitAttestationError::WalletUnitRevoked.into())

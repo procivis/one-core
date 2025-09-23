@@ -30,6 +30,8 @@ impl KeyRepository for KeyHistoryDecorator {
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
                 organisation_id: Some(request.organisation.ok_or(DataLayerError::MappingError)?.id),
+                //TODO: pass user
+                user: None,
             })
             .await;
 

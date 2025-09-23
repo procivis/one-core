@@ -101,6 +101,7 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .to_owned(),
                 ))
                 .into_condition(),
+            Self::User(user) => get_equals_condition(history::Column::User, user),
         }
     }
 }

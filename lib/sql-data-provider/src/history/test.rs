@@ -320,6 +320,8 @@ async fn test_create_history() {
             entity_type: HistoryEntityType::Key,
             metadata: None,
             organisation_id: Some(organisation.id),
+            //TODO: pass user
+            user: None,
         })
         .await;
 

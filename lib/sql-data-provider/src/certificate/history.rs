@@ -54,6 +54,8 @@ impl CertificateHistoryDecorator {
                 entity_type: HistoryEntityType::Certificate,
                 metadata: None,
                 organisation_id: Some(organisation_id),
+                //TODO: pass user
+                user: None,
             })
             .await;
 

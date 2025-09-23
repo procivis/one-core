@@ -44,6 +44,8 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
 
         let proof_schema_id = value.proof_schema_id.map(HistoryFilterValue::ProofSchemaId);
 
+        let user = value.user.map(HistoryFilterValue::User);
+
         organisation_id
             & entity_types
             & entity_id
@@ -55,6 +57,7 @@ impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterVal
             & credential_schema_id
             & proof_schema_id
             & search_query
+            & user
     }
 }
 

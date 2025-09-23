@@ -142,3 +142,30 @@ async fn test_get_history_entry_with_target() {
     resp["id"].assert_eq(&history.id);
     resp["target"].assert_eq(&"Foo".to_string());
 }
+
+#[tokio::test]
+async fn test_get_history_entry_with_user() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let history = context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                user: Some("TestUser".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.histories.get(history.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    resp["id"].assert_eq(&history.id);
+    resp["user"].assert_eq(&"TestUser".to_string());
+}

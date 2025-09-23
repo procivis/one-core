@@ -28,6 +28,8 @@ pub(crate) fn history_event(
         entity_type,
         metadata: None,
         organisation_id: Some(organisation_id),
+        //TODO: pass user
+        user: None,
     }
 }
 

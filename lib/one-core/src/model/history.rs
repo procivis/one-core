@@ -41,6 +41,7 @@ pub struct History {
     pub entity_type: HistoryEntityType,
     pub metadata: Option<HistoryMetadata>,
     pub organisation_id: Option<OrganisationId>,
+    pub user: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
@@ -109,6 +110,7 @@ pub enum HistoryFilterValue {
     SearchQuery(String, HistorySearchEnum),
     OrganisationId(OrganisationId),
     ProofSchemaId(ProofSchemaId),
+    User(String),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

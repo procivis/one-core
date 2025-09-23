@@ -53,6 +53,8 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
                 entity_type: HistoryEntityType::CredentialSchema,
                 metadata: None,
                 organisation_id: Some(organisation.id),
+                //TODO: pass user
+                user: None,
             })
             .await;
 

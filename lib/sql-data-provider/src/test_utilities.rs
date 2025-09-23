@@ -569,6 +569,8 @@ pub async fn insert_history(
         metadata: Set(None),
         organisation_id: Set(Some(organisation_id)),
         target: Set(None),
+        //TODO: pass user
+        user: Set(None),
     }
     .insert(database)
     .await?;

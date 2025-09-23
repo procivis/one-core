@@ -39,6 +39,8 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
                 entity_type: HistoryEntityType::Organisation,
                 metadata: None,
                 organisation_id: Some(organisation_id),
+                //TODO: pass user
+                user: None,
             })
             .await;
 
@@ -92,6 +94,8 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
                     entity_type: HistoryEntityType::Organisation,
                     metadata: None,
                     organisation_id: Some(request.id),
+                    //TODO: pass user
+                    user: None,
                 })
                 .await;
 

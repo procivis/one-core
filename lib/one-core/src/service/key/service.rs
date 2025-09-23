@@ -198,6 +198,8 @@ impl KeyService {
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
                 organisation_id: Some(key.organisation.ok_or(DataLayerError::MappingError)?.id),
+                //TODO: pass user
+                user: None,
             })
             .await;
 

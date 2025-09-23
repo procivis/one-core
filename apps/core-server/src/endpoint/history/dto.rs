@@ -37,6 +37,7 @@ pub(crate) struct HistoryResponseRestDTO {
     pub entity_type: HistoryEntityType,
     pub organisation_id: Option<OrganisationId>,
     pub target: Option<String>,
+    pub user: Option<String>,
 }
 
 #[options_not_nullable]
@@ -64,6 +65,8 @@ pub(crate) struct HistoryResponseDetailRestDTO {
     pub metadata: Option<HistoryMetadataRestEnum>,
     #[try_from(infallible)]
     pub target: Option<String>,
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub user: Option<String>,
 }
 
 #[derive(Serialize, ToSchema, TryFrom)]
@@ -210,6 +213,8 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     pub search_type: Option<HistorySearchEnumRest>,
     /// Specify the organizaton from which to return history events.
     pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub user: Option<String>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

@@ -90,6 +90,8 @@ impl CredentialHistoryDecorator {
             entity_type: HistoryEntityType::Credential,
             metadata: None,
             organisation_id: Some(organisation.id),
+            //TODO: pass user
+            user: None,
         };
         let result = self.history_repository.create_history(entry).await;
 

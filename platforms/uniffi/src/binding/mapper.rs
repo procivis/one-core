@@ -328,6 +328,7 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             metadata: convert_inner(value.metadata),
             organisation_id: value.organisation_id.map(|id| id.to_string()),
             target: value.target,
+            user: value.user,
         }
     }
 }

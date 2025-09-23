@@ -155,6 +155,8 @@ pub(super) fn create_backup_history_event(
         entity_type: HistoryEntityType::Backup,
         metadata,
         organisation_id: Some(organisation_id),
+        //TODO: pass user
+        user: None,
     }
 }
 

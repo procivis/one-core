@@ -95,6 +95,10 @@ impl OneCoreBinding {
                 .push(HistoryFilterValue::ProofSchemaId(into_id(&proof_schema_id)?).condition());
         }
 
+        if let Some(user) = query.user {
+            conditions.push(HistoryFilterValue::User(user).condition());
+        }
+
         Ok(core
             .history_service
             .get_history_list(HistoryListQuery {
@@ -189,6 +193,7 @@ pub struct HistoryListItemBindingDTO {
     pub metadata: Option<HistoryMetadataBinding>,
     pub organisation_id: Option<String>,
     pub target: Option<String>,
+    pub user: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -206,6 +211,7 @@ pub struct HistoryListQueryBindingDTO {
     pub credential_schema_id: Option<String>,
     pub proof_schema_id: Option<String>,
     pub search: Option<HistorySearchBindingDTO>,
+    pub user: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

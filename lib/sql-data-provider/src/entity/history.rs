@@ -19,6 +19,7 @@ pub struct Model {
     pub metadata: Option<String>,
     pub name: String,
     pub target: Option<String>,
+    pub user: Option<String>,
 
     pub organisation_id: Option<OrganisationId>,
 }

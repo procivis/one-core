@@ -180,6 +180,8 @@ impl TrustEntityHistoryDecorator {
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
                 organisation_id: trust_entity.organisation.map(|o| o.id),
+                //TODO: pass user
+                user: None,
             })
             .await
     }
@@ -200,6 +202,8 @@ impl TrustEntityHistoryDecorator {
                 entity_type: HistoryEntityType::TrustEntity,
                 metadata: None,
                 organisation_id: entity.organisation.map(|o| o.id),
+                //TODO: pass user
+                user: None,
             })
             .await
     }

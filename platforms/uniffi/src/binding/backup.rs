@@ -282,6 +282,7 @@ mod tests {
                 credential_schema_id: None,
                 proof_schema_id: None,
                 search: None,
+                user: None,
             })
             .await
             .unwrap();

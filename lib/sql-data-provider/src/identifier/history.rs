@@ -38,6 +38,8 @@ impl IdentifierHistoryDecorator {
                 entity_type: HistoryEntityType::Identifier,
                 metadata: None,
                 organisation_id: Some(organisation_id),
+                //TODO: pass user
+                user: None,
             })
             .await;
 

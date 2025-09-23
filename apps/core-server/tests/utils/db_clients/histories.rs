@@ -22,6 +22,7 @@ pub struct TestingHistoryParams {
     pub metadata: Option<HistoryMetadata>,
     pub name: Option<String>,
     pub target: Option<String>,
+    pub user: Option<String>,
 }
 
 pub struct HistoriesDB {
@@ -51,6 +52,7 @@ impl HistoriesDB {
             organisation_id: Some(organisation.id),
             name: params.name.unwrap_or_default(),
             target: params.target,
+            user: params.user,
         };
 
         self.repository
@@ -75,6 +77,8 @@ impl HistoriesDB {
             organisation_id: None,
             name: params.name.unwrap_or_default(),
             target: params.target,
+            //TODO: pass user
+            user: None,
         };
 
         self.repository
