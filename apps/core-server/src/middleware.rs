@@ -9,19 +9,19 @@ use axum::middleware::Next;
 use axum::response::IntoResponse;
 use headers::HeaderValue;
 use http_body_util::BodyExt;
+use one_core::proto::session_provider::Session;
 use sentry::{Hub, SentryFutureExt};
 use serde::Deserialize;
 use shared_types::OrganisationId;
-use tracing::trace;
 
 use crate::ServerConfig;
 use crate::authentication::Authentication;
 use crate::permissions::Permission;
+use crate::session::SESSION;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StsToken {
-    #[allow(unused)]
     pub organisation_id: Option<OrganisationId>,
     #[serde(default)]
     pub permissions: Vec<Permission>,
@@ -92,11 +92,12 @@ pub async fn authorization_check(
     mut request: Request<Body>,
     next: Next,
 ) -> Result<axum::response::Response, StatusCode> {
-    match authentication {
+    let response = match authentication {
         Authentication::None => {
             request.extensions_mut().insert(Authorized {
                 permissions: vec![],
             });
+            next.run(request).await
         }
         Authentication::Static(static_token) => {
             let token = extract_auth_token(&request)?;
@@ -110,6 +111,7 @@ pub async fn authorization_check(
                 );
                 return Err(StatusCode::UNAUTHORIZED);
             }
+            next.run(request).await
         }
         Authentication::SecurityTokenService(security_token_service) => {
             let token = extract_auth_token(&request)?;
@@ -123,9 +125,19 @@ pub async fn authorization_check(
             request.extensions_mut().insert(Authorized {
                 permissions: decomposed_token.payload.custom.permissions,
             });
+            // Initialize session scoped to this request
+            let session = Session {
+                organisation_id: decomposed_token.payload.custom.organisation_id,
+                user_id: decomposed_token
+                    .payload
+                    .subject
+                    .ok_or(StatusCode::UNAUTHORIZED)?,
+            };
+            tracing::trace!("Session initialized: {session}");
+            SESSION.scope(session, next.run(request)).await
         }
-    }
-    Ok(next.run(request).await)
+    };
+    Ok(response)
 }
 
 fn extract_auth_token(request: &Request<Body>) -> Result<&str, StatusCode> {
@@ -298,8 +310,5 @@ fn log_details(kind: &str, method: &str, url: &str, bytes: &Bytes, headers: &Hea
         )
     };
 
-    trace!(
-        "{}",
-        format!("{kind} {method} {url}\nHeaders:{resp_headers}\nBody:{resp_body}",)
-    );
+    tracing::trace!("{kind} {method} {url}\nHeaders:{resp_headers}\nBody:{resp_body}");
 }

@@ -272,7 +272,7 @@ async fn test_sts_authentication_fails_invalid_nbf() {
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
-            invalid_before: Some(now + Duration::from_secs(5)),
+            invalid_before: Some(now + Duration::from_secs(600)),
             issuer: Some("bff".to_string()),
             subject: Some(Uuid::new_v4().to_string()),
             audience: Some(vec!["core".to_string()]),
@@ -318,7 +318,7 @@ async fn test_sts_authentication_fails_invalid_signature() {
 async fn test_sts_authentication_fails_signed_with_different_kid() {
     let key = Eddsa.generate_key().unwrap();
 
-    let jwk = to_jwk_with_kid(&key, Default::default());
+    let jwk = to_jwk_with_kid(&key, Uuid::new_v4());
     let now = OffsetDateTime::now_utc();
     let token = Jwt::new(
         "STS".to_string(),
@@ -338,7 +338,7 @@ async fn test_sts_authentication_fails_signed_with_different_kid() {
         },
     );
 
-    let jwk = to_jwk_with_kid(&key, Default::default());
+    let jwk = to_jwk_with_kid(&key, Uuid::new_v4());
     test_sts_authentication_invalid_token(key, jwk, token).await;
 }
 

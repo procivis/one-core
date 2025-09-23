@@ -1,5 +1,9 @@
 app:
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error,core_server::middleware=trace"
+  auth:
+    stsTokenValidation:
+      iss: "https://desk.dev.procivis-one.com"
+      jwksUri: "https://desk.dev.procivis-one.com/.well-known/jwks.json"
 walletProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE

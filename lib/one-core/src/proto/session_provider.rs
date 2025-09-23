@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use shared_types::OrganisationId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -17,6 +19,20 @@ impl SessionProvider for NoSessionProvider {
 pub struct Session {
     pub organisation_id: Option<OrganisationId>,
     pub user_id: String,
+}
+
+impl Display for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let org = self
+            .organisation_id
+            .map(|id| format!("'{id}'"))
+            .unwrap_or("None".to_string());
+        write!(
+            f,
+            "Session {{ user_id: '{}', organisation: {org} }}",
+            self.user_id
+        )
+    }
 }
 
 #[cfg(test)]

@@ -1,5 +1,9 @@
 app:
   insecureVcApiEndpointsEnabled: true
+  auth:
+    stsTokenValidation:
+      iss: "https://desk.test.procivis-one.com"
+      jwksUri: "https://desk.test.procivis-one.com/.well-known/jwks.json"
 walletProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE
