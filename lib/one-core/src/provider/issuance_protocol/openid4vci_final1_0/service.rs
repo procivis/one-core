@@ -22,9 +22,7 @@ use super::model::{
 use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchema, WalletStorageTypeEnum};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
@@ -120,8 +118,17 @@ fn credential_configurations_supported(
                 oidc_format,
                 claims,
                 credential_schema,
-                (credential_schema.schema_type == CredentialSchemaType::SdJwtVc)
-                    .then_some(schema_id),
+                None,
+                cryptographic_binding_methods_supported,
+                proof_types_supported,
+                credential_signing_alg_values_supported,
+            ),
+            "dc+sd-jwt" => sdjwt_configuration(
+                wallet_storage_type,
+                oidc_format,
+                claims,
+                credential_schema,
+                Some(schema_id),
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,

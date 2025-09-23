@@ -23,7 +23,7 @@ use crate::common_mapper::{
 };
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::IssuanceProtocolType;
+use crate::config::core_config::{FormatType, IssuanceProtocolType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -57,7 +57,6 @@ use crate::service::error::{
 };
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
 impl OID4VCIFinal1_0Service {
@@ -95,7 +94,17 @@ impl OID4VCIFinal1_0Service {
             .get_fields(&schema.format)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
             .r#type;
-        let oidc_format = map_to_openid4vp_format(&format_type).map(|s| s.to_string())?;
+        let oidc_format = match &format_type {
+            FormatType::Jwt => "jwt_vc_json",
+            FormatType::SdJwt => "vc+sd-jwt",
+            FormatType::SdJwtVc => "dc+sd-jwt",
+            FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => "ldp_vc",
+            FormatType::Mdoc => "mso_mdoc",
+            FormatType::PhysicalCard => {
+                return Err(OpenID4VCIError::UnsupportedCredentialFormat.into());
+            }
+        }
+        .to_string();
 
         let formatter = self
             .formatter_provider

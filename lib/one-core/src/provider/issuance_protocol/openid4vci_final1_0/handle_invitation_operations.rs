@@ -124,7 +124,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 offer_id: offer_id.to_owned(),
             },
             // external sd-jwt vc
-            "vc+sd-jwt" | "dc+sd-jwt" => {
+            "dc+sd-jwt" => {
                 // We use the vc+sd-jwt format identifier for both SD-JWT-VC and SD-JWT credential formats.
                 // Checking the credential configuration for the VCT is a workaround.
                 let (schema_type, id) = match credential_config.vct.as_ref() {
@@ -292,7 +292,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             // external schema
             _ => {
                 let credential_format = match credential_config.format.as_str() {
-                    "vc+sd-jwt" if credential_config.vct.is_some() => "SD_JWT_VC".to_string(),
+                    "dc+sd-jwt" if credential_config.vct.is_some() => "SD_JWT_VC".to_string(),
                     other => map_from_openid4vp_format(other)
                         .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?
                         .to_string(),
