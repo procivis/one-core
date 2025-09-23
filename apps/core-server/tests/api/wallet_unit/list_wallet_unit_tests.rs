@@ -218,3 +218,40 @@ async fn test_list_wallet_unit_empty_success() {
     let values = resp["values"].as_array().unwrap();
     assert_eq!(values.len(), 0);
 }
+
+#[tokio::test]
+async fn test_list_wallet_unit_org_success() {
+    // GIVEN
+    let (context, org) = TestContext::new_with_organisation(None).await;
+
+    let holder_key_pair = Ecdsa.generate_key().unwrap();
+    let holder_public_jwk = holder_key_pair.key.public_key_as_jwk().unwrap();
+    context
+        .db
+        .wallet_units
+        .create(
+            org.clone(),
+            TestWalletUnit {
+                name: Some("wallet".to_string()),
+                public_key: Some(holder_public_jwk),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .wallet_units
+        .list(ListFilters::new(Uuid::new_v4().into())) // different org
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalPages"], 0);
+    assert_eq!(resp["totalItems"], 0);
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(values.len(), 0);
+}

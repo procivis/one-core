@@ -1,4 +1,6 @@
-use one_core::model::list_filter::{ListFilterCondition, StringMatch, StringMatchType};
+use one_core::model::list_filter::{
+    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+};
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::wallet_unit::{WalletUnitFilterValue, WalletUnitListQuery};
 use one_core::service::error::ServiceError;
@@ -11,6 +13,8 @@ use super::dto::{ListWalletUnitsQuery, WalletUnitFilterQueryParamsRestDTO};
 impl TryFrom<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletUnitFilterValue> {
     type Error = ServiceError;
     fn try_from(value: WalletUnitFilterQueryParamsRestDTO) -> Result<Self, Self::Error> {
+        let organisation_id =
+            WalletUnitFilterValue::OrganisationId(value.organisation_id).condition();
         let name = value.name.map(|name| {
             WalletUnitFilterValue::Name(StringMatch {
                 r#match: StringMatchType::StartsWith,
@@ -41,12 +45,7 @@ impl TryFrom<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletU
             .wallet_provider_type
             .map(WalletUnitFilterValue::WalletProviderType);
 
-        Ok(ListFilterCondition::<WalletUnitFilterValue>::from(name)
-            & ids
-            & status
-            & os
-            & wallet_provider_type
-            & attestation)
+        Ok(organisation_id & name & ids & status & os & wallet_provider_type & attestation)
     }
 }
 
