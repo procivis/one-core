@@ -27,6 +27,7 @@ pub mod validator;
 #[derive(Clone)]
 pub struct OID4VCIFinal1_0Service {
     protocol_base_url: Option<String>,
+    protocol_id: String,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
@@ -50,6 +51,7 @@ pub struct OID4VCIFinal1_0Service {
 impl OID4VCIFinal1_0Service {
     pub(crate) fn new(
         core_base_url: Option<String>,
+        protocol_id: String,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
@@ -70,6 +72,7 @@ impl OID4VCIFinal1_0Service {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
             protocol_base_url,
+            protocol_id,
             credential_schema_repository,
             credential_repository,
             interaction_repository,

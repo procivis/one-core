@@ -1,7 +1,6 @@
-use std::sync::{Arc, LazyLock};
+use std::sync::Arc;
 
 use indexmap::IndexMap;
-use regex::Regex;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -32,9 +31,6 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::util::oidc::map_from_openid4vp_format;
-
-static SCHEMA_URL_REPLACEMENT_REGEX: LazyLock<Regex> =
-    LazyLock::new(|| Regex::new(r"/ssi/openid4vci/[\w-]+/").expect("Failed to compile regex"));
 
 pub(crate) struct HandleInvitationOperationsImpl {
     pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
@@ -166,13 +162,13 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
         issuer_metadata: &OpenID4VCIIssuerMetadataResponseDTO,
         organisation: Organisation,
     ) -> Result<BuildCredentialSchemaResponse, IssuanceProtocolError> {
-        // The extraction of the schema_url is required for the imported_source_url that it is
-        // correct on HOLDER side as well, however the HOLDER will not use it therefore we might
-        // remove it when we fix the workaround for mDOC.
-        // MDOC doesn't have any information about schema url. It's replaced by doctype, hence we need to figure something out for now
-        let schema_url = SCHEMA_URL_REPLACEMENT_REGEX
-            .replace_all(&issuer_metadata.credential_issuer, "/ssi/schema/v1/")
-            .into_owned();
+        let schema_url =
+            issuer_metadata
+                .procivis_schema
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing procivis schema".to_string(),
+                ))?;
 
         let credential_display_name = credential_config.display.as_ref().and_then(|display_info| {
             let display = display_info.first()?;
@@ -181,7 +177,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
         let result = match schema.r#type.as_str() {
             "ProcivisOneSchema2024" | "SdJwtVc" if !schema.external_schema => {
-                let procivis_schema = fetch_procivis_schema(&schema_url, &*self.http_client)
+                let procivis_schema = fetch_procivis_schema(schema_url, &*self.http_client)
                     .await
                     .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
 
@@ -200,7 +196,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
                         layout_properties: procivis_schema.layout_properties,
                         schema_id: schema.id.clone(),
-                        imported_source_url: schema_url,
+                        imported_source_url: schema_url.to_string(),
                     },
                     organisation.clone(),
                     procivis_schema.schema_type,
@@ -213,7 +209,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 BuildCredentialSchemaResponse { claims, schema }
             }
             "mdoc" => {
-                let result = fetch_procivis_schema(&schema_url, &*self.http_client).await;
+                let result = fetch_procivis_schema(schema_url, &*self.http_client).await;
 
                 let (layout_type, layout_properties, schema_name) = match result {
                     Ok(schema) => (
@@ -264,7 +260,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         external_schema: false,
                         layout_properties,
                         schema_id: schema.id.clone(),
-                        imported_source_url: schema_url,
+                        imported_source_url: schema_url.to_string(),
                     },
                     organisation.clone(),
                     "mdoc".to_string(),
@@ -348,7 +344,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     last_modified: now,
                     name,
                     format: credential_format,
-                    imported_source_url: schema_url,
+                    imported_source_url: schema_url.to_string(),
                     wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
                     revocation_method: "NONE".to_string(),
                     claim_schemas: Some(claim_schemas),

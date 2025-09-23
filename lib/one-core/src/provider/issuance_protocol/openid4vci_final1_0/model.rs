@@ -101,6 +101,7 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,
+    pub procivis_schema: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
 }
 
@@ -324,7 +325,7 @@ pub(crate) enum CredentialSchemaCodeTypeEnum {
 
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct OpenID4VCICredentialOfferDTO {
+pub struct OpenID4VCIFinal1CredentialOfferDTO {
     pub credential_issuer: String,
     pub credential_configuration_ids: Vec<String>,
     pub grants: OpenID4VCIGrants,
@@ -341,7 +342,6 @@ pub struct OpenID4VCICredentialOfferDTO {
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ExtendedSubjectDTO {
     pub keys: Option<ExtendedSubjectClaimsDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
@@ -564,7 +564,6 @@ pub struct CredentialSubjectDisplay {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VCICredentialValueDetails {
     pub value: Option<String>,
-    pub value_type: String,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]

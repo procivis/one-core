@@ -331,7 +331,10 @@ impl CredentialFormatter for MdocFormatter {
             allowed_schema_ids: vec![],
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             issuance_did_methods: vec![],
-            issuance_exchange_protocols: vec![IssuanceProtocolType::OpenId4VciDraft13],
+            issuance_exchange_protocols: vec![
+                IssuanceProtocolType::OpenId4VciDraft13,
+                IssuanceProtocolType::OpenId4VciFinal1_0,
+            ],
             proof_exchange_protocols: vec![
                 VerificationProtocolType::OpenId4VpDraft20,
                 VerificationProtocolType::OpenId4VpDraft25,

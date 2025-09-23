@@ -73,7 +73,7 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
-use crate::service::oid4vci_final1_0::service::credentials_format;
+use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
@@ -352,8 +352,7 @@ async fn test_generate_offer_did() {
 
     let keys = credential.claims.clone().unwrap_or_default();
 
-    let credential_subject =
-        credentials_format(Some(WalletStorageTypeEnum::Software), &keys, true).unwrap();
+    let credential_subject = prepare_preview_claims_for_offer(&keys, true).unwrap();
 
     let offer = create_credential_offer(
         &protocol_base_url,
@@ -379,11 +378,9 @@ async fn test_generate_offer_did() {
             "credential_subject": {
                 "keys": {
                     "NUMBER": {
-                        "value": "123",
-                        "value_type": "NUMBER"
+                        "value": "123"
                     }
-                },
-                "wallet_storage_type": "SOFTWARE"
+                }
             }
         })
     )
@@ -397,8 +394,7 @@ async fn test_generate_offer_certificate() {
 
     let keys = credential.claims.clone().unwrap_or_default();
 
-    let credential_subject =
-        credentials_format(Some(WalletStorageTypeEnum::Software), &keys, true).unwrap();
+    let credential_subject = prepare_preview_claims_for_offer(&keys, true).unwrap();
 
     let offer = create_credential_offer(
         &protocol_base_url,
@@ -424,11 +420,9 @@ async fn test_generate_offer_certificate() {
             "credential_subject": {
                 "keys": {
                     "NUMBER": {
-                        "value": "123",
-                        "value_type": "NUMBER"
+                        "value": "123"
                     }
                 },
-                "wallet_storage_type": "SOFTWARE"
             }
         })
     )
@@ -442,8 +436,7 @@ async fn test_generate_offer_claims_without_values() {
 
     let keys = credential.claims.clone().unwrap_or_default();
 
-    let credential_subject =
-        credentials_format(Some(WalletStorageTypeEnum::Software), &keys, false).unwrap();
+    let credential_subject = prepare_preview_claims_for_offer(&keys, false).unwrap();
 
     let offer = create_credential_offer(
         &protocol_base_url,
@@ -469,10 +462,8 @@ async fn test_generate_offer_claims_without_values() {
             "credential_subject": {
                 "keys": {
                     "NUMBER": {
-                        "value_type": "NUMBER"
                     }
-                },
-                "wallet_storage_type": "SOFTWARE"
+                }
             }
         })
     )
@@ -1428,10 +1419,8 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             "keys": {
                 "NUMBER": {
                     "value": "123",
-                    "value_type": "NUMBER"
                 }
             },
-            "wallet_storage_type": "SOFTWARE"
         }
     });
     if let Some(ref issuer_did) = issuer_did {
@@ -1454,7 +1443,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         let token_endpoint = format!("{credential_issuer}/token");
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
+                ".well-known/openid-configuration/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -1480,7 +1469,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     } else {
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
+                ".well-known/openid-configuration/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )))
             .respond_with(ResponseTemplate::new(404))
             .expect(1)
@@ -1489,7 +1478,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     }
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-credential-issuer"
+            ".well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1616,7 +1605,7 @@ async fn inner_continue_issuance_test(
         let token_endpoint = format!("{credential_issuer}/token");
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
+                ".well-known/openid-configuration/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -1642,7 +1631,7 @@ async fn inner_continue_issuance_test(
     } else {
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-configuration"
+                ".well-known/openid-configuration/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )))
             .respond_with(ResponseTemplate::new(404))
             .expect(1)
@@ -1651,7 +1640,7 @@ async fn inner_continue_issuance_test(
     }
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/final-1.0/{credential_schema_id}/.well-known/openid-credential-issuer"
+            ".well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -2094,14 +2083,12 @@ fn test_extract_offered_claims_success_missing_optional_object() {
             "Last Name".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Last Name Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "First Name".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("First Name Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2127,21 +2114,18 @@ fn test_extract_offered_claims_failed_partially_missing_optional_object() {
             "Last Name".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Last Name Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "First Name".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("First Name Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Street Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2159,70 +2143,60 @@ fn test_extract_offered_claims_success_object_array() {
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("111".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_string/1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("222".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_string/2".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("333".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "optional_array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("opt111".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("01".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("02".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field array/0".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("0array0".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field array/1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("0array1".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/1/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("11".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Street Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         // Field 2 and array is missing for array object 2
@@ -2247,28 +2221,24 @@ fn test_extract_offered_claims_success_optional_array_missing() {
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("1".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("01".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("02".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Street Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2292,21 +2262,18 @@ fn test_extract_offered_claims_mandatory_array_missing_error() {
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("01".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("02".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Street Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2323,21 +2290,18 @@ fn test_extract_offered_claims_mandatory_array_object_field_missing_error() {
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("1".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("02".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "Address/Street".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("Street Value".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2354,21 +2318,18 @@ fn test_extract_offered_claims_mandatory_object_error() {
             "array_string/0".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("1".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 1".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("02".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "array_object/0/Field 2".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("02".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2385,14 +2346,12 @@ fn test_extract_offered_claims_opt_object_opt_obj_present() {
             "opt_obj/obj_str".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("os".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "opt_obj/opt_obj/field_man".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("oofm".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2415,7 +2374,6 @@ fn test_extract_offered_claims_opt_object_opt_obj_missing() {
         "opt_obj/obj_str".to_string(),
         OpenID4VCICredentialValueDetails {
             value: Some("os".to_string()),
-            value_type: "STRING".to_string(),
         },
     )]);
 
@@ -2438,14 +2396,12 @@ fn test_extract_offered_claims_opt_object_opt_obj_present_man_field_missing_erro
             "opt_obj/obj_str".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("os".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
         (
             "opt_obj/opt_obj/field_opt".to_string(),
             OpenID4VCICredentialValueDetails {
                 value: Some("oofm".to_string()),
-                value_type: "STRING".to_string(),
             },
         ),
     ]);
@@ -2461,7 +2417,6 @@ fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing
         "opt_obj/opt_obj/field_man".to_string(),
         OpenID4VCICredentialValueDetails {
             value: Some("oofm".to_string()),
-            value_type: "STRING".to_string(),
         },
     )]);
 

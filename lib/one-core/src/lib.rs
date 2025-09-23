@@ -684,6 +684,7 @@ impl OneCore {
             ),
             oid4vci_final1_0_service: OID4VCIFinal1_0Service::new(
                 providers.core_base_url.clone(),
+                "OPENID4VCI_FINAL1".to_string(),
                 data_provider.get_credential_schema_repository(),
                 data_provider.get_credential_repository(),
                 data_provider.get_interaction_repository(),

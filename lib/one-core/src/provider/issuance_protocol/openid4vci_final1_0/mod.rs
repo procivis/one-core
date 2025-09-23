@@ -33,10 +33,10 @@ use super::openid4vci_final1_0::mapper::{
 };
 use super::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
-    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params, OpenID4VCIGrants,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
@@ -86,6 +86,7 @@ use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
+    OpenID4VCIFinal1CredentialOfferDTO,
 };
 use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -104,7 +105,7 @@ use crate::service::certificate::validator::{
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
-use crate::service::oid4vci_final1_0::service::credentials_format;
+use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
@@ -1189,9 +1190,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let credential_subject =
-            credentials_format(credential_schema.wallet_storage_type, &claims, true)
-                .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
+        let credential_subject = prepare_preview_claims_for_offer(&claims, true)
+            .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
         if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
@@ -1922,7 +1922,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
 async fn resolve_credential_offer(
     client: &dyn HttpClient,
     invitation_url: Url,
-) -> Result<OpenID4VCICredentialOfferDTO, IssuanceProtocolError> {
+) -> Result<OpenID4VCIFinal1CredentialOfferDTO, IssuanceProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
     let credential_offer_param = query_pairs.get(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY);
     let credential_offer_reference_param =
@@ -1987,24 +1987,20 @@ async fn get_discovery_and_issuer_metadata(
             .map_err(IssuanceProtocolError::Transport)
     }
 
-    let append_url_path = |path: &str| {
-        let mut openid_configuration_url = credential_issuer_endpoint.to_owned();
-        openid_configuration_url
-            .path_segments_mut()
-            .map_err(|_| {
-                IssuanceProtocolError::Failed(format!(
-                    "Invalid credential_issuer_endpoint URL: {credential_issuer_endpoint}",
-                ))
-            })?
-            .extend(path.split("/"));
-
-        Ok(openid_configuration_url.to_string())
-    };
-
     let token_endpoint_future = async {
-        let url = append_url_path(".well-known/openid-configuration")?;
+        let openid_configuration_endpoint = {
+            let origin = {
+                let mut cloned_endpoint_url = credential_issuer_endpoint.clone();
+                cloned_endpoint_url.set_path("");
+                cloned_endpoint_url.to_string()
+            };
+            // All path elements will be included after .well-known/openid-credential-issuer
+            let path = credential_issuer_endpoint.path();
+            format!("{origin}.well-known/openid-configuration{path}")
+        };
+
         let response = client
-            .get(&url)
+            .get(&openid_configuration_endpoint)
             .send()
             .await
             .context("send error")
@@ -2027,10 +2023,20 @@ async fn get_discovery_and_issuer_metadata(
         }
     };
 
-    let issuer_metadata = fetch(
-        client,
-        append_url_path(".well-known/openid-credential-issuer")?,
-    );
+    let issuer_metadata_endpoint = {
+        // Includes scheme, host, port
+        let origin = {
+            let mut cloned_endpoint_url = credential_issuer_endpoint.clone();
+            cloned_endpoint_url.set_path("");
+            cloned_endpoint_url.to_string()
+        };
+        // All path elements will be included after .well-known/openid-credential-issuer
+        let path = credential_issuer_endpoint.path();
+
+        format!("{origin}.well-known/openid-credential-issuer{path}")
+    };
+
+    let issuer_metadata = fetch(client, issuer_metadata_endpoint);
     tokio::try_join!(token_endpoint_future, issuer_metadata)
 }
 
@@ -2090,15 +2096,7 @@ fn build_claim_keys(
     let keys = collect_keys(claim_object, None);
     Ok(keys
         .into_iter()
-        .map(|(path, value_type)| {
-            (
-                path,
-                OpenID4VCICredentialValueDetails {
-                    value: None,
-                    value_type,
-                },
-            )
-        })
+        .map(|(path, _value_type)| (path, OpenID4VCICredentialValueDetails { value: None }))
         .collect())
 }
 

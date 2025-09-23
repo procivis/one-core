@@ -248,12 +248,14 @@ pub(super) fn create_claims_from_credential_definition(
     let mut claims: Vec<Claim> = vec![];
     let mut object_claim_schemas: Vec<&str> = vec![];
 
+    // TODO, the data_type will be fixed in https://procivis.atlassian.net/browse/ONE-7231,
+    // the type used to be included with the offer, now it needs to be retrieved from the credential schema
     for (key, value_details) in claim_keys {
         let new_schema_claim = CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
                 key: key.to_string(),
-                data_type: value_details.value_type.to_string(),
+                data_type: "STRING".to_string(),
                 created_date: now,
                 last_modified: now,
                 array: false,

@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use indexmap::IndexMap;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
@@ -29,9 +28,7 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::credential_schema::{
-    CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchemaRelations, CredentialSchemaType};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
@@ -42,9 +39,9 @@ use crate::provider::issuance_protocol::error::{
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestProofs,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
+    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialRequestProofs, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
@@ -119,6 +116,7 @@ impl OID4VCIFinal1_0Service {
 
         create_issuer_metadata_response(
             protocol_base_url,
+            &self.protocol_id,
             &oidc_format,
             &schema,
             &self.config,
@@ -168,7 +166,7 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
-    ) -> Result<OpenID4VCICredentialOfferDTO, ServiceError> {
+    ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
         let credential = self
@@ -233,12 +231,6 @@ impl OID4VCIFinal1_0Service {
             .as_ref()
             .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
 
-        let wallet_storage_type = credential
-            .schema
-            .as_ref()
-            .ok_or(ServiceError::MappingError("schema missing".to_string()))?
-            .wallet_storage_type;
-
         let claims = credential
             .claims
             .as_ref()
@@ -250,12 +242,9 @@ impl OID4VCIFinal1_0Service {
         let params: OpenID4VCIFinal1Params =
             self.config.issuance_protocol.get(&credential.protocol)?;
 
-        let credential_subject = credentials_format(
-            wallet_storage_type,
-            &claims,
-            params.enable_credential_preview,
-        )
-        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let credential_subject =
+            prepare_preview_claims_for_offer(&claims, params.enable_credential_preview)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         Ok(create_credential_offer(
             url,
@@ -766,33 +755,29 @@ impl OID4VCIFinal1_0Service {
     }
 }
 
-pub(crate) fn credentials_format(
-    wallet_storage_type: Option<WalletStorageTypeEnum>,
+pub(crate) fn prepare_preview_claims_for_offer(
     claims: &[Claim],
-    claims_with_values: bool,
+    include_claim_values: bool,
 ) -> Result<ExtendedSubjectDTO, OpenIDIssuanceError> {
     Ok(ExtendedSubjectDTO {
-        wallet_storage_type,
         keys: Some(ExtendedSubjectClaimsDTO {
-            claims: IndexMap::from_iter(
-                claims
-                    .iter()
-                    .filter(|claim| claim.value.is_some())
-                    .filter_map(|claim| {
-                        claim.schema.as_ref().map(|schema| {
-                            (
-                                claim.path.clone(),
-                                OpenID4VCICredentialValueDetails {
-                                    value: match claims_with_values {
-                                        true => claim.value.clone(),
-                                        false => None,
-                                    },
-                                    value_type: schema.data_type.clone(),
-                                },
-                            )
-                        })
-                    }),
-            ),
+            claims: claims
+                .iter()
+                .filter_map(|claim| {
+                    // If no value is present, the claim is filtered out / not included in the preview
+                    let claim_value = claim.value.clone()?;
+
+                    Some((
+                        claim.path.clone(),
+                        OpenID4VCICredentialValueDetails {
+                            value: match include_claim_values {
+                                true => Some(claim_value),
+                                false => None,
+                            },
+                        },
+                    ))
+                })
+                .collect(),
         }),
     })
 }

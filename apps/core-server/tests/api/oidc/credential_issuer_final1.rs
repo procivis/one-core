@@ -33,7 +33,7 @@ async fn test_get_credential_issuer_metadata_jwt() {
     assert_eq!(format!("{issuer}/credential"), resp["credential_endpoint"]);
     assert_eq!(
         format!(
-            "{}/ssi/openid4vci/final-1.0/nonce",
+            "{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce",
             context.config.app.core_base_url
         ),
         resp["nonce_endpoint"]

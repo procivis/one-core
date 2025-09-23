@@ -12,9 +12,9 @@ use super::mapper::{
     prepare_nested_representation,
 };
 use super::model::{
-    ExtendedSubjectDTO, OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    ExtendedSubjectDTO, OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
@@ -29,14 +29,18 @@ use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCICredentialConfigurationData;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    OpenID4VCICredentialConfigurationData, OpenID4VCIFinal1CredentialOfferDTO,
+};
 use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
     throw_if_interaction_created_date, throw_if_interaction_pre_authorized_code_used,
     throw_if_token_request_invalid, validate_refresh_token,
 };
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
     base_url: &str,
+    protocol_id: &str,
     oidc_format: &str,
     schema: &CredentialSchema,
     config: &CoreConfig,
@@ -58,9 +62,10 @@ pub(crate) fn create_issuer_metadata_response(
         credential_issuer: schema_base_url.to_owned(),
         authorization_servers: None,
         credential_endpoint: format!("{schema_base_url}/credential"),
-        nonce_endpoint: Some(format!("{base_url}/nonce")),
+        nonce_endpoint: Some(format!("{base_url}/{protocol_id}/nonce")),
         notification_endpoint: Some(format!("{schema_base_url}/notification")),
         credential_configurations_supported,
+        procivis_schema: Some(schema.imported_source_url.clone()),
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
             name: schema
                 .organisation
@@ -267,7 +272,7 @@ pub(crate) fn create_credential_offer(
     credential_schema_uuid: &CredentialSchemaId,
     credential_schema_id: &str,
     credential_subject: ExtendedSubjectDTO,
-) -> Result<OpenID4VCICredentialOfferDTO, OpenIDIssuanceError> {
+) -> Result<OpenID4VCIFinal1CredentialOfferDTO, OpenIDIssuanceError> {
     let issuer_identifier =
         credential
             .issuer_identifier
@@ -289,7 +294,7 @@ pub(crate) fn create_credential_offer(
                 .map(|issuer_certificate| issuer_certificate.chain.clone()),
         ),
     };
-    Ok(OpenID4VCICredentialOfferDTO {
+    Ok(OpenID4VCIFinal1CredentialOfferDTO {
         credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
         issuer_did,
         issuer_certificate,

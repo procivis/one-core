@@ -10,12 +10,11 @@ use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
-    OpenID4VCICredentialOfferRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
-    OpenID4VCIFinal1CredentialRequestRestDTO, OpenID4VCIFinal1CredentialResponseRestDTO,
-    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCINonceResponseRestDTO,
-    OpenID4VCINotificationRequestRestDTO, OpenID4VCITokenRequestRestDTO,
-    OpenID4VCITokenResponseRestDTO,
+    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    OpenID4VCIFinal1CredentialOfferRestDTO, OpenID4VCIFinal1CredentialRequestRestDTO,
+    OpenID4VCIFinal1CredentialResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCINonceResponseRestDTO, OpenID4VCINotificationRequestRestDTO,
+    OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
@@ -126,7 +125,7 @@ pub(crate) async fn oid4vci_final1_0_service_discovery(
         ("credential_id" = CredentialId, Path, description = "Credential id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VCICredentialOfferRestDTO),
+        (status = 200, description = "OK", body = OpenID4VCIFinal1CredentialOfferRestDTO),
         (status = 400, description = "Invalid request"),
         (status = 404, description = "Credential not found"),
         (status = 500, description = "Server error"),
@@ -154,7 +153,7 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(OpenID4VCICredentialOfferRestDTO::from(value)),
+            Json(OpenID4VCIFinal1CredentialOfferRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::OpenID4VCIError(error)) => {

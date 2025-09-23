@@ -4,10 +4,10 @@ use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
-    OpenID4VCICredentialRequestProofs, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
+    OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINonceResponseDTO,
     OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
@@ -34,6 +34,7 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
     pub nonce_endpoint: Option<String>,
+    pub procivis_schema: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
 }
 
@@ -246,8 +247,8 @@ pub(crate) struct OpenID4VCICredentialResponseEntryRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCICredentialOfferDTO)]
-pub(crate) struct OpenID4VCICredentialOfferRestDTO {
+#[from(OpenID4VCIFinal1CredentialOfferDTO)]
+pub(crate) struct OpenID4VCIFinal1CredentialOfferRestDTO {
     pub credential_issuer: String,
     pub credential_configuration_ids: Vec<String>,
     pub grants: OpenID4VCIGrantsRestDTO,
@@ -265,8 +266,6 @@ pub(crate) struct OpenID4VCICredentialOfferRestDTO {
 pub(crate) struct ExtendedSubjectRestDTO {
     #[from(with_fn = convert_inner)]
     pub keys: Option<ExtendedSubjectClaimsRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[derive(Clone, Serialize, Debug, ToSchema)]
@@ -280,7 +279,6 @@ pub(crate) struct ExtendedSubjectClaimsRestDTO {
 #[from(OpenID4VCICredentialValueDetails)]
 pub(crate) struct ProcivisSubjectClaimValueRestDTO {
     pub value: Option<String>,
-    pub value_type: String,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

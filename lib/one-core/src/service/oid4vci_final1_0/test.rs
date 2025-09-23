@@ -80,6 +80,7 @@ struct Mocks {
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
     OID4VCIFinal1_0Service::new(
         Some("http://127.0.0.1:3000".to_string()),
+        "OPENID4VCI_FINAL1".to_string(),
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.interaction_repository),
