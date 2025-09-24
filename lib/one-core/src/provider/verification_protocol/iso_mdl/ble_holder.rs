@@ -118,13 +118,13 @@ pub(crate) struct NfcHceSession {
 #[allow(clippy::too_many_arguments)]
 pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
-    qr_device_engagement: EmbeddedCbor<DeviceEngagement>,
     key_pair: KeyAgreement<EDeviceKey>,
     interaction_repository: Arc<dyn InteractionRepository>,
     mut interaction: Interaction,
     proof_repository: Arc<dyn ProofRepository>,
     proof_id: ProofId,
-    nfc: Option<NfcHceSession>,
+    qr_engagement: Option<EmbeddedCbor<DeviceEngagement>>,
+    nfc_engagement: Option<NfcHceSession>,
 ) -> Result<(), ServiceError> {
     let (tx, rx) = oneshot::channel();
     let proof_repository_clone = proof_repository.clone();
@@ -136,14 +136,56 @@ pub(crate) async fn receive_mdl_request(
         .schedule_continuation(
             interaction_data.continuation_task_id,
             |task_id, _, peripheral| async move {
-                let info =
-                    wait_for_active_device(&peripheral, interaction_data.service_uuid).await?;
+                let result: Result<_, VerificationProtocolError> = async {
+                    let connected_device_future =
+                        wait_for_active_device(&peripheral, interaction_data.service_uuid);
 
-                peripheral
-                    .stop_advertisement()
-                    .await
-                    .context("failed to stop advertisement")
-                    .map_err(VerificationProtocolError::Transport)?;
+                    let info = match (&qr_engagement, &nfc_engagement) {
+                        (None, None) => Err(VerificationProtocolError::Failed(
+                            "No engagement".to_string(),
+                        )),
+                        // if running only NFC engagement, failure of NFC session means failure of the whole proof flow
+                        (None, Some(nfc_only)) => {
+                            let session_failure_future = nfc_only.handler.session_failure().ok_or(
+                                VerificationProtocolError::Failed(
+                                    "NFC session failure receiver not available".to_string(),
+                                ),
+                            )?;
+                            tokio::select! {
+                                connected_device = connected_device_future => connected_device,
+                                failure_reason = session_failure_future => {
+                                    Err(match failure_reason {
+                                        Ok(nfc_error) => VerificationProtocolError::Failed(format!("NFC session failure: {nfc_error}")),
+                                        Err(rcv_error) => VerificationProtocolError::Failed(format!("NFC session failure: {rcv_error}")),
+                                    })
+                                }
+                            }
+                        }
+                        // if running QR engagement, then we can ignore NFC failure since QR-code engagement is still possible
+                        (Some(_qr), _) => connected_device_future.await,
+                    }?;
+
+                    peripheral
+                        .stop_advertisement()
+                        .await
+                        .context("failed to stop advertisement")
+                        .map_err(VerificationProtocolError::Transport)?;
+
+                    Ok(info)
+                }
+                .await;
+
+                let info = match result {
+                    Ok(info) => info,
+                    Err(err) => {
+                        let error_metadata = HistoryErrorMetadata {
+                            error_code: err.error_code(),
+                            message: err.to_string(),
+                        };
+                        set_proof_error(&*proof_repository, &proof_id, error_metadata).await;
+                        return Err(err);
+                    }
+                };
 
                 let result = tx.send(info.clone());
                 if let Err(device_info) = result {
@@ -151,43 +193,44 @@ pub(crate) async fn receive_mdl_request(
                 }
 
                 let result = async {
-                    let (engagement_type, handover, device_engagement) = match nfc {
+                    let (engagement_type, handover, device_engagement) = match nfc_engagement {
                         None => {
                             // NFC not used, the engagement must have been via QR-code
-                            (VerificationEngagement::QrCode, None, qr_device_engagement)
+                            (VerificationEngagement::QrCode, None, qr_engagement)
                         }
                         Some(NfcHceSession {
                             handler,
                             hce,
                             select_message,
-                            device_engagement: nfc_device_engagement,
+                            device_engagement,
                         }) => {
-                            hce.stop_hosting(true)
-                                .await
-                                .map_err(|e| VerificationProtocolError::Transport(e.into()))?;
-
-                            match handler
+                            if handler
                                 .message_read()
                                 .map_err(|e| VerificationProtocolError::Transport(e.into()))?
                             {
-                                true => {
-                                    // the NFC select message was read by a remote device, continue as NFC engaged
-                                    (
-                                        VerificationEngagement::NFC,
-                                        Some(Handover::Nfc(NFCHandover {
-                                            select_message: Bstr(select_message),
-                                            request_message: None,
-                                        })),
-                                        nfc_device_engagement,
-                                    )
-                                }
-                                false => {
-                                    // no NFC contact, the engagement must have been via QR-code
-                                    (VerificationEngagement::QrCode, None, qr_device_engagement)
-                                }
+                                // the NFC select message was read by a remote device, continue as NFC engaged
+                                (
+                                    VerificationEngagement::NFC,
+                                    Some(Handover::Nfc(NFCHandover {
+                                        select_message: Bstr(select_message),
+                                        request_message: None,
+                                    })),
+                                    Some(device_engagement),
+                                )
+                            } else {
+                                // no NFC contact, the engagement must have been via QR-code
+                                hce.stop_hosting(true)
+                                    .await
+                                    .map_err(|e| VerificationProtocolError::Transport(e.into()))?;
+
+                                (VerificationEngagement::QrCode, None, qr_engagement)
                             }
                         }
                     };
+
+                    let device_engagement = device_engagement.ok_or(
+                        VerificationProtocolError::Failed("Missing device engagement".to_string()),
+                    )?;
 
                     let session_establishment =
                         read_request(&peripheral, &info, interaction_data.service_uuid).await?;
@@ -493,6 +536,7 @@ pub(crate) async fn set_proof_error(
     proof_id: &ProofId,
     error_metadata: HistoryErrorMetadata,
 ) {
+    tracing::debug!("set_proof_error: {proof_id}, metadata: {error_metadata:?}");
     if let Err(err) = proof_repository
         .update_proof(
             proof_id,

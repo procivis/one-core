@@ -1,37 +1,63 @@
 // NFC static handover handling according to ISO 18013-5 (mDL) and NFC Forum, Connection Handover (CH) Technical Specification, Version 1.5
 
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use anyhow::bail;
+use tokio::sync::oneshot;
 
-use crate::provider::nfc::NfcError;
-use crate::provider::nfc::apdu::Response;
-use crate::provider::nfc::command::KnownCommand;
-use crate::provider::nfc::hce::NfcHceHandler;
+use super::NfcError;
+use super::apdu::Response;
+use super::command::{FileId, KnownCommand};
+use super::hce::{NfcHce, NfcHceHandler};
 
 /// Wraps NFC Static handover functionality
 pub(crate) struct NfcStaticHandoverHandler {
+    hce: Arc<dyn NfcHce>,
+    cc_file_content: Vec<u8>,
     ndef_file_content: Vec<u8>,
     state: Mutex<State>,
 }
 
-#[derive(Default)]
 struct State {
     message_read: bool,
-    current_file_content: Option<Vec<u8>>,
+    current_file: Option<File>,
+
+    // marks failed session (one in which engagement cannot happen anymore)
+    failure_sender: Option<oneshot::Sender<NfcError>>,
+    failure_receiver: Option<oneshot::Receiver<NfcError>>,
+}
+
+#[derive(PartialEq)]
+enum File {
+    CapabilityContainer,
+    NDEFMessage,
 }
 
 impl NfcStaticHandoverHandler {
-    pub(crate) fn new(ndef_file_content: Vec<u8>) -> Result<Self, NfcError> {
-        if ndef_file_content.len() > 0xFFFF {
+    pub(crate) fn new(hce: Arc<dyn NfcHce>, ndef_file_content: &[u8]) -> Result<Self, NfcError> {
+        let ndef_length = ndef_file_content.len();
+        if ndef_length > 0xFFFF {
             return Err(NfcError::Unknown {
-                reason: format!("NDEF file content too large: {}", ndef_file_content.len()),
+                reason: format!("NDEF file content too large: {ndef_length}"),
             });
         }
 
+        let len = ndef_length as u16;
+        let mut data = len.to_be_bytes().to_vec();
+        data.extend(ndef_file_content);
+
+        let (failure_sender, failure_receiver) = oneshot::channel();
+
         Ok(Self {
-            ndef_file_content,
-            state: Default::default(),
+            hce,
+            cc_file_content: capability_container_content(),
+            ndef_file_content: data,
+            state: Mutex::new(State {
+                message_read: false,
+                current_file: None,
+                failure_sender: Some(failure_sender),
+                failure_receiver: Some(failure_receiver),
+            }),
         })
     }
 
@@ -41,6 +67,11 @@ impl NfcStaticHandoverHandler {
             reason: format!("Failed to aquire lock: {e}"),
         })?;
         Ok(state.message_read)
+    }
+
+    /// awaitable marking session failure
+    pub(crate) fn session_failure(&self) -> Option<oneshot::Receiver<NfcError>> {
+        self.with_lock(|state| Ok(state.failure_receiver.take()), None)
     }
 
     fn with_lock<R>(&self, f: impl FnOnce(&mut State) -> anyhow::Result<R>, fallback: R) -> R {
@@ -67,32 +98,64 @@ const RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS: [u8; 2] = [0x6f, 0x00];
 /// Application ID of the Type 4 Tag NDEF application
 const ENGAGEMENT_APPLICATION_ID: [u8; 7] = [0xd2, 0x76, 0x00, 0x00, 0x85, 0x01, 0x01];
 
-const CAPABILITY_CONTAINER_FILE_ID: [u8; 2] = [0xe1, 0x03];
-const NDEF_FILE_ID: [u8; 2] = [0xe1, 0x04];
+const CAPABILITY_CONTAINER_FILE_ID: FileId = [0xe1, 0x03];
+const NDEF_FILE_ID: FileId = [0xe1, 0x04];
 
+#[async_trait::async_trait]
 impl NfcHceHandler for NfcStaticHandoverHandler {
     fn handle_command(&self, apdu: Vec<u8>) -> Vec<u8> {
         self.with_lock(
-            move |state| Ok(handle_apdu_command(apdu, state, &self.ndef_file_content)?.into()),
+            move |state| Ok(handle_apdu_command(apdu, state, self)?.into()),
             RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS.to_vec(),
         )
     }
 
-    fn on_disconnected(&self) {
+    async fn on_scanner_disconnected(&self) {
+        tracing::debug!("NFC scanner disconnected");
+        let message_read = self.with_lock(
+            |state| {
+                state.current_file = None;
+                Ok(state.message_read)
+            },
+            false,
+        );
+
+        if message_read {
+            if let Err(err) = self.hce.stop_hosting(true).await {
+                tracing::warn!("Failed to stop hosting: {err}");
+            }
+        }
+    }
+
+    async fn on_session_stopped(&self, reason: NfcError) {
         self.with_lock(
             |state| {
-                state.current_file_content = None;
+                let message_read = state.message_read;
+                tracing::debug!(
+                    "NFC session stopped, message_read: {message_read}, reason: {reason}"
+                );
+
+                // in case the session is cancelled by the system (iOS timeout, app put to background, ...)
+                // or by user via system overlay (iOS) we should fail the proof flow
+                if !message_read {
+                    if let Some(failure_sender) = state.failure_sender.take() {
+                        if let Err(err) = failure_sender.send(reason) {
+                            tracing::debug!("Failed to signal failure: {err}");
+                        }
+                    }
+                }
+
                 Ok(())
             },
             (),
-        )
+        );
     }
 }
 
 fn handle_apdu_command(
     command: Vec<u8>,
     state: &mut State,
-    ndef_file_content: &[u8],
+    handler: &NfcStaticHandoverHandler,
 ) -> anyhow::Result<Response> {
     let command: KnownCommand = command.try_into()?;
 
@@ -102,22 +165,17 @@ fn handle_apdu_command(
                 tracing::warn!("Invalid application selected: {application_id:?}");
                 RESPONSE_STATUS_ERROR_FILE_OR_APPLICATION_NOT_FOUND.into()
             } else {
-                state.current_file_content = None;
+                state.current_file = None;
                 RESPONSE_STATUS_SUCCESS.into()
             }
         }
         KnownCommand::SelectFile { file_id } => match file_id {
             CAPABILITY_CONTAINER_FILE_ID => {
-                state.current_file_content = Some(capability_container_content());
+                state.current_file = Some(File::CapabilityContainer);
                 RESPONSE_STATUS_SUCCESS.into()
             }
             NDEF_FILE_ID => {
-                let len = ndef_file_content.len() as u16;
-                let mut data = len.to_be_bytes().to_vec();
-                data.extend(ndef_file_content);
-
-                state.current_file_content = Some(data);
-                state.message_read = true;
+                state.current_file = Some(File::NDEFMessage);
                 RESPONSE_STATUS_SUCCESS.into()
             }
             _ => {
@@ -126,14 +184,23 @@ fn handle_apdu_command(
             }
         },
         KnownCommand::ReadBinary { offset, length } => {
-            let Some(content) = &state.current_file_content else {
+            let Some(file) = &state.current_file else {
                 bail!("No file selected");
+            };
+
+            let content = match file {
+                File::CapabilityContainer => &handler.cc_file_content,
+                File::NDEFMessage => &handler.ndef_file_content,
             };
 
             let start = offset as usize;
             let end = start + length;
             if end > content.len() {
                 bail!("Index out of bounds: offset:{offset}, lenght:{length}");
+            }
+
+            if file == &File::NDEFMessage && end == content.len() {
+                state.message_read = true;
             }
 
             let mut response: Response = RESPONSE_STATUS_SUCCESS.into();
@@ -174,9 +241,11 @@ fn capability_container_content() -> Vec<u8> {
 
 #[cfg(test)]
 mod tests {
+    use mockall::predicate::eq;
     use similar_asserts::assert_eq;
 
     use super::*;
+    use crate::provider::nfc::hce::MockNfcHce;
 
     #[test]
     fn test_capability_container_content() {
@@ -193,14 +262,21 @@ mod tests {
 
     #[test]
     fn test_static_handover_handler_no_contact() {
-        let handler = NfcStaticHandoverHandler::new(vec![0x01, 0x02]).unwrap();
+        let handler =
+            NfcStaticHandoverHandler::new(Arc::new(MockNfcHce::new()), &[0x01, 0x02]).unwrap();
         assert_eq!(handler.message_read().unwrap(), false);
     }
 
-    #[test]
-    fn test_static_handover_handler_regular_flow() {
+    #[tokio::test]
+    async fn test_static_handover_handler_regular_flow() {
+        let mut hce = MockNfcHce::new();
+        hce.expect_stop_hosting()
+            .once()
+            .with(eq(true))
+            .returning(|_| Ok(()));
+
         let ndef_file_content = vec![0x01, 0x02, 0x03];
-        let handler = NfcStaticHandoverHandler::new(ndef_file_content.clone()).unwrap();
+        let handler = NfcStaticHandoverHandler::new(Arc::new(hce), &ndef_file_content).unwrap();
 
         let run_command = |command: KnownCommand| -> Response {
             handler
@@ -267,5 +343,7 @@ mod tests {
         );
 
         assert_eq!(handler.message_read().unwrap(), true);
+
+        handler.on_scanner_disconnected().await;
     }
 }

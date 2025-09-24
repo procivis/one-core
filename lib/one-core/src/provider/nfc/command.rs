@@ -4,10 +4,12 @@ use anyhow::bail;
 
 use super::apdu::Command;
 
+pub(crate) type FileId = [u8; 2];
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum KnownCommand {
     SelectApplication { application_id: Vec<u8> },
-    SelectFile { file_id: [u8; 2] },
+    SelectFile { file_id: FileId },
     ReadBinary { offset: u16, length: usize },
     Other(Command),
 }

@@ -3,9 +3,11 @@ use std::sync::Arc;
 use super::NfcError;
 
 #[cfg_attr(test, mockall::automock)]
+#[async_trait::async_trait]
 pub trait NfcHceHandler: Send + Sync {
     fn handle_command(&self, apdu: Vec<u8>) -> Vec<u8>;
-    fn on_disconnected(&self);
+    async fn on_scanner_disconnected(&self);
+    async fn on_session_stopped(&self, reason: NfcError);
 }
 
 /// Provider of NFC host-card emulation (HCE)

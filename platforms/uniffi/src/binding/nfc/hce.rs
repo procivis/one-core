@@ -3,12 +3,16 @@ use std::sync::Arc;
 use crate::error::NfcError;
 
 #[uniffi::export]
+#[async_trait::async_trait]
 pub trait NfcHceHandler: Send + Sync {
     /// Handle incoming APDU command, return response
     fn handle_command(&self, apdu: Vec<u8>) -> Vec<u8>;
 
     /// Called when NFC scanner disconnects
-    fn on_disconnected(&self);
+    async fn on_scanner_disconnected(&self);
+
+    /// Called when NFC HCE hosting stops
+    async fn on_session_stopped(&self, reason: NfcError);
 }
 
 /// Provider of NFC host-card emulation (HCE)
@@ -57,12 +61,17 @@ impl one_core::provider::nfc::hce::NfcHce for NfcHceWrapper {
     }
 }
 
+#[async_trait::async_trait]
 impl NfcHceHandler for Arc<dyn one_core::provider::nfc::hce::NfcHceHandler> {
     fn handle_command(&self, apdu: Vec<u8>) -> Vec<u8> {
         self.as_ref().handle_command(apdu)
     }
 
-    fn on_disconnected(&self) {
-        self.as_ref().on_disconnected()
+    async fn on_scanner_disconnected(&self) {
+        self.as_ref().on_scanner_disconnected().await
+    }
+
+    async fn on_session_stopped(&self, reason: NfcError) {
+        self.as_ref().on_session_stopped(reason.into()).await
     }
 }

@@ -776,7 +776,7 @@ impl ProofService {
         let now = OffsetDateTime::now_utc();
         let ble_server = start_mdl_server(ble).await?;
         let key_pair = KeyAgreement::<EDeviceKey>::new();
-        let mut device_engagement = DeviceEngagement {
+        let device_engagement = DeviceEngagement {
             security: Security {
                 key_bytes: EmbeddedCbor::new(EDeviceKey::new(key_pair.device_key().0))
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
@@ -789,25 +789,28 @@ impl ProofService {
             }],
         };
 
-        let device_engagement_bytes = device_engagement
-            .clone()
-            .into_cbor()
-            .map_err(|err| ServiceError::Other(err.to_string()))?;
-
-        let qr_code = if request
+        let (qr_code, qr_engagement) = if request
             .engagement
             .contains(&VerificationEngagement::QrCode.to_string())
         {
-            Some(
-                device_engagement_bytes
-                    .generate_qr_code()
-                    .map_err(|err| ServiceError::Other(err.to_string()))?,
+            let device_engagement_bytes = device_engagement
+                .clone()
+                .into_cbor()
+                .map_err(|err| ServiceError::Other(err.to_string()))?;
+
+            (
+                Some(
+                    device_engagement_bytes
+                        .generate_qr_code()
+                        .map_err(|err| ServiceError::Other(err.to_string()))?,
+                ),
+                Some(device_engagement_bytes),
             )
         } else {
-            None
+            (None, None)
         };
 
-        let nfc = if request
+        let nfc_engagement = if request
             .engagement
             .contains(&VerificationEngagement::NFC.to_string())
         {
@@ -818,6 +821,7 @@ impl ProofService {
 
             // NFC device engagement does not contain device retrieval methods
             let device_engagement_bytes = {
+                let mut device_engagement = device_engagement;
                 device_engagement.device_retrieval_methods = vec![];
                 device_engagement
                     .into_cbor()
@@ -834,7 +838,10 @@ impl ProofService {
                         ServiceError::Other(format!("Failed to generate NFC payload: {err}"))
                     })?;
 
-            let handler = Arc::new(NfcStaticHandoverHandler::new(select_message.clone())?);
+            let handler = Arc::new(NfcStaticHandoverHandler::new(
+                nfc_hce_provider.clone(),
+                &select_message,
+            )?);
             nfc_hce_provider
                 .start_hosting(handler.to_owned(), request.ui_message)
                 .await?;
@@ -901,13 +908,13 @@ impl ProofService {
 
         receive_mdl_request(
             ble,
-            device_engagement_bytes,
             key_pair,
             self.interaction_repository.clone(),
             interaction,
             self.proof_repository.clone(),
             proof_id,
-            nfc,
+            qr_engagement,
+            nfc_engagement,
         )
         .await?;
 

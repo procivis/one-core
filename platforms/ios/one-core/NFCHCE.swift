@@ -71,11 +71,11 @@ extension NFCHCE: NfcHce {
             break
 
           case .readerDeselected:
-            handler.onDisconnected()
+            await handler.onScannerDisconnected()
             break
 
-          case .sessionInvalidated(reason: _):
-            handler.onDisconnected()
+          case .sessionInvalidated(reason: let reason):
+            await handler.onSessionStopped(reason: translateError(reason))
             await stop(status: .failure)
             return
           }
@@ -95,5 +95,23 @@ extension NFCHCE: NfcHce {
     await cardSession?.stopEmulation(status: status)
     cardSession?.invalidate()
     cardSession = nil
+  }
+
+  private func translateError(_ error: CardSession.Error) -> NfcError {
+    switch error {
+    case .invalidated: fallthrough
+    case .userInvalidated: fallthrough
+    case .emulationStopped:
+      return NfcError.Cancelled
+    case .maxSessionDurationReached:
+      return NfcError.SessionClosed
+    case .systemEligibilityFailed:
+      return NfcError.NotSupported
+    case .radioDisabled: fallthrough
+    case .systemNotAvailable:
+      return NfcError.NotEnabled
+    default:
+      return NfcError.Unknown(reason: error.localizedDescription)
+    }
   }
 }

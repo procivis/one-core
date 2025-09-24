@@ -9,6 +9,9 @@ import ch.procivis.one.core.NfcException
 import ch.procivis.one.core.NfcHce
 import ch.procivis.one.core.NfcHceHandler
 import ch.procivis.one.core.nfc.Util.exceptionWrapper
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlin.coroutines.EmptyCoroutineContext
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 
@@ -19,6 +22,7 @@ class HCE(val context: Context) : NfcHce {
         private val RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS = byteArrayOf(0x6f.toByte(), 0x00.toByte())
 
         private val eventBus = EventBus.getDefault()
+        private val scope = CoroutineScope(EmptyCoroutineContext)
     }
 
     class ApduCommand(val command: ByteArray)
@@ -45,7 +49,13 @@ class HCE(val context: Context) : NfcHce {
         @Subscribe
         fun onDisconnect(event: DisconnectEvent) {
             Log.d(TAG, "onDisconnect")
-            handler.onDisconnected()
+            scope.launch {
+                try {
+                    handler.onScannerDisconnected()
+                } catch (error: Throwable) {
+                    Log.wtf(TAG, "onScannerDisconnected failed: $error")
+                }
+            }
         }
     }
 
