@@ -348,12 +348,17 @@ pub(crate) enum SortableCredentialColumnRestEnum {
 #[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateCredentialRequestRestDTO {
-    /// Choose a credential schema to use.
+    /// UUID of the credential schema to use for this credential. The `id`
+    /// field is returned when creating a credential schema; do not use the
+    /// `schemaId` (document type) value.
     pub credential_schema_id: CredentialSchemaId,
-    /// Choose an identifier to use to issue the credential.
+    /// UUID of the identifier to use for issuing this credential. This
+    /// references an identifier entry (which could be a DID, key, or certificate)
+    /// created via the identifiers API. Use the `id` field from the identifier,
+    /// not the actual DID string or key value.
     pub issuer: Option<IdentifierId>,
     #[schema(deprecated = true)]
-    /// Choose a DID to use as an identifier.
+    /// Deprecated. Use `issuer` to set the identifier, regardless of type.
     pub issuer_did: Option<DidId>,
     /// If multiple keys are specified for the assertion method of the DID,
     /// use this value to specify which key should be used as the assertion
@@ -368,8 +373,8 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     #[schema(nullable = false)]
     pub issuer_certificate: Option<CertificateId>,
     /// Issuance protocol to use for issuing the credential to a wallet. Check
-    /// the `issuanceProtocol` object of the configuration for supported options and
-    /// reference the configuration instance.
+    /// your `issuanceProtocol` configuration for supported options and
+    /// reference the configured instance name.
     #[schema(example = "OPENID4VCI_DRAFT13")]
     pub protocol: String,
     /// Attribute from the credential schema, together with the

@@ -23,6 +23,8 @@ use crate::serialize::{front_time, front_time_option};
 #[serde(rename_all = "camelCase")]
 #[from(CredentialSchemaListItemResponseDTO)]
 pub(crate) struct CredentialSchemaListItemResponseRestDTO {
+    /// UUID of this credential schema. Use this value as `credentialSchemaId`
+    /// when creating credentials with this schema.
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -40,9 +42,12 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     pub imported_source_url: String,
-    /// Part of the `credentialSchema` property.
+    /// Document type or credential type identifier used by the credential
+    /// format. This is the semantic identifier for the credential type, not
+    /// the database ID of this schema record.
     pub schema_id: String,
-    /// Part of the `credentialSchema` property.
+    /// System-assigned schema type for credential validation. Automatically
+    /// set based on the credential format.
     pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
@@ -105,6 +110,8 @@ impl utoipa::ToSchema for CredentialSchemaType {}
 #[from(CredentialSchemaDetailResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemaResponseRestDTO {
+    /// UUID of this credential schema. Use this value as `credentialSchemaId`
+    /// when creating credentials with this schema.
     pub id: Uuid,
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -120,9 +127,12 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
-    /// Part of the `credentialSchema` property.
+    /// Document type or credential type identifier used by the credential
+    /// format. This is the semantic identifier for the credential type, not
+    /// the database ID of this schema record.
     pub schema_id: String,
-    /// Part of the `credentialSchema` property.
+    /// System-assigned schema type for credential validation. Automatically
+    /// set based on the credential format.
     pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
@@ -278,9 +288,13 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-    /// For credential formats requiring a schema ID, such as ISO mdoc, IETF
-    /// SD-JWT VC or VC Barcodes, pass it here.
-    /// For other formats, pass no value here.
+    /// Document type or credential type identifier. For credential formats
+    /// requiring a schema ID (check your `format` configuration for
+    /// `REQUIRES_SCHEMA_ID`), specify the document type here. For ISO mdoc,
+    /// use DocType. For IETF SD-JWT VC, use the vct value. For VC barcodes,
+    /// use predefined types like `UtopiaEmploymentDocument`. For formats not
+    /// requiring a schema ID, do not pass this field and a URI will be
+    /// auto-generated.
     #[schema(example = "org.iso.18013.5.1.mDL")]
     #[serde(default)]
     #[try_into(infallible)]
