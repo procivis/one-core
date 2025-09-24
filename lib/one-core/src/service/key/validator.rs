@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmType};
 use crate::model::key::Key;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::model::Features;

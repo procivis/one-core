@@ -1,5 +1,7 @@
+use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::fmt::Debug;
+use std::hash::Hash;
 use std::path::Path;
 
 use figment::Figment;
@@ -41,23 +43,23 @@ pub struct AppConfig<Custom> {
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoreConfig {
-    pub(crate) format: FormatConfig,
-    pub(crate) identifier: IdentifierConfig,
-    pub(crate) issuance_protocol: IssuanceProtocolConfig,
-    pub(crate) verification_protocol: VerificationProtocolConfig,
-    pub(crate) transport: TransportConfig,
-    pub(crate) revocation: RevocationConfig,
-    pub(crate) did: DidConfig,
+    pub format: FormatConfig,
+    pub identifier: IdentifierConfig,
+    pub issuance_protocol: IssuanceProtocolConfig,
+    pub verification_protocol: VerificationProtocolConfig,
+    pub transport: TransportConfig,
+    pub revocation: RevocationConfig,
+    pub did: DidConfig,
     pub datatype: DatatypeConfig,
-    pub(crate) key_algorithm: KeyAlgorithmConfig,
-    pub(crate) holder_key_storage: HolderKeyStorageConfig,
-    pub(crate) key_storage: KeyStorageConfig,
-    pub(crate) task: TaskConfig,
-    pub(crate) trust_management: TrustManagementConfig,
-    pub(crate) blob_storage: BlobStorageConfig,
+    pub key_algorithm: KeyAlgorithmConfig,
+    pub holder_key_storage: HolderKeyStorageConfig,
+    pub key_storage: KeyStorageConfig,
+    pub task: TaskConfig,
+    pub trust_management: TrustManagementConfig,
+    pub blob_storage: BlobStorageConfig,
     pub cache_entities: CacheEntitiesConfig,
     pub wallet_provider: WalletProviderConfig,
-    pub(crate) credential_issuer: CredentialIssuerConfig,
+    pub credential_issuer: CredentialIssuerConfig,
     pub verification_engagement: VerificationEngagementConfig,
 }
 
@@ -474,6 +476,12 @@ pub struct HolderKeyStorageFields {
     pub enabled: Option<bool>,
 }
 
+impl ConfigFields for HolderKeyStorageFields {
+    fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
+}
+
 pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;
 
 #[skip_serializing_none]
@@ -485,6 +493,12 @@ pub struct KeyAlgorithmFields {
     pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
+}
+
+impl ConfigFields for KeyAlgorithmFields {
+    fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
 }
 
 #[derive(
@@ -591,6 +605,12 @@ pub struct IdentifierFields {
     pub capabilities: Option<Value>,
 }
 
+impl ConfigFields for IdentifierFields {
+    fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
+}
+
 pub type TaskConfig = ConfigBlock<TaskType>;
 
 #[derive(
@@ -651,6 +671,12 @@ pub struct BlobStorageFields {
     pub enabled: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_params")]
     pub params: Option<Params>,
+}
+
+impl ConfigFields for BlobStorageFields {
+    fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
 }
 
 #[derive(
@@ -775,16 +801,6 @@ where
         self.0.iter_mut().map(|(k, v)| (k as _, v))
     }
 
-    pub fn get_if_enabled(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError> {
-        let fields = self.get_fields(key)?;
-
-        if !fields.enabled() {
-            return Err(ConfigValidationError::EntryDisabled(key.to_owned()));
-        }
-
-        Ok(fields)
-    }
-
     #[cfg(test)]
     pub fn insert(&mut self, key: String, fields: Fields<T>) {
         self.0.insert(key, fields);
@@ -815,6 +831,67 @@ impl ConfigBlock<TransportType> {
             .find(|(_, fields)| fields.r#type == r#type && fields.enabled())
             .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
             .0)
+    }
+}
+
+pub trait ConfigFields {
+    fn enabled(&self) -> bool;
+}
+
+pub trait ConfigExt<K, T> {
+    fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a T)>
+    where
+        K: 'a,
+        T: 'a;
+
+    fn get_if_enabled<Q>(&self, key: &Q) -> Result<&T, ConfigValidationError>
+    where
+        K: Borrow<Q> + Ord,
+        Q: ?Sized + ToString + Ord;
+}
+
+impl<K, T> ConfigExt<K, T> for Dict<K, T>
+where
+    K: ToString + Ord + Hash,
+    T: ConfigFields,
+{
+    fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a T)>
+    where
+        K: 'a,
+        T: 'a,
+    {
+        self.iter().filter(|(_, value)| value.enabled())
+    }
+
+    fn get_if_enabled<Q>(&self, key: &Q) -> Result<&T, ConfigValidationError>
+    where
+        K: Borrow<Q> + Ord,
+        Q: ?Sized + ToString + Ord,
+    {
+        let fields = self
+            .get(key)
+            .ok_or(ConfigValidationError::EntryNotFound(key.to_string()))?;
+        if !fields.enabled() {
+            return Err(ConfigValidationError::EntryDisabled(key.to_string()));
+        }
+        Ok(fields)
+    }
+}
+
+impl<T> ConfigExt<String, Fields<T>> for ConfigBlock<T> {
+    fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a String, &'a Fields<T>)>
+    where
+        T: 'a,
+    {
+        self.0.iter_enabled()
+    }
+
+    fn get_if_enabled<Q>(&self, key: &Q) -> Result<&Fields<T>, ConfigValidationError>
+    where
+        String: Borrow<Q> + Ord,
+        Q: ?Sized + ToString + Ord,
+    {
+        self.0.get_if_enabled(key)
     }
 }
 
@@ -859,10 +936,6 @@ where
         &self.r#type
     }
 
-    pub fn enabled(&self) -> bool {
-        self.enabled != Some(false)
-    }
-
     /// Deserialize current fields into a type.
     /// Private and public fields will be merged.
     pub fn deserialize<U: DeserializeOwned>(&self) -> Result<U, serde_json::Error> {
@@ -891,6 +964,12 @@ where
         }
 
         map
+    }
+}
+
+impl<T> ConfigFields for Fields<T> {
+    fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
     }
 }
 

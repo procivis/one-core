@@ -1,5 +1,5 @@
 use crate::config::ConfigValidationError;
-use crate::config::core_config::TrustManagementConfig;
+use crate::config::core_config::{ConfigExt, TrustManagementConfig};
 
 pub fn validate_trust_management(
     value: &str,

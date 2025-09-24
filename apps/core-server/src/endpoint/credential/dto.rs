@@ -6,7 +6,7 @@ use one_core::service::credential::dto::{
     MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId, OrganisationId,
@@ -344,7 +344,7 @@ pub(crate) enum SortableCredentialColumnRestEnum {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateCredentialRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateCredentialRequestRestDTO {
@@ -376,6 +376,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// your `issuanceProtocol` configuration for supported options and
     /// reference the configured instance name.
     #[schema(example = "OPENID4VCI_DRAFT13")]
+    #[modify_schema(field = issuance_protocol)]
     pub protocol: String,
     /// Attribute from the credential schema, together with the
     /// corresponding claim being made.

@@ -1,15 +1,20 @@
 use std::sync::Arc;
 
+use one_core::config::core_config::CoreConfig;
+use proc_macros::modify_schema_autodetect;
 use utoipa::openapi::extensions::Extensions;
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
-use utoipa::openapi::{Contact, ExternalDocs, Server, Tag};
+use utoipa::openapi::{Contact, ExternalDocs, Object, Server, Tag};
 use utoipa::{Modify, OpenApi};
 use utoipauto::utoipauto;
 
 use crate::build_info::{APP_VERSION, build};
 use crate::{AuthMode, ServerConfig};
 
-pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::openapi::OpenApi {
+pub(crate) fn gen_openapi_documentation(
+    server_config: Arc<ServerConfig>,
+    core_config: Arc<CoreConfig>,
+) -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
     #[derive(OpenApi)]
     #[openapi(components(schemas(shared_types::EntityId)))]
@@ -84,13 +89,16 @@ pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::op
 
     let mut docs = ApiDoc::openapi();
     let modifier = ApiDocModifier {
-        config: config.clone(),
+        config: server_config.clone(),
     };
     modifier.modify(&mut docs);
     let security_addon = SecurityAddon {
-        config: config.clone(),
+        config: server_config.clone(),
     };
     security_addon.modify(&mut docs);
+
+    CoreConfigModifier::new(core_config).modify(&mut docs);
+
     docs.info.title = "Procivis One Core API".into();
     docs.info.description = Some(indoc::formatdoc! {"
             The Procivis One Core API enables the full lifecycle of credentials.
@@ -119,7 +127,7 @@ pub(crate) fn gen_openapi_documentation(config: Arc<ServerConfig>) -> utoipa::op
             .description(Some("Generated server url"))
             .build(),
     ]);
-    docs.tags = Some(get_tags(config));
+    docs.tags = Some(get_tags(server_config));
     docs.external_docs = Some(
         ExternalDocs::builder()
             .url("https://docs.procivis.ch/")
@@ -548,4 +556,19 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
         ]);
     }
     tags
+}
+
+pub trait CoreConfigModifySchema {
+    fn core_config_modify_schema(core_config: &CoreConfig, object: &mut Object);
+}
+
+#[modify_schema_autodetect(path = "apps/core-server/src")]
+struct CoreConfigModifier {
+    core_config: Arc<CoreConfig>,
+}
+
+impl CoreConfigModifier {
+    fn new(core_config: Arc<CoreConfig>) -> Self {
+        Self { core_config }
+    }
 }

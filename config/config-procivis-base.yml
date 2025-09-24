@@ -549,6 +549,7 @@ holderKeyStorage:
   SOFTWARE:
     display: "holderKeyStorage.software"
     order: 10
+    enabled: true
   HARDWARE:
     display: "holderKeyStorage.hardware"
     order: 14

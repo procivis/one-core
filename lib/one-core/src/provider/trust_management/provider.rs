@@ -6,7 +6,7 @@ use serde_json::json;
 use super::simple_list::SimpleList;
 use super::{TrustManagement, simple_list};
 use crate::config::ConfigError;
-use crate::config::core_config::{TrustManagementConfig, TrustManagementType};
+use crate::config::core_config::{ConfigFields, TrustManagementConfig, TrustManagementType};
 use crate::model::credential::Credential;
 use crate::model::interaction::Interaction;
 use crate::model::trust_entity::TrustEntityRole;

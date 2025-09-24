@@ -9,7 +9,7 @@ use time::macros::format_description;
 use time::{Date, OffsetDateTime};
 
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::config::core_config::{ConfigExt, DatatypeConfig, DatatypeType};
 
 const DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
 

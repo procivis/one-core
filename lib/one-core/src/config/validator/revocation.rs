@@ -1,5 +1,5 @@
 use crate::config::ConfigValidationError;
-use crate::config::core_config::RevocationConfig;
+use crate::config::core_config::{ConfigExt, RevocationConfig};
 
 pub fn validate_revocation(
     value: &str,

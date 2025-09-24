@@ -7,8 +7,8 @@ use std::sync::{Arc, LazyLock};
 use did_config::DidWebVhParams;
 use indexmap::IndexMap;
 use one_core::config::core_config::{
-    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType,
-    FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
+    self, AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, ConfigFields,
+    DidType, FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigValidationError};
 use one_core::proto::session_provider::test::StaticSessionProvider;

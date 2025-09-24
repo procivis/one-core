@@ -1,6 +1,6 @@
 use shared_types::{IdentifierId, OrganisationId};
 
-use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
 use crate::model::identifier::IdentifierRelations;

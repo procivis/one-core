@@ -63,7 +63,10 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
 
 fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentication) -> Router {
     let mut openapi_documentation = if config.enable_open_api {
-        Some(gen_openapi_documentation(config.clone()))
+        Some(gen_openapi_documentation(
+            config.clone(),
+            state.core.config.clone(),
+        ))
     } else {
         None
     };

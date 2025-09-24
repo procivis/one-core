@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use serde_json::Value;
 
 use self::suspend_check::SuspendCheckProvider;
-use crate::config::core_config::{Fields, TaskConfig, TaskType};
+use crate::config::core_config::{ConfigFields, Fields, TaskConfig, TaskType};
 use crate::config::{ConfigError, ConfigParsingError};
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::task::holder_check_credential_status::HolderCheckCredentialStatus;

@@ -4375,6 +4375,7 @@ dependencies = [
  "serde_with",
  "syn 2.0.104",
  "utoipa",
+ "walkdir",
 ]
 
 [[package]]

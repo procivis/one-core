@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use indexmap::IndexMap;
 use one_core::config::core_config::{
-    AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, DidType, Fields,
-    FormatType, KeyAlgorithmType, KeyStorageType, Params, RevocationType,
+    AppConfig, CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, ConfigFields, DidType,
+    Fields, FormatType, KeyAlgorithmType, KeyStorageType, Params, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigValidationError, core_config};
 use one_core::provider::caching_loader::android_attestation_crl::{

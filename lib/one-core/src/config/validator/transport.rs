@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use itertools::Itertools;
 
-use crate::config::core_config::{Fields, TransportConfig, TransportType};
+use crate::config::core_config::{ConfigExt, ConfigFields, Fields, TransportConfig, TransportType};
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
 use crate::service::error::ValidationError;
 

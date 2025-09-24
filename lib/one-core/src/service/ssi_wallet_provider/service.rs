@@ -11,7 +11,7 @@ use crate::common_validator::{
     validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{Fields, KeyAlgorithmType, WalletProviderType};
+use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
 use crate::model::history::{

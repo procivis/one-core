@@ -1,7 +1,7 @@
 use serde::Serialize;
 
 use crate::config::core_config::{
-    ConfigBlock, DidConfig, DidType, IdentifierConfig, IdentifierType,
+    ConfigBlock, ConfigExt, DidConfig, DidType, IdentifierConfig, IdentifierType,
 };
 use crate::model::identifier::Identifier;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
