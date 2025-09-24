@@ -26,88 +26,77 @@ new regulations and requirements emerge.
 
 See the [key features][key] and complete solution [architecture][archi].
 
-## Getting started
+## Get started
+
+### Prerequisites
+
+- Rust 1.88+ - [Install via rustup.rs][rust]
+- Docker with Docker Compose - [Docker Desktop][dock] recommended for
+  easiest setup
+- Install cargo-make: `cargo install cargo-make`
+
+### Quick start
+
+1. Verify Docker is running: `docker compose version`
+
+2. Compile the project: `makers build`
+
+3. Start the database: `makers dbstart`
+
+4. Start the server: `makers run`
+
+5. Open http://localhost:3000/swagger-ui/index.html  
+  *You should see the Swagger UI interface*
+
+6. Click the green "Authorize" button and set the authorization bearer
+  token: `test`
+
+&rarr; *You can now make API calls directly to the server using
+  the Swagger UI interface*
+
+**What's running:**
+- Database: running in Docker
+- API server: http://localhost:3000
+- Swagger UI: http://localhost:3000/swagger-ui/index.html
+
+If you want some guidance on where to go from here, see
+[Issue your first credential][issue-first] on the docs.
+
+### Troubleshooting
+
+- Issues compiling - check `rustc --version` and run `rustup update`
+  if your version is <1.88.
+- Issues starting the database - make sure Docker is running.
+  - Mac: you should see the whale icon in your menu bar.
+  - Windows: you should see the whale icon in your system tray.
+- Issues making API calls - make sure you have added the authorization
+  bearer token `test` to the swagger.
+  - If you still have issues with calls, check the value of
+  `app.authToken` in `config/config-local.yml` as this determines
+  your authorization token.
+
+### Advanced configurations
+
+Values set in `dev.env` will override the configuration files found
+in `/config`.
+
+- Set a new server authorization token: `ONE_app__authToken=yourTokenHere`
+- Provide new encryption tokens for OpenID4VCI and private keys (default
+  configuration has placeholder values allowing the server to start):
+  - `ONE_issuanceProtocol__OPENID4VCI_DRAFT13__params__private__encryption=yourTokenHere`
+  - `ONE_issuanceProtocol__OPENID4VCI_DRAFT13_SWIYU__params__private__encryption=yourTokenHere`
+  - `ONE_keyStorage__INTERNAL__params__private__encryption=yourTokenHere`
+
+Encryption keys must be a 32 byte hex-encoded value. Use
+`openssl rand -hex 32` or another qualified tool to generate a
+cryptographically-secure key.
+
+For more, see the [configuration guide][config].
 
 ### Trial
 
-The fastest way to get started with Procivis One is to [join our Trial Environment][trial].
-Here you are given control of an organization on our server solution, the Procivis
-One Desk, and can quickly begin issuing and verifying credentials.
-
-### Documentation
-
-See our documentation:
-
-- [API Docs home][apidocs]
-- [Core API Reference][apiref]
-- [Core SDK Reference][sdkref]
-- [Docs home][docs]
-
-### Build
-
-You can build the project with cargo build as well as build certain target using cargo-make.
-Cargo-make will include dev.env file in the runtime. This makes env config convenient
-and create an opportunity to document used variables in one place.
-
-Install cargo-make
-
-```shell
-cargo install cargo-make
-```
-
-Build REST server
-
-```shell
-makers build
-```
-
-Run REST server
-
-```shell
-makers run
-```
-
-We can use `Makefile.toml` to add and fine tune build/run targets later in the project.
-
-### Configuration override
-
-The base configuration does not provide encryption keys to encrypt
-sensitive data such as private keys. Create a .yml file and provide
-encryption keys for each instance of OpenID4VC issuance protocol and
-internal key storage:
-
-- `issuanceProtocol.[instanceName].type: 'OPENID4VCI_DRAFT13'`
-- `keyStorage.[instanceName].type: 'INTERNAL'`
-
-Encryption keys must be a 32 byte hex-encoded value. Use:
-
-```shell
-openssl rand -hex 32
-```
-
-or another qualified tool to generate a cryptographically-secure key.
-For each instance, put its encryption key in `params.private.encryption`
-of the override configuration.
-
-Your override configuration file should look something like this:
-
-```yml
-issuanceProtocol:
-  OPENID4VCI_DRAFT13:
-    params:
-      private:
-        encryption: '93d9182795...'
-keyStorage:
-  INTERNAL:
-    params:
-      private:
-        encryption: 'd783157dac...'
-```
-
-Alternatively you can put your encryption keys in environment variables.
-
-See [environment variables](https://docs.procivis.ch/configure#environment-variables)
-in the docs.
+You can use the full enterprise stack when you [join our Trial Environment][trial].
+Here you are given control of an organization in the Procivis One Desk UI.
 
 ### Tests
 
@@ -468,11 +457,13 @@ Version 2.0](./LICENSE).
 [bbs2023]: https://www.w3.org/TR/vc-di-bbs/#bbs-2023
 [ble]: https://openid.net/specs/openid-4-verifiable-presentations-over-ble-1_0.html
 [canivc]: https://canivc.com/implementations/procivis-one-core/
+[config]: https://docs.procivis.ch/configure
 [cose]: https://www.rfc-editor.org/rfc/rfc9052
 [crydi3]: https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-01
 [did]: https://www.w3.org/TR/did-core/
 [djw]: https://github.com/quartzjer/did-jwk/blob/main/spec.md
 [dk]: https://w3c-ccg.github.io/did-method-key/
+[dock]: https://docs.docker.com/get-started/get-docker/
 [docs]: https://docs.procivis.ch/
 [dw]: https://w3c-ccg.github.io/did-method-web/
 [ecd]: https://www.w3.org/TR/vc-di-ecdsa/
@@ -486,6 +477,7 @@ Version 2.0](./LICENSE).
 [fips]: https://csrc.nist.gov/pubs/fips/204/final
 [iso5]: https://www.iso.org/standard/69084.html
 [iso7]: https://www.iso.org/standard/82772.html
+[issue-first]: https://docs.procivis.ch/get-started/issue
 [jld]: https://www.w3.org/TR/json-ld11/
 [jose]: https://w3c.github.io/vc-jose-cose/
 [jw]: https://datatracker.ietf.org/doc/html/rfc7519
@@ -495,6 +487,7 @@ Version 2.0](./LICENSE).
 [pow]: https://github.com/procivis/one-wallet
 [pqc]: https://csrc.nist.gov/pqc-standardization
 [rncore]: https://github.com/procivis/react-native-one-core
+[rust]: https://rustup.rs/
 [sdjwt]: https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-12.html
 [sdjwtvc]: https://www.ietf.org/archive/id/draft-ietf-oauth-sd-jwt-vc-05.html
 [sdkref]: https://docs.procivis.ch/sdk/overview
