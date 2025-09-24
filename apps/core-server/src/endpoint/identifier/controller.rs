@@ -27,7 +27,33 @@ use crate::router::AppState;
         ("bearer" = [])
     ),
     summary = "Create an identifier",
-    description = "Creates a new identifier of the specified type.",
+    description = indoc::formatdoc! {"
+    Creates a new identifier to use for issuing, holding, or verifying. All
+    identifiers have an identifier ID for credential operations and a separate
+    ID for managing the underlying resource.
+
+    Use the identifier ID with the `issuer` field when issuing credentials,
+    the `verifier` field when verifying credentials, and the `identifierId`
+    field when interacting as a holder. Use the resource ID
+    (DID ID, key ID, or certificate ID) with their respective APIs for
+    resource-specific management operations.
+
+    For a DID identifier: Specify a name, the method, and the keys
+    to use for the verification methods. The system assigns an ID to both
+    the identifier and the DID. Use the DID ID with the DID API for operations
+    like deactivation.
+
+    For a key identifier: Create the key first using the key API. Pass
+    the key ID and a name for the identifier. The system assigns an ID
+    to the identifier. Use the key ID with the key API for key-specific
+    management operations.
+
+    For a certificate identifier: Use the key API to generate a key and a
+    Certificate Signing Request (CSR). When you have a signed certificate,
+    pass the certificate in PEM format, also specifying the original key ID
+    and a name for the identifier. Use the certificate ID with the certificate
+    API for certificate operations.
+    "},
 )]
 #[require_permissions(Permission::IdentifierCreate)]
 pub(crate) async fn post_identifier(

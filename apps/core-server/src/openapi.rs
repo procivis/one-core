@@ -191,6 +191,20 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
+                       .name("identifier_management")
+                       .description(Some(indoc::formatdoc! {"
+                Create and manage identifiers of different types for different identity
+                ecosystems. An identifier is needed to issue, hold, or verify.
+
+                Related guide: [Identifiers](/identifiers)
+            "}))
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Identifiers")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
                        .name("certificate_management")
                        .description(Some(indoc::formatdoc! {"
                 Manage certificates in the system. To add a certificate as an identifier,
@@ -205,30 +219,13 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                    Tag::builder()
                        .name("did_management")
                        .description(Some(indoc::formatdoc! {"
-                These endpoints are being phased out, but they can be used to create and
-                manage DIDs (Decentralized Identifiers). Use the
-                [identifiers](/reference/core/identifier-management) endpoints to create and manage
-                DIDs.
-
-                Related guide: [DIDs](/dids)
+                Use the identifier API to create DIDs. The system assigns an ID to both
+                the identifier and the DID. Use the DID ID returned from the identifier
+                response with this DID API for management operations like deactivation.
             "}))
                        .extensions(Some(
                            Extensions::builder()
                                .add("x-displayName", "DIDs")
-                               .build(),
-                       ))
-                       .build(),
-                   Tag::builder()
-                       .name("identifier_management")
-                       .description(Some(indoc::formatdoc! {"
-                Create and manage identifiers of different types for different identity
-                ecosystems. An identifier is needed to issue, hold, or verify.
-
-                Related guide: [Identifiers](/identifiers)
-            "}))
-                       .extensions(Some(
-                           Extensions::builder()
-                               .add("x-displayName", "Identifiers")
                                .build(),
                        ))
                        .build(),

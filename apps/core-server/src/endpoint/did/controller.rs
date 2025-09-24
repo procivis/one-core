@@ -94,13 +94,13 @@ pub(crate) async fn get_did_list(
     ),
     summary = "Create a DID",
     description = indoc::formatdoc! {"
-        Creates a DID using a key, or keys, and a method.
+        Deprecated. Use the identifier API to create a DID as an identifier
+          to use in issuing, holding, or verifying.
 
-        The `method` value must reference specific configuration instances
-        from your system configuration. This is because the system allows
-        multiple configurations of the same type.
-
-        Related guide: [DIDs](/dids)
+        When you create a DID as an identifier, both the identifier and the
+        DID receive separate system IDs. You can access the DID's system ID
+        from the identifier response to use with the DID API for operations
+        like DID deactivation.
     "},
 )]
 #[require_permissions(Permission::DidCreate)]
