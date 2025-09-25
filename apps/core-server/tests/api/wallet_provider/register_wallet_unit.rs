@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit::{WalletUnitListQuery, WalletUnitStatus};
+use one_core::model::wallet_unit::{WalletUnitClaims, WalletUnitListQuery, WalletUnitStatus};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::util::jwt::Jwt;
@@ -50,7 +50,8 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
 
     assert!(resp_json["id"].as_str().is_some());
 
-    let attestation = Jwt::<()>::decompose_token(resp_json["attestation"].as_str().unwrap());
+    let attestation =
+        Jwt::<WalletUnitClaims>::decompose_token(resp_json["attestation"].as_str().unwrap());
     let Ok(attestation_jwt) = attestation else {
         panic!("attestation is not a valid JWT");
     };
@@ -59,6 +60,15 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
         "oauth-client-attestation+jwt"
     );
     assert!(attestation_jwt.payload.proof_of_possession_key.is_some());
+    assert_eq!(
+        attestation_jwt.payload.custom.wallet_name.as_deref(),
+        Some("Procivis One Trial Wallet")
+    );
+    assert_eq!(
+        attestation_jwt.payload.custom.wallet_link.as_deref(),
+        Some("https://procivis.ch")
+    );
+
     let wallet_units = context
         .db
         .wallet_units

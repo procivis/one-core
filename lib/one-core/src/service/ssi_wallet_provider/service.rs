@@ -21,7 +21,8 @@ use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{
-    UpdateWalletUnitRequest, WalletUnit, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
+    UpdateWalletUnitRequest, WalletUnit, WalletUnitClaims, WalletUnitOs, WalletUnitRelations,
+    WalletUnitStatus,
 };
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -241,7 +242,7 @@ impl SSIWalletProviderService {
         let attestation = self.create_attestation(
             now,
             wallet_provider,
-            config_params.lifetime.expiration_time,
+            config_params,
             public_key_jwk,
             &auth_fn,
         )?;
@@ -563,10 +564,10 @@ impl SSIWalletProviderService {
         &self,
         now: OffsetDateTime,
         wallet_provider_name: &str,
-        expiration_time: i64,
+        config_params: &WalletProviderParams,
         proof_jwk: PublicKeyJwk,
         auth_fn: &AuthenticationFn,
-    ) -> Result<Jwt<()>, ServiceError> {
+    ) -> Result<Jwt<WalletUnitClaims>, ServiceError> {
         Ok(Jwt::new(
             WUA_JWT_TYPE.to_string(),
             auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
@@ -576,7 +577,9 @@ impl SSIWalletProviderService {
             None,
             JWTPayload {
                 issued_at: Some(now),
-                expires_at: Some(now.add(Duration::seconds(expiration_time))),
+                expires_at: Some(
+                    now.add(Duration::seconds(config_params.lifetime.expiration_time)),
+                ),
                 invalid_before: Some(now),
                 issuer: self.base_url.clone(),
                 subject: self
@@ -591,7 +594,10 @@ impl SSIWalletProviderService {
                         jwk: proof_jwk.into(),
                     },
                 }),
-                custom: (),
+                custom: WalletUnitClaims {
+                    wallet_name: Some(config_params.wallet_name.clone()),
+                    wallet_link: Some(config_params.wallet_link.clone()),
+                },
             },
         ))
     }

@@ -93,3 +93,9 @@ pub struct UpdateWalletUnitRequest {
     pub last_issuance: Option<OffsetDateTime>,
     pub public_key: Option<String>,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
+pub struct WalletUnitClaims {
+    pub wallet_name: Option<String>,
+    pub wallet_link: Option<String>,
+}

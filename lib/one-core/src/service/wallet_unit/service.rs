@@ -13,7 +13,7 @@ use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{
-    WalletUnitListQuery, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
+    WalletUnitClaims, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
 };
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
@@ -162,7 +162,8 @@ impl WalletUnitService {
             };
 
         let key_id = result.key.id;
-        let attestation_token: DecomposedToken<()> = Jwt::decompose_token(&result.attestation)?;
+        let attestation_token: DecomposedToken<WalletUnitClaims> =
+            Jwt::decompose_token(&result.attestation)?;
         let now = self.clock.now_utc();
         let wallet_unit_attestation = WalletUnitAttestation {
             id: Uuid::new_v4().into(),
