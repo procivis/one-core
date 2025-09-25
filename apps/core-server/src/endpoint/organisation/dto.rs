@@ -29,8 +29,13 @@ pub(crate) struct UpsertOrganisationRequestRestDTO {
     pub name: Option<String>,
     #[schema(value_type = bool, example = true)]
     pub deactivate: Option<bool>,
+    /// Specify which configured wallet provider this organization will use
+    /// to issue attestations.
     #[serde(default, with = "::serde_with::rust::double_option")]
+    #[schema(example = "PROCIVIS_ONE")]
     pub wallet_provider: Option<Option<String>>,
+    /// Specify which identifier to use as the attestation issuer. This can
+    /// be any type of identifier but it must be backed by an ECDSA key.
     #[serde(default, with = "::serde_with::rust::double_option")]
     pub wallet_provider_issuer: Option<Option<IdentifierId>>,
 }

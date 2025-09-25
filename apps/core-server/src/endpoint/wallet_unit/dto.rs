@@ -97,10 +97,10 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
     /// Return only wallet units with the specified status.
     #[param(rename = "status[]", inline, nullable = false)]
     pub status: Option<Vec<WalletUnitStatusRestEnum>>,
-    /// Return only wallet units with the specified OS.
+    /// Return only wallet units with the specified operating systems.
     #[param(rename = "os[]", inline, nullable = false)]
     pub os: Option<Vec<WalletUnitOsRestEnum>>,
-    /// Return only wallet units with the specified wallet provider type.
+    /// Return only wallet units with the specified wallet provider types.
     #[param(rename = "walletProviderType[]", inline, nullable = false)]
     pub wallet_provider_type: Option<Vec<String>>,
     /// Return only the wallet unit with the specified attestation.

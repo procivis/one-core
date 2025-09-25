@@ -377,9 +377,9 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                    Tag::builder()
                        .name("wallet_unit")
                        .description(Some(indoc::formatdoc! {"
-                Manage Wallet Unit Attestations issued by the system.
+                Manage wallet units and attestations issued by the system.
 
-                Wallets use the `holder-` endpoints to manage its attestation.
+                Wallets use the `holder-` endpoints to manage attestations.
             "}))
                        .extensions(Some(
                            Extensions::builder()

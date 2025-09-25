@@ -82,7 +82,7 @@ pub(crate) async fn get_wallet_unit_details(
     security(
         ("bearer" = [])
     ),
-    summary = "Revokes a wallet unit",
+    summary = "Revoke a wallet unit",
     description = "Revokes a given wallet unit.",
 )]
 #[require_permissions(Permission::WalletUnitRevoke)]
@@ -109,8 +109,8 @@ pub(crate) async fn revoke_wallet_unit(
     security(
         ("bearer" = [])
     ),
-    summary = "Permanently removes a wallet unit",
-    description = "Permanently removes  a given wallet unit.",
+    summary = "Delete a wallet unit",
+    description = "Permanently deletes a given wallet unit from the database, including history entries.",
 )]
 #[require_permissions(Permission::WalletUnitDelete)]
 pub(crate) async fn remove_wallet_unit(
@@ -134,7 +134,7 @@ pub(crate) async fn remove_wallet_unit(
     security(
         ("bearer" = [])
     ),
-    summary = "Register wallet unit and fetch attestation.",
+    summary = "Register wallet unit",
     description = indoc::formatdoc! {"
         Register wallet unit and fetch attestation.
     "},
@@ -164,7 +164,7 @@ pub(crate) async fn wallet_unit_holder_register(
     security(
         ("bearer" = [])
     ),
-    summary = "Refreshes wallet unit attestation.",
+    summary = "Refresh wallet unit attestation",
     description = indoc::formatdoc! {"
         Refreshes wallet unit attestation.
     "},
@@ -200,7 +200,7 @@ pub(crate) async fn wallet_unit_holder_refresh(
         ("bearer" = [])
     ),
     tag = "wallet_unit",
-    summary = "Retrieve wallet unit attestation.",
+    summary = "Retrieve wallet unit attestation",
     description = indoc::formatdoc! {"
         Retrieve wallet unit attestation.
     "},
