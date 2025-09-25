@@ -350,7 +350,6 @@ sdk:update_doc_sdk_version:
     REPO_PATH: ./one-documentation
     COMMIT_MESSAGE: "Update Docs SDK version to $CI_PIPELINE_ID"
     MR_TITLE: "Update Docs SDK version to $CI_PIPELINE_ID"
-    REVIEWER_ID: 44
     EXTRA_ARGS: >
       --move sdk_version.json:sdk_version.json
   before_script:
