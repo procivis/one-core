@@ -5,6 +5,7 @@ use proc_macros::require_permissions;
 use shared_types::{OrganisationId, WalletUnitId};
 
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::wallet_unit::dto::{
     GetWalletUnitsResponseRestDTO, HolderAttestationsQueryParams,
@@ -35,23 +36,15 @@ pub(crate) async fn get_wallet_unit_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListWalletUnitsQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetWalletUnitsResponseRestDTO> {
-    let organisation_id = query.filter.organisation_id;
-    let query = match query.try_into() {
-        Ok(q) => q,
-        Err(e) => {
-            return OkOrErrorResponse::from_service_error_with_trace(
-                e,
-                state,
-                "getting wallet unit list",
-            );
-        }
-    };
-
-    let result = state
-        .core
-        .wallet_unit_service
-        .get_wallet_unit_list(&organisation_id, query)
-        .await;
+    let result = async {
+        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
+        state
+            .core
+            .wallet_unit_service
+            .get_wallet_unit_list(&organisation_id, query.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "getting wallet unit list")
 }
 

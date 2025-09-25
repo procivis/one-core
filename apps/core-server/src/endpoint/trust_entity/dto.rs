@@ -204,6 +204,7 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
+    #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
 
     /// Return only entities which were created after this time.

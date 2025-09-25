@@ -212,7 +212,8 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     #[param(nullable = false)]
     pub search_type: Option<HistorySearchEnumRest>,
     /// Specify the organizaton from which to return history events.
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     #[param(nullable = false)]
     pub user: Option<String>,
 }

@@ -3,12 +3,16 @@ use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
+use one_core::service::error::ServiceError;
 
 use super::dto::KeyFilterQueryParamsRest;
 use crate::dto::common::ExactColumn;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
-impl From<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
-    fn from(value: KeyFilterQueryParamsRest) -> Self {
+impl TryFrom<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
+    type Error = ServiceError;
+
+    fn try_from(value: KeyFilterQueryParamsRest) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = |column| {
             if exact.contains(&column) {
@@ -18,7 +22,10 @@ impl From<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
             }
         };
 
-        let organisation_id = KeyFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = KeyFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
 
         let name = value.name.map(|name| {
             KeyFilterValue::Name(StringMatch {
@@ -58,7 +65,7 @@ impl From<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
             })
         });
 
-        organisation_id
+        Ok(organisation_id
             & name
             & key_algorithms
             & key_storages
@@ -67,6 +74,6 @@ impl From<KeyFilterQueryParamsRest> for ListFilterCondition<KeyFilterValue> {
             & created_date_after
             & created_date_before
             & last_modified_after
-            & last_modified_before
+            & last_modified_before)
     }
 }

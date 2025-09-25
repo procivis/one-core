@@ -186,7 +186,8 @@ pub(crate) type GetProofSchemaQuery =
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofSchemasFilterQueryParamsRest {
     /// Specify the organization from which to return proof schemas.
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     /// Return only proof schemas with a name starting with this string.
     /// Not case-sensitive.
     #[param(nullable = false)]

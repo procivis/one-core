@@ -3,12 +3,16 @@ use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
+use one_core::service::error::ServiceError;
 use one_dto_mapper::convert_inner;
 
 use super::dto::{ExactIdentifierFilterColumnRestEnum, IdentifierFilterQueryParamsRestDTO};
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
-impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<IdentifierFilterValue> {
-    fn from(value: IdentifierFilterQueryParamsRestDTO) -> Self {
+impl TryFrom<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<IdentifierFilterValue> {
+    type Error = ServiceError;
+
+    fn try_from(value: IdentifierFilterQueryParamsRestDTO) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = |column| {
             if exact.contains(&column) {
@@ -18,8 +22,10 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             }
         };
 
-        let organisation_id =
-            IdentifierFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = IdentifierFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
 
         let name = value.name.map(|name| {
             IdentifierFilterValue::Name(StringMatch {
@@ -73,7 +79,7 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             })
         });
 
-        organisation_id
+        Ok(organisation_id
             & name
             & ids
             & types
@@ -86,6 +92,6 @@ impl From<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identifier
             & created_date_after
             & created_date_before
             & last_modified_after
-            & last_modified_before
+            & last_modified_before)
     }
 }

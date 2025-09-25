@@ -3,13 +3,17 @@ use one_core::model::list_filter::{
     ValueComparison,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
+use one_core::service::error::ServiceError;
 
 use super::dto::{CredentialSchemasExactColumn, CredentialSchemasFilterQueryParamsRest};
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
-impl From<CredentialSchemasFilterQueryParamsRest>
+impl TryFrom<CredentialSchemasFilterQueryParamsRest>
     for ListFilterCondition<CredentialSchemaFilterValue>
 {
-    fn from(value: CredentialSchemasFilterQueryParamsRest) -> Self {
+    type Error = ServiceError;
+
+    fn try_from(value: CredentialSchemasFilterQueryParamsRest) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
         let get_string_match_type = |column| {
             if exact.contains(&column) {
@@ -19,8 +23,10 @@ impl From<CredentialSchemasFilterQueryParamsRest>
             }
         };
 
-        let organisation_id =
-            CredentialSchemaFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = CredentialSchemaFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
 
         let name = value.name.map(|name| {
             CredentialSchemaFilterValue::Name(StringMatch {
@@ -68,7 +74,7 @@ impl From<CredentialSchemasFilterQueryParamsRest>
             })
         });
 
-        organisation_id
+        Ok(organisation_id
             & name
             & formats
             & schema_id
@@ -76,6 +82,6 @@ impl From<CredentialSchemasFilterQueryParamsRest>
             & created_date_after
             & created_date_before
             & last_modified_after
-            & last_modified_before
+            & last_modified_before)
     }
 }

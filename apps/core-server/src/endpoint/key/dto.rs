@@ -112,7 +112,8 @@ pub(crate) enum SortableKeyColumnRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct KeyFilterQueryParamsRest {
     /// Specify the organization from which to retrieve keys.
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     /// Return all keys with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,

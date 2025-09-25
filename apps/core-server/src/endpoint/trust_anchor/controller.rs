@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
 use shared_types::TrustAnchorId;
 
@@ -88,10 +89,16 @@ pub(crate) async fn get_trust_anchors(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<ListTrustAnchorsQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetTrustAnchorListResponseRestDTO> {
-    let result = state
-        .core
-        .trust_anchor_service
-        .list_trust_anchors(query.into())
+    let result =
+        async {
+            state
+                .core
+                .trust_anchor_service
+                .list_trust_anchors(query.try_into().map_err(|e: std::convert::Infallible| {
+                    ServiceError::MappingError(e.to_string())
+                })?)
+                .await
+        }
         .await;
     OkOrErrorResponse::from_result(result, state, "listing trust anchors")
 }

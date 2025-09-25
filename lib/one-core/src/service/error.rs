@@ -214,6 +214,9 @@ pub enum BusinessLogicError {
     #[error("Organisation {0} is deactivated")]
     OrganisationIsDeactivated(OrganisationId),
 
+    #[error("Organisation not specified")]
+    OrganisationNotSpecified,
+
     #[error("Incompatible DID type, reason: {reason}")]
     IncompatibleDidType { reason: String },
 
@@ -1410,6 +1413,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Wallet provider not associated with any organisation")]
     BR_0286,
+
+    #[strum(message = "Organisation not specified")]
+    BR_0290,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1582,6 +1588,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::CertificateAlreadyExists => ErrorCode::BR_0247,
             Self::IdentifierOrganisationMismatch => ErrorCode::BR_0248,
             Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
+            Self::OrganisationNotSpecified => ErrorCode::BR_0290,
         }
     }
 }

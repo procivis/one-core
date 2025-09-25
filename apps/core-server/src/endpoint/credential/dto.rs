@@ -183,7 +183,7 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     /// Indication of what type of key storage the wallet should use.
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
@@ -246,7 +246,8 @@ pub(crate) enum SearchType {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialsFilterQueryParamsRest {
     /// Specify the organization from which to return credentials.
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     /// Return only credentials with a name starting with this string.
     #[param(nullable = false)]
     pub name: Option<String>,
@@ -375,7 +376,6 @@ pub(crate) struct CreateCredentialRequestRestDTO {
     /// Issuance protocol to use for issuing the credential to a wallet. Check
     /// your `issuanceProtocol` configuration for supported options and
     /// reference the configured instance name.
-    #[schema(example = "OPENID4VCI_DRAFT13")]
     #[modify_schema(field = issuance_protocol)]
     pub protocol: String,
     /// Attribute from the credential schema, together with the

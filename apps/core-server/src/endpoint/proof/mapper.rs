@@ -1,17 +1,24 @@
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, ValueComparison,
 };
+use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::ProofFilterValue;
 use one_dto_mapper::convert_inner;
 
 use super::dto::ProofsFilterQueryParamsRest;
 use crate::dto::common::ExactColumn;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
-impl From<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue> {
-    fn from(value: ProofsFilterQueryParamsRest) -> Self {
+impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue> {
+    type Error = ServiceError;
+
+    fn try_from(value: ProofsFilterQueryParamsRest) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
 
-        let organisation_id = ProofFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = ProofFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
 
         let name = value.name.map(|name| {
             let filter = if exact.contains(&ExactColumn::Name) {
@@ -89,7 +96,7 @@ impl From<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue>
             })
         });
 
-        organisation_id
+        Ok(organisation_id
             & name
             & proof_states
             & proof_roles
@@ -103,6 +110,6 @@ impl From<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue>
             & requested_date_after
             & requested_date_before
             & completed_date_after
-            & completed_date_before
+            & completed_date_before)
     }
 }

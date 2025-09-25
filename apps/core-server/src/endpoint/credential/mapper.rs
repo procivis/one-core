@@ -7,6 +7,7 @@ use one_core::service::error::{BusinessLogicError, ServiceError};
 
 use super::dto::{CredentialsFilterQueryParamsRest, SearchType};
 use crate::dto::common::ExactColumn;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
 impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFilterValue> {
     type Error = ServiceError;
@@ -25,8 +26,10 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             }
         };
 
-        let organisation_id =
-            CredentialFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = CredentialFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
 
         let name = value.name.map(|name| {
             CredentialFilterValue::CredentialSchemaName(StringMatch {

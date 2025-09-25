@@ -14,6 +14,7 @@ use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetProofsResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
 use crate::permissions::Permission;
@@ -118,12 +119,15 @@ pub(crate) async fn get_proofs(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetProofQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetProofsResponseRestDTO> {
-    let organisation_id = query.filter.organisation_id;
-    let result = state
-        .core
-        .proof_service
-        .get_proof_list(&organisation_id, query.into())
-        .await;
+    let result = async {
+        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
+        state
+            .core
+            .proof_service
+            .get_proof_list(&organisation_id, query.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "getting proofs")
 }
 

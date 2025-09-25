@@ -9,6 +9,7 @@ use shared_types::KeyId;
 use super::dto::GetKeyQuery;
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::key::dto::{
     KeyGenerateCSRRequestRestDTO, KeyGenerateCSRResponseRestDTO, KeyListItemResponseRestDTO,
@@ -104,12 +105,15 @@ pub(crate) async fn get_key_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetKeyQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetKeyListResponseRestDTO> {
-    let organisation_id = query.filter.organisation_id;
-    let result = state
-        .core
-        .key_service
-        .get_key_list(&organisation_id, query.into())
-        .await;
+    let result = async {
+        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
+        state
+            .core
+            .key_service
+            .get_key_list(&organisation_id, query.try_into()?)
+            .await
+    }
+    .await;
 
     match result {
         Err(error) => {

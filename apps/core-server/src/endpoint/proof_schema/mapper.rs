@@ -1,17 +1,23 @@
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, ValueComparison,
 };
+use one_core::service::error::ServiceError;
 use one_core::service::proof_schema::dto::ProofSchemaFilterValue;
 
 use super::dto::ProofSchemasFilterQueryParamsRest;
 use crate::dto::common::ExactColumn;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
-impl From<ProofSchemasFilterQueryParamsRest> for ListFilterCondition<ProofSchemaFilterValue> {
-    fn from(value: ProofSchemasFilterQueryParamsRest) -> Self {
+impl TryFrom<ProofSchemasFilterQueryParamsRest> for ListFilterCondition<ProofSchemaFilterValue> {
+    type Error = ServiceError;
+
+    fn try_from(value: ProofSchemasFilterQueryParamsRest) -> Result<Self, Self::Error> {
         let exact = value.exact.unwrap_or_default();
 
-        let organisation_id =
-            ProofSchemaFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = ProofSchemaFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
 
         let name = value.name.map(|name| {
             let filter = if exact.contains(&ExactColumn::Name) {
@@ -53,13 +59,13 @@ impl From<ProofSchemasFilterQueryParamsRest> for ListFilterCondition<ProofSchema
             })
         });
 
-        organisation_id
+        Ok(organisation_id
             & name
             & proof_schema_ids
             & formats
             & created_date_after
             & created_date_before
             & last_modified_after
-            & last_modified_before
+            & last_modified_before)
     }
 }

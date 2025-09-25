@@ -1,20 +1,22 @@
 use one_core::model::list_filter::{
     ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
 };
-use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::model::wallet_unit::{WalletUnitFilterValue, WalletUnitListQuery};
+use one_core::model::wallet_unit::WalletUnitFilterValue;
 use one_core::service::error::ServiceError;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::convert_inner;
 
-use super::dto::{ListWalletUnitsQuery, WalletUnitFilterQueryParamsRestDTO};
+use super::dto::WalletUnitFilterQueryParamsRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 
 impl TryFrom<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletUnitFilterValue> {
     type Error = ServiceError;
     fn try_from(value: WalletUnitFilterQueryParamsRestDTO) -> Result<Self, Self::Error> {
-        let organisation_id =
-            WalletUnitFilterValue::OrganisationId(value.organisation_id).condition();
+        let organisation_id = WalletUnitFilterValue::OrganisationId(
+            fallback_organisation_id_from_session(value.organisation_id)?,
+        )
+        .condition();
         let name = value.name.map(|name| {
             WalletUnitFilterValue::Name(StringMatch {
                 r#match: StringMatchType::StartsWith,
@@ -46,24 +48,5 @@ impl TryFrom<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletU
             .map(WalletUnitFilterValue::WalletProviderType);
 
         Ok(organisation_id & name & ids & status & os & wallet_provider_type & attestation)
-    }
-}
-
-impl TryFrom<ListWalletUnitsQuery> for WalletUnitListQuery {
-    type Error = ServiceError;
-
-    fn try_from(value: ListWalletUnitsQuery) -> Result<Self, Self::Error> {
-        Ok(Self {
-            pagination: Some(ListPagination {
-                page: value.page,
-                page_size: value.page_size.inner(),
-            }),
-            sorting: value.sort.map(|column| ListSorting {
-                column: column.into(),
-                direction: convert_inner(value.sort_direction),
-            }),
-            filtering: Some(value.filter.try_into()?),
-            include: value.include.map(convert_inner),
-        })
     }
 }

@@ -10,6 +10,7 @@ use super::dto::{
 };
 use crate::dto::common::{EntityResponseRestDTO, GetCredentialSchemasResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::credential_schema::dto::CreateCredentialSchemaRequestRestDTO;
 use crate::extractor::Qs;
@@ -87,12 +88,15 @@ pub(crate) async fn get_credential_schema_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialSchemaQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialSchemasResponseDTO> {
-    let organisation_id = query.filter.organisation_id;
-    let result = state
-        .core
-        .credential_schema_service
-        .get_credential_schema_list(&organisation_id, query.into())
-        .await;
+    let result = async {
+        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
+        state
+            .core
+            .credential_schema_service
+            .get_credential_schema_list(&organisation_id, query.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "getting credential schemas")
 }
 

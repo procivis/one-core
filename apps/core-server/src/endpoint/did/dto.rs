@@ -182,7 +182,8 @@ pub(crate) struct DidFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     /// Filter by active or deactivated DIDs.
     #[param(inline, nullable = false)]
     pub deactivated: Option<Boolean>,

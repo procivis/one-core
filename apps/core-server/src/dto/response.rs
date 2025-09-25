@@ -131,18 +131,6 @@ impl<T> OkOrErrorResponse<T> {
         Self::Error(ErrorResponse::from_service_error(error, hide_cause))
     }
 
-    pub fn from_service_error_with_trace(
-        error: ServiceError,
-        state: State<AppState>,
-        action_description: &str,
-    ) -> Self {
-        Self::Error(ErrorResponse::from_service_error_with_trace(
-            error,
-            state,
-            action_description,
-        ))
-    }
-
     #[track_caller]
     pub(crate) fn from_result(
         result: Result<impl Into<T>, ServiceError>,

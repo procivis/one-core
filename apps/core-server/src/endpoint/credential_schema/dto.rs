@@ -15,6 +15,7 @@ use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::{front_time, front_time_option};
 
 /// Credential schema details.
@@ -174,7 +175,8 @@ pub(crate) enum CredentialSchemasExactColumn {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialSchemasFilterQueryParamsRest {
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
@@ -267,8 +269,8 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[try_into(infallible)]
     pub revocation_method: String,
     /// Specify the organization.
-    #[try_into(infallible)]
-    pub organisation_id: Uuid,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
     /// Defines the set of claims to be asserted when using this credential
     /// schema.
     #[validate(length(min = 1))]

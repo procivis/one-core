@@ -187,7 +187,8 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactIdentifierFilterColumnRestEnum>>,
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
 
     /// Return only identifiers which were created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').

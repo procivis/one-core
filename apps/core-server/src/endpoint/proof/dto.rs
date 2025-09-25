@@ -153,7 +153,8 @@ pub(crate) enum SortableProofColumnRestEnum {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProofsFilterQueryParamsRest {
     /// Specify the organization from which to return proof requests.
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
     /// Return only proof requests with a name starting with this string.
     /// Not case-sensitive.
     #[param(nullable = false)]

@@ -1,9 +1,6 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
-use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::service::credential::dto::GetCredentialQueryDTO;
-use one_dto_mapper::convert_inner;
 use proc_macros::require_permissions;
 use shared_types::CredentialId;
 
@@ -14,6 +11,7 @@ use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{
     CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
 };
@@ -99,37 +97,15 @@ pub(crate) async fn get_credential_list(
     state: State<AppState>,
     WithRejection(Qs(query), _): WithRejection<Qs<GetCredentialQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetCredentialsResponseDTO> {
-    let org_id = query.filter.organisation_id;
-    let filtering = match query.filter.try_into() {
-        Ok(v) => v,
-        Err(err) => {
-            return OkOrErrorResponse::from_result(
-                Err::<GetCredentialsResponseDTO, _>(err),
-                state,
-                "getting credential list",
-            );
-        }
-    };
-
-    let filters = GetCredentialQueryDTO {
-        pagination: Some(ListPagination {
-            page: query.page,
-            page_size: query.page_size.inner(),
-        }),
-        sorting: query.sort.map(|column| ListSorting {
-            column: column.into(),
-            direction: convert_inner(query.sort_direction),
-        }),
-        filtering: Some(filtering),
-        include: query.include.map(convert_inner),
-    };
-
-    let result = state
-        .core
-        .credential_service
-        .get_credential_list(&org_id, filters)
-        .await;
-
+    let result = async {
+        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
+        state
+            .core
+            .credential_service
+            .get_credential_list(&organisation_id, query.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "getting credential list")
 }
 
