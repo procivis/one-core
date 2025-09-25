@@ -83,7 +83,7 @@ impl InteractionRepository for InteractionProvider {
         nonce_id: Uuid,
     ) -> Result<Option<Interaction>, DataLayerError> {
         let interaction = interaction::Entity::find()
-            .filter(interaction::Column::NonceId.eq(nonce_id))
+            .filter(interaction::Column::NonceId.eq(shared_types::NonceId::from(nonce_id)))
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

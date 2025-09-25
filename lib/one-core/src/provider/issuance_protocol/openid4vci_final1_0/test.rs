@@ -44,9 +44,7 @@ use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::MockHandleInvitationOperations;
-use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
-    extract_offered_claims, get_parent_claim_paths,
-};
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::extract_offered_claims;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIFinal1Params,
     OpenID4VCIGrants, OpenID4VCIPreAuthorizedCodeGrant,
@@ -55,9 +53,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::create_cre
 use crate::provider::issuance_protocol::openid4vci_final1_0::{
     IssuanceProtocolError, OpenID4VCIFinal1_0,
 };
-use crate::provider::issuance_protocol::{
-    BasicSchemaData, BuildCredentialSchemaResponse, IssuanceProtocol,
-};
+use crate::provider::issuance_protocol::{BasicSchemaData, IssuanceProtocol};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -1538,12 +1534,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     operations
         .expect_create_new_schema()
         .once()
-        .returning(move |_, _, _, _, _, _| {
-            Ok(BuildCredentialSchemaResponse {
-                claims: credential.claims.clone().unwrap(),
-                schema: credential.schema.clone().unwrap(),
-            })
-        });
+        .returning(move |_, _, _| Ok(credential.schema.clone().unwrap()));
 
     let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
 
@@ -1656,15 +1647,25 @@ async fn inner_continue_issuance_test(
                 "credential_issuer": credential_issuer,
                 "credential_configurations_supported": {
                     credential_schema_id.to_string(): {
-                        "credential_definition": {
-                            "type": [
-                                "VerifiableCredential"
-                            ],
-                            "credentialSubject" : {
-                                "address": {
-                                    "value_type": "STRING",
+                        "credential_metadata": {
+                            "display": [
+                                {
+                                    "name": "test_schema",
+                                    "locale": "en"
                                 }
-                            }
+                            ],
+                            "claims": [
+                                {
+                                    "path": ["NUMBER"],
+                                    "mandatory": true,
+                                    "display": [
+                                        {
+                                            "name": "NUMBER",
+                                            "locale": "en"
+                                        }
+                                    ]
+                                }
+                            ]
                         },
                         "format": "vc+sd-jwt",
                         "scope": "testScope",
@@ -1701,12 +1702,7 @@ async fn inner_continue_issuance_test(
     operations
         .expect_create_new_schema()
         .once()
-        .returning(move |_, _, _, _, _, _| {
-            Ok(BuildCredentialSchemaResponse {
-                claims: credential.claims.clone().unwrap(),
-                schema: credential.schema.clone().unwrap(),
-            })
-        });
+        .returning(move |_, _, _| Ok(credential.schema.clone().unwrap()));
 
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
@@ -1749,16 +1745,6 @@ async fn inner_continue_issuance_test(
 
     assert_eq!(credentials.len(), 1);
     assert!(credentials[0].issuer_identifier.is_none());
-}
-
-#[test]
-fn test_get_parent_claim_paths() {
-    assert!(get_parent_claim_paths("").is_empty());
-    assert!(get_parent_claim_paths("this_is_not_yellow").is_empty());
-    assert_eq!(
-        vec!["this", "this/is", "this/is/yellow"],
-        get_parent_claim_paths("this/is/yellow/man")
-    );
 }
 
 fn generic_schema() -> CredentialSchema {

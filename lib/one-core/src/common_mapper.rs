@@ -572,10 +572,12 @@ pub(crate) fn value_to_model_claims(
                 let child_schema_name = format!("{this_name}/{key}");
                 let child_credential_schema_claim = claim_schemas
                     .iter()
-                    .find(|claim_schema| claim_schema.schema.key == child_schema_name)
-                    .ok_or(ServiceError::BusinessLogic(
+                    .find(|claim_schema| claim_schema.schema.key == child_schema_name);
+                let Some(child_credential_schema_claim) = child_credential_schema_claim else {
+                    return Err(ServiceError::BusinessLogic(
                         BusinessLogicError::MissingClaimSchemas,
-                    ))?;
+                    ));
+                };
                 model_claims.extend(value_to_model_claims(
                     credential_id,
                     claim_schemas,

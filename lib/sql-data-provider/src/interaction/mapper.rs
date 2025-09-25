@@ -4,6 +4,7 @@ use one_core::model::interaction::{Interaction, UpdateInteractionRequest};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
+use shared_types::NonceId;
 use url::Url;
 use uuid::Uuid;
 
@@ -21,7 +22,7 @@ impl TryFrom<Interaction> for interaction::ActiveModel {
             host: Set(value.host.as_ref().map(ToString::to_string)),
             data: Set(value.data),
             organisation_id: Set(organisation_id),
-            nonce_id: Set(value.nonce_id),
+            nonce_id: Set(value.nonce_id.map(NonceId::from)),
         })
     }
 }
@@ -34,7 +35,10 @@ impl From<UpdateInteractionRequest> for interaction::ActiveModel {
                 .map(|url| Set(url.map(|url| url.to_string())))
                 .unwrap_or_default(),
             data: value.data.map(Set).unwrap_or_default(),
-            nonce_id: value.nonce_id.map(Set).unwrap_or_default(),
+            nonce_id: value
+                .nonce_id
+                .map(|id| Set(id.map(NonceId::from)))
+                .unwrap_or_default(),
             ..Default::default()
         }
     }
@@ -56,6 +60,6 @@ pub(super) fn interaction_from_models(
         host,
         data: interaction.data,
         organisation,
-        nonce_id: interaction.nonce_id,
+        nonce_id: interaction.nonce_id.map(Uuid::from),
     })
 }

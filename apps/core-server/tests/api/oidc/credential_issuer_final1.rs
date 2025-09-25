@@ -10,7 +10,7 @@ async fn test_get_credential_issuer_metadata_jwt() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test", &organisation, "NONE", Default::default())
+        .create_with_nested_hell("test_schema", &organisation, "NONE", Default::default())
         .await;
 
     // WHEN
@@ -43,67 +43,95 @@ async fn test_get_credential_issuer_metadata_jwt() {
         .as_object()
         .unwrap();
     assert!(!credentials.is_empty());
+
+    // Check the credential format and metadata structure
     assert_eq!(
-        credentials[&credential_schema.schema_id]["wallet_storage_type"],
-        "SOFTWARE"
+        credentials[&credential_schema.schema_id]["format"],
+        "jwt_vc_json"
     );
-    assert_eq!(
-        &credentials[&credential_schema.schema_id]["credential_definition"]["type"][0],
-        "VerifiableCredential"
-    );
-    let subject =
-        &credentials[&credential_schema.schema_id]["credential_definition"]["credentialSubject"];
-    assert_expected_claims(subject);
+
+    // Check display properties are present
+    let display = &credentials[&credential_schema.schema_id]["credential_metadata"]["display"][0];
+    assert_eq!(display["name"], "test_schema");
+    assert_eq!(display["locale"], "en");
+
+    // Check claims structure
+    let claims = &credentials[&credential_schema.schema_id]["credential_metadata"]["claims"];
+    assert_expected_claims(claims);
 }
 
-fn assert_expected_claims(subject: &Value) {
-    assert_eq!(subject["name"]["value_type"], "string");
-    assert_eq!(subject["name"]["mandatory"], true);
+fn assert_expected_claims(claims: &Value) {
+    let claims_array = claims.as_array().unwrap();
+    assert_eq!(claims_array.len(), 10); // Total number of claims including nested ones
 
-    assert_eq!(subject["string_array"]["value_type"], "string[]");
-    assert_eq!(subject["string_array"]["mandatory"], true);
+    // Helper function to find a claim by path
+    let find_claim = |path: &[&str]| -> &Value {
+        claims_array
+            .iter()
+            .find(|claim| {
+                let claim_path = claim["path"].as_array().unwrap();
+                claim_path.len() == path.len()
+                    && claim_path
+                        .iter()
+                        .zip(path.iter())
+                        .all(|(a, b)| a.as_str().unwrap() == *b)
+            })
+            .unwrap()
+    };
 
-    assert_eq!(subject["address"]["street"]["value_type"], "string");
-    assert_eq!(subject["address"]["street"]["mandatory"], true);
+    // Check root level claims
+    let name_claim = find_claim(&["name"]);
+    assert_eq!(name_claim["mandatory"], true);
+    assert_eq!(name_claim["display"][0]["name"], "name");
 
-    assert_eq!(
-        subject["address"]["coordinates"]["string_array"]["value_type"],
-        "string[]"
-    );
-    assert_eq!(
-        subject["address"]["coordinates"]["string_array"]["mandatory"],
-        true
-    );
-    assert_eq!(
-        subject["address"]["coordinates"]["x"]["value_type"],
-        "number"
-    );
-    assert_eq!(subject["address"]["coordinates"]["x"]["mandatory"], true);
-    assert_eq!(
-        subject["address"]["coordinates"]["y"]["value_type"],
-        "number"
-    );
-    assert_eq!(subject["address"]["coordinates"]["y"]["mandatory"], true);
+    let string_array_claim = find_claim(&["string_array"]);
+    assert_eq!(string_array_claim["mandatory"], true);
+    assert_eq!(string_array_claim["display"][0]["name"], "string_array");
 
+    // Check nested claims
+    let address_street_claim = find_claim(&["address", "street"]);
+    assert_eq!(address_street_claim["mandatory"], true);
+    assert_eq!(address_street_claim["display"][0]["name"], "street");
+
+    let coordinates_x_claim = find_claim(&["address", "coordinates", "x"]);
+    assert_eq!(coordinates_x_claim["mandatory"], true);
+    assert_eq!(coordinates_x_claim["display"][0]["name"], "x");
+
+    let coordinates_y_claim = find_claim(&["address", "coordinates", "y"]);
+    assert_eq!(coordinates_y_claim["mandatory"], true);
+    assert_eq!(coordinates_y_claim["display"][0]["name"], "y");
+
+    // Check array claims
+    let nested_string_array_claim = find_claim(&["address", "coordinates", "string_array"]);
+    assert_eq!(nested_string_array_claim["mandatory"], true);
     assert_eq!(
-        subject["address"]["coordinates"]["object_array"][0]["field1"]["value_type"],
-        "string"
-    );
-    assert_eq!(
-        subject["address"]["coordinates"]["object_array"][0]["field1"]["mandatory"],
-        true
-    );
-    assert_eq!(
-        subject["address"]["coordinates"]["object_array"][0]["field2"]["value_type"],
-        "string"
-    );
-    assert_eq!(
-        subject["address"]["coordinates"]["object_array"][0]["field2"]["mandatory"],
-        true
+        nested_string_array_claim["display"][0]["name"],
+        "string_array"
     );
 
-    assert_eq!(subject["object_array"][0]["field1"]["value_type"], "string");
-    assert_eq!(subject["object_array"][0]["field1"]["mandatory"], true);
-    assert_eq!(subject["object_array"][0]["field2"]["value_type"], "string");
-    assert_eq!(subject["object_array"][0]["field2"]["mandatory"], true);
+    // Check object array claims
+    let object_array_field1_claim = find_claim(&["object_array", "field1"]);
+    assert_eq!(object_array_field1_claim["mandatory"], true);
+    assert_eq!(object_array_field1_claim["display"][0]["name"], "field1");
+
+    let object_array_field2_claim = find_claim(&["object_array", "field2"]);
+    assert_eq!(object_array_field2_claim["mandatory"], true);
+    assert_eq!(object_array_field2_claim["display"][0]["name"], "field2");
+
+    // Check nested object array claims
+    let nested_object_array_field1_claim =
+        find_claim(&["address", "coordinates", "object_array", "field1"]);
+    assert_eq!(nested_object_array_field1_claim["mandatory"], true);
+    assert_eq!(
+        nested_object_array_field1_claim["display"][0]["name"],
+        "field1"
+    );
+
+    let nested_object_array_field2_claim =
+        find_claim(&["address", "coordinates", "object_array", "field2"]);
+    assert_eq!(nested_object_array_field2_claim["mandatory"], true);
+    assert_eq!(
+        nested_object_array_field2_claim["display"][0]["name"],
+        "field2"
+    );
 }

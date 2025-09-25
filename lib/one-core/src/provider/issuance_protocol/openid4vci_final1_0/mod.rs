@@ -34,9 +34,8 @@ use super::openid4vci_final1_0::mapper::{
 use super::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialRequestDTO,
-    OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params, OpenID4VCIGrants,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
+    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
@@ -44,8 +43,8 @@ use super::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::openid4vci_final1_0::service::{create_credential_offer, get_protocol_base_url};
 use super::openid4vci_final1_0::validator::validate_issuer;
 use super::{
-    BuildCredentialSchemaResponse, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
-    deserialize_interaction_data, serialize_interaction_data,
+    IssuanceProtocol, IssuanceProtocolError, StorageAccess, deserialize_interaction_data,
+    serialize_interaction_data,
 };
 use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::common_validator::{validate_expiration_time, validate_issuance_time};
@@ -85,6 +84,7 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_metadata_claims_to_extended_subject;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
     OpenID4VCIFinal1CredentialOfferDTO,
@@ -1863,10 +1863,12 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
             if credential_schema.schema_type.to_string() != schema_data.r#type {
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
-            let claims_with_values = build_claim_keys(credential_config, credential_subject)
-                .and_then(|claim_keys| {
-                    extract_offered_claims(&credential_schema, credential_id, &claim_keys)
-                });
+            let claims_with_values =
+                build_claims_with_values(credential_config, credential_subject).and_then(
+                    |claim_keys| {
+                        extract_offered_claims(&credential_schema, credential_id, &claim_keys)
+                    },
+                );
 
             let claims = match claims_with_values {
                 Ok(claims_with_values) => claims_with_values,
@@ -1888,18 +1890,13 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
             (claims, credential_schema)
         }
         None => {
-            let claim_keys = build_claim_keys(credential_config, credential_subject)?;
+            let claim_keys = build_claims_with_values(credential_config, credential_subject)?;
 
-            let BuildCredentialSchemaResponse { claims, schema } = handle_invitation_operations
-                .create_new_schema(
-                    schema_data,
-                    &claim_keys,
-                    &credential_id,
-                    credential_config,
-                    &issuer_metadata,
-                    organisation.clone(),
-                )
+            let schema = handle_invitation_operations
+                .create_new_schema(schema_data, credential_config, organisation.clone())
                 .await?;
+
+            let claims = extract_offered_claims(&schema, credential_id, &claim_keys)?;
             (claims, schema)
         }
     };
@@ -2069,87 +2066,47 @@ async fn create_and_store_interaction(
     Ok(interaction)
 }
 
-fn build_claim_keys(
-    credential_configuration: &OpenID4VCICredentialConfigurationData,
-    credential_subject: Option<&ExtendedSubjectDTO>,
+fn build_claims_with_values(
+    credential_configuration_issuer_metadata: &OpenID4VCICredentialConfigurationData,
+    credential_subject_from_offer: Option<&ExtendedSubjectDTO>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialValueDetails>, IssuanceProtocolError> {
-    let claim_object = match (
-        &credential_configuration.credential_definition,
-        &credential_configuration.claims,
-    ) {
-        (None, None) | (Some(_), Some(_)) => {
-            return Err(IssuanceProtocolError::Failed(
-                "Incorrect or missing credential claims".to_string(),
-            ));
+    // The credential claims advertised in the issuer's metadata
+    let advertised_claims = credential_configuration_issuer_metadata
+        .credential_metadata
+        .as_ref()
+        .and_then(|metadata| metadata.claims.as_ref());
+
+    let claim_object = match (advertised_claims, credential_subject_from_offer) {
+        (_, Some(credential_subject_from_offer)) => credential_subject_from_offer.clone(),
+        (Some(advertised_claims), None) => {
+            map_metadata_claims_to_extended_subject(advertised_claims.clone())?
         }
-        (None, Some(mdoc_claims)) => mdoc_claims,
-        (Some(credential_definition), None) => credential_definition
-            .credential_subject
-            .as_ref()
-            .ok_or_else(|| {
-                IssuanceProtocolError::Failed("Missing credential subject".to_string())
-            })?,
+        (None, None) => ExtendedSubjectDTO { keys: None },
     };
 
-    let keys = credential_subject
-        .and_then(|cs| cs.keys.clone())
-        .unwrap_or_default();
-
-    if !keys.claims.is_empty() {
-        return Ok(keys.claims);
-    }
-
-    let keys = collect_keys(claim_object, None);
+    let keys = collect_keys(&claim_object, None);
     Ok(keys
         .into_iter()
-        .map(|(path, _value_type)| (path, OpenID4VCICredentialValueDetails { value: None }))
+        .map(|(path, value)| (path, OpenID4VCICredentialValueDetails { value }))
         .collect())
 }
 
 fn collect_keys(
-    claim_object: &OpenID4VCICredentialSubjectItem,
+    claim_object: &ExtendedSubjectDTO,
     item_path: Option<&str>,
-) -> Vec<(String, String)> {
+) -> Vec<(String, Option<String>)> {
     let mut item_paths = Vec::new();
 
-    if let Some(claims) = claim_object.claims.as_ref() {
-        for (key, object) in claims {
+    if let Some(claims) = claim_object.keys.as_ref().map(|keys| &keys.claims) {
+        for (key, value) in claims {
             let path = if let Some(item_path) = &item_path {
                 format!("{item_path}{NESTED_CLAIM_MARKER}{key}")
             } else {
                 key.to_owned()
             };
-            let paths = collect_keys(object, Some(&path));
 
-            item_paths.extend(paths);
+            item_paths.push((path, value.value.clone()));
         }
-    }
-
-    if let Some(arrays) = claim_object.arrays.as_ref() {
-        for (key, object_definitions) in arrays {
-            if let Some(object_fields) = object_definitions.first() {
-                let path = if let Some(item_path) = &item_path {
-                    format!("{item_path}{NESTED_CLAIM_MARKER}{key}{NESTED_CLAIM_MARKER}0")
-                } else {
-                    format!("{key}{NESTED_CLAIM_MARKER}0")
-                };
-                let paths = collect_keys(object_fields, Some(&path));
-
-                item_paths.extend(paths);
-            }
-        }
-    }
-
-    // Break condition - we reached top claim and it suppose to have a value
-    if claim_object.arrays.is_none() && claim_object.claims.is_none() {
-        item_paths.push((
-            item_path.unwrap_or_default().to_string(),
-            claim_object
-                .value_type
-                .as_ref()
-                .cloned()
-                .unwrap_or("STRING".to_owned()),
-        ));
     }
 
     item_paths

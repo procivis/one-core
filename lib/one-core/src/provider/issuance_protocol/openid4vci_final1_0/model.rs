@@ -87,9 +87,20 @@ pub(crate) struct HolderInteractionData {
     pub credential_configuration_id: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
     pub name: String,
+    pub locale: Option<String>,
+    pub logo: Option<OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO>,
+    pub background_color: Option<String>,
+    pub text_color: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO {
+    pub url: String,
+    pub alt_text: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -101,34 +112,46 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCICredentialConfigurationData>,
-    pub procivis_schema: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataDisplayResponseDTO {
     pub name: String,
     pub locale: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Default)]
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCICredentialConfigurationData {
     pub format: String,
     #[serde(rename = "@context")]
     pub context: Option<Vec<ContextType>>,
     pub order: Option<Vec<String>>,
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestDTO>,
-    pub claims: Option<OpenID4VCICredentialSubjectItem>,
     pub doctype: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
     pub vct: Option<String>,
+    pub procivis_schema: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     pub scope: Option<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OpenID4VCICredentialMetadataResponseDTO {
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
+    pub claims: Option<Vec<OpenID4VCICredentialMetadataClaimResponseDTO>>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OpenID4VCICredentialMetadataClaimResponseDTO {
+    pub path: Vec<String>,
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
+    pub mandatory: Option<bool>,
+    pub additional_values: Option<IndexMap<String, serde_json::Value>>,
+}
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub(crate) struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
     #[serde(default)]

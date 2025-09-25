@@ -6,6 +6,7 @@ use one_core::model::interaction::{Interaction, InteractionRelations, UpdateInte
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
+use shared_types::NonceId;
 use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
@@ -101,7 +102,7 @@ async fn test_create_interaction() {
     let model = get_interaction(&setup.db, &id).await.unwrap();
     assert_eq!(model.host, Some("http://www.host.co/".to_owned()));
     assert_eq!(model.data, Some(vec![1, 2, 3]));
-    assert_eq!(model.nonce_id, Some(nonce_id));
+    assert_eq!(model.nonce_id, Some(NonceId::from(nonce_id)));
 }
 
 #[tokio::test]
@@ -173,7 +174,7 @@ async fn test_update_interaction() {
     let result = get_interaction(&setup.db, &setup.interaction_id)
         .await
         .unwrap();
-    assert_eq!(result.nonce_id, Some(nonce_id));
+    assert_eq!(result.nonce_id, Some(NonceId::from(nonce_id)));
 }
 
 #[tokio::test]

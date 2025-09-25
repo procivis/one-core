@@ -113,7 +113,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
 
                 let handle_operations = openid4vci_final1_0::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     credential_schema_repository.clone(),
-                    vct_type_metadata_cache.clone(),
                     client.clone(),
                     formatter_provider.clone(),
                 );

@@ -4,13 +4,14 @@ use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialMetadataClaimResponseDTO,
+    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
     OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINonceResponseDTO,
-    OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO, OpenID4VCIIssuerMetadataDisplayResponseDTO,
+    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenResponseDTO,
 };
 use one_core::service::oid4vci_final1_0::dto::{
@@ -23,8 +24,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use utoipa::ToSchema;
 
-use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
-
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
@@ -34,13 +33,12 @@ pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
     pub nonce_endpoint: Option<String>,
-    pub procivis_schema: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataDisplayResponseDTO)]
-pub(crate) struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
+pub struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
     pub name: String,
     pub locale: String,
 }
@@ -50,36 +48,17 @@ pub(crate) struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
 #[from(OpenID4VCICredentialConfigurationData)]
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
-    #[schema(value_type = Object,
-        example = "{
-            credential_schema_id: {
-                claims: {
-                    claim1: {
-                        mandatory: true
-                    }
-                },
-                display: [
-                {
-                    name: \"Schema name\"
-                }
-                ],
-                doctype: \"eu.europa.ec.eudi.hiid.1\",
-                format: \"mso_mdoc\",
-            }
-        }",
-    )]
-    pub claims: Option<OpenID4VCICredentialSubjectItem>,
     #[from(with_fn = convert_inner_of_inner)]
     pub order: Option<Vec<String>>,
-    #[from(with_fn = convert_inner)]
-    pub credential_definition: Option<OpenID4VCICredentialDefinitionRequestRestDTO>,
     pub doctype: Option<String>,
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
     #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub procivis_schema: Option<String>,
     #[from(with_fn = convert_inner)]
     pub vct: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseRestDTO>,
     #[from(with_fn = convert_inner)]
     pub scope: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
@@ -88,10 +67,51 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 }
 
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialMetadataResponseDTO)]
+pub struct OpenID4VCICredentialMetadataResponseRestDTO {
+    #[from(with_fn = convert_inner_of_inner)]
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub claims: Option<Vec<OpenID4VCICredentialMetadataClaimResponseRestDTO>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialMetadataClaimResponseDTO)]
+pub struct OpenID4VCICredentialMetadataClaimResponseRestDTO {
+    #[from(with_fn = convert_inner)]
+    pub path: Vec<String>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
+    #[from(with_fn = convert_inner)]
+    pub mandatory: Option<bool>,
+    pub additional_values: Option<IndexMap<String, serde_json::Value>>,
+}
+
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
-pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
     pub name: String,
+    #[from(with_fn = convert_inner)]
+    pub locale: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub logo: Option<OpenID4VCIIssuerMetadataCredentialSupportedLogoRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub background_color: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub text_color: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO)]
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedLogoRestDTO {
+    pub url: String,
+    #[from(with_fn = convert_inner)]
+    pub alt_text: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

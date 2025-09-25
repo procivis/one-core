@@ -12,7 +12,7 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
-    HistoryId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use time::macros::datetime;
@@ -529,7 +529,7 @@ pub async fn insert_interaction(
         host: Set(Some(host.to_owned())),
         data: Set(Some(data.to_owned())),
         organisation_id: Set(organisation_id),
-        nonce_id: Set(nonce_id),
+        nonce_id: Set(nonce_id.map(NonceId::from)),
     }
     .insert(database)
     .await?;

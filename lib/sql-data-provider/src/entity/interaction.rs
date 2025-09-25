@@ -1,5 +1,5 @@
 use sea_orm::entity::prelude::*;
-use shared_types::OrganisationId;
+use shared_types::{NonceId, OrganisationId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -13,7 +13,7 @@ pub struct Model {
     #[sea_orm(column_type = "Blob")]
     pub data: Option<Vec<u8>>,
     pub organisation_id: OrganisationId,
-    pub nonce_id: Option<Uuid>,
+    pub nonce_id: Option<NonceId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
