@@ -115,7 +115,7 @@ pub(crate) async fn post_did(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = state.core.did_service.create_did(request.into()).await;
+    let result = async { state.core.did_service.create_did(request.try_into()?).await }.await;
 
     match result {
         Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id: id.into() }),

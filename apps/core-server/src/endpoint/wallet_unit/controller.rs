@@ -147,11 +147,14 @@ pub(crate) async fn wallet_unit_holder_register(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<HolderRegisterWalletUnitResponseRestDTO> {
-    let result = state
-        .core
-        .wallet_unit_service
-        .holder_register(request.into())
-        .await;
+    let result = async {
+        state
+            .core
+            .wallet_unit_service
+            .holder_register(request.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "register wallet unit")
 }
 
@@ -177,11 +180,14 @@ pub(crate) async fn wallet_unit_holder_refresh(
         ErrorResponseRestDTO,
     >,
 ) -> EmptyOrErrorResponse {
-    let result = state
-        .core
-        .wallet_unit_service
-        .holder_refresh(request.into())
-        .await;
+    let result = async {
+        state
+            .core
+            .wallet_unit_service
+            .holder_refresh(request.try_into()?)
+            .await
+    }
+    .await;
     EmptyOrErrorResponse::from_result(result, state, "refresh wallet unit")
 }
 
@@ -208,15 +214,20 @@ pub(crate) async fn wallet_unit_holder_refresh(
 #[require_permissions(Permission::WalletAttestationDetail)]
 pub(crate) async fn wallet_unit_holder_attestation(
     state: State<AppState>,
-    WithRejection(Query(query_params), _): WithRejection<
+    WithRejection(Query(query), _): WithRejection<
         Query<HolderAttestationsQueryParams>,
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<HolderWalletUnitAttestationResponseRestDTO> {
-    let result = state
-        .core
-        .wallet_unit_service
-        .holder_attestation(query_params.organisation_id)
-        .await;
+    let result = async {
+        state
+            .core
+            .wallet_unit_service
+            .holder_attestation(fallback_organisation_id_from_session(
+                query.organisation_id,
+            )?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "get wallet unit attestation")
 }

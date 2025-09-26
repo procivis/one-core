@@ -3,13 +3,14 @@ use std::collections::HashMap;
 use one_core::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
+use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::{ProposeProofRequestDTO, ProposeProofResponseDTO};
 use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
     InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
 };
-use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
@@ -18,6 +19,8 @@ use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::dto::mapper::fallback_organisation_id_from_session;
+
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -25,7 +28,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = "https://example.com/credential-offer")]
     /// Typically encoded as a QR code or deep link by the issuer or verifier.
     pub url: Url,
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     #[schema(example = json!(["HTTP"]))]
     /// For configurations with multiple transport protocols enabled you can
     /// specify which one to use for this interaction.
@@ -201,13 +204,17 @@ pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(ProposeProofRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = ProposeProofRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProposeProofRequestRestDTO {
+    #[try_into(infallible)]
     pub protocol: String,
-    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
+    #[try_into(infallible)]
     pub engagement: Vec<String>,
+    #[try_into(infallible)]
     pub ui_message: Option<String>,
 }
 
@@ -225,7 +232,7 @@ pub(crate) struct ProposeProofResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct InitiateIssuanceRequestRestDTO {
     /// Organization to place the issued credential into.
-    pub organisation_id: OrganisationId,
+    pub organisation_id: Option<OrganisationId>,
     /// Selected issuance protocol.
     pub protocol: String,
     /// OpenID4VCI authorization request parameter.

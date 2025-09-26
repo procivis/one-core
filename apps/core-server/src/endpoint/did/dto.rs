@@ -1,16 +1,17 @@
 use one_core::service::did::dto::{
-    CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO, DidResponseDTO,
-    DidResponseKeysDTO,
+    CreateDidRequestDTO, CreateDidRequestKeysDTO, DidListItemResponseDTO, DidPatchRequestDTO,
+    DidResponseDTO, DidResponseKeysDTO,
 };
-use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use one_core::service::error::ServiceError;
+use one_dto_mapper::{From, Into, TryFrom, TryInto, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
-use uuid::Uuid;
 
 use crate::dto::common::{Boolean, ListQueryParamsRest};
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
@@ -67,7 +68,7 @@ pub(crate) struct DidResponseRestDTO {
     #[try_from(infallible)]
     pub name: String,
     #[try_from(infallible, with_fn = "convert_inner")]
-    pub organisation_id: Option<Uuid>,
+    pub organisation_id: Option<OrganisationId>,
     #[try_from(infallible)]
     pub did: DidValue,
     #[try_from(infallible)]
@@ -99,21 +100,27 @@ pub(crate) struct DidResponseKeysRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = CreateDidRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateDidRequestRestDTO {
     /// The DID name must be unique within the organization.
+    #[try_into(infallible)]
     pub name: String,
     /// Specify the organization.
-    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
     /// Choose a DID method to create the DID. Check the `did` object of the
     /// configuration for supported options and reference the configuration
     /// instance.
     #[schema(example = "WEB")]
+    #[try_into(infallible, rename = "did_method")]
     pub method: String,
+    #[try_into(infallible)]
     pub keys: CreateDidRequestKeysRestDTO,
     /// The parameters passed into the DID method.
     #[schema(value_type = Object)]
+    #[try_into(infallible)]
     pub params: Option<serde_json::Value>,
 }
 

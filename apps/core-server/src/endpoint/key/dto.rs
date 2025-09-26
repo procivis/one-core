@@ -1,45 +1,52 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+use one_core::service::error::ServiceError;
 use one_core::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
     KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
-use one_dto_mapper::{From, Into, TryFrom};
+use one_dto_mapper::{From, Into, TryFrom, TryInto};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
-use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ExactColumn, ListQueryParamsRest};
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(KeyRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = KeyRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct KeyRequestRestDTO {
     /// Specify the organization.
-    pub organisation_id: Uuid,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
     /// Choose which key algorithm to use to create the key pair. Check
     /// the `keyAlgorithm` object of the configuration for supported options
     /// and reference the configuration instance.
     #[schema(example = "EDDSA")]
+    #[try_into(infallible)]
     pub key_type: String,
     /// The parameters passed into the key algorithm.
     #[schema(value_type = Object)]
+    #[try_into(infallible)]
     pub key_params: serde_json::Value,
     /// Must be unique within the organization.
+    #[try_into(infallible)]
     pub name: String,
     /// Choose a key storage type. Check the `keyStorage`
     /// object of the configuration for supported options and reference the
     /// configuration instance.
     #[schema(example = "INTERNAL")]
+    #[try_into(infallible)]
     pub storage_type: String,
     /// The parameters passed into the storage type.
     #[schema(value_type = Object)]
+    #[try_into(infallible)]
     pub storage_params: serde_json::Value,
 }
 
@@ -48,7 +55,7 @@ pub(crate) struct KeyRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct KeyResponseRestDTO {
     #[try_from(infallible)]
-    pub id: Uuid,
+    pub id: KeyId,
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
@@ -58,7 +65,7 @@ pub(crate) struct KeyResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     #[try_from(infallible)]
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     #[try_from(infallible)]
     pub name: String,
     #[try_from(with_fn = "Base64UrlSafeNoPadding::encode_to_string")]
@@ -76,7 +83,7 @@ pub(crate) struct KeyResponseRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct KeyListItemResponseRestDTO {
     #[try_from(infallible)]
-    pub id: Uuid,
+    pub id: KeyId,
     #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]

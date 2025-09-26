@@ -40,11 +40,14 @@ pub(crate) async fn post_proof_schema(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = state
-        .core
-        .proof_schema_service
-        .create_proof_schema(request.into())
-        .await;
+    let result = async {
+        state
+            .core
+            .proof_schema_service
+            .create_proof_schema(request.try_into()?)
+            .await
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "creating proof schema")
 }
 

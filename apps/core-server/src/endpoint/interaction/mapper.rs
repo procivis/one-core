@@ -1,7 +1,9 @@
+use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use super::dto::HandleInvitationResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::interaction::dto::InitiateIssuanceRequestRestDTO;
 
 impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
@@ -49,10 +51,12 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
     }
 }
 
-impl From<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
-    fn from(value: InitiateIssuanceRequestRestDTO) -> Self {
-        Self {
-            organisation_id: value.organisation_id,
+impl TryFrom<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: InitiateIssuanceRequestRestDTO) -> Result<Self, Self::Error> {
+        Ok(Self {
+            organisation_id: fallback_organisation_id_from_session(value.organisation_id)?,
             protocol: value.protocol,
             issuer: value.issuer,
             client_id: value.client_id,
@@ -61,6 +65,6 @@ impl From<InitiateIssuanceRequestRestDTO> for InitiateIssuanceRequestDTO {
             authorization_details: convert_inner_of_inner(value.authorization_details),
             issuer_state: None,
             authorization_server: None,
-        }
+        })
     }
 }

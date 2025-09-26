@@ -10,6 +10,7 @@ use super::dto::{
     PresentationSubmitRequestRestDTO, ProposeProofRequestRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::interaction::dto::{
     InitiateIssuanceRequestRestDTO, InitiateIssuanceResponseRestDTO, ProposeProofResponseRestDTO,
@@ -44,16 +45,19 @@ pub(crate) async fn handle_invitation(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<HandleInvitationResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_holder_service
-        .handle_invitation(
-            request.url,
-            request.organisation_id,
-            request.transport,
-            request.redirect_uri,
-        )
-        .await;
+    let result = async {
+        state
+            .core
+            .ssi_holder_service
+            .handle_invitation(
+                request.url,
+                fallback_organisation_id_from_session(request.organisation_id)?,
+                request.transport,
+                request.redirect_uri,
+            )
+            .await
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "handling invitation")
 }
 
@@ -208,7 +212,14 @@ pub(crate) async fn propose_proof(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<ProposeProofResponseRestDTO> {
-    let result = state.core.proof_service.propose_proof(request.into()).await;
+    let result = async {
+        state
+            .core
+            .proof_service
+            .propose_proof(request.try_into()?)
+            .await
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "proposing proof")
 }
 
@@ -234,11 +245,14 @@ pub(crate) async fn initiate_issuance(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<InitiateIssuanceResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_holder_service
-        .initiate_issuance(request.into())
-        .await;
+    let result = async {
+        state
+            .core
+            .ssi_holder_service
+            .initiate_issuance(request.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "initiating issuance")
 }
 

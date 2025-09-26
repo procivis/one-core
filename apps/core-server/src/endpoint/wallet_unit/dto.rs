@@ -1,12 +1,13 @@
 use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, WalletProviderType, WalletUnitOs, WalletUnitStatus,
 };
+use one_core::service::error::ServiceError;
 use one_core::service::wallet_unit::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
     HolderRegisterWalletUnitRequestDTO, HolderRegisterWalletUnitResponseDTO,
     HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
-use one_dto_mapper::{From, Into, convert_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
@@ -14,6 +15,7 @@ use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::dto::common::ListQueryParamsRest;
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::{front_time, front_time_option};
 
 pub(crate) type ListWalletUnitsQuery =
@@ -119,13 +121,16 @@ pub(crate) enum SortableWalletUnitColumnRest {
     Status,
     Os,
 }
-
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(HolderRegisterWalletUnitRequestDTO)]
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = HolderRegisterWalletUnitRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
-    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
+    #[try_into(infallible)]
     pub wallet_provider: WalletProviderRestDTO,
+    #[try_into(infallible)]
     pub key_type: String,
 }
 
@@ -148,18 +153,22 @@ pub struct HolderRegisterWalletUnitResponseRestDTO {
     pub key_id: KeyId,
 }
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(HolderRefreshWalletUnitRequestDTO)]
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T = HolderRefreshWalletUnitRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderRefreshWalletUnitRequestRestDTO {
-    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
+    #[try_into(infallible)]
     pub app_integrity_check_required: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, utoipa::IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HolderAttestationsQueryParams {
-    pub organisation_id: OrganisationId,
+    #[param(nullable = false)]
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

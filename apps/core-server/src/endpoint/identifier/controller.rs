@@ -64,12 +64,14 @@ pub(crate) async fn post_identifier(
         ErrorResponseRestDTO,
     >,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = state
-        .core
-        .identifier_service
-        .create_identifier(request.into())
-        .await;
-
+    let result = async {
+        state
+            .core
+            .identifier_service
+            .create_identifier(request.try_into()?)
+            .await
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "creating identifier")
 }
 

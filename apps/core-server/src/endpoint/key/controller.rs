@@ -84,7 +84,7 @@ pub(crate) async fn post_key(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<KeyRequestRestDTO>, ErrorResponseRestDTO>,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = state.core.key_service.create_key(request.into()).await;
+    let result = async { state.core.key_service.create_key(request.try_into()?).await }.await;
     CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 

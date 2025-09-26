@@ -123,7 +123,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
     #[from(with_fn = convert_inner)]
@@ -431,12 +431,13 @@ pub(crate) struct CredentialSchemaShareResponseRestDTO {
     pub url: String,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ImportCredentialSchemaRequestRestDTO {
-    #[try_into(infallible)]
-    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
     pub schema: ImportCredentialSchemaRequestSchemaRestDTO,
 }
 
@@ -462,7 +463,7 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[try_into(infallible)]
     pub revocation_method: String,
     #[try_into(infallible)]
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
     #[serde(default)]

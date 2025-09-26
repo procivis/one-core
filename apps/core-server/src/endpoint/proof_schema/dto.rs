@@ -17,6 +17,7 @@ use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
     CredentialSchemaListItemResponseRestDTO, CredentialSchemaType, WalletStorageTypeRestEnum,
@@ -24,21 +25,24 @@ use crate::endpoint::credential_schema::dto::{
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, Into)]
-#[into(CreateProofSchemaRequestDTO)]
+#[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, TryInto)]
+#[try_into(T = CreateProofSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[schema(min_length = 1)]
+    #[try_into(infallible)]
     pub name: String,
     /// Specify the organization.
-    pub organisation_id: Uuid,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
     /// Defines the length of storage of received proofs, in seconds. After
     /// the defined duration, the received proof and its data are deleted
     /// from the system. If 0, the proofs received when using this proof
     /// schema will not be deleted.
+    #[try_into(infallible)]
     pub expire_duration: Option<u32>,
-    #[into(with_fn = convert_inner)]
+    #[try_into(with_fn = convert_inner, infallible)]
     #[schema(min_items = 1)]
     pub proof_input_schemas: Vec<ProofInputSchemaRequestRestDTO>,
 }
@@ -71,12 +75,13 @@ pub(crate) struct ClaimProofSchemaRequestRestDTO {
     pub required: bool,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ImportProofSchemaRequestRestDTO {
-    #[try_into(infallible)]
-    pub organisation_id: Uuid,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
     pub schema: ImportProofSchemaRestDTO,
 }
 
@@ -261,7 +266,7 @@ pub(crate) struct GetProofSchemaResponseRestDTO {
     pub name: String,
     pub expire_duration: u32,
     pub imported_source_url: Option<String>,
-    pub organisation_id: Uuid,
+    pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub proof_input_schemas: Vec<ProofInputSchemaResponseRestDTO>,
 }

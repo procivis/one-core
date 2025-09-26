@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use one_core::model::identifier::{IdentifierState, IdentifierType, SortableIdentifierColumn};
 use one_core::service::certificate::dto::CreateCertificateRequestDTO;
+use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
     CreateIdentifierDidRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO,
     GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
@@ -11,7 +12,7 @@ use one_core::service::trust_entity::dto::{
     ResolvedIdentifierTrustEntityResponseDTO,
 };
 use one_dto_mapper::{
-    From, Into, TryFrom, convert_inner, convert_inner_of_inner, try_convert_inner,
+    From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
     try_convert_inner_of_inner,
 };
 use proc_macros::options_not_nullable;
@@ -23,6 +24,7 @@ use validator::Validate;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{Boolean, ListQueryParamsRest};
+use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
 use crate::endpoint::key::dto::KeyResponseRestDTO;
@@ -31,17 +33,20 @@ use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
-#[derive(Debug, Deserialize, ToSchema, Validate, Into)]
+#[derive(Debug, Deserialize, ToSchema, Validate, TryInto)]
 #[serde(rename_all = "camelCase")]
-#[into(CreateIdentifierRequestDTO)]
+#[try_into(T = CreateIdentifierRequestDTO, Error = ServiceError)]
 pub(crate) struct CreateIdentifierRequestRestDTO {
+    #[try_into(infallible)]
     pub name: String,
-    #[into(with_fn = "convert_inner")]
+    #[try_into(with_fn = convert_inner, infallible)]
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
+    #[try_into(infallible)]
     pub key_id: Option<KeyId>,
-    #[into(with_fn = "convert_inner_of_inner")]
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub certificates: Option<Vec<CreateCertificateRequestRestDTO>>,
-    pub organisation_id: OrganisationId,
+    #[try_into(with_fn = fallback_organisation_id_from_session)]
+    pub organisation_id: Option<OrganisationId>,
 }
 
 #[options_not_nullable]
