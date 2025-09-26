@@ -62,7 +62,7 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
     assert!(attestation_jwt.payload.proof_of_possession_key.is_some());
     assert_eq!(
         attestation_jwt.payload.custom.wallet_name.as_deref(),
-        Some("Procivis One Trial Wallet")
+        Some("Procivis One Dev Wallet")
     );
     assert_eq!(
         attestation_jwt.payload.custom.wallet_link.as_deref(),

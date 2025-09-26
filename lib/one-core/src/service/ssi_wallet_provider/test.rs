@@ -68,7 +68,7 @@ fn wallet_provider_config(
         capabilities: None,
         params: Some(Params {
             public: Some(json!({
-                "walletName": "Procivis One Trial Wallet",
+                "walletName": "Procivis One Dev Wallet",
                 "walletLink": "https://procivis.ch",
                 "android": {
                     "bundleId": "com.procivis...",
