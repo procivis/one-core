@@ -158,7 +158,11 @@ impl OID4VPDraft20Service {
                     &self.key_algorithm_provider,
                     &*self.key_provider,
                     interaction_data.client_id,
-                    interaction_data.response_uri.unwrap(),
+                    interaction_data
+                        .response_uri
+                        .ok_or(ServiceError::MappingError(
+                            "response_uri missing".to_string(),
+                        ))?,
                     authorization_request,
                 )
                 .await?

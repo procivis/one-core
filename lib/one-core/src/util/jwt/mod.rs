@@ -93,7 +93,8 @@ impl<Payload> Jwt<Payload> {
 
 impl<Payload: WithMetadata + Serialize> Jwt<Payload> {
     pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
-        let value = serde_json::to_value(&self.payload).unwrap();
+        let value = serde_json::to_value(&self.payload)
+            .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
 
         let Some(obj) = value.as_object() else {
             return Err(FormatterError::Failed(

@@ -1069,7 +1069,7 @@ fn initialize_x509_crl_cache(
     let client: Arc<dyn HttpClient> = {
         let client = reqwest::Client::builder()
             .build()
-            .expect("Failed to create reqwest::Client");
+            .map_err(|e| SDKError::InitializationFailure(e.to_string()))?;
 
         Arc::new(ReqwestClient::new(client))
     };
@@ -1087,7 +1087,7 @@ fn initialize_android_key_attestation_crl_cache() -> Result<AndroidAttestationCr
     let client: Arc<dyn HttpClient> = {
         let client = reqwest::Client::builder()
             .build()
-            .expect("Failed to create reqwest::Client");
+            .map_err(|e| SDKError::InitializationFailure(e.to_string()))?;
 
         Arc::new(ReqwestClient::new(client))
     };

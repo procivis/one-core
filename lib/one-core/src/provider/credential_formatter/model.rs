@@ -427,6 +427,7 @@ pub enum Context {
 
 impl Context {
     pub fn to_url(&self) -> Url {
+        #[allow(clippy::expect_used)]
         Url::parse(self.into()).expect("Context is always a URL")
     }
 }

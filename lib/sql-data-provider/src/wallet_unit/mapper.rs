@@ -76,6 +76,7 @@ impl IntoFilterCondition for WalletUnitFilterValue {
                 .into_condition(),
             Self::AttestationHash(attestation_hash) => {
                 let history_metadata = HistoryMetadata::WalletUnitJWT(attestation_hash);
+                #[allow(clippy::expect_used)]
                 let history_metadata_json = serde_json::to_string(&history_metadata)
                     .expect("Failed to serialize history metadata");
                 wallet_unit::Column::Id

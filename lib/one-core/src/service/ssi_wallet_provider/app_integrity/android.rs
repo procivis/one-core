@@ -67,7 +67,7 @@ fn nonce_and_bundle_id_from_attestation_extension(
     extension_data: &[u8],
 ) -> Result<(String, String, Vec<String>), BerError> {
     let (_, parsed_ext) = parse_der(extension_data)?;
-    let key_description = parsed_ext.as_sequence().expect("Expected DER sequence");
+    let key_description = parsed_ext.as_sequence()?;
     if key_description.len() != 8 {
         return Err(BerError::InvalidLength);
     }

@@ -217,8 +217,12 @@ pub(crate) fn webauthn_signed_jwt_to_msg_and_sig(
     msg.extend(SHA256.hash(proof.unverified_jwt.as_bytes()).map_err(|e| {
         WalletProviderError::CouldNotVerifyProof(format!("failed to hash token payload: {e}"))
     })?);
-    let msg = SHA256.hash(&msg).unwrap();
-    let sig = ecdsa_sig_from_der(&webauthn_sig.signature).unwrap();
+    let msg = SHA256.hash(&msg).map_err(|e| {
+        WalletProviderError::CouldNotVerifyProof(format!("failed to hash message: {e}"))
+    })?;
+    let sig = ecdsa_sig_from_der(&webauthn_sig.signature).map_err(|e| {
+        WalletProviderError::CouldNotVerifyProof(format!("failed parse signature: {e}"))
+    })?;
     Ok((msg, sig))
 }
 

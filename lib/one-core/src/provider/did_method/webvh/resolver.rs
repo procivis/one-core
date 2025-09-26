@@ -21,6 +21,7 @@ pub async fn resolve(
 ) -> Result<DidDocument, DidMethodError> {
     let TransformedDid { mut url, .. } = transform_did_to_https(did.as_str())?;
     if use_http {
+        #[allow(clippy::expect_used)]
         url.set_scheme("http").expect("http is a valid scheme");
     }
 

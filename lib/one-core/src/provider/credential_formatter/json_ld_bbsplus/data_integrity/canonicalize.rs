@@ -15,6 +15,7 @@ use super::skolemize::{skolemize_compact_json_ld, to_deskolemized_nquads};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::util::rdf_canonization::TermAdapter;
 
+#[allow(clippy::expect_used)]
 static BLANK_NODE_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r#"(_:([^\s]+))"#).expect("Failed to compile regex"));
 

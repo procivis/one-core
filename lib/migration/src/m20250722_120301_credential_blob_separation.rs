@@ -77,7 +77,7 @@ impl MigrationTrait for Migration {
                     )
                     .to_owned(),
             )
-            .unwrap()
+            .map_err(|e| DbErr::Custom(e.to_string()))?
             .to_owned();
         manager.exec_stmt(copy_blob_data).await?;
 

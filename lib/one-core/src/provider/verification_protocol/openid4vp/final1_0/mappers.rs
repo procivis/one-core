@@ -158,7 +158,14 @@ fn format_params_for_redirect_uri(
         nonce: authorization_request.nonce,
         response_type: authorization_request.response_type,
         response_mode: authorization_request.response_mode,
-        response_uri: Some(authorization_request.response_uri.unwrap().to_string()),
+        response_uri: Some(
+            authorization_request
+                .response_uri
+                .ok_or(VerificationProtocolError::Failed(
+                    "response_uri missing".to_string(),
+                ))?
+                .to_string(),
+        ),
         client_metadata: Some(metadata),
         dcql_query: Some(dcql_query),
         request: None,

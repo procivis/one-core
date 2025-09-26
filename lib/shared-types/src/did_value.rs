@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
+#[allow(clippy::expect_used)]
 static DID_ALLOWLIST_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^[a-zA-Z0-9:._%-]+$").expect("Failed to compile regex"));
 

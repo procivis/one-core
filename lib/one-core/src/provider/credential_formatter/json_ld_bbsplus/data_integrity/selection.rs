@@ -59,6 +59,7 @@ fn relabel_blank_node(term: TermAdapter, label_map: &BTreeMap<String, String>) -
             let suffix = &bid[2..];
             let new_label = &label_map[suffix];
             let iri = format!("_:{new_label}");
+            #[allow(clippy::expect_used)]
             let bid = BlankIdBuf::new(iri).expect("should always be a valid BlankIdBuf");
             let term = rdf_types::Term::Id(rdf_types::Id::Blank(bid));
             TermAdapter(term)

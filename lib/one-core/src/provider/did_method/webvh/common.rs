@@ -61,6 +61,7 @@ pub(super) fn canonicalize_multihash_encode(log: impl Serialize) -> Result<Strin
 }
 
 pub(super) fn now_utc() -> OffsetDateTime {
+    #[allow(clippy::expect_used)]
     OffsetDateTime::now_utc()
         .replace_nanosecond(0)
         .expect("should always be safe to replace with 0")

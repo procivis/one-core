@@ -14,6 +14,7 @@ const TIMESTAMP_FORMAT: &[time::format_description::FormatItem<'static>] = time:
 
 impl TimestampFormat for OffsetDateTime {
     fn format_timestamp(&self) -> String {
+        #[allow(clippy::expect_used)]
         self.format(&TIMESTAMP_FORMAT)
             .expect("Failed to compile timestamp format")
     }
