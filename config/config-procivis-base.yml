@@ -83,7 +83,7 @@ identifier:
     order: 2
 issuanceProtocol:
   OPENID4VCI_DRAFT13:
-    display: "exchange.openid"
+    display: "exchange.openid4vciDraft13"
     order: 1
     type: "OPENID4VCI_DRAFT13"
     params:
@@ -113,7 +113,7 @@ issuanceProtocol:
           enabled: true
           allowedSchemes: ["https"]
   OPENID4VCI_FINAL1:
-    display: protocol.openIdFinal1
+    display: exchange.openIdFinal1
     order: 3
     type: "OPENID4VCI_FINAL1"
     params:
