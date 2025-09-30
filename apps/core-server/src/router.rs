@@ -12,9 +12,10 @@ use axum::response::IntoResponse;
 use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router, middleware};
 use one_core::OneCore;
+use one_core::proto::session_provider::Session;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
-use tracing::{Span, info, info_span, warn};
+use tracing::{Span, error_span, info, warn};
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::ServerConfig;
@@ -322,6 +323,25 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 "/api/wallet-unit/v1/holder-attestation",
                 get(wallet_unit::controller::wallet_unit_holder_attestation),
             )
+            .layer(
+                TraceLayer::new_for_http()
+                    .make_span_with(|request: &Request<_>| {
+                        let session = request.extensions().get::<Session>();
+                        let Some(session) = session else {
+                            return Span::current();
+                        };
+                        let user = session.user_id.as_str();
+                        let organisation = session.organisation_id.map(|id| id.to_string());
+                        error_span!("session", user = user, organisation = organisation) // Derived from the authorization header
+                    })
+                    .on_request(|request: &Request<_>, _: &_| {
+                        if let Some(_session) = request.extensions().get::<Session>() {
+                            tracing::debug!("SESSION INITIALIZED")
+                        }
+                    })
+                    .on_response(|_: &_, _, _: &_| {})
+                    .on_failure(|_, _, _: &_| {}),
+            )
             .layer(middleware::from_fn(crate::middleware::authorization_check))
             .layer(Extension(authentication))
     } else {
@@ -580,7 +600,22 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         }
     };
 
-    let mut router = router.merge(protected).merge(unprotected);
+    let mut router = protected
+        .merge(unprotected)
+        .merge(router)
+        .layer(middleware::from_fn(crate::middleware::sentry_layer))
+        .layer(middleware::from_fn(crate::middleware::metrics_counter))
+        .merge(openapi_endpoints)
+        .merge(server_info_endpoints)
+        .merge(metrics_endpoints)
+        .layer(CatchPanicLayer::custom(handle_panic))
+        .layer(Extension(config))
+        .layer(middleware::from_fn(
+            crate::middleware::add_disable_cache_headers,
+        ))
+        .layer(middleware::from_fn(
+            crate::middleware::add_x_content_type_options_no_sniff_header,
+        ));
 
     if tracing::enabled!(target: "core_server::middleware", tracing::Level::TRACE) {
         router = router.layer(middleware::from_fn(
@@ -593,13 +628,13 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             TraceLayer::new_for_http()
                 .make_span_with(|request: &Request<_>| {
                     let context = get_http_request_context(request);
-                    info_span!(
+                    error_span!(
                         "http_request",
                         method = context.method,
                         path = context.path,
                         service = "one-core",
                         RequestId = context.request_id,
-                        SessionId = context.session_id,
+                        SessionId = context.session_id, // Derived from x-session-id header
                     )
                 })
                 .on_request(|request: &Request<_>, _span: &Span| {
@@ -610,23 +645,14 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                     )
                 })
                 .on_failure(|_, _, _: &_| {}) // override default on_failure handler
-                .on_response(|response: &Response<_>, _: Duration, _span: &Span| {
-                    tracing::debug!("SERVICE CALL END {}", response.status())
+                .on_response(|response: &Response<_>, duration: Duration, _: &_| {
+                    tracing::debug!(
+                        "SERVICE CALL END {} ({} ms)",
+                        response.status(),
+                        duration.as_millis()
+                    );
                 }),
         )
-        .layer(middleware::from_fn(crate::middleware::sentry_layer))
-        .layer(middleware::from_fn(crate::middleware::metrics_counter))
-        .merge(metrics_endpoints)
-        .merge(server_info_endpoints)
-        .merge(openapi_endpoints)
-        .layer(CatchPanicLayer::custom(handle_panic))
-        .layer(Extension(config))
-        .layer(middleware::from_fn(
-            crate::middleware::add_disable_cache_headers,
-        ))
-        .layer(middleware::from_fn(
-            crate::middleware::add_x_content_type_options_no_sniff_header,
-        ))
         .with_state(state)
 }
 

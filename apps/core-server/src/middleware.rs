@@ -133,6 +133,7 @@ pub async fn authorization_check(
                     .subject
                     .ok_or(StatusCode::UNAUTHORIZED)?,
             };
+            request.extensions_mut().insert(session.clone());
             tracing::trace!("Session initialized: {session}");
             SESSION.scope(session, next.run(request)).await
         }
