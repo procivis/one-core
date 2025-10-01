@@ -246,6 +246,7 @@ pub(crate) enum WalletStorageTypeRestEnum {
     Software,
     Hardware,
     RemoteSecureElement,
+    EudiCompliant,
 }
 
 #[options_not_nullable]

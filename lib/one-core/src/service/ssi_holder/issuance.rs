@@ -238,6 +238,10 @@ impl SSIHolderService {
             Some(WalletStorageTypeEnum::RemoteSecureElement) => {
                 key_security.contains(&KeySecurity::RemoteSecureElement)
             }
+            Some(WalletStorageTypeEnum::EudiCompliant) => {
+                key_security.contains(&KeySecurity::Hardware)
+                    || key_security.contains(&KeySecurity::RemoteSecureElement)
+            }
             None => true,
         };
 

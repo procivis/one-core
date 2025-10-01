@@ -471,4 +471,5 @@ pub enum WalletStorageTypeBindingEnum {
     Hardware,
     Software,
     RemoteSecureElement,
+    EudiCompliant,
 }

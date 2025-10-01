@@ -137,6 +137,7 @@ pub enum WalletStorageTypeEnum {
     Hardware,
     Software,
     RemoteSecureElement,
+    EudiCompliant,
 }
 
 #[skip_serializing_none]

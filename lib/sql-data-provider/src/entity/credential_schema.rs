@@ -151,6 +151,8 @@ pub enum WalletStorageType {
     Software,
     #[sea_orm(string_value = "REMOTE_SECURE_ELEMENT")]
     RemoteSecureElement,
+    #[sea_orm(string_value = "EUDI_COMPLIANT")]
+    EudiCompliant,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]

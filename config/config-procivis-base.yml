@@ -556,6 +556,9 @@ holderKeyStorage:
   REMOTE_SECURE_ELEMENT:
     display: "holderKeyStorage.remoteSecureElement"
     order: 20
+  EUDI_COMPLIANT:
+    display: "holderKeyStorage.eudiCompliant"
+    order: 30
 blobStorage:
   DB:
     enabled: true
