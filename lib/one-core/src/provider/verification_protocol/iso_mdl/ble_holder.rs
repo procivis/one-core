@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -43,6 +44,7 @@ pub(crate) struct MdocBleHolderInteractionData {
     // known from the beginning
     pub organisation_id: OrganisationId,
     pub service_uuid: Uuid,
+    pub engagement: HashSet<VerificationEngagement>,
 
     // currently latest scheduled task identifier
     pub continuation_task_id: Uuid,

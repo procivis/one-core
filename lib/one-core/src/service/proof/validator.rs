@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::str::FromStr;
 
 use url::Url;
@@ -305,17 +306,19 @@ pub(super) fn validate_verifier_engagement(
 pub(super) fn validate_holder_engagements(
     engagements: &[impl AsRef<str>],
     config: &VerificationEngagementConfig,
-) -> Result<(), ValidationError> {
+) -> Result<HashSet<VerificationEngagement>, ValidationError> {
     if engagements.is_empty() {
         return Err(ValidationError::MissingVerificationEngagementConfig(
             "-".to_string(),
         ));
     }
 
+    let mut result = HashSet::new();
     for engagement in engagements {
-        let enabled = VerificationEngagement::from_str(engagement.as_ref())
-            .ok()
-            .and_then(|e| config.get(&e))
+        let engagement_type = VerificationEngagement::from_str(engagement.as_ref())
+            .map_err(|e| ValidationError::MissingVerificationEngagementConfig(e.to_string()))?;
+        let enabled = config
+            .get(&engagement_type)
             .map(|e| e.enabled())
             .unwrap_or(false);
 
@@ -324,8 +327,10 @@ pub(super) fn validate_holder_engagements(
                 engagement.as_ref().to_string(),
             ));
         }
+
+        result.insert(engagement_type);
     }
-    Ok(())
+    Ok(result)
 }
 
 #[cfg(test)]

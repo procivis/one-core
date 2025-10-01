@@ -33,6 +33,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp20SwiyuParams;
@@ -86,6 +87,7 @@ pub(crate) fn verification_protocol_providers_from_config(
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
     mqtt_client: Option<Arc<dyn MqttClient>>,
+    nfc_hce: Option<Arc<dyn NfcHce>>,
 ) -> Result<HashMap<String, Arc<dyn VerificationProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn VerificationProtocol>> = HashMap::new();
 
@@ -240,6 +242,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     ble.clone(),
+                    nfc_hce.clone(),
                 ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);

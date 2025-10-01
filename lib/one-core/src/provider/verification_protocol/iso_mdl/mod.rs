@@ -25,15 +25,19 @@ use super::{
     VerificationProtocolError,
 };
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
-use crate::config::core_config::{CoreConfig, DidType, FormatType, IdentifierType, TransportType};
+use crate::config::core_config::{
+    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationEngagement,
+};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::Did;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::proof::Proof;
+use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::nfc::NfcError;
+use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
 };
@@ -66,6 +70,7 @@ pub(crate) struct IsoMdl {
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ble: Option<BleWaiter>,
+    nfc_hce: Option<Arc<dyn NfcHce>>,
 }
 
 impl IsoMdl {
@@ -75,6 +80,7 @@ impl IsoMdl {
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         ble: Option<BleWaiter>,
+        nfc_hce: Option<Arc<dyn NfcHce>>,
     ) -> Self {
         Self {
             config,
@@ -82,6 +88,7 @@ impl IsoMdl {
             key_provider,
             key_algorithm_provider,
             ble,
+            nfc_hce,
         }
     }
 }
@@ -231,7 +238,7 @@ impl VerificationProtocol for IsoMdl {
         Ok(UpdateResponse { update_proof: None })
     }
 
-    async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
+    async fn retract_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError> {
         let ble = self.ble.as_ref().ok_or_else(|| {
             VerificationProtocolError::Failed("Missing BLE interface".to_string())
         })?;
@@ -239,6 +246,35 @@ impl VerificationProtocol for IsoMdl {
         // There is one shared flowId for both holder and verifier logic.
         // So this call cancels either one, if it is running
         ble.abort(Abort::Flow(*ISO_MDL_FLOW)).await;
+
+        // explicitly stop NFC HCE if running
+        if proof.role == ProofRole::Holder && proof.state == ProofStateEnum::Pending {
+            let interaction_data: MdocBleHolderInteractionData = deserialize_interaction_data(
+                proof
+                    .interaction
+                    .as_ref()
+                    .and_then(|interaction| interaction.data.as_ref()),
+            )?;
+
+            if interaction_data
+                .engagement
+                .contains(&VerificationEngagement::NFC)
+            {
+                match self
+                    .nfc_hce
+                    .as_ref()
+                    .ok_or_else(|| {
+                        VerificationProtocolError::Failed("Missing NFC HCE interface".to_string())
+                    })?
+                    .stop_hosting(false)
+                    .await
+                {
+                    Ok(_) | Err(NfcError::NotStarted) => {}
+                    Err(err) => tracing::error!("Failed to stop NFC hosting: {err}"),
+                }
+            }
+        }
+
         Ok(())
     }
 

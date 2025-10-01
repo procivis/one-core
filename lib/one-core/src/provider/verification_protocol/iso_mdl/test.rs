@@ -10,6 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::IsoMdl;
+use crate::config::core_config::VerificationEngagement;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -83,6 +84,7 @@ async fn test_presentation_reject_ok() {
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Some(ble_waiter),
+        None,
     );
 
     let schema_id = "org.iso.18013.5.1".to_string();
@@ -110,6 +112,7 @@ async fn test_presentation_reject_ok() {
         service_uuid: Uuid::new_v4(),
         continuation_task_id,
         organisation_id,
+        engagement: HashSet::from([VerificationEngagement::QrCode]),
         session: Some(MdocBleHolderInteractionSessionData {
             sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),
             sk_reader: SkReader::new(SecretSlice::from(vec![0; 32])),
@@ -196,6 +199,7 @@ async fn test_get_presentation_definition_ok() {
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         None,
+        None,
     );
 
     let organisation_id = Uuid::new_v4().into();
@@ -222,6 +226,7 @@ async fn test_get_presentation_definition_ok() {
     let interaction_data = serde_json::to_value(MdocBleHolderInteractionData {
         service_uuid: Uuid::new_v4(),
         continuation_task_id: Uuid::new_v4(),
+        engagement: HashSet::from([VerificationEngagement::QrCode]),
         organisation_id,
         session: Some(MdocBleHolderInteractionSessionData {
             sk_device: SkDevice::new(SecretSlice::from(vec![0; 32])),

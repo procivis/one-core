@@ -55,7 +55,6 @@ use crate::model::proof_schema::{
 };
 use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::nfc::NfcError;
 use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, ShareResponse,
@@ -748,7 +747,8 @@ impl ProofService {
     ) -> Result<ProposeProofResponseDTO, ServiceError> {
         throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         validate_protocol_type(&request.protocol, &self.config.verification_protocol)?;
-        validate_holder_engagements(&request.engagement, &self.config.verification_engagement)?;
+        let engagement =
+            validate_holder_engagements(&request.engagement, &self.config.verification_engagement)?;
         let exchange_type = self
             .config
             .verification_protocol
@@ -761,6 +761,11 @@ impl ProofService {
             }
             .into());
         }
+
+        let organisation = self
+            .organisation_repository
+            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .await?;
 
         let transport = self
             .config
@@ -789,10 +794,7 @@ impl ProofService {
             }],
         };
 
-        let (qr_code, qr_engagement) = if request
-            .engagement
-            .contains(&VerificationEngagement::QrCode.to_string())
-        {
+        let (qr_code, qr_engagement) = if engagement.contains(&VerificationEngagement::QrCode) {
             let device_engagement_bytes = device_engagement
                 .clone()
                 .into_cbor()
@@ -810,10 +812,7 @@ impl ProofService {
             (None, None)
         };
 
-        let nfc_engagement = if request
-            .engagement
-            .contains(&VerificationEngagement::NFC.to_string())
-        {
+        let nfc_engagement = if engagement.contains(&VerificationEngagement::NFC) {
             let nfc_hce_provider = self
                 .nfc_hce_provider
                 .clone()
@@ -856,20 +855,15 @@ impl ProofService {
         };
 
         let interaction_id = Uuid::new_v4();
-
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
             organisation_id: request.organisation_id,
             service_uuid: ble_server.service_uuid,
             continuation_task_id: ble_server.task_id,
             session: None,
+            engagement,
         })
         .context("interaction serialization error")
         .map_err(VerificationProtocolError::Other)?;
-
-        let organisation = self
-            .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
 
         let interaction = add_new_interaction(
             interaction_id,
@@ -926,15 +920,6 @@ impl ProofService {
     }
 
     pub async fn delete_proof(&self, proof_id: ProofId) -> Result<(), ServiceError> {
-        if let Some(nfc_hce_provider) = &self.nfc_hce_provider {
-            if nfc_hce_provider.is_supported().await? && nfc_hce_provider.is_enabled().await? {
-                match nfc_hce_provider.stop_hosting(false).await {
-                    Ok(_) | Err(NfcError::NotStarted) => {}
-                    Err(err) => tracing::error!("Failed to stop NFC host data: {err}"),
-                }
-            }
-        }
-
         let Some(proof) = self
             .proof_repository
             .get_proof(

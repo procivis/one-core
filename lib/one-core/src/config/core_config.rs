@@ -714,6 +714,7 @@ pub type WalletProviderConfig = ConfigBlock<WalletProviderType>;
     Serialize,
     Deserialize,
     AsRefStr,
+    Hash,
 )]
 pub enum VerificationEngagement {
     #[serde(rename = "QR_CODE")]

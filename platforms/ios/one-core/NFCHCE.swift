@@ -12,9 +12,13 @@ public class NFCHCE: NSObject {
 @available(iOS 17.4, *)
 extension NFCHCE: NfcHce {
   public func isSupported() async -> Bool {
-    let supported = CardSession.isSupported
+    if !CardSession.isSupported {
+      return false
+    }
+
+    // Beware of this call - it raises fatal error if app not eligible
     let eligible = await CardSession.isEligible
-    return supported && eligible
+    return eligible
   }
 
   public func isEnabled() -> Bool {

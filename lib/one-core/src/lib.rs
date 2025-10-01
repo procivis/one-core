@@ -551,6 +551,7 @@ impl OneCore {
             ble_waiter.clone(),
             client.clone(),
             mqtt_client,
+            nfc_hce.clone(),
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
