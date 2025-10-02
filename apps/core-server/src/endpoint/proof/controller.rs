@@ -8,7 +8,7 @@ use shared_types::ProofId;
 
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
-    ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
+    PresentationDefinitionV2ResponseRestDTO, ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
 };
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetProofsResponseRestDTO,
@@ -48,6 +48,36 @@ pub(crate) async fn get_proof_presentation_definition(
         .get_proof_presentation_definition(&id)
         .await;
     OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/proof-request/v2/{id}/presentation-definition",
+    responses(OkOrErrorResponse<PresentationDefinitionV2ResponseRestDTO>),
+    params(
+        ("id" = ProofId, Path, description = "Proof id")
+    ),
+    tag = "proof_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Retrieve presentation definition",
+    description = indoc::formatdoc! {"
+        For wallets; after a wallet connects to a verifier's request for proof via the [Handle Invitation](../core/handle-invitation.api.mdx)
+        endpoint, the presentation definition endpoint takes the resulting `proofId` and filters the wallet, returning credentials which match the verifier's request.
+    "},
+)]
+#[require_permissions(Permission::ProofDetail)]
+pub(crate) async fn get_proof_presentation_definition_v2(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<PresentationDefinitionV2ResponseRestDTO> {
+    let result = state
+        .core
+        .proof_service
+        .get_proof_presentation_definition_v2(&id)
+        .await;
+    OkOrErrorResponse::from_result_fallible(result, state, "getting presentation definition v2")
 }
 
 #[utoipa::path(

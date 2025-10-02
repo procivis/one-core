@@ -23,7 +23,7 @@ use crate::service::test_utilities::{dummy_did, dummy_identifier};
 
 fn generate_credential_detail_response(
     claims: Vec<DetailCredentialClaimResponseDTO>,
-) -> CredentialDetailResponseDTO {
+) -> CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO> {
     let now = OffsetDateTime::now_utc();
 
     CredentialDetailResponseDTO {
@@ -65,7 +65,9 @@ fn generate_credential_detail_response(
     }
 }
 
-fn generate_credential_matching_detail(detail: &CredentialDetailResponseDTO) -> Credential {
+fn generate_credential_matching_detail(
+    detail: &CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
+) -> Credential {
     let detail = detail.clone();
     Credential {
         id: detail.id,

@@ -5,7 +5,8 @@ use proc_macros::require_permissions;
 use shared_types::CredentialId;
 
 use super::dto::{
-    CredentialRevocationCheckRequestRestDTO, CredentialRevocationCheckResponseRestDTO,
+    CredentialDetailClaimResponseRestDTO, CredentialRevocationCheckRequestRestDTO,
+    CredentialRevocationCheckResponseRestDTO,
 };
 use crate::dto::common::{
     EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
@@ -58,7 +59,7 @@ pub(crate) async fn delete_credential(
 #[utoipa::path(
     get,
     path = "/api/credential/v1/{id}",
-    responses(OkOrErrorResponse<GetCredentialResponseRestDTO>),
+    responses(OkOrErrorResponse<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -73,7 +74,7 @@ pub(crate) async fn delete_credential(
 pub(crate) async fn get_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
-) -> OkOrErrorResponse<GetCredentialResponseRestDTO> {
+) -> OkOrErrorResponse<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>> {
     let result = state.core.credential_service.get_credential(&id).await;
     OkOrErrorResponse::from_result_fallible(result, state, "getting credential")
 }

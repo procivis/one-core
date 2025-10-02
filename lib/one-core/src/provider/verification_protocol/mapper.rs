@@ -16,7 +16,9 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+};
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
 pub(crate) fn interaction_from_handle_invitation(
@@ -74,12 +76,15 @@ pub(crate) fn proof_from_handle_invitation(
 pub(crate) fn credential_model_to_credential_dto(
     credentials: Vec<Credential>,
     config: &CoreConfig,
-) -> Result<Vec<CredentialDetailResponseDTO>, VerificationProtocolError> {
+) -> Result<
+    Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
+    VerificationProtocolError,
+> {
     // Missing organisation here.
     credentials
         .into_iter()
         .map(|credential| credential_detail_response_from_model(credential, config, None))
-        .collect::<Result<Vec<CredentialDetailResponseDTO>, _>>()
+        .collect::<Result<Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>, _>>()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }
 

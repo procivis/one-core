@@ -40,7 +40,8 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential::CredentialService;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialRevocationCheckResponseDTO,
-    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
+    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, GetCredentialQueryDTO,
+    SuspendCredentialRequestDTO,
 };
 use crate::service::credential::mapper::{
     claims_from_create_request, credential_revocation_state_to_model_state, from_create_request,
@@ -302,7 +303,7 @@ impl CredentialService {
     pub async fn get_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<CredentialDetailResponseDTO, ServiceError> {
+    ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, ServiceError> {
         let credential = self
             .credential_repository
             .get_credential(

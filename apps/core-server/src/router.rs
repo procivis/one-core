@@ -183,6 +183,10 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(proof::controller::get_proof_presentation_definition),
             )
             .route(
+                "/api/proof-request/v2/{id}/presentation-definition",
+                get(proof::controller::get_proof_presentation_definition_v2),
+            )
+            .route(
                 "/api/proof-request/v1/{id}/claims",
                 delete(proof::controller::delete_proof_claims),
             )

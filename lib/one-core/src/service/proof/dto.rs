@@ -11,7 +11,9 @@ use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use crate::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use crate::service::certificate::dto::CertificateResponseDTO;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+};
 use crate::service::credential_schema::dto::CredentialSchemaListItemResponseDTO;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 use crate::service::proof_schema::dto::{GetProofSchemaListItemDTO, ProofClaimSchemaResponseDTO};
@@ -109,7 +111,7 @@ pub enum ProofClaimValueDTO {
 #[derive(Clone, Debug)]
 pub struct ProofInputDTO {
     pub claims: Vec<ProofClaimDTO>,
-    pub credential: Option<CredentialDetailResponseDTO>,
+    pub credential: Option<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
     pub credential_schema: CredentialSchemaListItemResponseDTO,
     pub validity_constraint: Option<i64>,
 }

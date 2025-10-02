@@ -24,7 +24,9 @@ use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+};
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::ServiceError;
 use crate::service::proof_schema::dto::ProofClaimSchemaResponseDTO;
@@ -181,7 +183,7 @@ pub(super) async fn get_verifier_proof_detail(
 
     let mut credential_for_credential_schema: HashMap<
         CredentialSchemaId,
-        CredentialDetailResponseDTO,
+        CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     > = HashMap::new();
 
     for proof_claim in claims.iter() {
@@ -573,7 +575,7 @@ pub(super) async fn get_holder_proof_detail(
         CredentialId,
         (
             Vec<ProofClaim>,
-            CredentialDetailResponseDTO,
+            CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
             CredentialSchema,
         ),
     > = HashMap::new();

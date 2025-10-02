@@ -12,7 +12,9 @@ use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
-use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
+use crate::endpoint::credential::dto::{
+    CredentialDetailClaimResponseRestDTO, GetCredentialResponseRestDTO,
+};
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
 use crate::mapper::MapperError;
@@ -81,7 +83,7 @@ pub(crate) enum HistoryMetadataRestEnum {
 #[try_from(T = one_core::service::backup::dto::UnexportableEntitiesResponseDTO, Error = MapperError)]
 pub(crate) struct UnexportableEntitiesResponseRestDTO {
     #[try_from(with_fn = try_convert_inner)]
-    pub credentials: Vec<GetCredentialResponseRestDTO>,
+    pub credentials: Vec<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>>,
     #[try_from(with_fn = try_convert_inner)]
     pub keys: Vec<KeyListItemResponseRestDTO>,
     #[try_from(with_fn = convert_inner, infallible)]

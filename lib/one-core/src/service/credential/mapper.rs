@@ -28,7 +28,7 @@ pub fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
     validity_credential: Option<ValidityCredential>,
-) -> Result<CredentialDetailResponseDTO, ServiceError> {
+) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, ServiceError> {
     let schema = value.schema.ok_or(ServiceError::MappingError(
         "credential_schema is None".to_string(),
     ))?;

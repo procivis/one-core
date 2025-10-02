@@ -42,7 +42,7 @@ pub struct CredentialListItemResponseDTO {
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CredentialDetailResponseDTO {
+pub struct CredentialDetailResponseDTO<T> {
     pub id: CredentialId,
     #[serde(with = "time::serde::rfc3339")]
     pub created_date: OffsetDateTime,
@@ -57,7 +57,7 @@ pub struct CredentialDetailResponseDTO {
     pub issuer: Option<GetIdentifierListItemResponseDTO>,
     #[serde(skip)]
     pub issuer_certificate: Option<CertificateResponseDTO>,
-    pub claims: Vec<DetailCredentialClaimResponseDTO>,
+    pub claims: Vec<T>,
     pub redirect_uri: Option<String>,
     pub role: CredentialRole,
     #[serde(with = "time::serde::rfc3339::option")]

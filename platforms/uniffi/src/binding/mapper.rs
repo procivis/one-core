@@ -81,8 +81,10 @@ use crate::binding::trust_entity::{
 use crate::error::ErrorResponseBindingDTO;
 use crate::utils::{TimestampFormat, format_timestamp_opt, into_id, into_timestamp};
 
-impl From<CredentialDetailResponseDTO> for CredentialDetailBindingDTO {
-    fn from(value: CredentialDetailResponseDTO) -> Self {
+impl<IN: Into<ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
+    for CredentialDetailBindingDTO
+{
+    fn from(value: CredentialDetailResponseDTO<IN>) -> Self {
         Self {
             id: value.id.to_string(),
             created_date: value.created_date.format_timestamp(),

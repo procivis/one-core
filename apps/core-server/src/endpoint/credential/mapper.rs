@@ -2,12 +2,14 @@ use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
-use one_core::service::credential::dto::CredentialFilterValue;
+use one_core::service::credential::dto::{CredentialDetailResponseDTO, CredentialFilterValue};
 use one_core::service::error::{BusinessLogicError, ServiceError};
+use one_dto_mapper::{convert_inner, try_convert_inner};
 
-use super::dto::{CredentialsFilterQueryParamsRest, SearchType};
+use super::dto::{CredentialsFilterQueryParamsRest, GetCredentialResponseRestDTO, SearchType};
 use crate::dto::common::ExactColumn;
 use crate::dto::mapper::fallback_organisation_id_from_session;
+use crate::mapper::MapperError;
 
 impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<CredentialFilterValue> {
     type Error = ServiceError;
@@ -161,5 +163,34 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             & issuance_date_before
             & revocation_date_after
             & revocation_date_before)
+    }
+}
+
+impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
+    for GetCredentialResponseRestDTO<OUT>
+{
+    type Error = MapperError;
+
+    fn try_from(value: CredentialDetailResponseDTO<IN>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: value.id.into(),
+            created_date: value.created_date,
+            issuance_date: value.issuance_date,
+            revocation_date: value.revocation_date,
+            state: value.state.into(),
+            last_modified: value.last_modified,
+            schema: value.schema.into(),
+            issuer: convert_inner(value.issuer),
+            issuer_certificate: try_convert_inner(value.issuer_certificate)?,
+            claims: convert_inner(value.claims),
+            redirect_uri: value.redirect_uri,
+            role: value.role.into(),
+            lvvc_issuance_date: value.lvvc_issuance_date,
+            suspend_end_date: value.suspend_end_date,
+            mdoc_mso_validity: convert_inner(value.mdoc_mso_validity),
+            holder: convert_inner(value.holder),
+            protocol: value.protocol,
+            profile: value.profile,
+        })
     }
 }

@@ -1,11 +1,10 @@
 use one_core::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListIncludeEntityTypeEnum,
-    CredentialListItemResponseDTO, CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO,
-    CredentialRole, CredentialStateEnum, DetailCredentialClaimResponseDTO,
-    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
+    CreateCredentialRequestDTO, CredentialListIncludeEntityTypeEnum, CredentialListItemResponseDTO,
+    CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
+    CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
+    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
 };
-use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
+use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -24,7 +23,6 @@ use crate::endpoint::credential_schema::dto::{
     WalletStorageTypeRestEnum,
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
-use crate::mapper::MapperError;
 use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
@@ -75,81 +73,57 @@ pub(crate) struct MdocMsoValidityResponseRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Debug, Serialize, ToSchema, TryFrom)]
-#[try_from(T = CredentialDetailResponseDTO, Error = MapperError)]
+#[derive(Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct GetCredentialResponseRestDTO {
-    #[try_from(infallible)]
+pub(crate) struct GetCredentialResponseRestDTO<T> {
     pub id: Uuid,
 
-    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub created_date: OffsetDateTime,
 
-    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub issuance_date: Option<OffsetDateTime>,
 
-    #[try_from(infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub revocation_date: Option<OffsetDateTime>,
-
-    #[try_from(infallible)]
     pub state: CredentialStateRestEnum,
 
-    #[try_from(infallible)]
     #[serde(serialize_with = "front_time")]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
-    #[try_from(infallible)]
     pub schema: CredentialDetailSchemaResponseRestDTO,
 
     /// Identifier ID of the issuer.
-    #[try_from(with_fn = convert_inner, infallible)]
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
 
     /// Certificate details if issuer is using an X.509.
-    #[try_from(with_fn = try_convert_inner)]
     pub issuer_certificate: Option<CertificateResponseRestDTO>,
 
     /// Claims made by issuer. During the credential offer phase this
     /// will be empty unless the issuer has provided preview values.
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub claims: Vec<CredentialDetailClaimResponseRestDTO>,
+    pub claims: Vec<T>,
 
-    #[try_from(with_fn = convert_inner, infallible)]
     pub redirect_uri: Option<String>,
 
     /// The role the system has in relation to the credential.
-    #[try_from(infallible)]
     pub role: CredentialRoleRestEnum,
 
     /// When the current LVVC was issued.
-    #[try_from(with_fn = convert_inner, infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
 
-    #[try_from(with_fn = convert_inner, infallible)]
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
-
-    #[try_from(with_fn = convert_inner, infallible)]
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
-
-    #[try_from(with_fn = convert_inner, infallible)]
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
-
-    #[try_from(infallible)]
     pub protocol: String,
-
     /// Profile associated with this credential
-    #[try_from(with_fn = convert_inner, infallible)]
     pub profile: Option<String>,
 }
 

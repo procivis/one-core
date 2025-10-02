@@ -1,13 +1,15 @@
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, ValueComparison,
 };
+use one_core::provider::verification_protocol::dto::ApplicableCredentialOrFailureHintEnum;
 use one_core::service::error::ServiceError;
 use one_core::service::proof::dto::ProofFilterValue;
-use one_dto_mapper::convert_inner;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 
-use super::dto::ProofsFilterQueryParamsRest;
+use super::dto::{ApplicableCredentialOrFailureHintRestEnum, ProofsFilterQueryParamsRest};
 use crate::dto::common::ExactColumn;
 use crate::dto::mapper::fallback_organisation_id_from_session;
+use crate::mapper::MapperError;
 
 impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterValue> {
     type Error = ServiceError;
@@ -111,5 +113,24 @@ impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterVal
             & requested_date_before
             & completed_date_after
             & completed_date_before)
+    }
+}
+
+impl TryFrom<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailureHintRestEnum {
+    type Error = MapperError;
+
+    fn try_from(value: ApplicableCredentialOrFailureHintEnum) -> Result<Self, Self::Error> {
+        Ok(match value {
+            ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
+                applicable_credentials,
+            } => Self::ApplicableCredentials {
+                applicable_credentials: try_convert_inner(applicable_credentials)?,
+            },
+            ApplicableCredentialOrFailureHintEnum::FailureHint { failure_hint } => {
+                Self::FailureHint {
+                    failure_hint: Box::new(convert_inner(*failure_hint)),
+                }
+            }
+        })
     }
 }

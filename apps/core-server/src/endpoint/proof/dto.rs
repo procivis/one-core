@@ -2,9 +2,12 @@ use std::collections::HashMap;
 
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::verification_protocol::dto::{
+    CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
+    CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::proof::dto::{
@@ -24,8 +27,12 @@ use utoipa::{IntoParams, ToSchema};
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
-use crate::endpoint::credential::dto::GetCredentialResponseRestDTO;
-use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRestDTO;
+use crate::endpoint::credential::dto::{
+    CredentialDetailClaimResponseRestDTO, GetCredentialResponseRestDTO,
+};
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaListItemResponseRestDTO, CredentialSchemaResponseRestDTO,
+};
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::{
     GetProofSchemaListItemResponseRestDTO, ProofClaimSchemaResponseRestDTO,
@@ -274,13 +281,13 @@ pub(crate) struct ProofListItemResponseRestDTO {
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
-#[try_from(T = PresentationDefinitionResponseDTO, Error = MapperError)]
 #[serde(rename_all = "camelCase")]
+#[try_from(T = PresentationDefinitionResponseDTO, Error = MapperError)]
 pub(crate) struct PresentationDefinitionResponseRestDTO {
     #[try_from(with_fn = convert_inner, infallible)]
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseRestDTO>,
     #[try_from(with_fn = try_convert_inner)]
-    pub credentials: Vec<GetCredentialResponseRestDTO>,
+    pub credentials: Vec<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>>,
 }
 
 #[options_not_nullable]
@@ -460,7 +467,7 @@ pub(crate) struct ProofInputRestDTO {
 
     /// The credentials exchanged as part of the successfully shared proof.
     #[try_from(with_fn = try_convert_inner)]
-    pub credential: Option<GetCredentialResponseRestDTO>,
+    pub credential: Option<GetCredentialResponseRestDTO<CredentialDetailClaimResponseRestDTO>>,
 
     #[try_from(infallible)]
     pub credential_schema: CredentialSchemaListItemResponseRestDTO,
@@ -501,4 +508,76 @@ pub enum ClientIdSchemeRestEnum {
     #[serde(rename = "decentralized_identifier", alias = "did")]
     Did,
     X509SanDns,
+}
+
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
+#[try_from(T = PresentationDefinitionV2ResponseDTO, Error = MapperError)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PresentationDefinitionV2ResponseRestDTO {
+    #[try_from(with_fn = try_convert_inner)]
+    pub credential_queries: HashMap<String, CredentialQueryResponseRestDTO>,
+    #[try_from(with_fn = convert_inner, infallible)]
+    pub credential_sets: Vec<CredentialSetResponseRestDTO>,
+}
+
+#[derive(Debug, Serialize, ToSchema, TryFrom)]
+#[try_from(T = CredentialQueryResponseDTO, Error = MapperError)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialQueryResponseRestDTO {
+    #[try_from(infallible)]
+    pub multiple: bool,
+    #[serde(flatten)]
+    pub credential_or_failure_hint: ApplicableCredentialOrFailureHintRestEnum,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+#[serde(untagged)]
+pub(crate) enum ApplicableCredentialOrFailureHintRestEnum {
+    ApplicableCredentials {
+        applicable_credentials:
+            Vec<GetCredentialResponseRestDTO<CredentialDetailClaimExtResponseRestDTO>>,
+    },
+    FailureHint {
+        // options_not_nullable fails on boxed options
+        #[schema(nullable = false)]
+        // boxed because of large size difference
+        failure_hint: Box<Option<CredentialQueryFailureHintResponseRestDTO>>,
+    },
+}
+
+#[options_not_nullable]
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(CredentialQueryFailureHintResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialQueryFailureHintResponseRestDTO {
+    pub reason: CredentialQueryFailureReasonRestEnum,
+    #[from(with_fn = "convert_inner")]
+    pub credential_schema: Option<CredentialSchemaResponseRestDTO>,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(CredentialQueryFailureReasonEnum)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum CredentialQueryFailureReasonRestEnum {
+    NoCredential,
+    Validity,
+    Constraint,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialDetailClaimExtResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialDetailClaimExtResponseRestDTO {
+    #[serde(flatten)]
+    pub claim_detail: CredentialDetailClaimResponseRestDTO,
+    pub user_selection: bool,
+    pub required: bool,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(CredentialSetResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSetResponseRestDTO {
+    pub required: bool,
+    pub options: Vec<Vec<String>>,
 }

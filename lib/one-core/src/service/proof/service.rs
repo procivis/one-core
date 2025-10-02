@@ -57,7 +57,7 @@ use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionResponseDTO, ShareResponse,
+    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, ShareResponse,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
@@ -258,6 +258,13 @@ impl ProofService {
             .holder_get_presentation_definition(&proof, interaction_data, &storage_access)
             .await
             .map_err(Into::into)
+    }
+
+    pub async fn get_proof_presentation_definition_v2(
+        &self,
+        _id: &ProofId,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, ServiceError> {
+        unimplemented!("TODO: ONE-7435")
     }
 
     /// Returns list of proofs according to query

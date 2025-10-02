@@ -19,12 +19,14 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialSchemaMetadata, CredentialStatus, Issuer,
 };
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+};
 use crate::service::error::ServiceError;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn credential_data_from_credential_detail_response(
-    credential_detail: CredentialDetailResponseDTO,
+    credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     credential: &Credential,
     issuer_certificate: Option<Certificate>,
     holder_identifier: Option<Identifier>,

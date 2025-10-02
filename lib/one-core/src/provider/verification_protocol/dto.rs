@@ -11,7 +11,10 @@ use crate::model::credential_schema::{
 };
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{Proof, UpdateProofRequest};
-use crate::service::credential::dto::CredentialDetailResponseDTO;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+};
+use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -56,7 +59,7 @@ pub(crate) struct ProofCredentialSchema {
 #[derive(Clone, Debug)]
 pub struct PresentationDefinitionResponseDTO {
     pub request_groups: Vec<PresentationDefinitionRequestGroupResponseDTO>,
-    pub credentials: Vec<CredentialDetailResponseDTO>,
+    pub credentials: Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>,
 }
 
 #[derive(Clone, Debug)]
@@ -153,4 +156,54 @@ pub(crate) struct ShareResponse<T> {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct UpdateResponse {
     pub update_proof: Option<UpdateProofRequest>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationDefinitionV2ResponseDTO {
+    pub credential_queries: HashMap<String, CredentialQueryResponseDTO>,
+    pub credential_sets: Vec<CredentialSetResponseDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialQueryResponseDTO {
+    pub multiple: bool,
+    pub credential_or_failure_hint: ApplicableCredentialOrFailureHintEnum,
+}
+
+#[derive(Clone, Debug)]
+pub enum ApplicableCredentialOrFailureHintEnum {
+    ApplicableCredentials {
+        applicable_credentials:
+            Vec<CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>>,
+    },
+    FailureHint {
+        // boxed because of large size difference
+        failure_hint: Box<Option<CredentialQueryFailureHintResponseDTO>>,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialQueryFailureHintResponseDTO {
+    pub reason: CredentialQueryFailureReasonEnum,
+    pub credential_schema: Option<CredentialSchemaDetailResponseDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub enum CredentialQueryFailureReasonEnum {
+    NoCredential,
+    Validity,
+    Constraint,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialDetailClaimExtResponseDTO {
+    pub claim_detail: DetailCredentialClaimResponseDTO,
+    pub user_selection: bool,
+    pub required: bool,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialSetResponseDTO {
+    pub required: bool,
+    pub options: Vec<Vec<String>>,
 }
