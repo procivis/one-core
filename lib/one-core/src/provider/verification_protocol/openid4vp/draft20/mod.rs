@@ -413,6 +413,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             presentation_definition_id,
             credential_presentations,
             &oidc_format,
+            &self.config,
         )?;
 
         let encryption_info = self

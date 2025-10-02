@@ -22,7 +22,7 @@ use crate::common_mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation,
     get_encryption_key_jwk_from_proof, get_or_create_identifier, value_to_model_claims,
 };
-use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
+use crate::config::core_config::{ConfigExt, CoreConfig, FormatType, VerificationProtocolType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -391,6 +391,7 @@ pub(crate) fn create_presentation_submission(
     presentation_definition_id: String,
     credential_presentations: Vec<PresentedCredential>,
     format: &str,
+    config: &CoreConfig,
 ) -> Result<PresentationSubmissionMappingDTO, VerificationProtocolError> {
     let path_nested_supported = format == "jwt_vp_json" || format == "ldp_vp";
     Ok(PresentationSubmissionMappingDTO {
@@ -400,20 +401,19 @@ pub(crate) fn create_presentation_submission(
             .into_iter()
             .enumerate()
             .map(|(index, presented_credential)| {
+                let format_config = config
+                    .format
+                    .get_if_enabled(&presented_credential.credential_schema.format)
+                    .map_err(|err| {
+                        VerificationProtocolError::Failed(format!("format not found: {err}"))
+                    })?;
                 Ok(PresentationSubmissionDescriptorDTO {
                     id: presented_credential.request.id,
                     format: format.to_owned(),
                     path: "$".to_string(),
                     path_nested: if path_nested_supported {
-                        let credential_format = presented_credential
-                            .credential_schema
-                            .format
-                            .parse()
-                            .map_err(|_| {
-                                VerificationProtocolError::Failed("format not found".to_string())
-                            })?;
                         Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: map_to_openid4vp_format(&credential_format)
+                            format: map_to_openid4vp_format(&format_config.r#type)
                                 .map_err(|error| {
                                     VerificationProtocolError::Failed(error.to_string())
                                 })?

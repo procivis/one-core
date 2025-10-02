@@ -240,6 +240,7 @@ impl OpenID4VP25HTTP {
             presentation_definition_id,
             credential_presentations,
             &oidc_format,
+            &self.config,
         )?;
 
         let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;

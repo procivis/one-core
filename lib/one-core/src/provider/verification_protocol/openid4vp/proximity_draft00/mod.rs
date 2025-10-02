@@ -805,6 +805,7 @@ pub(super) async fn create_presentation(
         presentation_definition_id,
         params.credential_presentations,
         &oidc_format,
+        &params.config,
     )?;
 
     Ok((vp_token, presentation_submission))
