@@ -45,12 +45,12 @@ pub async fn insert_credential(
     issuer_identifier_id: IdentifierId,
     deleted_at: Option<OffsetDateTime>,
     suspend_end_date: Option<OffsetDateTime>,
-    blob_id: BlobId,
+    credential_blob_id: BlobId,
 ) -> Result<Credential, DbErr> {
     let now = OffsetDateTime::now_utc();
 
     blob::ActiveModel {
-        id: Set(blob_id),
+        id: Set(credential_blob_id),
         created_date: Set(now),
         last_modified: Set(now),
         value: Set(vec![0, 0, 0, 0]),
@@ -78,7 +78,8 @@ pub async fn insert_credential(
         state: Set(state.into()),
         suspend_end_date: Set(suspend_end_date),
         profile: Set(None),
-        credential_blob_id: Set(Some(blob_id)),
+        credential_blob_id: Set(Some(credential_blob_id)),
+        wallet_unit_attestation_blob_id: Set(None),
     }
     .insert(db)
     .await?;

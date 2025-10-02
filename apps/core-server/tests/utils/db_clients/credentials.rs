@@ -165,6 +165,7 @@ impl CredentialsDB {
             key: params.key,
             profile: params.profile,
             credential_blob_id: params.credential_blob_id,
+            wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
         };
 
         let id = self

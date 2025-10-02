@@ -1,12 +1,15 @@
+use one_core::model::blob::BlobType;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchemaClaim;
+use one_core::service::credential::dto::WalletUnitAttestationDTO;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
 use crate::fixtures::{ClaimData, TestingCredentialParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
@@ -19,6 +22,23 @@ async fn test_get_credential_success() {
         .credential_schemas
         .create("test", &organisation, "NONE", Default::default())
         .await;
+
+    let wua_blob_value = serde_json::to_vec(&WalletUnitAttestationDTO {
+        name: "Wallet solution X by Wonderland State Department".to_string(),
+        link: "https://wonderland.gov".to_string(),
+        attestation: "eyJhbGciOiJFUzI1NiIsInR5cCI6Im9hdXRoLWNsaWVudC1hdHRlc3RhdGlvbitqd3QifQ.eyJpYXQiOjE3NTY3MDc1NTcsImV4cCI6MTc1Njc5Mzk1NywibmJmIjoxNzU2NzA3NTU3LCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20iLCJzdWIiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vUFJPQ0lWSVNfT05FIiwiY25mIjp7Imp3ayI6eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkdtbV9IbWd3SHZPNUpWZ1lPX3k0TG9hSTRLMzVoVDlmYzByb0lkZjVpRUEifX19.0QT5ybzrQx0d0ID2xx4hzH5NUodykyju2fyo3wIu7ZSobA26gYjcMvZZstg-GcZxjguo9rEkrzdm9ZUt-44wTw".to_string(),
+    }).unwrap();
+
+    let wallet_unit_attestation_blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
+            value: Some(wua_blob_value),
+            r#type: Some(BlobType::WalletUnitAttestation),
+            ..Default::default()
+        })
+        .await;
+
     let credential = context
         .db
         .credentials
@@ -27,7 +47,10 @@ async fn test_get_credential_success() {
             CredentialStateEnum::Created,
             &identifier,
             "OPENID4VCI_DRAFT13",
-            TestingCredentialParams::default(),
+            TestingCredentialParams {
+                wallet_unit_attestation_blob_id: Some(wallet_unit_attestation_blob.id),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -45,6 +68,18 @@ async fn test_get_credential_success() {
     assert_eq!(resp["state"], "CREATED");
     assert_eq!(resp["role"], "ISSUER");
     assert_eq!(resp["protocol"], "OPENID4VCI_DRAFT13");
+    assert_eq!(
+        resp["walletUnitAttestation"]["name"],
+        "Wallet solution X by Wonderland State Department"
+    );
+    assert_eq!(
+        resp["walletUnitAttestation"]["link"],
+        "https://wonderland.gov"
+    );
+    assert_eq!(
+        resp["walletUnitAttestation"]["attestation"],
+        "eyJhbGciOiJFUzI1NiIsInR5cCI6Im9hdXRoLWNsaWVudC1hdHRlc3RhdGlvbitqd3QifQ.eyJpYXQiOjE3NTY3MDc1NTcsImV4cCI6MTc1Njc5Mzk1NywibmJmIjoxNzU2NzA3NTU3LCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20iLCJzdWIiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vUFJPQ0lWSVNfT05FIiwiY25mIjp7Imp3ayI6eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwieCI6IkdtbV9IbWd3SHZPNUpWZ1lPX3k0TG9hSTRLMzVoVDlmYzByb0lkZjVpRUEifX19.0QT5ybzrQx0d0ID2xx4hzH5NUodykyju2fyo3wIu7ZSobA26gYjcMvZZstg-GcZxjguo9rEkrzdm9ZUt-44wTw"
+    );
 }
 
 #[tokio::test]

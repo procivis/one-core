@@ -100,6 +100,9 @@ pub(super) async fn credential_from_proved(
         suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
         profile: proved_credential.credential.profile,
         credential_blob_id: proved_credential.credential.credential_blob_id,
+        wallet_unit_attestation_blob_id: proved_credential
+            .credential
+            .wallet_unit_attestation_blob_id,
     })
 }
 

@@ -1384,7 +1384,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         // TODO - remove organisation usage from here when moved to open core
         let credential_detail =
-            credential_detail_response_from_model(credential.clone(), &self.config, None)
+            credential_detail_response_from_model(credential.clone(), &self.config, None, None)
                 .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let additional_contexts = revocation_method

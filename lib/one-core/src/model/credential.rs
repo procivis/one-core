@@ -28,6 +28,7 @@ pub struct Credential {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
+    pub wallet_unit_attestation_blob_id: Option<BlobId>,
 
     // Relations:
     pub claims: Option<Vec<Claim>>,

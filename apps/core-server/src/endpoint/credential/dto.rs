@@ -3,6 +3,7 @@ use one_core::service::credential::dto::{
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
     CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
     DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
+    WalletUnitAttestationDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -125,6 +126,17 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     pub protocol: String,
     /// Profile associated with this credential
     pub profile: Option<String>,
+
+    pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(WalletUnitAttestationDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletUnitAttestationRestDTO {
+    name: String,
+    link: String,
+    attestation: String,
 }
 
 /// The role the system has in relation to the credential.

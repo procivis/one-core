@@ -68,6 +68,15 @@ pub struct CredentialDetailResponseDTO<T> {
     pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
     pub profile: Option<String>,
+    pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletUnitAttestationDTO {
+    pub name: String,
+    pub link: String,
+    pub attestation: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

@@ -44,6 +44,7 @@ pub struct Model {
     pub profile: Option<String>,
 
     pub credential_blob_id: Option<BlobId>,
+    pub wallet_unit_attestation_blob_id: Option<BlobId>,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

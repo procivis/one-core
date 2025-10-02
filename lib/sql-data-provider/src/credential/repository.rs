@@ -258,6 +258,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::Protocol,
             credential::Column::Profile,
             credential::Column::CredentialBlobId,
+            credential::Column::WalletUnitAttestationBlobId,
         ])
         .join(
             sea_orm::JoinType::InnerJoin,
@@ -401,6 +402,7 @@ impl CredentialRepository for CredentialProvider {
             revocation_list_id,
             convert_inner(key_id),
             request.credential_blob_id,
+            request.wallet_unit_attestation_blob_id,
         )
         .insert(&self.db)
         .await

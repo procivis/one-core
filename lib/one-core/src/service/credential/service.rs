@@ -13,6 +13,7 @@ use crate::common_validator::{
 };
 use crate::config::core_config::RevocationType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
+use crate::model::blob::Blob;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -340,10 +341,14 @@ impl CredentialService {
             _ => None,
         };
 
+        let wallet_unit_attestation_blob =
+            self.get_wallet_unit_attestation_blob(&credential).await?;
+
         let mut response = credential_detail_response_from_model(
             credential,
             &self.config,
             mdoc_validity_credentials,
+            wallet_unit_attestation_blob,
         )?;
 
         if response.schema.revocation_method == "LVVC" {
@@ -358,6 +363,35 @@ impl CredentialService {
         }
 
         Ok(response)
+    }
+
+    async fn get_wallet_unit_attestation_blob(
+        &self,
+        credential: &Credential,
+    ) -> Result<Option<Blob>, ServiceError> {
+        Ok(
+            if let Some(wallet_unit_attestation_blob_id) =
+                credential.wallet_unit_attestation_blob_id.as_ref()
+            {
+                let db_blob_storage = self
+                    .blob_storage_provider
+                    .get_blob_storage(BlobStorageType::Db)
+                    .await
+                    .ok_or_else(|| {
+                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                    })?;
+                let wallet_unit_attestation_blob = db_blob_storage
+                    .get(wallet_unit_attestation_blob_id)
+                    .await?
+                    .ok_or(ServiceError::MappingError(
+                        "wallet unit attestation blob is None".to_string(),
+                    ))?;
+
+                Some(wallet_unit_attestation_blob)
+            } else {
+                None
+            },
+        )
     }
 
     /// Returns list of credentials according to query

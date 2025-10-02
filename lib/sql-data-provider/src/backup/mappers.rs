@@ -85,6 +85,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             revocation_list: None,
             key: None,
             credential_blob_id: None,
+            wallet_unit_attestation_blob_id: None,
         })
     }
 }

@@ -885,6 +885,7 @@ fn dummy_credential() -> Credential {
         revocation_list: None,
         profile: None,
         credential_blob_id: None,
+        wallet_unit_attestation_blob_id: None,
     }
 }
 

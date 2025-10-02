@@ -512,5 +512,6 @@ fn dummy_credential() -> Credential {
         key: None,
         revocation_list: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
+        wallet_unit_attestation_blob_id: None,
     }
 }

@@ -20,6 +20,7 @@ pub(super) struct CredentialListEntityModel {
     pub suspend_end_date: Option<OffsetDateTime>,
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
+    pub wallet_unit_attestation_blob_id: Option<BlobId>,
 
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,

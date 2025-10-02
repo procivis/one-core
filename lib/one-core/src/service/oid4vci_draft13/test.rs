@@ -215,6 +215,7 @@ fn dummy_credential(
         key: None,
         profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
+        wallet_unit_attestation_blob_id: None,
     }
 }
 

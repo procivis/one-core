@@ -398,7 +398,7 @@ impl VerificationProtocol for IsoMdl {
                     applicable_credentials.push(credential.id);
 
                     let credential =
-                        credential_detail_response_from_model(credential, &self.config, None)
+                        credential_detail_response_from_model(credential, &self.config, None, None)
                             .map_err(|err| {
                                 VerificationProtocolError::Failed(format!(
                                     "Credential model mapping error: {err}"

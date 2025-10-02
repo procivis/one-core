@@ -83,7 +83,7 @@ pub(crate) fn credential_model_to_credential_dto(
     // Missing organisation here.
     credentials
         .into_iter()
-        .map(|credential| credential_detail_response_from_model(credential, config, None))
+        .map(|credential| credential_detail_response_from_model(credential, config, None, None))
         .collect::<Result<Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>, _>>()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }

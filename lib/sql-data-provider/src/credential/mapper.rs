@@ -123,6 +123,7 @@ impl From<credential::Model> for Credential {
             revocation_list: None,
             key: None,
             credential_blob_id: credential.credential_blob_id,
+            wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
         }
     }
 }
@@ -137,7 +138,8 @@ pub(super) fn request_to_active_model(
     interaction_id: Option<InteractionId>,
     revocation_list_id: Option<RevocationListId>,
     key_id: Option<KeyId>,
-    credential_blob: Option<BlobId>,
+    credential_blob_id: Option<BlobId>,
+    wallet_unit_attestation_blob_id: Option<BlobId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id),
@@ -158,7 +160,8 @@ pub(super) fn request_to_active_model(
         state: Set(request.state.into()),
         suspend_end_date: Set(request.suspend_end_date),
         profile: Set(request.profile.clone()),
-        credential_blob_id: Set(credential_blob),
+        credential_blob_id: Set(credential_blob_id),
+        wallet_unit_attestation_blob_id: Set(wallet_unit_attestation_blob_id),
     }
 }
 
@@ -241,6 +244,7 @@ pub(super) fn credential_list_model_to_repository_model(
         revocation_list: None,
         key: None,
         credential_blob_id: credential.credential_blob_id,
+        wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
     })
 }
 

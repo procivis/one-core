@@ -659,6 +659,7 @@ pub(crate) fn extracted_credential_to_model(
         key: None,
         role: CredentialRole::Verifier,
         credential_blob_id: None,
+        wallet_unit_attestation_blob_id: None,
     })
 }
 

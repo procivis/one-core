@@ -216,8 +216,12 @@ pub(super) async fn get_verifier_proof_detail(
             _ => None,
         };
 
-        let credential_detail =
-            credential_detail_response_from_model(credential, config, mdoc_validity_credentials)?;
+        let credential_detail = credential_detail_response_from_model(
+            credential,
+            config,
+            mdoc_validity_credentials,
+            None,
+        )?;
 
         credential_for_credential_schema.insert(credential_schema.id, credential_detail);
     }
@@ -619,6 +623,7 @@ pub(super) async fn get_holder_proof_detail(
                         credential.clone(),
                         config,
                         mdoc_validity_credentials,
+                        None,
                     )?,
                     credential_schema.clone(),
                 ));
