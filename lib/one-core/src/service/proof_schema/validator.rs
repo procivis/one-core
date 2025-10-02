@@ -93,11 +93,6 @@ pub fn validate_create_request(
             return Err(ValidationError::ProofSchemaMissingClaims);
         }
 
-        // at least one claim must be required
-        if !proof_input.claim_schemas.iter().any(|claim| claim.required) {
-            return Err(ValidationError::ProofSchemaNoRequiredClaim);
-        }
-
         if !proof_input
             .claim_schemas
             .iter()
@@ -107,6 +102,15 @@ pub fn validate_create_request(
         }
 
         check_if_validity_constraint_is_correct(proof_input)?;
+    }
+
+    // at least one claim must be required
+    if !request
+        .proof_input_schemas
+        .iter()
+        .any(|input| input.claim_schemas.iter().any(|claim| claim.required))
+    {
+        return Err(ValidationError::ProofSchemaNoRequiredClaim);
     }
 
     Ok(())
