@@ -89,7 +89,7 @@ impl CertificateChainValidationOptions {
 #[derive(Clone, Debug, Copy)]
 pub enum CrlMode {
     X509,
-    /// Unimplemented! Currently just skips CRL check entirely
+    /// <https://developer.android.com/privacy-and-security/security-key-attestation#certificate_status>
     AndroidAttestation,
 }
 
@@ -98,10 +98,14 @@ pub enum EnforceKeyUsage {
 }
 
 pub struct CertificateValidationOptions {
+    /// will fail if the chain is not complete
     pub require_root_termination: bool,
-    pub validate_path_length: bool,
+    /// will fail if the CA path-len limits are violated, a signature doesn't match, or an unknown critical extension is used
+    pub integrity_check: bool,
+    /// perform revocation/expiration checks
     pub validity_check: bool,
-    pub required_end_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
+    /// will fail if the leaf certificate does not specify a certain key-usage
+    pub required_leaf_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
 }
 
 impl CertificateValidationOptions {
@@ -109,9 +113,9 @@ impl CertificateValidationOptions {
     pub fn no_validation() -> Self {
         Self {
             require_root_termination: false,
-            validate_path_length: false,
+            integrity_check: false,
             validity_check: false,
-            required_end_cert_key_usage: None,
+            required_leaf_cert_key_usage: None,
         }
     }
 
@@ -122,24 +126,24 @@ impl CertificateValidationOptions {
     /// * part of a chain that terminates to a root CA
     /// * path length is valid
     /// * key usage is validated
-    pub fn full_validation(required_end_cert_key_usage: Option<Vec<EnforceKeyUsage>>) -> Self {
+    pub fn full_validation(required_leaf_cert_key_usage: Option<Vec<EnforceKeyUsage>>) -> Self {
         Self {
             require_root_termination: true,
-            validate_path_length: true,
+            integrity_check: true,
             validity_check: true,
-            required_end_cert_key_usage,
+            required_leaf_cert_key_usage,
         }
     }
 
     /// Only signature and revocation checks are performed
     pub fn signature_and_revocation(
-        required_end_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
+        required_leaf_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
     ) -> Self {
         Self {
             require_root_termination: false,
-            validate_path_length: false,
+            integrity_check: true,
             validity_check: true,
-            required_end_cert_key_usage,
+            required_leaf_cert_key_usage,
         }
     }
 }

@@ -323,12 +323,7 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
         let certificate = certificate_validator
             .parse_pem_chain(
                 cert.as_bytes(),
-                CertificateValidationOptions {
-                    require_root_termination: false,
-                    validate_path_length: false,
-                    validity_check: false,
-                    required_end_cert_key_usage: None,
-                },
+                CertificateValidationOptions::no_validation(),
             )
             .await
             .unwrap();
