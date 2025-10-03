@@ -7,7 +7,8 @@ use one_core::model::proof_schema::GetProofSchemaQuery;
 use one_core::model::trust_entity::TrustEntityType;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::verification_protocol::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestedCredentialResponseDTO,
+    ApplicableCredentialOrFailureHintEnum, PresentationDefinitionFieldDTO,
+    PresentationDefinitionRequestedCredentialResponseDTO,
 };
 use one_core::service::credential::dto::{
     CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
@@ -65,8 +66,11 @@ use crate::binding::organisation::{
     CreateOrganisationRequestBindingDTO, UpsertOrganisationRequestBindingDTO,
 };
 use crate::binding::proof::{
-    PresentationDefinitionFieldBindingDTO, PresentationDefinitionRequestedCredentialBindingDTO,
-    ProofListQueryBindingDTO, ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
+    ApplicableCredentialOrFailureHintBindingEnum, PresentationDefinitionFieldBindingDTO,
+    PresentationDefinitionRequestedCredentialBindingDTO, PresentationDefinitionV2ClaimBindingDTO,
+    PresentationDefinitionV2ClaimValueBindingDTO,
+    PresentationDefinitionV2CredentialDetailBindingDTO, ProofListQueryBindingDTO,
+    ProofListQueryExactColumnBindingEnum, ProofResponseBindingDTO,
 };
 use crate::binding::proof_schema::{
     ImportProofSchemaClaimSchemaBindingDTO, ListProofSchemasFiltersBindingDTO,
@@ -1041,5 +1045,66 @@ impl TryFrom<InitiateIssuanceRequestBindingDTO> for InitiateIssuanceRequestDTO {
             issuer_state: None,
             authorization_server: None,
         })
+    }
+}
+
+impl<IN: Into<PresentationDefinitionV2ClaimBindingDTO>> From<CredentialDetailResponseDTO<IN>>
+    for PresentationDefinitionV2CredentialDetailBindingDTO
+{
+    fn from(value: CredentialDetailResponseDTO<IN>) -> Self {
+        Self {
+            id: value.id.to_string(),
+            created_date: value.created_date.format_timestamp(),
+            issuance_date: optional_time(value.issuance_date),
+            revocation_date: optional_time(value.revocation_date),
+            state: value.state.into(),
+            last_modified: value.last_modified.format_timestamp(),
+            schema: value.schema.into(),
+            issuer: convert_inner(value.issuer),
+            issuer_certificate: convert_inner(value.issuer_certificate),
+            claims: convert_inner(value.claims),
+            redirect_uri: value.redirect_uri,
+            role: value.role.into(),
+            lvvc_issuance_date: optional_time(value.lvvc_issuance_date),
+            suspend_end_date: optional_time(value.suspend_end_date),
+            mdoc_mso_validity: convert_inner(value.mdoc_mso_validity),
+            holder: convert_inner(value.holder),
+            protocol: value.protocol,
+            profile: value.profile,
+        }
+    }
+}
+
+impl<T: Into<PresentationDefinitionV2ClaimBindingDTO>>
+    From<DetailCredentialClaimValueResponseDTO<T>>
+    for PresentationDefinitionV2ClaimValueBindingDTO
+{
+    fn from(value: DetailCredentialClaimValueResponseDTO<T>) -> Self {
+        match value {
+            DetailCredentialClaimValueResponseDTO::Boolean(value) => Self::Boolean { value },
+            DetailCredentialClaimValueResponseDTO::Float(value) => Self::Float { value },
+            DetailCredentialClaimValueResponseDTO::Integer(value) => Self::Integer { value },
+            DetailCredentialClaimValueResponseDTO::String(value) => Self::String { value },
+            DetailCredentialClaimValueResponseDTO::Nested(value) => Self::Nested {
+                value: value.into_iter().map(|v| v.into()).collect(),
+            },
+        }
+    }
+}
+
+impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailureHintBindingEnum {
+    fn from(value: ApplicableCredentialOrFailureHintEnum) -> Self {
+        match value {
+            ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
+                applicable_credentials,
+            } => Self::ApplicableCredentials {
+                applicable_credentials: convert_inner(applicable_credentials),
+            },
+            ApplicableCredentialOrFailureHintEnum::FailureHint { failure_hint } => {
+                Self::FailureHint {
+                    failure_hint: (*failure_hint).into(),
+                }
+            }
+        }
     }
 }

@@ -3,8 +3,11 @@ use std::collections::HashMap;
 use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::verification_protocol::dto::{
+    CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
+    CredentialQueryFailureReasonEnum, CredentialQueryResponseDTO, CredentialSetResponseDTO,
     PresentationDefinitionRequestGroupResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionV2ResponseDTO,
 };
 use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::error::ServiceError;
@@ -19,9 +22,14 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_inner};
 
 use super::common::SortDirection;
-use super::credential::CredentialDetailBindingDTO;
-use super::credential_schema::CredentialSchemaBindingDTO;
-use super::identifier::GetIdentifierListItemBindingDTO;
+use super::credential::{
+    CredentialDetailBindingDTO, CredentialRoleBindingDTO, CredentialStateBindingEnum,
+    MdocMsoValidityResponseBindingDTO,
+};
+use super::credential_schema::{
+    CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO, CredentialSchemaDetailBindingDTO,
+};
+use super::identifier::{CertificateResponseBindingDTO, GetIdentifierListItemBindingDTO};
 use super::mapper::{optional_identifier_id_string, optional_time};
 use super::proof_schema::{GetProofSchemaListItemBindingDTO, ProofRequestClaimBindingDTO};
 use crate::OneCoreBinding;
@@ -151,6 +159,19 @@ impl OneCoreBinding {
         Ok(core
             .proof_service
             .get_proof_presentation_definition(&into_id(&proof_id)?)
+            .await?
+            .into())
+    }
+
+    #[uniffi::method]
+    pub async fn get_presentation_definition_v2(
+        &self,
+        proof_id: String,
+    ) -> Result<PresentationDefinitionV2ResponseBindingDTO, BindingError> {
+        let core = self.use_core().await?;
+        Ok(core
+            .proof_service
+            .get_proof_presentation_definition_v2(&into_id(&proof_id)?)
             .await?
             .into())
     }
@@ -452,4 +473,105 @@ pub struct PresentationDefinitionRuleBindingDTO {
     pub min: Option<u32>,
     pub max: Option<u32>,
     pub count: Option<u32>,
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(PresentationDefinitionV2ResponseDTO)]
+pub(crate) struct PresentationDefinitionV2ResponseBindingDTO {
+    #[from(with_fn = convert_inner)]
+    pub credential_queries: HashMap<String, CredentialQueryResponseRestDTO>,
+    #[from(with_fn = convert_inner)]
+    pub credential_sets: Vec<CredentialSetResponseBindingDTO>,
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(CredentialQueryResponseDTO)]
+pub(crate) struct CredentialQueryResponseRestDTO {
+    pub multiple: bool,
+    pub credential_or_failure_hint: ApplicableCredentialOrFailureHintBindingEnum,
+}
+
+#[derive(Debug, uniffi::Enum)]
+#[allow(clippy::large_enum_variant)]
+pub(crate) enum ApplicableCredentialOrFailureHintBindingEnum {
+    ApplicableCredentials {
+        applicable_credentials: Vec<PresentationDefinitionV2CredentialDetailBindingDTO>,
+    },
+    FailureHint {
+        failure_hint: CredentialQueryFailureHintResponseBindingDTO,
+    },
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct PresentationDefinitionV2CredentialDetailBindingDTO {
+    pub id: String,
+    pub created_date: String,
+    pub issuance_date: Option<String>,
+    pub last_modified: String,
+    pub revocation_date: Option<String>,
+    pub issuer: Option<GetIdentifierListItemBindingDTO>,
+    pub issuer_certificate: Option<CertificateResponseBindingDTO>,
+    pub holder: Option<GetIdentifierListItemBindingDTO>,
+    pub state: CredentialStateBindingEnum,
+    pub schema: CredentialSchemaBindingDTO,
+    pub claims: Vec<PresentationDefinitionV2ClaimBindingDTO>,
+    pub redirect_uri: Option<String>,
+    pub role: CredentialRoleBindingDTO,
+    pub lvvc_issuance_date: Option<String>,
+    pub suspend_end_date: Option<String>,
+    pub mdoc_mso_validity: Option<MdocMsoValidityResponseBindingDTO>,
+    pub protocol: String,
+    pub profile: Option<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(CredentialDetailClaimExtResponseDTO)]
+pub struct PresentationDefinitionV2ClaimBindingDTO {
+    pub path: String,
+    pub schema: CredentialClaimSchemaBindingDTO,
+    pub value: PresentationDefinitionV2ClaimValueBindingDTO,
+    pub user_selection: bool,
+    pub required: bool,
+}
+
+#[derive(Clone, Debug, uniffi::Enum)]
+pub enum PresentationDefinitionV2ClaimValueBindingDTO {
+    Boolean {
+        value: bool,
+    },
+    Float {
+        value: f64,
+    },
+    Integer {
+        value: i64,
+    },
+    String {
+        value: String,
+    },
+    Nested {
+        value: Vec<PresentationDefinitionV2ClaimBindingDTO>,
+    },
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(CredentialQueryFailureHintResponseDTO)]
+pub(crate) struct CredentialQueryFailureHintResponseBindingDTO {
+    pub reason: CredentialQueryFailureReasonBindingEnum,
+    #[from(with_fn = "convert_inner")]
+    pub credential_schema: Option<CredentialSchemaDetailBindingDTO>,
+}
+
+#[derive(Debug, From, uniffi::Enum)]
+#[from(CredentialQueryFailureReasonEnum)]
+pub(crate) enum CredentialQueryFailureReasonBindingEnum {
+    NoCredential,
+    Validity,
+    Constraint,
+}
+
+#[derive(Debug, From, uniffi::Record)]
+#[from(CredentialSetResponseDTO)]
+pub(crate) struct CredentialSetResponseBindingDTO {
+    pub required: bool,
+    pub options: Vec<Vec<String>>,
 }
