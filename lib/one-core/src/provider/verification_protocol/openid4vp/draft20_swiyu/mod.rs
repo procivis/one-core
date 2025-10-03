@@ -35,6 +35,7 @@ use crate::util::jwt::Jwt;
 use crate::util::jwt::model::DecomposedToken;
 
 pub(crate) struct OpenID4VP20Swiyu {
+    allow_insecure_http_transport: bool,
     inner: OpenID4VP20HTTP,
     client: Arc<dyn HttpClient>,
 }
@@ -79,8 +80,16 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
 
 impl OpenID4VP20Swiyu {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(inner: OpenID4VP20HTTP, client: Arc<dyn HttpClient>) -> Self {
-        Self { inner, client }
+    pub(crate) fn new(
+        inner: OpenID4VP20HTTP,
+        client: Arc<dyn HttpClient>,
+        allow_insecure_http_transport: bool,
+    ) -> Self {
+        Self {
+            inner,
+            client,
+            allow_insecure_http_transport,
+        }
     }
 }
 
@@ -91,7 +100,8 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         Ok(())
     }
     fn holder_can_handle(&self, url: &Url) -> bool {
-        url.scheme() == "https" && url.query().is_none() // SWIYU invite links have no query param
+        (url.scheme() == "https" || self.allow_insecure_http_transport && url.scheme() == "http")
+            && url.query().is_none() // SWIYU invite links have no query param
     }
 
     async fn holder_get_presentation_definition(

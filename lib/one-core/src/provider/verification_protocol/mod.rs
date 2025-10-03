@@ -192,8 +192,12 @@ pub(crate) fn verification_protocol_providers_from_config(
                         key: name.to_owned(),
                         source,
                     })?;
+                let allow_insecure_http = params.allow_insecure_http_transport;
                 // URL schemes are used to select provider, hence must not be duplicated
                 validate_url_scheme_unique(&mut openid_url_schemes, name, "https".to_string())?;
+                if allow_insecure_http {
+                    validate_url_scheme_unique(&mut openid_url_schemes, name, "http".to_string())?;
+                };
                 let http20 = openid4vp_draft20_from_params(
                     core_base_url.clone(),
                     credential_formatter_provider.clone(),
@@ -206,7 +210,11 @@ pub(crate) fn verification_protocol_providers_from_config(
                     params.into(),
                     config.clone(),
                 )?;
-                let protocol = Arc::new(OpenID4VP20Swiyu::new(http20, client.clone()));
+                let protocol = Arc::new(OpenID4VP20Swiyu::new(
+                    http20,
+                    client.clone(),
+                    allow_insecure_http,
+                ));
                 fields.capabilities = Some(json!(protocol.get_capabilities()));
                 providers.insert(name.to_string(), protocol);
             }
