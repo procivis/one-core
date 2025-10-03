@@ -334,7 +334,7 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
     };
 
     let ParsedCertificate { attributes, .. } = certificate_validator
-        .parse_pem_chain(chain.as_bytes(), validation_context)
+        .parse_pem_chain(&chain, validation_context)
         .await
         .map_err(|err| FormatterError::Failed(format!("Failed to validate pem chain: {err}")))?;
 

@@ -9,11 +9,10 @@ use super::x509_extension::{
     validate_ca_key_usage, validate_critical_extensions, validate_required_cert_key_usage,
 };
 use super::{
-    CertSelection, CertificateChainValidationOptions, CertificateValidationOptions,
-    CertificateValidator, CertificateValidatorImpl, CrlMode, ParsedCertificate, x509_extension,
+    CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
+    ParsedCertificate, x509_extension,
 };
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::certificate::CertificateState;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -26,12 +25,10 @@ const LEEWAY: Duration = Duration::seconds(60);
 impl CertificateValidator for CertificateValidatorImpl {
     async fn parse_pem_chain(
         &self,
-        pem_chain: &[u8],
-        validation_context: CertificateValidationOptions,
+        pem_chain: &str,
+        validation: CertificateValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError> {
-        let mut result: Option<ParsedCertificate> = None;
-
-        let items = Pem::iter_from_buffer(pem_chain)
+        let items = Pem::iter_from_buffer(pem_chain.as_bytes())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
@@ -41,35 +38,90 @@ impl CertificateValidator for CertificateValidatorImpl {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
-        if validation_context.require_root_termination {
-            self.validate_root_ca_termination(&certs)?;
-        }
+        let leaf_certificate = self.parse_chain(&certs, validation).await?;
+        self.to_parsed_certificate(leaf_certificate)
+    }
 
-        if validation_context.integrity_check {
-            self.validate_path_length(&certs)?;
-        }
+    async fn validate_chain_against_ca_chain(
+        &self,
+        pem_chain: &str,
+        ca_pem_chain: &str,
+        validation: CertificateValidationOptions,
+        cert_selection: CertSelection,
+    ) -> Result<ParsedCertificate, ServiceError> {
+        let pems = Pem::iter_from_buffer(pem_chain.as_bytes())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+        let ca_pems = Pem::iter_from_buffer(ca_pem_chain.as_bytes())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
-        for (current, next) in certs
+        let certs = pems
             .iter()
-            .zip(certs.iter().skip(1).map(Some).chain(std::iter::once(None)))
-        {
+            .map(|pem| pem.parse_x509())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+
+        let ca_certs = ca_pems
+            .iter()
+            .map(|pem| pem.parse_x509())
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
+
+        let connected = connect_chains(&certs, &ca_certs)?;
+        let parsed = self.parse_chain(&connected, validation).await?;
+
+        let selected_cert = match cert_selection {
+            CertSelection::LowestCaChain => {
+                ca_certs
+                    .first()
+                    .ok_or(ValidationError::CertificateParsingFailed(
+                        "empty chain".to_string(),
+                    ))?
+            }
+            CertSelection::Leaf => parsed,
+        };
+        self.to_parsed_certificate(selected_cert)
+    }
+}
+
+impl CertificateValidatorImpl {
+    async fn parse_chain<'a>(
+        &self,
+        chain: &'a [X509Certificate<'a>],
+        validation: CertificateValidationOptions,
+    ) -> Result<&'a X509Certificate<'a>, ServiceError> {
+        if validation.require_root_termination {
+            self.validate_root_ca_termination(chain)?;
+        }
+
+        if validation.integrity_check {
+            self.validate_path_length(chain)?;
+        }
+
+        let mut result: Option<&X509Certificate<'a>> = None;
+        let mut chain = chain.iter().peekable();
+        while let Some(current) = chain.next() {
             if result.is_none() {
-                let leaf_certificate = self.parse(current)?;
+                if !validation.required_leaf_cert_key_usage.is_empty() {
+                    validate_required_cert_key_usage(
+                        current,
+                        &validation.required_leaf_cert_key_usage,
+                    )?;
+                }
 
-                if let Some(required_leaf_cert_key_usage) =
-                    &validation_context.required_leaf_cert_key_usage
+                if validation.validity_check.is_none()
+                    && !validation.integrity_check
+                    && validation.leaf_only_extensions.is_empty()
                 {
-                    validate_required_cert_key_usage(current, required_leaf_cert_key_usage)?;
+                    return Ok(current);
                 }
 
-                if !validation_context.validity_check && !validation_context.integrity_check {
-                    return Ok(leaf_certificate);
-                }
-
-                result = Some(leaf_certificate);
+                result = Some(current);
             }
 
-            if validation_context.integrity_check {
+            let next = chain.peek();
+            if validation.integrity_check {
                 if let Some(parent) = next {
                     if !parent.is_ca() {
                         return Err(ValidationError::InvalidCaCertificateChain(
@@ -87,15 +139,29 @@ impl CertificateValidator for CertificateValidatorImpl {
                 validate_critical_extensions(current)?;
             }
 
-            if validation_context.validity_check {
-                if !self.is_valid_with_leeway(current, LEEWAY) {
-                    return Err(ValidationError::CertificateNotValid.into());
-                }
+            if let Some(crl_mode) = validation.validity_check {
+                self.check_validity_with_leeway(current, LEEWAY)?;
 
-                let revoked = self.check_revocation(current, next, CrlMode::X509).await?;
+                let revoked = self
+                    .check_revocation(current, next.copied(), crl_mode)
+                    .await?;
                 if revoked {
                     return Err(ValidationError::CertificateRevoked.into());
                 }
+            }
+
+            if !validation.leaf_only_extensions.is_empty()
+                && current.is_ca()
+                && current.extensions().iter().any(|ext| {
+                    validation
+                        .leaf_only_extensions
+                        .contains(&ext.oid.to_id_string())
+                })
+            {
+                return Err(ValidationError::InvalidCaCertificateChain(
+                    "Found leaf only extension in CA cert".to_string(),
+                )
+                .into());
             }
         }
 
@@ -105,129 +171,10 @@ impl CertificateValidator for CertificateValidatorImpl {
         )
     }
 
-    async fn parse_pem_chain_with_status(
+    fn to_parsed_certificate(
         &self,
-        pem_chain: &[u8],
-    ) -> Result<(CertificateState, ParsedCertificate), ServiceError> {
-        let mut result: Option<ParsedCertificate> = None;
-
-        let items = Pem::iter_from_buffer(pem_chain)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-
-        let certs = items
-            .iter()
-            .map(|pem| pem.parse_x509())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-
-        for (current, next) in certs
-            .iter()
-            .zip(certs.iter().skip(1).map(Some).chain(std::iter::once(None)))
-        {
-            if result.is_none() {
-                result = Some(self.parse(current)?);
-            }
-
-            if !self.is_valid_with_leeway(current, LEEWAY) {
-                let result = result.ok_or(ValidationError::CertificateParsingFailed(
-                    "No certificates specified".to_string(),
-                ))?;
-
-                return if ASN1Time::from(self.clock.now_utc()) < current.validity.not_before {
-                    Ok((CertificateState::NotYetActive, result))
-                } else {
-                    Ok((CertificateState::Expired, result))
-                };
-            }
-
-            if let Some(next) = next {
-                // parent entry in the chain, validate signature
-                current
-                    .verify_signature(Some(next.public_key()))
-                    .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
-            }
-
-            let revoked = self.check_revocation(current, next, CrlMode::X509).await?;
-            if revoked {
-                let result = result.ok_or(ValidationError::CertificateParsingFailed(
-                    "No certificates specified".to_string(),
-                ))?;
-                return Ok((CertificateState::Revoked, result));
-            }
-        }
-
-        let result = result.ok_or(ValidationError::CertificateParsingFailed(
-            "No certificates specified".to_string(),
-        ))?;
-        Ok((CertificateState::Active, result))
-    }
-
-    async fn validate_chain_against_ca_chain(
-        &self,
-        pem_chain: &[u8],
-        ca_pem_chain: &[u8],
-        options: CertificateChainValidationOptions,
+        certificate: &X509Certificate,
     ) -> Result<ParsedCertificate, ServiceError> {
-        let pems = Pem::iter_from_buffer(pem_chain)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-        let ca_pems = Pem::iter_from_buffer(ca_pem_chain)
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-        let lowest_ca_cert = self
-            .validate_chain_against_ca_chain_inner(
-                &ca_pems,
-                &pems,
-                &options.leaf_only_extensions,
-                options.crl_mode,
-            )
-            .await?;
-        let selected_cert = match options.cert_selection {
-            CertSelection::LowestCaChain => lowest_ca_cert,
-            CertSelection::Leaf => pems
-                .first()
-                .ok_or(ValidationError::CertificateParsingFailed(
-                    "empty chain".to_string(),
-                ))?
-                .parse_x509()
-                .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?,
-        };
-        self.parse(&selected_cert)
-    }
-
-    async fn validate_der_chain_against_ca(
-        &self,
-        der_chain: Vec<Vec<u8>>,
-        ca_pem: &str,
-    ) -> Result<ParsedCertificate, ServiceError> {
-        let pems = der_chain
-            .into_iter()
-            .map(|contents| Pem {
-                label: "CERTIFICATE".to_string(),
-                contents,
-            })
-            .collect::<Vec<_>>();
-        let Some(leaf_pem) = pems.first() else {
-            return Err(ValidationError::CertificateParsingFailed(
-                "der_chain is empty".to_string(),
-            )
-            .into());
-        };
-        let ca_pems = Pem::iter_from_buffer(ca_pem.as_bytes())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-        self.validate_chain_against_ca_chain_inner(&ca_pems, &pems, &[], CrlMode::X509)
-            .await?;
-        let leaf_cert = leaf_pem
-            .parse_x509()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-        self.parse(&leaf_cert)
-    }
-}
-
-impl CertificateValidatorImpl {
-    fn parse(&self, certificate: &X509Certificate) -> Result<ParsedCertificate, ServiceError> {
         let subject_common_name = certificate
             .subject
             .iter_common_name()
@@ -357,126 +304,21 @@ impl CertificateValidatorImpl {
         Ok(())
     }
 
-    async fn validate_chain_against_ca_chain_inner<'a>(
+    fn check_validity_with_leeway(
         &self,
-        ca_pems: &'a [Pem],
-        pems: &[Pem],
-        leaf_only_extensions: &[String],
-        crl_mode: CrlMode,
-    ) -> Result<X509Certificate<'a>, ServiceError> {
-        let certs = pems
-            .iter()
-            .map(|pem| pem.parse_x509())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-
-        let mut ca_certs = ca_pems
-            .iter()
-            .map(|pem| pem.parse_x509())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
-
-        self.validate_path_length(&ca_certs)?;
-        self.validate_root_ca_termination(&ca_certs)?;
-
-        let Some(first_ca_cert) = ca_certs.first() else {
-            return Err(ValidationError::InvalidCaCertificateChain(
-                "CA certificate chain is empty".to_string(),
-            )
-            .into());
-        };
-
-        let first_ca_subject_key_identifier = subject_key_identifier(first_ca_cert)?.ok_or(
-            ValidationError::InvalidCaCertificateChain(format!(
-                "CA certificate (subject: {}) is missing subject key identifier",
-                first_ca_cert.subject
-            )),
-        )?;
-
-        // whether we have already switched to iterating over the certs in the CA chain
-        let mut is_ca_chain = false;
-        let mut chain = certs.iter().peekable();
-        while let Some(current_cert) = chain.next() {
-            validate_ca_key_usage(current_cert)?;
-            if !self.is_valid_with_leeway(current_cert, LEEWAY) {
-                return Err(ValidationError::CertificateNotValid.into());
-            }
-
-            // Parsing extensions checks for unsupported critical extensions
-            let extensions = current_cert
-                .extensions()
-                .iter()
-                .map(x509_extension::parse)
-                .collect::<Result<Vec<_>, _>>()?;
-            if current_cert.is_ca()
-                && extensions
-                    .iter()
-                    .any(|ext| leaf_only_extensions.contains(&ext.oid))
-            {
-                return Err(ValidationError::InvalidCaCertificateChain(
-                    "Found leaf only extension in CA cert".to_string(),
-                )
-                .into());
-            }
-
-            // This is the root CA
-            // signature is already validated in validate_root_ca_termination
-            if is_ca_chain && current_cert.is_ca() && chain.peek().is_none() {
-                self.check_revocation(current_cert, Some(current_cert), crl_mode)
-                    .await?;
-
-                return Ok(ca_certs.swap_remove(0));
-            };
-
-            let mut sig_validated = false;
-            // Non-CA certificates might provide an authority key identifier to more easily find
-            // matching CA cert.
-            if let Some(authority_key_identifier) = authority_key_identifier(current_cert)?
-                && authority_key_identifier == first_ca_subject_key_identifier
-            {
-                // parent of the current cert is first CA cert -> switch chain to CA cert chain
-                chain = ca_certs.iter().peekable();
-                is_ca_chain = true;
-            }
-            // no authority key identifier was provided, we have to check by attempting to verify the signature
-            else if current_cert
-                .verify_signature(Some(first_ca_cert.public_key()))
-                .is_ok()
-            {
-                // parent of the current cert is first CA cert -> switch chain to CA cert chain
-                chain = ca_certs.iter().peekable();
-                is_ca_chain = true;
-                sig_validated = true;
-            };
-
-            let parent_cert = chain
-                .peek()
-                .ok_or(ValidationError::InvalidCaCertificateChain(
-                    "Certificate chain incomplete".to_string(),
-                ))?;
-            // If we matched the parent by checking the signature, then there is no point in checking again.
-            if !sig_validated {
-                current_cert
-                    .verify_signature(Some(parent_cert.public_key()))
-                    .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
-            }
-            let revoked = self
-                .check_revocation(current_cert, Some(parent_cert), crl_mode)
-                .await?;
-            if revoked {
-                return Err(ValidationError::CertificateRevoked.into());
-            }
-        }
-        Err(
-            ValidationError::InvalidCaCertificateChain("Certificate chain is empty".to_string())
-                .into(),
-        )
-    }
-
-    fn is_valid_with_leeway(&self, current: &X509Certificate, leeway: Duration) -> bool {
+        cert: &X509Certificate,
+        leeway: Duration,
+    ) -> Result<(), ValidationError> {
         let now = self.clock.now_utc();
-        current.validity().is_valid_at(ASN1Time::from(now - leeway))
-            || current.validity().is_valid_at(ASN1Time::from(now + leeway))
+        if ASN1Time::from(now + leeway) < cert.validity.not_before {
+            return Err(ValidationError::CertificateNotYetValid);
+        }
+
+        if ASN1Time::from(now - leeway) > cert.validity.not_after {
+            return Err(ValidationError::CertificateExpired);
+        }
+
+        Ok(())
     }
 }
 
@@ -521,4 +363,56 @@ fn parse_x509_attributes(
         fingerprint: hex::encode(fingerprint),
         extensions,
     })
+}
+
+/// Tries to connect two certificate chains into a single chain
+/// * `leaf_certs` - The chain beginning with a leaf/child certificate
+/// * `ca_certs` - The chain beginning with an intermediate CA certificate, potentially ending with a root CA certificate
+///
+/// The two chains can overlap (e.g. if `leaf_certs` specifies the whole chain already)
+///
+/// If no match between the two chains are found, it will result in an error
+fn connect_chains<'a>(
+    leaf_certs: &'a [X509Certificate<'a>],
+    ca_certs: &'a [X509Certificate<'a>],
+) -> Result<Vec<X509Certificate<'a>>, ValidationError> {
+    let Some(first_ca_cert) = ca_certs.first() else {
+        return Err(ValidationError::InvalidCaCertificateChain(
+            "CA certificate chain is empty".to_string(),
+        ));
+    };
+
+    let first_ca_subject_key_identifier = subject_key_identifier(first_ca_cert)?.ok_or(
+        ValidationError::InvalidCaCertificateChain(format!(
+            "CA certificate (subject: {}) is missing subject key identifier",
+            first_ca_cert.subject
+        )),
+    )?;
+
+    let mut result = vec![];
+    for current in leaf_certs {
+        result.push(current.to_owned());
+
+        let matching_with_first_ca = match authority_key_identifier(current)? {
+            Some(authority_key_identifier) => {
+                authority_key_identifier == first_ca_subject_key_identifier
+            }
+            None => {
+                // no authority key identifier was provided, we have to check by attempting to verify the signature
+                current
+                    .verify_signature(Some(first_ca_cert.public_key()))
+                    .is_ok()
+            }
+        };
+
+        if matching_with_first_ca {
+            // we have found the match with the first CA cert, now append the rest of the ca_chain to complete the whole chain
+            result.extend(ca_certs.to_owned());
+            return Ok(result);
+        }
+    }
+
+    Err(ValidationError::InvalidCaCertificateChain(
+        "Certificate chain incomplete".to_string(),
+    ))
 }

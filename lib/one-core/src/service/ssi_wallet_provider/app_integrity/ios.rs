@@ -10,11 +10,14 @@ use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::certificate::validator::{CertificateValidator, ParsedCertificate};
+use crate::service::certificate::validator::{
+    CertSelection, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::dto::IOSBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
 use crate::util::jwt::model::DecomposedToken;
+use crate::util::x509::der_chain_into_pem_chain;
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
 
@@ -173,10 +176,17 @@ async fn validate_against_ca_certs(
     ca_certs: &[String],
     attestation: &Attestation,
 ) -> Result<ParsedCertificate, WalletProviderError> {
+    let pem_chain = der_chain_into_pem_chain(attestation.attestation_statement.x5c.clone())
+        .map_err(|e| AppIntegrityValidationError(e.to_string()))?;
     let mut errs = vec![];
     for ca_pem in ca_certs {
         let result = certificate_validator
-            .validate_der_chain_against_ca(attestation.attestation_statement.x5c.clone(), ca_pem)
+            .validate_chain_against_ca_chain(
+                &pem_chain,
+                ca_pem,
+                CertificateValidationOptions::full_validation(None),
+                CertSelection::Leaf,
+            )
             .await;
         match result {
             Ok(cert) => return Ok(cert),
@@ -321,10 +331,7 @@ tMMde/ll2kJYeF3eAHwtaerFM3swCgYIKoZIzj0EAwIDaAAwZQIxAJdPLI6+5fJk
 Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
 -----END CERTIFICATE-----";
         let certificate = certificate_validator
-            .parse_pem_chain(
-                cert.as_bytes(),
-                CertificateValidationOptions::no_validation(),
-            )
+            .parse_pem_chain(cert, CertificateValidationOptions::no_validation())
             .await
             .unwrap();
         let token = "eyJhbGciOiJFUzI1NiIsInR5cCI6Imp3dCJ9.eyJpYXQiOjE3NTc1MDczMTUsImV4cCI6MTc1NzUxMDkxNSwibmJmIjoxNzU3NTA3MzE1LCJhdWQiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20ifQ.omlzaWduYXR1cmVYRzBFAiEA_o4x5n1J9431oVI5HsFGfhH61g9jWLt2VuNs07s0RMECIG_aWSIG588XX8EspngSqexII8K33wx_wTbebInJCsC1cWF1dGhlbnRpY2F0b3JEYXRhWCVOsS8PJU7JWJfhD8KV_wtxOAB6WNUU_jplnvvKx-WFWkAAAAAB";

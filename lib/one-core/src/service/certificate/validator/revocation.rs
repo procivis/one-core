@@ -175,13 +175,12 @@ impl CertificateValidatorImpl {
         &self,
         point: &CRLDistributionPoint<'_>,
     ) -> Result<Vec<u8>, ServiceError> {
-        let point: &DistributionPointName<'_> =
-            point
-                .distribution_point
-                .as_ref()
-                .ok_or(ValidationError::CRLCheckFailed(
-                    "no distribution point".to_string(),
-                ))?;
+        let point = point
+            .distribution_point
+            .as_ref()
+            .ok_or(ValidationError::CRLCheckFailed(
+                "no distribution point".to_string(),
+            ))?;
 
         let DistributionPointName::FullName(name) = point else {
             return Err(ValidationError::CRLCheckFailed(

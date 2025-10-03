@@ -627,8 +627,11 @@ pub enum ValidationError {
     #[error("Certificate revoked")]
     CertificateRevoked,
 
-    #[error("Certificate is expired or not yet valid")]
-    CertificateNotValid,
+    #[error("Certificate is expired")]
+    CertificateExpired,
+
+    #[error("Certificate is not yet valid")]
+    CertificateNotYetValid,
 
     #[error("Key does not match public key of certificate")]
     CertificateKeyNotMatching,
@@ -1586,7 +1589,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             }
             Self::EmptyPresentationSubmission => ErrorCode::BR_0246,
             Self::CertificateAlreadyExists => ErrorCode::BR_0247,
-            Self::IdentifierOrganisationMismatch => ErrorCode::BR_0248,
+            Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
         }
@@ -1646,7 +1649,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidIdentifierInput => ErrorCode::BR_0206,
             Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
             Self::CertificateRevoked => ErrorCode::BR_0212,
-            Self::CertificateNotValid => ErrorCode::BR_0213,
+            Self::CertificateExpired | Self::CertificateNotYetValid => ErrorCode::BR_0213,
             Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
             Self::UnknownCriticalExtension(_) => ErrorCode::BR_0248,

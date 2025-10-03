@@ -94,12 +94,19 @@ pub(crate) fn authority_key_identifier(
 }
 
 pub(crate) fn x5c_into_pem_chain(x5c: &[String]) -> anyhow::Result<String> {
-    use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
-    let pems: Vec<Pem> = x5c.iter().try_fold(Vec::new(), |mut aggr, item| {
-        let der = Base64::decode_to_vec(item, None).context("failed to decode x5c")?;
-        aggr.push(pem::Pem::new("CERTIFICATE", der));
+    let der_chain = x5c.iter().try_fold(Vec::new(), |mut aggr, item| {
+        aggr.push(Base64::decode_to_vec(item, None).context("failed to decode x5c")?);
         Ok::<_, anyhow::Error>(aggr)
     })?;
+    der_chain_into_pem_chain(der_chain)
+}
+
+pub(crate) fn der_chain_into_pem_chain(der_chain: Vec<Vec<u8>>) -> anyhow::Result<String> {
+    use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
+    let pems = der_chain
+        .into_iter()
+        .map(|der| Pem::new("CERTIFICATE", der))
+        .collect::<Vec<_>>();
     Ok(encode_many_config(
         &pems,
         EncodeConfig::new().set_line_ending(LineEnding::LF),

@@ -32,8 +32,7 @@ use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::{TrustEntityKeyBatch, TrustOperation};
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::validator::{
-    CertSelection, CertificateChainValidationOptions, CertificateValidationOptions,
-    ParsedCertificate,
+    CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
 };
 use crate::service::error::BusinessLogicError::IdentifierCertificateIdMismatch;
 use crate::service::error::ServiceError::MappingError;
@@ -123,7 +122,7 @@ impl TrustEntityService {
         let certificate = self
             .certificate_validator
             .parse_pem_chain(
-                content.as_bytes(),
+                &content,
                 CertificateValidationOptions::full_validation(None),
             )
             .await?;
@@ -340,9 +339,16 @@ impl TrustEntityService {
                 (Some(identifier), None)
             }
             TrustEntityType::CertificateAuthority => {
-                let content = trust_entity.content.as_ref().ok_or(MappingError(
+                let pem_chain = trust_entity.content.as_ref().ok_or(MappingError(
                     "missing trust_entity.content for type certificate".to_string(),
                 ))?;
+
+                let unchecked_certificate = async || {
+                    self.certificate_validator
+                        .parse_pem_chain(pem_chain, CertificateValidationOptions::no_validation())
+                        .await
+                };
+
                 let (
                     state,
                     ParsedCertificate {
@@ -351,10 +357,35 @@ impl TrustEntityService {
                         subject_common_name,
                         ..
                     },
-                ) = self
+                ) = match self
                     .certificate_validator
-                    .parse_pem_chain_with_status(content.as_bytes())
-                    .await?;
+                    .parse_pem_chain(
+                        pem_chain,
+                        CertificateValidationOptions {
+                            require_root_termination: false,
+                            integrity_check: false,
+                            validity_check: Some(CrlMode::X509),
+                            required_leaf_cert_key_usage: Default::default(),
+                            leaf_only_extensions: Default::default(),
+                        },
+                    )
+                    .await
+                {
+                    Ok(parsed) => (CertificateState::Active, parsed),
+                    Err(ServiceError::Validation(ValidationError::CertificateNotYetValid)) => (
+                        CertificateState::NotYetActive,
+                        unchecked_certificate().await?,
+                    ),
+                    Err(ServiceError::Validation(ValidationError::CertificateExpired)) => {
+                        (CertificateState::Expired, unchecked_certificate().await?)
+                    }
+                    Err(ServiceError::Validation(ValidationError::CertificateRevoked)) => {
+                        (CertificateState::Revoked, unchecked_certificate().await?)
+                    }
+                    Err(err) => {
+                        return Err(err);
+                    }
+                };
 
                 let public_key = hex::encode(public_key.public_key_as_raw());
 
@@ -432,7 +463,7 @@ impl TrustEntityService {
                     let cert = self
                         .certificate_validator
                         .parse_pem_chain(
-                            content.as_bytes(),
+                            content,
                             CertificateValidationOptions::full_validation(None),
                         )
                         .await?;
@@ -797,11 +828,10 @@ impl TrustEntityService {
         } = self
             .certificate_validator
             .validate_chain_against_ca_chain(
-                certificate.chain.as_bytes(),
-                ca_chain.as_bytes(),
-                CertificateChainValidationOptions::from_cert_selection(
-                    CertSelection::LowestCaChain,
-                ),
+                &certificate.chain,
+                ca_chain,
+                CertificateValidationOptions::full_validation(None),
+                CertSelection::LowestCaChain,
             )
             .await?;
 

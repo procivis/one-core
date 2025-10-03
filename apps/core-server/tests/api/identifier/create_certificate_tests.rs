@@ -265,6 +265,10 @@ async fn test_create_certificate_identifier_unknown_critical_extension() {
     let mut custom_extension = CustomExtension::new_acme_identifier(&[0; 32]);
     custom_extension.set_criticality(true);
     ca_params.custom_extensions = vec![custom_extension];
+    ca_params.key_usages = vec![
+        KeyUsagePurpose::KeyCertSign,
+        KeyUsagePurpose::DigitalSignature,
+    ];
 
     let ca_cert = create_ca_cert(ca_params, eddsa::key());
     let chain = format!("{}{}", ca_cert.pem(), ca_cert.pem());

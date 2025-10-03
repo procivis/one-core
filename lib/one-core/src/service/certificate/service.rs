@@ -69,7 +69,7 @@ impl CertificateService {
         } = self
             .validator
             .parse_pem_chain(
-                request.chain.as_bytes(),
+                &request.chain,
                 CertificateValidationOptions::signature_and_revocation(Some(vec![
                     EnforceKeyUsage::DigitalSignature,
                 ])),

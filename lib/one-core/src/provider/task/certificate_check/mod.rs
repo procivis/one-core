@@ -180,7 +180,7 @@ impl CertificateCheck {
             match self
                 .certificate_validator
                 .parse_pem_chain(
-                    certificate.chain.as_bytes(),
+                    &certificate.chain,
                     CertificateValidationOptions::signature_and_revocation(None),
                 )
                 .await

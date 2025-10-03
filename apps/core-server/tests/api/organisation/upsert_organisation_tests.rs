@@ -327,7 +327,7 @@ async fn test_upsert_organisation_fail_org_mismatched_identifier() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0248");
+    assert_eq!(resp.error_code().await, "BR_0285");
 }
 
 #[tokio::test]

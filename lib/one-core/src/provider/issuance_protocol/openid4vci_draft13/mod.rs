@@ -1646,7 +1646,7 @@ async fn handle_credential_invitation(
                 ..
             } = certificate_validator
                 .parse_pem_chain(
-                    issuer_certificate.as_bytes(),
+                    &issuer_certificate,
                     CertificateValidationOptions::signature_and_revocation(None),
                 )
                 .await

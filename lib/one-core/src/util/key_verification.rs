@@ -79,7 +79,7 @@ impl KeyVerification {
         let ParsedCertificate { public_key, .. } = self
             .certificate_validator
             .parse_pem_chain(
-                pem_chain.as_bytes(),
+                &pem_chain,
                 CertificateValidationOptions::signature_and_revocation(None),
             )
             .await

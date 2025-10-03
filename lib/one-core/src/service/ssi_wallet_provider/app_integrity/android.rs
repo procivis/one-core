@@ -5,8 +5,7 @@ use x509_parser::der_parser::parse_der;
 
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::validator::{
-    CertSelection, CertificateChainValidationOptions, CertificateValidator, CrlMode,
-    ParsedCertificate,
+    CertSelection, CertificateValidationOptions, CertificateValidator, CrlMode, ParsedCertificate,
 };
 use crate::service::ssi_wallet_provider::dto::AndroidBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
@@ -156,13 +155,16 @@ async fn check_ca_certs(
     for ca in cas {
         let result = certificate_validator
             .validate_chain_against_ca_chain(
-                attestation.as_bytes(),
-                ca.as_bytes(),
-                CertificateChainValidationOptions {
-                    cert_selection: CertSelection::Leaf,
+                attestation,
+                ca,
+                CertificateValidationOptions {
                     leaf_only_extensions: vec![ATTESTATION_EXTENSION_OID.to_string()],
-                    crl_mode: CrlMode::AndroidAttestation,
+                    validity_check: Some(CrlMode::AndroidAttestation),
+                    integrity_check: true,
+                    require_root_termination: true,
+                    required_leaf_cert_key_usage: Default::default(),
                 },
+                CertSelection::Leaf,
             )
             .await;
         match result {

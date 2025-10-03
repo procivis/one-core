@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use crate::model::certificate::CertificateState;
 use crate::provider::caching_loader::android_attestation_crl::AndroidAttestationCrlCache;
 use crate::provider::caching_loader::x509_crl::X509CrlCache;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -25,39 +24,22 @@ pub struct ParsedCertificate {
 #[async_trait::async_trait]
 pub trait CertificateValidator: Send + Sync {
     /// Extract leaf certificate from the provided PEM chain
-    /// Optionally validate the chain depending on the options, each certificate must be:
-    /// * not expired if `validity_check` is true
-    /// * not revoked if `validity_check` is true
-    /// * the chain terminates to a root CA if `require_root_termination` is true
-    /// * path length is valid if `validate_path_length` is true
+    /// Optionally validate the chain depending on the options
     async fn parse_pem_chain(
         &self,
-        pem_chain: &[u8],
-        validate: CertificateValidationOptions,
+        pem_chain: &str,
+        validation: CertificateValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError>;
-
-    async fn parse_pem_chain_with_status(
-        &self,
-        pem_chain: &[u8],
-    ) -> Result<(CertificateState, ParsedCertificate), ServiceError>;
 
     /// Validates the pem_chain starting from a leaf certificate against a ca_chain starting
     /// from an intermediary or root CA.
     /// Returns the parsed certificate according to the `cert_selection`.
     async fn validate_chain_against_ca_chain(
         &self,
-        pem_chain: &[u8],
-        ca_pem_chain: &[u8],
-        options: CertificateChainValidationOptions,
-    ) -> Result<ParsedCertificate, ServiceError>;
-
-    /// Validates the der_chain (chain of DER encoded certificates) starting from a leaf certificate
-    /// against a ca certificate.
-    /// Returns the parsed **leaf** certificate in the chain.
-    async fn validate_der_chain_against_ca(
-        &self,
-        der_chain: Vec<Vec<u8>>,
-        ca_pem: &str,
+        pem_chain: &str,
+        ca_pem_chain: &str,
+        validation: CertificateValidationOptions,
+        cert_selection: CertSelection,
     ) -> Result<ParsedCertificate, ServiceError>;
 }
 
@@ -68,26 +50,9 @@ pub enum CertSelection {
     Leaf,
 }
 
-pub struct CertificateChainValidationOptions {
-    // OID of extensions that must only be present in the leaf certificate.
-    // This is specifically used in the Android App integrity check.
-    pub leaf_only_extensions: Vec<String>,
-    pub cert_selection: CertSelection,
-    pub crl_mode: CrlMode,
-}
-
-impl CertificateChainValidationOptions {
-    pub fn from_cert_selection(cert_selection: CertSelection) -> Self {
-        Self {
-            leaf_only_extensions: vec![],
-            cert_selection,
-            crl_mode: CrlMode::X509,
-        }
-    }
-}
-
-#[derive(Clone, Debug, Copy)]
+#[derive(Clone, Debug, Copy, Default)]
 pub enum CrlMode {
+    #[default]
     X509,
     /// <https://developer.android.com/privacy-and-security/security-key-attestation#certificate_status>
     AndroidAttestation,
@@ -102,10 +67,13 @@ pub struct CertificateValidationOptions {
     pub require_root_termination: bool,
     /// will fail if the CA path-len limits are violated, a signature doesn't match, or an unknown critical extension is used
     pub integrity_check: bool,
-    /// perform revocation/expiration checks
-    pub validity_check: bool,
-    /// will fail if the leaf certificate does not specify a certain key-usage
-    pub required_leaf_cert_key_usage: Option<Vec<EnforceKeyUsage>>,
+    /// if specified, perform revocation/expiration checks
+    pub validity_check: Option<CrlMode>,
+    /// will fail if the leaf certificate does not declare an enforced key-usage
+    pub required_leaf_cert_key_usage: Vec<EnforceKeyUsage>,
+    /// OID of extensions that cannot be present outside of the leaf certificate.
+    /// This is specifically used in the Android App integrity check.
+    pub leaf_only_extensions: Vec<String>,
 }
 
 impl CertificateValidationOptions {
@@ -114,8 +82,9 @@ impl CertificateValidationOptions {
         Self {
             require_root_termination: false,
             integrity_check: false,
-            validity_check: false,
-            required_leaf_cert_key_usage: None,
+            validity_check: None,
+            required_leaf_cert_key_usage: Default::default(),
+            leaf_only_extensions: Default::default(),
         }
     }
 
@@ -130,8 +99,9 @@ impl CertificateValidationOptions {
         Self {
             require_root_termination: true,
             integrity_check: true,
-            validity_check: true,
-            required_leaf_cert_key_usage,
+            validity_check: Some(CrlMode::X509),
+            required_leaf_cert_key_usage: required_leaf_cert_key_usage.unwrap_or_default(),
+            leaf_only_extensions: Default::default(),
         }
     }
 
@@ -142,8 +112,9 @@ impl CertificateValidationOptions {
         Self {
             require_root_termination: false,
             integrity_check: true,
-            validity_check: true,
-            required_leaf_cert_key_usage,
+            validity_check: Some(CrlMode::X509),
+            required_leaf_cert_key_usage: required_leaf_cert_key_usage.unwrap_or_default(),
+            leaf_only_extensions: Default::default(),
         }
     }
 }

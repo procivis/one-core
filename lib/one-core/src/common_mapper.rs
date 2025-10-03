@@ -393,10 +393,7 @@ pub(crate) async fn get_or_create_certificate_identifier(
         subject_common_name,
         ..
     } = certificate_validator
-        .parse_pem_chain(
-            chain.as_bytes(),
-            CertificateValidationOptions::no_validation(),
-        )
+        .parse_pem_chain(&chain, CertificateValidationOptions::no_validation())
         .await?;
 
     if attributes.fingerprint != fingerprint {

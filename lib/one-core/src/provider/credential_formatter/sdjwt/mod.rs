@@ -409,7 +409,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     let validation_options =
                         CertificateValidationOptions::signature_and_revocation(None);
                     let ParsedCertificate { attributes, .. } = certificate_validator
-                        .parse_pem_chain(chain.as_bytes(), validation_options)
+                        .parse_pem_chain(&chain, validation_options)
                         .await
                         .map_err(|err| {
                             FormatterError::Failed(format!(
