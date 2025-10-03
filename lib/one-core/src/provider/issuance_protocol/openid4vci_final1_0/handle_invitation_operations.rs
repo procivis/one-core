@@ -11,6 +11,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::credential_formatter::sdjwtvc_formatter::translate_local_vct_to_schema_id;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::BasicSchemaData;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -109,7 +110,15 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                 // We use the vc+sd-jwt format identifier for both SD-JWT-VC and SD-JWT credential formats.
                 // Checking the credential configuration for the VCT is a workaround.
                 let (schema_type, id) = match credential_config.vct.as_ref() {
-                    Some(vct) => (CredentialSchemaType::SdJwtVc, vct.to_owned()),
+                    Some(vct) => (
+                        CredentialSchemaType::SdJwtVc,
+                        if external_schema {
+                            vct.to_owned()
+                        } else {
+                            translate_local_vct_to_schema_id(vct)
+                                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                        },
+                    ),
                     None => (
                         CredentialSchemaType::ProcivisOneSchema2024,
                         offer_id.to_owned(),

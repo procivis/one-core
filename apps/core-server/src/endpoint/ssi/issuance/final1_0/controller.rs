@@ -21,7 +21,7 @@ use crate::router::AppState;
 
 #[utoipa::path(
     get,
-    path = "/ssi/openid4vci/final-1.0/{id}/.well-known/openid-credential-issuer",
+    path = "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{id}",
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),

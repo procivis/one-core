@@ -101,10 +101,11 @@ impl MdocFormatter {
 
 #[async_trait]
 impl CredentialFormatter for MdocFormatter {
-    async fn format_credential(
+    async fn format_credential<'a>(
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
+        _credential_schema: Option<&'a crate::model::credential_schema::CredentialSchema>,
     ) -> Result<String, FormatterError> {
         let vcdm = credential_data.vcdm;
         let credential_schema = vcdm

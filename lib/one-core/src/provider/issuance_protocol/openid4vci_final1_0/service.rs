@@ -21,6 +21,7 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
+use crate::provider::credential_formatter::sdjwtvc_formatter::vct_for_schema;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -42,6 +43,7 @@ pub(crate) fn create_issuer_metadata_response(
     supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
+    core_base_url: Option<&String>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
     let credential_configurations_supported: IndexMap<
         String,
@@ -53,6 +55,7 @@ pub(crate) fn create_issuer_metadata_response(
         supported_did_methods,
         proof_types_supported,
         credential_signing_alg_values_supported,
+        core_base_url,
     )?;
 
     let schema_base_url = get_credential_schema_base_url(&schema.id, base_url);
@@ -84,6 +87,7 @@ fn credential_configurations_supported(
     supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
+    core_base_url: Option<&String>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
     let schema_id = credential_schema.schema_id.to_owned();
     let cryptographic_binding_methods_supported =
@@ -135,7 +139,7 @@ fn credential_configurations_supported(
     };
 
     Ok(IndexMap::from([(
-        schema_id.clone(),
+        schema_id,
         match oidc_format {
             "ldp_vc" => jsonld_configuration(
                 oidc_format,
@@ -152,20 +156,14 @@ fn credential_configurations_supported(
                 proof_types_supported,
                 credential_signing_alg_values_supported,
             ),
-            "vc+sd-jwt" => sdjwt_configuration(
+            "vc+sd-jwt" | "dc+sd-jwt" => sdjwt_configuration(
                 oidc_format,
                 credential_metadata,
                 credential_schema,
-                Some(schema_id),
-                cryptographic_binding_methods_supported,
-                proof_types_supported,
-                credential_signing_alg_values_supported,
-            ),
-            "dc+sd-jwt" => sdjwt_configuration(
-                oidc_format,
-                credential_metadata,
-                credential_schema,
-                Some(schema_id),
+                Some(
+                    vct_for_schema(core_base_url, credential_schema)
+                        .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+                ),
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,

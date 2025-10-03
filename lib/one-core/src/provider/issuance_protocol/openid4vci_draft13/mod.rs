@@ -1433,7 +1433,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .ok_or(IssuanceProtocolError::Failed(format!(
                 "formatter not found: {format}"
             )))?
-            .format_credential(credential_data, auth_fn)
+            .format_credential(credential_data, auth_fn, Some(&credential_schema))
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 

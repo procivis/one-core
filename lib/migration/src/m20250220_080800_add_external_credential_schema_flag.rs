@@ -27,7 +27,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum CredentialSchema {
+pub enum CredentialSchema {
     Table,
     ExternalSchema,
 }

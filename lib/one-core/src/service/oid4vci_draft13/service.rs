@@ -127,6 +127,7 @@ impl OID4VCIDraft13Service {
                     .supported_verification_jose_alg_ids(),
             )),
             credential_signing_alg_values_supported,
+            self.base_url.as_ref(),
         )
         .map_err(Into::into)
     }

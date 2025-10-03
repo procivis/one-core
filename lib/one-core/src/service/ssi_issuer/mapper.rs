@@ -100,8 +100,8 @@ pub(crate) fn get_url_with_fragment(
     Ok(url.to_string())
 }
 
-pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
-    vct_type: String,
+pub(super) fn credential_schema_to_sd_jwt_vc_metadata(
+    vct: String,
     schema: CredentialSchema,
 ) -> Result<SdJwtVcTypeMetadataResponseDTO, ServiceError> {
     let background_color: Option<String> = schema.layout_properties.as_ref().map(|props| {
@@ -129,8 +129,8 @@ pub(crate) fn credential_schema_to_sd_jwt_vc_metadata(
         CredentialSchemaClaimsNestedView::try_from(schema.claim_schemas.unwrap_or_default())?;
     let claims = vct_claims_from_nested_view(nested_claims);
     Ok(SdJwtVcTypeMetadataResponseDTO {
-        vct: schema.schema_id,
-        name: Some(vct_type),
+        vct,
+        name: Some(schema.schema_id),
         display: vec![display_en_us],
         claims,
         layout_properties: schema

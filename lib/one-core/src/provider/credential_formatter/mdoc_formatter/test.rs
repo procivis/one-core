@@ -345,7 +345,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), None)
         .await
         .unwrap();
 
@@ -588,7 +588,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), None)
         .await
         .unwrap();
 
@@ -870,7 +870,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), None)
         .await
         .unwrap();
 

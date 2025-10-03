@@ -134,6 +134,7 @@ impl OID4VCIFinal1_0Service {
                     .supported_verification_jose_alg_ids(),
             )),
             credential_signing_alg_values_supported,
+            self.base_url.as_ref(),
         )
         .map_err(Into::into)
     }

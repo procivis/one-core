@@ -49,10 +49,11 @@ pub struct MetadataClaimSchema {
 #[async_trait]
 pub trait CredentialFormatter: Send + Sync {
     /// Formats and signs a credential.
-    async fn format_credential(
+    async fn format_credential<'a>(
         &self,
         credential_data: model::CredentialData,
         auth_fn: model::AuthenticationFn,
+        credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, error::FormatterError>;
 
     /// Formats BitStringStatusList credential

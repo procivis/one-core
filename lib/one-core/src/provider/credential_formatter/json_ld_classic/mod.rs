@@ -61,10 +61,11 @@ pub struct Params {
 
 #[async_trait]
 impl CredentialFormatter for JsonLdClassic {
-    async fn format_credential(
+    async fn format_credential<'a>(
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, FormatterError> {
         let mut vcdm = credential_data.vcdm;
 

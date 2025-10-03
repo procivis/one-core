@@ -193,7 +193,7 @@ impl SSIIssuerService {
     pub async fn get_vct_metadata(
         &self,
         organisation_id: OrganisationId,
-        vct_type: String,
+        schema_id: String,
     ) -> Result<SdJwtVcTypeMetadataResponseDTO, ServiceError> {
         let base_url = self
             .core_base_url
@@ -203,20 +203,20 @@ impl SSIIssuerService {
             ))?;
 
         let vct = {
-            let mut vct = Url::parse(base_url).map_err(|error| {
+            let mut url = Url::parse(base_url).map_err(|error| {
                 ServiceError::MappingError(format!("Invalid base URL: {error}"))
             })?;
 
             {
-                let mut segments = vct
+                let mut segments = url
                     .path_segments_mut()
                     .map_err(|_| ServiceError::MappingError("Invalid base URL".to_string()))?;
                 let organisation_id = organisation_id.to_string();
-                // /ssi/vct/v1/:organisation_id/:vct_type
-                segments.extend(["ssi", "vct", "v1", &organisation_id, &vct_type]);
+                // /ssi/vct/v1/:organisation_id/:schema_id
+                segments.extend(["ssi", "vct", "v1", &organisation_id, &schema_id]);
             }
 
-            vct.to_string()
+            url.to_string()
         };
 
         let mut schema_list = self
@@ -227,8 +227,10 @@ impl SSIIssuerService {
                     sorting: None,
                     filtering: Some(
                         CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
-                            & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(&vct))
-                                .condition(),
+                            & CredentialSchemaFilterValue::SchemaId(StringMatch::equals(
+                                &schema_id,
+                            ))
+                            .condition(),
                     ),
                     include: Some(vec![
                         CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
@@ -246,6 +248,6 @@ impl SSIIssuerService {
                 EntityNotFoundError::SdJwtVcTypeMetadata(vct),
             ));
         };
-        credential_schema_to_sd_jwt_vc_metadata(vct_type, credential_schema)
+        credential_schema_to_sd_jwt_vc_metadata(vct, credential_schema)
     }
 }

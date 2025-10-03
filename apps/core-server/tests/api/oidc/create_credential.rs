@@ -327,6 +327,7 @@ async fn test_post_issuer_credential_with(
             TestingCreateSchemaParams {
                 format: credential_format,
                 schema_id: schema_id.clone(),
+                external_schema: true,
                 ..Default::default()
             },
         )

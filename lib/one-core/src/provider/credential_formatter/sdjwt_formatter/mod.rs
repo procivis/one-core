@@ -70,10 +70,11 @@ fn default_sd_array_elements() -> bool {
 
 #[async_trait]
 impl CredentialFormatter for SDJWTFormatter {
-    async fn format_credential(
+    async fn format_credential<'a>(
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
+        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, FormatterError> {
         const HASH_ALG: &str = "sha-256";
         let mut vcdm = credential_data.vcdm;

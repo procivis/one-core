@@ -191,7 +191,9 @@ impl VCAPIService {
             holder_key_id: None,
             issuer_certificate: None,
         };
-        let test = formatter.format_credential(credential_data, auth_fn).await;
+        let test = formatter
+            .format_credential(credential_data, auth_fn, None)
+            .await;
 
         let mut verifiable_credential: LdCredential =
             serde_json::from_str(&test?).map_err(|e: serde_json::Error| {

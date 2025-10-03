@@ -345,6 +345,7 @@ pub async fn initialize_core(
     let formatter_provider_creator: FormatterProviderCreator = {
         let caching_loader = caching_loader.clone();
         let vct_type_metadata_cache = vct_type_metadata_cache.clone();
+        let core_base_url = app_config.app.core_base_url.to_owned();
         let client = client.clone();
         Box::new(move |format_config, datatype_config, providers| {
             let mut credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>> =
@@ -407,6 +408,7 @@ pub async fn initialize_core(
                             certificate_validator.clone(),
                             datatype_config.clone(),
                             client.clone(),
+                            Some(core_base_url.clone()),
                         )) as _
                     }
                     FormatType::JsonLdClassic => {

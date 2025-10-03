@@ -55,7 +55,8 @@ use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
-    dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, generic_config,
+    dummy_credential_schema, dummy_did, dummy_did_document, dummy_identifier, dummy_jwk,
+    dummy_organisation, generic_config,
 };
 use crate::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::util::key_verification::KeyVerification;
@@ -106,11 +107,15 @@ async fn test_format_credential() {
     let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
     vct_metadata_cache
         .expect_get()
-        .with(eq("http://schema.test/id"))
+        .with(eq(
+            "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id",
+        ))
         .return_once(|_| {
             Ok(Some(SdJwtVcTypeMetadataCacheItem {
                 metadata: SdJwtVcTypeMetadataResponseDTO {
-                    vct: "http://schema.test/id".to_string(),
+                    vct:
+                        "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id"
+                            .to_string(),
                     name: None,
                     display: vec![],
                     claims: vec![],
@@ -136,12 +141,13 @@ async fn test_format_credential() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Some("http://core.url".to_string()),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), Some(&dummy_schema()))
         .await;
 
     assert!(result.is_ok());
@@ -211,7 +217,10 @@ async fn test_format_credential() {
 
     let vc = payload.custom;
 
-    assert_eq!(vc.vc_type, "http://schema.test/id".to_string());
+    assert_eq!(
+        vc.vc_type,
+        "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id".to_string()
+    );
     assert_eq!(vc.vct_integrity, Some("integrity".to_string()));
 
     assert!(
@@ -293,11 +302,15 @@ async fn test_format_credential_swiyu() {
     let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
     vct_metadata_cache
         .expect_get()
-        .with(eq("http://schema.test/id"))
+        .with(eq(
+            "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id",
+        ))
         .return_once(|_| {
             Ok(Some(SdJwtVcTypeMetadataCacheItem {
                 metadata: SdJwtVcTypeMetadataResponseDTO {
-                    vct: "http://schema.test/id".to_string(),
+                    vct:
+                        "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id"
+                            .to_string(),
                     name: None,
                     display: vec![],
                     claims: vec![],
@@ -323,12 +336,13 @@ async fn test_format_credential_swiyu() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Some("http://core.url".to_string()),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), Some(&dummy_schema()))
         .await;
 
     assert!(result.is_ok());
@@ -401,7 +415,10 @@ async fn test_format_credential_swiyu() {
 
     let vc = payload.custom;
 
-    assert_eq!(vc.vc_type, "http://schema.test/id".to_string());
+    assert_eq!(
+        vc.vc_type,
+        "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id".to_string()
+    );
     assert_eq!(vc.vct_integrity, Some("integrity".to_string()));
 
     assert!(
@@ -457,6 +474,7 @@ async fn test_extract_credentials() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        None,
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -595,6 +613,7 @@ async fn test_extract_credentials_swiyu() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        None,
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -789,6 +808,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(http_client),
+        None,
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -859,6 +879,7 @@ fn test_schema_id() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        None,
     );
     let vct_type = "xyz some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -881,13 +902,7 @@ fn test_schema_id() {
         "https://example.com",
     );
     assert!(result.is_ok());
-    assert_eq!(
-        result.unwrap(),
-        format!(
-            "https://example.com/ssi/vct/v1/{}/xyz%20some_vct_type",
-            request_dto.organisation_id
-        )
-    )
+    assert_eq!(result.unwrap(), vct_type)
 }
 
 #[tokio::test]
@@ -1003,7 +1018,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
     });
 
     let token = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), Some(&dummy_schema()))
         .await
         .unwrap();
 
@@ -1051,7 +1066,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         "vct".into()=> CredentialClaim {
             selectively_disclosable: false,
             metadata: true,
-            value: CredentialClaimValue::String("credential-schema-id".to_string()),
+            value: CredentialClaimValue::String("http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id".to_string()),
         },
         "nbf".into()=> CredentialClaim {
             selectively_disclosable: false,
@@ -1214,7 +1229,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
     });
 
     let token = formatter
-        .format_credential(credential_data, Box::new(auth_fn))
+        .format_credential(credential_data, Box::new(auth_fn), Some(&dummy_schema()))
         .await
         .unwrap();
 
@@ -1276,7 +1291,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         "vct".into()=> CredentialClaim {
             selectively_disclosable: false,
             metadata: true,
-            value: CredentialClaimValue::String("credential-schema-id".to_string()),
+            value: CredentialClaimValue::String("http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id".to_string()),
         },
         "nbf".into()=> CredentialClaim {
             selectively_disclosable: false,
@@ -1352,11 +1367,15 @@ fn formatter_for_params(
     let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
     vct_metadata_cache
         .expect_get()
-        .with(eq("credential-schema-id"))
+        .with(eq(
+            "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id",
+        ))
         .return_once(|_| {
             Ok(Some(SdJwtVcTypeMetadataCacheItem {
                 metadata: SdJwtVcTypeMetadataResponseDTO {
-                    vct: "credential-schema-id".to_string(),
+                    vct:
+                        "http://core.url/ssi/vct/v1/48db4654-01c4-4a43-9df4-300f1f425c40/schema.id"
+                            .to_string(),
                     name: None,
                     display: vec![],
                     claims: vec![],
@@ -1376,6 +1395,7 @@ fn formatter_for_params(
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Some("http://core.url".to_string()),
     );
     (key_algorithm_provider, did_method_provider, formatter)
 }
@@ -1401,6 +1421,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Some("http://core.url".to_string()),
     );
 
     let token = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDpqd2s6ZXlKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWVDSTZJbGhMU25sbWVtcDBSVlYyTTBocFZHNDVVVUpSWkdwS1oyUXlTMEpPTVhKMk5qRlVkRkJJZFVRNWFrRWlmUSMwIiwidHlwIjoidmMrc2Qtand0In0.eyJpYXQiOjE3NTcwNzU3MjgsImV4cCI6MTc1NzA3NTczOCwibmJmIjoxNzU3MDc1NzI4LCJpc3MiOiJkaWQ6andrOmV5SnJkSGtpT2lKUFMxQWlMQ0pqY25ZaU9pSkZaREkxTlRFNUlpd2llQ0k2SWxoTFNubG1lbXAwUlZWMk0waHBWRzQ1VVVKUlpHcEtaMlF5UzBKT01YSjJOakZVZEZCSWRVUTVha0VpZlEiLCJzdWIiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInZjdCI6ImNyZWRlbnRpYWwtc2NoZW1hLWlkIiwiX3NkIjpbIk9VamJWRlZ1RGhoRkRReXpJdllfd3AzQTJRVnBadjlsZ0JoRUdMYlVSTXMiLCJod1ZXdW9CeG1hcEd2RHZCdDJ1RGR6RmlfMjNIR3ZQd3hJT3lCdGNVRjZBIiwidVBCaWJWdzVOMFVqalF3cjJwSURPbTRwRlltS3MzbFVUdWQ4ZTRxajlCbyJdLCJfc2RfYWxnIjoic2hhLTI1NiJ9.4mDkXOv500AjcM-HtMLHsadP7-qb0kXlY10i6EfQzJCku4NypM_tQBlsbCQL5JJRxNqrm6BE2aetfPOmLjeABA~WyJpZWg1U1YwTjcwT2NkQkljMi00akxRIiwiYWdlIiwyMl0~WyJtY2p2TERkc1hsd2lDSDdXekd2aTVnIiwiaXNfb3Zlcl8xOCIsdHJ1ZV0~WyJSeExGd2VhQVdyeEp4XzRRVFF5VEJnIiwibWVhc3VyZW1lbnRzIixbeyJhaXIgcG9sbHV0aW9uIjoyNC42fV1d~WyJqWTFOM0R1cEJiczVuUUdRVUFCSmdRIiwibmFtZSIsIk1pa2UiXQ~WyJQWl9kRThIbXhKQ2xxVHVQUGhhOGhnIiwib2JqZWN0Iix7Il9zZCI6WyJBczVEX241c0pjaURMQlM5THNxaGlwc3doOGRzeVBrOEtiQjZERW94Q1NnIiwiWjBQaFV1V19jTnpVYnFEeC1kZFFXVV9yYzVZemxiWFlRYV9xN2FCZEpUQSJdfV0~";
@@ -1447,6 +1468,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Some("http://core.url".to_string()),
     );
 
     let credential_presentation = CredentialPresentation {
@@ -1468,4 +1490,19 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         presentation.split('~').collect::<HashSet<_>>(),
         expected_presentation.split('~').collect::<HashSet<_>>()
     );
+}
+
+fn dummy_schema() -> crate::model::credential_schema::CredentialSchema {
+    crate::model::credential_schema::CredentialSchema {
+        format: "SD_JWT_VC".to_string(),
+        schema_id: "schema.id".to_string(),
+        schema_type: CredentialSchemaType::SdJwtVc,
+        external_schema: false,
+        organisation: Some(dummy_organisation(Some(
+            Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40")
+                .unwrap()
+                .into(),
+        ))),
+        ..dummy_credential_schema()
+    }
 }
