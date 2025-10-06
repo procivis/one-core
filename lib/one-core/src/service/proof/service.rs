@@ -14,17 +14,18 @@ use super::dto::{
     ProofDetailResponseDTO, ProposeProofResponseDTO, ShareProofRequestDTO,
 };
 use super::mapper::{
-    get_holder_proof_detail, get_verifier_proof_detail, proof_from_create_request,
+    get_holder_proof_detail, get_verifier_proof_detail, interaction_data_from_proof,
+    proof_from_create_request,
 };
 use super::validator::{
     throw_if_proof_not_in_session_org, validate_did_and_format_compatibility,
-    validate_holder_engagements, validate_mdl_exchange, validate_redirect_uri,
-    validate_verification_key_storage_compatibility, validate_verifier_engagement,
+    validate_holder_engagements, validate_mdl_exchange, validate_proof_for_proof_definition,
+    validate_redirect_uri, validate_verification_key_storage_compatibility,
+    validate_verifier_engagement,
 };
 use crate::common_mapper::list_response_try_into;
 use crate::common_validator::{
-    throw_if_latest_proof_state_not_eq, throw_if_org_not_matching_session,
-    throw_if_org_relation_not_matching_session,
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
 use crate::config::core_config::{TransportType, VerificationEngagement, VerificationProtocolType};
 use crate::config::validator::protocol::{
@@ -203,8 +204,42 @@ impl ProofService {
         &self,
         id: &ProofId,
     ) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
-        let proof = self
-            .proof_repository
+        let proof = self.load_proof_for_proof_definition(id).await?;
+        validate_proof_for_proof_definition(&proof, &*self.session_provider)?;
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
+        )?;
+        exchange
+            .holder_get_presentation_definition(
+                &proof,
+                interaction_data_from_proof(&proof)?,
+                &self.storage_access(),
+            )
+            .await
+            .map_err(Into::into)
+    }
+
+    pub async fn get_proof_presentation_definition_v2(
+        &self,
+        id: &ProofId,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, ServiceError> {
+        let proof = self.load_proof_for_proof_definition(id).await?;
+        validate_proof_for_proof_definition(&proof, &*self.session_provider)?;
+        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
+            MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
+        )?;
+        exchange
+            .holder_get_presentation_definition_v2(
+                &proof,
+                interaction_data_from_proof(&proof)?,
+                &self.storage_access(),
+            )
+            .await
+            .map_err(Into::into)
+    }
+
+    async fn load_proof_for_proof_definition(&self, id: &ProofId) -> Result<Proof, ServiceError> {
+        self.proof_repository
             .get_proof(
                 id,
                 &ProofRelations {
@@ -221,27 +256,11 @@ impl ProofService {
                 },
             )
             .await?
-            .ok_or(EntityNotFoundError::Proof(*id))?;
-        throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
+            .ok_or(EntityNotFoundError::Proof(*id).into())
+    }
 
-        if proof.role != ProofRole::Holder {
-            return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
-        }
-
-        throw_if_latest_proof_state_not_eq(&proof, Requested)?;
-
-        let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
-            MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
-        )?;
-        let interaction_data = proof
-            .interaction
-            .as_ref()
-            .and_then(|interaction| interaction.data.as_ref())
-            .map(|interaction| serde_json::from_slice(interaction))
-            .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
-            .map_err(|err| ServiceError::MappingError(err.to_string()))?;
-
-        let storage_access = StorageProxyImpl::new(
+    fn storage_access(&self) -> StorageProxyImpl {
+        StorageProxyImpl::new(
             self.interaction_repository.clone(),
             self.credential_schema.clone(),
             self.credential_repository.clone(),
@@ -252,19 +271,7 @@ impl ProofService {
             self.identifier_repository.clone(),
             self.did_method_provider.clone(),
             self.key_algorithm_provider.clone(),
-        );
-
-        exchange
-            .holder_get_presentation_definition(&proof, interaction_data, &storage_access)
-            .await
-            .map_err(Into::into)
-    }
-
-    pub async fn get_proof_presentation_definition_v2(
-        &self,
-        _id: &ProofId,
-    ) -> Result<PresentationDefinitionV2ResponseDTO, ServiceError> {
-        unimplemented!("TODO: ONE-7435")
+        )
     }
 
     /// Returns list of proofs according to query

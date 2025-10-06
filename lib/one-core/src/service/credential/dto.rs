@@ -138,17 +138,17 @@ pub enum CredentialSchemaType {
 pub struct DetailCredentialClaimResponseDTO {
     pub path: String,
     pub schema: CredentialClaimSchemaDTO,
-    pub value: DetailCredentialClaimValueResponseDTO,
+    pub value: DetailCredentialClaimValueResponseDTO<Self>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum DetailCredentialClaimValueResponseDTO {
+pub enum DetailCredentialClaimValueResponseDTO<T> {
     Boolean(bool),
     Float(f64),
     Integer(i64),
     String(String),
-    Nested(Vec<DetailCredentialClaimResponseDTO>),
+    Nested(Vec<T>),
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From, AsRefStr)]

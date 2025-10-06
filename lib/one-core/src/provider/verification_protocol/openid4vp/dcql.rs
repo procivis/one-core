@@ -4,6 +4,7 @@ use std::sync::Arc;
 use dcql::matching::{ClaimFilter, CredentialFilter};
 use dcql::{ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
 use itertools::Itertools;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use shared_types::{CredentialId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -17,12 +18,22 @@ use crate::model::proof::Proof;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
+    ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
+    CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
+    CredentialQueryResponseDTO, CredentialSetResponseDTO, PresentationDefinitionFieldDTO,
+    PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionV2ResponseDTO,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::credential_model_to_credential_dto;
+use crate::service::credential::dto::{
+    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO,
+};
+use crate::service::credential::mapper::credential_detail_response_from_model;
+use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 use crate::service::storage_proxy::StorageAccess;
 
 /// Retrieve the "presentation definition" for the given DCQL query.
@@ -31,8 +42,6 @@ use crate::service::storage_proxy::StorageAccess;
 ///   - No DCQL support for:
 ///     - credential_sets
 ///     - trusted authorities
-///     - `multiple` flag
-///     - `require_cryptographic_holder_binding` flag
 ///   - Some metadata claims such as `@context` or `_sd` cannot be queried
 ///   - No support for `vct` inheritance
 ///   - W3C VCs have proprietary lookup logic based on the JSON-LD context
@@ -118,6 +127,288 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
         }],
         credentials: credential_model_to_credential_dto(relevant_credentials, config)?,
     })
+}
+
+pub(crate) async fn get_presentation_definition_v2(
+    dcql_query: DcqlQuery,
+    proof: &Proof,
+    storage_access: &StorageAccess,
+    formatter_provider: &dyn CredentialFormatterProvider,
+    config: &CoreConfig,
+) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+    let organisation = proof
+        .interaction
+        .as_ref()
+        .and_then(|interaction| interaction.organisation.as_ref())
+        .ok_or(VerificationProtocolError::Failed(
+            "proof organisation missing".to_string(),
+        ))?;
+
+    let query_to_filters = dcql_query
+        .credential_filters()
+        .map_err(VerificationProtocolError::DcqlError)?;
+
+    let mut credential_queries = HashMap::new();
+    let credential_sets = if let Some(credential_sets) = dcql_query.credential_sets {
+        convert_inner(credential_sets)
+    } else {
+        dcql_query
+            .credentials
+            .iter()
+            .map(|query| CredentialSetResponseDTO {
+                required: true,
+                options: vec![vec![query.id.to_string()]],
+            })
+            .collect()
+    };
+
+    for query in dcql_query.credentials {
+        let credential_filters =
+            query_to_filters
+                .get(&query.id)
+                .ok_or(VerificationProtocolError::Failed(format!(
+                    "missing credential filters for credential query with id {}",
+                    query.id
+                )))?;
+
+        // This is very inefficient. We would have the information here to also filter by the claims
+        // required, appropriate state / role, etc. but so far this was not a problem so it is not
+        // optimized.
+        let mut credential_candidates =
+            fetch_credentials_for_schema_ids(storage_access, organisation.id, credential_filters)
+                .await?;
+
+        credential_candidates.retain(|credential| {
+            let Some(schema) = &credential.schema else {
+                return false;
+            };
+            format_matches(&query.format, &schema.format, config)
+                && credential.role == CredentialRole::Holder
+        });
+
+        if credential_candidates.is_empty() {
+            let schema_ids = credential_filters
+                .iter()
+                .flat_map(|filter| {
+                    filter
+                        .schema_ids
+                        .iter()
+                        .map(|schema_id| map_schema_id(filter, schema_id))
+                })
+                .collect::<Vec<_>>();
+            let credential_schema = storage_access
+                .find_schema_by_schema_ids(&schema_ids, organisation.id)
+                .await
+                .map_err(VerificationProtocolError::StorageAccessError)?;
+            let credential_schema = try_convert_inner(credential_schema).map_err(|err| {
+                VerificationProtocolError::Failed(format!("Failed to map credential schema: {err}"))
+            })?;
+            credential_queries.insert(
+                query.id.to_string(),
+                failure_hint(
+                    &query,
+                    CredentialQueryFailureReasonEnum::NoCredential,
+                    credential_schema,
+                )?,
+            );
+            // done with this query
+            continue;
+        }
+
+        let (candidates, invalid_credentials): (Vec<_>, Vec<_>) = credential_candidates
+            .into_iter()
+            .partition(|credential| credential.state == CredentialStateEnum::Accepted);
+        if candidates.is_empty() {
+            let credential_schema = try_convert_inner(
+                invalid_credentials
+                    .into_iter()
+                    .next()
+                    .and_then(|cred| cred.schema),
+            )
+            .map_err(|err| {
+                VerificationProtocolError::Failed(format!("Failed to map credential schema: {err}"))
+            })?;
+            credential_queries.insert(
+                query.id.to_string(),
+                failure_hint(
+                    &query,
+                    CredentialQueryFailureReasonEnum::Validity,
+                    credential_schema,
+                )?,
+            );
+            // done with this query
+            continue;
+        }
+
+        // if none of the candidates is applicable, use this schema for the failure hint.
+        let failure_hint_schema = candidates.first().and_then(|cred| cred.schema.clone());
+        let mut applicable_credentials = vec![];
+        for candidate in candidates {
+            let format = &candidate
+                .schema
+                .as_ref()
+                .ok_or(VerificationProtocolError::Failed(format!(
+                    "missing schema for credential {}",
+                    candidate.id
+                )))?
+                .format;
+            let formatter = formatter_provider.get_credential_formatter(format).ok_or(
+                VerificationProtocolError::Failed(format!(
+                    "missing formatter for credential format {format}",
+                )),
+            )?;
+
+            let claims = first_matching_claims(&candidate, credential_filters, &*formatter)?;
+            let Some(claims) = claims else {
+                continue;
+            };
+            let credential_detail_dto = credential_detail_response_from_model(
+                candidate, config, None, None,
+            )
+            .map_err(|err| {
+                VerificationProtocolError::Failed(format!("Failed to map credential to DTO: {err}"))
+            })?;
+            applicable_credentials.push(map_to_filtered_dto(credential_detail_dto, &claims));
+        }
+        if applicable_credentials.is_empty() {
+            credential_queries.insert(
+                query.id.to_string(),
+                failure_hint(
+                    &query,
+                    CredentialQueryFailureReasonEnum::Constraint,
+                    try_convert_inner(failure_hint_schema).map_err(|err| {
+                        VerificationProtocolError::Failed(format!(
+                            "Failed to map credential schema: {err}"
+                        ))
+                    })?,
+                )?,
+            );
+        } else {
+            credential_queries.insert(
+                query.id.to_string(),
+                CredentialQueryResponseDTO {
+                    multiple: query.multiple,
+                    credential_or_failure_hint:
+                        ApplicableCredentialOrFailureHintEnum::ApplicableCredentials {
+                            applicable_credentials,
+                        },
+                },
+            );
+        }
+    }
+    Ok(PresentationDefinitionV2ResponseDTO {
+        credential_queries,
+        credential_sets,
+    })
+}
+
+fn failure_hint(
+    query: &CredentialQuery,
+    reason: CredentialQueryFailureReasonEnum,
+    credential_schema: Option<CredentialSchemaDetailResponseDTO>,
+) -> Result<CredentialQueryResponseDTO, VerificationProtocolError> {
+    Ok(CredentialQueryResponseDTO {
+        multiple: query.multiple,
+        credential_or_failure_hint: ApplicableCredentialOrFailureHintEnum::FailureHint {
+            failure_hint: Box::new(CredentialQueryFailureHintResponseDTO {
+                reason,
+                credential_schema,
+            }),
+        },
+    })
+}
+
+fn map_to_filtered_dto(
+    full_dto: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
+    selected_claims: &[SelectedClaim],
+) -> CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO> {
+    let selected_claims_by_path = selected_claims
+        .iter()
+        .map(|claim| (claim.path.to_owned(), claim))
+        .collect::<HashMap<_, _>>();
+
+    CredentialDetailResponseDTO {
+        id: full_dto.id,
+        created_date: full_dto.created_date,
+        issuance_date: full_dto.issuance_date,
+        revocation_date: full_dto.revocation_date,
+        state: full_dto.state,
+        last_modified: full_dto.last_modified,
+        schema: full_dto.schema,
+        issuer: full_dto.issuer,
+        issuer_certificate: full_dto.issuer_certificate,
+        claims: full_dto
+            .claims
+            .into_iter()
+            .filter_map(|claim| to_claim_detail_ext_filtered(claim, &selected_claims_by_path))
+            .collect(),
+        redirect_uri: full_dto.redirect_uri,
+        role: full_dto.role,
+        lvvc_issuance_date: full_dto.lvvc_issuance_date,
+        suspend_end_date: full_dto.suspend_end_date,
+        mdoc_mso_validity: full_dto.mdoc_mso_validity,
+        holder: full_dto.holder,
+        protocol: full_dto.protocol,
+        profile: full_dto.profile,
+        wallet_unit_attestation: None,
+    }
+}
+
+fn to_claim_detail_ext_filtered(
+    claim: DetailCredentialClaimResponseDTO,
+    all_selected_claims: &HashMap<String, &SelectedClaim>,
+) -> Option<CredentialDetailClaimExtResponseDTO> {
+    // exit early if not in filter list
+    let selected_claim = all_selected_claims.get(&claim.path)?;
+
+    // value mapping
+    let value = match claim.value {
+        DetailCredentialClaimValueResponseDTO::Boolean(val) => {
+            DetailCredentialClaimValueResponseDTO::Boolean(val)
+        }
+        DetailCredentialClaimValueResponseDTO::Float(val) => {
+            DetailCredentialClaimValueResponseDTO::Float(val)
+        }
+        DetailCredentialClaimValueResponseDTO::Integer(val) => {
+            DetailCredentialClaimValueResponseDTO::Integer(val)
+        }
+        DetailCredentialClaimValueResponseDTO::String(val) => {
+            DetailCredentialClaimValueResponseDTO::String(val)
+        }
+        DetailCredentialClaimValueResponseDTO::Nested(children) => {
+            let mapped_children = children
+                .into_iter()
+                .filter_map(|child| to_claim_detail_ext_filtered(child, all_selected_claims))
+                .collect::<Vec<_>>();
+            if mapped_children.is_empty() {
+                return None;
+            }
+            DetailCredentialClaimValueResponseDTO::Nested(mapped_children)
+        }
+    };
+    Some(CredentialDetailClaimExtResponseDTO {
+        path: claim.path,
+        schema: claim.schema,
+        value,
+        user_selection: selected_claim.user_selection,
+        required: !selected_claim.selective_disclosure_supported
+            || selected_claim.required_by_verifier,
+    })
+}
+
+fn first_matching_claims(
+    credential: &Credential,
+    filters: &[CredentialFilter],
+    formatter: &dyn CredentialFormatter,
+) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
+    for filter in filters {
+        let claims = select_matching_claims(credential, filter, formatter)?;
+        let Some(claims) = claims else {
+            continue;
+        };
+        return Ok(Some(claims));
+    }
+    Ok(None)
 }
 
 fn format_matches(dcql_format: &CredentialFormat, format: &str, config: &CoreConfig) -> bool {
@@ -280,7 +571,7 @@ fn first_applicable_claim_set(
 
         // Go through the filters and find the first that matches some claims, if any.
         for filter in filters {
-            let claims = select_claims(credential, filter, &*formatter)?;
+            let claims = select_claims(credential, filter, &*formatter, false)?;
 
             let credential_applicable = !claims
                 .iter()
@@ -316,7 +607,7 @@ fn first_applicable_claim_set(
                 MatchedClaim::Selected(selected_claim) => {
                     let sd_supported = selected_claim.selective_disclosure_supported;
                     claims_to_credentials
-                        .entry(selected_claim.key)
+                        .entry(selected_claim.path)
                         .and_modify(|claim_to_creds: &mut ClaimToCredentials| {
                             claim_to_creds.credentials.push(credential.id);
                             claim_to_creds.selective_disclosure_supported =
@@ -402,9 +693,10 @@ fn formatter_for_dcql_format(
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 struct SelectedClaim {
-    key: String,
+    path: String,
     selective_disclosure_supported: bool,
     required_by_verifier: bool,
+    user_selection: bool,
     metadata: bool,
 }
 
@@ -418,10 +710,27 @@ enum MatchedClaim {
     },
 }
 
+fn select_matching_claims(
+    credential: &Credential,
+    filter: &CredentialFilter,
+    formatter: &dyn CredentialFormatter,
+) -> Result<Option<Vec<SelectedClaim>>, VerificationProtocolError> {
+    let claims = select_claims(credential, filter, formatter, true)?;
+    let mut result = vec![];
+    for claim in claims {
+        match claim {
+            MatchedClaim::Missing { .. } => return Ok(None), // abort as not matching on missing required claim
+            MatchedClaim::Selected(selected_claim) => result.push(selected_claim),
+        }
+    }
+    Ok(Some(result))
+}
+
 fn select_claims(
     credential: &Credential,
     filter: &CredentialFilter,
     formatter: &dyn CredentialFormatter,
+    select_children: bool,
 ) -> Result<Vec<MatchedClaim>, VerificationProtocolError> {
     let Some(claims) = &credential.claims else {
         return Err(VerificationProtocolError::Failed(format!(
@@ -458,9 +767,11 @@ fn select_claims(
                     Ok((
                         claim.path.to_owned(),
                         SelectedClaim {
-                            key: claim.path.to_owned(),
+                            path: claim.path.to_owned(),
                             selective_disclosure_supported: claim.selectively_disclosable,
                             required_by_verifier: false,
+                            // non-selectively disclosable claims can never be de-selected by the user
+                            user_selection: false,
                             metadata: claim
                                 .schema
                                 .as_ref()
@@ -495,25 +806,32 @@ fn select_claims(
     let user_claim_path = formatter.user_claims_path();
     // add claims requested by the verifier
     for claim_filter in &filter.claims {
-        let matching_claims = get_matching_claims(claims, claim_filter, &user_claim_path)?;
+        let matching_claims =
+            get_matching_claims(claims, claim_filter, &user_claim_path, select_children)?;
         if !matching_claims.is_empty() {
             matching_claims.into_iter().try_for_each(|matching_claim| {
-                if let Some(claim) = selected.get_mut(&matching_claim.path) {
+                // All optional claims that were explicitly requested by the verifier
+                // should have a toggle.
+                let user_selection = matching_claim.exact && !claim_filter.required;
+                if let Some(claim) = selected.get_mut(&matching_claim.claim.path) {
                     claim.required_by_verifier =
                         claim.required_by_verifier || claim_filter.required;
+                    claim.user_selection = claim.user_selection || user_selection
                 } else {
+                    let claim = matching_claim.claim;
                     selected.insert(
-                        matching_claim.path.to_owned(),
+                        claim.path.to_owned(),
                         SelectedClaim {
-                            key: matching_claim.path.to_owned(),
-                            selective_disclosure_supported: matching_claim.selectively_disclosable,
+                            path: claim.path.to_owned(),
+                            selective_disclosure_supported: claim.selectively_disclosable,
                             required_by_verifier: claim_filter.required,
-                            metadata: matching_claim
+                            user_selection,
+                            metadata: claim
                                 .schema
                                 .as_ref()
                                 .ok_or(VerificationProtocolError::Failed(format!(
                                     "missing claim schema for claim {}",
-                                    matching_claim.id
+                                    claim.id
                                 )))?
                                 .metadata,
                         },
@@ -543,18 +861,26 @@ fn select_claims(
     Ok(result)
 }
 
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+struct ClaimMatch<'a> {
+    claim: &'a Claim,
+    // Whether it was an exact match on the DCQL path or matched transitively by other matched claims
+    exact: bool,
+}
+
 fn get_matching_claims<'a>(
     claims: &'a [Claim],
     claim_filter: &ClaimFilter,
     user_claim_path: &[String],
-) -> Result<HashSet<&'a Claim>, VerificationProtocolError> {
+    select_children: bool,
+) -> Result<HashSet<ClaimMatch<'a>>, VerificationProtocolError> {
     let values_filter = claim_filter
         .values
         .iter()
         .map(stringify_value)
         .collect::<Vec<_>>();
 
-    let filtered_claims: Vec<_> = claims
+    let exactly_matching_claims: Vec<_> = claims
         .iter()
         // use filter_map to propagate errors of fallible predicate
         .filter_map(|claim| {
@@ -576,15 +902,24 @@ fn get_matching_claims<'a>(
         })
         .collect::<Result<_, _>>()?;
 
-    if filtered_claims.is_empty() {
+    if exactly_matching_claims.is_empty() {
         // no matches found, return empty result
         return Ok(HashSet::new());
+    }
+
+    let mut child_claims = HashSet::<&Claim>::new();
+    if select_children {
+        // Presentation definition v2: child claims of exactly matching claims are also selected
+        exactly_matching_claims.iter().for_each(|claim| {
+            let prefix = format!("{}/", claim.path);
+            child_claims.extend(claims.iter().filter(|c| c.path.starts_with(&prefix)));
+        });
     }
 
     // "trunk" nodes on the path from root to the filtered_claims
     // all of these are either arrays or objects
     let mut claims_towards_root = HashSet::<&Claim>::new();
-    filtered_claims.iter().try_for_each(|claim| {
+    exactly_matching_claims.iter().try_for_each(|claim| {
         let mut current_path = claim.path.as_str();
         while let Some((parent_path, _)) = current_path.rsplit_once('/') {
             let parent_claim = claims
@@ -607,9 +942,27 @@ fn get_matching_claims<'a>(
     );
 
     let mut combined_set = HashSet::new();
-    combined_set.extend(filtered_claims);
-    combined_set.extend(claims_towards_root);
-    combined_set.extend(nonselectively_disclosable_children);
+    combined_set.extend(
+        exactly_matching_claims
+            .into_iter()
+            .map(|claim| ClaimMatch { claim, exact: true }),
+    );
+    combined_set.extend(child_claims.into_iter().map(|claim| ClaimMatch {
+        claim,
+        exact: false,
+    }));
+    combined_set.extend(claims_towards_root.into_iter().map(|claim| ClaimMatch {
+        claim,
+        exact: false,
+    }));
+    combined_set.extend(
+        nonselectively_disclosable_children
+            .into_iter()
+            .map(|claim| ClaimMatch {
+                claim,
+                exact: false,
+            }),
+    );
     Ok(combined_set)
 }
 
@@ -660,28 +1013,33 @@ async fn fetch_credentials_for_schema_ids(
     };
 
     for schema_id in &filter.schema_ids {
-        let schema_id = match filter.format {
-            CredentialFormat::JwtVc | CredentialFormat::LdpVc | CredentialFormat::W3cSdJwt => {
-                schema_id
-                    // Make use of the fact that Procivis One issuers put the schema id into the context,
-                    // hence we can potentially parse it out of the supplied types.
-                    // Note: This will most likely fail with third party issuers. Improve the logic,
-                    // once we need to interop with such issuers.
-                    .split_once("#")
-                    .map(|(first, _)| first)
-                    .unwrap_or(schema_id)
-            }
-            CredentialFormat::MsoMdoc | CredentialFormat::SdJwt => schema_id,
-        };
+        let schema_id = map_schema_id(filter, schema_id);
 
         credentials.append(
             &mut storage_access
-                .get_credentials_by_credential_schema_id(schema_id, organisation_id)
+                .get_credentials_by_credential_schema_id(&schema_id, organisation_id)
                 .await
                 .map_err(VerificationProtocolError::StorageAccessError)?,
         );
     }
     Ok(credentials)
+}
+
+fn map_schema_id(filter: &CredentialFilter, schema_id: &str) -> String {
+    match filter.format {
+        CredentialFormat::JwtVc | CredentialFormat::LdpVc | CredentialFormat::W3cSdJwt => {
+            schema_id
+                // Make use of the fact that Procivis One issuers put the schema id into the context,
+                // hence we can potentially parse it out of the supplied types.
+                // Note: This will most likely fail with third party issuers. Improve the logic,
+                // once we need to interop with such issuers.
+                .split_once("#")
+                .map(|(first, _)| first)
+                .unwrap_or(schema_id)
+        }
+        CredentialFormat::MsoMdoc | CredentialFormat::SdJwt => schema_id,
+    }
+    .to_string()
 }
 
 /// Predicate that checks if the DCQL path matches the claim path exactly, as in

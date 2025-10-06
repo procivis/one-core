@@ -1,11 +1,15 @@
 use std::collections::{HashMap, HashSet};
 
+use dcql::CredentialSet;
+use one_dto_mapper::convert_inner_of_inner;
 use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionFieldDTO};
+use super::dto::{
+    CredentialGroup, CredentialGroupItem, CredentialSetResponseDTO, PresentationDefinitionFieldDTO,
+};
 use super::{StorageAccess, VerificationProtocolError};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
@@ -302,4 +306,13 @@ pub(crate) fn gather_object_datatypes_from_config(config: &DatatypeConfig) -> Ha
             }
         })
         .collect()
+}
+
+impl From<CredentialSet> for CredentialSetResponseDTO {
+    fn from(value: CredentialSet) -> Self {
+        Self {
+            required: value.required,
+            options: convert_inner_of_inner(value.options),
+        }
+    }
 }

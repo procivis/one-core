@@ -24,6 +24,15 @@ pub mod matching;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Builder)]
 pub struct DcqlQuery {
     pub credentials: Vec<CredentialQuery>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub credential_sets: Option<Vec<CredentialSet>>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CredentialSet {
+    #[serde(default = "default_true")]
+    pub required: bool,
+    pub options: Vec<Vec<CredentialQueryId>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -50,12 +59,12 @@ pub struct CredentialQuery {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub trusted_authorities: Option<Vec<TrustedAuthority>>,
     #[builder(default = false, setters(vis = "", name = "set_multiple_internal"))]
-    #[serde(default = "default_false")]
+    #[serde(default)]
     pub multiple: bool,
 }
 
-fn default_false() -> bool {
-    false
+fn default_true() -> bool {
+    true
 }
 
 /// Format-specific metadata for credential queries
@@ -784,6 +793,105 @@ mod tests {
             }
             _ => panic!("Expected MsoMdoc meta type"),
         }
+    }
+
+    #[test]
+    fn test_credential_set_parsing() {
+        let json = json!({
+          "credentials": [
+            {
+              "id": "pid",
+              "format": "dc+sd-jwt",
+              "meta": {
+                "vct_values": ["https://credentials.example.com/identity_credential"]
+              },
+              "claims": [
+                {"path": ["given_name"]},
+                {"path": ["family_name"]},
+                {"path": ["address", "street_address"]}
+              ]
+            },
+            {
+              "id": "other_pid",
+              "format": "dc+sd-jwt",
+              "meta": {
+                "vct_values": ["https://othercredentials.example/pid"]
+              },
+              "claims": [
+                {"path": ["given_name"]},
+                {"path": ["family_name"]},
+                {"path": ["address", "street_address"]}
+              ]
+            },
+            {
+              "id": "pid_reduced_cred_1",
+              "format": "dc+sd-jwt",
+              "meta": {
+                "vct_values": ["https://credentials.example.com/reduced_identity_credential"]
+              },
+              "claims": [
+                {"path": ["family_name"]},
+                {"path": ["given_name"]}
+              ]
+            },
+            {
+              "id": "pid_reduced_cred_2",
+              "format": "dc+sd-jwt",
+              "meta": {
+                "vct_values": ["https://cred.example/residence_credential"]
+              },
+              "claims": [
+                {"path": ["postal_code"]},
+                {"path": ["locality"]},
+                {"path": ["region"]}
+              ]
+            },
+            {
+              "id": "nice_to_have",
+              "format": "dc+sd-jwt",
+              "meta": {
+                "vct_values": ["https://company.example/company_rewards"]
+              },
+              "claims": [
+                {"path": ["rewards_number"]}
+              ]
+            }
+          ],
+          "credential_sets": [
+            {
+              "options": [
+                [ "pid" ],
+                [ "other_pid" ],
+                [ "pid_reduced_cred_1", "pid_reduced_cred_2" ]
+              ]
+            },
+            {
+              "required": false,
+              "options": [
+                [ "nice_to_have" ]
+              ]
+            }
+          ]
+        }
+        );
+
+        let query: DcqlQuery = serde_json::from_value(json).unwrap();
+
+        // Verify the structure was parsed correctly
+        assert_eq!(query.credentials.len(), 5);
+        let credential_sets = query.credential_sets.unwrap();
+        assert_eq!(credential_sets.len(), 2);
+        assert_eq!(credential_sets[0].options.len(), 3);
+        assert_eq!(credential_sets[1].options.len(), 1);
+        assert_eq!(credential_sets[0].options[0], vec!["pid".into()]);
+        assert_eq!(credential_sets[0].options[1], vec!["other_pid".into()]);
+        assert_eq!(
+            credential_sets[0].options[2],
+            vec!["pid_reduced_cred_1".into(), "pid_reduced_cred_2".into()]
+        );
+        assert_eq!(credential_sets[1].options[0], vec!["nice_to_have".into()]);
+        assert!(credential_sets[0].required);
+        assert!(!credential_sets[1].required);
     }
 
     #[test]

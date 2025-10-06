@@ -4,14 +4,17 @@ use std::str::FromStr;
 use url::Url;
 
 use super::dto::CreateProofRequestDTO;
-use crate::common_validator::throw_if_org_relation_not_matching_session;
+use crate::common_validator::{
+    throw_if_latest_proof_state_not_eq, throw_if_org_relation_not_matching_session,
+};
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
 };
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::key::Key;
-use crate::model::proof::Proof;
+use crate::model::proof::ProofStateEnum::Requested;
+use crate::model::proof::{Proof, ProofRole};
 use crate::model::proof_schema::ProofSchema;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::Features;
@@ -331,6 +334,19 @@ pub(super) fn validate_holder_engagements(
         result.insert(engagement_type);
     }
     Ok(result)
+}
+
+pub(super) fn validate_proof_for_proof_definition(
+    proof: &Proof,
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    throw_if_proof_not_in_session_org(proof, session_provider)?;
+
+    if proof.role != ProofRole::Holder {
+        return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
+    }
+
+    throw_if_latest_proof_state_not_eq(proof, Requested)
 }
 
 #[cfg(test)]

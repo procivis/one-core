@@ -1,4 +1,5 @@
 pub(crate) mod certificate;
+pub(crate) mod dcql;
 pub(crate) mod mdoc;
 
 use std::str::FromStr;

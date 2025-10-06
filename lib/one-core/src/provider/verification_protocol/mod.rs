@@ -35,6 +35,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
+use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp20SwiyuParams;
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
@@ -357,6 +358,19 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         context: serde_json::Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError>;
+
+    /// Takes a proof request and filters held credentials,
+    /// returning those which are acceptable for the request.
+    ///
+    /// V2 endpoint which is tailored towards DCQL queries rather than presentation exchange.
+    ///
+    /// Storage access is needed to check held credentials.
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        proof: &Proof,
+        context: serde_json::Value,
+        storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError>;
 
     /// Takes the VP interaction context and returns a holder binding context, if any.
     fn holder_get_holder_binding_context(

@@ -39,10 +39,7 @@ use crate::provider::presentation_formatter::model::{FormatPresentationCtx, Form
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{Handover, SessionTranscript};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
-};
+use crate::provider::verification_protocol::dto::{InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
@@ -602,6 +599,15 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             did_methods,
             verifier_identifier_types: vec![IdentifierType::Did],
         }
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        _proof: &Proof,
+        _context: Value,
+        _storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 }
 

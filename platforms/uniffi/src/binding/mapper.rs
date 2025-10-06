@@ -198,8 +198,10 @@ impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
     }
 }
 
-impl From<DetailCredentialClaimValueResponseDTO> for ClaimValueBindingDTO {
-    fn from(value: DetailCredentialClaimValueResponseDTO) -> Self {
+impl<T: Into<ClaimBindingDTO>> From<DetailCredentialClaimValueResponseDTO<T>>
+    for ClaimValueBindingDTO
+{
+    fn from(value: DetailCredentialClaimValueResponseDTO<T>) -> Self {
         match value {
             DetailCredentialClaimValueResponseDTO::Boolean(value) => {
                 ClaimValueBindingDTO::Boolean { value }

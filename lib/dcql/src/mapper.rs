@@ -7,6 +7,12 @@ impl From<String> for CredentialQueryId {
     }
 }
 
+impl From<CredentialQueryId> for String {
+    fn from(value: CredentialQueryId) -> Self {
+        value.to_string()
+    }
+}
+
 impl From<&str> for CredentialQueryId {
     fn from(value: &str) -> Self {
         Self(value.to_owned())

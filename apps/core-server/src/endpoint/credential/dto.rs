@@ -1,9 +1,8 @@
 use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialListIncludeEntityTypeEnum, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
-    CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
-    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO,
-    WalletUnitAttestationDTO,
+    CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+    MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO, WalletUnitAttestationDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -189,22 +188,21 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
 pub(crate) struct CredentialDetailClaimResponseRestDTO {
     pub path: String,
     pub schema: CredentialClaimSchemaResponseRestDTO,
-    pub value: CredentialDetailClaimValueResponseRestDTO,
+    pub value: CredentialDetailClaimValueResponseRestDTO<Self>,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(DetailCredentialClaimValueResponseDTO)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(untagged)]
-pub(crate) enum CredentialDetailClaimValueResponseRestDTO {
+pub(crate) enum CredentialDetailClaimValueResponseRestDTO<T> {
     Boolean(bool),
     Float(f64),
     Integer(i64),
     String(String),
     #[schema(no_recursion)]
-    Nested(#[from(with_fn = convert_inner)] Vec<CredentialDetailClaimResponseRestDTO>),
+    Nested(Vec<T>),
 }
 
-/// The state represenation of the credential in the system.
+/// The state representation of the credential in the system.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CredentialStateEnum)]

@@ -28,10 +28,12 @@ use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential::dto::{
-    CredentialDetailClaimResponseRestDTO, GetCredentialResponseRestDTO,
+    CredentialDetailClaimResponseRestDTO, CredentialDetailClaimValueResponseRestDTO,
+    GetCredentialResponseRestDTO,
 };
 use crate::endpoint::credential_schema::dto::{
-    CredentialSchemaListItemResponseRestDTO, CredentialSchemaResponseRestDTO,
+    CredentialClaimSchemaResponseRestDTO, CredentialSchemaListItemResponseRestDTO,
+    CredentialSchemaResponseRestDTO,
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::{
@@ -534,6 +536,7 @@ pub(crate) struct CredentialQueryResponseRestDTO {
 #[serde(untagged)]
 pub(crate) enum ApplicableCredentialOrFailureHintRestEnum {
     ApplicableCredentials {
+        #[serde(rename = "applicableCredentials")]
         applicable_credentials:
             Vec<GetCredentialResponseRestDTO<CredentialDetailClaimExtResponseRestDTO>>,
     },
@@ -541,7 +544,8 @@ pub(crate) enum ApplicableCredentialOrFailureHintRestEnum {
         // options_not_nullable fails on boxed options
         #[schema(nullable = false)]
         // boxed because of large size difference
-        failure_hint: Box<Option<CredentialQueryFailureHintResponseRestDTO>>,
+        #[serde(rename = "failureHint")]
+        failure_hint: Box<CredentialQueryFailureHintResponseRestDTO>,
     },
 }
 
@@ -568,8 +572,9 @@ pub(crate) enum CredentialQueryFailureReasonRestEnum {
 #[from(CredentialDetailClaimExtResponseDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialDetailClaimExtResponseRestDTO {
-    #[serde(flatten)]
-    pub claim_detail: CredentialDetailClaimResponseRestDTO,
+    pub path: String,
+    pub schema: CredentialClaimSchemaResponseRestDTO,
+    pub value: CredentialDetailClaimValueResponseRestDTO<Self>,
     pub user_selection: bool,
     pub required: bool,
 }

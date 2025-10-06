@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use itertools::Itertools;
 use one_dto_mapper::convert_inner;
+use serde_json::Value;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -773,4 +774,14 @@ fn from_path_to_key(path: &str, original_key: &str) -> String {
             }
         })
         .join(NESTED_CLAIM_MARKER_STR)
+}
+
+pub(super) fn interaction_data_from_proof(proof: &Proof) -> Result<Value, ServiceError> {
+    proof
+        .interaction
+        .as_ref()
+        .and_then(|interaction| interaction.data.as_ref())
+        .map(|interaction| serde_json::from_slice(interaction))
+        .ok_or_else(|| ServiceError::MappingError("proof interaction is missing".into()))?
+        .map_err(|err| ServiceError::MappingError(err.to_string()))
 }

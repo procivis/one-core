@@ -3,11 +3,12 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use dto::ScanToVerifyCredentialDTO;
 use futures::future::BoxFuture;
+use serde_json::Value;
 use url::Url;
 
 use super::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
@@ -177,6 +178,15 @@ impl VerificationProtocol for ScanToVerify {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         Ok(vec![credential])
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        _proof: &Proof,
+        _context: Value,
+        _storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     fn get_capabilities(&self) -> VerificationProtocolCapabilities {

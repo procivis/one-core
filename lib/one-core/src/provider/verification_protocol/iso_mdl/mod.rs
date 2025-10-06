@@ -11,14 +11,16 @@ use ble::ISO_MDL_FLOW;
 use ble_holder::{MdocBleHolderInteractionData, send_mdl_response};
 use common::{DeviceRequest, to_cbor};
 use futures::future::BoxFuture;
+use serde_json::Value;
 use url::Url;
 
 use super::dto::{
     InvitationResponseDTO, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
-    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionV2ResponseDTO, PresentedCredential, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
@@ -439,6 +441,15 @@ impl VerificationProtocol for IsoMdl {
             request_groups: vec![request_group],
             credentials: relevant_credentials,
         })
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        _proof: &Proof,
+        _context: Value,
+        _storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     async fn verifier_handle_proof(

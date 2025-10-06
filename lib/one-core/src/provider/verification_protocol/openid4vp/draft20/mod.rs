@@ -6,6 +6,7 @@ use futures::future::BoxFuture;
 use mappers::create_openidvp20_authorization_request;
 use model::OpenID4Vp20Params;
 use one_crypto::utilities;
+use serde_json::Value;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_20_query, validate_interaction_data};
@@ -35,8 +36,8 @@ use crate::provider::presentation_formatter::model::{
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -609,6 +610,15 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             context: serde_json::to_value(&interaction_content)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
         })
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        _proof: &Proof,
+        _context: Value,
+        _storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 }
 

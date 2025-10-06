@@ -51,7 +51,7 @@ pub enum ProofStateEnum {
     Error,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Display)]
 pub enum ProofRole {
     Holder,
     Verifier,

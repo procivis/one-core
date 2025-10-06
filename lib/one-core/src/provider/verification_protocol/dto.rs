@@ -13,8 +13,11 @@ use crate::model::interaction::InteractionId;
 use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO,
 };
-use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
+use crate::service::credential_schema::dto::{
+    CredentialClaimSchemaDTO, CredentialSchemaDetailResponseDTO,
+};
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -178,7 +181,7 @@ pub enum ApplicableCredentialOrFailureHintEnum {
     },
     FailureHint {
         // boxed because of large size difference
-        failure_hint: Box<Option<CredentialQueryFailureHintResponseDTO>>,
+        failure_hint: Box<CredentialQueryFailureHintResponseDTO>,
     },
 }
 
@@ -197,7 +200,9 @@ pub enum CredentialQueryFailureReasonEnum {
 
 #[derive(Clone, Debug)]
 pub struct CredentialDetailClaimExtResponseDTO {
-    pub claim_detail: DetailCredentialClaimResponseDTO,
+    pub path: String,
+    pub schema: CredentialClaimSchemaDTO,
+    pub value: DetailCredentialClaimValueResponseDTO<Self>,
     pub user_selection: bool,
     pub required: bool,
 }

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use futures::future::BoxFuture;
 use maplit::hashmap;
 use serde::Deserialize;
+use serde_json::Value;
 use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
@@ -14,8 +15,8 @@ use crate::provider::credential_formatter::model::{DetailCredential, HolderBindi
 use crate::provider::http_client::HttpClient;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
@@ -261,5 +262,14 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
                 "failed to find request_uri in response URL".to_string(),
             ))?;
         Ok(response)
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        _proof: &Proof,
+        _context: Value,
+        _storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 }

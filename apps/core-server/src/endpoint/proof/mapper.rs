@@ -128,7 +128,7 @@ impl TryFrom<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFa
             },
             ApplicableCredentialOrFailureHintEnum::FailureHint { failure_hint } => {
                 Self::FailureHint {
-                    failure_hint: Box::new(convert_inner(*failure_hint)),
+                    failure_hint: Box::new((*failure_hint).into()),
                 }
             }
         })

@@ -207,4 +207,9 @@ impl ProofsApi {
         let url = format!("/api/proof-request/v1/{id}/presentation-definition");
         self.client.get(&url).await
     }
+
+    pub async fn presentation_definition_v2(&self, id: impl Display) -> Response {
+        let url = format!("/api/proof-request/v2/{id}/presentation-definition");
+        self.client.get(&url).await
+    }
 }

@@ -35,13 +35,15 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Hando
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
-use crate::provider::verification_protocol::openid4vp::dcql::get_presentation_definition_for_dcql_query;
+use crate::provider::verification_protocol::openid4vp::dcql::{
+    get_presentation_definition_for_dcql_query, get_presentation_definition_v2,
+};
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
@@ -606,6 +608,31 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             context: serde_json::to_value(&interaction_content)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
         })
+    }
+
+    async fn holder_get_presentation_definition_v2(
+        &self,
+        proof: &Proof,
+        context: Value,
+        storage_access: &StorageAccess,
+    ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
+        let interaction_data: OpenID4VPHolderInteractionData =
+            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
+
+        let dcql_query = interaction_data
+            .dcql_query
+            .ok_or(VerificationProtocolError::Failed(
+                "missing dcql_query".to_string(),
+            ))?;
+
+        get_presentation_definition_v2(
+            dcql_query,
+            proof,
+            storage_access,
+            &*self.credential_formatter_provider,
+            &self.config,
+        )
+        .await
     }
 }
 

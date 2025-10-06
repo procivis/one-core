@@ -2,11 +2,16 @@ use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
-use one_core::service::credential::dto::{CredentialDetailResponseDTO, CredentialFilterValue};
+use one_core::service::credential::dto::{
+    CredentialDetailResponseDTO, CredentialFilterValue, DetailCredentialClaimValueResponseDTO,
+};
 use one_core::service::error::{BusinessLogicError, ServiceError};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 
-use super::dto::{CredentialsFilterQueryParamsRest, GetCredentialResponseRestDTO, SearchType};
+use super::dto::{
+    CredentialDetailClaimValueResponseRestDTO, CredentialsFilterQueryParamsRest,
+    GetCredentialResponseRestDTO, SearchType,
+};
 use crate::dto::common::ExactColumn;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::mapper::MapperError;
@@ -193,5 +198,21 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             profile: value.profile,
             wallet_unit_attestation: convert_inner(value.wallet_unit_attestation),
         })
+    }
+}
+
+impl<IN, OUT: From<IN>> From<DetailCredentialClaimValueResponseDTO<IN>>
+    for CredentialDetailClaimValueResponseRestDTO<OUT>
+{
+    fn from(value: DetailCredentialClaimValueResponseDTO<IN>) -> Self {
+        match value {
+            DetailCredentialClaimValueResponseDTO::Boolean(val) => Self::Boolean(val),
+            DetailCredentialClaimValueResponseDTO::Float(val) => Self::Float(val),
+            DetailCredentialClaimValueResponseDTO::Integer(val) => Self::Integer(val),
+            DetailCredentialClaimValueResponseDTO::String(val) => Self::String(val),
+            DetailCredentialClaimValueResponseDTO::Nested(nested) => {
+                Self::Nested(convert_inner(nested))
+            }
+        }
     }
 }

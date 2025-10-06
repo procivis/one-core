@@ -7,9 +7,10 @@ use crate::common_mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_crea
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
+use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaQuery,
 };
 use crate::model::did::Did;
 use crate::model::identifier::{
@@ -17,8 +18,9 @@ use crate::model::identifier::{
 };
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
-use crate::model::list_filter::ListFilterValue;
-use crate::model::organisation::Organisation;
+use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
+use crate::model::list_query::ListPagination;
+use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -30,6 +32,9 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::certificate::validator::CertificateValidator;
+use crate::service::credential_schema::dto::{
+    CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
+};
 
 /// Interface to be implemented in order to use an exchange protocol.
 ///
@@ -63,6 +68,13 @@ pub(crate) trait StorageProxy: Send + Sync {
         schema_id: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Vec<Credential>>;
+
+    /// Get a credential schema from the storage layer matching any of the specified schema_ids.
+    async fn find_schema_by_schema_ids(
+        &self,
+        schema_ids: &[String],
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<CredentialSchema>>;
 
     /// Obtain a DID by its address, from a chosen storage layer.
     async fn get_did_by_value(
@@ -181,6 +193,42 @@ impl StorageProxy for StorageProxyImpl {
             )
             .await
             .context("Error while fetching credential schema")
+    }
+
+    async fn find_schema_by_schema_ids(
+        &self,
+        schema_ids: &[String],
+        organisation_id: OrganisationId,
+    ) -> anyhow::Result<Option<CredentialSchema>> {
+        let schema_ids_filter_cond = schema_ids
+            .iter()
+            .map(|id| CredentialSchemaFilterValue::SchemaId(StringMatch::equals(id)))
+            .fold(ListFilterCondition::default(), |acc, cond| acc | cond);
+        let candidates = self
+            .credential_schemas
+            .get_credential_schema_list(
+                GetCredentialSchemaQuery {
+                    pagination: Some(ListPagination {
+                        page: 0,
+                        page_size: 1,
+                    }),
+                    sorting: None,
+                    filtering: Some(
+                        CredentialSchemaFilterValue::OrganisationId(organisation_id).condition()
+                            & schema_ids_filter_cond,
+                    ),
+                    include: Some(vec![
+                        CredentialSchemaListIncludeEntityTypeEnum::LayoutProperties,
+                    ]),
+                },
+                &CredentialSchemaRelations {
+                    claim_schemas: Some(ClaimSchemaRelations {}),
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await
+            .context("Error while fetching credential schema")?;
+        Ok(candidates.values.into_iter().next())
     }
 
     async fn get_credentials_by_credential_schema_id(
