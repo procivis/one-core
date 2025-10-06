@@ -70,9 +70,7 @@ pub(crate) struct HolderInteractionData {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     #[serde(default)]
-    pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    #[serde(default)]
-    pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    pub credential_config: Option<OpenID4VCICredentialConfigurationData>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -97,7 +95,7 @@ pub struct OpenID4VCIIssuerMetadataDisplayResponseDTO {
     pub locale: String,
 }
 
-#[derive(Clone, Debug, Deserialize, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCICredentialConfigurationData {
     pub format: String,
     #[serde(rename = "@context")]

@@ -746,8 +746,9 @@ impl OpenID4VCI13 {
 
         // Very basic support for JWK as crypto binding method for EUDI
         let jwk = match interaction_data
-            .cryptographic_binding_methods_supported
-            .to_owned()
+            .credential_config
+            .as_ref()
+            .and_then(|config| config.cryptographic_binding_methods_supported.to_owned())
         {
             Some(methods) => {
                 // Prefer kid-based holder binding proofs instead of using jwk because
@@ -794,8 +795,10 @@ impl OpenID4VCI13 {
 
         let body = OpenID4VCICredentialRequestDTO {
             format: oid4vc_format.to_owned(),
-            vct: (schema.schema_type == CredentialSchemaType::SdJwtVc)
-                .then_some(schema.schema_id.to_owned()),
+            vct: interaction_data
+                .credential_config
+                .as_ref()
+                .and_then(|config| config.vct.to_owned()),
             doctype,
             proof: OpenID4VCIProofRequestDTO {
                 proof_type: "jwt".to_string(),
@@ -1866,12 +1869,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         access_token_expires_at: None,
         refresh_token: None,
         refresh_token_expires_at: None,
-        credential_signing_alg_values_supported: credential_config
-            .credential_signing_alg_values_supported
-            .clone(),
-        cryptographic_binding_methods_supported: credential_config
-            .cryptographic_binding_methods_supported
-            .clone(),
+        credential_config: Some(credential_config.to_owned()),
         nonce: None,
     };
     let data = serialize_interaction_data(&holder_data)?;

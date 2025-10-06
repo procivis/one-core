@@ -135,7 +135,15 @@ fn generic_credential_schema() -> CredentialSchema {
                 metadata: false,
             },
         }]),
-        organisation: None,
+        organisation: Some(Organisation {
+            id: Uuid::new_v4().into(),
+            name: "orgName".to_string(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            deactivated_at: None,
+            wallet_provider: None,
+            wallet_provider_issuer: None,
+        }),
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_type: CredentialSchemaType::ProcivisOneSchema2024,
@@ -1019,6 +1027,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
     let mut schema = generic_credential_schema();
     schema.format = "SD_JWT_VC".to_string();
+    schema.external_schema = true;
     let credential = dummy_credential(
         "OPENID4VCI_DRAFT13",
         CredentialStateEnum::Pending,

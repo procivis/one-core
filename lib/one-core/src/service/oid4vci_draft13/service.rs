@@ -286,7 +286,7 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        throw_if_credential_request_invalid(&schema, &request)?;
+        throw_if_credential_request_invalid(&schema, &request, self.base_url.as_ref())?;
 
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
