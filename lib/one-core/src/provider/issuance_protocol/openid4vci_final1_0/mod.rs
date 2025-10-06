@@ -105,7 +105,9 @@ use crate::service::certificate::validator::{
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
-use crate::service::oid4vci_final1_0::dto::OpenID4VCICredentialResponseDTO;
+use crate::service::oid4vci_final1_0::dto::{
+    OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
+};
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::history::log_history_event_credential;
@@ -747,7 +749,6 @@ impl OpenID4VCIFinal1_0 {
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url.to_owned(),
-            auth_fn.get_key_id(),
             jwk,
             nonce,
             auth_fn,
@@ -1554,7 +1555,7 @@ async fn handle_credential_invitation(
                 ))
             })?;
 
-            let (_, issuer_metadata) =
+            let (_, issuer_metadata, _) =
                 get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
             if issuer_metadata
@@ -1668,7 +1669,7 @@ async fn handle_credential_invitation(
             ))
         })?;
 
-    let (token_endpoint, issuer_metadata) =
+    let (token_endpoint, issuer_metadata, auth_server_metadata) =
         get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
     let (interaction_id, credentials, issuer_proof_type_supported) =
@@ -1677,6 +1678,7 @@ async fn handle_credential_invitation(
             credential_issuer_endpoint,
             token_endpoint,
             issuer_metadata,
+            auth_server_metadata,
             credential_offer.grants,
             &credential_offer.credential_configuration_ids,
             issuer,
@@ -1715,7 +1717,7 @@ async fn handle_continue_issuance(
                 ))
             })?;
 
-    let (token_endpoint, issuer_metadata) =
+    let (token_endpoint, issuer_metadata, auth_server_metadata) =
         get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
     let scope_to_id: HashMap<&String, &String> = issuer_metadata
@@ -1749,6 +1751,7 @@ async fn handle_continue_issuance(
             credential_issuer_endpoint,
             token_endpoint,
             issuer_metadata,
+            auth_server_metadata,
             OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
                 issuer_state: None, // issuer state was used at the authorization request stage so it is not relevant anymore
                 authorization_server: continue_issuance_dto.authorization_server.to_owned(),
@@ -1776,6 +1779,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     credential_issuer_endpoint: Url,
     token_endpoint: String,
     issuer_metadata: OpenID4VCIIssuerMetadataResponseDTO,
+    oauth_authorization_server_metadata: Option<OAuthAuthorizationServerMetadataResponseDTO>,
     grants: OpenID4VCIGrants,
     configuration_ids: &[String],
     issuer: Option<Identifier>,
@@ -1819,6 +1823,10 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         }
     }
 
+    let token_endpoint_auth_methods_supported = oauth_authorization_server_metadata
+        .as_ref()
+        .map(|oauth_metadata| oauth_metadata.token_endpoint_auth_methods_supported.clone());
+
     let schema_data =
         handle_invitation_operations.find_schema_data(credential_config, configuration_id)?;
 
@@ -1840,6 +1848,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         cryptographic_binding_methods_supported: credential_config
             .cryptographic_binding_methods_supported
             .clone(),
+        token_endpoint_auth_methods_supported,
         credential_configuration_id: configuration_id.to_owned(),
     };
     let data = serialize_interaction_data(&holder_data)?;
@@ -1971,7 +1980,14 @@ async fn resolve_credential_offer(
 async fn get_discovery_and_issuer_metadata(
     client: &dyn HttpClient,
     credential_issuer_endpoint: &Url,
-) -> Result<(String, OpenID4VCIIssuerMetadataResponseDTO), IssuanceProtocolError> {
+) -> Result<
+    (
+        String,
+        OpenID4VCIIssuerMetadataResponseDTO,
+        Option<OAuthAuthorizationServerMetadataResponseDTO>,
+    ),
+    IssuanceProtocolError,
+> {
     async fn fetch<T: DeserializeOwned>(
         client: &dyn HttpClient,
         endpoint: String,
@@ -1989,6 +2005,46 @@ async fn get_discovery_and_issuer_metadata(
             .context("parsing error")
             .map_err(IssuanceProtocolError::Transport)
     }
+
+    let oauth_authorization_server_metadata_future = async {
+        let oauth_authorization_server_metadata_endpoint = {
+            let origin = {
+                let mut cloned_endpoint_url = credential_issuer_endpoint.clone();
+                cloned_endpoint_url.set_path("");
+                cloned_endpoint_url.to_string()
+            };
+            let path = credential_issuer_endpoint.path();
+            format!("{origin}.well-known/oauth-authorization-server{path}")
+        };
+
+        let response: Result<OAuthAuthorizationServerMetadataResponseDTO, IssuanceProtocolError> =
+            client
+                .get(&oauth_authorization_server_metadata_endpoint)
+                .send()
+                .await
+                .context("send error")
+                .map_err(IssuanceProtocolError::Transport)
+                .and_then(|response| {
+                    response
+                        .error_for_status()
+                        .context("status error")
+                        .map_err(IssuanceProtocolError::Transport)
+                        .and_then(|response| {
+                            response
+                                .json()
+                                .context("parsing error")
+                                .map_err(IssuanceProtocolError::Transport)
+                        })
+                });
+
+        match response {
+            Ok(response) => Ok(Some(response)),
+            Err(error) => {
+                tracing::warn!("Failed to fetch OAuth authorization server metadata: {error}");
+                Ok(None)
+            }
+        }
+    };
 
     let token_endpoint_future = async {
         let openid_configuration_endpoint = {
@@ -2040,7 +2096,11 @@ async fn get_discovery_and_issuer_metadata(
     };
 
     let issuer_metadata = fetch(client, issuer_metadata_endpoint);
-    tokio::try_join!(token_endpoint_future, issuer_metadata)
+    tokio::try_join!(
+        token_endpoint_future,
+        issuer_metadata,
+        oauth_authorization_server_metadata_future
+    )
 }
 
 async fn create_and_store_interaction(

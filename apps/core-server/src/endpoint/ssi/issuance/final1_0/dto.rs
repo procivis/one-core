@@ -15,7 +15,8 @@ use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenResponseDTO,
 };
 use one_core::service::oid4vci_final1_0::dto::{
-    OpenID4VCICredentialResponseDTO, OpenID4VCICredentialResponseEntryDTO,
+    OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
+    OpenID4VCICredentialResponseEntryDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
@@ -28,6 +29,7 @@ use utoipa::ToSchema;
 #[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
+    pub authorization_servers: Option<Vec<String>>,
     pub credential_endpoint: String,
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
@@ -112,6 +114,18 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedLogoRestDTO {
     pub url: String,
     #[from(with_fn = convert_inner)]
     pub alt_text: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OAuthAuthorizationServerMetadataResponseDTO)]
+pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
+    pub issuer: String,
+    pub token_endpoint: String,
+    #[from(with_fn = convert_inner)]
+    pub response_types_supported: Option<Vec<String>>,
+    pub grant_types_supported: Vec<String>,
+    pub token_endpoint_auth_methods_supported: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

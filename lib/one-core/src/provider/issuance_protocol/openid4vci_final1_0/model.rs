@@ -83,6 +83,8 @@ pub(crate) struct HolderInteractionData {
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    #[serde(default)]
+    pub token_endpoint_auth_methods_supported: Option<Vec<String>>,
 
     pub credential_configuration_id: String,
 }

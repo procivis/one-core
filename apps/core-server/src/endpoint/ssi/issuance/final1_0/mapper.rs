@@ -29,6 +29,7 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
     fn from(value: OpenID4VCIIssuerMetadataResponseDTO) -> Self {
         Self {
             credential_issuer: value.credential_issuer,
+            authorization_servers: value.authorization_servers,
             credential_endpoint: value.credential_endpoint,
             notification_endpoint: value.notification_endpoint,
             credential_configurations_supported: value

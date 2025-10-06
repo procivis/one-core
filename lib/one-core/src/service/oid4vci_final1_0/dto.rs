@@ -15,3 +15,12 @@ pub struct OpenID4VCICredentialResponseDTO {
 pub struct OpenID4VCICredentialResponseEntryDTO {
     pub credential: String,
 }
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct OAuthAuthorizationServerMetadataResponseDTO {
+    pub issuer: String,
+    pub token_endpoint: String,
+    pub response_types_supported: Option<Vec<String>>,
+    pub grant_types_supported: Vec<String>,
+    pub token_endpoint_auth_methods_supported: Vec<String>,
+}

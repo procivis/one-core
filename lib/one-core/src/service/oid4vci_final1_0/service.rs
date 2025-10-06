@@ -28,7 +28,9 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::credential_schema::{CredentialSchemaRelations, CredentialSchemaType};
+use crate::model::credential_schema::{
+    CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
+};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
@@ -55,6 +57,7 @@ use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
+use crate::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
 use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
@@ -169,6 +172,47 @@ impl OID4VCIFinal1_0Service {
 
         let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
         Ok(create_service_discovery_response(&schema_base_url)?)
+    }
+
+    pub async fn oauth_authorization_server(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+        let issuer = self
+            .protocol_base_url
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
+
+        let Some(credential_schema) = self
+            .credential_schema_repository
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        };
+
+        let token_endpoint_auth_methods_supported = match credential_schema.wallet_storage_type {
+            Some(WalletStorageTypeEnum::EudiCompliant) => {
+                vec!["attest_jwt_client_auth".to_string()]
+            }
+            _ => vec![],
+        };
+
+        Ok(OAuthAuthorizationServerMetadataResponseDTO {
+            issuer: issuer.to_owned(),
+            token_endpoint: format!("{issuer}/{credential_schema_id}/token"),
+            response_types_supported: Some(vec!["code".to_string()]),
+            grant_types_supported: vec![
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
+            ],
+            token_endpoint_auth_methods_supported,
+        })
     }
 
     pub async fn get_credential_offer(

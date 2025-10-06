@@ -71,7 +71,7 @@ impl WalletUnitService {
         Ok(result.into())
     }
 
-    /// Returns list of proof schemas according to query
+    /// Returns list of wallet units according to query
     ///
     /// # Arguments
     ///

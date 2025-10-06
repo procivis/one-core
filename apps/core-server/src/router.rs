@@ -390,6 +390,10 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_service_discovery),
             )
             .route(
+                "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{id}",
+                get(ssi::issuance::final1_0::controller::oid4vci_final1_0_oauth_authorization_server),
+            )
+            .route(
                 "/ssi/openid4vci/final-1.0/{credential_schema_id}/offer/{credential_id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_credential_offer),
             )

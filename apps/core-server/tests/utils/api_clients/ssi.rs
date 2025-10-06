@@ -217,4 +217,15 @@ impl SSIApi {
         let url = format!("/ssi/openid4vci/final-1.0/{issuance_protocol}/nonce");
         self.client.post(&url, None).await
     }
+
+    pub async fn oauth_authorization_server(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!(
+            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        );
+        self.client.get(&url).await
+    }
 }

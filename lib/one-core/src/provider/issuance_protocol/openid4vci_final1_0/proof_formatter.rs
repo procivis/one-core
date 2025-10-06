@@ -52,7 +52,7 @@ impl OpenID4VCIProofJWTFormatter {
         let result = match (header.key_id.as_ref(), header.jwk.clone()) {
             (Some(_), Some(_)) => {
                 return Err(FormatterError::CouldNotVerify(
-                    "Only kid or jwt allowed in proof.jwt but not both".to_string(),
+                    "Only kid or embedded jwk allowed in proof.jwt but not both".to_string(),
                 ));
             }
             (None, None) => {
@@ -121,7 +121,6 @@ impl OpenID4VCIProofJWTFormatter {
 
     pub async fn format_proof(
         issuer_url: String,
-        holder_key_id: Option<String>,
         jwk: Option<PublicKeyJwkDTO>,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
@@ -141,7 +140,7 @@ impl OpenID4VCIProofJWTFormatter {
 
         let key_id = match jwk {
             Some(_) => None,
-            None => holder_key_id,
+            None => auth_fn.get_key_id(),
         };
         let jwk = jwk.map(JwtPublicKeyInfo::Jwk);
 
@@ -183,12 +182,11 @@ mod test {
 
     #[tokio::test]
     async fn test_format_then_verify_proof_with_holder_key_id() {
-        let auth_fn = auth_fn();
         let holder_key_id = did_key();
+        let auth_fn = auth_fn(Some(format!("{holder_key_id}#key-1")));
 
         let proof = OpenID4VCIProofJWTFormatter::format_proof(
             "https://example.com".to_string(),
-            Some(format!("{holder_key_id}#key-1")),
             None,
             None,
             auth_fn,
@@ -203,12 +201,11 @@ mod test {
 
     #[tokio::test]
     async fn test_format_then_verify_proof_with_jwk() {
-        let auth_fn = auth_fn();
+        let auth_fn = auth_fn(None);
         let jwk = pk_jwk();
 
         let proof = OpenID4VCIProofJWTFormatter::format_proof(
             "https://example.com".to_string(),
-            None,
             Some(jwk.into()),
             Some("nonce".to_string()),
             auth_fn,
@@ -264,7 +261,7 @@ mod test {
         Box::new(key_verification)
     }
 
-    fn auth_fn() -> Box<dyn SignatureProvider> {
+    fn auth_fn(key_id: Option<String>) -> Box<dyn SignatureProvider> {
         let key_algorithm = Eddsa;
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), Some(private_key().into()), None)
@@ -283,7 +280,7 @@ mod test {
                 organisation: None,
             },
             key_handle,
-            jwk_key_id: None,
+            jwk_key_id: key_id,
             key_algorithm_provider: Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([
                 (KeyAlgorithmType::Eddsa, Arc::new(key_algorithm) as _),
             ]))),

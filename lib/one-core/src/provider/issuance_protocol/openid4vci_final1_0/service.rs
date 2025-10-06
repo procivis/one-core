@@ -35,7 +35,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
-    base_url: &str,
+    protocol_base_url: &str,
     protocol_id: &str,
     oidc_format: &str,
     schema: &CredentialSchema,
@@ -58,12 +58,24 @@ pub(crate) fn create_issuer_metadata_response(
         core_base_url,
     )?;
 
-    let schema_base_url = get_credential_schema_base_url(&schema.id, base_url);
+    let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
+
+    let base_url = core_base_url.ok_or(OpenID4VCIError::RuntimeError(
+        "Can not build authorization server metadata, missing base_url".to_owned(),
+    ))?;
+
+    let authorization_server_url = {
+        format!(
+            "{base_url}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{}",
+            schema.id
+        )
+    };
+
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
-        authorization_servers: None,
+        authorization_servers: Some(vec![authorization_server_url]),
         credential_endpoint: format!("{schema_base_url}/credential"),
-        nonce_endpoint: Some(format!("{base_url}/{protocol_id}/nonce")),
+        nonce_endpoint: Some(format!("{protocol_base_url}/{protocol_id}/nonce")),
         notification_endpoint: Some(format!("{schema_base_url}/notification")),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
