@@ -18,7 +18,7 @@ use crate::model::history::HistoryMetadata;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs};
+use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitClaims, WalletUnitOs};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -177,7 +177,7 @@ async fn test_register_wallet_unit() {
     let mut key_storage = MockKeyStorage::new();
     key_storage
         .expect_key_handle()
-        .return_once(|_| Ok(issuer_key_handle));
+        .returning(move |_| Ok(issuer_key_handle.clone()));
 
     let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
     key_storages.insert("TEST".to_string(), Arc::new(key_storage));
@@ -222,6 +222,11 @@ async fn test_register_wallet_unit() {
     // then
     assert!(result.attestation.is_some());
     assert!(result.nonce.is_none());
+
+    let attestation_jwt =
+        Jwt::<WalletUnitClaims>::decompose_token(&result.attestation.unwrap()).unwrap();
+
+    assert!(attestation_jwt.header.jwk.is_some());
 }
 
 #[tokio::test]
@@ -404,7 +409,7 @@ async fn test_refresh_wallet_unit_success() {
     let mut key_storage = MockKeyStorage::new();
     key_storage
         .expect_key_handle()
-        .return_once(|_| Ok(issuer_key_handle));
+        .returning(move |_| Ok(issuer_key_handle.clone()));
 
     let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
     key_storages.insert("TEST".to_string(), Arc::new(key_storage));

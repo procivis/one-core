@@ -44,10 +44,10 @@ use crate::service::ssi_wallet_provider::mapper::{
     map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
 use crate::service::ssi_wallet_provider::validator::validate_org_wallet_provider;
-use crate::util::jwt::Jwt;
 use crate::util::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
+use crate::util::jwt::{Jwt, JwtPublicKeyInfo};
 
 const WUA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
 const LEEWAY: u64 = 60;
@@ -244,13 +244,16 @@ impl SSIWalletProviderService {
         wallet_provider: &str,
     ) -> Result<(String, String), ServiceError> {
         let now = self.clock.now_utc();
-        let auth_fn = self.get_auth_fn(issuer).await?;
+        let (key_handle, auth_fn) = self.get_key_handle(issuer).await?;
+        let issuer_jwk = key_handle.public_key_as_jwk()?;
+
         let attestation = self.create_attestation(
             now,
             wallet_provider,
             config_params,
             public_key_jwk,
             &auth_fn,
+            issuer_jwk,
         )?;
         let signed_attestation = attestation.tokenize(Some(auth_fn)).await?;
         let attestation_hash = SHA256
@@ -583,14 +586,18 @@ impl SSIWalletProviderService {
         config_params: &WalletProviderParams,
         proof_jwk: PublicKeyJwk,
         auth_fn: &AuthenticationFn,
+        issuer_jwk: PublicKeyJwk,
     ) -> Result<Jwt<WalletUnitClaims>, ServiceError> {
+        let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
+            "No JOSE alg specified".to_string(),
+        ))?;
+        let key_id = auth_fn.get_key_id();
+
         Ok(Jwt::new(
             WUA_JWT_TYPE.to_string(),
-            auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-                "No JOSE alg specified".to_string(),
-            ))?,
-            auth_fn.get_key_id(),
-            None,
+            jose_alg,
+            key_id,
+            Some(JwtPublicKeyInfo::Jwk(issuer_jwk.into())),
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: Some(
@@ -618,10 +625,10 @@ impl SSIWalletProviderService {
         ))
     }
 
-    async fn get_auth_fn(
+    async fn get_key_handle(
         &self,
         issuer_identifier_id: IdentifierId,
-    ) -> Result<AuthenticationFn, ServiceError> {
+    ) -> Result<(KeyHandle, AuthenticationFn), ServiceError> {
         let issuer_identifier = self
             .identifier_repository
             .get(
@@ -682,7 +689,18 @@ impl SSIWalletProviderService {
             key_id,
             self.key_algorithm_provider.clone(),
         )?;
-        Ok(auth_fn)
+
+        let key_handle = self
+            .key_provider
+            .get_key_storage(&issuer_key.storage_type)
+            .ok_or(ServiceError::MappingError(format!(
+                "Key storage not found: {}",
+                issuer_key.storage_type
+            )))?
+            .key_handle(issuer_key)
+            .map_err(|e| ServiceError::MappingError(format!("Failed to get key handle: {e}")))?;
+
+        Ok((key_handle, auth_fn))
     }
 
     async fn parse_jwk(
