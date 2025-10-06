@@ -11,6 +11,7 @@ mod test;
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::history_repository::HistoryRepository;
@@ -31,6 +32,7 @@ pub struct SSIWalletProviderService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     clock: Arc<dyn Clock>,
+    session_provider: Arc<dyn SessionProvider>,
     base_url: Option<String>,
     config: Arc<core_config::CoreConfig>,
 }
@@ -46,6 +48,7 @@ impl SSIWalletProviderService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         clock: Arc<dyn Clock>,
+        session_provider: Arc<dyn SessionProvider>,
         config: Arc<core_config::CoreConfig>,
         base_url: Option<String>,
     ) -> Self {
@@ -60,6 +63,7 @@ impl SSIWalletProviderService {
             config,
             base_url,
             clock,
+            session_provider,
         }
     }
 }

@@ -3,7 +3,7 @@ use std::ops::Add;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::utilities::generate_alphanumeric;
-use shared_types::{EntityId, IdentifierId, WalletUnitId};
+use shared_types::{EntityId, IdentifierId, OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -24,6 +24,7 @@ use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitClaims, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
 };
+use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -126,6 +127,7 @@ impl SSIWalletProviderService {
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
+        let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
             request,
             organisation,
@@ -145,6 +147,7 @@ impl SSIWalletProviderService {
             wallet_unit_name,
             HistoryAction::Pending,
             None,
+            organisation_id,
         )
         .await;
 
@@ -161,6 +164,7 @@ impl SSIWalletProviderService {
         wallet_unit_name: String,
         action: HistoryAction,
         metadata: Option<HistoryMetadata>,
+        organisation_id: OrganisationId,
     ) {
         let result = self
             .history_repository
@@ -173,8 +177,8 @@ impl SSIWalletProviderService {
                 entity_id: Some(EntityId::from(*wallet_unit_id)),
                 entity_type: HistoryEntityType::WalletUnit,
                 metadata,
-                organisation_id: None,
-                user: None,
+                organisation_id: Some(organisation_id),
+                user: self.session_provider.session().user(),
             })
             .await;
         if let Err(err) = result {
@@ -193,6 +197,7 @@ impl SSIWalletProviderService {
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let wallet_provider = request.wallet_provider.clone();
+        let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
             request,
             organisation,
@@ -220,6 +225,7 @@ impl SSIWalletProviderService {
             wallet_unit_name,
             HistoryAction::Created,
             Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+            organisation_id,
         )
         .await;
 
@@ -372,6 +378,7 @@ impl SSIWalletProviderService {
             wallet_unit.name,
             HistoryAction::Activated,
             Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+            organisation.id,
         )
         .await;
 
@@ -448,11 +455,19 @@ impl SSIWalletProviderService {
                 },
             )
             .await?;
+
+        let Some(organisation) = &wallet_unit.organisation else {
+            return Err(ServiceError::MappingError(format!(
+                "Missing organisation on wallet unit `{}`",
+                wallet_unit.id
+            )));
+        };
         self.create_wallet_unit_history(
             &wallet_unit.id,
             wallet_unit.name.clone(),
             HistoryAction::Errored,
             Some(HistoryMetadata::ErrorMetadata(error_metadata)),
+            organisation.id,
         )
         .await;
         Ok(())
@@ -532,6 +547,7 @@ impl SSIWalletProviderService {
             wallet_unit.name,
             HistoryAction::Updated,
             Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+            organisation.id,
         )
         .await;
 
@@ -729,13 +745,25 @@ impl SSIWalletProviderService {
     pub async fn revoke_wallet_unit(&self, id: &WalletUnitId) -> Result<(), ServiceError> {
         let wallet_unit = self
             .wallet_unit_repository
-            .get_wallet_unit(id, &WalletUnitRelations::default())
+            .get_wallet_unit(
+                id,
+                &WalletUnitRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
             .await?
             .ok_or(EntityNotFoundError::WalletUnit(*id))?;
 
         if wallet_unit.status != WalletUnitStatus::Active {
             return Err(WalletProviderError::WalletUnitMustBeActive.into());
         }
+
+        let Some(organisation) = &wallet_unit.organisation else {
+            return Err(ServiceError::MappingError(format!(
+                "Missing organisation on wallet unit `{}`",
+                wallet_unit.id
+            )));
+        };
 
         self.wallet_unit_repository
             .update_wallet_unit(
@@ -746,8 +774,14 @@ impl SSIWalletProviderService {
                 },
             )
             .await?;
-        self.create_wallet_unit_history(id, wallet_unit.name, HistoryAction::Revoked, None)
-            .await;
+        self.create_wallet_unit_history(
+            id,
+            wallet_unit.name,
+            HistoryAction::Revoked,
+            None,
+            organisation.id,
+        )
+        .await;
         Ok(())
     }
 

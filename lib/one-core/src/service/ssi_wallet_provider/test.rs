@@ -19,6 +19,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs};
+use crate::proto::session_provider::NoSessionProvider;
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -54,6 +55,7 @@ fn mock_ssi_wallet_service() -> SSIWalletProviderService {
         clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
+        session_provider: Arc::new(NoSessionProvider),
     }
 }
 

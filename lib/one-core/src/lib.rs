@@ -889,6 +889,7 @@ impl OneCore {
                 key_algorithm_provider.clone(),
                 certificate_validator.clone(),
                 clock,
+                providers.session_provider.clone(),
                 config.clone(),
                 providers.core_base_url.clone(),
             ),

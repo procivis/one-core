@@ -1,3 +1,4 @@
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::wallet_unit::WalletUnitStatus;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -98,6 +99,17 @@ async fn activate_wallet_unit_attestation_invalid() {
         .await
         .unwrap();
     assert_eq!(wallet_unit.status, WalletUnitStatus::Error);
+
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&wallet_unit.id.into())
+        .await;
+    assert_eq!(history.total_items, 1);
+    let history = &history.values[0];
+    assert_eq!(history.entity_type, HistoryEntityType::WalletUnit);
+    assert_eq!(history.action, HistoryAction::Errored);
+    assert_eq!(history.organisation_id.unwrap(), org.id);
 }
 
 #[tokio::test]
