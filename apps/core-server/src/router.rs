@@ -247,6 +247,10 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 post(interaction::controller::presentation_submit),
             )
             .route(
+                "/api/interaction/v2/presentation-submit",
+                post(interaction::controller::presentation_submit_v2),
+            )
+            .route(
                 "/api/interaction/v1/propose-proof",
                 post(interaction::controller::propose_proof),
             )

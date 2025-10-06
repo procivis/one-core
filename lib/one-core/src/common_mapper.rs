@@ -1,5 +1,5 @@
 use std::any::type_name;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
@@ -979,6 +979,26 @@ pub mod opt_secret_string {
         let data: Option<String> = Option::deserialize(d)?;
         Ok(data.map(SecretString::from))
     }
+}
+
+pub(crate) fn paths_to_leafs(presented_paths: &[String]) -> Vec<String> {
+    let mut presented_paths = presented_paths.to_vec();
+    // Sort in reverse, so child paths are sorted before their parents
+    presented_paths.sort_by(|a, b| b.cmp(a));
+
+    let mut leaf_disclosed_keys = HashSet::new();
+    for key in presented_paths {
+        let prefix = format!("{key}/");
+        if leaf_disclosed_keys
+            .iter()
+            .any(|leaf: &String| leaf.starts_with(&prefix))
+        {
+            // this is an intermediary claim -> skip
+            continue;
+        }
+        leaf_disclosed_keys.insert(key);
+    }
+    leaf_disclosed_keys.into_iter().collect()
 }
 
 #[cfg(test)]

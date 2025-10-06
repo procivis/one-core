@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use dcql::CredentialQueryId;
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
@@ -159,8 +158,7 @@ pub(crate) struct FormattedCredentialPresentation {
 #[derive(Clone, Debug)]
 pub(crate) enum PresentationReference {
     PresentationExchange(PresentationDefinitionRequestedCredentialResponseDTO),
-    #[expect(unused)]
-    Dcql(CredentialQueryId),
+    Dcql { credential_query_id: String },
 }
 
 #[derive(Clone, Debug)]

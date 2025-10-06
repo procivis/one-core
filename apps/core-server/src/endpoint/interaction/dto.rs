@@ -9,6 +9,7 @@ use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
     InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
@@ -201,6 +202,41 @@ pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
     pub credential_id: Uuid,
     /// claimSchemaId of the claim to send from this credential.
     pub submit_claims: Vec<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(PresentationSubmitV2RequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct PresentationSubmitV2RequestRestDTO {
+    pub interaction_id: Uuid,
+    #[into(with_fn = convert_inner_of_inner)]
+    #[serde(deserialize_with = "deserialize_credential_submission")]
+    pub submission: HashMap<String, Vec<PresentationSubmitV2CredentialRequestRestDTO>>,
+}
+
+fn deserialize_credential_submission<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<String, Vec<PresentationSubmitV2CredentialRequestRestDTO>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let map =
+        HashMap::<String, SingleOrArray<PresentationSubmitV2CredentialRequestRestDTO>>::deserialize(
+            deserializer,
+        )?;
+    Ok(map.into_iter().map(|(k, v)| (k, v.into())).collect())
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into(PresentationSubmitV2CredentialRequestDTO)]
+pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
+    /// Submitted credential.
+    pub credential_id: CredentialId,
+    /// Path of claims that were optionally selected by the user.
+    #[serde(default)]
+    pub user_selections: Vec<String>,
 }
 
 #[options_not_nullable]

@@ -457,6 +457,9 @@ pub enum BusinessLogicError {
 
     #[error("Wallet provider is already associated to organisation `{0}`")]
     WalletProviderAlreadyAssociated(OrganisationId),
+
+    #[error("Invalid presentation submission: {reason}")]
+    InvalidPresentationSubmission { reason: String },
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1419,6 +1422,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Organisation not specified")]
     BR_0290,
+
+    #[strum(message = "Invalid presentation submission")]
+    BR_0291,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1592,6 +1598,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
+            Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
         }
     }
 }

@@ -237,15 +237,16 @@ impl OpenID4VPFinal1_0 {
                 )
                 .await
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-            let PresentationReference::PresentationExchange(pex_dto) =
-                credential_presentation.reference
+            let PresentationReference::Dcql {
+                credential_query_id,
+            } = credential_presentation.reference
             else {
                 return Err(VerificationProtocolError::Failed(
                     "Incompatible presentation reference".to_string(),
                 ));
             };
             vp_token
-                .entry(pex_dto.id)
+                .entry(credential_query_id)
                 .and_modify(|presentations: &mut Vec<String>| {
                     presentations.push(formatted_presentation.vp_token.to_owned())
                 })

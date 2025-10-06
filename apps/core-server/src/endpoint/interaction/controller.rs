@@ -7,7 +7,8 @@ use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
     HandleInvitationRequestRestDTO, HandleInvitationResponseRestDTO, IssuanceAcceptRequestRestDTO,
     IssuanceRejectRequestRestDTO, PresentationRejectRequestRestDTO,
-    PresentationSubmitRequestRestDTO, ProposeProofRequestRestDTO,
+    PresentationSubmitRequestRestDTO, PresentationSubmitV2RequestRestDTO,
+    ProposeProofRequestRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
@@ -187,6 +188,36 @@ pub(crate) async fn presentation_submit(
         .submit_proof(request.into())
         .await;
     EmptyOrErrorResponse::from_result(result, state, "submitting proof")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/interaction/v2/presentation-submit",
+    request_body = PresentationSubmitV2RequestRestDTO,
+    responses(EmptyOrErrorResponse),
+    tag = "interaction",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Submit presentation",
+    description = indoc::formatdoc! {"
+        Submits a presentation in response to a request.
+    "},
+)]
+#[require_permissions(Permission::InteractionProof)]
+pub(crate) async fn presentation_submit_v2(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<PresentationSubmitV2RequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .ssi_holder_service
+        .submit_proof_v2(request.into())
+        .await;
+    EmptyOrErrorResponse::from_result(result, state, "submitting proof v2")
 }
 
 #[utoipa::path(

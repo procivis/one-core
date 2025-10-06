@@ -5,7 +5,7 @@ use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::common_mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
@@ -42,28 +42,13 @@ pub(crate) fn compute_digests(
 /// all parent claim disclosures need to be shared as well (so that the link to root digest inside the JWT is kept)
 /// as well as all child claims of a selected node if a whole object is being shared
 pub(crate) fn select_disclosures(
-    mut disclosed_keys: Vec<String>,
+    disclosed_keys: Vec<String>,
     token_payload: &Value,
     all_disclosures: Vec<Disclosure>,
     hasher: &dyn Hasher,
 ) -> Result<Vec<String>, FormatterError> {
     let all_digests = compute_digests(all_disclosures, hasher)?;
-
-    // Sort in reverse, so child paths are sorted before their parents
-    disclosed_keys.sort_by(|a, b| b.cmp(a));
-
-    let mut leaf_disclosed_keys = HashSet::new();
-    for key in disclosed_keys {
-        let prefix = format!("{key}/");
-        if leaf_disclosed_keys
-            .iter()
-            .any(|leaf: &String| leaf.starts_with(&prefix))
-        {
-            // this is an intermediary claim -> skip
-            continue;
-        }
-        leaf_disclosed_keys.insert(key);
-    }
+    let leaf_disclosed_keys = paths_to_leafs(&disclosed_keys);
 
     // For all the remaining leaf disclosed keys the following disclosures will be selected:
     // - the path to the leaf

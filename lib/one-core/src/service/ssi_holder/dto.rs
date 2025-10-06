@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
+use uuid::Uuid;
 
 use crate::model::interaction::InteractionId;
 use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
@@ -19,6 +20,20 @@ pub struct PresentationSubmitRequestDTO {
 pub struct PresentationSubmitCredentialRequestDTO {
     pub credential_id: CredentialId,
     pub submit_claims: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationSubmitV2RequestDTO {
+    pub interaction_id: Uuid,
+    pub submission: HashMap<String, Vec<PresentationSubmitV2CredentialRequestDTO>>,
+}
+
+#[derive(Clone, Debug)]
+pub struct PresentationSubmitV2CredentialRequestDTO {
+    /// Submitted credential.
+    pub credential_id: CredentialId,
+    /// Path of claims that were optionally selected by the user.
+    pub user_selections: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
