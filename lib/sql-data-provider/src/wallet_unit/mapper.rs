@@ -93,6 +93,7 @@ impl IntoFilterCondition for WalletUnitFilterValue {
                                     .add(history::Column::Action.is_in([
                                         history::HistoryAction::Created,
                                         history::HistoryAction::Updated,
+                                        history::HistoryAction::Activated,
                                     ]))
                                     .add(history::Column::Metadata.eq(history_metadata_json)),
                             )
