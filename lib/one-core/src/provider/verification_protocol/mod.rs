@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentedCredential, ShareResponse,
-    UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
@@ -23,8 +23,6 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     CoreConfig, FormatType, VerificationProtocolConfig, VerificationProtocolType,
 };
-use crate::model::did::Did;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
@@ -338,14 +336,10 @@ pub(crate) trait VerificationProtocol: Send + Sync {
     async fn holder_reject_proof(&self, proof: &Proof) -> Result<(), VerificationProtocolError>;
 
     /// Submits a presentation to a verifier.
-    #[allow(clippy::too_many_arguments)]
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError>;
 
     /// Takes a proof request and filters held credentials,

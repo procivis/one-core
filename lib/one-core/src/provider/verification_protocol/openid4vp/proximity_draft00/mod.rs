@@ -39,12 +39,12 @@ use crate::provider::presentation_formatter::model::{FormatPresentationCtx, Form
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{Handover, SessionTranscript};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::verification_protocol::dto::{InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities};
+use crate::provider::verification_protocol::dto::{InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, FormattedCredentialPresentation, ShareResponse, UpdateResponse, VerificationProtocolCapabilities};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::openid4vp::get_presentation_definition_with_local_credentials;
-use crate::provider::verification_protocol::openid4vp::mapper::{create_open_id_for_vp_presentation_definition, create_presentation_submission, explode_validity_credentials, map_presented_credentials_to_presentation_format_type};
+use crate::provider::verification_protocol::openid4vp::mapper::{create_open_id_for_vp_presentation_definition, create_presentation_submission, explode_validity_credentials, key_and_did_from_formatted_creds, map_presented_credentials_to_presentation_format_type};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{verifier_flow, AsyncVerifierFlowParams};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_verifier::{retract_proof_ble, schedule_ble_verifier_flow};
@@ -301,10 +301,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
@@ -312,11 +309,13 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let credential_presentations = explode_validity_credentials(credential_presentations);
 
         let interaction_data = interaction_data_from_proof(proof)?;
+        let (key, jwk_key_id, holder_did) =
+            key_and_did_from_formatted_creds(&credential_presentations)?;
 
         let params = CreatePresentationParams {
             credential_presentations,
-            holder_did,
-            key,
+            holder_did: &holder_did,
+            key: &key,
             jwk_key_id,
             presentation_formatter_provider: &*self.presentation_formatter_provider,
             key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -710,7 +709,7 @@ pub(super) async fn create_interaction_and_proof(
 }
 
 pub(super) struct CreatePresentationParams<'a> {
-    credential_presentations: Vec<PresentedCredential>,
+    credential_presentations: Vec<FormattedCredentialPresentation>,
     presentation_definition: Option<&'a OpenID4VPPresentationDefinition>,
     holder_did: &'a Did,
     key: &'a Key,

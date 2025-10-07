@@ -7,16 +7,16 @@ use serde_json::Value;
 use url::Url;
 
 use super::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
-use crate::model::did::{Did, KeyRole};
-use crate::model::key::Key;
+use crate::model::did::KeyRole;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
@@ -82,10 +82,7 @@ impl VerificationProtocol for ScanToVerify {
     async fn holder_submit_proof(
         &self,
         _proof: &Proof,
-        _credential_presentations: Vec<PresentedCredential>,
-        _holder_did: &Did,
-        _key: &Key,
-        _jwk_key_id: Option<String>,
+        _credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
         unimplemented!()
     }

@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::{
-    explode_validity_credentials, format_to_type,
+    explode_validity_credentials, format_to_type, key_and_did_from_formatted_creds,
     map_presented_credentials_to_presentation_format_type,
 };
 use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
@@ -37,8 +37,9 @@ use crate::provider::presentation_formatter::model::{
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, PresentationReference, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -185,7 +186,7 @@ impl OpenID4VP25HTTP {
 
     async fn pex_submission_data(
         &self,
-        credential_presentations: Vec<PresentedCredential>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
         interaction_data: &OpenID4VPHolderInteractionData,
         key: &Key,
         jwk_key_id: Option<String>,
@@ -259,11 +260,8 @@ impl OpenID4VP25HTTP {
 
     async fn dcql_submission_data(
         &self,
-        credential_presentations: Vec<PresentedCredential>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
         interaction_data: &OpenID4VPHolderInteractionData,
-        key: &Key,
-        jwk_key_id: Option<String>,
-        holder_did: &Did,
         holder_nonce: String,
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
@@ -298,8 +296,8 @@ impl OpenID4VP25HTTP {
             let auth_fn = self
                 .key_provider
                 .get_signature_provider(
-                    key,
-                    jwk_key_id.clone(),
+                    &credential_presentation.key,
+                    credential_presentation.jwk_key_id,
                     self.key_algorithm_provider.clone(),
                 )
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -320,7 +318,7 @@ impl OpenID4VP25HTTP {
                 .format_presentation(
                     credentials,
                     auth_fn,
-                    &holder_did.did,
+                    &credential_presentation.holder_did.did,
                     format_presentation_context(
                         interaction_data,
                         &holder_nonce,
@@ -329,8 +327,15 @@ impl OpenID4VP25HTTP {
                 )
                 .await
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            let PresentationReference::PresentationExchange(pex_dto) =
+                credential_presentation.reference
+            else {
+                return Err(VerificationProtocolError::Failed(
+                    "Incompatible presentation reference".to_string(),
+                ));
+            };
             vp_token
-                .entry(credential_presentation.request.id)
+                .entry(pex_dto.id)
                 .and_modify(|presentations: &mut Vec<String>| {
                     presentations.push(formatted_presentation.vp_token.to_owned())
                 })
@@ -500,10 +505,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
         let interaction = proof
             .interaction
@@ -521,19 +523,18 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             self.dcql_submission_data(
                 credential_presentations,
                 &interaction_data,
-                key,
-                jwk_key_id,
-                holder_did,
                 holder_nonce.to_owned(),
             )
             .await?
         } else {
+            let (key, jwk_key_id, did) =
+                key_and_did_from_formatted_creds(&credential_presentations)?;
             self.pex_submission_data(
                 credential_presentations,
                 &interaction_data,
-                key,
+                &key,
                 jwk_key_id,
-                holder_did,
+                &did,
                 holder_nonce.to_owned(),
             )
             .await?

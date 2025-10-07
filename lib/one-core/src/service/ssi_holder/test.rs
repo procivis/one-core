@@ -409,12 +409,12 @@ async fn test_submit_proof_succeeds() {
 
     verification_protocol
         .expect_holder_submit_proof()
-        .withf(move |proof, _, _, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _| Ok(Default::default()));
 
     verification_protocol
         .expect_holder_get_holder_binding_context()
@@ -623,12 +623,12 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
 
     verification_protocol
         .expect_holder_submit_proof()
-        .withf(move |proof, _, _, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _| Ok(Default::default()));
 
     verification_protocol
         .expect_holder_get_holder_binding_context()
@@ -835,12 +835,12 @@ async fn test_submit_proof_succeeds_with_did() {
 
     verification_protocol
         .expect_holder_submit_proof()
-        .withf(move |proof, _, _, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _| Ok(Default::default()));
 
     verification_protocol
         .expect_holder_get_holder_binding_context()
@@ -1061,12 +1061,12 @@ async fn test_submit_proof_repeating_claims() {
 
     verification_protocol
         .expect_holder_submit_proof()
-        .withf(move |proof, _, _, _, _| {
+        .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
             true
         })
         .once()
-        .returning(|_, _, _, _, _| Ok(Default::default()));
+        .returning(|_, _| Ok(Default::default()));
 
     verification_protocol
         .expect_holder_get_holder_binding_context()

@@ -15,11 +15,11 @@ use serde_json::Value;
 use url::Url;
 
 use super::dto::{
-    InvitationResponseDTO, PresentationDefinitionFieldDTO,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-    PresentationDefinitionV2ResponseDTO, PresentedCredential, ShareResponse, UpdateResponse,
+    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
     VerificationProtocolCapabilities,
 };
 use super::{
@@ -31,8 +31,6 @@ use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationEngagement,
 };
 use crate::model::credential::CredentialStateEnum;
-use crate::model::did::Did;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
@@ -49,6 +47,7 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
+use crate::provider::verification_protocol::openid4vp::mapper::key_and_did_from_formatted_creds;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::util::ble_resource::{Abort, BleWaiter};
@@ -163,10 +162,7 @@ impl VerificationProtocol for IsoMdl {
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        _jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
         let ble = self.ble.clone().ok_or_else(|| {
             VerificationProtocolError::Failed("Missing BLE central for submit proof".to_string())
@@ -183,9 +179,11 @@ impl VerificationProtocol for IsoMdl {
             VerificationProtocolError::Failed("invalid interaction data".to_string())
         })?;
 
+        let (key, _, did) = key_and_did_from_formatted_creds(&credential_presentations)?;
+
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, None, self.key_algorithm_provider.clone())
+            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         let credential_presentation =
@@ -228,7 +226,7 @@ impl VerificationProtocol for IsoMdl {
             .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
 
         let FormattedPresentation { vp_token, .. } = presentation_formatter
-            .format_presentation(presentations, auth_fn, &holder_did.did, ctx)
+            .format_presentation(presentations, auth_fn, &did.did, ctx)
             .await
             .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 

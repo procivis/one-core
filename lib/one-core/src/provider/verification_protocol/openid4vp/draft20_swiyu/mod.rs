@@ -7,16 +7,15 @@ use serde_json::Value;
 use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
-use crate::model::did::Did;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::http_client::HttpClient;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
@@ -190,17 +189,13 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
         self.inner
-            .holder_submit_proof(proof, credential_presentations, holder_did, key, jwk_key_id)
+            .holder_submit_proof(proof, credential_presentations)
             .await
     }
 

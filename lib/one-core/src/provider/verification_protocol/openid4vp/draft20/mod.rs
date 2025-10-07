@@ -14,15 +14,14 @@ use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
 use super::mapper::{
-    explode_validity_credentials, map_presented_credentials_to_presentation_format_type,
+    explode_validity_credentials, key_and_did_from_formatted_creds,
+    map_presented_credentials_to_presentation_format_type,
 };
 use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
-use crate::model::did::Did;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
@@ -36,8 +35,9 @@ use crate::provider::presentation_formatter::model::{
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -307,15 +307,13 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
+        let (key, jwk_key_id, did) = key_and_did_from_formatted_creds(&credential_presentations)?;
+
         let interaction = proof
             .interaction
             .as_ref()
@@ -406,7 +404,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             vp_token,
             oidc_format,
         } = presentation_formatter
-            .format_presentation(credentials, auth_fn, &holder_did.did, ctx)
+            .format_presentation(credentials, auth_fn, &did.did, ctx)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

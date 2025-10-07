@@ -28,8 +28,10 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType,
 };
+use crate::model::did::Did;
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -43,9 +45,10 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::verification_protocol::dto::{
-    CredentialGroup, PresentationDefinitionRequestGroupResponseDTO,
+    CredentialGroup, FormattedCredentialPresentation,
+    PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentedCredential,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentationReference,
 };
 use crate::provider::verification_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
@@ -389,7 +392,7 @@ fn format_path(
 
 pub(crate) fn create_presentation_submission(
     presentation_definition_id: String,
-    credential_presentations: Vec<PresentedCredential>,
+    credential_presentations: Vec<FormattedCredentialPresentation>,
     format: &str,
     config: &CoreConfig,
 ) -> Result<PresentationSubmissionMappingDTO, VerificationProtocolError> {
@@ -401,6 +404,13 @@ pub(crate) fn create_presentation_submission(
             .into_iter()
             .enumerate()
             .map(|(index, presented_credential)| {
+                let PresentationReference::PresentationExchange(reference) =
+                    presented_credential.reference
+                else {
+                    return Err(VerificationProtocolError::Failed(
+                        "Unsupported presentation reference".to_string(),
+                    ));
+                };
                 let format_config = config
                     .format
                     .get_if_enabled(&presented_credential.credential_schema.format)
@@ -408,7 +418,7 @@ pub(crate) fn create_presentation_submission(
                         VerificationProtocolError::Failed(format!("format not found: {err}"))
                     })?;
                 Ok(PresentationSubmissionDescriptorDTO {
-                    id: presented_credential.request.id,
+                    id: reference.id,
                     format: format.to_owned(),
                     path: "$".to_string(),
                     path_nested: if path_nested_supported {
@@ -580,7 +590,7 @@ impl OpenID4VP20AuthorizationRequest {
 }
 
 pub(crate) fn map_presented_credentials_to_presentation_format_type(
-    presented: &[PresentedCredential],
+    presented: &[FormattedCredentialPresentation],
     config: &CoreConfig,
 ) -> Result<FormatType, VerificationProtocolError> {
     // MDOC credential(s) are sent as a MDOC presentation, using the MDOC formatter
@@ -606,7 +616,7 @@ pub(crate) fn map_presented_credentials_to_presentation_format_type(
 }
 
 fn matches_format_types(
-    presented: &[PresentedCredential],
+    presented: &[FormattedCredentialPresentation],
     types: &[FormatType],
     config: &CoreConfig,
 ) -> bool {
@@ -616,7 +626,7 @@ fn matches_format_types(
 }
 
 pub(crate) fn format_to_type(
-    presented_credential: &PresentedCredential,
+    presented_credential: &FormattedCredentialPresentation,
     config: &CoreConfig,
 ) -> Result<FormatType, VerificationProtocolError> {
     Ok(config
@@ -630,20 +640,23 @@ pub(crate) fn format_to_type(
 /// in the list. This is done to preserve legacy behaviour that heavily depends on the length of the
 /// list.
 pub(crate) fn explode_validity_credentials(
-    credential_presentations: Vec<PresentedCredential>,
-) -> Vec<PresentedCredential> {
+    credential_presentations: Vec<FormattedCredentialPresentation>,
+) -> Vec<FormattedCredentialPresentation> {
     credential_presentations
         .into_iter()
         .flat_map(|cred| {
             if let Some(validity_cred) = cred.validity_credential_presentation {
-                let validity_credential_presentation = PresentedCredential {
+                let validity_credential_presentation = FormattedCredentialPresentation {
                     presentation: validity_cred,
                     validity_credential_presentation: None,
                     credential_schema: cred.credential_schema.clone(),
-                    request: cred.request.clone(),
+                    reference: cred.reference.clone(),
+                    holder_did: cred.holder_did.clone(),
+                    key: cred.key.clone(),
+                    jwk_key_id: cred.jwk_key_id.clone(),
                 };
                 vec![
-                    PresentedCredential {
+                    FormattedCredentialPresentation {
                         validity_credential_presentation: None,
                         ..cred
                     },
@@ -1087,4 +1100,22 @@ pub(crate) fn generate_client_metadata_draft(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(create_open_id_for_vp_client_metadata_draft(jwk, vp_formats))
+}
+
+pub(crate) fn key_and_did_from_formatted_creds(
+    credential_presentations: &[FormattedCredentialPresentation],
+) -> Result<(Key, Option<String>, Did), VerificationProtocolError> {
+    let (key, jwk_key_id, did) = credential_presentations
+        .first()
+        .map(|presentation| {
+            (
+                presentation.key.clone(),
+                presentation.jwk_key_id.clone(),
+                presentation.holder_did.clone(),
+            )
+        })
+        .ok_or(VerificationProtocolError::Failed(
+            "Empty credential presentations".to_string(),
+        ))?;
+    Ok((key, jwk_key_id, did))
 }

@@ -19,9 +19,7 @@ use super::mdoc::mdoc_presentation_context;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
-use crate::model::did::Did;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
@@ -35,8 +33,9 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Hando
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
-    PresentedCredential, ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, PresentationReference, ShareResponse, UpdateResponse,
+    VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -176,11 +175,8 @@ impl OpenID4VPFinal1_0 {
 
     async fn dcql_submission_data(
         &self,
-        credential_presentations: Vec<PresentedCredential>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
         interaction_data: &OpenID4VPHolderInteractionData,
-        key: &Key,
-        jwk_key_id: Option<String>,
-        holder_did: &Did,
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
         let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;
@@ -214,8 +210,8 @@ impl OpenID4VPFinal1_0 {
             let auth_fn = self
                 .key_provider
                 .get_signature_provider(
-                    key,
-                    jwk_key_id.clone(),
+                    &credential_presentation.key,
+                    credential_presentation.jwk_key_id,
                     self.key_algorithm_provider.clone(),
                 )
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -236,13 +232,20 @@ impl OpenID4VPFinal1_0 {
                 .format_presentation(
                     credentials,
                     auth_fn,
-                    &holder_did.did,
+                    &credential_presentation.holder_did.did,
                     format_presentation_context(interaction_data, presentation_format)?,
                 )
                 .await
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+            let PresentationReference::PresentationExchange(pex_dto) =
+                credential_presentation.reference
+            else {
+                return Err(VerificationProtocolError::Failed(
+                    "Incompatible presentation reference".to_string(),
+                ));
+            };
             vp_token
-                .entry(credential_presentation.request.id)
+                .entry(pex_dto.id)
                 .and_modify(|presentations: &mut Vec<String>| {
                     presentations.push(formatted_presentation.vp_token.to_owned())
                 })
@@ -384,14 +387,10 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
-        credential_presentations: Vec<PresentedCredential>,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
         let interaction = proof
             .interaction
@@ -406,13 +405,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let holder_nonce = utilities::generate_alphanumeric(32);
 
         let (submission_data, encryption_info) = self
-            .dcql_submission_data(
-                credential_presentations,
-                &interaction_data,
-                key,
-                jwk_key_id,
-                holder_did,
-            )
+            .dcql_submission_data(credential_presentations, &interaction_data)
             .await?;
 
         let response_uri =

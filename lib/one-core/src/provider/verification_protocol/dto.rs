@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use dcql::CredentialQueryId;
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidValue};
 use time::OffsetDateTime;
@@ -9,7 +10,9 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
 };
+use crate::model::did::Did;
 use crate::model::interaction::InteractionId;
+use crate::model::key::Key;
 use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::service::credential::dto::{
     CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
@@ -142,11 +145,22 @@ pub(crate) struct InvitationResponseDTO {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct PresentedCredential {
+pub(crate) struct FormattedCredentialPresentation {
     pub presentation: String,
     pub validity_credential_presentation: Option<String>,
     pub credential_schema: CredentialSchema,
-    pub request: PresentationDefinitionRequestedCredentialResponseDTO,
+    pub reference: PresentationReference,
+    pub holder_did: Did,
+    pub key: Key,
+    pub jwk_key_id: Option<String>,
+}
+
+/// Information required for the provider to include the credential presentation in the submission.
+#[derive(Clone, Debug)]
+pub(crate) enum PresentationReference {
+    PresentationExchange(PresentationDefinitionRequestedCredentialResponseDTO),
+    #[expect(unused)]
+    Dcql(CredentialQueryId),
 }
 
 #[derive(Clone, Debug)]

@@ -30,7 +30,7 @@ use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::provider::verification_protocol::dto::{
-    InvitationResponseDTO, PresentedCredential, UpdateResponse,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationReference, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::service::error::{
@@ -278,7 +278,7 @@ impl SSIHolderService {
             .collect();
 
         let mut submitted_claims: Vec<Claim> = vec![];
-        let mut credential_presentations: Vec<PresentedCredential> = vec![];
+        let mut credential_presentations: Vec<FormattedCredentialPresentation> = vec![];
         let holder_binding_ctx =
             verification_protocol.holder_get_holder_binding_context(&proof, interaction_data)?;
 
@@ -411,11 +411,16 @@ impl SSIHolderService {
                     )
                     .await?;
 
-                let mut presented_credential = PresentedCredential {
+                let mut presented_credential = FormattedCredentialPresentation {
                     presentation: formatted_credential_presentation.to_owned(),
                     validity_credential_presentation: None,
                     credential_schema: credential_schema.clone(),
-                    request: requested_credential.to_owned(),
+                    reference: PresentationReference::PresentationExchange(
+                        requested_credential.to_owned(),
+                    ),
+                    holder_did: holder_did.clone(),
+                    key: selected_key.to_owned(),
+                    jwk_key_id: Some(holder_jwk_key_id.clone()),
                 };
 
                 let revocation_method: Fields<RevocationType> = self
@@ -475,13 +480,7 @@ impl SSIHolderService {
         }
 
         let submit_result = verification_protocol
-            .holder_submit_proof(
-                &proof,
-                credential_presentations,
-                &holder_did,
-                selected_key,
-                Some(holder_jwk_key_id),
-            )
+            .holder_submit_proof(&proof, credential_presentations)
             .map_err(ServiceError::from)
             .and_then(|submit_result| async {
                 self.resolve_update_proof_response(proof.id, submit_result)
