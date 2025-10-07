@@ -844,7 +844,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
 }
 
 #[test]
-fn test_schema_id() {
+fn test_schema_id_internal() {
     let formatter = SDJWTVCFormatter::new(
         Params {
             leeway: 45u64,
@@ -860,7 +860,7 @@ fn test_schema_id() {
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
     );
-    let vct_type = "xyz some_vct_type";
+
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".to_string(),
@@ -871,23 +871,61 @@ fn test_schema_id() {
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_id: Some(vct_type.to_string()),
+        schema_id: None,
+        allow_suspension: None,
+    };
+
+    let id = Uuid::new_v4();
+    let result = formatter.credential_schema_id(id.into(), &request_dto, "https://example.com");
+    assert!(result.is_ok());
+    assert_eq!(
+        result.unwrap(),
+        format!(
+            "https://example.com/ssi/vct/v1/{}/{id}",
+            request_dto.organisation_id
+        )
+    )
+}
+
+#[test]
+fn test_schema_id_external() {
+    let formatter = SDJWTVCFormatter::new(
+        Params {
+            leeway: 45u64,
+            embed_layout_properties: false,
+            swiyu_mode: false,
+            sd_array_elements: true,
+        },
+        Arc::new(MockCryptoProvider::default()),
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+    );
+    let vct = "https://example.com/vct/xyz%20some_vct_type";
+    let request_dto = CreateCredentialSchemaRequestDTO {
+        name: "".to_string(),
+        format: "".to_string(),
+        revocation_method: "".to_string(),
+        organisation_id: OrganisationId::from(Uuid::new_v4()),
+        claims: vec![],
+        external_schema: true,
+        wallet_storage_type: None,
+        layout_type: LayoutType::Card,
+        layout_properties: None,
+        schema_id: Some(vct.to_string()),
         allow_suspension: None,
     };
 
     let result = formatter.credential_schema_id(
         CredentialSchemaId::from(Uuid::new_v4()),
         &request_dto,
-        "https://example.com",
+        "https://core.base.com",
     );
     assert!(result.is_ok());
-    assert_eq!(
-        result.unwrap(),
-        format!(
-            "https://example.com/ssi/vct/v1/{}/xyz%20some_vct_type",
-            request_dto.organisation_id
-        )
-    )
+    assert_eq!(result.unwrap(), vct)
 }
 
 #[tokio::test]

@@ -80,7 +80,7 @@ async fn test_expected_format_features() {
         resp["format"]["SD_JWT_VC"]["capabilities"]["features"],
         json!([
             "SELECTIVE_DISCLOSURE",
-            "REQUIRES_SCHEMA_ID",
+            "REQUIRES_SCHEMA_ID_FOR_EXTERNAL",
             "SUPPORTS_CREDENTIAL_DESIGN"
         ])
     );

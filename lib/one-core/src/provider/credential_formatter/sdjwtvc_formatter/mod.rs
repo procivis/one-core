@@ -19,7 +19,6 @@ use serde::Deserialize;
 use serde_json::Value;
 use shared_types::{CredentialSchemaId, DidValue};
 use time::Duration;
-use url::Url;
 
 use super::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, HolderBindingCtx,
@@ -272,7 +271,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             datatypes,
             features: vec![
                 Features::SelectiveDisclosure,
-                Features::RequiresSchemaId,
+                Features::RequiresSchemaIdForExternal,
                 Features::SupportsCredentialDesign,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
@@ -297,31 +296,24 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
     fn credential_schema_id(
         &self,
-        _id: CredentialSchemaId,
+        id: CredentialSchemaId,
         request: &CreateCredentialSchemaRequestDTO,
         core_base_url: &str,
     ) -> Result<String, FormatterError> {
-        let Some(schema_id) = request.schema_id.as_ref() else {
-            return Err(FormatterError::Failed("Missing schema_id".to_string()));
-        };
-
-        if request.external_schema {
-            return Ok(schema_id.to_string());
-        }
-
-        let mut url = Url::parse(core_base_url)
-            .map_err(|error| FormatterError::Failed(format!("Invalid base URL: {error}")))?;
-
-        {
-            let mut segments = url
-                .path_segments_mut()
-                .map_err(|_| FormatterError::Failed("Invalid base URL".to_string()))?;
-            let organisation_id = request.organisation_id.to_string();
-            // /ssi/vct/v1/:organisation_id/:schema_id
-            segments.extend(["ssi", "vct", "v1", &organisation_id, schema_id]);
-        }
-
-        Ok(url.to_string())
+        Ok(
+            match (request.external_schema, request.schema_id.as_ref()) {
+                (true, Some(schema_id)) => schema_id.to_string(),
+                (false, None) => format!(
+                    "{core_base_url}/ssi/vct/v1/{}/{id}",
+                    request.organisation_id
+                ),
+                _ => {
+                    return Err(FormatterError::Failed(
+                        "Invalid combination schema_id/external".to_string(),
+                    ));
+                }
+            },
+        )
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {

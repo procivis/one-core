@@ -445,11 +445,11 @@ fn validate_schema_id(
     formatter: &dyn CredentialFormatter,
     during_import: bool,
 ) -> Result<(), ServiceError> {
-    let is_schema_id_required = formatter
-        .get_capabilities()
-        .features
-        .contains(&Features::RequiresSchemaId);
-    if is_schema_id_required {
+    let format_features = formatter.get_capabilities().features;
+    if format_features.contains(&Features::RequiresSchemaId)
+        || (format_features.contains(&Features::RequiresSchemaIdForExternal)
+            && request.external_schema)
+    {
         let schema_id = request.schema_id.as_deref().filter(|s| !s.is_empty());
         let Some(schema_id) = schema_id else {
             return Err(BusinessLogicError::MissingSchemaId.into());

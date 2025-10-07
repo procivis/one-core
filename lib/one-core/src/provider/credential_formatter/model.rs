@@ -396,6 +396,7 @@ pub enum Features {
     SelectiveDisclosure,
     SupportsCredentialDesign,
     RequiresSchemaId,
+    RequiresSchemaIdForExternal,
     RequiresPresentationEncryption,
 }
 
