@@ -1,15 +1,15 @@
 use one_core::model::common::ExactColumn;
-use one_core::model::credential::SortableCredentialColumn;
+use one_core::model::credential::{CredentialFilterValue, SortableCredentialColumn};
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::{
-    CredentialFilterValue, CredentialListIncludeEntityTypeEnum, CredentialRole,
-    CredentialStateEnum, GetCredentialListResponseDTO, GetCredentialQueryDTO,
+    CredentialRole, CredentialStateEnum, GetCredentialListResponseDTO, GetCredentialQueryDTO,
 };
 use one_core::service::error::{BusinessLogicError, ServiceError};
+use one_core::{model, service};
 use one_dto_mapper::{From, Into, convert_inner};
 
 use super::common::SortDirection;
@@ -69,12 +69,7 @@ impl OneCoreBinding {
                 })
             });
 
-            let profile = query.profile.map(|profile| {
-                CredentialFilterValue::Profile(StringMatch {
-                    r#match: StringMatchType::Equals,
-                    value: profile,
-                })
-            });
+            let profile = query.profiles.map(CredentialFilterValue::Profiles);
 
             let search_filters = match (query.search_text, query.search_type) {
                 (Some(search_test), Some(search_type)) => {
@@ -113,9 +108,15 @@ impl OneCoreBinding {
                 _ => organisation,
             };
 
-            let role = query
-                .role
-                .map(|role| CredentialFilterValue::Role(role.into()));
+            let role = query.roles.map(|roles| {
+                CredentialFilterValue::Roles(
+                    roles
+                        .into_iter()
+                        .map(service::credential::dto::CredentialRole::from)
+                        .map(model::credential::CredentialRole::from)
+                        .collect(),
+                )
+            });
 
             let ids = match query.ids {
                 Some(ids) => {
@@ -125,8 +126,8 @@ impl OneCoreBinding {
                 None => None,
             };
 
-            let states = query.status.map(|values| {
-                CredentialFilterValue::State(
+            let states = query.states.map(|values| {
+                CredentialFilterValue::States(
                     values.into_iter().map(|status| status.into()).collect(),
                 )
             });
@@ -314,13 +315,13 @@ pub struct CredentialListQueryBindingDTO {
 
     pub organisation_id: String,
     pub name: Option<String>,
-    pub profile: Option<String>,
+    pub profiles: Option<Vec<String>>,
     pub search_text: Option<String>,
     pub search_type: Option<Vec<SearchTypeBindingEnum>>,
     pub exact: Option<Vec<CredentialListQueryExactColumnBindingEnum>>,
-    pub role: Option<CredentialRoleBindingDTO>,
+    pub roles: Option<Vec<CredentialRoleBindingDTO>>,
     pub ids: Option<Vec<String>>,
-    pub status: Option<Vec<CredentialStateBindingEnum>>,
+    pub states: Option<Vec<CredentialStateBindingEnum>>,
     pub include: Option<Vec<CredentialListIncludeEntityTypeBindingEnum>>,
     pub credential_schema_ids: Option<Vec<String>>,
 
@@ -335,7 +336,7 @@ pub struct CredentialListQueryBindingDTO {
 }
 
 #[derive(Clone, Debug, Into, uniffi::Enum)]
-#[into(CredentialListIncludeEntityTypeEnum)]
+#[into(one_core::model::credential::CredentialListIncludeEntityTypeEnum)]
 pub enum CredentialListIncludeEntityTypeBindingEnum {
     LayoutProperties,
     Credential,

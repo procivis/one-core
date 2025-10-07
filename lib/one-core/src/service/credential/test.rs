@@ -15,7 +15,8 @@ use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{
-    Credential, CredentialRole, CredentialStateEnum, GetCredentialList, UpdateCredentialRequest,
+    Credential, CredentialFilterValue, CredentialRole, CredentialStateEnum, GetCredentialList,
+    UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
@@ -59,8 +60,8 @@ use crate::repository::validity_credential_repository::MockValidityCredentialRep
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential;
 use crate::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialFilterValue, CredentialRequestClaimDTO,
-    DetailCredentialClaimValueResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
+    CreateCredentialRequestDTO, CredentialRequestClaimDTO, DetailCredentialClaimValueResponseDTO,
+    GetCredentialQueryDTO, SuspendCredentialRequestDTO,
 };
 use crate::service::credential::validator::validate_create_request;
 use crate::service::error::{

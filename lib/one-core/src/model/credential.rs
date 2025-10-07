@@ -1,5 +1,7 @@
-use shared_types::{BlobId, CertificateId, CredentialId, IdentifierId, KeyId};
-use strum::Display;
+use shared_types::{
+    BlobId, CertificateId, CredentialId, CredentialSchemaId, IdentifierId, KeyId, OrganisationId,
+};
+use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
 use super::claim::{Claim, ClaimRelations};
@@ -12,7 +14,7 @@ use super::list_query::ListQuery;
 use super::revocation_list::{RevocationList, RevocationListRelations};
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::key::KeyRelations;
-use crate::service::credential::dto::{CredentialFilterValue, CredentialListIncludeEntityTypeEnum};
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Credential {
@@ -105,4 +107,31 @@ pub enum Clearable<T> {
     ForceSet(T),
     #[default]
     DontTouch,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum CredentialFilterValue {
+    ClaimName(StringMatch),
+    ClaimValue(StringMatch),
+    CredentialSchemaName(StringMatch),
+    OrganisationId(OrganisationId),
+    Roles(Vec<CredentialRole>),
+    CredentialIds(Vec<CredentialId>),
+    CredentialSchemaIds(Vec<CredentialSchemaId>),
+    States(Vec<CredentialStateEnum>),
+    SuspendEndDate(ValueComparison<OffsetDateTime>),
+    Profiles(Vec<String>),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
+    IssuanceDate(ValueComparison<OffsetDateTime>),
+    RevocationDate(ValueComparison<OffsetDateTime>),
+}
+
+impl ListFilterValue for CredentialFilterValue {}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumString, Display)]
+#[strum(serialize_all = "camelCase")]
+pub enum CredentialListIncludeEntityTypeEnum {
+    LayoutProperties,
+    Credential,
 }

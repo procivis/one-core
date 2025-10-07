@@ -38,7 +38,7 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
-use crate::model::credential::{CredentialRelations, GetCredentialQuery};
+use crate::model::credential::{CredentialFilterValue, CredentialRelations, GetCredentialQuery};
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
@@ -71,7 +71,6 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::service::credential::dto::CredentialFilterValue;
 use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,

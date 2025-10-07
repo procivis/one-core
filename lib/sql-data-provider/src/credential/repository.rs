@@ -5,8 +5,8 @@ use std::sync::Arc;
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::credential::{
-    Clearable, Credential, CredentialRelations, GetCredentialList, GetCredentialQuery,
-    UpdateCredentialRequest,
+    Clearable, Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations,
+    GetCredentialList, GetCredentialQuery, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
@@ -16,7 +16,6 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::IdentifierRepository;
-use one_core::service::credential::dto::CredentialListIncludeEntityTypeEnum;
 use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};

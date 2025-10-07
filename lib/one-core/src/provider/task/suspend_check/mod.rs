@@ -5,11 +5,12 @@ use time::OffsetDateTime;
 
 use self::dto::SuspendCheckResultDTO;
 use super::Task;
-use crate::model::credential::{CredentialStateEnum, GetCredentialQuery};
+use crate::model::credential::{
+    CredentialFilterValue, CredentialRole, CredentialStateEnum, GetCredentialQuery,
+};
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::CredentialService;
-use crate::service::credential::dto::{CredentialFilterValue, CredentialRole};
 use crate::service::error::ServiceError;
 
 pub mod dto;
@@ -38,8 +39,8 @@ impl Task for SuspendCheckProvider {
             .credential_repository
             .get_credential_list(GetCredentialQuery {
                 filtering: Some(
-                    CredentialFilterValue::State(vec![CredentialStateEnum::Suspended]).condition()
-                        & CredentialFilterValue::Role(CredentialRole::Issuer)
+                    CredentialFilterValue::States(vec![CredentialStateEnum::Suspended]).condition()
+                        & CredentialFilterValue::Roles(vec![CredentialRole::Issuer])
                         & CredentialFilterValue::SuspendEndDate(ValueComparison {
                             comparison: ComparisonType::LessThan,
                             value: OffsetDateTime::now_utc(),

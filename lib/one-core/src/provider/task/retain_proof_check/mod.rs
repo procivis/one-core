@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::Task;
 use crate::model::claim::ClaimRelations;
-use crate::model::credential::{CredentialRelations, GetCredentialQuery};
+use crate::model::credential::{CredentialFilterValue, CredentialRelations, GetCredentialQuery};
 use crate::model::history::{HistoryAction, HistoryEntityType, HistoryFilterValue};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::{ListPagination, ListQuery};
@@ -19,7 +19,6 @@ use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::credential::dto::CredentialFilterValue;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::proof::dto::ProofFilterValue;
 

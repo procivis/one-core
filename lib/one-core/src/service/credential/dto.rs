@@ -5,16 +5,17 @@ use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
     OrganisationId,
 };
-use strum::{AsRefStr, Display, EnumString};
+use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 
 use crate::model;
 use crate::model::common::GetListResponse;
-use crate::model::credential::SortableCredentialColumn;
+use crate::model::credential::{
+    CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
+};
 use crate::model::credential_schema::{
     CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };
-use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
@@ -151,8 +152,9 @@ pub enum DetailCredentialClaimValueResponseDTO<T> {
     Nested(Vec<T>),
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From, AsRefStr)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From, Into, AsRefStr)]
 #[from("crate::model::credential::CredentialRole")]
+#[into("crate::model::credential::CredentialRole")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialRole {
@@ -161,8 +163,9 @@ pub enum CredentialRole {
     Verifier,
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, From)]
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Into, From)]
 #[from("crate::model::credential::CredentialStateEnum")]
+#[into("crate::model::credential::CredentialStateEnum")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum CredentialStateEnum {
     Created,
@@ -174,33 +177,6 @@ pub enum CredentialStateEnum {
     Suspended,
     Error,
 }
-
-#[derive(Clone, Debug, Eq, PartialEq, EnumString, Display)]
-#[strum(serialize_all = "camelCase")]
-pub enum CredentialListIncludeEntityTypeEnum {
-    LayoutProperties,
-    Credential,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum CredentialFilterValue {
-    ClaimName(StringMatch),
-    ClaimValue(StringMatch),
-    CredentialSchemaName(StringMatch),
-    OrganisationId(OrganisationId),
-    Role(CredentialRole),
-    CredentialIds(Vec<CredentialId>),
-    CredentialSchemaIds(Vec<CredentialSchemaId>),
-    State(Vec<crate::model::credential::CredentialStateEnum>),
-    SuspendEndDate(ValueComparison<OffsetDateTime>),
-    Profile(StringMatch),
-    CreatedDate(ValueComparison<OffsetDateTime>),
-    LastModified(ValueComparison<OffsetDateTime>),
-    IssuanceDate(ValueComparison<OffsetDateTime>),
-    RevocationDate(ValueComparison<OffsetDateTime>),
-}
-
-impl ListFilterValue for CredentialFilterValue {}
 
 pub type GetCredentialListResponseDTO = GetListResponse<CredentialListItemResponseDTO>;
 pub type GetCredentialQueryDTO =

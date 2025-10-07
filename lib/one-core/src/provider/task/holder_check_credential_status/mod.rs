@@ -9,12 +9,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use shared_types::OrganisationId;
 
-use crate::model::credential::GetCredentialQuery;
+use crate::model::credential::{CredentialFilterValue, CredentialRole, GetCredentialQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::provider::task::Task;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::service::credential::CredentialService;
-use crate::service::credential::dto::{CredentialFilterValue, CredentialRole};
 use crate::service::error::ServiceError;
 
 pub struct HolderCheckCredentialStatus {
@@ -57,7 +56,7 @@ impl Task for HolderCheckCredentialStatus {
             .credential_repository
             .get_credential_list(GetCredentialQuery {
                 filtering: Some(
-                    CredentialFilterValue::Role(CredentialRole::Holder).condition() & option,
+                    CredentialFilterValue::Roles(vec![CredentialRole::Holder]).condition() & option,
                 ),
                 ..Default::default()
             })

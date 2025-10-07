@@ -1,7 +1,7 @@
 use one_core::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialListIncludeEntityTypeEnum, CredentialListItemResponseDTO,
-    CredentialRequestClaimDTO, CredentialRevocationCheckResponseDTO, CredentialRole,
-    CredentialStateEnum, DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
+    CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
+    CredentialRevocationCheckResponseDTO, CredentialRole, CredentialStateEnum,
+    DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO, WalletUnitAttestationDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
@@ -206,7 +206,7 @@ pub(crate) enum CredentialDetailClaimValueResponseRestDTO<T> {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, From, Into)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from(CredentialStateEnum)]
-#[into(one_core::model::credential::CredentialStateEnum)]
+#[into(CredentialStateEnum)]
 pub(crate) enum CredentialStateRestEnum {
     Created,
     Pending,
@@ -236,12 +236,12 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(nullable = false)]
     pub name: Option<String>,
     /// Return only credentials with the specified profile.
-    #[param(nullable = false)]
-    pub profile: Option<String>,
+    #[param(rename = "profiles[]", inline, nullable = false)]
+    pub profiles: Option<Vec<String>>,
     /// Filter credentials by whether they were issued by the system,
     /// verified by the system or are held by the system as with a wallet.
-    #[param(nullable = false)]
-    pub role: Option<CredentialRoleRestEnum>,
+    #[param(rename = "roles[]", inline, nullable = false)]
+    pub roles: Option<Vec<CredentialRoleRestEnum>>,
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
@@ -249,8 +249,8 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialId>>,
     /// Return only credentials with the specified credential state.
-    #[param(rename = "status[]", inline, nullable = false)]
-    pub status: Option<Vec<CredentialStateRestEnum>>,
+    #[param(rename = "states[]", inline, nullable = false)]
+    pub states: Option<Vec<CredentialStateRestEnum>>,
     /// Search for a string.
     #[param(nullable = false)]
     pub search_text: Option<String>,
@@ -306,7 +306,7 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[serde(rename_all = "camelCase")]
-#[into(CredentialListIncludeEntityTypeEnum)]
+#[into(one_core::model::credential::CredentialListIncludeEntityTypeEnum)]
 pub(crate) enum CredentialListIncludeEntityTypeRestEnum {
     LayoutProperties,
 }

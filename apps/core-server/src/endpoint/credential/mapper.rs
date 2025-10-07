@@ -1,11 +1,13 @@
+use one_core::model::credential::CredentialFilterValue;
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
     ValueComparison,
 };
 use one_core::service::credential::dto::{
-    CredentialDetailResponseDTO, CredentialFilterValue, DetailCredentialClaimValueResponseDTO,
+    CredentialDetailResponseDTO, DetailCredentialClaimValueResponseDTO,
 };
 use one_core::service::error::{BusinessLogicError, ServiceError};
+use one_core::{model, service};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 
 use super::dto::{
@@ -45,12 +47,7 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             })
         });
 
-        let profile = value.profile.map(|profile| {
-            CredentialFilterValue::Profile(StringMatch {
-                r#match: StringMatchType::Equals,
-                value: profile,
-            })
-        });
+        let profiles = value.profiles.map(CredentialFilterValue::Profiles);
 
         let search_filters = match (value.search_text, value.search_type) {
             (Some(search_test), Some(search_type)) => {
@@ -87,9 +84,15 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             _ => organisation_id,
         };
 
-        let role = value
-            .role
-            .map(|role| CredentialFilterValue::Role(role.into()));
+        let roles = value.roles.map(|roles| {
+            CredentialFilterValue::Roles(
+                roles
+                    .into_iter()
+                    .map(service::credential::dto::CredentialRole::from)
+                    .map(model::credential::CredentialRole::from)
+                    .collect(),
+            )
+        });
 
         let credential_ids = value.ids.map(CredentialFilterValue::CredentialIds);
 
@@ -97,8 +100,14 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             .credential_schema_ids
             .map(CredentialFilterValue::CredentialSchemaIds);
 
-        let states = value.status.map(|values| {
-            CredentialFilterValue::State(values.into_iter().map(|status| status.into()).collect())
+        let states = value.states.map(|values| {
+            CredentialFilterValue::States(
+                values
+                    .into_iter()
+                    .map(service::credential::dto::CredentialStateEnum::from)
+                    .map(model::credential::CredentialStateEnum::from)
+                    .collect(),
+            )
         });
 
         let created_date_after = value.created_date_after.map(|date| {
@@ -155,11 +164,11 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
 
         Ok(search_filters
             & name
-            & role
+            & roles
             & credential_ids
             & credential_schema_ids
             & states
-            & profile
+            & profiles
             & created_date_after
             & created_date_before
             & last_modified_after

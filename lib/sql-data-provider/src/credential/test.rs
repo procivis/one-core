@@ -5,8 +5,8 @@ use std::sync::Arc;
 use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
-    Clearable, Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
-    UpdateCredentialRequest,
+    Clearable, Credential, CredentialFilterValue, CredentialRelations, CredentialRole,
+    CredentialStateEnum, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
@@ -37,7 +37,7 @@ use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
 use one_core::repository::revocation_list_repository::{
     MockRevocationListRepository, RevocationListRepository,
 };
-use one_core::service::credential::dto::{CredentialFilterValue, GetCredentialQueryDTO};
+use one_core::service::credential::dto::GetCredentialQueryDTO;
 use one_dto_mapper::convert_inner;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::CredentialId;
@@ -721,7 +721,7 @@ async fn test_get_credential_list_success_filter_state() {
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
             filtering: Some(
-                CredentialFilterValue::State(vec![CredentialStateEnum::Offered]).condition(),
+                CredentialFilterValue::States(vec![CredentialStateEnum::Offered]).condition(),
             ),
             ..Default::default()
         })
@@ -733,7 +733,7 @@ async fn test_get_credential_list_success_filter_state() {
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
             filtering: Some(
-                CredentialFilterValue::State(vec![CredentialStateEnum::Created]).condition(),
+                CredentialFilterValue::States(vec![CredentialStateEnum::Created]).condition(),
             ),
             ..Default::default()
         })
@@ -745,7 +745,7 @@ async fn test_get_credential_list_success_filter_state() {
     let credentials = provider
         .get_credential_list(GetCredentialQueryDTO {
             filtering: Some(
-                CredentialFilterValue::State(vec![
+                CredentialFilterValue::States(vec![
                     CredentialStateEnum::Offered,
                     CredentialStateEnum::Revoked,
                 ])

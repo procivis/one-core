@@ -1,11 +1,12 @@
-use one_core::model::credential::{Credential, CredentialRole, SortableCredentialColumn};
+use one_core::model::credential::{
+    Credential, CredentialFilterValue, CredentialRole, SortableCredentialColumn,
+};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::identifier::Identifier;
 use one_core::model::interaction::InteractionId;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
-use one_core::service::credential::dto::CredentialFilterValue;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, SimpleExpr};
@@ -47,12 +48,19 @@ impl IntoFilterCondition for CredentialFilterValue {
                 credential_schema::Column::OrganisationId,
                 organisation_id.to_string(),
             ),
-            Self::Role(role) => get_equals_condition(credential::Column::Role, role.as_ref()),
+            Self::Roles(roles) => credential::Column::Role
+                .is_in(
+                    roles
+                        .into_iter()
+                        .map(credential::CredentialRole::from)
+                        .collect::<Vec<_>>(),
+                )
+                .into_condition(),
             Self::CredentialIds(ids) => credential::Column::Id.is_in(ids.iter()).into_condition(),
             Self::CredentialSchemaIds(ids) => credential::Column::CredentialSchemaId
                 .is_in(ids.iter())
                 .into_condition(),
-            Self::State(states) => credential::Column::State
+            Self::States(states) => credential::Column::State
                 .is_in(
                     states
                         .into_iter()
@@ -63,9 +71,9 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::SuspendEndDate(comparison) => {
                 get_comparison_condition(credential::Column::SuspendEndDate, comparison)
             }
-            Self::Profile(string_match) => {
-                get_string_match_condition(credential::Column::Profile, string_match)
-            }
+            Self::Profiles(profiles) => credential::Column::Profile
+                .is_in(profiles.iter())
+                .into_condition(),
             Self::CreatedDate(value) => {
                 get_comparison_condition(credential::Column::CreatedDate, value)
             }
