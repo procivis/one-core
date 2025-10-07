@@ -16,6 +16,7 @@ use uuid::Uuid;
 
 use super::ClaimProvider;
 use crate::entity::claim_schema;
+use crate::entity::credential_schema::WalletStorageType;
 use crate::test_utilities::*;
 
 struct TestSetup {
@@ -58,6 +59,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         "credential schema",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();

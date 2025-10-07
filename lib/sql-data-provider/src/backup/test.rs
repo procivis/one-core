@@ -13,6 +13,7 @@ use super::BackupProvider;
 use crate::db_conn;
 use crate::entity::certificate::{self, CertificateState};
 use crate::entity::credential::{self, CredentialRole, CredentialState};
+use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::did::{self, DidType};
 use crate::entity::identifier::{self, IdentifierState, IdentifierType};
 use crate::entity::key;
@@ -302,6 +303,19 @@ async fn add_unexportable_credentials(
         "credential schema 1",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
+    )
+    .await
+    .unwrap();
+
+    let unexportable_schema_id = insert_credential_schema_to_database(
+        db,
+        None,
+        organisation_id,
+        "credential schema 2",
+        "JWT",
+        "NONE",
+        WalletStorageType::EudiCompliant,
     )
     .await
     .unwrap();
@@ -313,8 +327,16 @@ async fn add_unexportable_credentials(
         .collect::<Vec<_>>()
         .await;
 
-    let unexportable_ids = futures::stream::iter(keys_setup.unexportable_ids.iter())
+    let unexportable_by_key_ids = futures::stream::iter(keys_setup.unexportable_ids.iter())
         .then(|key_id| insert_credential_to_database(db, schema_id, (*key_id).into(), false))
+        .map(Uuid::from)
+        .collect::<Vec<_>>()
+        .await;
+
+    let unexportable_by_schema_ids = futures::stream::iter(keys_setup.exportable_ids.iter())
+        .then(|key_id| {
+            insert_credential_to_database(db, unexportable_schema_id, (*key_id).into(), false)
+        })
         .map(Uuid::from)
         .collect::<Vec<_>>()
         .await;
@@ -329,7 +351,7 @@ async fn add_unexportable_credentials(
 
     UnexportableSetup {
         exportable_ids,
-        unexportable_ids,
+        unexportable_ids: [unexportable_by_key_ids, unexportable_by_schema_ids].concat(),
         deleted_ids,
     }
 }

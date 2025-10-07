@@ -15,12 +15,14 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
 };
-use crate::model::history::{HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use crate::model::wallet_unit_attestation::WalletUnitAttestation;
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::test_utilities::{
-    dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config,
+    dummy_did, dummy_identifier, dummy_key, dummy_organisation, generic_config, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -115,10 +117,38 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
         keys: vec![dummy_key()],
         dids: vec![dummy_did()],
         identifiers: vec![dummy_identifier()],
+        histories: vec![History {
+            id: Uuid::new_v4().into(),
+            created_date: get_dummy_date(),
+            action: HistoryAction::Accepted,
+            name: "test".to_string(),
+            target: None,
+            entity_id: Some(Uuid::new_v4().into()),
+            entity_type: HistoryEntityType::WalletUnitAttestation,
+            metadata: None,
+            organisation_id: None,
+            user: None,
+        }],
+        wallet_unit_attestations: vec![WalletUnitAttestation {
+            id: Uuid::new_v4().into(),
+            created_date: get_dummy_date(),
+            last_modified: get_dummy_date(),
+            expiration_date: get_dummy_date(),
+            status: WalletUnitStatus::Active,
+            attestation: "".to_string(),
+            wallet_unit_id: Uuid::new_v4().into(),
+            wallet_provider_url: "https://test.test".to_string(),
+            wallet_provider_type: WalletProviderType::ProcivisOne,
+            wallet_provider_name: "test".to_string(),
+            organisation: None,
+            key: None,
+        }],
         total_credentials: 5,
         total_keys: 5,
         total_dids: 5,
         total_identifiers: 5,
+        total_histories: 1,
+        total_wallet_unit_attestations: 1,
     }
 }
 

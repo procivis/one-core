@@ -13,6 +13,7 @@ use shared_types::{
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::key_did::KeyRole;
 use crate::history::HistoryProvider;
 use crate::test_utilities::*;
@@ -79,6 +80,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         credential_schema_name,
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();
@@ -391,10 +393,17 @@ async fn test_get_history_list_schema_joins_credentials() {
     .await
     .unwrap();
 
-    let credential_schema_id =
-        insert_credential_schema_to_database(&db, None, organisation.id, "schema", "JWT", "NONE")
-            .await
-            .unwrap();
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation.id,
+        "schema",
+        "JWT",
+        "NONE",
+        WalletStorageType::Software,
+    )
+    .await
+    .unwrap();
     insert_history(
         &db,
         HistoryAction::Created.into(),

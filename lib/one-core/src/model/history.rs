@@ -44,7 +44,8 @@ pub struct History {
     pub user: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HistoryAction {
     Accepted,
     Created,
@@ -72,7 +73,8 @@ pub enum HistoryAction {
     Expired,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum HistoryEntityType {
     Key,
     Did,

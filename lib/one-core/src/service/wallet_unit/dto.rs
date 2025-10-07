@@ -1,4 +1,5 @@
 use one_dto_mapper::From;
+use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
 use time::OffsetDateTime;
 
@@ -58,7 +59,7 @@ pub struct WalletProviderDTO {
     pub app_integrity_check_required: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HolderWalletUnitAttestationResponseDTO {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,

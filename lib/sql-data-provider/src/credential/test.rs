@@ -48,6 +48,7 @@ use uuid::Uuid;
 use super::CredentialProvider;
 use crate::credential::history::CredentialHistoryDecorator;
 use crate::entity::claim;
+use crate::entity::credential_schema::WalletStorageType;
 use crate::history::HistoryProvider;
 use crate::test_utilities;
 use crate::test_utilities::*;
@@ -73,6 +74,7 @@ async fn setup_empty() -> TestSetup {
         "credential schema",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();

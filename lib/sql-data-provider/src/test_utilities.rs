@@ -114,6 +114,7 @@ pub async fn insert_credential_schema_to_database(
     name: &str,
     format: &str,
     revocation_method: &str,
+    wallet_storage_type: WalletStorageType,
 ) -> Result<CredentialSchemaId, DbErr> {
     let new_id: CredentialSchemaId = Uuid::new_v4().into();
     let schema = credential_schema::ActiveModel {
@@ -126,7 +127,7 @@ pub async fn insert_credential_schema_to_database(
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.to_owned()),
         organisation_id: Set(organisation_id),
-        wallet_storage_type: Set(Some(WalletStorageType::Software)),
+        wallet_storage_type: Set(Some(wallet_storage_type)),
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),

@@ -21,6 +21,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
+use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::{credential_schema, organisation};
 use crate::test_utilities::*;
 
@@ -82,6 +83,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         "credential schema",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();

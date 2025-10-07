@@ -37,7 +37,8 @@ pub enum WalletUnitOs {
     Web,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum WalletUnitStatus {
     Pending,
     Active,

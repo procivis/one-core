@@ -33,6 +33,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaProvider;
+use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::proof_schema;
 use crate::test_utilities::*;
 
@@ -235,6 +236,7 @@ async fn test_create_proof_schema_success() {
         "cred-schema",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();
@@ -535,6 +537,7 @@ async fn test_get_proof_schema_with_relations() {
         "credential schema",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();
@@ -671,6 +674,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         "credential schema",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();
@@ -682,6 +686,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         "credential schema2",
         "JWT",
         "NONE",
+        WalletStorageType::Software,
     )
     .await
     .unwrap();

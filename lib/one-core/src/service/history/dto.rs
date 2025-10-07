@@ -25,7 +25,7 @@ pub struct HistoryErrorMetadataDTO {
     pub message: String,
 }
 
-#[derive(From)]
+#[derive(Debug, Clone, Serialize, Deserialize, From)]
 #[from(History)]
 pub struct HistoryResponseDTO {
     pub created_date: OffsetDateTime,
