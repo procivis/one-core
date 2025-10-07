@@ -170,8 +170,8 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     #[param(rename = "types[]", nullable = false)]
     pub types: Option<Vec<IdentifierTypeRest>>,
     /// Return only active or deactivated identifiers.
-    #[param(nullable = false)]
-    pub state: Option<IdentifierStateRest>,
+    #[param(rename = "states[]", nullable = false)]
+    pub states: Option<Vec<IdentifierStateRest>>,
     #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
     /// If true, return only identifiers from interactions with external

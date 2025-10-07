@@ -250,7 +250,7 @@ pub struct ProofListQueryBindingDTO {
     pub sort: Option<SortableProofListColumnBinding>,
     pub sort_direction: Option<SortDirection>,
     pub name: Option<String>,
-    pub profile: Option<String>,
+    pub profiles: Option<Vec<String>>,
     pub ids: Option<Vec<String>>,
     pub proof_states: Option<Vec<ProofStateBindingEnum>>,
     pub proof_roles: Option<Vec<ProofRoleBindingEnum>>,

@@ -40,7 +40,7 @@ pub(super) fn needs_interaction_table_for_filter(
         filter.contains(&|fv| matches!(fv, ProofFilterValue::OrganisationId(_)));
 
     let has_verifier_only_role_filter = filter.contains(&|fv| {
-        let ProofFilterValue::ProofRoles(roles) = fv else {
+        let ProofFilterValue::Roles(roles) = fv else {
             return false;
         };
 
@@ -68,19 +68,19 @@ impl IntoFilterCondition for ProofFilterValue {
                 }
                 .into_condition()
             }
-            Self::ProofStates(states) => proof::Column::State
+            Self::States(states) => proof::Column::State
                 .is_in(states.into_iter().map(ProofRequestState::from))
                 .into_condition(),
-            Self::ProofRoles(roles) => proof::Column::Role
+            Self::Roles(roles) => proof::Column::Role
                 .is_in(roles.into_iter().map(ProofRole::from))
                 .into_condition(),
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
             Self::ProofIds(ids) => proof::Column::Id.is_in(ids).into_condition(),
             Self::ProofIdsNot(ids) => proof::Column::Id.is_not_in(ids).into_condition(),
             Self::ValidForDeletion => proof_schema::Column::ExpireDuration.gt(0).into_condition(),
-            Self::Profile(string_match) => {
-                get_string_match_condition(proof::Column::Profile, string_match)
-            }
+            Self::Profiles(profiles) => proof::Column::Profile
+                .is_in(profiles.iter())
+                .into_condition(),
             Self::CreatedDate(value) => get_comparison_condition(proof::Column::CreatedDate, value),
             Self::LastModified(value) => {
                 get_comparison_condition(proof::Column::LastModified, value)

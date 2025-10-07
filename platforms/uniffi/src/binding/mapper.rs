@@ -4,7 +4,6 @@ use one_core::model::list_filter::{
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::GetProofSchemaQuery;
-use one_core::model::trust_entity::TrustEntityType;
 use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, PresentationDefinitionFieldDTO,
@@ -530,9 +529,14 @@ impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
             .transpose()?;
 
         let types = value
-            .r#type
-            .map(|v| v.into_iter().map(TrustEntityType::from).collect())
-            .map(TrustEntityFilterValue::Type);
+            .types
+            .map(convert_inner)
+            .map(TrustEntityFilterValue::Types);
+
+        let states = value
+            .states
+            .map(convert_inner)
+            .map(TrustEntityFilterValue::States);
 
         let entity_key = value
             .entity_key
@@ -582,6 +586,7 @@ impl TryFrom<ListTrustEntitiesFiltersBindings> for ListTrustEntitiesQueryDTO {
             & organisation_id
             & types
             & entity_key
+            & states
             & created_date_after
             & created_date_before
             & last_modified_after
@@ -712,11 +717,11 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
 
         let proof_states = value
             .proof_states
-            .map(|proof_states| ProofFilterValue::ProofStates(convert_inner(proof_states)));
+            .map(|proof_states| ProofFilterValue::States(convert_inner(proof_states)));
 
         let proof_roles = value
             .proof_roles
-            .map(|proof_roles| ProofFilterValue::ProofRoles(convert_inner(proof_roles)));
+            .map(|proof_roles| ProofFilterValue::Roles(convert_inner(proof_roles)));
 
         let proof_ids = value
             .ids
@@ -730,12 +735,7 @@ impl TryFrom<ProofListQueryBindingDTO> for GetProofQueryDTO {
             .transpose()?
             .map(ProofFilterValue::ProofSchemaIds);
 
-        let profile = value.profile.map(|profile| {
-            ProofFilterValue::Profile(StringMatch {
-                r#match: StringMatchType::Equals,
-                value: profile,
-            })
-        });
+        let profile = value.profiles.map(ProofFilterValue::Profiles);
 
         let created_date_after = value
             .created_date_after

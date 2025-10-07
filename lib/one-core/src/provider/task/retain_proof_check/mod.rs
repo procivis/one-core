@@ -78,7 +78,7 @@ impl Task for RetainProofCheck {
                 .proof_repository
                 .get_proof_list(ListQuery {
                     filtering: Some(
-                        ProofFilterValue::ProofStates(vec![ProofStateEnum::Accepted]).condition()
+                        ProofFilterValue::States(vec![ProofStateEnum::Accepted]).condition()
                             & ProofFilterValue::ValidForDeletion
                             & ProofFilterValue::ProofIdsNot(processed_events.clone()),
                     ),

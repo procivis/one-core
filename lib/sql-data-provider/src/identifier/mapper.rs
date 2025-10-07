@@ -88,10 +88,9 @@ impl IntoFilterCondition for IdentifierFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
-            Self::State(state) => get_equals_condition(
-                identifier::Column::State,
-                identifier::IdentifierState::from(state),
-            ),
+            Self::States(states) => identifier::Column::State
+                .is_in(states.into_iter().map(identifier::IdentifierState::from))
+                .into_condition(),
             Self::OrganisationId(organisation_id) => {
                 get_equals_condition(identifier::Column::OrganisationId, organisation_id)
             }

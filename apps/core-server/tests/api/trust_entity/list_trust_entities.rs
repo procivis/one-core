@@ -1,4 +1,6 @@
-use core_server::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityTypeRest};
+use core_server::endpoint::trust_entity::dto::{
+    TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
+};
 use one_core::model::trust_anchor::TrustAnchor;
 use one_core::model::trust_entity::{
     TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType,
@@ -404,7 +406,7 @@ async fn test_list_trust_entities_find_by_did_id() {
 }
 
 #[tokio::test]
-async fn test_list_trust_entities_filter_type() {
+async fn test_list_trust_entities_filter_types() {
     // GIVEN
     let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
 
@@ -492,7 +494,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
         .list(
             0,
             ListFilters {
-                r#type: Some(vec![TrustEntityTypeRest::Did]),
+                types: Some(vec![TrustEntityTypeRest::Did]),
                 organisation_id: Some(organisation.id),
                 ..Default::default()
             },
@@ -522,7 +524,7 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
         .list(
             0,
             ListFilters {
-                r#type: Some(vec![TrustEntityTypeRest::CertificateAuthority]),
+                types: Some(vec![TrustEntityTypeRest::CertificateAuthority]),
                 ..Default::default()
             },
         )
@@ -538,6 +540,113 @@ X2qJiGDrkN4Lr/85kRw7KHlsHq/w1aXLp0/Eg/c5aMur6qSWBjMD
 
     assert!(values.iter().all(|entity| {
         [entity3.id.to_string().as_str()].contains(&entity["id"].as_str().unwrap())
+    }));
+}
+
+#[tokio::test]
+async fn test_list_trust_entities_filter_states() {
+    // GIVEN
+    let (context, organisation, did, ..) = TestContext::new_with_did(None).await;
+
+    let ta = context
+        .db
+        .trust_anchors
+        .create(TestingTrustAnchorParams {
+            name: "name1".to_string(),
+            ..Default::default()
+        })
+        .await;
+
+    let entity1 = context
+        .db
+        .trust_entities
+        .create(
+            "e1",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Active,
+            ta.clone(),
+            TrustEntityType::Did,
+            did.did.into(),
+            None,
+            did.organisation,
+        )
+        .await;
+
+    let did2 = context
+        .db
+        .dids
+        .create(Some(organisation.clone()), TestingDidParams::default())
+        .await;
+    let entity2 = context
+        .db
+        .trust_entities
+        .create(
+            "e2",
+            TrustEntityRole::Issuer,
+            TrustEntityState::Withdrawn,
+            ta.clone(),
+            TrustEntityType::Did,
+            did2.did.into(),
+            None,
+            did2.organisation,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .list(
+            0,
+            ListFilters {
+                states: Some(vec![TrustEntityStateRest::Active]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let body = resp.json_value().await;
+    assert_eq!(body["totalItems"], 1);
+    let values = body["values"].as_array().unwrap();
+    assert_eq!(values.len(), 1);
+
+    assert!(values.iter().all(|entity| {
+        [entity1.id.to_string().as_str()].contains(&entity["id"].as_str().unwrap())
+    }));
+
+    // WHEN
+    let resp = context
+        .api
+        .trust_entities
+        .list(
+            0,
+            ListFilters {
+                states: Some(vec![
+                    TrustEntityStateRest::Active,
+                    TrustEntityStateRest::Withdrawn,
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let body = resp.json_value().await;
+    assert_eq!(body["totalItems"], 2);
+    let values = body["values"].as_array().unwrap();
+    assert_eq!(values.len(), 2);
+
+    assert!(values.iter().all(|entity| {
+        [
+            entity1.id.to_string().as_str(),
+            entity2.id.to_string().as_str(),
+        ]
+        .contains(&entity["id"].as_str().unwrap())
     }));
 }
 

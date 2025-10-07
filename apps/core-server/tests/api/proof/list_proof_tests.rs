@@ -683,7 +683,7 @@ async fn test_list_proofs_by_state() {
             10,
             &organisation.id,
             ProofFilters {
-                proof_states: Some(&[ProofStateEnum::Requested]),
+                states: Some(&[ProofStateEnum::Requested]),
                 ..Default::default()
             },
         )
@@ -1036,7 +1036,7 @@ async fn test_list_proofs_by_role() {
             10,
             &organisation.id,
             ProofFilters {
-                proof_roles: Some(&[ProofRole::Verifier]),
+                roles: Some(&[ProofRole::Verifier]),
                 ..Default::default()
             },
         )
@@ -1066,7 +1066,7 @@ async fn test_list_proofs_by_role() {
             10,
             &organisation.id,
             ProofFilters {
-                proof_roles: Some(&[ProofRole::Holder]),
+                roles: Some(&[ProofRole::Holder]),
                 ..Default::default()
             },
         )
@@ -1219,7 +1219,7 @@ async fn test_list_proof_with_profile() {
             10,
             &organisation.id,
             ProofFilters {
-                profile: Some(test_profile_1),
+                profiles: Some(&[test_profile_1]),
                 ..Default::default()
             },
         )
@@ -1258,7 +1258,7 @@ async fn test_list_proof_with_profile() {
             10,
             &organisation.id,
             ProofFilters {
-                profile: Some("non-existent-profile"),
+                profiles: Some(&["non-existent-profile"]),
                 ..Default::default()
             },
         )

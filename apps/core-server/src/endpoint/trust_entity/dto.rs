@@ -67,11 +67,11 @@ pub enum TrustEntityRoleRest {
 }
 
 /// Trust entity state.
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, ToSchema, Into, From)]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[into(TrustEntityState)]
 #[from(TrustEntityState)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub(crate) enum TrustEntityStateRest {
+pub enum TrustEntityStateRest {
     Active,
     Removed,
     Withdrawn,
@@ -187,8 +187,8 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     #[param(nullable = false)]
     pub name: Option<String>,
     /// Return only entities of the specified type.
-    #[param(rename = "type[]", inline, nullable = false)]
-    pub r#type: Option<Vec<TrustEntityTypeRest>>,
+    #[param(rename = "types[]", inline, nullable = false)]
+    pub types: Option<Vec<TrustEntityTypeRest>>,
     /// Specify entities to return by their DID value or their certificate `subject`.
     #[param(nullable = false)]
     pub entity_key: Option<TrustEntityKey>,
@@ -206,6 +206,8 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     pub exact: Option<Vec<ExactColumn>>,
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
+    #[param(rename = "states[]", inline, nullable = false)]
+    pub states: Option<Vec<TrustEntityStateRest>>,
 
     /// Return only entities which were created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').

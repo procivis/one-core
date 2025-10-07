@@ -164,8 +164,9 @@ pub struct ListTrustEntitiesFiltersBindings {
     pub trust_anchor: Option<String>,
     pub did_id: Option<String>,
     pub organisation_id: Option<String>,
-    pub r#type: Option<Vec<TrustEntityTypeBindingEnum>>,
+    pub types: Option<Vec<TrustEntityTypeBindingEnum>>,
     pub entity_key: Option<String>,
+    pub states: Option<Vec<TrustEntityStateBindingEnum>>,
 
     pub exact: Option<Vec<ExactTrustEntityFilterColumnBindings>>,
 

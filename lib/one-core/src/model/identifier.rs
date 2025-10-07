@@ -115,7 +115,7 @@ pub enum IdentifierFilterValue {
     Ids(Vec<IdentifierId>),
     Name(StringMatch),
     Types(Vec<IdentifierType>),
-    State(IdentifierState),
+    States(Vec<IdentifierState>),
     OrganisationId(OrganisationId),
     DidMethods(Vec<String>),
     IsRemote(bool),

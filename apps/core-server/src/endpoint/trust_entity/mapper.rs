@@ -1,10 +1,9 @@
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, StringMatch, StringMatchType, ValueComparison,
 };
-use one_core::model::trust_entity::TrustEntityType;
 use one_core::service::error::ServiceError;
 use one_core::service::trust_entity::dto::{CreateTrustEntityRequestDTO, TrustEntityFilterValue};
-use one_dto_mapper::try_convert_inner;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 
 use super::dto::{CreateTrustEntityRequestRestDTO, TrustEntityFilterQueryParamsRestDto};
 
@@ -41,9 +40,14 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
             .map(TrustEntityFilterValue::OrganisationId);
 
         let types = value
-            .r#type
-            .map(|v| v.into_iter().map(TrustEntityType::from).collect())
-            .map(TrustEntityFilterValue::Type);
+            .types
+            .map(convert_inner)
+            .map(TrustEntityFilterValue::Types);
+
+        let states = value
+            .states
+            .map(convert_inner)
+            .map(TrustEntityFilterValue::States);
 
         let entity_key = value.entity_key.map(TrustEntityFilterValue::EntityKey);
 
@@ -79,6 +83,7 @@ impl From<TrustEntityFilterQueryParamsRestDto> for ListFilterCondition<TrustEnti
             & role
             & organisation_id
             & types
+            & states
             & entity_key
             & created_date_after
             & created_date_before

@@ -78,8 +78,8 @@ impl OneCoreBinding {
                 .map(|types| IdentifierFilterValue::Types(convert_inner(types)));
 
             let state = query
-                .state
-                .map(|state| IdentifierFilterValue::State(state.into()));
+                .states
+                .map(|states| IdentifierFilterValue::States(convert_inner(states)));
 
             let did_methods = query.did_methods.map(IdentifierFilterValue::DidMethods);
 
@@ -364,7 +364,7 @@ pub struct IdentifierListQueryBindingDTO {
     pub organisation_id: String,
     pub name: Option<String>,
     pub types: Option<Vec<IdentifierTypeBindingEnum>>,
-    pub state: Option<IdentifierStateBindingEnum>,
+    pub states: Option<Vec<IdentifierStateBindingEnum>>,
     pub exact: Option<Vec<ExactIdentifierFilterColumnBindingEnum>>,
     pub did_methods: Option<Vec<String>>,
     pub is_remote: Option<bool>,

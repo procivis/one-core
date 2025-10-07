@@ -168,15 +168,15 @@ pub(crate) struct ProofsFilterQueryParamsRest {
     /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only proof requests with the specified profile.
-    #[param(nullable = false)]
-    pub profile: Option<String>,
+    /// Return only proof requests with the specified profiles.
+    #[param(rename = "profiles[]", nullable = false)]
+    pub profiles: Option<Vec<String>>,
     /// Return proof requests according to their current state in the system.
-    #[param(rename = "proofStates[]", inline, nullable = false)]
-    pub proof_states: Option<Vec<ProofStateRestEnum>>,
+    #[param(rename = "states[]", inline, nullable = false)]
+    pub states: Option<Vec<ProofStateRestEnum>>,
     /// Return proof requests according to their current role in the system.
-    #[param(rename = "proofRoles[]", inline, nullable = false)]
-    pub proof_roles: Option<Vec<ProofRoleRestEnum>>,
+    #[param(rename = "roles[]", inline, nullable = false)]
+    pub roles: Option<Vec<ProofRoleRestEnum>>,
     /// Filter proof requests by their associated proof schema. Pass an array
     /// of UUID strings.
     #[param(rename = "proofSchemaIds[]", inline, nullable = false)]

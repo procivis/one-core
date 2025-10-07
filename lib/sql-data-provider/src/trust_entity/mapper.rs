@@ -9,7 +9,7 @@ use sea_orm::sea_query::{IntoCondition, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
 
 use crate::entity::did;
-use crate::entity::trust_entity::{self, TrustEntityRole, TrustEntityType};
+use crate::entity::trust_entity::{self, TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
@@ -141,8 +141,11 @@ impl IntoFilterCondition for TrustEntityFilterValue {
                         .add(did::Column::OrganisationId.is_null()),
                 )
                 .add(did::Column::OrganisationId.eq(id)),
-            Self::Type(r#type) => trust_entity::Column::Type
-                .is_in(r#type.into_iter().map(TrustEntityType::from))
+            Self::Types(types) => trust_entity::Column::Type
+                .is_in(types.into_iter().map(TrustEntityType::from))
+                .into_condition(),
+            Self::States(states) => trust_entity::Column::State
+                .is_in(states.into_iter().map(TrustEntityState::from))
                 .into_condition(),
             Self::EntityKey(entity_key) => {
                 get_equals_condition(trust_entity::Column::EntityKey, entity_key)

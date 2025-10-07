@@ -1,5 +1,7 @@
 use core_server::endpoint::ssi::dto::PatchTrustEntityRequestRestDTO;
-use core_server::endpoint::trust_entity::dto::{TrustEntityRoleRest, TrustEntityTypeRest};
+use core_server::endpoint::trust_entity::dto::{
+    TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
+};
 use one_core::model::did::Did;
 use one_core::model::identifier::Identifier;
 use one_core::model::trust_anchor::TrustAnchor;
@@ -20,9 +22,10 @@ pub struct ListFilters {
     pub anchor_id: Option<TrustAnchorId>,
     pub name: Option<String>,
     pub did_id: Option<DidId>,
-    pub r#type: Option<Vec<TrustEntityTypeRest>>,
+    pub types: Option<Vec<TrustEntityTypeRest>>,
     pub entity_key: Option<String>,
     pub organisation_id: Option<OrganisationId>,
+    pub states: Option<Vec<TrustEntityStateRest>>,
 
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
@@ -116,9 +119,10 @@ impl TrustEntitiesApi {
             name,
             anchor_id,
             did_id,
-            r#type,
+            types,
             entity_key,
             organisation_id,
+            states,
             created_date_after,
             created_date_before,
             last_modified_after,
@@ -148,15 +152,29 @@ impl TrustEntitiesApi {
             url += &format!("&didId={did_id}")
         }
 
-        if let Some(r#type) = r#type {
-            url += &r#type
+        if let Some(types) = types {
+            url += &types
                 .into_iter()
                 .map(|t| match t {
                     TrustEntityTypeRest::Did => "DID",
                     TrustEntityTypeRest::CertificateAuthority => "CA",
                 })
                 .enumerate()
-                .map(|(i, t)| format!("&type[{i}]={t}"))
+                .map(|(i, t)| format!("&types[{i}]={t}"))
+                .collect::<String>();
+        }
+
+        if let Some(states) = states {
+            url += &states
+                .into_iter()
+                .map(|s| match s {
+                    TrustEntityStateRest::Active => "ACTIVE",
+                    TrustEntityStateRest::Removed => "REMOVED",
+                    TrustEntityStateRest::Withdrawn => "WITHDRAWN",
+                    TrustEntityStateRest::RemovedAndWithdrawn => "REMOVED_AND_WITHDRAWN",
+                })
+                .enumerate()
+                .map(|(i, s)| format!("&states[{i}]={s}"))
                 .collect::<String>();
         }
 

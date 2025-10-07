@@ -17,11 +17,11 @@ pub struct ProofsApi {
 #[derive(Debug, Default)]
 pub struct ProofFilters<'a> {
     pub name: Option<&'a str>,
-    pub proof_states: Option<&'a [ProofStateEnum]>,
-    pub proof_roles: Option<&'a [ProofRole]>,
+    pub states: Option<&'a [ProofStateEnum]>,
+    pub roles: Option<&'a [ProofRole]>,
     pub proof_schema_ids: Option<&'a [ProofSchemaId]>,
     pub ids: Option<&'a [ProofId]>,
-    pub profile: Option<&'a str>,
+    pub profiles: Option<&'a [&'a str]>,
 
     pub created_date_after: Option<OffsetDateTime>,
     pub created_date_before: Option<OffsetDateTime>,
@@ -128,24 +128,26 @@ impl ProofsApi {
             });
         }
 
-        if let Some(states) = filters.proof_states {
+        if let Some(states) = filters.states {
             url += &states.iter().fold(Default::default(), |state, elem| {
-                format!("{state}&proofStates[]={}", elem.to_string().to_uppercase())
+                format!("{state}&states[]={}", elem.to_string().to_uppercase())
             });
         }
 
-        if let Some(roles) = filters.proof_roles {
+        if let Some(roles) = filters.roles {
             url += &roles.iter().fold(Default::default(), |state, elem| {
-                format!("{state}&proofRoles[]={}", elem.to_string().to_uppercase())
+                format!("{state}&roles[]={}", elem.to_string().to_uppercase())
+            });
+        }
+
+        if let Some(profiles) = filters.profiles {
+            url += &profiles.iter().fold(Default::default(), |state, elem| {
+                format!("{state}&profiles[]={elem}")
             });
         }
 
         if let Some(name) = filters.name {
             url += &format!("&name={name}");
-        }
-
-        if let Some(profile) = filters.profile {
-            url += &format!("&profile={profile}");
         }
 
         if let Some(date) = filters.created_date_after {

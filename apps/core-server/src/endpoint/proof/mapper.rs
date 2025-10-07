@@ -33,18 +33,16 @@ impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterVal
         });
 
         let proof_states = value
-            .proof_states
-            .map(|proof_states| ProofFilterValue::ProofStates(convert_inner(proof_states)));
+            .states
+            .map(|proof_states| ProofFilterValue::States(convert_inner(proof_states)));
         let proof_roles = value
-            .proof_roles
-            .map(|proof_roles| ProofFilterValue::ProofRoles(convert_inner(proof_roles)));
+            .roles
+            .map(|proof_roles| ProofFilterValue::Roles(convert_inner(proof_roles)));
 
         let proof_ids = value.ids.map(ProofFilterValue::ProofIds);
         let proof_schema_ids = value.proof_schema_ids.map(ProofFilterValue::ProofSchemaIds);
 
-        let profile = value
-            .profile
-            .map(|profile| ProofFilterValue::Profile(StringMatch::equals(profile)));
+        let profiles = value.profiles.map(ProofFilterValue::Profiles);
 
         let created_date_after = value.created_date_after.map(|date| {
             ProofFilterValue::CreatedDate(ValueComparison {
@@ -104,7 +102,7 @@ impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterVal
             & proof_roles
             & proof_schema_ids
             & proof_ids
-            & profile
+            & profiles
             & created_date_after
             & created_date_before
             & last_modified_after

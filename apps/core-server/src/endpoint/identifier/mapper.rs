@@ -39,8 +39,8 @@ impl TryFrom<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identif
             .types
             .map(|types| IdentifierFilterValue::Types(convert_inner(types)));
         let state = value
-            .state
-            .map(|state| IdentifierFilterValue::State(state.into()));
+            .states
+            .map(|states| IdentifierFilterValue::States(convert_inner(states)));
         let did_methods = value.did_methods.map(IdentifierFilterValue::DidMethods);
         let is_remote = value
             .is_remote

@@ -233,7 +233,8 @@ pub enum TrustEntityFilterValue {
     TrustAnchor(TrustAnchorId),
     OrganisationId(OrganisationId),
     EntityKey(TrustEntityKey),
-    Type(Vec<TrustEntityType>),
+    Types(Vec<TrustEntityType>),
+    States(Vec<TrustEntityState>),
     CreatedDate(ValueComparison<OffsetDateTime>),
     LastModified(ValueComparison<OffsetDateTime>),
 }
