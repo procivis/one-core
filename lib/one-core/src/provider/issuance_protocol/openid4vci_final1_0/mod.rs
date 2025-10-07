@@ -72,6 +72,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
@@ -99,6 +100,7 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::certificate::validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
@@ -111,6 +113,8 @@ use crate::service::oid4vci_final1_0::dto::{
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::history::log_history_event_credential;
+use crate::util::jwt::Jwt;
+use crate::util::jwt::model::JWTPayload;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 use crate::util::params::convert_params;
@@ -135,6 +139,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     client: Arc<dyn HttpClient>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
+    wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -160,6 +165,7 @@ impl OpenID4VCIFinal1_0 {
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -183,6 +189,7 @@ impl OpenID4VCIFinal1_0 {
             formatter_provider,
             revocation_provider,
             did_method_provider,
+            wallet_unit_attestation_repository,
             key_algorithm_provider,
             key_provider,
             session_provider,
@@ -404,6 +411,8 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_data: &HolderInteractionData,
         tx_code: Option<String>,
+        client_attestation: Option<&str>,
+        client_attestation_pop: Option<&str>,
     ) -> Result<OpenID4VCITokenResponseDTO, IssuanceProtocolError> {
         let token_endpoint =
             interaction_data
@@ -444,12 +453,20 @@ impl OpenID4VCIFinal1_0 {
             }
         };
 
-        let request = self
+        let mut request = self
             .client
             .post(token_endpoint.as_str())
             .form(&form)
             .context("Invalid token_endpoint request")
             .map_err(IssuanceProtocolError::Transport)?;
+
+        if let (Some(client_attestation), Some(client_attestation_pop)) =
+            (client_attestation, client_attestation_pop)
+        {
+            request = request
+                .header("OAuth-Client-Attestation", client_attestation)
+                .header("OAuth-Client-Attestation-PoP", client_attestation_pop);
+        }
 
         let response = request
             .send()
@@ -890,6 +907,14 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
+        let organisation_id = schema
+            .organisation
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "organisation is None".to_string(),
+            ))?
+            .id;
+
         let format_type = self
             .config
             .format
@@ -908,7 +933,54 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
-        let token_response = self.holder_fetch_token(&interaction_data, tx_code).await?;
+        let (wallet_attestation, wallet_attestation_pop) = if interaction_data
+            .token_endpoint_auth_methods_supported
+            .as_ref()
+            .unwrap_or(&vec![])
+            .contains(&"attest_jwt_client_auth".to_string())
+        {
+            let wallet_unit_attestation = self
+                .wallet_unit_attestation_repository
+                .get_wallet_unit_attestation_by_organisation(
+                    &organisation_id,
+                    &WalletUnitAttestationRelations {
+                        key: Some(KeyRelations::default()),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+            let wua_key = wallet_unit_attestation
+                .as_ref()
+                .and_then(|wua| wua.key.clone())
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing Wallet Unit key".to_string(),
+                ))?;
+
+            let signed_proof = create_wallet_unit_attestation_pop(
+                &*self.key_provider,
+                self.key_algorithm_provider.clone(),
+                &wua_key,
+                &interaction_data.issuer_url,
+            )
+            .await?;
+
+            (wallet_unit_attestation, Some(signed_proof))
+        } else {
+            (None, None)
+        };
+
+        let token_response = self
+            .holder_fetch_token(
+                &interaction_data,
+                tx_code,
+                wallet_attestation
+                    .as_ref()
+                    .map(|wua| wua.attestation.as_str()),
+                wallet_attestation_pop.as_deref(),
+            )
+            .await?;
         let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 
         // only mdoc credentials support refreshing, do not store the tokens otherwise
@@ -1130,6 +1202,8 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .holder_fetch_token(
                 &interaction_data,
                 // TODO: ONE-6088 rejection will fail, if tx_code is required for issuance
+                None,
+                None,
                 None,
             )
             .await?;
@@ -2394,5 +2468,56 @@ async fn prepare_key_identifier(
             create_certificate: None,
             create_key,
         })
+    }
+}
+
+async fn create_wallet_unit_attestation_pop(
+    key_provider: &dyn KeyProvider,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key: &Key,
+    audience: &str,
+) -> Result<String, IssuanceProtocolError> {
+    let now = OffsetDateTime::now_utc();
+
+    let attestation_auth_fn = key_provider
+        .get_attestation_signature_provider(key, None, key_algorithm_provider.clone())
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+    // TODO EG Attempt both key storages here
+    let auth_fn = key_provider
+        .get_signature_provider(key, None, key_algorithm_provider)
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+    let proof = Jwt::new(
+        "oauth-client-attestation-pop+jwt".to_string(),
+        auth_fn.jose_alg().ok_or(IssuanceProtocolError::Failed(
+            "No JOSE alg specified".to_string(),
+        ))?,
+        auth_fn.get_key_id(),
+        None,
+        JWTPayload {
+            issued_at: Some(now),
+            expires_at: Some(now + Duration::minutes(60)),
+            invalid_before: Some(now),
+            audience: Some(vec![audience.to_string()]),
+            jwt_id: Some(Uuid::new_v4().to_string()),
+            issuer: None,
+            subject: None,
+            proof_of_possession_key: None,
+            custom: (),
+        },
+    );
+
+    // We first attempt to sign with the attestation auth fn
+    // If that fails, we fall back to the auth fn
+    // To be fixed in https://procivis.atlassian.net/browse/ONE-7501
+    let signed_proof = proof.tokenize(Some(attestation_auth_fn)).await;
+
+    match signed_proof {
+        Ok(signed_proof) => Ok(signed_proof),
+        Err(_) => proof
+            .tokenize(Some(auth_fn))
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string())),
     }
 }

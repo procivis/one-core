@@ -2,6 +2,7 @@ pub mod dto;
 pub mod error;
 pub mod service;
 mod validator;
+pub(crate) use app_integrity::ios::webauthn_signed_jwt_to_msg_and_sig;
 
 mod app_integrity;
 mod mapper;

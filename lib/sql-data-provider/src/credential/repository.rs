@@ -572,6 +572,11 @@ impl CredentialRepository for CredentialProvider {
             Some(issuance_date) => Set(issuance_date.into()),
         };
 
+        let wallet_unit_attestation_blob_id = match request.wallet_unit_attestation_blob_id {
+            None => Unchanged(Default::default()),
+            Some(blob_id) => Set(Some(blob_id)),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(credential_id),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -585,6 +590,7 @@ impl CredentialRepository for CredentialProvider {
             suspend_end_date,
             state,
             credential_blob_id,
+            wallet_unit_attestation_blob_id,
             ..Default::default()
         };
 

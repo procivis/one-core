@@ -47,6 +47,8 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
+use crate::provider::os_provider::MockOSInfoProvider;
+use crate::provider::os_provider::dto::OSName;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
@@ -1199,6 +1201,12 @@ async fn test_accept_credential() {
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
+    let mut os_info_provider = MockOSInfoProvider::new();
+    os_info_provider
+        .expect_get_os_name()
+        .once()
+        .returning(|| OSName::Web);
+
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
@@ -1314,6 +1322,7 @@ async fn test_accept_credential() {
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        os_info_provider: Arc::new(os_info_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1371,6 +1380,12 @@ async fn test_accept_credential_with_did() {
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
+    let mut os_info_provider = MockOSInfoProvider::new();
+    os_info_provider
+        .expect_get_os_name()
+        .once()
+        .returning(|| OSName::Web);
+
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
@@ -1486,6 +1501,7 @@ async fn test_accept_credential_with_did() {
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        os_info_provider: Arc::new(os_info_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1788,6 +1804,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         config: Arc::new(generic_config().core),
         client,
         session_provider: Arc::new(NoSessionProvider),
+        os_info_provider: Arc::new(MockOSInfoProvider::new()),
     }
 }
 

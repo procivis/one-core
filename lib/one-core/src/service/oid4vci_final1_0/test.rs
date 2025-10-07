@@ -24,6 +24,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -73,6 +74,7 @@ struct Mocks {
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub blob_storage_provider: MockBlobStorageProvider,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -96,6 +98,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.certificate_validator),
+        Arc::new(mocks.blob_storage_provider),
     )
 }
 
@@ -631,6 +634,8 @@ async fn test_create_token() {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
                 tx_code: None,
             },
+            None,
+            None,
         )
         .await;
 
@@ -678,6 +683,8 @@ async fn test_create_token_empty_pre_authorized_code() {
                 pre_authorized_code: "".to_string(),
                 tx_code: None,
             },
+            None,
+            None,
         )
         .await;
 
@@ -735,6 +742,8 @@ async fn test_create_token_pre_authorized_code_used() {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
                 tx_code: None,
             },
+            None,
+            None,
         )
         .await;
 
@@ -792,6 +801,8 @@ async fn test_create_token_wrong_credential_state() {
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
                 tx_code: None,
             },
+            None,
+            None,
         )
         .await;
 
@@ -2048,6 +2059,8 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
                 pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
                 tx_code: None,
             },
+            None,
+            None,
         )
         .await;
 
@@ -2135,6 +2148,8 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
             OpenID4VCITokenRequestDTO::RefreshToken {
                 refresh_token: refresh_token.to_string(),
             },
+            None,
+            None,
         )
         .await
         .unwrap();
@@ -2216,10 +2231,149 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             OpenID4VCITokenRequestDTO::RefreshToken {
                 refresh_token: refresh_token.to_string(),
             },
+            None,
+            None,
         )
         .await
         .err()
         .unwrap();
 
     assert2::assert!(let ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::InvalidToken)) = result);
+}
+
+#[tokio::test]
+async fn test_create_token_eudi_compliant_without_attestation_fails() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+
+    let mut schema = generic_credential_schema();
+    schema.wallet_storage_type = Some(WalletStorageTypeEnum::EudiCompliant);
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .return_once({
+            let schema = schema.clone();
+            move |_, _| Ok(Some(schema))
+        });
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_token(
+            &schema.id,
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
+            },
+            None,
+            None,
+        )
+        .await;
+
+    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+
+    let mut schema = generic_credential_schema();
+    schema.wallet_storage_type = Some(WalletStorageTypeEnum::EudiCompliant);
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .return_once({
+            let schema = schema.clone();
+            move |_, _| Ok(Some(schema))
+        });
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_token(
+            &schema.id,
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
+            },
+            Some("attestation_token"),
+            None,
+        )
+        .await;
+
+    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest
+        ))
+    ));
+}
+
+#[tokio::test]
+async fn test_create_token_non_eudi_with_attestation_fails() {
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+
+    let schema = generic_credential_schema();
+
+    credential_schema_repository
+        .expect_get_credential_schema()
+        .once()
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .return_once({
+            let schema = schema.clone();
+            move |_, _| Ok(Some(schema))
+        });
+
+    let service = setup_service(Mocks {
+        credential_schema_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .create_token(
+            &schema.id,
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: "c62f4237-3c74-42f2-a5ff-c72489e025f7".to_string(),
+                tx_code: None,
+            },
+            Some("attestation_token"),
+            Some("pop_token"),
+        )
+        .await;
+
+    assert!(result.is_err());
+    assert!(matches!(
+        result,
+        Err(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest
+        ))
+    ));
 }

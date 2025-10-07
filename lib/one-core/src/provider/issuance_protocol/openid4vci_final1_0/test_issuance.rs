@@ -52,6 +52,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::test_utilities::{
     dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
@@ -240,6 +241,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(revocation_list_repository),
         Arc::new(history_repository),
+        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
@@ -452,6 +454,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(validity_credential_repository),
         Arc::new(revocation_list_repository),
         Arc::new(history_repository),
+        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
@@ -639,6 +642,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(validity_credential_repository),
         Arc::new(revocation_list_repository),
         Arc::new(MockHistoryRepository::new()),
+        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
@@ -741,6 +745,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(validity_credential_repository),
         Arc::new(MockRevocationListRepository::new()),
         Arc::new(MockHistoryRepository::new()),
+        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),

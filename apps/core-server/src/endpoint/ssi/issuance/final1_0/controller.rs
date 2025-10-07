@@ -1,5 +1,5 @@
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
@@ -253,16 +253,31 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
 pub(crate) async fn oid4vci_final1_0_create_token(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+    headers: HeaderMap,
     WithRejection(Form(request), _): WithRejection<
         Form<OpenID4VCITokenRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
 ) -> Response {
+    // https://www.ietf.org/archive/id/draft-ietf-oauth-attestation-based-client-auth-07.html#section-6.1
+    let oauth_client_attestation = headers
+        .get("OAuth-Client-Attestation")
+        .and_then(|v| v.to_str().ok());
+
+    let oauth_client_attestation_pop = headers
+        .get("OAuth-Client-Attestation-PoP")
+        .and_then(|v| v.to_str().ok());
+
     let result = async {
         state
             .core
             .oid4vci_final1_0_service
-            .create_token(&id, request.try_into()?)
+            .create_token(
+                &id,
+                request.try_into()?,
+                oauth_client_attestation,
+                oauth_client_attestation_pop,
+            )
             .await
     }
     .await;

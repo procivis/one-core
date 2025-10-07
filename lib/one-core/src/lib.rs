@@ -524,6 +524,7 @@ impl OneCore {
             data_provider.get_validity_credential_repository(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_history_repository(),
+            data_provider.get_wallet_unit_attestation_repository(),
             credential_formatter_provider.clone(),
             vct_type_metadata_cache,
             key_provider.clone(),
@@ -703,6 +704,7 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
+                blob_storage_provider.clone(),
             ),
             oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),
@@ -879,6 +881,7 @@ impl OneCore {
                 client.clone(),
                 blob_storage_provider,
                 providers.session_provider.clone(),
+                Arc::new(OSInfoProviderImpl),
             ),
             ssi_wallet_provider_service: SSIWalletProviderService::new(
                 data_provider.get_organisation_repository(),

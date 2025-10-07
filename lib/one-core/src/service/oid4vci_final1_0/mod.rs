@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::get_protocol_base_url;
@@ -45,6 +46,7 @@ pub struct OID4VCIFinal1_0Service {
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
+    blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -68,6 +70,7 @@ impl OID4VCIFinal1_0Service {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        blob_storage_provider: Arc<dyn BlobStorageProvider>,
     ) -> Self {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -90,6 +93,7 @@ impl OID4VCIFinal1_0Service {
             revocation_method_provider,
             certificate_validator,
             base_url: core_base_url,
+            blob_storage_provider,
         }
     }
 }

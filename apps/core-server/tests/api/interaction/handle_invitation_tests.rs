@@ -2758,3 +2758,199 @@ async fn test_handle_invitation_failure_authorization_code_authorization_server_
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0085");
 }
+
+#[tokio::test]
+async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_authorization_server_metadata()
+ {
+    let mock_server = MockServer::start().await;
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/final-1.0/{credential_schema_id}",
+        mock_server.uri()
+    );
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": [
+            "doctype"
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
+            }
+        },
+        "credential_subject": {
+            "keys": {
+                "namespace1/string_array/0": {"value": "foo", "value_type": "STRING"},
+            },
+            "wallet_storage_type": "SOFTWARE"
+        }
+    });
+
+    // Mock issuer metadata endpoint
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported": {
+                    "doctype": {
+                          "procivis_schema": format!("{}/ssi/schema/v1/{credential_schema_id}", {mock_server.uri()}),
+                          "format": "mso_mdoc",
+                              "claims": {
+                              "namespace1": {
+                                  "string_array": {
+                                    "value_type": "string[]",
+                                    "mandatory": true
+                                  }
+                              }
+                          },
+                          "order": [
+                              "namespace1~string_array",
+                          ],
+                          "display": [
+                          {
+                              "name": "TestSchema"
+                          }
+                          ],
+                          "wallet_storage_type": "SOFTWARE"
+                      }
+              }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // Mock OIDC configuration endpoint
+    let token_endpoint = format!("{credential_issuer}/token");
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/openid-configuration/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // Mock OAuth authorization server metadata endpoint
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "issuer": credential_issuer,
+                "token_endpoint": token_endpoint,
+                "response_types_supported": ["code"],
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "token_endpoint_auth_methods_supported": ["attest_jwt_client_auth"]
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": credential_schema_id,
+            "createdDate": "2024-05-16T10:47:48.093Z",
+            "lastModified": "2024-05-16T10:47:48.093Z",
+            "name": "test",
+            "format": "SD_JWT",
+            "revocationMethod": "NONE",
+            "organisationId": organisation.id,
+            "claims": [
+              {
+                  "id": "73535006-f102-481b-8a23-5a45b912372e",
+                  "createdDate": "2024-10-17T10:36:55.019Z",
+                  "lastModified": "2024-10-17T10:36:55.019Z",
+                  "key": "namespace1",
+                  "datatype": "OBJECT",
+                  "required": true,
+                  "array": false,
+                  "claims": [
+                  {
+                      "id": "e8ab7052-38f7-4cbf-bace-18f94210d5c1",
+                      "createdDate": "2024-10-17T10:36:55.019Z",
+                      "lastModified": "2024-10-17T10:36:55.019Z",
+                      "key": "string_array",
+                      "datatype": "STRING",
+                      "required": true,
+                      "array": true
+                  }
+                  ]
+              }
+              ],
+            "walletStorageType": "SOFTWARE",
+            "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
+            "schemaType": "ProcivisOneSchema2024",
+            "layoutType": "CARD",
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer-final1://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organisation.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+
+    let credential_id = resp["credentialIds"][0].parse();
+    let credential = context.db.credentials.get(&credential_id).await;
+
+    // Verify that the interaction was created and contains the OAuth authorization server metadata
+    let interaction = credential.interaction.unwrap();
+    let interaction_data: serde_json::Value =
+        serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
+
+    // Verify that token_endpoint_auth_methods_supported was stored in the interaction data
+    assert!(
+        interaction_data
+            .get("token_endpoint_auth_methods_supported")
+            .is_some()
+    );
+    let auth_methods = interaction_data["token_endpoint_auth_methods_supported"]
+        .as_array()
+        .unwrap();
+    assert_eq!(auth_methods.len(), 1);
+    assert_eq!(auth_methods[0], "attest_jwt_client_auth");
+}

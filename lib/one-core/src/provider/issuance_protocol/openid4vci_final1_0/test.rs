@@ -69,6 +69,7 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
+use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::storage_proxy::MockStorageProxy;
@@ -82,6 +83,7 @@ struct TestInputs {
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub revocation_list_repository: MockRevocationListRepository,
     pub history_repository: MockHistoryRepository,
+    pub wallet_unit_attestation_repository: MockWalletUnitAttestationRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -102,6 +104,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.revocation_list_repository),
         Arc::new(inputs.history_repository),
+        Arc::new(inputs.wallet_unit_attestation_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.did_method_provider),

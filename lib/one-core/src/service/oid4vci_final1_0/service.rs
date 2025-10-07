@@ -13,8 +13,9 @@ use super::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCICredentialResponseEn
 use super::mapper::interaction_data_to_dto;
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
-    throw_if_access_token_invalid, throw_if_credential_request_invalid,
-    validate_config_entity_presence,
+    extract_wallet_metadata, throw_if_access_token_invalid, throw_if_credential_request_invalid,
+    validate_config_entity_presence, validate_pop_audience, validate_timestamps,
+    verify_pop_signature, verify_wua_signature,
 };
 use crate::common_mapper::{
     IdentifierRole, get_exchange_param_pre_authorization_expires_in,
@@ -24,17 +25,20 @@ use crate::common_mapper::{
 use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
+use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{
-    CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
 };
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
+use crate::model::wallet_unit::WalletUnitClaims;
+use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -54,11 +58,13 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     parse_refresh_token,
 };
 use crate::provider::revocation::model::{CredentialRevocationState, Operation};
+use crate::service::credential::dto::WalletUnitAttestationDTO;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
+use crate::util::jwt::Jwt;
 use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
@@ -680,16 +686,24 @@ impl OID4VCIFinal1_0Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
+        oauth_client_attestation: Option<&str>,
+        oauth_client_attestation_pop: Option<&str>,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
         validate_config_entity_presence(&self.config)?;
 
-        let Some(credential_schema) = self
+        let credential_schema = self
             .credential_schema_repository
             .get_credential_schema(credential_schema_id, &CredentialSchemaRelations::default())
             .await?
-        else {
-            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
-        };
+            .ok_or(EntityNotFoundError::CredentialSchema(*credential_schema_id))?;
+
+        let wallet_unit_attestation_token = self
+            .validate_oauth_client_attestation(
+                oauth_client_attestation,
+                oauth_client_attestation_pop,
+                &credential_schema,
+            )
+            .await?;
 
         let interaction_id = match &request {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
@@ -767,25 +781,58 @@ impl OID4VCIFinal1_0Service {
         )?;
 
         let now = OffsetDateTime::now_utc();
-        if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {
-            for credential in &credentials {
-                self.credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Offered),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
+
+        for credential in &credentials {
+            // If a wallet unit attestation token is provided, we create a new blob and update the credential
+            let wallet_unit_attestation_blob_id = match wallet_unit_attestation_token.clone() {
+                Some(wallet_unit_attestation_token) => {
+                    let blob_storage = self
+                        .blob_storage_provider
+                        .get_blob_storage(BlobStorageType::Db)
+                        .await
+                        .ok_or(MissingProviderError::BlobStorage(
+                            BlobStorageType::Db.to_string(),
+                        ))?;
+
+                    let wallet_unit_attestation_token =
+                        serde_json::to_vec(&wallet_unit_attestation_token)
+                            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+                    let blob = Blob::new(
+                        wallet_unit_attestation_token,
+                        BlobType::WalletUnitAttestation,
+                    );
+
+                    blob_storage.create(blob.clone()).await?;
+                    Some(blob.id)
+                }
+                None => None,
+            };
+
+            let mut state_update = UpdateCredentialRequest {
+                wallet_unit_attestation_blob_id,
+                ..Default::default()
+            };
+
+            if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {
+                state_update.state = Some(CredentialStateEnum::Offered);
             }
 
-            // we add refresh token for mdoc
-            if credential_schema.schema_type == CredentialSchemaType::Mdoc {
-                response.refresh_token = Some(generate_new_token());
-                response.refresh_token_expires_in =
-                    Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
+            // Only update the credential if there is a change
+            if state_update.wallet_unit_attestation_blob_id.is_some()
+                || state_update.state.is_some()
+            {
+                self.credential_repository
+                    .update_credential(credential.id, state_update)
+                    .await?;
             }
+        }
+
+        // we add refresh token for mdoc
+        if credential_schema.schema_type == CredentialSchemaType::Mdoc {
+            response.refresh_token = Some(generate_new_token());
+            response.refresh_token_expires_in =
+                Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
         }
 
         let interaction_data: OpenID4VCIIssuerInteractionDataDTO = (&response).try_into()?;
@@ -798,6 +845,72 @@ impl OID4VCIFinal1_0Service {
             .await?;
 
         Ok(response)
+    }
+
+    async fn validate_oauth_client_attestation(
+        &self,
+        oauth_client_attestation: Option<&str>,
+        oauth_client_attestation_pop: Option<&str>,
+        credential_schema: &CredentialSchema,
+    ) -> Result<Option<WalletUnitAttestationDTO>, ServiceError> {
+        let client_attestation_required =
+            credential_schema.wallet_storage_type == Some(WalletStorageTypeEnum::EudiCompliant);
+
+        // If the credential schema does not require client attestation, no tokens are expected
+        if !client_attestation_required {
+            if oauth_client_attestation.is_some() || oauth_client_attestation_pop.is_some() {
+                return Err(ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::InvalidRequest,
+                ));
+            }
+            return Ok(None);
+        }
+
+        // Parse tokens
+        let wallet_unit_attestation_token = oauth_client_attestation.ok_or(
+            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest),
+        )?;
+        let proof_of_key_possesion_token = oauth_client_attestation_pop.ok_or(
+            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest),
+        )?;
+
+        let wallet_unit_attestation =
+            Jwt::<WalletUnitClaims>::decompose_token(wallet_unit_attestation_token)?;
+        let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)?;
+
+        // Validate timestamps for both tokens
+        validate_timestamps(&wallet_unit_attestation)?;
+        validate_timestamps(&proof_of_key_possession)?;
+
+        // Validate proof of possession audience
+        let expected_audience = self
+            .protocol_base_url
+            .as_ref()
+            .map(|base_url| format!("{base_url}/{}", credential_schema.id))
+            .ok_or(ServiceError::OpenID4VCIError(
+                OpenID4VCIError::InvalidRequest,
+            ))?;
+        validate_pop_audience(&proof_of_key_possession, &expected_audience)?;
+
+        // Verify signatures
+        verify_pop_signature(
+            &proof_of_key_possession,
+            &wallet_unit_attestation,
+            self.key_algorithm_provider.as_ref(),
+        )?;
+        verify_wua_signature(
+            &wallet_unit_attestation,
+            self.key_algorithm_provider.as_ref(),
+        )?;
+
+        // Extract wallet metadata
+        let (name, link) = extract_wallet_metadata(&wallet_unit_attestation)?;
+
+        Ok(Some(WalletUnitAttestationDTO {
+            name,
+            link,
+            attestation: wallet_unit_attestation_token.to_owned(),
+        }))
     }
 
     pub async fn generate_nonce(
