@@ -201,7 +201,7 @@ async fn create_token(include_layout: bool) -> Value {
         .return_const(Ok(KeyAlgorithmType::Ecdsa));
 
     let formatted_credential = formatter
-        .format_credential(credential_data, Box::new(auth_fn), None)
+        .format_credential(credential_data, Box::new(auth_fn))
         .await
         .unwrap();
 

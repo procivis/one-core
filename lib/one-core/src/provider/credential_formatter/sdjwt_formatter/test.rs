@@ -118,7 +118,7 @@ async fn test_format_credential_a() {
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn), None)
+        .format_credential(credential_data, Box::new(auth_fn))
         .await;
 
     assert!(result.is_ok());
@@ -298,7 +298,7 @@ async fn test_format_credential_with_array() {
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn), None)
+        .format_credential(credential_data, Box::new(auth_fn))
         .await;
 
     assert!(result.is_ok());
@@ -427,7 +427,7 @@ async fn test_format_credential_with_array_sd() {
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
 
     let result = sd_formatter
-        .format_credential(credential_data, Box::new(auth_fn), None)
+        .format_credential(credential_data, Box::new(auth_fn))
         .await;
 
     assert!(result.is_ok());

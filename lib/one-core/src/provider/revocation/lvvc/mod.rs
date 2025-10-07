@@ -453,7 +453,7 @@ pub async fn create_lvvc_with_status(
     };
 
     let formatted_credential = formatter
-        .format_credential(credential_data, auth_fn, None)
+        .format_credential(credential_data, auth_fn)
         .await?;
 
     let lvvc_credential = Lvvc {

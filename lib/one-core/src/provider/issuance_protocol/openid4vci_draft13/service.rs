@@ -27,7 +27,6 @@ use crate::model::credential_schema::{
 };
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
-use crate::provider::credential_formatter::sdjwtvc_formatter::vct_for_schema;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCICredentialConfigurationData;
@@ -36,7 +35,6 @@ use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
     throw_if_token_request_invalid, validate_refresh_token,
 };
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
     schema_base_url: &str,
     oidc_format: &str,
@@ -45,7 +43,6 @@ pub(crate) fn create_issuer_metadata_response(
     supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
-    core_base_url: Option<&String>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
     let credential_configurations_supported = credential_configurations_supported(
         oidc_format,
@@ -54,7 +51,6 @@ pub(crate) fn create_issuer_metadata_response(
         supported_did_methods,
         proof_types_supported,
         credential_signing_alg_values_supported,
-        core_base_url,
     )?;
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
@@ -83,7 +79,6 @@ fn credential_configurations_supported(
     supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
-    core_base_url: Option<&String>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
     let wallet_storage_type = credential_schema.wallet_storage_type.to_owned();
     let schema_id = credential_schema.schema_id.to_owned();
@@ -93,7 +88,7 @@ fn credential_configurations_supported(
         map_cryptographic_binding_methods_supported(supported_did_methods);
 
     Ok(IndexMap::from([(
-        schema_id,
+        schema_id.clone(),
         match oidc_format {
             "ldp_vc" => jsonld_configuration(
                 wallet_storage_type,
@@ -118,9 +113,7 @@ fn credential_configurations_supported(
                 claims,
                 credential_schema,
                 (credential_schema.schema_type == CredentialSchemaType::SdJwtVc)
-                    .then(|| vct_for_schema(core_base_url, credential_schema))
-                    .transpose()
-                    .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
+                    .then_some(schema_id),
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,

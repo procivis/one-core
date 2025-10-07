@@ -92,11 +92,10 @@ impl JsonLdBbsplus {
 
 #[async_trait]
 impl CredentialFormatter for JsonLdBbsplus {
-    async fn format_credential<'a>(
+    async fn format_credential(
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, FormatterError> {
         if auth_fn.get_key_algorithm() != Ok(KeyAlgorithmType::BbsPlus) {
             return Err(FormatterError::BBSOnly);

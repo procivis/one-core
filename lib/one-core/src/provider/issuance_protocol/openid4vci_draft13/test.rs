@@ -603,8 +603,9 @@ async fn test_holder_accept_credential_success() {
             refresh_token: None,
             nonce: None,
             refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
             continue_issuance: None,
-            credential_config: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -802,8 +803,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             refresh_token: None,
             nonce: None,
             refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
             continue_issuance: None,
-            credential_config: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -1011,8 +1013,9 @@ async fn test_holder_accept_expired_credential_fails() {
             refresh_token: None,
             nonce: None,
             refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
             continue_issuance: None,
-            credential_config: None,
         };
 
         credential.interaction = Some(Interaction {
@@ -1197,8 +1200,9 @@ async fn test_holder_reject_credential() {
             refresh_token: None,
             nonce: None,
             refresh_token_expires_at: None,
+            cryptographic_binding_methods_supported: None,
+            credential_signing_alg_values_supported: None,
             continue_issuance: None,
-            credential_config: None,
         };
 
         credential.interaction = Some(Interaction {

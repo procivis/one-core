@@ -40,11 +40,10 @@ mod test;
 
 #[async_trait]
 impl CredentialFormatter for PhysicalCardFormatter {
-    async fn format_credential<'a>(
+    async fn format_credential(
         &self,
         _credential_data: CredentialData,
         _auth_fn: AuthenticationFn,
-        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, FormatterError> {
         todo!()
     }

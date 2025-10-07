@@ -127,7 +127,6 @@ impl OID4VCIDraft13Service {
                     .supported_verification_jose_alg_ids(),
             )),
             credential_signing_alg_values_supported,
-            self.base_url.as_ref(),
         )
         .map_err(Into::into)
     }
@@ -286,7 +285,7 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        throw_if_credential_request_invalid(&schema, &request, self.base_url.as_ref())?;
+        throw_if_credential_request_invalid(&schema, &request)?;
 
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self

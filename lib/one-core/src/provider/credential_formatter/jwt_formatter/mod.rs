@@ -58,11 +58,10 @@ impl JWTFormatter {
 
 #[async_trait]
 impl CredentialFormatter for JWTFormatter {
-    async fn format_credential<'a>(
+    async fn format_credential(
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-        _credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, FormatterError> {
         let mut vcdm = credential_data.vcdm;
         let invalid_before = vcdm.valid_from.or(vcdm.issuance_date);

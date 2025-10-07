@@ -71,7 +71,6 @@ pub struct SDJWTVCFormatter {
     datatype_config: DatatypeConfig,
     http_client: Arc<dyn HttpClient>,
     params: Params,
-    core_base_url: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -92,23 +91,21 @@ fn default_sd_array_elements() -> bool {
 
 #[async_trait]
 impl CredentialFormatter for SDJWTVCFormatter {
-    async fn format_credential<'a>(
+    async fn format_credential(
         &self,
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
-        credential_schema: Option<&'a CredentialSchema>,
     ) -> Result<String, FormatterError> {
         const HASH_ALG: &str = "sha-256";
-
-        let vc_type = vct_for_schema(
-            self.core_base_url.as_ref(),
-            credential_schema.ok_or(FormatterError::Failed(
-                "Missing credential schema".to_string(),
-            ))?,
-        )?;
-
         // todo: here we need sdjwt-vc specific data model instead of using vcdm
         let vcdm = credential_data.vcdm;
+
+        let schema_id = vcdm
+            .credential_schema
+            .as_ref()
+            .and_then(|schemas| schemas.first())
+            .map(|schema| schema.id.to_owned())
+            .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
 
         let inputs = SdJwtFormattingInputs {
             holder_identifier: credential_data.holder_identifier,
@@ -121,14 +118,14 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
         let vct_integrity = self
             .vct_type_metadata_cache
-            .get(&vc_type)
+            .get(&schema_id)
             .await
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?
             .and_then(|item| item.integrity);
 
         let status = vcdm.credential_status.clone();
         let payload_from_digests = |digests: Vec<String>| {
-            sdjwt_vc_from_credential(status, digests, HASH_ALG, vc_type, vct_integrity)
+            sdjwt_vc_from_credential(status, digests, HASH_ALG, schema_id, vct_integrity)
         };
         let claims = self.credential_to_claims(&vcdm, &credential_data.claims)?;
         format_credential(
@@ -302,12 +299,29 @@ impl CredentialFormatter for SDJWTVCFormatter {
         &self,
         _id: CredentialSchemaId,
         request: &CreateCredentialSchemaRequestDTO,
-        _core_base_url: &str,
+        core_base_url: &str,
     ) -> Result<String, FormatterError> {
-        request
-            .schema_id
-            .clone()
-            .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
+        let Some(schema_id) = request.schema_id.as_ref() else {
+            return Err(FormatterError::Failed("Missing schema_id".to_string()));
+        };
+
+        if request.external_schema {
+            return Ok(schema_id.to_string());
+        }
+
+        let mut url = Url::parse(core_base_url)
+            .map_err(|error| FormatterError::Failed(format!("Invalid base URL: {error}")))?;
+
+        {
+            let mut segments = url
+                .path_segments_mut()
+                .map_err(|_| FormatterError::Failed("Invalid base URL".to_string()))?;
+            let organisation_id = request.organisation_id.to_string();
+            // /ssi/vct/v1/:organisation_id/:schema_id
+            segments.extend(["ssi", "vct", "v1", &organisation_id, schema_id]);
+        }
+
+        Ok(url.to_string())
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
@@ -338,7 +352,6 @@ impl SDJWTVCFormatter {
         certificate_validator: Arc<dyn CertificateValidator>,
         datatype_config: DatatypeConfig,
         http_client: Arc<dyn HttpClient>,
-        core_base_url: Option<String>,
     ) -> Self {
         Self {
             params,
@@ -349,7 +362,6 @@ impl SDJWTVCFormatter {
             certificate_validator,
             datatype_config,
             http_client,
-            core_base_url,
         }
     }
 
@@ -525,55 +537,4 @@ fn sdjwt_vc_from_credential(
         vc_type,
         vct_integrity,
     })
-}
-
-pub(crate) fn vct_for_schema(
-    core_base_url: Option<&String>,
-    credential_schema: &CredentialSchema,
-) -> Result<String, FormatterError> {
-    let schema_id = &credential_schema.schema_id;
-
-    if credential_schema.external_schema {
-        return Ok(schema_id.to_string());
-    }
-
-    let base_url = core_base_url.ok_or(FormatterError::Failed("Missing base URL".to_string()))?;
-    let mut url = Url::parse(base_url)
-        .map_err(|error| FormatterError::Failed(format!("Invalid base URL: {error}")))?;
-
-    {
-        let mut segments = url
-            .path_segments_mut()
-            .map_err(|_| FormatterError::Failed("Invalid base URL".to_string()))?;
-
-        let organisation = credential_schema
-            .organisation
-            .as_ref()
-            .ok_or(FormatterError::Failed("Missing organisation".to_string()))?;
-
-        // /ssi/vct/v1/:organisation_id/:schema_id
-        segments.extend(["ssi", "vct", "v1", &organisation.id.to_string(), schema_id]);
-    }
-
-    Ok(url.to_string())
-}
-
-pub(crate) fn translate_local_vct_to_schema_id(vct: &str) -> Result<String, FormatterError> {
-    let url =
-        Url::parse(vct).map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-    let path_segments = url
-        .path_segments()
-        .ok_or(FormatterError::CouldNotExtractCredentials(
-            "Invalid VCT".to_string(),
-        ))?;
-
-    // {core_url}/ssi/vct/v1/:organisation_id/:schema_id
-    let path_segments: Vec<&str> = path_segments.collect();
-    let ["ssi", "vct", "v1", _organisation_id, schema_id] = path_segments[..] else {
-        return Err(FormatterError::CouldNotExtractCredentials(
-            "Invalid VCT".to_string(),
-        ));
-    };
-
-    Ok(schema_id.to_string())
 }

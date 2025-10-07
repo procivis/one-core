@@ -5,7 +5,6 @@ use time::OffsetDateTime;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
-use crate::provider::credential_formatter::sdjwtvc_formatter::vct_for_schema;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerInteractionDataDTO,
@@ -16,7 +15,6 @@ use crate::util::oidc::map_from_openid4vp_format;
 pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,
     request: &OpenID4VCICredentialRequestDTO,
-    core_base_url: Option<&String>,
 ) -> Result<(), ServiceError> {
     let requested_format = map_from_openid4vp_format(request.format.as_str())
         .map_err(|e| ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(e)))?;
@@ -43,8 +41,7 @@ pub(crate) fn throw_if_credential_request_invalid(
         }
         "SD_JWT" => {
             if let Some(vct) = &request.vct {
-                let expected_vct = vct_for_schema(core_base_url, schema)?;
-                if &expected_vct != vct {
+                if &schema.schema_id != vct {
                     return Err(ServiceError::OpenID4VCIError(
                         OpenID4VCIError::UnsupportedCredentialType,
                     ));

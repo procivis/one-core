@@ -126,7 +126,7 @@ pub(crate) async fn format_mdoc_credential(
         datatype_config(),
     );
     formatter
-        .format_credential(credential_data, ecdsa::signature_provider(), None)
+        .format_credential(credential_data, ecdsa::signature_provider())
         .await
         .unwrap()
 }
