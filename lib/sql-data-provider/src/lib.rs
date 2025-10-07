@@ -6,7 +6,6 @@ use certificate::history::CertificateHistoryDecorator;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use credential::history::CredentialHistoryDecorator;
-use credential_schema::history::CredentialSchemaHistoryDecorator;
 use did::DidProvider;
 use did::history::DidHistoryDecorator;
 use identifier::IdentifierProvider;
@@ -43,7 +42,6 @@ use organisation::history::OrganisationHistoryDecorator;
 use proof::ProofProvider;
 use proof::history::ProofHistoryDecorator;
 use proof_schema::ProofSchemaProvider;
-use proof_schema::history::ProofSchemaHistoryDecorator;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use trust_anchor::TrustAnchorProvider;
 use trust_entity::TrustEntityProvider;
@@ -153,12 +151,6 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
-        let credential_schema_repository = Arc::new(CredentialSchemaHistoryDecorator {
-            history_repository: history_repository.clone(),
-            inner: credential_schema_repository,
-            session_provider: session_provider.clone(),
-        });
-
         let key_repository = Arc::new(KeyProvider {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
@@ -216,12 +208,6 @@ impl DataLayer {
             claim_schema_repository: claim_schema_repository.clone(),
             organisation_repository: organisation_repository.clone(),
             credential_schema_repository: credential_schema_repository.clone(),
-        });
-
-        let proof_schema_repository = Arc::new(ProofSchemaHistoryDecorator {
-            inner: proof_schema_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
         });
 
         let revocation_list_repository = Arc::new(RevocationListProvider {

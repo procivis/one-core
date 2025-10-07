@@ -40,6 +40,8 @@ use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
+use crate::proto::history_decorator::credential_schema::CredentialSchemaHistoryDecorator;
+use crate::proto::history_decorator::proof_schema::ProofSchemaHistoryDecorator;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::{
     BlobStorageProviderImpl, blob_storage_providers_from_config,
@@ -515,12 +517,26 @@ impl OneCore {
         .map_err(OneCoreBuildError::Config)?;
         let blob_storage_provider = Arc::new(BlobStorageProviderImpl::new(blob_storage_providers));
 
+        let credential_schema_repository = Arc::new(CredentialSchemaHistoryDecorator {
+            history_repository: data_provider.get_history_repository(),
+            inner: data_provider.get_credential_schema_repository(),
+            session_provider: providers.session_provider.clone(),
+            core_base_url: providers.core_base_url.clone(),
+        });
+
+        let proof_schema_repository = Arc::new(ProofSchemaHistoryDecorator {
+            inner: data_provider.get_proof_schema_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+            core_base_url: providers.core_base_url.clone(),
+        });
+
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
             providers.core_base_url.clone(),
             data_provider.get_credential_repository(),
-            data_provider.get_credential_schema_repository(),
+            credential_schema_repository.clone(),
             data_provider.get_validity_credential_repository(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_history_repository(),
@@ -584,7 +600,7 @@ impl OneCore {
 
         let credential_service = CredentialService::new(
             data_provider.get_credential_repository(),
-            data_provider.get_credential_schema_repository(),
+            credential_schema_repository.clone(),
             data_provider.get_identifier_repository(),
             data_provider.get_history_repository(),
             data_provider.get_interaction_repository(),
@@ -668,7 +684,7 @@ impl OneCore {
             ),
             oid4vci_draft13_service: OID4VCIDraft13Service::new(
                 providers.core_base_url.clone(),
-                data_provider.get_credential_schema_repository(),
+                credential_schema_repository.clone(),
                 data_provider.get_credential_repository(),
                 data_provider.get_interaction_repository(),
                 data_provider.get_revocation_list_repository(),
@@ -688,7 +704,7 @@ impl OneCore {
             oid4vci_final1_0_service: OID4VCIFinal1_0Service::new(
                 providers.core_base_url.clone(),
                 "OPENID4VCI_FINAL1".to_string(),
-                data_provider.get_credential_schema_repository(),
+                credential_schema_repository.clone(),
                 data_provider.get_credential_repository(),
                 data_provider.get_interaction_repository(),
                 data_provider.get_revocation_list_repository(),
@@ -708,7 +724,7 @@ impl OneCore {
             ),
             oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),
-                data_provider.get_credential_schema_repository(),
+                credential_schema_repository.clone(),
                 data_provider.get_credential_repository(),
                 data_provider.get_interaction_repository(),
                 data_provider.get_revocation_list_repository(),
@@ -781,8 +797,7 @@ impl OneCore {
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),
-                data_provider.get_credential_schema_repository(),
-                data_provider.get_history_repository(),
+                credential_schema_repository.clone(),
                 data_provider.get_organisation_repository(),
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
@@ -800,10 +815,9 @@ impl OneCore {
                 providers.session_provider.clone(),
             ),
             proof_schema_service: ProofSchemaService::new(
-                data_provider.get_proof_schema_repository(),
-                data_provider.get_credential_schema_repository(),
+                proof_schema_repository.clone(),
+                credential_schema_repository.clone(),
                 data_provider.get_organisation_repository(),
-                data_provider.get_history_repository(),
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
@@ -814,13 +828,13 @@ impl OneCore {
             proof_service: ProofService::new(
                 data_provider.get_proof_repository(),
                 key_algorithm_provider.clone(),
-                data_provider.get_proof_schema_repository(),
+                proof_schema_repository,
                 data_provider.get_did_repository(),
                 data_provider.get_certificate_repository().clone(),
                 data_provider.get_identifier_repository(),
                 data_provider.get_claim_repository(),
                 data_provider.get_credential_repository(),
-                data_provider.get_credential_schema_repository(),
+                credential_schema_repository.clone(),
                 data_provider.get_history_repository(),
                 data_provider.get_interaction_repository(),
                 credential_formatter_provider.clone(),
@@ -840,7 +854,7 @@ impl OneCore {
                 providers.session_provider.clone(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
-                data_provider.get_credential_schema_repository(),
+                credential_schema_repository.clone(),
                 config.clone(),
                 providers.core_base_url.clone(),
             ),
@@ -863,7 +877,7 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 data_provider.get_organisation_repository(),
                 data_provider.get_interaction_repository(),
-                data_provider.get_credential_schema_repository(),
+                credential_schema_repository,
                 data_provider.get_validity_credential_repository(),
                 data_provider.get_did_repository(),
                 data_provider.get_key_repository(),

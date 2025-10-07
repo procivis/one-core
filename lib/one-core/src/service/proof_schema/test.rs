@@ -16,7 +16,6 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
     GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
 };
-use crate::model::history::{HistoryAction, HistoryEntityType};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
@@ -39,7 +38,6 @@ use crate::provider::revocation::model::RevocationMethodCapabilities;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::error::DataLayerError;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
@@ -67,22 +65,15 @@ struct Repositories {
     pub organisation_repository: MockOrganisationRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
-    pub history_repository: MockHistoryRepository,
     pub config: Option<CoreConfig>,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
 }
 
-fn setup_service(mut repositories: Repositories) -> ProofSchemaService {
-    repositories
-        .history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
+fn setup_service(repositories: Repositories) -> ProofSchemaService {
     ProofSchemaService {
         proof_schema_repository: Arc::new(repositories.proof_schema_repository),
         credential_schema_repository: Arc::new(repositories.credential_schema_repository),
         organisation_repository: Arc::new(repositories.organisation_repository),
-        history_repository: Arc::new(repositories.history_repository),
         formatter_provider: Arc::new(repositories.formatter_provider),
         revocation_method_provider: Arc::new(repositories.revocation_method_provider),
         config: Arc::new(repositories.config.unwrap_or(generic_config().core)),
@@ -1355,23 +1346,6 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
             })
         });
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| {
-            h.entity_type == HistoryEntityType::CredentialSchema
-                && h.action == HistoryAction::Imported
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| {
-            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
         created_date: now,
@@ -1489,7 +1463,6 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
-        history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
         revocation_method_provider: Arc::new(revocation_method_provider),
         config: Arc::new(generic_config().core),
@@ -1563,23 +1536,6 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 total_items: 0,
             })
         });
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| {
-            h.entity_type == HistoryEntityType::CredentialSchema
-                && h.action == HistoryAction::Imported
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| {
-            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
@@ -1698,7 +1654,6 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
-        history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
         revocation_method_provider: Arc::new(revocation_method_provider),
         config: Arc::new(generic_config().core),
@@ -1788,15 +1743,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
             }))
         });
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| {
-            h.entity_type == HistoryEntityType::ProofSchema && h.action == HistoryAction::Imported
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let schema = ImportProofSchemaDTO {
         id: Uuid::new_v4().into(),
         created_date: now,
@@ -1861,7 +1807,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(credential_schema_repository),
         organisation_repository: Arc::new(organisation_repository),
-        history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         config: Arc::new(generic_config().core),
@@ -1941,7 +1886,6 @@ async fn test_import_proof_failed_existing_proof_schema() {
         proof_schema_repository: Arc::new(proof_schema_repository),
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         organisation_repository: Arc::new(organisation_repository),
-        history_repository: Arc::new(MockHistoryRepository::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         config: Arc::new(generic_config().core),

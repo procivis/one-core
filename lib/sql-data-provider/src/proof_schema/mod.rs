@@ -5,7 +5,6 @@ use one_core::repository::credential_schema_repository::CredentialSchemaReposito
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::DatabaseConnection;
 
-pub mod history;
 mod mapper;
 pub mod repository;
 

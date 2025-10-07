@@ -6,7 +6,6 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
 
@@ -21,7 +20,6 @@ pub struct ProofSchemaService {
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     config: Arc<core_config::CoreConfig>,
@@ -36,7 +34,6 @@ impl ProofSchemaService {
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         config: Arc<core_config::CoreConfig>,
@@ -47,7 +44,6 @@ impl ProofSchemaService {
         Self {
             proof_schema_repository,
             organisation_repository,
-            history_repository,
             credential_schema_repository,
             formatter_provider,
             revocation_method_provider,

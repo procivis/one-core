@@ -1,5 +1,3 @@
-use one_core::model::history::HistoryAction;
-use shared_types::EntityId;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
@@ -53,17 +51,4 @@ async fn test_share_proof_schema() {
 
     let resp = resp.json_value().await;
     assert!(resp["url"].as_str().unwrap().eq("CORE_URL"));
-
-    let list = context
-        .db
-        .histories
-        .get_by_entity_id(&EntityId::from(proof_schema.id))
-        .await;
-
-    let history_entry = list.values.first().unwrap();
-    assert_eq!(
-        history_entry.entity_id,
-        Some(EntityId::from(proof_schema.id))
-    );
-    assert_eq!(history_entry.action, HistoryAction::Shared);
 }

@@ -8,9 +8,7 @@ use crate::common_validator::{
 };
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::history::HistoryAction;
 use crate::model::organisation::OrganisationRelations;
-use crate::proto::session_provider::SessionExt;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::credential_schema::dto::{
@@ -25,7 +23,6 @@ use crate::service::credential_schema::validator::UniquenessCheckResult;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::util::history::log_history_event_credential_schema;
 
 impl CredentialSchemaService {
     /// Creates a credential schema according to request
@@ -124,21 +121,10 @@ impl CredentialSchemaService {
             ))?
             .extend(metadata_claims);
 
-        let result = self
-            .credential_schema_repository
-            .create_credential_schema(credential_schema.to_owned())
+        self.credential_schema_repository
+            .create_credential_schema(credential_schema)
             .await
-            .map_err(ServiceError::from)?;
-
-        log_history_event_credential_schema(
-            &*self.history_repository,
-            &credential_schema,
-            HistoryAction::Created,
-            self.session_provider.session().user(),
-        )
-        .await;
-
-        Ok(result)
+            .map_err(ServiceError::from)
     }
 
     /// Deletes a credential schema
@@ -268,14 +254,6 @@ impl CredentialSchemaService {
         )
         .await?;
 
-        log_history_event_credential_schema(
-            &*self.history_repository,
-            &credential_schema,
-            HistoryAction::Imported,
-            self.session_provider.session().user(),
-        )
-        .await;
-
         Ok(credential_schema.id)
     }
 
@@ -306,14 +284,6 @@ impl CredentialSchemaService {
             credential_schema.organisation.as_ref(),
             &*self.session_provider,
         )?;
-
-        log_history_event_credential_schema(
-            &*self.history_repository,
-            &credential_schema,
-            HistoryAction::Shared,
-            self.session_provider.session().user(),
-        )
-        .await;
 
         Ok(CredentialSchemaShareResponseDTO {
             url: credential_schema.imported_source_url,

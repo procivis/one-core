@@ -3,6 +3,7 @@ use time::format_description::well_known::Iso8601;
 use time::format_description::well_known::iso8601::{
     Config, EncodedConfig, FormattedComponents, TimePrecision,
 };
+use uuid::Uuid;
 
 use super::dto::ImportCredentialSchemaRequestSchemaDTO;
 use super::mapper::{claim_schema_from_metadata_claim_schema, from_create_request_with_id};
@@ -12,7 +13,6 @@ use crate::model::organisation::Organisation;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::service::common_mapper::regenerate_credential_schema_uuids;
 use crate::service::credential_schema::validator::UniquenessCheckResult;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
@@ -108,4 +108,15 @@ pub(crate) async fn import_credential_schema(
         .map_err(ServiceError::from)?;
 
     Ok(credential_schema)
+}
+
+fn regenerate_credential_schema_uuids(mut credential_schema: CredentialSchema) -> CredentialSchema {
+    credential_schema.id = Uuid::new_v4().into();
+    if let Some(claim_schemas) = credential_schema.claim_schemas.as_mut() {
+        claim_schemas.iter_mut().for_each(|schema| {
+            schema.schema.id = Uuid::new_v4().into();
+        })
+    }
+
+    credential_schema
 }

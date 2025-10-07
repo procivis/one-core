@@ -23,7 +23,6 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
 };
-use crate::model::history::HistoryAction;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -31,7 +30,6 @@ use crate::model::proof_schema::{
     ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
     ProofSchemaRelations,
 };
-use crate::proto::session_provider::SessionExt;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
@@ -47,7 +45,6 @@ use crate::service::proof_schema::validator::{
     throw_if_proof_schema_contains_physical_card_schema_with_other_schemas,
     throw_if_validity_constraint_missing_for_lvvc,
 };
-use crate::util::history::{log_history_event_credential_schema, log_history_event_proof_schema};
 
 impl ProofSchemaService {
     /// Returns details of a proof schema
@@ -205,19 +202,10 @@ impl ProofSchemaService {
             self.base_url.as_deref(),
         )?;
 
-        let id = self
-            .proof_schema_repository
-            .create_proof_schema(proof_schema.clone())
-            .await?;
-        log_history_event_proof_schema(
-            &*self.history_repository,
-            &proof_schema,
-            HistoryAction::Created,
-            self.session_provider.session().user(),
-        )
-        .await;
-
-        Ok(id)
+        self.proof_schema_repository
+            .create_proof_schema(proof_schema)
+            .await
+            .map_err(Into::into)
     }
 
     /// Removes a proof schema
@@ -278,17 +266,9 @@ impl ProofSchemaService {
             &*self.session_provider,
         )?;
 
-        let Some(url) = proof_schema.imported_source_url.clone() else {
+        let Some(url) = proof_schema.imported_source_url else {
             return Err(ValidationError::ProofSchemaSharingNotSupported.into());
         };
-
-        log_history_event_proof_schema(
-            &*self.history_repository,
-            &proof_schema,
-            HistoryAction::Shared,
-            self.session_provider.session().user(),
-        )
-        .await;
 
         Ok(ProofSchemaShareResponseDTO { url })
     }
@@ -378,16 +358,8 @@ impl ProofSchemaService {
 
         let proof_schema_id = self
             .proof_schema_repository
-            .create_proof_schema(proof_schema.clone())
+            .create_proof_schema(proof_schema)
             .await?;
-
-        log_history_event_proof_schema(
-            &*self.history_repository,
-            &proof_schema,
-            HistoryAction::Imported,
-            self.session_provider.session().user(),
-        )
-        .await;
 
         Ok(ImportProofSchemaResponseDTO {
             id: proof_schema_id,
@@ -422,14 +394,6 @@ impl ProofSchemaService {
             &*self.revocation_method_provider,
         )
         .await?;
-
-        log_history_event_credential_schema(
-            &*self.history_repository,
-            &credential_schema,
-            HistoryAction::Imported,
-            self.session_provider.session().user(),
-        )
-        .await;
 
         Ok(credential_schema)
     }
