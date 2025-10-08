@@ -14,7 +14,6 @@ import java.security.MessageDigest
 import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
-import java.util.Arrays
 
 class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage {
     override suspend fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
@@ -49,8 +48,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 builder.setAttestationChallenge(nonce.toByteArray(Charsets.UTF_8))
             }
 
-            var strongbox = strongBoxSupported()
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && strongbox) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && strongBoxSupported()) {
                 builder.setIsStrongBoxBacked(true)
                     .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_NONE)
             }
@@ -59,9 +57,8 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             val pair = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 try {
                     keyPairGenerator.generateKeyPair()
-                } catch (e: StrongBoxUnavailableException) {
+                } catch (_: StrongBoxUnavailableException) {
                     builder.setIsStrongBoxBacked(false).setDigests(KeyProperties.DIGEST_SHA256)
-                    strongbox = false
                     keyPairGenerator.initialize(builder.build())
                     keyPairGenerator.generateKeyPair()
                 }
@@ -69,14 +66,9 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 keyPairGenerator.generateKeyPair()
             }
 
-            // on Samsung S20 (with Strongbox support) the keyInfo reports the generated key as Software security level
-            // we will assume the generated key is HW secured in this case, since the generation did not produce the `StrongBoxUnavailableException`
-            if (!strongbox) {
-                val keyInfo = keyInfo(pair.private)
-
-                if (!keyInfo.isInsideSecureHardware) {
-                    throw NativeKeyStorageException.Unsupported();
-                }
+            val keyInfo = keyInfo(pair.private)
+            if (!keyInfo.isInsideSecureHardware) {
+                throw NativeKeyStorageException.Unsupported()
             }
 
             // convert to compressed form
@@ -95,7 +87,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
         }
     }
 
-    override suspend fun generateAttestationKey(keyAlias: String, nonce: String?): GeneratedKeyBindingDto {
+    override suspend fun generateAttestationKey(
+        keyAlias: String,
+        nonce: String?
+    ): GeneratedKeyBindingDto {
         return generateKeyInner(keyAlias, nonce)
     }
 
@@ -135,7 +130,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
         }
     }
 
-    override suspend fun generateAttestation(keyReference: ByteArray, nonce: String?) : List<String> {
+    override suspend fun generateAttestation(
+        keyReference: ByteArray,
+        nonce: String?
+    ): List<String> {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
         }
@@ -150,7 +148,10 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             ?: throw NativeKeyStorageException.Unknown("No certificate chain found for key alias `${keyAlias}`")
     }
 
-    override suspend fun signWithAttestationKey(keyReference: ByteArray, message: ByteArray): ByteArray {
+    override suspend fun signWithAttestationKey(
+        keyReference: ByteArray,
+        message: ByteArray
+    ): ByteArray {
         return sign(keyReference, message)
     }
 
@@ -181,7 +182,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
     private fun toRawBytes(value: ByteArray): ByteArray {
         val combined = ByteArray(value.size + 32)
         System.arraycopy(value, 0, combined, 32, value.size)
-        return Arrays.copyOfRange(combined, combined.size - 32, combined.size)
+        return combined.copyOfRange(combined.size - 32, combined.size)
     }
 
     private fun extractSignatureBytes(signature: ByteArray): ByteArray {
