@@ -1,40 +1,46 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use one_core::model::certificate::{
-    Certificate, CertificateListQuery, CertificateRelations, CertificateState, GetCertificateList,
-    UpdateCertificateRequest,
-};
-use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::proto::session_provider::{SessionExt, SessionProvider};
-use one_core::repository::certificate_repository::CertificateRepository;
-use one_core::repository::error::DataLayerError;
-use one_core::repository::history_repository::HistoryRepository;
-use sea_orm::{DatabaseConnection, EntityTrait};
 use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity::identifier;
+use crate::model::certificate::{
+    Certificate, CertificateListQuery, CertificateRelations, CertificateState, GetCertificateList,
+    UpdateCertificateRequest,
+};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::identifier::IdentifierRelations;
+use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::repository::certificate_repository::CertificateRepository;
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 
 pub struct CertificateHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
     pub session_provider: Arc<dyn SessionProvider>,
     pub inner: Arc<dyn CertificateRepository>,
-    pub db: DatabaseConnection,
+    pub identifier_repository: Arc<dyn IdentifierRepository>,
 }
 
 impl CertificateHistoryDecorator {
     async fn get_organisation_id_from_identifier_id(
         &self,
         identifier_id: IdentifierId,
-    ) -> Option<OrganisationId> {
-        identifier::Entity::find_by_id(identifier_id)
-            .one(&self.db)
-            .await
-            .ok()
-            .flatten()
-            .and_then(|identifier| identifier.organisation_id)
+    ) -> Result<Option<OrganisationId>, DataLayerError> {
+        Ok(self
+            .identifier_repository
+            .get(
+                identifier_id,
+                &IdentifierRelations {
+                    organisation: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .and_then(|identifier| identifier.organisation)
+            .map(|organisation| organisation.id))
     }
 
     async fn create_history(
@@ -42,8 +48,24 @@ impl CertificateHistoryDecorator {
         id: CertificateId,
         name: String,
         action: HistoryAction,
-        organisation_id: OrganisationId,
+        identifier_id: IdentifierId,
     ) {
+        let organisation_id = match self
+            .get_organisation_id_from_identifier_id(identifier_id)
+            .await
+        {
+            Ok(organisation_id) => organisation_id,
+            Err(error) => {
+                tracing::warn!(%error, "identifier_id (id: {identifier_id}) fetch failure");
+                return;
+            }
+        };
+
+        let Some(organisation_id) = organisation_id else {
+            tracing::warn!("certificate (id: {id}) missing organisation");
+            return;
+        };
+
         let result = self
             .history_repository
             .create_history(History {
@@ -84,19 +106,12 @@ impl CertificateRepository for CertificateHistoryDecorator {
     }
 
     async fn create(&self, request: Certificate) -> Result<CertificateId, DataLayerError> {
-        let id = request.id;
         let name = request.name.clone();
-        let organisation_id = self
-            .get_organisation_id_from_identifier_id(request.identifier_id)
-            .await;
+        let identifier_id = request.identifier_id;
         let certificate_id = self.inner.create(request).await?;
 
-        if let Some(organisation_id) = organisation_id {
-            self.create_history(id, name, HistoryAction::Created, organisation_id)
-                .await;
-        } else {
-            tracing::warn!("certificate (id: {certificate_id}) missing organisation");
-        }
+        self.create_history(certificate_id, name, HistoryAction::Created, identifier_id)
+            .await;
 
         Ok(certificate_id)
     }
@@ -125,16 +140,13 @@ impl CertificateRepository for CertificateHistoryDecorator {
             .await?
             .context("certificate is missing")?;
 
-        let organisation_id = self
-            .get_organisation_id_from_identifier_id(certificate.identifier_id)
-            .await;
-
-        if let Some(organisation_id) = organisation_id {
-            self.create_history(*id, certificate.name, history_action, organisation_id)
-                .await;
-        } else {
-            tracing::warn!("certificate (id: {id}) missing organisation");
-        }
+        self.create_history(
+            *id,
+            certificate.name,
+            history_action,
+            certificate.identifier_id,
+        )
+        .await;
 
         Ok(())
     }

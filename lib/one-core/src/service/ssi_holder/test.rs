@@ -24,7 +24,6 @@ use crate::model::credential_schema::{
     CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -64,7 +63,6 @@ use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -143,11 +141,6 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
         })
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol_mock)));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
@@ -265,11 +258,6 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
         })
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol_mock)));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = SSIHolderService {
         proof_repository: Arc::new(proof_repository),
@@ -439,11 +427,6 @@ async fn test_submit_proof_succeeds() {
         .with(eq(protocol))
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol)));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -664,11 +647,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol)));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -885,11 +863,6 @@ async fn test_submit_proof_succeeds_with_did() {
         .with(eq(protocol))
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol)));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -1137,11 +1110,6 @@ async fn test_submit_proof_repeating_claims() {
         .once()
         .returning(|_, _, _| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -1249,11 +1217,6 @@ async fn test_accept_credential() {
         .once()
         .returning(|| OSName::Web);
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -1263,13 +1226,6 @@ async fn test_accept_credential() {
         .expect_update_credential()
         .once()
         .returning(|_, _| Ok(()));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|req| req.action == HistoryAction::Issued)
-        .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -1357,7 +1313,6 @@ async fn test_accept_credential() {
 
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
-        history_repository: Arc::new(history_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
         key_provider: Arc::new(key_provider),
@@ -1428,11 +1383,6 @@ async fn test_accept_credential_with_did() {
         .once()
         .returning(|| OSName::Web);
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -1442,13 +1392,6 @@ async fn test_accept_credential_with_did() {
         .expect_update_credential()
         .once()
         .returning(|_, _| Ok(()));
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|req| req.action == HistoryAction::Issued)
-        .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let mut exchange_protocol_mock = MockIssuanceProtocol::default();
     exchange_protocol_mock
@@ -1538,7 +1481,6 @@ async fn test_accept_credential_with_did() {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        history_repository: Arc::new(history_repository),
         key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
@@ -1556,11 +1498,6 @@ async fn test_accept_credential_with_did() {
 
 #[tokio::test]
 async fn test_reject_credential() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -1834,7 +1771,6 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         key_repository: Arc::new(MockKeyRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
         certificate_repository: Arc::new(MockCertificateRepository::new()),
-        history_repository: Arc::new(MockHistoryRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),

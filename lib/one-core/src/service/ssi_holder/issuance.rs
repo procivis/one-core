@@ -28,12 +28,10 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
@@ -61,7 +59,6 @@ use crate::service::ssi_holder::validator::{
     validate_initiate_issuance_request,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::log_history_event_credential;
 use crate::util::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 
 const STATE: &str = "state";
@@ -352,14 +349,6 @@ impl SSIHolderService {
                 },
             )
             .await?;
-
-        log_history_event_credential(
-            &*self.history_repository,
-            credential,
-            HistoryAction::Issued,
-            self.session_provider.session().user(),
-        )
-        .await;
 
         Ok(())
     }

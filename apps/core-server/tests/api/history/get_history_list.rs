@@ -119,7 +119,7 @@ async fn test_get_history_list_schema_joins_credentials() {
             .credentials
             .create(
                 &schema,
-                CredentialStateEnum::Created,
+                CredentialStateEnum::Accepted,
                 &identifier,
                 "OPENID4VCI_DRAFT13",
                 TestingCredentialParams::default(),
@@ -154,10 +154,9 @@ async fn test_get_history_list_schema_joins_credentials() {
     let values = resp["values"].as_array().unwrap();
     // Expected history entries:
     // - credential schema CREATED -> 1
-    // - for each credential, CREATED -> 10
     // - for each credential, ISSUED -> 10
-    // --> total: 21
-    let expected_count = credentials_count * 2 + 1;
+    // --> total: 11
+    let expected_count = credentials_count + 1;
     assert_eq!(expected_count, values.len());
 }
 

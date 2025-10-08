@@ -39,7 +39,6 @@ use crate::provider::task::holder_check_credential_status::dto::HolderCheckCrede
 use crate::provider::task::holder_check_credential_status::{HolderCheckCredentialStatus, Params};
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
@@ -134,11 +133,6 @@ async fn test_task_holder_check_credential_status_being_revoked() {
         })
         .returning(|_, _| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_get().once().return_once(|id| {
         Ok(Some(Blob {
@@ -161,7 +155,6 @@ async fn test_task_holder_check_credential_status_being_revoked() {
     let service = setup_service(Repositories {
         credential_repository: credential_repository.clone(),
         revocation_method_provider: Arc::new(revocation_method_provider),
-        history_repository: Arc::new(history_repository),
         formatter_provider: Arc::new(formatter_provider),
         config: Arc::new(generic_config().core),
         blob_storage_provider: Arc::new(blob_storage_provider),
@@ -191,7 +184,6 @@ struct Repositories {
     pub credential_repository: Arc<MockCredentialRepository>,
     pub credential_schema_repository: Arc<MockCredentialSchemaRepository>,
     pub identifier_repository: Arc<MockIdentifierRepository>,
-    pub history_repository: Arc<MockHistoryRepository>,
     pub interaction_repository: Arc<MockInteractionRepository>,
     pub revocation_list_repository: Arc<MockRevocationListRepository>,
     pub revocation_method_provider: Arc<MockRevocationMethodProvider>,
@@ -212,7 +204,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         repositories.credential_repository,
         repositories.credential_schema_repository,
         repositories.identifier_repository,
-        repositories.history_repository,
         repositories.interaction_repository,
         repositories.revocation_list_repository,
         repositories.revocation_method_provider,

@@ -18,8 +18,6 @@ use one_core::model::interaction::{Interaction, InteractionRelations};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::OrganisationRelations;
-use one_core::proto::session_provider::test::StaticSessionProvider;
-use one_core::proto::session_provider::{MockSessionProvider, Session, SessionProvider};
 use one_core::repository::certificate_repository::{
     CertificateRepository, MockCertificateRepository,
 };
@@ -46,10 +44,8 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialProvider;
-use crate::credential::history::CredentialHistoryDecorator;
 use crate::entity::claim;
 use crate::entity::credential_schema::WalletStorageType;
-use crate::history::HistoryProvider;
 use crate::test_utilities;
 use crate::test_utilities::*;
 
@@ -238,7 +234,6 @@ struct Repositories {
     pub revocation_list_repository: Arc<dyn RevocationListRepository>,
     pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
-    pub session_provider: Arc<dyn SessionProvider>,
 }
 
 impl Default for Repositories {
@@ -251,7 +246,6 @@ impl Default for Repositories {
             revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
             certificate_repository: Arc::new(MockCertificateRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
-            session_provider: Arc::new(MockSessionProvider::default()),
         }
     }
 }
@@ -261,8 +255,8 @@ fn credential_repository(
     repositories: Option<Repositories>,
 ) -> impl CredentialRepository {
     let repositories = repositories.unwrap_or_default();
-    let credential_provider = CredentialProvider {
-        db: db.clone(),
+    CredentialProvider {
+        db,
         credential_schema_repository: repositories.credential_schema_repository,
         claim_repository: repositories.claim_repository,
         identifier_repository: repositories.identifier_repository,
@@ -270,11 +264,6 @@ fn credential_repository(
         revocation_list_repository: repositories.revocation_list_repository,
         certificate_repository: repositories.certificate_repository,
         key_repository: repositories.key_repository,
-    };
-    CredentialHistoryDecorator {
-        history_repository: Arc::new(HistoryProvider { db }),
-        inner: Arc::new(credential_provider),
-        session_provider: repositories.session_provider,
     }
 }
 
@@ -306,18 +295,12 @@ async fn test_create_credential_success() {
         .expect_get_credential_schema()
         .return_once(move |_, _| credential_schema_result);
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
             claim_repository: Arc::new(claim_repository),
             credential_schema_repository: Arc::new(schema_repository),
             identifier_repository: Arc::new(identifier_repository),
-            session_provider: Arc::new(session_provider),
             ..Repositories::default()
         }),
     );
@@ -386,16 +369,6 @@ async fn test_create_credential_success() {
             .len(),
         1
     );
-
-    let history = crate::entity::history::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
-    assert_eq!(history.len(), 1);
-    assert_eq!(
-        history[0].action,
-        crate::entity::history::HistoryAction::Created
-    );
 }
 
 #[tokio::test]
@@ -407,32 +380,7 @@ async fn test_create_credential_empty_claims() {
         ..
     } = setup_empty().await;
 
-    let mut identifier_repository = MockIdentifierRepository::default();
-    identifier_repository.expect_get().return_once({
-        let identifier = identifier.clone();
-        |_, _| Ok(Some(identifier))
-    });
-
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-
-    let credential_schema_clone = credential_schema.clone();
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .times(1)
-        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
-
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
-    let repositories = Repositories {
-        credential_schema_repository: Arc::new(credential_schema_repository),
-        identifier_repository: Arc::new(identifier_repository),
-        session_provider: Arc::new(session_provider),
-        ..Repositories::default()
-    };
-    let provider = credential_repository(db.clone(), Some(repositories));
+    let provider = credential_repository(db.clone(), None);
 
     let credential_id = Uuid::new_v4().into();
     let result = provider
@@ -1061,7 +1009,7 @@ async fn test_get_credential_success() {
 async fn test_get_credential_fail_not_found() {
     let TestSetup { db, .. } = setup_empty().await;
 
-    let provider = credential_repository(db.clone(), Some(Repositories::default()));
+    let provider = credential_repository(db.clone(), None);
 
     let credential = provider
         .get_credential(&Uuid::new_v4().into(), &CredentialRelations::default())
@@ -1073,26 +1021,12 @@ async fn test_get_credential_fail_not_found() {
 
 #[tokio::test]
 async fn test_update_credential_success() {
-    let claim_repository = MockClaimRepository::default();
-
     let TestSetup {
         credential_schema,
         db,
         identifier,
         ..
     } = setup_empty().await;
-
-    let mut identifier_repository = MockIdentifierRepository::default();
-    identifier_repository.expect_get().return_once({
-        let identifier = identifier.clone();
-        |_, _| Ok(Some(identifier))
-    });
-
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let credential_schema_clone = credential_schema.clone();
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
     let blob_id = Uuid::new_v4().into();
 
@@ -1126,19 +1060,10 @@ async fn test_update_credential_success() {
             }))
         });
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
-            credential_schema_repository: Arc::new(credential_schema_repository),
-            claim_repository: Arc::new(claim_repository),
             interaction_repository: Arc::new(interaction_repository),
-            identifier_repository: Arc::new(identifier_repository),
-            session_provider: Arc::new(session_provider),
             ..Repositories::default()
         }),
     );
@@ -1198,17 +1123,6 @@ async fn test_update_credential_success() {
         credential_after_update.interaction.unwrap().id
     );
     assert_eq!(credential_after_update.state, CredentialStateEnum::Pending);
-
-    let history = crate::entity::history::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
-    assert_eq!(history.len(), 1);
-    assert_eq!(
-        history[0].action,
-        crate::entity::history::HistoryAction::Pending
-    );
-    assert_eq!(history[0].user, Some("testUserId".to_string()))
 }
 
 #[tokio::test]
@@ -1225,18 +1139,6 @@ async fn test_update_credential_success_no_claims() {
         identifier,
         ..
     } = setup_empty().await;
-
-    let mut identifier_repository = MockIdentifierRepository::default();
-    identifier_repository.expect_get().return_once({
-        let identifier = identifier.clone();
-        |_, _| Ok(Some(identifier))
-    });
-
-    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
-    let credential_schema_clone = credential_schema.clone();
-    credential_schema_repository
-        .expect_get_credential_schema()
-        .returning(move |_, _| Ok(Some(credential_schema_clone.clone())));
 
     let blob_id = Uuid::new_v4().into();
 
@@ -1270,19 +1172,11 @@ async fn test_update_credential_success_no_claims() {
             }))
         });
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     let provider = credential_repository(
         db.clone(),
         Some(Repositories {
-            credential_schema_repository: Arc::new(credential_schema_repository),
             claim_repository: Arc::new(claim_repository),
             interaction_repository: Arc::new(interaction_repository),
-            identifier_repository: Arc::new(identifier_repository),
-            session_provider: Arc::new(session_provider),
             ..Repositories::default()
         }),
     );
@@ -1343,17 +1237,6 @@ async fn test_update_credential_success_no_claims() {
         credential_after_update.interaction.unwrap().id
     );
     assert_eq!(credential_after_update.state, CredentialStateEnum::Pending);
-
-    let history = crate::entity::history::Entity::find()
-        .all(&db)
-        .await
-        .unwrap();
-    assert_eq!(history.len(), 1);
-    assert_eq!(
-        history[0].action,
-        crate::entity::history::HistoryAction::Pending
-    );
-    assert_eq!(history[0].user, Some("testUserId".to_string()))
 }
 
 #[tokio::test]

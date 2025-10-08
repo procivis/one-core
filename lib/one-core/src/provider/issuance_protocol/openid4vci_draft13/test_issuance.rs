@@ -20,7 +20,6 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::key::Key;
@@ -28,8 +27,6 @@ use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
-use crate::proto::session_provider::Session;
-use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
@@ -49,7 +46,6 @@ use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::certificate::validator::MockCertificateValidator;
@@ -212,13 +208,6 @@ async fn test_issuer_submit_succeeds() {
             }))
         });
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| h.action == HistoryAction::Issued)
-        .returning(|h| Ok(h.id));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().once().return_once(|_| Ok(()));
 
@@ -229,23 +218,16 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     let provider = OpenID4VCI13::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(revocation_list_repository),
-        Arc::new(history_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(session_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
@@ -423,13 +405,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         })
         .return_once(|_| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|h| h.action == HistoryAction::Issued)
-        .returning(|h| Ok(h.id));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().once().return_once(|_| Ok(()));
 
@@ -440,23 +415,16 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     let service = OpenID4VCI13::new(
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(revocation_list_repository),
-        Arc::new(history_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(session_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
@@ -636,13 +604,11 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(revocation_list_repository),
-        Arc::new(MockHistoryRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(StaticSessionProvider::new_random()),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
@@ -737,13 +703,11 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(MockRevocationListRepository::new()),
-        Arc::new(MockHistoryRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(StaticSessionProvider::new_random()),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),

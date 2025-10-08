@@ -52,7 +52,6 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
@@ -77,7 +76,6 @@ struct Repositories {
     pub credential_repository: MockCredentialRepository,
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub identifier_repository: MockIdentifierRepository,
-    pub history_repository: MockHistoryRepository,
     pub interaction_repository: MockInteractionRepository,
     pub revocation_list_repository: MockRevocationListRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
@@ -98,7 +96,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_repository),
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.identifier_repository),
-        Arc::new(repositories.history_repository),
         Arc::new(repositories.interaction_repository),
         Arc::new(repositories.revocation_list_repository),
         Arc::new(repositories.revocation_method_provider),
@@ -314,16 +311,10 @@ async fn test_delete_credential_success() {
         .expect_delete_credential()
         .returning(|_| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
         credential_schema_repository,
         revocation_method_provider,
-        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -644,14 +635,8 @@ async fn test_share_credential_success() {
         .withf(move |id, _| *id == credential.id)
         .returning(|_, _| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
         config: generic_config().core,
         protocol_provider,
         interaction_repository,
@@ -1917,14 +1902,9 @@ async fn test_check_revocation_already_revoked() {
             .expect_get_credential()
             .returning(move |_, _| Ok(Some(credential_clone.clone())));
     }
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2026,15 +2006,9 @@ async fn test_check_revocation_being_revoked() {
         })
         .returning(|_, _| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         credential_repository,
         revocation_method_provider,
-        history_repository,
         formatter_provider,
         config: generic_config().core,
         ..Default::default()
@@ -2057,11 +2031,6 @@ async fn test_create_credential_key_with_issuer_key() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
-
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let credential = generic_credential();
     let issuer_did = credential
@@ -2137,7 +2106,6 @@ async fn test_create_credential_key_with_issuer_key() {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
-        history_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -2188,11 +2156,6 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
-
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
 
     let credential = generic_credential();
     let key_id = Uuid::new_v4();
@@ -2295,7 +2258,6 @@ async fn test_create_credential_key_with_issuer_key_and_repeating_key() {
         credential_repository,
         credential_schema_repository,
         identifier_repository,
-        history_repository,
         formatter_provider,
         key_algorithm_provider,
         protocol_provider,
@@ -2950,11 +2912,6 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
 
-    let mut history_repository = MockHistoryRepository::default();
-    history_repository
-        .expect_create_history()
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let credential = generic_credential();
     let issuer_did = credential.issuer_identifier.clone().unwrap().did.unwrap();
     let credential_schema = credential.schema.clone().unwrap();
@@ -3001,7 +2958,6 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
     let service = setup_service(Repositories {
         credential_schema_repository,
         identifier_repository,
-        history_repository,
         formatter_provider,
         protocol_provider,
         config: generic_config().core,
@@ -3056,7 +3012,6 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     let mut credential = generic_credential();
     credential.state = CredentialStateEnum::Accepted;
 
-    let mut history_repository = MockHistoryRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let clone = credential.clone();
     credential_repository
@@ -3094,10 +3049,6 @@ async fn test_revoke_credential_success_with_accepted_credential() {
             Ok(())
         });
 
-    history_repository
-        .expect_create_history()
-        .return_once(move |_| Ok(Uuid::new_v4().into()));
-
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
@@ -3107,7 +3058,6 @@ async fn test_revoke_credential_success_with_accepted_credential() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
@@ -3123,7 +3073,6 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     credential.state = CredentialStateEnum::Suspended;
 
     let mut credential_repository = MockCredentialRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
 
     let mut revocation_method = MockRevocationMethod::default();
     revocation_method
@@ -3161,10 +3110,6 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .with(eq(clone.id), always())
         .returning(move |_, _| Ok(Some(clone.clone())));
 
-    history_repository
-        .expect_create_history()
-        .return_once(move |_| Ok(Uuid::new_v4().into()));
-
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
@@ -3174,7 +3119,6 @@ async fn test_revoke_credential_success_with_suspended_credential() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
@@ -3194,7 +3138,6 @@ async fn test_suspend_credential_success() {
     let suspend_end_date = now.add(Duration::days(1));
 
     let mut credential_repository = MockCredentialRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
     {
         let clone = credential.clone();
         credential_repository
@@ -3239,10 +3182,6 @@ async fn test_suspend_credential_success() {
             Ok(())
         });
 
-    history_repository
-        .expect_create_history()
-        .return_once(move |_| Ok(Uuid::new_v4().into()));
-
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
@@ -3252,7 +3191,6 @@ async fn test_suspend_credential_success() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
         revocation_method_provider,
         config: generic_config().core,
         ..Default::default()
@@ -3314,7 +3252,6 @@ async fn test_reactivate_credential_success() {
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
-    let mut history_repository = MockHistoryRepository::default();
 
     did_method_provider
         .expect_resolve()
@@ -3357,10 +3294,6 @@ async fn test_reactivate_credential_success() {
             Ok(())
         });
 
-    history_repository
-        .expect_create_history()
-        .return_once(move |_| Ok(Uuid::new_v4().into()));
-
     let mut revocation_method_provider = MockRevocationMethodProvider::default();
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
@@ -3370,7 +3303,6 @@ async fn test_reactivate_credential_success() {
 
     let service = setup_service(Repositories {
         credential_repository,
-        history_repository,
         did_method_provider,
         revocation_method_provider,
         config: generic_config().core,
@@ -5229,7 +5161,6 @@ async fn test_create_credential_array(
     let mut credential_repository = MockCredentialRepository::default();
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut identifier_repository = MockIdentifierRepository::default();
-    let mut history_repository = MockHistoryRepository::default();
 
     let organisation = dummy_organisation(None);
 
@@ -5281,9 +5212,6 @@ async fn test_create_credential_array(
         credential_repository
             .expect_create_credential()
             .return_once(move |_| Ok(Uuid::new_v4().into()));
-        history_repository
-            .expect_create_history()
-            .return_once(move |_| Ok(Uuid::new_v4().into()));
     }
 
     let did = Did {
@@ -5333,7 +5261,6 @@ async fn test_create_credential_array(
         credential_schema_repository,
         identifier_repository,
         formatter_provider,
-        history_repository,
         key_algorithm_provider,
         protocol_provider,
         config: generic_config().core,

@@ -24,13 +24,11 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
-use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::ShareResponse;
@@ -51,7 +49,6 @@ use crate::service::credential_schema::validator::validate_wallet_storage_type_s
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::util::history::log_history_event_credential;
 use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{
     add_new_interaction, clear_previous_interaction, update_credentials_interaction,
@@ -570,14 +567,6 @@ impl CredentialService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
-        log_history_event_credential(
-            &*self.history_repository,
-            &credential,
-            HistoryAction::Shared,
-            self.session_provider.session().user(),
-        )
-        .await;
-
         Ok(EntityShareResponseDTO { url })
     }
 
@@ -897,17 +886,6 @@ impl CredentialService {
                 self.credential_repository
                     .update_credential(credential_id, update_request)
                     .await?;
-                if current_state == CredentialStateEnum::Suspended
-                    && new_state == CredentialStateEnum::Accepted
-                {
-                    log_history_event_credential(
-                        &*self.history_repository,
-                        &credential,
-                        HistoryAction::Reactivated,
-                        self.session_provider.session().user(),
-                    )
-                    .await;
-                }
             }
 
             //Mdoc flow ends here. Nothing else to do for MDOC
@@ -1032,23 +1010,12 @@ impl CredentialService {
                 .update_credential(
                     credential_id,
                     UpdateCredentialRequest {
-                        state: Some(detected_state.to_owned()),
+                        state: Some(detected_state),
                         suspend_end_date: Clearable::ForceSet(suspend_end_date),
                         ..Default::default()
                     },
                 )
                 .await?;
-            if current_state == CredentialStateEnum::Suspended
-                && detected_state == CredentialStateEnum::Accepted
-            {
-                log_history_event_credential(
-                    &*self.history_repository,
-                    &credential,
-                    HistoryAction::Reactivated,
-                    self.session_provider.session().user(),
-                )
-                .await;
-            }
         }
 
         Ok(CredentialRevocationCheckResponseDTO {

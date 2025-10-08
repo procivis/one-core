@@ -37,7 +37,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
@@ -53,8 +52,6 @@ pub mod openid4vci_draft13_swiyu;
 pub mod openid4vci_final1_0;
 pub(crate) mod provider;
 use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse};
-
-use crate::proto::session_provider::SessionProvider;
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -80,7 +77,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
@@ -88,7 +84,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
-    session_provider: Arc<dyn SessionProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -124,14 +119,12 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     revocation_list_repository.clone(),
-                    history_repository.clone(),
                     wallet_unit_attestation_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
-                    session_provider.clone(),
                     certificate_validator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
@@ -165,13 +158,11 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     revocation_list_repository.clone(),
-                    history_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
-                    session_provider.clone(),
                     certificate_validator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
@@ -201,7 +192,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     revocation_list_repository.clone(),
-                    history_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
@@ -209,7 +199,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     key_provider.clone(),
                     certificate_validator.clone(),
                     blob_storage_provider.clone(),
-                    session_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),
                     params,

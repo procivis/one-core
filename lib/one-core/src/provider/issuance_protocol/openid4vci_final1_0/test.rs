@@ -29,7 +29,6 @@ use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::Interaction;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -66,7 +65,6 @@ use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
@@ -82,14 +80,12 @@ struct TestInputs {
     pub credential_repository: MockCredentialRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub revocation_list_repository: MockRevocationListRepository,
-    pub history_repository: MockHistoryRepository,
     pub wallet_unit_attestation_repository: MockWalletUnitAttestationRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
-    pub session_provider: StaticSessionProvider,
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub config: CoreConfig,
@@ -103,14 +99,12 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.revocation_list_repository),
-        Arc::new(inputs.history_repository),
         Arc::new(inputs.wallet_unit_attestation_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
-        Arc::new(inputs.session_provider),
         Arc::new(inputs.certificate_validator),
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),

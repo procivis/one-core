@@ -1,11 +1,7 @@
 use std::sync::Arc;
 
 use one_core::model::certificate::{Certificate, CertificateState, UpdateCertificateRequest};
-use one_core::model::history::{HistoryAction, HistoryEntityType};
-use one_core::proto::session_provider::Session;
-use one_core::proto::session_provider::test::StaticSessionProvider;
 use one_core::repository::certificate_repository::CertificateRepository;
-use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use shared_types::{IdentifierId, OrganisationId};
@@ -13,24 +9,18 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::CertificateProvider;
-use super::history::CertificateHistoryDecorator;
 use crate::test_utilities::{
     get_dummy_date, insert_identifier, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
 };
 
 struct TestSetup {
-    pub provider: CertificateHistoryDecorator,
+    pub provider: CertificateProvider,
     pub identifier_id: IdentifierId,
     pub organisation_id: OrganisationId,
 }
 
-#[derive(Default)]
-struct Repositories {
-    pub history_repository: MockHistoryRepository,
-}
-
-async fn setup(repositories: Repositories) -> TestSetup {
+async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
@@ -49,21 +39,11 @@ async fn setup(repositories: Repositories) -> TestSetup {
     .await
     .unwrap();
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     TestSetup {
-        provider: CertificateHistoryDecorator {
-            history_repository: Arc::new(repositories.history_repository),
-            session_provider: Arc::new(session_provider),
-            inner: Arc::new(CertificateProvider {
-                db: db.clone(),
-                key_repository: Arc::new(MockKeyRepository::default()),
-                organisation_repository: Arc::new(MockOrganisationRepository::default()),
-            }),
+        provider: CertificateProvider {
             db,
+            key_repository: Arc::new(MockKeyRepository::default()),
+            organisation_repository: Arc::new(MockOrganisationRepository::default()),
         },
         identifier_id,
         organisation_id,
@@ -72,17 +52,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
 
 #[tokio::test]
 async fn test_create_certificate() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.entity_type == HistoryEntityType::Certificate
-                && request.action == HistoryAction::Created
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
-    let setup = setup(Repositories { history_repository }).await;
+    let setup = setup().await;
     let id = Uuid::new_v4().into();
 
     let certificate = Certificate {
@@ -104,18 +74,7 @@ async fn test_create_certificate() {
 
 #[tokio::test]
 async fn test_get_certificate() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.user == Some("testUserId".to_string())
-                && request.entity_type == HistoryEntityType::Certificate
-                && request.action == HistoryAction::Created
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
-    let setup = setup(Repositories { history_repository }).await;
+    let setup = setup().await;
 
     let certificate = Certificate {
         id: Uuid::new_v4().into(),
@@ -160,26 +119,7 @@ async fn test_get_certificate() {
 
 #[tokio::test]
 async fn test_update_certificate() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.user == Some("testUserId".to_string())
-                && request.entity_type == HistoryEntityType::Certificate
-                && request.action == HistoryAction::Created
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.entity_type == HistoryEntityType::Certificate
-                && request.action == HistoryAction::Expired
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
-    let setup = setup(Repositories { history_repository }).await;
+    let setup = setup().await;
 
     let certificate = Certificate {
         id: Uuid::new_v4().into(),

@@ -2,10 +2,8 @@ use std::sync::Arc;
 
 use backup::BackupProvider;
 use certificate::CertificateProvider;
-use certificate::history::CertificateHistoryDecorator;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
-use credential::history::CredentialHistoryDecorator;
 use did::DidProvider;
 use did::history::DidHistoryDecorator;
 use identifier::IdentifierProvider;
@@ -182,13 +180,6 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
-        let certificate_repository = Arc::new(CertificateHistoryDecorator {
-            inner: certificate_repository,
-            history_repository: history_repository.clone(),
-            db: db.clone(),
-            session_provider: session_provider.clone(),
-        });
-
         let identifier_repository = Arc::new(IdentifierProvider {
             db: db.clone(),
             organisation_repository: organisation_repository.clone(),
@@ -237,12 +228,6 @@ impl DataLayer {
             revocation_list_repository: revocation_list_repository.clone(),
             certificate_repository: certificate_repository.clone(),
             key_repository: key_repository.clone(),
-        });
-
-        let credential_repository = Arc::new(CredentialHistoryDecorator {
-            inner: credential_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
         });
 
         let proof_repository = Arc::new(ProofProvider {

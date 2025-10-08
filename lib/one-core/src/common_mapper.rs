@@ -898,21 +898,6 @@ impl CredentialSchemaClaimsNestedTypeView {
     }
 }
 
-impl From<CredentialStateEnum> for HistoryAction {
-    fn from(state: CredentialStateEnum) -> Self {
-        match state {
-            CredentialStateEnum::Created => HistoryAction::Created,
-            CredentialStateEnum::Pending => HistoryAction::Pending,
-            CredentialStateEnum::Offered => HistoryAction::Offered,
-            CredentialStateEnum::Accepted => HistoryAction::Accepted,
-            CredentialStateEnum::Rejected => HistoryAction::Rejected,
-            CredentialStateEnum::Revoked => HistoryAction::Revoked,
-            CredentialStateEnum::Suspended => HistoryAction::Suspended,
-            CredentialStateEnum::Error => HistoryAction::Errored,
-        }
-    }
-}
-
 impl From<ProofStateEnum> for HistoryAction {
     fn from(state: ProofStateEnum) -> Self {
         match state {

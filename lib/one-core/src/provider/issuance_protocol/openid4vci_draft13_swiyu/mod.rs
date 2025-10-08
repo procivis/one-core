@@ -13,7 +13,6 @@ use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
-use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -32,7 +31,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::validator::CertificateValidator;
@@ -79,7 +77,6 @@ impl OpenID4VCI13Swiyu {
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -87,7 +84,6 @@ impl OpenID4VCI13Swiyu {
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
-        session_provider: Arc<dyn SessionProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
         params: OpenID4VCISwiyuParams,
@@ -99,13 +95,11 @@ impl OpenID4VCI13Swiyu {
                 credential_repository,
                 validity_credential_repository,
                 revocation_list_repository,
-                history_repository,
                 formatter_provider,
                 revocation_provider,
                 did_method_provider,
                 key_algorithm_provider,
                 key_provider,
-                session_provider,
                 certificate_validator,
                 blob_storage_provider,
                 base_url,

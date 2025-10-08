@@ -37,7 +37,6 @@ use crate::model::credential_schema::{
     UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole, RelatedKey};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
@@ -46,7 +45,6 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -98,7 +96,6 @@ use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{RevocationMethod, token_status_list};
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::history_repository::HistoryRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -109,7 +106,6 @@ use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-use crate::util::history::log_history_event_credential;
 use crate::util::key_verification::KeyVerification;
 use crate::util::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
 use crate::util::params::convert_params;
@@ -135,13 +131,11 @@ pub(crate) struct OpenID4VCI13 {
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
-    session_provider: Arc<dyn SessionProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
     protocol_base_url: Option<String>,
@@ -158,13 +152,11 @@ impl OpenID4VCI13 {
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
-        session_provider: Arc<dyn SessionProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
@@ -178,13 +170,11 @@ impl OpenID4VCI13 {
             credential_repository,
             validity_credential_repository,
             revocation_list_repository,
-            history_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
             key_algorithm_provider,
             key_provider,
-            session_provider,
             base_url,
             protocol_base_url,
             config,
@@ -201,13 +191,11 @@ impl OpenID4VCI13 {
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
-        history_repository: Arc<dyn HistoryRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
-        session_provider: Arc<dyn SessionProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
@@ -224,13 +212,11 @@ impl OpenID4VCI13 {
             credential_repository,
             validity_credential_repository,
             revocation_list_repository,
-            history_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
             key_algorithm_provider,
             key_provider,
-            session_provider,
             base_url,
             protocol_base_url,
             config,
@@ -1453,14 +1439,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
             }
             (CredentialSchemaType::Mdoc, CredentialStateEnum::Offered) => {
-                log_history_event_credential(
-                    &*self.history_repository,
-                    &credential,
-                    HistoryAction::Issued,
-                    self.session_provider.session().user(),
-                )
-                .await;
-
                 let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
 
                 self.credential_repository
@@ -1485,14 +1463,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
             }
             _ => {
-                log_history_event_credential(
-                    &*self.history_repository,
-                    &credential,
-                    HistoryAction::Issued,
-                    self.session_provider.session().user(),
-                )
-                .await;
-
                 let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
 
                 self.credential_repository
