@@ -168,62 +168,63 @@ pub(crate) struct ProofsFilterQueryParamsRest {
     /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only proof requests with the specified profiles.
+    /// Filter by one or more country profiles.
     #[param(rename = "profiles[]", nullable = false)]
     pub profiles: Option<Vec<String>>,
-    /// Return proof requests according to their current state in the system.
+    /// Filter by one or more proof states.
     #[param(rename = "states[]", inline, nullable = false)]
     pub states: Option<Vec<ProofStateRestEnum>>,
-    /// Return proof requests according to their current role in the system.
+    /// Filter proof requests by one or more roles: requested by the system
+    /// or received by the system.
     #[param(rename = "roles[]", inline, nullable = false)]
     pub roles: Option<Vec<ProofRoleRestEnum>>,
     /// Filter proof requests by their associated proof schema. Pass an array
     /// of UUID strings.
     #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
     pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
-    /// Filter by specific UUIDs.
+    /// Filter by one or more UUIDs.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofId>>,
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
 
-    /// Return only proof requests which were created after this time.
+    /// Return only proof requests created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only proof requests which were created before this time.
+    /// Return only proof requests created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only proof requests which were last modified after this time.
+    /// Return only proof requests last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only proof requests which were last modified before this time.
+    /// Return only proof requests last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_before: Option<OffsetDateTime>,
-    /// Return only proof requests which were requested after this time.
+    /// Return only proof requests requested after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub requested_date_after: Option<OffsetDateTime>,
-    /// Return only proof requests which were requested before this time.
+    /// Return only proof requests requested before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub requested_date_before: Option<OffsetDateTime>,
-    /// Return only proof requests which were completed after this time.
+    /// Return only proof requests completed after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub completed_date_after: Option<OffsetDateTime>,
-    /// Return only proof requests which were completed before this time.
+    /// Return only proof requests completed before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]

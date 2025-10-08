@@ -207,22 +207,22 @@ pub(crate) struct ProofSchemasFilterQueryParamsRest {
     #[param(rename = "formats[]", inline, nullable = false)]
     pub formats: Option<Vec<String>>,
 
-    /// Return only proof schemas which were created after this time.
+    /// Return only proof schemas created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only proof schemas which were created before this time.
+    /// Return only proof schemas created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only proof schemas which were last modified after this time.
+    /// Return only proof schemas last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only proof schemas which were last modified before this time.
+    /// Return only proof schemas last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]

@@ -159,19 +159,20 @@ pub(crate) enum SortableIdentifierColumnRest {
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IdentifierFilterQueryParamsRestDTO {
-    /// Filter by specific UUIDs.
+    /// Filter by one or more UUIDs.
     #[param(rename = "ids[]", nullable = false)]
     pub ids: Option<Vec<IdentifierId>>,
     /// Return only identifiers with a name starting with this string.
     /// Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only identifiers of a certain type.
+    /// Filter by one or more identifier types.
     #[param(rename = "types[]", nullable = false)]
     pub types: Option<Vec<IdentifierTypeRest>>,
-    /// Return only active or deactivated identifiers.
+    /// Filter by one or more identifier states.
     #[param(rename = "states[]", nullable = false)]
     pub states: Option<Vec<IdentifierStateRest>>,
+    /// Filter by one or more DID methods.
     #[param(rename = "didMethods[]", nullable = false)]
     pub did_methods: Option<Vec<String>>,
     /// If true, return only identifiers from interactions with external
@@ -182,6 +183,7 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     /// `keyAlgorithm` object of the configuration for supported options.
     #[param(rename = "keyAlgorithms[]", nullable = false)]
     pub key_algorithms: Option<Vec<String>>,
+    /// Return keys used as one or more verification methods of a DID.
     #[param(rename = "keyRoles[]", inline, nullable = false)]
     pub key_roles: Option<Vec<KeyRoleRestEnum>>,
     /// Return keys or DIDs whose keys use the specified storage type. Check the
@@ -195,22 +197,22 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
 
-    /// Return only identifiers which were created after this time.
+    /// Return only identifiers created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only identifiers which were created before this time.
+    /// Return only identifiers created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only identifiers which were last modified after this time.
+    /// Return only identifiers last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only identifiers which were last modified before this time.
+    /// Return only identifiers last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]

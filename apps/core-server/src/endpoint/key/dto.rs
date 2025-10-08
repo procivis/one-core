@@ -140,22 +140,22 @@ pub(crate) struct KeyFilterQueryParamsRest {
     /// Return only keys being a remote.
     #[param(inline, nullable = false)]
     pub is_remote: Option<Boolean>,
-    /// Return only keys which were created after this time.
+    /// Return only keys created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only keys which were created before this time.
+    /// Return only keys created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only keys which were last modified after this time.
+    /// Return only keys last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only keys which were last modified before this time.
+    /// Return only keys last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]

@@ -186,13 +186,13 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only entities of the specified type.
+    /// Filter by one or more trust entity types.
     #[param(rename = "types[]", inline, nullable = false)]
     pub types: Option<Vec<TrustEntityTypeRest>>,
     /// Specify entities to return by their DID value or their certificate `subject`.
     #[param(nullable = false)]
     pub entity_key: Option<TrustEntityKey>,
-    /// Return only entities that are issuers, or verifiers, or both.
+    /// Filter by role.
     #[param(nullable = false)]
     pub role: Option<TrustEntityRoleRest>,
     /// Return only entities from the specified trust anchor.
@@ -206,25 +206,26 @@ pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     pub exact: Option<Vec<ExactColumn>>,
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
+    /// Filter by one or more states.
     #[param(rename = "states[]", inline, nullable = false)]
     pub states: Option<Vec<TrustEntityStateRest>>,
 
-    /// Return only entities which were created after this time.
+    /// Return only entities created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only entities which were created before this time.
+    /// Return only entities created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only entities which were last modified after this time.
+    /// Return only entities last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only entities which were last modified before this time.
+    /// Return only entities last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]

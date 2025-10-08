@@ -235,20 +235,20 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     /// Return only credentials with a name starting with this string.
     #[param(nullable = false)]
     pub name: Option<String>,
-    /// Return only credentials with the specified profile.
+    /// Filter by one or more country profiles.
     #[param(rename = "profiles[]", inline, nullable = false)]
     pub profiles: Option<Vec<String>>,
-    /// Filter credentials by whether they were issued by the system,
-    /// verified by the system or are held by the system as with a wallet.
+    /// Filter credentials by one or more roles: issued by the system,
+    /// verified by the system, or held by the system as a wallet.
     #[param(rename = "roles[]", inline, nullable = false)]
     pub roles: Option<Vec<CredentialRoleRestEnum>>,
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactColumn>>,
-    /// Filter by specific UUIDs.
+    /// Filter by one or more UUIDs.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<CredentialId>>,
-    /// Return only credentials with the specified credential state.
+    /// Filter by one or more credential states.
     #[param(rename = "states[]", inline, nullable = false)]
     pub states: Option<Vec<CredentialStateRestEnum>>,
     /// Search for a string.
@@ -262,42 +262,42 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     #[param(rename = "credentialSchemaIds[]", inline, nullable = false)]
     pub credential_schema_ids: Option<Vec<CredentialSchemaId>>,
 
-    /// Return only credentials which were created after this time.
+    /// Return only credentials created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only credentials which were created before this time.
+    /// Return only credentials created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only credentials which were last modified after this time.
+    /// Return only credentials last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only credentials which were last modified before this time.
+    /// Return only credentials last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_before: Option<OffsetDateTime>,
-    /// Return only credentials which were issued after this time.
+    /// Return only credentials issued after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub issuance_date_after: Option<OffsetDateTime>,
-    /// Return only credentials which were issued before this time.
+    /// Return only credentials issued before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub issuance_date_before: Option<OffsetDateTime>,
-    /// Return only credentials which were revoked after this time.
+    /// Return only credentials revoked after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub revocation_date_after: Option<OffsetDateTime>,
-    /// Return only credentials which were revoked before this time.
+    /// Return only credentials revoked before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]

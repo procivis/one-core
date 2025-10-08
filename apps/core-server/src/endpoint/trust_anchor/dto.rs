@@ -98,22 +98,22 @@ pub(crate) struct TrustAnchorsFilterQueryParamsRest {
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactTrustAnchorFilterColumnRestEnum>>,
 
-    /// Return only trust anchors which were created after this time.
+    /// Return only trust anchors created after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_after: Option<OffsetDateTime>,
-    /// Return only trust anchors which were created before this time.
+    /// Return only trust anchors created before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub created_date_before: Option<OffsetDateTime>,
-    /// Return only trust anchors which were last modified after this time.
+    /// Return only trust anchors last modified after this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
     pub last_modified_after: Option<OffsetDateTime>,
-    /// Return only trust anchors which were last modified before this time.
+    /// Return only trust anchors last modified before this time.
     /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
     #[serde(default, deserialize_with = "deserialize_timestamp")]
     #[param(nullable = false)]
