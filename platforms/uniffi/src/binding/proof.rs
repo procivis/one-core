@@ -18,6 +18,7 @@ use one_core::service::proof::dto::{
 };
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
+    PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner_of_inner};
 
@@ -107,6 +108,24 @@ impl OneCoreBinding {
                 did_id: did_id.map(into_id).transpose()?,
                 identifier_id: identifier_id.map(into_id).transpose()?,
                 key_id: key_id.map(|key_id| into_id(&key_id)).transpose()?,
+            })
+            .await?;
+
+        Ok(())
+    }
+
+    #[uniffi::method]
+    pub async fn holder_submit_proof_v2(
+        &self,
+        interaction_id: String,
+        submission: HashMap<String, Vec<PresentationSubmitV2CredentialRequestBindingDTO>>,
+    ) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+
+        core.ssi_holder_service
+            .submit_proof_v2(PresentationSubmitV2RequestDTO {
+                interaction_id: into_id(&interaction_id)?,
+                submission: try_convert_inner_of_inner(submission)?,
             })
             .await?;
 
@@ -364,6 +383,15 @@ pub struct PresentationSubmitCredentialRequestBindingDTO {
     pub credential_id: String,
     #[try_into(infallible)]
     pub submit_claims: Vec<String>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = PresentationSubmitV2CredentialRequestDTO, Error = ServiceError)]
+pub struct PresentationSubmitV2CredentialRequestBindingDTO {
+    #[try_into(with_fn_ref = into_id)]
+    pub credential_id: String,
+    #[try_into(infallible)]
+    pub user_selections: Vec<String>,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
