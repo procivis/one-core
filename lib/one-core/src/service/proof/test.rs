@@ -386,8 +386,14 @@ async fn test_get_presentation_definition_proof_role_verifier() {
             .returning(move |_, _| Ok(Some(res_clone.clone())));
     }
 
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider
+        .expect_get_protocol()
+        .returning(|_| Some(Arc::new(MockVerificationProtocol::default())));
+
     let service = setup_service(Repositories {
         proof_repository,
+        protocol_provider,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2442,6 +2448,7 @@ async fn test_create_proof_using_formatter_doesnt_support_did_identifiers() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -2569,6 +2576,7 @@ async fn test_create_proof_using_invalid_did_method() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -2703,6 +2711,7 @@ async fn test_create_proof_using_identifier() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -2837,6 +2846,7 @@ async fn test_create_proof_without_related_key() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -2969,6 +2979,7 @@ async fn test_create_proof_with_related_key() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -3098,6 +3109,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -3214,6 +3226,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -3383,6 +3396,7 @@ async fn test_create_proof_did_deactivated_error() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -3625,6 +3639,7 @@ async fn test_create_proof_failed_incompatible_verification_key_storage() {
                 supported_transports: vec![TransportType::Http],
                 did_methods: vec![crate::config::core_config::DidType::Key],
                 verifier_identifier_types: vec![IdentifierType::Did],
+                supported_presentation_definition: vec![],
             }
         });
 
@@ -4490,8 +4505,13 @@ async fn test_proof_ops_session_org_mismatch() {
     proof_repository
         .expect_get_proof()
         .returning(move |_, _| Ok(Some(proof.clone())));
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+    protocol_provider
+        .expect_get_protocol()
+        .returning(|_| Some(Arc::new(MockVerificationProtocol::default())));
     let service = setup_service(Repositories {
         session_provider: Some(Arc::new(StaticSessionProvider::new_random())),
+        protocol_provider,
         proof_repository,
         config: generic_config().core,
         ..Default::default()

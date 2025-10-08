@@ -8,6 +8,8 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::session_provider::SessionProvider;
+use crate::provider::verification_protocol::VerificationProtocol;
+use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 pub(crate) fn throw_if_credential_state_eq(
@@ -87,6 +89,20 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
             state: proof.state.clone(),
         }
         .into());
+    }
+    Ok(())
+}
+
+pub(crate) fn throw_if_endpoint_version_incompatible(
+    verification_protocol: &dyn VerificationProtocol,
+    endpoint_version: &PresentationDefinitionVersion,
+) -> Result<(), ServiceError> {
+    if !verification_protocol
+        .get_capabilities()
+        .supported_presentation_definition
+        .contains(endpoint_version)
+    {
+        return Err(BusinessLogicError::IncompatiblePresentationEndpoint.into());
     }
     Ok(())
 }

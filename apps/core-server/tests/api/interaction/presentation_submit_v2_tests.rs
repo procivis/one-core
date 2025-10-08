@@ -13,6 +13,7 @@ use crate::fixtures::{
     TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
     TestingIdentifierParams, TestingKeyParams,
 };
+use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::{fixtures, utils};
@@ -132,6 +133,83 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
             .unwrap(),
         &verifier_identifier.id.to_string()
     )
+}
+
+#[tokio::test]
+async fn test_presentation_submit_incompatible_version() {
+    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let client_metadata = json!(
+    {
+        "jwks": {
+            "keys": [{
+                "crv": "P-256",
+                "kid": "not-a-uuid",
+                "kty": "EC",
+                "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
+                "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
+                "use": "enc"
+            }]
+        },
+        "vp_formats":
+        {
+            "jwt_vp_json":
+            {
+                "alg":["EdDSA"]
+            },
+            "jwt_vc_json":{
+                "alg":["EdDSA"]
+            },
+            "ldp_vp":{
+                "proof_type":["DataIntegrityProof"]
+            },
+            "mso_mdoc":{
+                "alg":["EdDSA"]
+            },
+            "vc+sd-jwt": {
+                "kb-jwt_alg_values": ["EdDSA", "ES256"],
+                "sd-jwt_alg_values": ["EdDSA", "ES256"]
+            }
+        }
+    });
+
+    let (_, holder_identifier, _, _, credential, interaction, _) =
+        setup_submittable_presentation_dcql(
+            &context,
+            &organisation,
+            &identifier,
+            &client_metadata.to_string(),
+        )
+        .await;
+
+    // WHEN
+    let url = format!(
+        "{}/api/interaction/v1/presentation-submit",
+        context.config.app.core_base_url
+    );
+
+    let resp = utils::client()
+        .post(url)
+        .bearer_auth("test")
+        .json(&json!({
+          "interactionId": interaction.id,
+          "identifierId": holder_identifier.id,
+          "submitCredentials": {
+            "input_0": {
+              "credentialId": credential.id,
+              "submitClaims": [
+                credential.claims.unwrap().first().unwrap().id
+              ]
+            }
+          }
+        }))
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    assert_eq!(Response::from(resp).error_code().await, "BR_0292")
 }
 
 async fn setup_submittable_presentation_dcql(

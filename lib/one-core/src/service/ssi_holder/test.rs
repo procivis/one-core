@@ -15,6 +15,8 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::config::core_config;
+use crate::config::core_config::TransportType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -54,6 +56,7 @@ use crate::provider::verification_protocol::dto::{
     PresentationDefinitionFieldDTO, PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
+    PresentationDefinitionVersion, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
@@ -408,6 +411,16 @@ async fn test_submit_proof_succeeds() {
         });
 
     verification_protocol
+        .expect_get_capabilities()
+        .times(1)
+        .returning(|| VerificationProtocolCapabilities {
+            supported_transports: vec![TransportType::Http],
+            did_methods: vec![core_config::DidType::Key],
+            verifier_identifier_types: vec![core_config::IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
+        });
+
+    verification_protocol
         .expect_holder_submit_proof()
         .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -622,6 +635,16 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         });
 
     verification_protocol
+        .expect_get_capabilities()
+        .times(1)
+        .returning(|| VerificationProtocolCapabilities {
+            supported_transports: vec![TransportType::Http],
+            did_methods: vec![core_config::DidType::Key],
+            verifier_identifier_types: vec![core_config::IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
+        });
+
+    verification_protocol
         .expect_holder_submit_proof()
         .withf(move |proof, _| {
             assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
@@ -831,6 +854,16 @@ async fn test_submit_proof_succeeds_with_did() {
                 }],
                 credentials: vec![],
             })
+        });
+
+    verification_protocol
+        .expect_get_capabilities()
+        .times(1)
+        .returning(|| VerificationProtocolCapabilities {
+            supported_transports: vec![TransportType::Http],
+            did_methods: vec![core_config::DidType::Key],
+            verifier_identifier_types: vec![core_config::IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         });
 
     verification_protocol
@@ -1057,6 +1090,15 @@ async fn test_submit_proof_repeating_claims() {
                 }],
                 credentials: vec![],
             })
+        });
+    verification_protocol
+        .expect_get_capabilities()
+        .times(1)
+        .returning(|| VerificationProtocolCapabilities {
+            supported_transports: vec![TransportType::Http],
+            did_methods: vec![core_config::DidType::Key],
+            verifier_identifier_types: vec![core_config::IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         });
 
     verification_protocol

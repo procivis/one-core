@@ -44,7 +44,15 @@ async fn test_get_presentation_definition_v2_credential_sets_simple() {
             options: vec![vec!["test_id".into()], vec!["test_id2".into()]],
         }])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -117,7 +125,15 @@ async fn test_get_presentation_definition_v2_credential_sets_multiple_credential
             },
         ])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -217,7 +233,15 @@ async fn test_get_presentation_definition_v2_optional_credential_sets() {
             },
         ])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context

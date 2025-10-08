@@ -58,7 +58,8 @@ use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::verification_protocol::dto::{
-    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, ShareResponse,
+    PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionVersion, ShareResponse,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::ble_holder::{
@@ -204,9 +205,14 @@ impl ProofService {
         id: &ProofId,
     ) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
         let proof = self.load_proof_for_proof_definition(id).await?;
-        validate_proof_for_proof_definition(&proof, &*self.session_provider)?;
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
             MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
+        )?;
+        validate_proof_for_proof_definition(
+            &proof,
+            &*self.session_provider,
+            &*exchange,
+            &PresentationDefinitionVersion::V1,
         )?;
         exchange
             .holder_get_presentation_definition(
@@ -223,9 +229,14 @@ impl ProofService {
         id: &ProofId,
     ) -> Result<PresentationDefinitionV2ResponseDTO, ServiceError> {
         let proof = self.load_proof_for_proof_definition(id).await?;
-        validate_proof_for_proof_definition(&proof, &*self.session_provider)?;
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
             MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
+        )?;
+        validate_proof_for_proof_definition(
+            &proof,
+            &*self.session_provider,
+            &*exchange,
+            &PresentationDefinitionVersion::V2,
         )?;
         exchange
             .holder_get_presentation_definition_v2(

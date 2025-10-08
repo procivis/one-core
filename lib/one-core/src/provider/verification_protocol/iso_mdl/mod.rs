@@ -19,8 +19,8 @@ use super::dto::{
     PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
-    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
@@ -463,6 +463,7 @@ impl VerificationProtocol for IsoMdl {
             supported_transports: vec![TransportType::Ble],
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web],
             verifier_identifier_types: vec![IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
     }
 }

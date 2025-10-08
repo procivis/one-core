@@ -39,7 +39,7 @@ use crate::provider::presentation_formatter::model::{FormatPresentationCtx, Form
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{Handover, SessionTranscript};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::verification_protocol::dto::{InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, FormattedCredentialPresentation, ShareResponse, UpdateResponse, VerificationProtocolCapabilities};
+use crate::provider::verification_protocol::dto::{InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, FormattedCredentialPresentation, ShareResponse, UpdateResponse, VerificationProtocolCapabilities, PresentationDefinitionVersion};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
 use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
@@ -597,6 +597,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods,
             verifier_identifier_types: vec![IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
     }
 

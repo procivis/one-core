@@ -120,6 +120,7 @@ mod test {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
             verifier_identifier_types: vec![],
+            supported_presentation_definition: vec![],
         };
 
         let selected =
@@ -137,6 +138,7 @@ mod test {
             supported_transports: vec![TransportType::Mqtt],
             did_methods: vec![],
             verifier_identifier_types: vec![],
+            supported_presentation_definition: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -158,6 +160,7 @@ mod test {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods: vec![],
             verifier_identifier_types: vec![],
+            supported_presentation_definition: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -180,6 +183,7 @@ mod test {
             supported_transports: vec![],
             did_methods: vec![],
             verifier_identifier_types: vec![],
+            supported_presentation_definition: vec![],
         };
 
         let selected = validate_and_select_transport_type(
@@ -205,6 +209,7 @@ mod test {
             ],
             did_methods: vec![],
             verifier_identifier_types: vec![],
+            supported_presentation_definition: vec![],
         };
 
         let selected = validate_and_select_transport_type(

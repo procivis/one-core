@@ -36,8 +36,8 @@ use crate::provider::presentation_formatter::model::{
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
@@ -246,6 +246,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             supported_transports: vec![TransportType::Http],
             did_methods,
             verifier_identifier_types: verifier_identifier_types.into_iter().collect(),
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
     }
 

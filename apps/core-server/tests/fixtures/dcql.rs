@@ -13,6 +13,7 @@ pub(crate) async fn proof_for_dcql_query(
     identifier: &Identifier,
     key: Key,
     dcql_query: &DcqlQuery,
+    protocol: &str,
 ) -> Proof {
     let interaction = context
         .db
@@ -34,7 +35,7 @@ pub(crate) async fn proof_for_dcql_query(
             None,
             None,
             ProofStateEnum::Requested,
-            "OPENID4VP_FINAL1",
+            protocol,
             Some(&interaction),
             key,
             None,

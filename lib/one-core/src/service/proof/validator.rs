@@ -5,7 +5,8 @@ use url::Url;
 
 use super::dto::CreateProofRequestDTO;
 use crate::common_validator::{
-    throw_if_latest_proof_state_not_eq, throw_if_org_relation_not_matching_session,
+    throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
+    throw_if_org_relation_not_matching_session,
 };
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
@@ -19,6 +20,8 @@ use crate::model::proof_schema::ProofSchema;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::Features;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::verification_protocol::VerificationProtocol;
+use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp20Params;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp25Params;
 use crate::service::error::{
@@ -339,6 +342,8 @@ pub(super) fn validate_holder_engagements(
 pub(super) fn validate_proof_for_proof_definition(
     proof: &Proof,
     session_provider: &dyn SessionProvider,
+    verification_protocol: &dyn VerificationProtocol,
+    endpoint_version: &PresentationDefinitionVersion,
 ) -> Result<(), ServiceError> {
     throw_if_proof_not_in_session_org(proof, session_provider)?;
 
@@ -346,7 +351,8 @@ pub(super) fn validate_proof_for_proof_definition(
         return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
     }
 
-    throw_if_latest_proof_state_not_eq(proof, Requested)
+    throw_if_latest_proof_state_not_eq(proof, Requested)?;
+    throw_if_endpoint_version_incompatible(verification_protocol, endpoint_version)
 }
 
 #[cfg(test)]

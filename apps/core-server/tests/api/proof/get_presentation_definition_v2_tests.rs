@@ -44,7 +44,15 @@ async fn test_get_presentation_definition_2_simple_credential_success() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -112,7 +120,15 @@ async fn test_get_presentation_definition_2_claim_filtering_success() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -187,7 +203,15 @@ async fn test_get_presentation_definition_2_claim_non_sd_extra_claim() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -271,7 +295,15 @@ async fn test_get_presentation_definition_2_with_user_selection() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -369,7 +401,15 @@ async fn test_get_presentation_definition_2_with_user_selection_nesting_mixed_sd
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -436,7 +476,15 @@ async fn test_get_presentation_definition_2_no_credential_no_schema() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -571,7 +619,15 @@ async fn test_get_presentation_definition_2_nested_array_element_selection() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -638,7 +694,15 @@ async fn test_get_presentation_definition_2_no_credential_with_schema() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -699,7 +763,15 @@ async fn test_get_presentation_definition_2_inapplicable_credential_with_schema(
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context
@@ -761,7 +833,15 @@ async fn test_get_presentation_definition_2_inapplicable_credential_validity() {
     let dcql_query = DcqlQuery::builder()
         .credentials(vec![credential_query])
         .build();
-    let proof = proof_for_dcql_query(&context, &org, &identifier, key, &dcql_query).await;
+    let proof = proof_for_dcql_query(
+        &context,
+        &org,
+        &identifier,
+        key,
+        &dcql_query,
+        "OPENID4VP_FINAL1",
+    )
+    .await;
 
     // WHEN
     let resp = context

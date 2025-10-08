@@ -14,8 +14,8 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use crate::provider::verification_protocol::openid4vp::draft20::OpenID4VP20HTTP;
 use crate::provider::verification_protocol::openid4vp::draft20::model::{
@@ -120,6 +120,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             supported_transports: vec![TransportType::Http],
             did_methods: vec![DidType::WebVh],
             verifier_identifier_types: vec![IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
     }
 

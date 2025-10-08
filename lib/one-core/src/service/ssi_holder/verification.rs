@@ -16,7 +16,9 @@ use crate::common_mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation, get_or_create_identifier,
     paths_to_leafs,
 };
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
+use crate::common_validator::{
+    throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
+};
 use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
@@ -40,7 +42,8 @@ use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationReference, UpdateResponse,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionVersion,
+    PresentationReference, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::service::credential::dto::{
@@ -257,6 +260,10 @@ impl SSIHolderService {
                 proof.protocol.clone(),
             ))?;
 
+        throw_if_endpoint_version_incompatible(
+            &*verification_protocol,
+            &PresentationDefinitionVersion::V1,
+        )?;
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let interaction_data: serde_json::Value = proof
@@ -603,6 +610,10 @@ impl SSIHolderService {
                 proof.protocol.clone(),
             ))?;
 
+        throw_if_endpoint_version_incompatible(
+            &*verification_protocol,
+            &PresentationDefinitionVersion::V2,
+        )?;
         throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let interaction_data: serde_json::Value = proof

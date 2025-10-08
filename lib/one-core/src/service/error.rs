@@ -460,6 +460,9 @@ pub enum BusinessLogicError {
 
     #[error("Invalid presentation submission: {reason}")]
     InvalidPresentationSubmission { reason: String },
+
+    #[error("Verification protocol does not support this API endpoint version")]
+    IncompatiblePresentationEndpoint,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1425,6 +1428,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid presentation submission")]
     BR_0291,
+
+    #[strum(message = "Verification protocol is incompatible with this endpoint version")]
+    BR_0292,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1599,6 +1605,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
             Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
+            Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
         }
     }
 }

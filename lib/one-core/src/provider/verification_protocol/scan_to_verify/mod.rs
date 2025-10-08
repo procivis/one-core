@@ -8,8 +8,8 @@ use url::Url;
 
 use super::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionV2ResponseDTO, ShareResponse, UpdateResponse,
-    VerificationProtocolCapabilities,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
+    UpdateResponse, VerificationProtocolCapabilities,
 };
 use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
@@ -191,6 +191,7 @@ impl VerificationProtocol for ScanToVerify {
             supported_transports: vec![TransportType::Http],
             did_methods: vec![DidType::Key, DidType::Jwk, DidType::Web, DidType::WebVh],
             verifier_identifier_types: vec![IdentifierType::Did],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
         }
     }
 }

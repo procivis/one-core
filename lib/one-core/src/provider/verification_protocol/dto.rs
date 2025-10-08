@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidValue};
+use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
@@ -135,6 +136,17 @@ pub(crate) struct VerificationProtocolCapabilities {
     pub supported_transports: Vec<TransportType>,
     pub did_methods: Vec<DidType>,
     pub verifier_identifier_types: Vec<IdentifierType>,
+    pub supported_presentation_definition: Vec<PresentationDefinitionVersion>,
+}
+
+#[derive(Debug, Copy, Clone, Display, EnumString, Serialize, AsRefStr, Eq, PartialEq)]
+pub enum PresentationDefinitionVersion {
+    #[serde(rename = "V1")]
+    #[strum(serialize = "V1")]
+    V1,
+    #[serde(rename = "V2")]
+    #[strum(serialize = "V2")]
+    V2,
 }
 
 #[derive(Clone, Debug)]
