@@ -507,14 +507,14 @@ pub struct PresentationDefinitionRuleBindingDTO {
 #[from(PresentationDefinitionV2ResponseDTO)]
 pub(crate) struct PresentationDefinitionV2ResponseBindingDTO {
     #[from(with_fn = convert_inner)]
-    pub credential_queries: HashMap<String, CredentialQueryResponseRestDTO>,
+    pub credential_queries: HashMap<String, CredentialQueryResponseBindingDTO>,
     #[from(with_fn = convert_inner)]
     pub credential_sets: Vec<CredentialSetResponseBindingDTO>,
 }
 
 #[derive(Debug, From, uniffi::Record)]
 #[from(CredentialQueryResponseDTO)]
-pub(crate) struct CredentialQueryResponseRestDTO {
+pub(crate) struct CredentialQueryResponseBindingDTO {
     pub multiple: bool,
     pub credential_or_failure_hint: ApplicableCredentialOrFailureHintBindingEnum,
 }
