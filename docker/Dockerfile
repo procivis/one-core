@@ -1,4 +1,5 @@
-ARG BASE_IMAGE=registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.88.0-0.1
+ARG BASE_IMAGE=registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.90.0-0.1
+ARG APP_VERSION
 
 # ----------- Planner image -----------
 # Creates dependencies tree file
@@ -13,7 +14,10 @@ RUN cargo chef prepare --recipe-path recipe.json
 # Builds dependencies (cached in a single layer) and then the final app binary
 FROM $BASE_IMAGE AS builder
 
+ARG APP_VERSION
+
 ENV CARGO_UNSTABLE_GC="true"
+ENV APP_VERSION=${APP_VERSION}
 
 WORKDIR /app
 
@@ -49,7 +53,7 @@ FROM base
 WORKDIR /app
 
 COPY --from=builder --chmod=555 /app/target/release/core-server .
-COPY --chmod=+x config /app/config
+COPY config /app/config
 
 EXPOSE 3000
 

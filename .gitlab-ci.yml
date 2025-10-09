@@ -183,7 +183,8 @@ build_image:
     - .docker_publish
   variables:
     APP_FLAVOR: procivis
-    EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
+    EXTRA_BUILD_ARGS: >-
+      --build-arg BASE_IMAGE=$BUILD_IMAGE
 
 build_image_acr:
   stage: build
@@ -192,7 +193,8 @@ build_image_acr:
     - .docker_acr_publish
     - .rule:default:on_tag_only
   variables:
-    EXTRA_BUILD_ARGS: "--build-arg BASE_IMAGE=$BUILD_IMAGE"
+    EXTRA_BUILD_ARGS: >-
+      --build-arg BASE_IMAGE=$BUILD_IMAGE
   parallel:
     matrix: !reference [ .one_core, clients_matrix ]
 
