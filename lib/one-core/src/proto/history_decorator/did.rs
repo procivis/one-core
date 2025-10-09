@@ -1,15 +1,17 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use one_core::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRequest};
-use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::proto::session_provider::{SessionExt, SessionProvider};
-use one_core::repository::did_repository::DidRepository;
-use one_core::repository::error::DataLayerError;
-use one_core::repository::history_repository::HistoryRepository;
 use shared_types::{DidId, DidValue, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRequest};
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::Organisation;
+use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::repository::did_repository::DidRepository;
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::HistoryRepository;
 
 pub struct DidHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
@@ -23,8 +25,13 @@ impl DidHistoryDecorator {
         id: DidId,
         name: String,
         action: HistoryAction,
-        organisation_id: OrganisationId,
+        organisation: Option<Organisation>,
     ) {
+        let Some(organisation_id) = organisation.map(|o| o.id) else {
+            tracing::warn!("did (id: {id}) missing organisation");
+            return;
+        };
+
         let result = self
             .history_repository
             .create_history(History {
@@ -50,17 +57,12 @@ impl DidHistoryDecorator {
 #[async_trait::async_trait]
 impl DidRepository for DidHistoryDecorator {
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {
-        let id = request.id;
         let name = request.name.clone();
-        let organisation_id = request.organisation.as_ref().map(|o| o.id);
+        let organisation = request.organisation.to_owned();
         let did_id = self.inner.create_did(request).await?;
 
-        if let Some(organisation_id) = organisation_id {
-            self.create_history(id, name, HistoryAction::Created, organisation_id)
-                .await;
-        } else {
-            tracing::warn!("did (id: {did_id}) missing organisation");
-        }
+        self.create_history(did_id, name, HistoryAction::Created, organisation)
+            .await;
 
         Ok(did_id)
     }
@@ -91,33 +93,31 @@ impl DidRepository for DidHistoryDecorator {
     async fn update_did(&self, request: UpdateDidRequest) -> Result<(), DataLayerError> {
         self.inner.update_did(request.clone()).await?;
 
-        if request.deactivated.is_none() {
-            return Ok(());
-        };
+        if let Some(deactivated) = request.deactivated {
+            let did = self
+                .inner
+                .get_did(
+                    &request.id,
+                    &DidRelations {
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .context("did is missing")?;
 
-        let did = self
-            .inner
-            .get_did(
-                &request.id,
-                &DidRelations {
-                    organisation: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .context("did is missing")?;
-
-        if let Some(organisation) = did.organisation {
             self.create_history(
                 did.id,
                 did.name,
-                HistoryAction::Deactivated,
-                organisation.id,
+                if deactivated {
+                    HistoryAction::Deactivated
+                } else {
+                    HistoryAction::Reactivated
+                },
+                did.organisation,
             )
             .await;
-        } else {
-            tracing::warn!("did (id: {}) missing organisation", request.id);
-        }
+        };
 
         Ok(())
     }

@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use one_core::model::common::SortDirection;
 use one_core::model::did::Did;
-use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierState, IdentifierType,
     SortableIdentifierColumn,
@@ -11,12 +10,9 @@ use one_core::model::identifier::{
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
-use one_core::proto::session_provider::Session;
-use one_core::proto::session_provider::test::StaticSessionProvider;
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::did_repository::MockDidRepository;
 use one_core::repository::error::DataLayerError;
-use one_core::repository::history_repository::MockHistoryRepository;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::key_repository::MockKeyRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
@@ -26,14 +22,13 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::IdentifierProvider;
-use super::history::IdentifierHistoryDecorator;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_did_key, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
 };
 
 struct TestSetup {
-    pub provider: IdentifierHistoryDecorator,
+    pub provider: IdentifierProvider,
     pub organisation: Organisation,
     pub did: Did,
     pub db: DatabaseConnection,
@@ -41,7 +36,6 @@ struct TestSetup {
 
 #[derive(Default)]
 struct Repositories {
-    pub history_repository: MockHistoryRepository,
     pub organisation_repository: MockOrganisationRepository,
 }
 
@@ -79,22 +73,13 @@ async fn setup(repositories: Repositories) -> TestSetup {
         organisation: Some(organisation.clone()),
     };
 
-    let session_provider = StaticSessionProvider(Session {
-        organisation_id: None,
-        user_id: "testUserId".to_string(),
-    });
-
     TestSetup {
-        provider: IdentifierHistoryDecorator {
-            history_repository: Arc::new(repositories.history_repository),
-            inner: Arc::new(IdentifierProvider {
-                db: db.clone(),
-                organisation_repository: Arc::new(repositories.organisation_repository),
-                did_repository: Arc::new(MockDidRepository::default()),
-                key_repository: Arc::new(MockKeyRepository::default()),
-                certificate_repository: Arc::new(MockCertificateRepository::default()),
-            }),
-            session_provider: Arc::new(session_provider),
+        provider: IdentifierProvider {
+            db: db.clone(),
+            organisation_repository: Arc::new(repositories.organisation_repository),
+            did_repository: Arc::new(MockDidRepository::default()),
+            key_repository: Arc::new(MockKeyRepository::default()),
+            certificate_repository: Arc::new(MockCertificateRepository::default()),
         },
         organisation,
         did,
@@ -104,25 +89,6 @@ async fn setup(repositories: Repositories) -> TestSetup {
 
 #[tokio::test]
 async fn test_create_and_delete_identifier() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.entity_type == HistoryEntityType::Identifier
-                && request.action == HistoryAction::Created
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.user == Some("testUserId".to_string())
-                && request.entity_type == HistoryEntityType::Identifier
-                && request.action == HistoryAction::Deleted
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
@@ -139,7 +105,6 @@ async fn test_create_and_delete_identifier() {
         });
 
     let setup = setup(Repositories {
-        history_repository,
         organisation_repository,
     })
     .await;
@@ -172,17 +137,6 @@ async fn test_create_and_delete_identifier() {
 
 #[tokio::test]
 async fn test_get_identifier() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .withf(|request| {
-            request.user == Some("testUserId".to_string())
-                && request.entity_type == HistoryEntityType::Identifier
-                && request.action == HistoryAction::Created
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
@@ -199,7 +153,6 @@ async fn test_get_identifier() {
         });
 
     let setup = setup(Repositories {
-        history_repository,
         organisation_repository,
     })
     .await;
@@ -253,17 +206,6 @@ async fn test_get_identifier() {
 
 #[tokio::test]
 async fn test_get_identifier_list() {
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .times(2)
-        .withf(|request| {
-            request.user == Some("testUserId".to_string())
-                && request.entity_type == HistoryEntityType::Identifier
-                && request.action == HistoryAction::Created
-        })
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
         .expect_get_organisation()
@@ -280,7 +222,6 @@ async fn test_get_identifier_list() {
         });
 
     let setup = setup(Repositories {
-        history_repository,
         organisation_repository,
     })
     .await;

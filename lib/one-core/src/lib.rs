@@ -43,6 +43,9 @@ use crate::config::core_config::{DidConfig, RevocationConfig};
 use crate::proto::history_decorator::certificate::CertificateHistoryDecorator;
 use crate::proto::history_decorator::credential::CredentialHistoryDecorator;
 use crate::proto::history_decorator::credential_schema::CredentialSchemaHistoryDecorator;
+use crate::proto::history_decorator::did::DidHistoryDecorator;
+use crate::proto::history_decorator::identifier::IdentifierHistoryDecorator;
+use crate::proto::history_decorator::key::KeyHistoryDecorator;
 use crate::proto::history_decorator::proof_schema::ProofSchemaHistoryDecorator;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::{
@@ -546,6 +549,24 @@ impl OneCore {
             session_provider: providers.session_provider.clone(),
         });
 
+        let key_repository = Arc::new(KeyHistoryDecorator {
+            inner: data_provider.get_key_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+        });
+
+        let did_repository = Arc::new(DidHistoryDecorator {
+            inner: data_provider.get_did_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+        });
+
+        let identifier_repository = Arc::new(IdentifierHistoryDecorator {
+            inner: data_provider.get_identifier_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+        });
+
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
@@ -594,15 +615,15 @@ impl OneCore {
 
         let certificate_service = CertificateService::new(
             certificate_repository.clone(),
-            data_provider.get_key_repository(),
+            key_repository.clone(),
             certificate_validator.clone(),
             providers.session_provider.clone(),
         );
 
         let did_service = DidService::new(
-            data_provider.get_did_repository(),
-            data_provider.get_key_repository(),
-            data_provider.get_identifier_repository(),
+            did_repository.clone(),
+            key_repository.clone(),
+            identifier_repository.clone(),
             data_provider.get_organisation_repository(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
@@ -614,7 +635,7 @@ impl OneCore {
         let credential_service = CredentialService::new(
             credential_repository.clone(),
             credential_schema_repository.clone(),
-            data_provider.get_identifier_repository(),
+            identifier_repository.clone(),
             data_provider.get_interaction_repository(),
             data_provider.get_revocation_list_repository(),
             revocation_method_provider.clone(),
@@ -639,7 +660,7 @@ impl OneCore {
             data_provider.get_history_repository(),
             data_provider.get_proof_repository(),
             certificate_repository.clone(),
-            data_provider.get_identifier_repository(),
+            identifier_repository.clone(),
             credential_service.clone(),
             certificate_validator.clone(),
             blob_storage_provider.clone(),
@@ -657,8 +678,8 @@ impl OneCore {
             trust_entity_service: TrustEntityService::new(
                 data_provider.get_trust_anchor_repository(),
                 data_provider.get_trust_entity_repository(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 data_provider.get_organisation_repository(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
@@ -675,7 +696,7 @@ impl OneCore {
             ),
             organisation_service: OrganisationService::new(
                 data_provider.get_organisation_repository(),
-                data_provider.get_identifier_repository(),
+                identifier_repository.clone(),
                 config.clone(),
             ),
             credential_service,
@@ -701,12 +722,12 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 data_provider.get_revocation_list_repository(),
                 data_provider.get_validity_credential_repository(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 config.clone(),
                 issuance_provider.clone(),
                 key_provider.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_formatter_provider.clone(),
@@ -721,12 +742,12 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 data_provider.get_revocation_list_repository(),
                 data_provider.get_validity_credential_repository(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 config.clone(),
                 issuance_provider.clone(),
                 key_provider.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_formatter_provider.clone(),
@@ -741,12 +762,12 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 data_provider.get_revocation_list_repository(),
                 data_provider.get_validity_credential_repository(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 config.clone(),
                 issuance_provider.clone(),
                 key_provider.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_formatter_provider.clone(),
@@ -756,11 +777,11 @@ impl OneCore {
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 credential_repository.clone(),
                 data_provider.get_proof_repository(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -774,11 +795,11 @@ impl OneCore {
             oid4vp_draft25_service: OID4VPDraft25Service::new(
                 credential_repository.clone(),
                 data_provider.get_proof_repository(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -792,11 +813,11 @@ impl OneCore {
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 credential_repository.clone(),
                 data_provider.get_proof_repository(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -818,7 +839,7 @@ impl OneCore {
             ),
             history_service: HistoryService::new(data_provider.get_history_repository()),
             key_service: KeyService::new(
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 data_provider.get_organisation_repository(),
                 key_provider.clone(),
                 config.clone(),
@@ -841,9 +862,9 @@ impl OneCore {
                 data_provider.get_proof_repository(),
                 key_algorithm_provider.clone(),
                 proof_schema_repository,
-                data_provider.get_did_repository(),
+                did_repository.clone(),
                 certificate_repository.clone(),
-                data_provider.get_identifier_repository(),
+                identifier_repository.clone(),
                 data_provider.get_claim_repository(),
                 credential_repository.clone(),
                 credential_schema_repository.clone(),
@@ -860,7 +881,7 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
-                data_provider.get_key_repository(),
+                key_repository.clone(),
                 blob_storage_provider.clone(),
                 nfc_hce,
                 providers.session_provider.clone(),
@@ -875,8 +896,8 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 key_provider.clone(),
-                data_provider.get_did_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository.clone(),
+                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 data_provider.get_revocation_list_repository(),
@@ -891,9 +912,9 @@ impl OneCore {
                 data_provider.get_interaction_repository(),
                 credential_schema_repository,
                 data_provider.get_validity_credential_repository(),
-                data_provider.get_did_repository(),
-                data_provider.get_key_repository(),
-                data_provider.get_identifier_repository(),
+                did_repository,
+                key_repository.clone(),
+                identifier_repository.clone(),
                 certificate_repository.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
@@ -911,7 +932,7 @@ impl OneCore {
             ssi_wallet_provider_service: SSIWalletProviderService::new(
                 data_provider.get_organisation_repository(),
                 data_provider.get_wallet_unit_repository(),
-                data_provider.get_identifier_repository(),
+                identifier_repository.clone(),
                 data_provider.get_history_repository(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
@@ -928,8 +949,8 @@ impl OneCore {
             cache_service: CacheService::new(data_provider.get_remote_entity_cache_repository()),
             nfc_service: NfcService::new(config.clone(), nfc_scanner),
             identifier_service: IdentifierService::new(
-                data_provider.get_identifier_repository(),
-                data_provider.get_key_repository(),
+                identifier_repository,
+                key_repository.clone(),
                 certificate_repository,
                 data_provider.get_organisation_repository(),
                 did_service,
@@ -942,7 +963,7 @@ impl OneCore {
                 data_provider.get_wallet_unit_repository(),
                 data_provider.get_wallet_unit_attestation_repository(),
                 data_provider.get_history_repository(),
-                data_provider.get_key_repository(),
+                key_repository,
                 key_provider,
                 key_algorithm_provider,
                 Arc::new(HTTPWalletProviderClient::new(client)),

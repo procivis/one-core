@@ -1,18 +1,20 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::identifier::{
-    GetIdentifierList, Identifier, IdentifierListQuery, IdentifierRelations,
-    UpdateIdentifierRequest,
-};
-use one_core::proto::session_provider::{SessionExt, SessionProvider};
-use one_core::repository::error::DataLayerError;
-use one_core::repository::history_repository::HistoryRepository;
-use one_core::repository::identifier_repository::IdentifierRepository;
-use shared_types::{DidId, IdentifierId, OrganisationId};
+use shared_types::{DidId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::identifier::{
+    GetIdentifierList, Identifier, IdentifierListQuery, IdentifierRelations, IdentifierState,
+    UpdateIdentifierRequest,
+};
+use crate::model::organisation::Organisation;
+use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
 
 pub struct IdentifierHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
@@ -26,8 +28,13 @@ impl IdentifierHistoryDecorator {
         id: IdentifierId,
         name: String,
         action: HistoryAction,
-        organisation_id: OrganisationId,
+        organisation: Option<Organisation>,
     ) {
+        let Some(organisation_id) = organisation.map(|o| o.id) else {
+            tracing::warn!("identifier (id: {id}) missing organisation");
+            return;
+        };
+
         let result = self
             .history_repository
             .create_history(History {
@@ -74,17 +81,12 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
     }
 
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {
-        let id = request.id;
         let name = request.name.clone();
-        let organisation_id = request.organisation.as_ref().map(|o| o.id);
+        let organisation = request.organisation.to_owned();
         let identifier_id = self.inner.create(request).await?;
 
-        if let Some(organisation_id) = organisation_id {
-            self.create_history(id, name, HistoryAction::Created, organisation_id)
-                .await;
-        } else {
-            tracing::warn!("identifier (id: {identifier_id}) missing organisation");
-        }
+        self.create_history(identifier_id, name, HistoryAction::Created, organisation)
+            .await;
 
         Ok(identifier_id)
     }
@@ -96,32 +98,30 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
     ) -> Result<(), DataLayerError> {
         self.inner.update(id, request.clone()).await?;
 
-        if request.state.is_none() {
-            return Ok(());
-        };
+        if let Some(state) = request.state {
+            let identifier = self
+                .inner
+                .get(
+                    *id,
+                    &IdentifierRelations {
+                        organisation: Some(Default::default()),
+                        ..Default::default()
+                    },
+                )
+                .await?
+                .context("identifier is missing")?;
 
-        let identifier = self
-            .inner
-            .get(
-                *id,
-                &IdentifierRelations {
-                    organisation: Some(Default::default()),
-                    ..Default::default()
-                },
-            )
-            .await?
-            .context("identifier is missing")?;
-
-        if let Some(organisation) = identifier.organisation {
             self.create_history(
                 identifier.id,
                 identifier.name,
-                HistoryAction::Deactivated,
-                organisation.id,
+                if state == IdentifierState::Deactivated {
+                    HistoryAction::Deactivated
+                } else {
+                    HistoryAction::Reactivated
+                },
+                identifier.organisation,
             )
             .await;
-        } else {
-            tracing::warn!("identifier (id: {id}) missing organisation");
         }
 
         Ok(())
@@ -143,17 +143,13 @@ impl IdentifierRepository for IdentifierHistoryDecorator {
 
         let identifier = identifier?.context("identifier is missing")?;
 
-        if let Some(organisation) = identifier.organisation {
-            self.create_history(
-                identifier.id,
-                identifier.name,
-                HistoryAction::Deleted,
-                organisation.id,
-            )
-            .await;
-        } else {
-            tracing::warn!("identifier (id: {id}) missing organisation");
-        }
+        self.create_history(
+            identifier.id,
+            identifier.name,
+            HistoryAction::Deleted,
+            identifier.organisation,
+        )
+        .await;
 
         Ok(())
     }

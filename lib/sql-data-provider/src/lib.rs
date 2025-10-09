@@ -5,11 +5,8 @@ use certificate::CertificateProvider;
 use claim::ClaimProvider;
 use claim_schema::ClaimSchemaProvider;
 use did::DidProvider;
-use did::history::DidHistoryDecorator;
 use identifier::IdentifierProvider;
-use identifier::history::IdentifierHistoryDecorator;
 use interaction::InteractionProvider;
-use key::history::KeyHistoryDecorator;
 use migration::runner::run_migrations;
 use one_core::proto::session_provider::SessionProvider;
 use one_core::repository::DataRepository;
@@ -154,24 +151,12 @@ impl DataLayer {
             organisation_repository: organisation_repository.clone(),
         });
 
-        let key_repository = Arc::new(KeyHistoryDecorator {
-            inner: key_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
-        });
-
         let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider { db: db.clone() });
 
         let did_repository = Arc::new(DidProvider {
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
             db: db.clone(),
-        });
-
-        let did_repository = Arc::new(DidHistoryDecorator {
-            inner: did_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
         });
 
         let certificate_repository = Arc::new(CertificateProvider {
@@ -186,12 +171,6 @@ impl DataLayer {
             did_repository: did_repository.clone(),
             key_repository: key_repository.clone(),
             certificate_repository: certificate_repository.clone(),
-        });
-
-        let identifier_repository = Arc::new(IdentifierHistoryDecorator {
-            inner: identifier_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {

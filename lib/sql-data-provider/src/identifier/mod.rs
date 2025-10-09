@@ -6,7 +6,6 @@ use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::DatabaseConnection;
 
-pub mod history;
 pub mod mapper;
 pub mod repository;
 

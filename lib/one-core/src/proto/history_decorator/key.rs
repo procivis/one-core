@@ -1,13 +1,14 @@
 use std::sync::Arc;
 
-use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
-use one_core::proto::session_provider::{SessionExt, SessionProvider};
-use one_core::repository::error::DataLayerError;
-use one_core::repository::history_repository::HistoryRepository;
-use one_core::repository::key_repository::KeyRepository;
 use shared_types::KeyId;
 use uuid::Uuid;
+
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
+use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::key_repository::KeyRepository;
 
 pub struct KeyHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
