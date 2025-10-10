@@ -146,23 +146,22 @@ impl OpenID4VPFinal1_0 {
             .as_ref()
             .map(|jwks| jwks.keys.is_empty())
             .unwrap_or(true)
+            && let Some(ref uri) = client_metadata.jwks_uri
         {
-            if let Some(ref uri) = client_metadata.jwks_uri {
-                let jwks = self
-                    .client
-                    .get(uri)
-                    .send()
-                    .await
-                    .context("send error")
-                    .map_err(VerificationProtocolError::Transport)?
-                    .error_for_status()
-                    .context("status error")
-                    .map_err(VerificationProtocolError::Transport)?;
+            let jwks = self
+                .client
+                .get(uri)
+                .send()
+                .await
+                .context("send error")
+                .map_err(VerificationProtocolError::Transport)?
+                .error_for_status()
+                .context("status error")
+                .map_err(VerificationProtocolError::Transport)?;
 
-                client_metadata.jwks = jwks
-                    .json()
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-            }
+            client_metadata.jwks = jwks
+                .json()
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
         }
         let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
             return Ok(None);

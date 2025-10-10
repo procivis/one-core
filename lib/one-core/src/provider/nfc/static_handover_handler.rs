@@ -120,10 +120,8 @@ impl NfcHceHandler for NfcStaticHandoverHandler {
             false,
         );
 
-        if message_read {
-            if let Err(err) = self.hce.stop_hosting(true).await {
-                tracing::warn!("Failed to stop hosting: {err}");
-            }
+        if message_read && let Err(err) = self.hce.stop_hosting(true).await {
+            tracing::warn!("Failed to stop hosting: {err}");
         }
     }
 
@@ -137,12 +135,11 @@ impl NfcHceHandler for NfcStaticHandoverHandler {
 
                 // in case the session is cancelled by the system (iOS timeout, app put to background, ...)
                 // or by user via system overlay (iOS) we should fail the proof flow
-                if !message_read {
-                    if let Some(failure_sender) = state.failure_sender.take() {
-                        if let Err(err) = failure_sender.send(reason) {
-                            tracing::debug!("Failed to signal failure: {err}");
-                        }
-                    }
+                if !message_read
+                    && let Some(failure_sender) = state.failure_sender.take()
+                    && let Err(err) = failure_sender.send(reason)
+                {
+                    tracing::debug!("Failed to signal failure: {err}");
                 }
 
                 Ok(())

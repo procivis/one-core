@@ -115,10 +115,10 @@ pub fn create_config(
 
     let mut app_config: AppConfig<ServerConfig> = core_config::AppConfig::parse(configs).unwrap();
 
-    if let AuthMode::Static { static_token } = &mut app_config.app.auth {
-        if static_token.is_empty() {
-            *static_token = "test".to_string();
-        }
+    if let AuthMode::Static { static_token } = &mut app_config.app.auth
+        && static_token.is_empty()
+    {
+        *static_token = "test".to_string();
     }
 
     app_config.app = ServerConfig {

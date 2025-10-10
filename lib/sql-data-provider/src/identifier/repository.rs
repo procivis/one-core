@@ -26,79 +26,77 @@ impl IdentifierProvider {
     ) -> Result<Identifier, DataLayerError> {
         let mut result: Identifier = model.clone().into();
 
-        if let Some(organisation_relations) = &relations.organisation {
-            if let Some(organisation_id) = &model.organisation_id {
-                result.organisation = Some(
-                    self.organisation_repository
-                        .get_organisation(organisation_id, organisation_relations)
+        if let Some(organisation_relations) = &relations.organisation
+            && let Some(organisation_id) = &model.organisation_id
+        {
+            result.organisation = Some(
+                self.organisation_repository
+                    .get_organisation(organisation_id, organisation_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "identifier-organisation",
+                        id: organisation_id.to_string(),
+                    })?,
+            );
+        }
+
+        if model.r#type == identifier::IdentifierType::Did
+            && let Some(did_relations) = &relations.did
+            && let Some(did_id) = &model.did_id
+        {
+            result.did = Some(
+                self.did_repository
+                    .get_did(did_id, did_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "identifier-did",
+                        id: did_id.to_string(),
+                    })?,
+            );
+        }
+
+        if model.r#type == identifier::IdentifierType::Key
+            && let Some(key_relations) = &relations.key
+            && let Some(key_id) = &model.key_id
+        {
+            result.key = Some(
+                self.key_repository
+                    .get_key(key_id, key_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "identifier-key",
+                        id: key_id.to_string(),
+                    })?,
+            );
+        }
+
+        if model.r#type == identifier::IdentifierType::Certificate
+            && let Some(certificate_relations) = &relations.certificates
+        {
+            let certificate_ids: Vec<CertificateId> = certificate::Entity::find()
+                .select_only()
+                .column(certificate::Column::Id)
+                .filter(certificate::Column::IdentifierId.eq(model.id))
+                .order_by_desc(certificate::Column::ExpiryDate)
+                .order_by_asc(certificate::Column::Name)
+                .into_tuple()
+                .all(&self.db)
+                .await
+                .map_err(to_data_layer_error)?;
+
+            let mut certs = vec![];
+            for certificate_id in certificate_ids {
+                certs.push(
+                    self.certificate_repository
+                        .get(certificate_id, certificate_relations)
                         .await?
                         .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "identifier-organisation",
-                            id: organisation_id.to_string(),
+                            relation: "identifier-certificate",
+                            id: certificate_id.to_string(),
                         })?,
                 );
             }
-        }
-
-        if model.r#type == identifier::IdentifierType::Did {
-            if let Some(did_relations) = &relations.did {
-                if let Some(did_id) = &model.did_id {
-                    result.did = Some(
-                        self.did_repository
-                            .get_did(did_id, did_relations)
-                            .await?
-                            .ok_or(DataLayerError::MissingRequiredRelation {
-                                relation: "identifier-did",
-                                id: did_id.to_string(),
-                            })?,
-                    );
-                }
-            }
-        }
-
-        if model.r#type == identifier::IdentifierType::Key {
-            if let Some(key_relations) = &relations.key {
-                if let Some(key_id) = &model.key_id {
-                    result.key = Some(
-                        self.key_repository
-                            .get_key(key_id, key_relations)
-                            .await?
-                            .ok_or(DataLayerError::MissingRequiredRelation {
-                                relation: "identifier-key",
-                                id: key_id.to_string(),
-                            })?,
-                    );
-                }
-            }
-        }
-
-        if model.r#type == identifier::IdentifierType::Certificate {
-            if let Some(certificate_relations) = &relations.certificates {
-                let certificate_ids: Vec<CertificateId> = certificate::Entity::find()
-                    .select_only()
-                    .column(certificate::Column::Id)
-                    .filter(certificate::Column::IdentifierId.eq(model.id))
-                    .order_by_desc(certificate::Column::ExpiryDate)
-                    .order_by_asc(certificate::Column::Name)
-                    .into_tuple()
-                    .all(&self.db)
-                    .await
-                    .map_err(to_data_layer_error)?;
-
-                let mut certs = vec![];
-                for certificate_id in certificate_ids {
-                    certs.push(
-                        self.certificate_repository
-                            .get(certificate_id, certificate_relations)
-                            .await?
-                            .ok_or(DataLayerError::MissingRequiredRelation {
-                                relation: "identifier-certificate",
-                                id: certificate_id.to_string(),
-                            })?,
-                    );
-                }
-                result.certificates = Some(certs);
-            }
+            result.certificates = Some(certs);
         }
 
         Ok(result)

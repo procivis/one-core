@@ -138,18 +138,18 @@ impl TrustEntityRepository for TrustEntityProvider {
             );
         }
 
-        if let Some(organisation_id) = organisation_id {
-            if let Some(organisation_relations) = &relations.organisation {
-                trust_entity.organisation = Some(
-                    self.organisation_repository
-                        .get_organisation(&organisation_id, organisation_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "trust_entity-organisation",
-                            id: trust_anchor_id.to_string(),
-                        })?,
-                );
-            }
+        if let Some(organisation_id) = organisation_id
+            && let Some(organisation_relations) = &relations.organisation
+        {
+            trust_entity.organisation = Some(
+                self.organisation_repository
+                    .get_organisation(&organisation_id, organisation_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "trust_entity-organisation",
+                        id: trust_anchor_id.to_string(),
+                    })?,
+            );
         }
         Ok(Some(trust_entity))
     }

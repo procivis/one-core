@@ -464,10 +464,10 @@ pub(crate) async fn generate_token_from_credentials(
     let states = credentials_by_issuer_did
         .iter()
         .map(|credential| {
-            if let Some(changed_credential) = additionally_changed_credential.as_ref() {
-                if changed_credential.credential_id == credential.id {
-                    return Ok(changed_credential.value.clone());
-                }
+            if let Some(changed_credential) = additionally_changed_credential.as_ref()
+                && changed_credential.credential_id == credential.id
+            {
+                return Ok(changed_credential.value.clone());
             }
 
             Ok(credential_state_into_revocation_state(credential.state))

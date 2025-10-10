@@ -224,7 +224,7 @@ impl RemoteKeyAdapter {
         key: Key,
         key_storage: Arc<dyn KeyStorage>,
         handle: tokio::runtime::Handle,
-    ) -> anyhow::Result<Box<(dyn RemoteKeyPair + Send + Sync + 'static)>> {
+    ) -> anyhow::Result<Box<dyn RemoteKeyPair + Send + Sync + 'static>> {
         let mut decompressed_public_key = None;
 
         let algorithm = match key.key_type.as_str() {

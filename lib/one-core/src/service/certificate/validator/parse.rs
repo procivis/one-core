@@ -253,17 +253,17 @@ impl CertificateValidatorImpl {
 
         for (chain_idx, certificate) in ca_certs.iter().enumerate() {
             for ext in certificate.extensions() {
-                if let ParsedExtension::BasicConstraints(bc) = &ext.parsed_extension() {
-                    if let Some(path_len_constraint) = bc.path_len_constraint {
-                        // chain_idx is the number of intermediate CAs that "follow" this certificate
-                        let intermediate_cas_following = chain_idx;
-                        if (path_len_constraint as usize) < intermediate_cas_following {
-                            return Err(ValidationError::BasicConstraintsViolation(
+                if let ParsedExtension::BasicConstraints(bc) = &ext.parsed_extension()
+                    && let Some(path_len_constraint) = bc.path_len_constraint
+                {
+                    // chain_idx is the number of intermediate CAs that "follow" this certificate
+                    let intermediate_cas_following = chain_idx;
+                    if (path_len_constraint as usize) < intermediate_cas_following {
+                        return Err(ValidationError::BasicConstraintsViolation(
                                 format!(
                                     "Path length constraint={path_len_constraint}, intermediate CAs count={intermediate_cas_following}"
                                 ),
                             ).into());
-                        }
                     }
                 }
             }

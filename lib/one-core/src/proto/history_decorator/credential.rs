@@ -136,15 +136,14 @@ impl CredentialRepository for CredentialHistoryDecorator {
             .await?;
 
         // issuer, changing interaction while pending -> repeated sharing
-        if let Some(interaction_id) = update.interaction {
-            if stored.state == CredentialStateEnum::Pending
-                && stored.role == CredentialRole::Issuer
-                && update.state.is_none()
-                && Some(interaction_id) != stored.interaction.map(|i| i.id)
-            {
-                self.create_history_entry(credential_id, HistoryAction::Shared)
-                    .await;
-            }
+        if let Some(interaction_id) = update.interaction
+            && stored.state == CredentialStateEnum::Pending
+            && stored.role == CredentialRole::Issuer
+            && update.state.is_none()
+            && Some(interaction_id) != stored.interaction.map(|i| i.id)
+        {
+            self.create_history_entry(credential_id, HistoryAction::Shared)
+                .await;
         }
 
         if let Some(new_state) = update.state {

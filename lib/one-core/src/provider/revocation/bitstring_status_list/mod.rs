@@ -586,10 +586,10 @@ pub(crate) async fn generate_bitstring_from_credentials(
     let states = credentials_by_issuer_did
         .iter()
         .map(|credential| {
-            if let Some(changed_credential) = additionally_changed_credential.as_ref() {
-                if changed_credential.credential_id == credential.id {
-                    return Ok(changed_credential.value);
-                }
+            if let Some(changed_credential) = additionally_changed_credential.as_ref()
+                && changed_credential.credential_id == credential.id
+            {
+                return Ok(changed_credential.value);
             }
 
             Ok(credential.state == matching_state)

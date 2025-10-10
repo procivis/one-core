@@ -160,7 +160,7 @@ fn extract_auth_token(request: &Request<Body>) -> Result<&str, StatusCode> {
     Ok(token)
 }
 
-pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext {
+pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext<'_> {
     let headers = request.headers();
     let request_id = headers
         .get("x-request-id")

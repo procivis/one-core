@@ -52,32 +52,32 @@ impl WalletUnitAttestationRepository for WalletUnitAttestationProvider {
 
         let mut wallet_unit_attestation = WalletUnitAttestation::from(entity_model);
 
-        if let Some(key_id) = key_id {
-            if let Some(key_relations) = &relations.key {
-                wallet_unit_attestation.key = Some(
-                    self.key_repository
-                        .get_key(&key_id, key_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "wallet_unit_attestation-key",
-                            id: wallet_unit_attestation_id.to_string(),
-                        })?,
-                );
-            }
+        if let Some(key_id) = key_id
+            && let Some(key_relations) = &relations.key
+        {
+            wallet_unit_attestation.key = Some(
+                self.key_repository
+                    .get_key(&key_id, key_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "wallet_unit_attestation-key",
+                        id: wallet_unit_attestation_id.to_string(),
+                    })?,
+            );
         }
 
-        if let Some(organisation_id) = organisation_id {
-            if let Some(organisation_relations) = &relations.organisation {
-                wallet_unit_attestation.organisation = Some(
-                    self.organisation_repository
-                        .get_organisation(&organisation_id, organisation_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "wallet_unit_attestation-organisation",
-                            id: wallet_unit_attestation_id.to_string(),
-                        })?,
-                );
-            }
+        if let Some(organisation_id) = organisation_id
+            && let Some(organisation_relations) = &relations.organisation
+        {
+            wallet_unit_attestation.organisation = Some(
+                self.organisation_repository
+                    .get_organisation(&organisation_id, organisation_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "wallet_unit_attestation-organisation",
+                        id: wallet_unit_attestation_id.to_string(),
+                    })?,
+            );
         }
         Ok(Some(wallet_unit_attestation))
     }

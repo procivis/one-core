@@ -293,12 +293,13 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
     }
 
     let query_client_id_scheme = query_params.client_id_scheme;
-    if let Some(client_id_scheme) = &query_client_id_scheme {
-        if request.is_none() && client_id_scheme != &ClientIdScheme::RedirectUri {
-            return Err(VerificationProtocolError::InvalidRequest(format!(
-                "request or request_uri missing for client_id_scheme {client_id_scheme}",
-            )));
-        }
+    if let Some(client_id_scheme) = &query_client_id_scheme
+        && request.is_none()
+        && client_id_scheme != &ClientIdScheme::RedirectUri
+    {
+        return Err(VerificationProtocolError::InvalidRequest(format!(
+            "request or request_uri missing for client_id_scheme {client_id_scheme}",
+        )));
     }
 
     let interaction_data: OpenID4VP20AuthorizationRequest = query_params.try_into()?;
@@ -314,10 +315,10 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
         // Yes this is hacky, but in draft 24+ of OID4VP, the `client_id_scheme` will be contained within
         // `client_id`, so this special case can be removed again.
         // TODO OPENID4VP draft 24+: remove this if-block
-        if query_client_id_scheme.is_none() {
-            if let Some(client_id_scheme) = request_token.payload.custom.client_id_scheme {
-                interaction_data.client_id_scheme = client_id_scheme;
-            }
+        if query_client_id_scheme.is_none()
+            && let Some(client_id_scheme) = request_token.payload.custom.client_id_scheme
+        {
+            interaction_data.client_id_scheme = client_id_scheme;
         }
 
         // accept non-conformant audience with a warning

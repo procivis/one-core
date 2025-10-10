@@ -40,7 +40,7 @@ impl Term for TermAdapter {
         self
     }
 
-    fn iri(&self) -> Option<sophia_api::term::IriRef<MownStr>> {
+    fn iri(&self) -> Option<sophia_api::term::IriRef<MownStr<'_>>> {
         match &self.0 {
             rdf_types::Term::Id(rdf_types::Id::Iri(iri)) => {
                 sophia_api::term::IriRef::new(MownStr::from_ref(iri)).ok()
@@ -49,7 +49,7 @@ impl Term for TermAdapter {
         }
     }
 
-    fn bnode_id(&self) -> Option<sophia_api::term::BnodeId<MownStr>> {
+    fn bnode_id(&self) -> Option<sophia_api::term::BnodeId<MownStr<'_>>> {
         match &self.0 {
             rdf_types::Term::Id(rdf_types::Id::Blank(bnode_id)) => {
                 sophia_api::term::BnodeId::new(MownStr::from_ref(&bnode_id[2..])).ok()
@@ -58,14 +58,14 @@ impl Term for TermAdapter {
         }
     }
 
-    fn lexical_form(&self) -> Option<MownStr> {
+    fn lexical_form(&self) -> Option<MownStr<'_>> {
         match &self.0 {
             rdf_types::Term::Literal(lit) => Some(MownStr::from_ref(lit.as_value())),
             _ => None,
         }
     }
 
-    fn datatype(&self) -> Option<sophia_api::term::IriRef<MownStr>> {
+    fn datatype(&self) -> Option<sophia_api::term::IriRef<MownStr<'_>>> {
         match &self.0 {
             rdf_types::Term::Literal(lit) => match lit.as_type() {
                 rdf_types::LiteralType::Any(iri) => {
@@ -77,7 +77,7 @@ impl Term for TermAdapter {
         }
     }
 
-    fn language_tag(&self) -> Option<sophia_api::term::LanguageTag<MownStr>> {
+    fn language_tag(&self) -> Option<sophia_api::term::LanguageTag<MownStr<'_>>> {
         match &self.0 {
             rdf_types::Term::Literal(lit) => match lit.as_type() {
                 rdf_types::LiteralType::LangString(tag) => {

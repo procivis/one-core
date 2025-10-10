@@ -49,12 +49,12 @@ impl OpenID4VCIProofJWTFormatter {
                 ));
             }
         }
-        if let Some(expected_nonce) = expected_nonce {
-            if payload.custom.nonce.as_ref() != Some(expected_nonce) {
-                return Err(FormatterError::CouldNotVerify(format!(
-                    "invalid or missing nonce: expected: {expected_nonce}"
-                )));
-            }
+        if let Some(expected_nonce) = expected_nonce
+            && payload.custom.nonce.as_ref() != Some(expected_nonce)
+        {
+            return Err(FormatterError::CouldNotVerify(format!(
+                "invalid or missing nonce: expected: {expected_nonce}"
+            )));
         }
 
         let result = match (header.key_id.as_ref(), header.jwk.clone()) {

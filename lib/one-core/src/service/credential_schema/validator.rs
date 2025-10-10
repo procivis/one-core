@@ -35,14 +35,13 @@ pub(crate) async fn credential_schema_already_exists(
         )
         .await?;
 
-    if let Some(schema_id) = schema_id {
-        if credential_schemas
+    if let Some(schema_id) = schema_id
+        && credential_schemas
             .values
             .iter()
             .any(|cs| cs.schema_id == schema_id)
-        {
-            return Ok(UniquenessCheckResult::SchemaIdConflict);
-        }
+    {
+        return Ok(UniquenessCheckResult::SchemaIdConflict);
     }
     if credential_schemas.values.iter().any(|cs| cs.name == name) {
         Ok(UniquenessCheckResult::NameConflict)
@@ -204,10 +203,10 @@ fn handle_attribute_claim_validation(
     claims: &[String],
     attribute_name: &str,
 ) -> Result<(), ServiceError> {
-    if let Some(attribute) = attribute {
-        if !claims.iter().any(|c| c == attribute) {
-            return Err(ValidationError::MissingLayoutAttribute(attribute_name.to_owned()).into());
-        }
+    if let Some(attribute) = attribute
+        && !claims.iter().any(|c| c == attribute)
+    {
+        return Err(ValidationError::MissingLayoutAttribute(attribute_name.to_owned()).into());
     }
     Ok(())
 }
@@ -486,16 +485,15 @@ pub(crate) fn validate_wallet_storage_type_supported(
     wallet_storage_type: Option<WalletStorageTypeEnum>,
     config: &CoreConfig,
 ) -> Result<(), ValidationError> {
-    if let Some(wallet_storage_type) = wallet_storage_type {
-        if config
+    if let Some(wallet_storage_type) = wallet_storage_type
+        && config
             .holder_key_storage
             .get(&wallet_storage_type)
             .is_none_or(|entry| entry.enabled == Some(false))
-        {
-            return Err(ValidationError::WalletStorageTypeDisabled(
-                wallet_storage_type,
-            ));
-        }
+    {
+        return Err(ValidationError::WalletStorageTypeDisabled(
+            wallet_storage_type,
+        ));
     }
 
     Ok(())

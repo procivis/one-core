@@ -404,18 +404,18 @@ async fn process_proof_submission_dcql_query(
                 let proved_claims: Vec<ValidatedProofClaimDTO> =
                     validate_claims(credential, proof_input_schema, mso)?;
 
-                if let Some(claim_sets) = credential_query.claim_sets.as_ref() {
-                    if claim_sets.iter().any(|claim_set| {
+                if let Some(claim_sets) = credential_query.claim_sets.as_ref()
+                    && claim_sets.iter().any(|claim_set| {
                         claim_set.iter().all(|claim| {
                             proved_claims.iter().any(|proved_claim| {
                                 proved_claim.proof_input_claim.schema.key == claim.to_string()
                             })
                         })
-                    }) {
-                        return Err(OpenID4VCError::ValidationError(
-                            "Claim set is not satisfied".to_string(),
-                        ));
-                    }
+                    })
+                {
+                    return Err(OpenID4VCError::ValidationError(
+                        "Claim set is not satisfied".to_string(),
+                    ));
                 }
                 total_proved_claims.extend(proved_claims);
             }
@@ -577,17 +577,16 @@ async fn process_proof_submission_presentation_exchange(
             ));
         }
 
-        if let Some(path_nested) = path_nested {
-            if !input_descriptor
+        if let Some(path_nested) = path_nested
+            && !input_descriptor
                 .format
                 .keys()
                 .any(|format| *format == path_nested.format)
-            {
-                return Err(OpenID4VCError::ValidationError(format!(
-                    "Could not find entry for format: {}",
-                    path_nested.format
-                )));
-            }
+        {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "Could not find entry for format: {}",
+                path_nested.format
+            )));
         }
 
         let target_schema_id = if input_descriptor.format.contains_key("mso_mdoc") {

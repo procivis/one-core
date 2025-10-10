@@ -165,7 +165,7 @@ mod test {
     use time::macros::datetime;
     use time::{Duration, OffsetDateTime};
     use wiremock::matchers::{headers, path};
-    use wiremock::{Match, Mock, MockServer, Request, ResponseTemplate};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use crate::provider::caching_loader::json_ld_context::{JsonLdCachingLoader, JsonLdResolver};
     use crate::provider::http_client::MockHttpClient;
@@ -232,17 +232,6 @@ mod test {
 
         assert_eq!(response_content, String::from_utf8(content).unwrap());
         assert_eq!(Some(expected_media_type), media_type.as_deref());
-    }
-
-    pub struct CustomMatcher;
-
-    impl Match for CustomMatcher {
-        fn matches(&self, request: &Request) -> bool {
-            match request.headers.get("if-modified-since") {
-                None => false,
-                Some(value) => value == "Sat, 02 Apr 2005 20:37:00 GMT",
-            }
-        }
     }
 
     async fn context_fetch_mock_200(

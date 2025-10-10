@@ -127,12 +127,12 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
             unverified_jwt,
         } = Jwt::decompose_token(token)?;
 
-        if let (Some(issuer), Some(issuer_did)) = (&payload.issuer, &issuer_did) {
-            if issuer != issuer_did.as_str() {
-                return Err(FormatterError::CouldNotVerify(format!(
-                    "Token issuer `{issuer}` does not match credential issuer `{issuer_did}`",
-                )));
-            }
+        if let (Some(issuer), Some(issuer_did)) = (&payload.issuer, &issuer_did)
+            && issuer != issuer_did.as_str()
+        {
+            return Err(FormatterError::CouldNotVerify(format!(
+                "Token issuer `{issuer}` does not match credential issuer `{issuer_did}`",
+            )));
         }
 
         payload.issuer = payload.issuer.map(|issuer| {

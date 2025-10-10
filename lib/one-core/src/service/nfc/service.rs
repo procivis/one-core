@@ -37,15 +37,15 @@ impl NfcService {
         let result = read_select_handover(nfc_scanner.as_ref()).await;
 
         // reading finished - display result
-        if result.is_ok() {
-            if let Some(final_message) = request.success_message {
-                nfc_scanner
-                    .set_message(final_message)
-                    .await
-                    .unwrap_or_else(|err| {
-                        tracing::warn!("Failed to write final message: {err}");
-                    });
-            }
+        if result.is_ok()
+            && let Some(final_message) = request.success_message
+        {
+            nfc_scanner
+                .set_message(final_message)
+                .await
+                .unwrap_or_else(|err| {
+                    tracing::warn!("Failed to write final message: {err}");
+                });
         }
 
         let error_message = match &result {

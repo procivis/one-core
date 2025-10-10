@@ -85,20 +85,20 @@ impl VctTypeMetadataCache {
 impl VctTypeMetadataFetcher for VctTypeMetadataCache {
     async fn get(&self, vct: &str) -> Result<Option<SdJwtVcTypeMetadataCacheItem>, CacheError> {
         // Only make HTTP requests for http and https schemes
-        if let Ok(url) = url::Url::parse(vct) {
-            if url.scheme() == "http" || url.scheme() == "https" {
-                let (bytes, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
+        if let Ok(url) = url::Url::parse(vct)
+            && (url.scheme() == "http" || url.scheme() == "https")
+        {
+            let (bytes, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
 
-                let hash_base64 = SHA256
-                    .hash_base64(&bytes)
-                    .map_err(Into::<InvalidCachedValueError>::into)?;
+            let hash_base64 = SHA256
+                .hash_base64(&bytes)
+                .map_err(Into::<InvalidCachedValueError>::into)?;
 
-                return Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                    metadata: serde_json::from_slice(&bytes)
-                        .map_err(Into::<InvalidCachedValueError>::into)?,
-                    integrity: Some(format!("sha256-{hash_base64}")),
-                }));
-            }
+            return Ok(Some(SdJwtVcTypeMetadataCacheItem {
+                metadata: serde_json::from_slice(&bytes)
+                    .map_err(Into::<InvalidCachedValueError>::into)?,
+                integrity: Some(format!("sha256-{hash_base64}")),
+            }));
         }
 
         // For all other cases (non-HTTP URLs or invalid URLs), just check the cache

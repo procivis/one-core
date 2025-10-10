@@ -216,10 +216,10 @@ pub(crate) fn create_display_dto_from_schema(
 
     if let Some(layout_properties) = &credential_schema.layout_properties {
         // Extract background color
-        if let Some(background) = &layout_properties.background {
-            if let Some(color) = &background.color {
-                display.background_color = Some(color.clone());
-            }
+        if let Some(background) = &layout_properties.background
+            && let Some(color) = &background.color
+        {
+            display.background_color = Some(color.clone());
         }
 
         // Extract logo and text color

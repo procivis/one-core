@@ -49,12 +49,12 @@ pub(crate) fn entities_for_local_active_identifier<'a>(
                 "missing identifier did".to_string(),
             ))?;
 
-            if let Some(did_id) = did_id {
-                if did.id != did_id {
-                    return Err(ServiceError::ValidationError(
-                        "Mismatching identifier and did specified".to_string(),
-                    ));
-                }
+            if let Some(did_id) = did_id
+                && did.id != did_id
+            {
+                return Err(ServiceError::ValidationError(
+                    "Mismatching identifier and did specified".to_string(),
+                ));
             }
 
             if did.deactivated {
@@ -149,12 +149,12 @@ pub(crate) fn entities_for_local_active_identifier<'a>(
 }
 
 fn validate_key_id_matches(key_id: Option<KeyId>, key: &Key) -> Result<(), ServiceError> {
-    if let Some(key_id) = key_id {
-        if key.id != key_id {
-            return Err(ServiceError::ValidationError(
-                "Mismatching key specified".to_string(),
-            ));
-        }
+    if let Some(key_id) = key_id
+        && key.id != key_id
+    {
+        return Err(ServiceError::ValidationError(
+            "Mismatching key specified".to_string(),
+        ));
     }
     Ok(())
 }

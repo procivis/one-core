@@ -23,10 +23,10 @@ impl TrackingBlePeripheral {
         tracing::debug!("teardown");
 
         // Stop advertising if currently active
-        if let Ok(true) = self.inner.is_advertising().await {
-            if let Err(err) = self.inner.stop_advertisement().await {
-                tracing::warn!("Failed to stop advertisement during teardown: {err}");
-            }
+        if let Ok(true) = self.inner.is_advertising().await
+            && let Err(err) = self.inner.stop_advertisement().await
+        {
+            tracing::warn!("Failed to stop advertisement during teardown: {err}");
         }
 
         // Always attempt to stop the server (it should be idempotent)

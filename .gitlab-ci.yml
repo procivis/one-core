@@ -20,7 +20,7 @@ variables:
   CARGO_TARGET_DIR: "/build-cache/target"
   CARGO_HOME: "/build-cache/cargo-home"
   CARGO_UNSTABLE_GC: "true"
-  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.88.0-0.1
+  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.90.0-0.1
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin

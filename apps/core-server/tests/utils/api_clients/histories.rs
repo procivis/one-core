@@ -32,18 +32,16 @@ impl HistoriesApi {
         let mut url = format!(
             "/api/history/v1?page={page}&pageSize={page_size}&organisationId={organisation_id}{schema_param}"
         );
-        if entity_types.is_some() {
+        if let Some(entity_types) = entity_types {
             let entity_types_as_string = entity_types
-                .unwrap()
                 .into_iter()
                 .map(|e| format!("entityTypes[]={e}"))
                 .collect::<Vec<String>>()
                 .join("&");
             url.push_str(&format!("&{entity_types_as_string}"));
         }
-        if actions.is_some() {
+        if let Some(actions) = actions {
             let actions_as_string = actions
-                .unwrap()
                 .into_iter()
                 .map(|e| format!("actions[]={e}"))
                 .collect::<Vec<String>>()

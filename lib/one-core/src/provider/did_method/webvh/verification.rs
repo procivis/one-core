@@ -23,14 +23,14 @@ pub async fn verify_did_log(
     did_method_provider: &dyn DidMethodProvider,
     params: &Params,
 ) -> Result<(), DidMethodError> {
-    if let Some(limit) = params.max_did_log_entry_check {
-        if log.len() > limit as usize {
-            return Err(ResolutionError(format!(
-                "Failed to verify did log: log has {} entries which is more than the max allowed length ({})",
-                log.len(),
-                limit
-            )));
-        }
+    if let Some(limit) = params.max_did_log_entry_check
+        && log.len() > limit as usize
+    {
+        return Err(ResolutionError(format!(
+            "Failed to verify did log: log has {} entries which is more than the max allowed length ({})",
+            log.len(),
+            limit
+        )));
     }
 
     let mut log_iter = log.iter().peekable();
@@ -61,13 +61,13 @@ pub async fn verify_did_log(
             )));
         }
 
-        if let Some(prev_time) = last_entry_time.replace(entry.version_time) {
-            if prev_time > entry.version_time {
-                return Err(ResolutionError(format!(
-                    "Invalid log entry {}: version time {} is before version time of the previous entry",
-                    entry.version_id, entry.version_time
-                )));
-            }
+        if let Some(prev_time) = last_entry_time.replace(entry.version_time)
+            && prev_time > entry.version_time
+        {
+            return Err(ResolutionError(format!(
+                "Invalid log entry {}: version time {} is before version time of the previous entry",
+                entry.version_id, entry.version_time
+            )));
         }
 
         check_parameters(index, &entry.parameters)?;
@@ -265,12 +265,12 @@ async fn verify_proof(
         )));
     };
 
-    if let Some(proof_timestamp) = proof.created {
-        if proof_timestamp < entry.version_time {
-            return Err(ResolutionError(
-                "Invalid proof: created time is before entry time.".to_string(),
-            ));
-        }
+    if let Some(proof_timestamp) = proof.created
+        && proof_timestamp < entry.version_time
+    {
+        return Err(ResolutionError(
+            "Invalid proof: created time is before entry time.".to_string(),
+        ));
     }
 
     if *challenge != entry.version_id {

@@ -131,13 +131,12 @@ pub(super) fn validate_against_redirect_uris(
         return Ok(());
     }
 
-    if let Some(uri) = uri {
-        if !redirect_uris.iter().any(|v| v == uri) {
-            return Err(VerificationProtocolError::Failed(
-                "redirect_uri or response_uri is not allowed by verifier_attestation token"
-                    .to_string(),
-            ));
-        }
+    if let Some(uri) = uri
+        && !redirect_uris.iter().any(|v| v == uri)
+    {
+        return Err(VerificationProtocolError::Failed(
+            "redirect_uri or response_uri is not allowed by verifier_attestation token".to_string(),
+        ));
     }
 
     Ok(())

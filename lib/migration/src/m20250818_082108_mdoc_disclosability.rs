@@ -1,4 +1,3 @@
-use sea_orm::FromQueryResult;
 use sea_orm_migration::prelude::*;
 
 use crate::m20240110_000001_initial::{Credential, CredentialSchema};
@@ -7,12 +6,6 @@ use crate::m20250814_120106_add_selectively_disclosable_column_to_claims::ClaimN
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
-
-#[derive(FromQueryResult, Eq, PartialEq, Hash)]
-pub struct ClaimIdPath {
-    pub id: String,
-    pub path: String,
-}
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {

@@ -260,10 +260,10 @@ fn validate_date(value: &str, params: DateParams) -> Result<(), DatatypeValidati
         })
         .partition(|r| r.is_ok());
 
-    if valid.is_empty() {
-        if let Some(last_error) = errors.pop() {
-            return last_error;
-        }
+    if valid.is_empty()
+        && let Some(last_error) = errors.pop()
+    {
+        return last_error;
     }
 
     Ok(())

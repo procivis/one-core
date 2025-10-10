@@ -220,7 +220,7 @@ fn schema_to_dummy_value(
         }
         "BOOLEAN" => {
             if random_claims {
-                (thread_rng().next_u32() % 2 == 0).to_string()
+                thread_rng().next_u32().is_multiple_of(2).to_string()
             } else {
                 "true".to_string()
             }

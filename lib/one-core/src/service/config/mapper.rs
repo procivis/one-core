@@ -29,16 +29,16 @@ fn filter_config_entries(config: &mut Value) {
 
 /// hides private params, and lifts public params
 fn filter_entity_params(entity: &mut Map<String, Value>) {
-    if entity.contains_key("params") {
-        if let Some(params) = entity["params"].as_object_mut() {
-            params.remove("private");
-            let public_params = params
-                .remove("public")
-                .and_then(|v| v.as_object().cloned())
-                .into_iter()
-                .flatten();
+    if entity.contains_key("params")
+        && let Some(params) = entity["params"].as_object_mut()
+    {
+        params.remove("private");
+        let public_params = params
+            .remove("public")
+            .and_then(|v| v.as_object().cloned())
+            .into_iter()
+            .flatten();
 
-            params.extend(public_params);
-        }
+        params.extend(public_params);
     }
 }

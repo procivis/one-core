@@ -36,10 +36,10 @@ impl TrackingBleCentral {
     /// Stop scanning and clean up all tracked connections and subscriptions
     pub async fn teardown(&self) -> Result<(), BleError> {
         // Stop scanning
-        if let Ok(true) = self.inner.is_scanning().await {
-            if let Err(err) = self.inner.stop_scan().await {
-                tracing::warn!("Failed to stop scanning during teardown: {err}");
-            }
+        if let Ok(true) = self.inner.is_scanning().await
+            && let Err(err) = self.inner.stop_scan().await
+        {
+            tracing::warn!("Failed to stop scanning during teardown: {err}");
         }
 
         // Unsubscribe from all characteristics

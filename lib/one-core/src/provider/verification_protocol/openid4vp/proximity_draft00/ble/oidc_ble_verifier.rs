@@ -243,13 +243,12 @@ async fn wallet_disconnect_event(
 ) {
     loop {
         let events = connection_event_stream.next().await;
-        if let Some(events) = events {
-            if events.iter().any(|event| {
+        if let Some(events) = events
+            && events.iter().any(|event| {
                 matches!(event, ConnectionEvent::Disconnected { device_address } if wallet_address.eq(device_address))
             }) {
                 return;
             }
-        }
     }
 }
 

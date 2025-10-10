@@ -134,10 +134,10 @@ where
     fn with_list_query(self, query: &ListQuery<SortableColumn, FilterValue, Include>) -> Select<T> {
         let mut result = self;
 
-        if let Some(filter) = &query.filtering {
-            if !filter.is_empty() {
-                result = result.filter(get_filter_condition(filter, filter));
-            }
+        if let Some(filter) = &query.filtering
+            && !filter.is_empty()
+        {
+            result = result.filter(get_filter_condition(filter, filter));
         }
 
         if let Some(sorting) = &query.sorting {

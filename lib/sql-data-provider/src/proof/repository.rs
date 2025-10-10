@@ -322,18 +322,18 @@ impl ProofProvider {
     ) -> Result<Proof, DataLayerError> {
         let mut proof: Proof = proof_model.clone().into();
 
-        if let Some(proof_schema_relations) = &relations.schema {
-            if let Some(proof_schema_id) = proof_model.proof_schema_id {
-                proof.schema = Some(
-                    self.proof_schema_repository
-                        .get_proof_schema(&proof_schema_id, proof_schema_relations)
-                        .await?
-                        .ok_or(DataLayerError::MissingRequiredRelation {
-                            relation: "proof-proof_schema",
-                            id: proof_schema_id.to_string(),
-                        })?,
-                );
-            }
+        if let Some(proof_schema_relations) = &relations.schema
+            && let Some(proof_schema_id) = proof_model.proof_schema_id
+        {
+            proof.schema = Some(
+                self.proof_schema_repository
+                    .get_proof_schema(&proof_schema_id, proof_schema_relations)
+                    .await?
+                    .ok_or(DataLayerError::MissingRequiredRelation {
+                        relation: "proof-proof_schema",
+                        id: proof_schema_id.to_string(),
+                    })?,
+            );
         }
 
         if let Some(claim_relations) = &relations.claims {
@@ -379,26 +379,26 @@ impl ProofProvider {
             };
         }
 
-        if let Some(identifier_relations) = &relations.verifier_identifier {
-            if let Some(verifier_identifier_id) = &proof_model.verifier_identifier_id {
-                let verifier_identifier = self
-                    .identifier_repository
-                    .get(*verifier_identifier_id, identifier_relations)
-                    .await?
-                    .ok_or(DataLayerError::Db(anyhow!("Verifier identifier not found")))?;
-                proof.verifier_identifier = Some(verifier_identifier);
-            }
+        if let Some(identifier_relations) = &relations.verifier_identifier
+            && let Some(verifier_identifier_id) = &proof_model.verifier_identifier_id
+        {
+            let verifier_identifier = self
+                .identifier_repository
+                .get(*verifier_identifier_id, identifier_relations)
+                .await?
+                .ok_or(DataLayerError::Db(anyhow!("Verifier identifier not found")))?;
+            proof.verifier_identifier = Some(verifier_identifier);
         }
 
-        if let Some(identifier_relations) = &relations.holder_identifier {
-            if let Some(holder_identifier_id) = &proof_model.holder_identifier_id {
-                let holder_identifier = self
-                    .identifier_repository
-                    .get(*holder_identifier_id, identifier_relations)
-                    .await?
-                    .ok_or(DataLayerError::Db(anyhow!("Holder identifier not found")))?;
-                proof.holder_identifier = Some(holder_identifier);
-            }
+        if let Some(identifier_relations) = &relations.holder_identifier
+            && let Some(holder_identifier_id) = &proof_model.holder_identifier_id
+        {
+            let holder_identifier = self
+                .identifier_repository
+                .get(*holder_identifier_id, identifier_relations)
+                .await?
+                .ok_or(DataLayerError::Db(anyhow!("Holder identifier not found")))?;
+            proof.holder_identifier = Some(holder_identifier);
         }
 
         if let (Some(interaction_relations), Some(interaction_id)) =

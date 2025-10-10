@@ -383,24 +383,23 @@ impl SDJWTVCFormatter {
             .await?;
 
         // SWIYU credentials don't encode image claims with the data uri prefix
-        if self.params.swiyu_mode {
-            if let Some(claim_schemas) =
+        if self.params.swiyu_mode
+            && let Some(claim_schemas) =
                 credential_schema.and_then(|schema| schema.claim_schemas.as_ref())
-            {
-                for claim_schema in claim_schemas {
-                    let Some(fields) = self
-                        .datatype_config
-                        .get_fields(&claim_schema.schema.data_type)
-                        .ok()
-                    else {
-                        continue;
-                    };
-                    if fields.r#type == DatatypeType::File {
-                        let path = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
-                        post_process_claims(path, &mut jwt.payload.custom.public_claims, |value| {
-                            format!("{JPEG_DATA_URI_PREFIX}{value}")
-                        })
-                    }
+        {
+            for claim_schema in claim_schemas {
+                let Some(fields) = self
+                    .datatype_config
+                    .get_fields(&claim_schema.schema.data_type)
+                    .ok()
+                else {
+                    continue;
+                };
+                if fields.r#type == DatatypeType::File {
+                    let path = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
+                    post_process_claims(path, &mut jwt.payload.custom.public_claims, |value| {
+                        format!("{JPEG_DATA_URI_PREFIX}{value}")
+                    })
                 }
             }
         }

@@ -1859,16 +1859,15 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         })?;
 
     // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
-    if let Some(authorization_server) = grants.authorization_server() {
-        if issuer_metadata
+    if let Some(authorization_server) = grants.authorization_server()
+        && issuer_metadata
             .authorization_servers
             .as_ref()
             .is_none_or(|servers| !servers.contains(authorization_server))
-        {
-            return Err(IssuanceProtocolError::InvalidRequest(format!(
-                "Authorization server missing in issuer metadata: {authorization_server}"
-            )));
-        }
+    {
+        return Err(IssuanceProtocolError::InvalidRequest(format!(
+            "Authorization server missing in issuer metadata: {authorization_server}"
+        )));
     }
 
     let token_endpoint_auth_methods_supported = oauth_authorization_server_metadata

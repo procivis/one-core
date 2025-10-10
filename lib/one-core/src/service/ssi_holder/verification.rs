@@ -887,30 +887,30 @@ impl SSIHolderService {
         if let Some(interaction) = proof.interaction.as_ref() {
             let deserialized: Result<OpenID4VPHolderInteractionData, _> =
                 deserialize_interaction_data(interaction.data.as_ref());
-            if let Ok(data) = deserialized {
-                if let Some(details) = data.verifier_details {
-                    let (identifier, verifier_identifier_relation) = get_or_create_identifier(
-                        &*self.did_method_provider,
-                        &*self.did_repository,
-                        &*self.certificate_repository,
-                        &*self.certificate_validator,
-                        &*self.key_repository,
-                        &*self.key_algorithm_provider,
-                        &*self.identifier_repository,
-                        &interaction.organisation,
-                        &details,
-                        IdentifierRole::Verifier,
-                    )
-                    .await?;
-                    proof.verifier_identifier = Some(identifier);
-                    match verifier_identifier_relation {
-                        RemoteIdentifierRelation::Certificate(certificate) => {
-                            proof.verifier_certificate = Some(certificate)
-                        }
-                        RemoteIdentifierRelation::Key(key) => proof.verifier_key = Some(key),
-                        _ => {}
-                    };
-                }
+            if let Ok(data) = deserialized
+                && let Some(details) = data.verifier_details
+            {
+                let (identifier, verifier_identifier_relation) = get_or_create_identifier(
+                    &*self.did_method_provider,
+                    &*self.did_repository,
+                    &*self.certificate_repository,
+                    &*self.certificate_validator,
+                    &*self.key_repository,
+                    &*self.key_algorithm_provider,
+                    &*self.identifier_repository,
+                    &interaction.organisation,
+                    &details,
+                    IdentifierRole::Verifier,
+                )
+                .await?;
+                proof.verifier_identifier = Some(identifier);
+                match verifier_identifier_relation {
+                    RemoteIdentifierRelation::Certificate(certificate) => {
+                        proof.verifier_certificate = Some(certificate)
+                    }
+                    RemoteIdentifierRelation::Key(key) => proof.verifier_key = Some(key),
+                    _ => {}
+                };
             }
         }
         Ok(())

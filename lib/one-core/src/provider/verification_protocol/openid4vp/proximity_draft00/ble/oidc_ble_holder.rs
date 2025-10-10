@@ -596,11 +596,11 @@ pub(crate) fn read(
                     .read_data(address.clone(), SERVICE_UUID.to_string(), id.clone())
                     .await;
 
-                if let Ok(data) = data.as_ref() {
-                    if previous_message.eq(data) {
-                        tokio::time::sleep(Duration::from_millis(50)).await;
-                        continue;
-                    }
+                if let Ok(data) = data.as_ref()
+                    && previous_message.eq(data)
+                {
+                    tokio::time::sleep(Duration::from_millis(50)).await;
+                    continue;
                 }
 
                 return Some((

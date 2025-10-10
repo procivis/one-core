@@ -335,7 +335,7 @@ fn compute_disclosure_for_array_element(value: &Value) -> Result<String, Formatt
     string_to_b64url_string(&array)
 }
 
-pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken, FormatterError> {
+pub(crate) fn parse_token(token: &str) -> Result<DecomposedToken<'_>, FormatterError> {
     let (token_with_disclosures, key_binding_token) = token
         .rsplit_once('~')
         .map(|(token, kb_token)| (token, (!kb_token.is_empty()).then_some(kb_token)))

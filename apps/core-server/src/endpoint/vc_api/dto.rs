@@ -87,13 +87,6 @@ pub struct PresentationVerifyResponseDTO {
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize)]
-pub struct IdentifierResponseDTO {
-    pub result: VcApiDidDocumentRestDTO,
-    pub error: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Debug, Serialize)]
 pub struct VcApiDidDocumentRestDTO {
     pub document: Option<DidDocumentRestDTO>,
 }

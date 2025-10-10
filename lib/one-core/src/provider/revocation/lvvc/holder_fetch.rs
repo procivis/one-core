@@ -33,13 +33,12 @@ pub(crate) async fn holder_get_lvvc(
         .get_latest_by_credential_id(linked_credential.id, ValidityCredentialType::Lvvc)
         .await
         .map_err(|err| RevocationError::ValidationError(err.to_string()))?;
-    if let Some(lvvc) = &locally_stored_lvvc {
-        if !force_refresh
-            && lvvc.created_date + params.minimum_refresh_time > OffsetDateTime::now_utc()
-        {
-            // the stored credential is fresh and preferences allow caching, no need to fetch an update
-            return Ok(lvvc.to_owned());
-        }
+    if let Some(lvvc) = &locally_stored_lvvc
+        && !force_refresh
+        && lvvc.created_date + params.minimum_refresh_time > OffsetDateTime::now_utc()
+    {
+        // the stored credential is fresh and preferences allow caching, no need to fetch an update
+        return Ok(lvvc.to_owned());
     }
 
     match fetch_remote_lvvc(

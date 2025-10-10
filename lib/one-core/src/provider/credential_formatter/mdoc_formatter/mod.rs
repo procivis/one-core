@@ -690,17 +690,14 @@ fn map_to_ciborium_value(
                 .next()
                 .ok_or(FormatterError::Failed("Missing base64 data".to_string()))?;
 
-            if let Some(params) = &fields.params {
-                if let Some(public) = &params.public {
-                    if public["encodeAsMdlPortrait"].as_bool().unwrap_or(false) {
-                        let decoded = Base64::decode_to_vec(content, None).map_err(|e| {
-                            FormatterError::CouldNotFormat(format!(
-                                "Base64url decoding failed: {e}"
-                            ))
-                        })?;
-                        return Ok(ciborium::Value::Bytes(decoded));
-                    }
-                }
+            if let Some(params) = &fields.params
+                && let Some(public) = &params.public
+                && public["encodeAsMdlPortrait"].as_bool().unwrap_or(false)
+            {
+                let decoded = Base64::decode_to_vec(content, None).map_err(|e| {
+                    FormatterError::CouldNotFormat(format!("Base64url decoding failed: {e}"))
+                })?;
+                return Ok(ciborium::Value::Bytes(decoded));
             }
 
             ciborium::Value::Array(vec![

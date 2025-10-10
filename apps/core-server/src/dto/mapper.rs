@@ -58,12 +58,11 @@ where
 
         // remove empty include[] params
         params.retain(|param| {
-            if let Some(RefOr::T(Schema::Array(array))) = &param.schema {
-                if let ArrayItems::RefOrSchema(ref_or) = &array.items {
-                    if let RefOr::T(Schema::Object(obj)) = ref_or.as_ref() {
-                        return obj.enum_values.is_some();
-                    }
-                }
+            if let Some(RefOr::T(Schema::Array(array))) = &param.schema
+                && let ArrayItems::RefOrSchema(ref_or) = &array.items
+                && let RefOr::T(Schema::Object(obj)) = ref_or.as_ref()
+            {
+                return obj.enum_values.is_some();
             }
             true
         });

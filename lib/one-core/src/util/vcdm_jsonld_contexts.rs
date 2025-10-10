@@ -72,8 +72,8 @@ pub fn is_context_list_valid(
                 }
 
                 // Phase two - match with available credential schemas
-                if let Some(schemas) = credential_schemas {
-                    if schemas.iter().any(|schema| {
+                if let Some(schemas) = credential_schemas
+                    && schemas.iter().any(|schema| {
                         let jsonld_context =
                             schema.id.replace("/ssi/schema/v1/", "/ssi/context/v1/");
 
@@ -83,9 +83,9 @@ pub fn is_context_list_valid(
                         let lvvc_context = format!("{base_url}/ssi/context/v1/lvvc.json");
 
                         jsonld_context == url.as_str() || lvvc_context == url.as_str()
-                    }) {
-                        continue;
-                    }
+                    })
+                {
+                    continue;
                 }
 
                 // Phase three - workaround for lvvc. When LVVC context

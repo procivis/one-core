@@ -74,7 +74,7 @@ struct TransformedDid<'a> {
 }
 
 // https://identity.foundation/didwebvh/v0.3/#the-did-to-https-transformation
-fn transform_did_to_https(did: &str) -> Result<TransformedDid, DidMethodError> {
+fn transform_did_to_https(did: &str) -> Result<TransformedDid<'_>, DidMethodError> {
     const METHOD_PREFIX: &str = "did:tdw:";
 
     let Some(did_suffix) = did.strip_prefix(METHOD_PREFIX) else {

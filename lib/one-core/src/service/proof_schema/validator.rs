@@ -258,16 +258,15 @@ fn check_if_validity_constraint_is_correct(
 ) -> Result<(), ValidationError> {
     let now = OffsetDateTime::now_utc();
 
-    if let Some(validity_constraint) = input_schema.validity_constraint.as_ref() {
-        if now
+    if let Some(validity_constraint) = input_schema.validity_constraint.as_ref()
+        && (now
             .checked_sub(Duration::seconds(*validity_constraint))
             .is_none()
             || now
                 .checked_add(Duration::seconds(*validity_constraint))
-                .is_none()
-        {
-            return Err(ValidationError::ValidityConstraintOutOfRange);
-        }
+                .is_none())
+    {
+        return Err(ValidationError::ValidityConstraintOutOfRange);
     }
 
     Ok(())

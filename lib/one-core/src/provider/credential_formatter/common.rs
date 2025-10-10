@@ -79,19 +79,19 @@ pub(super) fn map_claims(
     result
 }
 
-#[cfg(any(test, feature = "mock"))]
+#[cfg(test)]
 #[derive(Clone)]
 pub struct MockAuth<F: Fn(&[u8]) -> Vec<u8> + Send + Sync>(pub F);
 
-#[cfg(any(test, feature = "mock"))]
+#[cfg(test)]
 pub use one_crypto::SignerError;
 
-#[cfg(any(test, feature = "mock"))]
+#[cfg(test)]
 pub use crate::config::core_config::KeyAlgorithmType;
-#[cfg(any(test, feature = "mock"))]
+#[cfg(test)]
 pub use crate::provider::credential_formatter::model::SignatureProvider;
 
-#[cfg(any(test, feature = "mock"))]
+#[cfg(test)]
 #[async_trait::async_trait]
 impl<F: Fn(&[u8]) -> Vec<u8> + Send + Sync> SignatureProvider for MockAuth<F> {
     async fn sign(&self, message: &[u8]) -> Result<Vec<u8>, SignerError> {

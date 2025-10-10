@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::fmt;
 
 use indexmap::IndexMap;
@@ -113,16 +112,6 @@ pub struct OpenID4VCICredentialConfigurationData {
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     pub scope: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, Deserialize)]
-pub(crate) struct OpenID4VCIIssuerMetadataMdocClaimsValuesDTO {
-    #[serde(default)]
-    pub value: HashMap<String, OpenID4VCIIssuerMetadataMdocClaimsValuesDTO>,
-    pub value_type: String,
-    pub mandatory: Option<bool>,
-    pub order: Option<Vec<String>>,
-    pub array: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -540,19 +529,6 @@ pub struct CredentialSubjectDisplay {
 pub struct OpenID4VCICredentialValueDetails {
     pub value: Option<String>,
     pub value_type: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub(crate) struct OpenID4VCICredentialOfferClaim {
-    pub value: OpenID4VCICredentialOfferClaimValue,
-    pub value_type: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub(crate) enum OpenID4VCICredentialOfferClaimValue {
-    Nested(IndexMap<String, OpenID4VCICredentialOfferClaim>),
-    String(String),
 }
 
 /// deserializes from CredentialSchemaResponseRestDTO

@@ -338,13 +338,13 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             .order_by_desc(credential::Column::Id);
     }
 
-    if let Some(include) = query_params.include {
-        if include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties) {
-            query = query.column_as(
-                credential_schema::Column::LayoutProperties,
-                "credential_schema_schema_layout_properties",
-            );
-        }
+    if let Some(include) = query_params.include
+        && include.contains(&CredentialListIncludeEntityTypeEnum::LayoutProperties)
+    {
+        query = query.column_as(
+            credential_schema::Column::LayoutProperties,
+            "credential_schema_schema_layout_properties",
+        );
     }
 
     query

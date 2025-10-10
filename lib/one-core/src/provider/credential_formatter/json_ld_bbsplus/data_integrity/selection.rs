@@ -108,10 +108,10 @@ pub fn select_json_ld(
 fn initialize_selection(source: &serde_json::Value) -> serde_json::Value {
     let mut value = serde_json::json!({});
 
-    if let Some(id) = source.get("id") {
-        if id.as_str().is_some_and(|id_str| !id_str.starts_with("_:")) {
-            value["id"] = id.clone();
-        }
+    if let Some(id) = source.get("id")
+        && id.as_str().is_some_and(|id_str| !id_str.starts_with("_:"))
+    {
+        value["id"] = id.clone();
     }
 
     if let Some(type_val) = source.get("type") {
@@ -121,7 +121,7 @@ fn initialize_selection(source: &serde_json::Value) -> serde_json::Value {
     value
 }
 
-fn parse_pointer(pointer: &str) -> Vec<PathComponent> {
+fn parse_pointer(pointer: &str) -> Vec<PathComponent<'_>> {
     pointer
         .split('/')
         .skip(1)
