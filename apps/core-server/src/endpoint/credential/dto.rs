@@ -251,6 +251,9 @@ pub(crate) struct CredentialsFilterQueryParamsRest {
     /// Filter by one or more credential states.
     #[param(rename = "states[]", inline, nullable = false)]
     pub states: Option<Vec<CredentialStateRestEnum>>,
+    /// Filter by one or more identifier IDs.
+    #[param(rename = "issuers[]", inline, nullable = false)]
+    pub issuers: Option<Vec<IdentifierId>>,
     /// Search for a string.
     #[param(nullable = false)]
     pub search_text: Option<String>,

@@ -127,6 +127,7 @@ pub enum ProofFilterValue {
     ProofIds(Vec<ProofId>),
     ProofIdsNot(Vec<ProofId>),
     ProofSchemaIds(Vec<ProofSchemaId>),
+    VerifierIds(Vec<IdentifierId>),
     Profiles(Vec<String>),
     ValidForDeletion,
     CreatedDate(ValueComparison<OffsetDateTime>),

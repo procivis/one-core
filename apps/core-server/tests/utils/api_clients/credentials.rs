@@ -22,6 +22,7 @@ pub struct Filters<'a> {
     pub roles: Option<&'a [&'a str]>,
     pub credential_schema_ids: Option<&'a [&'a str]>,
     pub ids: Option<&'a [CredentialId]>,
+    pub issuers: Option<&'a [IdentifierId]>,
     pub states: Option<&'a [&'a str]>,
 
     pub created_date_after: Option<OffsetDateTime>,
@@ -134,6 +135,14 @@ impl CredentialsApi {
             .into_iter()
             .flatten()
             .fold(String::new(), |url, id| url + &format!("&ids[]={id}"));
+
+        url += &filters
+            .issuers
+            .into_iter()
+            .flatten()
+            .fold(String::new(), |url, issuer| {
+                url + &format!("&issuers[]={issuer}")
+            });
 
         url += &filters
             .states

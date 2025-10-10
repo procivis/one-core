@@ -567,6 +567,146 @@ async fn test_list_proofs_by_schema_ids() {
 }
 
 #[tokio::test]
+async fn test_list_proofs_by_verifiers() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let verifier_key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+
+    let verifier_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: verifier_key.to_owned(),
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(verifier_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let identifier2 = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "proof-schema-name",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &verifier_identifier,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            None,
+            None,
+        )
+        .await;
+
+    context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier2,
+            None,
+            Some(&proof_schema),
+            ProofStateEnum::Requested,
+            "OPENID4VP_DRAFT20",
+            None,
+            verifier_key.to_owned(),
+            None,
+            None,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .list(
+            0,
+            10,
+            &organisation.id,
+            ProofFilters {
+                verifiers: Some(&[verifier_identifier.id]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    assert_eq!(resp["totalItems"], 1);
+    assert_eq!(resp["totalPages"], 1);
+    assert_eq!(resp["values"].as_array().unwrap().len(), 1);
+    resp["values"][0]["id"].assert_eq(&proof.id);
+}
+
+#[tokio::test]
 async fn test_list_proofs_by_state() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;

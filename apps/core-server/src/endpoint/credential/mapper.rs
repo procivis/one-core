@@ -100,6 +100,8 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             .credential_schema_ids
             .map(CredentialFilterValue::CredentialSchemaIds);
 
+        let issuers = value.issuers.map(CredentialFilterValue::IssuerIds);
+
         let states = value.states.map(|values| {
             CredentialFilterValue::States(
                 values
@@ -167,6 +169,7 @@ impl TryFrom<CredentialsFilterQueryParamsRest> for ListFilterCondition<Credentia
             & roles
             & credential_ids
             & credential_schema_ids
+            & issuers
             & states
             & profiles
             & created_date_after

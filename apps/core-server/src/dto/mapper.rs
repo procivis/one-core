@@ -3,7 +3,6 @@ use one_core::model::list_query::{ListPagination, ListQuery, ListSorting};
 use one_core::proto::session_provider::SessionProvider;
 use one_core::service::error::{BusinessLogicError, ErrorCodeMixin, ServiceError};
 use one_dto_mapper::convert_inner;
-use serde::Deserialize;
 use shared_types::OrganisationId;
 use strum::EnumMessage;
 use utoipa::openapi::path::ParameterIn;
@@ -75,11 +74,12 @@ where
 }
 
 // only used for generation of swagger-ui params for pagination, sorting and data inclusion
-#[derive(Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[derive(IntoParams)]
+#[into_params(rename_all = "camelCase")]
 #[allow(dead_code)]
 struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     /// The page number to retrieve (0-based indexing).
+    #[param(example = 0, minimum = 0)]
     pub page: u32,
     /// Number of items to return per page. If omitted, defaults to 30.
     #[param(default = 30, minimum = 1, maximum = 1000)]

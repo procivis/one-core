@@ -182,6 +182,10 @@ pub(crate) struct ProofsFilterQueryParamsRest {
     /// of UUID strings.
     #[param(rename = "proofSchemaIds[]", inline, nullable = false)]
     pub proof_schema_ids: Option<Vec<ProofSchemaId>>,
+    /// Filter proof requests by their associated verifier identifiers.
+    /// Pass an array of UUID strings.
+    #[param(rename = "verifiers[]", inline, nullable = false)]
+    pub verifiers: Option<Vec<IdentifierId>>,
     /// Filter by one or more UUIDs.
     #[param(rename = "ids[]", inline, nullable = false)]
     pub ids: Option<Vec<ProofId>>,

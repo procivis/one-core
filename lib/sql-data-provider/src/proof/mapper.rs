@@ -77,6 +77,9 @@ impl IntoFilterCondition for ProofFilterValue {
             Self::ProofSchemaIds(ids) => proof_schema::Column::Id.is_in(ids).into_condition(),
             Self::ProofIds(ids) => proof::Column::Id.is_in(ids).into_condition(),
             Self::ProofIdsNot(ids) => proof::Column::Id.is_not_in(ids).into_condition(),
+            Self::VerifierIds(ids) => proof::Column::VerifierIdentifierId
+                .is_in(ids)
+                .into_condition(),
             Self::ValidForDeletion => proof_schema::Column::ExpireDuration.gt(0).into_condition(),
             Self::Profiles(profiles) => proof::Column::Profile
                 .is_in(profiles.iter())

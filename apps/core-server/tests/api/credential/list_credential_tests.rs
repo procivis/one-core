@@ -3,13 +3,14 @@ use std::collections::HashSet;
 use one_core::model::credential::{
     CredentialListIncludeEntityTypeEnum, CredentialRole, CredentialStateEnum,
 };
+use one_core::model::identifier::IdentifierType;
 use shared_types::CredentialId;
 use similar_asserts::assert_eq;
 use time::Duration;
 use time::macros::datetime;
 use uuid::Uuid;
 
-use crate::fixtures::{ClaimData, TestingCredentialParams};
+use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::api_clients::credentials::Filters;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
@@ -1137,6 +1138,79 @@ async fn test_get_list_credential_filter_by_schema_ids() {
             &organisation.id,
             Filters {
                 credential_schema_ids: Some(&[&credential_schema1.schema_id]),
+                ..Default::default()
+            },
+            None,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let credentials = resp.json_value().await;
+
+    assert_eq!(credentials["totalItems"], 1);
+    assert_eq!(credentials["totalPages"], 1);
+    assert_eq!(credentials["values"].as_array().unwrap().len(), 1);
+    credentials["values"][0]["id"].assert_eq(&credential.id);
+}
+
+#[tokio::test]
+async fn test_get_list_credential_filter_by_issuers() {
+    // GIVEN
+    let (context, organisation, did, identifier, ..) = TestContext::new_with_did(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    let identifier2 = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did),
+                r#type: Some(IdentifierType::Did),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Created,
+            &identifier2,
+            "OPENID4VCI_DRAFT13",
+            Default::default(),
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credentials
+        .list(
+            0,
+            10,
+            &organisation.id,
+            Filters {
+                issuers: Some(&[identifier.id]),
                 ..Default::default()
             },
             None,

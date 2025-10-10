@@ -21,6 +21,7 @@ pub struct ProofFilters<'a> {
     pub roles: Option<&'a [ProofRole]>,
     pub proof_schema_ids: Option<&'a [ProofSchemaId]>,
     pub ids: Option<&'a [ProofId]>,
+    pub verifiers: Option<&'a [IdentifierId]>,
     pub profiles: Option<&'a [&'a str]>,
 
     pub created_date_after: Option<OffsetDateTime>,
@@ -119,6 +120,12 @@ impl ProofsApi {
         if let Some(ids) = filters.ids {
             url += &ids.iter().fold(Default::default(), |state, elem| {
                 format!("{state}&ids[]={elem}")
+            });
+        }
+
+        if let Some(verifiers) = filters.verifiers {
+            url += &verifiers.iter().fold(Default::default(), |state, elem| {
+                format!("{state}&verifiers[]={elem}")
             });
         }
 

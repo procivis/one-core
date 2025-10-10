@@ -58,6 +58,9 @@ impl IntoFilterCondition for CredentialFilterValue {
             Self::CredentialSchemaIds(ids) => credential::Column::CredentialSchemaId
                 .is_in(ids.iter())
                 .into_condition(),
+            Self::IssuerIds(ids) => credential::Column::IssuerIdentifierId
+                .is_in(ids.iter())
+                .into_condition(),
             Self::States(states) => credential::Column::State
                 .is_in(
                     states

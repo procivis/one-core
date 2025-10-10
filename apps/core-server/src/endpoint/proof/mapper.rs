@@ -32,15 +32,16 @@ impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterVal
             ProofFilterValue::Name(filter)
         });
 
-        let proof_states = value
+        let states = value
             .states
-            .map(|proof_states| ProofFilterValue::States(convert_inner(proof_states)));
-        let proof_roles = value
+            .map(|states| ProofFilterValue::States(convert_inner(states)));
+        let roles = value
             .roles
-            .map(|proof_roles| ProofFilterValue::Roles(convert_inner(proof_roles)));
+            .map(|roles| ProofFilterValue::Roles(convert_inner(roles)));
 
         let proof_ids = value.ids.map(ProofFilterValue::ProofIds);
         let proof_schema_ids = value.proof_schema_ids.map(ProofFilterValue::ProofSchemaIds);
+        let verifiers = value.verifiers.map(ProofFilterValue::VerifierIds);
 
         let profiles = value.profiles.map(ProofFilterValue::Profiles);
 
@@ -98,9 +99,10 @@ impl TryFrom<ProofsFilterQueryParamsRest> for ListFilterCondition<ProofFilterVal
 
         Ok(organisation_id
             & name
-            & proof_states
-            & proof_roles
+            & states
+            & roles
             & proof_schema_ids
+            & verifiers
             & proof_ids
             & profiles
             & created_date_after
