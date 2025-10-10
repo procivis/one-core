@@ -47,6 +47,7 @@ use crate::proto::history_decorator::did::DidHistoryDecorator;
 use crate::proto::history_decorator::identifier::IdentifierHistoryDecorator;
 use crate::proto::history_decorator::key::KeyHistoryDecorator;
 use crate::proto::history_decorator::organisation::OrganisationHistoryDecorator;
+use crate::proto::history_decorator::proof::ProofHistoryDecorator;
 use crate::proto::history_decorator::proof_schema::ProofSchemaHistoryDecorator;
 use crate::proto::history_decorator::trust_entity::TrustEntityHistoryDecorator;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
@@ -575,6 +576,12 @@ impl OneCore {
             session_provider: providers.session_provider.clone(),
         });
 
+        let proof_repository = Arc::new(ProofHistoryDecorator {
+            inner: data_provider.get_proof_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+        });
+
         let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
             inner: data_provider.get_trust_entity_repository(),
             history_repository: data_provider.get_history_repository(),
@@ -613,6 +620,7 @@ impl OneCore {
             certificate_validator.clone(),
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
+            providers.session_provider.clone(),
             ble_waiter.clone(),
             client.clone(),
             mqtt_client,
@@ -672,7 +680,7 @@ impl OneCore {
             data_provider.get_claim_repository(),
             credential_repository.clone(),
             data_provider.get_history_repository(),
-            data_provider.get_proof_repository(),
+            proof_repository.clone(),
             certificate_repository.clone(),
             identifier_repository.clone(),
             credential_service.clone(),
@@ -790,7 +798,7 @@ impl OneCore {
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 credential_repository.clone(),
-                data_provider.get_proof_repository(),
+                proof_repository.clone(),
                 key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
@@ -808,7 +816,7 @@ impl OneCore {
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
                 credential_repository.clone(),
-                data_provider.get_proof_repository(),
+                proof_repository.clone(),
                 key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
@@ -826,7 +834,7 @@ impl OneCore {
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 credential_repository.clone(),
-                data_provider.get_proof_repository(),
+                proof_repository.clone(),
                 key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
@@ -873,7 +881,7 @@ impl OneCore {
                 providers.session_provider.clone(),
             ),
             proof_service: ProofService::new(
-                data_provider.get_proof_repository(),
+                proof_repository.clone(),
                 key_algorithm_provider.clone(),
                 proof_schema_repository,
                 did_repository.clone(),
@@ -921,7 +929,7 @@ impl OneCore {
             ),
             ssi_holder_service: SSIHolderService::new(
                 credential_repository,
-                data_provider.get_proof_repository(),
+                proof_repository,
                 organisation_repository.clone(),
                 data_provider.get_interaction_repository(),
                 credential_schema_repository,

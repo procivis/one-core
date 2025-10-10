@@ -2,7 +2,6 @@ use std::collections::HashSet;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use ProofStateEnum::{Created, Pending, Requested, Retracted};
 use anyhow::Context;
 use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
@@ -54,7 +53,6 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::proto::session_provider::SessionExt;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::verification_protocol::dto::{
@@ -81,7 +79,6 @@ use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::history::log_history_event_proof;
 use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::mdoc::EmbeddedCbor;
@@ -579,23 +576,15 @@ impl ProofService {
         let proof = self.get_proof_with_state(id).await?;
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
-        match proof.state {
-            Created => {
-                self.proof_repository
-                    .update_proof(
-                        &proof.id,
-                        UpdateProofRequest {
-                            state: Some(Pending),
-                            ..Default::default()
-                        },
-                        None,
-                    )
-                    .await?;
+        let previous_state = proof.state;
+        if !matches!(
+            previous_state,
+            ProofStateEnum::Created | ProofStateEnum::Pending
+        ) {
+            return Err(BusinessLogicError::InvalidProofState {
+                state: previous_state,
             }
-            Pending => {}
-            state => {
-                return Err(BusinessLogicError::InvalidProofState { state }.into());
-            }
+            .into());
         }
 
         if proof
@@ -605,6 +594,12 @@ impl ProofService {
         {
             return Err(ValidationError::InvalidProofEngagement.into());
         }
+
+        let organisation = proof
+            .schema
+            .as_ref()
+            .and_then(|schema| schema.organisation.as_ref())
+            .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?;
 
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
             MissingProviderError::ExchangeProtocol(proof.protocol.to_owned()),
@@ -638,12 +633,6 @@ impl ProofService {
             )
             .await?;
 
-        let organisation = proof
-            .schema
-            .as_ref()
-            .and_then(|schema| schema.organisation.as_ref())
-            .ok_or_else(|| VerificationProtocolError::Failed("Missing organisation".to_string()))?;
-
         add_new_interaction(
             interaction_id,
             &self.base_url,
@@ -657,6 +646,11 @@ impl ProofService {
             .update_proof(
                 &proof.id,
                 UpdateProofRequest {
+                    state: if previous_state == ProofStateEnum::Created {
+                        Some(ProofStateEnum::Pending)
+                    } else {
+                        None
+                    },
                     interaction: Some(Some(interaction_id)),
                     engagement: Some(Some(DEFAULT_ENGAGEMENT.to_string())),
                     ..Default::default()
@@ -665,14 +659,6 @@ impl ProofService {
             )
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
-
-        log_history_event_proof(
-            &*self.history_repository,
-            &proof,
-            HistoryAction::Shared,
-            self.session_provider.session().user(),
-        )
-        .await;
 
         Ok(EntityShareResponseDTO { url })
     }
@@ -906,7 +892,7 @@ impl ProofService {
                 last_modified: now,
                 protocol: request.protocol,
                 redirect_uri: None,
-                state: Pending,
+                state: ProofStateEnum::Pending,
                 role: ProofRole::Holder,
                 requested_date: Some(now),
                 completed_date: None,
@@ -966,14 +952,14 @@ impl ProofService {
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         match proof.state {
-            Created | Pending => {
+            ProofStateEnum::Created | ProofStateEnum::Pending => {
                 self.exchange_retract_proof(&proof).await?;
                 self.hard_delete_proof(&proof).await?
             }
-            Requested => {
+            ProofStateEnum::Requested => {
                 self.exchange_retract_proof(&proof).await?;
                 let proof_update = UpdateProofRequest {
-                    state: Some(Retracted),
+                    state: Some(ProofStateEnum::Retracted),
                     proof_blob_id: None,
                     ..Default::default()
                 };

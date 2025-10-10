@@ -24,7 +24,6 @@ use crate::model::credential_schema::{
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
-use crate::model::history::HistoryAction;
 use crate::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierState,
     IdentifierType,
@@ -32,7 +31,7 @@ use crate::model::identifier::{
 use crate::model::key::{JwkUse, Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
-use crate::model::proof::{Proof, ProofStateEnum};
+use crate::model::proof::Proof;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialClaim, CredentialClaimValue, IdentifierDetails,
@@ -894,20 +893,6 @@ impl CredentialSchemaClaimsNestedTypeView {
         match self {
             Self::Field(claim) => &claim.schema.key,
             Self::Object(object) => &object.claim.schema.key,
-        }
-    }
-}
-
-impl From<ProofStateEnum> for HistoryAction {
-    fn from(state: ProofStateEnum) -> Self {
-        match state {
-            ProofStateEnum::Created => HistoryAction::Created,
-            ProofStateEnum::Pending => HistoryAction::Pending,
-            ProofStateEnum::Requested => HistoryAction::Requested,
-            ProofStateEnum::Accepted => HistoryAction::Accepted,
-            ProofStateEnum::Rejected => HistoryAction::Rejected,
-            ProofStateEnum::Error => HistoryAction::Errored,
-            ProofStateEnum::Retracted => HistoryAction::Retracted,
         }
     }
 }

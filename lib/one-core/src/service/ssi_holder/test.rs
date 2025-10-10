@@ -153,7 +153,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 
 #[tokio::test]
 async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
-    let reject_proof_for_state = |state| async {
+    let reject_proof_for_state = |state| async move {
         let interaction_id = Uuid::new_v4();
         let proof_id = Uuid::new_v4().into();
         let protocol = "OPENID4VP_DRAFT20";

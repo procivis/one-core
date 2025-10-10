@@ -40,7 +40,7 @@ pub struct Proof {
     pub interaction: Option<Interaction>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display)]
 pub enum ProofStateEnum {
     Created,
     Pending,

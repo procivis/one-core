@@ -150,7 +150,6 @@ pub async fn initialize_core(
     let data_repository = Arc::new(DataLayer::build(
         db_conn,
         vec!["INTERNAL".to_string(), "AZURE_VAULT".to_owned()],
-        session_provider.clone(),
     ));
 
     let storage_creator: DataProviderCreator = {

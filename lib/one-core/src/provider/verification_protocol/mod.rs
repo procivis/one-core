@@ -25,6 +25,8 @@ use crate::config::core_config::{
 };
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::history_decorator::proof::ProofHistoryDecorator;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -83,6 +85,7 @@ pub(crate) fn verification_protocol_providers_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    session_provider: Arc<dyn SessionProvider>,
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
     mqtt_client: Option<Arc<dyn MqttClient>>,
@@ -225,12 +228,18 @@ pub(crate) fn verification_protocol_providers_from_config(
                         source,
                     })?;
 
+                let proof_repository = Arc::new(ProofHistoryDecorator {
+                    inner: data_provider.get_proof_repository(),
+                    history_repository: data_provider.get_history_repository(),
+                    session_provider: session_provider.clone(),
+                });
+
                 let protocol = OpenID4VPProximityDraft00::new(
                     mqtt_client.clone(),
                     config.clone(),
                     params.clone(),
                     data_provider.get_interaction_repository(),
-                    data_provider.get_proof_repository(),
+                    proof_repository,
                     key_algorithm_provider.clone(),
                     credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),

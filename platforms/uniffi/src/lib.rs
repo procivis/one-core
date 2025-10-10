@@ -11,7 +11,6 @@ use one_core::config::core_config::{
     DidType, FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigValidationError};
-use one_core::proto::session_provider::test::StaticSessionProvider;
 use one_core::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -336,11 +335,7 @@ async fn initialize(
                 Ok(Arc::new(KeyProviderImpl::new(key_providers.to_owned())))
             });
 
-            let data_repository = Arc::new(DataLayer::build(
-                db_conn,
-                vec!["INTERNAL".to_string()],
-                Arc::new(StaticSessionProvider::new_random()),
-            ));
+            let data_repository = Arc::new(DataLayer::build(db_conn, vec!["INTERNAL".to_string()]));
 
             let storage_creator: DataProviderCreator = {
                 let data_repository = data_repository.clone();

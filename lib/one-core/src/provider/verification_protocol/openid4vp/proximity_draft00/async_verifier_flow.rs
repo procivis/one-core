@@ -234,7 +234,7 @@ async fn set_proof_state(
         .update_proof(
             id,
             UpdateProofRequest {
-                state: Some(state.clone()),
+                state: Some(state),
                 ..Default::default()
             },
             error_metadata,

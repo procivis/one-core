@@ -3771,15 +3771,6 @@ async fn test_share_proof_created_success() {
             .returning(move |_, _| Ok(Some(res_clone.to_owned())));
     }
 
-    proof_repository
-        .expect_update_proof()
-        .once()
-        .in_sequence(&mut seq)
-        .withf(move |id, update, _| {
-            id == &proof_id && update.state == Some(ProofStateEnum::Pending)
-        })
-        .returning(|_, _, _| Ok(()));
-
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_create_interaction()
@@ -3793,22 +3784,15 @@ async fn test_share_proof_created_success() {
         .in_sequence(&mut seq)
         .withf(move |id, update, _| {
             id == &proof_id
+                && update.state == Some(ProofStateEnum::Pending)
                 && update.interaction == Some(Some(interaction_id))
                 && update.engagement == Some(Some("QR_CODE".to_string()))
         })
         .returning(|_, _, _| Ok(()));
 
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .once()
-        .in_sequence(&mut seq)
-        .returning(|_| Ok(Uuid::new_v4().into()));
-
     let service = setup_service(Repositories {
         proof_repository,
         protocol_provider,
-        history_repository,
         interaction_repository,
         key_algorithm_provider,
         config: generic_config().core,
@@ -4165,7 +4149,7 @@ async fn test_delete_proof_fails_for_invalid_state(
     let proof_id = ProofId::from(Uuid::new_v4());
     let interaction_id = InteractionId::from(Uuid::new_v4());
 
-    let mut proof = construct_proof_with_state(&proof_id, state.clone());
+    let mut proof = construct_proof_with_state(&proof_id, state);
     proof.protocol = "OPENID4VP_DRAFT20".to_string();
     proof.transport = "HTTP".to_string();
     proof.interaction = Some(Interaction {

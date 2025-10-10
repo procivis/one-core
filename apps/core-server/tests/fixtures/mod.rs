@@ -3,7 +3,6 @@ pub(crate) mod dcql;
 pub(crate) mod mdoc;
 
 use std::str::FromStr;
-use std::sync::Arc;
 
 use core_server::{AuthMode, ServerConfig};
 use hex_literal::hex;
@@ -37,7 +36,6 @@ use one_core::model::proof_schema::{
 use one_core::model::revocation_list::{
     RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
-use one_core::proto::session_provider::NoSessionProvider;
 use one_core::repository::DataRepository;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
@@ -168,7 +166,7 @@ pub async fn create_db(config: &AppConfig<ServerConfig>) -> DbConn {
 }
 
 pub async fn create_organisation(db_conn: &DbConn) -> Organisation {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let organisation = Organisation {
         id: Uuid::new_v4().into(),
@@ -205,7 +203,7 @@ pub async fn create_key(
     organisation: &Organisation,
     params: Option<TestingKeyParams>,
 ) -> Key {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     let now = OffsetDateTime::now_utc();
     let params = params.unwrap_or_default();
 
@@ -301,7 +299,7 @@ pub async fn create_did(
     organisation: &Organisation,
     params: Option<TestingDidParams>,
 ) -> Did {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     let now = OffsetDateTime::now_utc();
     let params = params.unwrap_or_default();
 
@@ -351,7 +349,7 @@ pub async fn create_identifier(
     organisation: &Organisation,
     params: Option<TestingIdentifierParams>,
 ) -> Identifier {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     let now = OffsetDateTime::now_utc();
     let params = params.unwrap_or_default();
 
@@ -401,7 +399,7 @@ pub async fn create_credential_schema(
     organisation: &Organisation,
     params: Option<TestingCredentialSchemaParams>,
 ) -> CredentialSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schema = ClaimSchema {
         id: Uuid::new_v4().into(),
@@ -462,7 +460,7 @@ pub async fn create_credential_schema_with_claims(
     revocation_method: &str,
     claims: &[(Uuid, &str, bool, &str, bool)],
 ) -> CredentialSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let claim_schemas = claims
         .iter()
@@ -517,7 +515,7 @@ pub async fn create_proof_schema(
     organisation: &Organisation,
     proof_input_schemas: &[CreateProofInputSchema<'_>],
 ) -> ProofSchema {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let input_schemas = proof_input_schemas
         .iter()
@@ -577,7 +575,7 @@ pub async fn create_interaction_with_id(
     data: &[u8],
     organisation: &Organisation,
 ) -> Interaction {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let interaction = Interaction {
         id,
@@ -612,7 +610,7 @@ pub async fn create_revocation_list(
     issuer_identifier: Identifier,
     credentials: Option<&[u8]>,
 ) -> RevocationList {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let revocation_list = RevocationList {
         id: Default::default(),
@@ -667,7 +665,7 @@ pub async fn create_credential(
     exchange: &str,
     params: TestingCredentialParams,
 ) -> Credential {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let credential_id = Uuid::new_v4().into();
     assert!(params.claims_data.is_none());
@@ -723,7 +721,7 @@ pub async fn create_credential(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn create_blob(db_conn: &DbConn, params: TestingBlobParams) -> Blob {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let now = OffsetDateTime::now_utc();
 
@@ -758,7 +756,7 @@ pub async fn create_proof(
     profile: Option<String>,
     engagement: Option<String>,
 ) -> Proof {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let requested_date = match state {
         ProofStateEnum::Pending
@@ -807,7 +805,7 @@ pub async fn create_proof(
 }
 
 pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_proof_repository()
         .get_proof(
@@ -845,7 +843,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
 }
 
 pub async fn get_blob(db_conn: &DbConn, blob_id: &BlobId) -> Blob {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![], Arc::new(NoSessionProvider));
+    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
     data_layer
         .get_blob_repository()
         .get(blob_id)

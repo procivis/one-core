@@ -85,10 +85,7 @@ pub(crate) fn throw_if_latest_proof_state_not_eq(
     state: ProofStateEnum,
 ) -> Result<(), ServiceError> {
     if proof.state != state {
-        return Err(BusinessLogicError::InvalidProofState {
-            state: proof.state.clone(),
-        }
-        .into());
+        return Err(BusinessLogicError::InvalidProofState { state: proof.state }.into());
     }
     Ok(())
 }

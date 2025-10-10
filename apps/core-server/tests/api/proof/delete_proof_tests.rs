@@ -1,5 +1,5 @@
 use one_core::model::blob::BlobType;
-use one_core::model::history::HistoryAction;
+use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
@@ -8,6 +8,7 @@ use uuid::Uuid;
 
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
+use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 
 #[tokio::test]
@@ -48,16 +49,21 @@ async fn test_delete_proof_created_holder_success() {
         )
         .await;
 
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Created),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
-    assert!(
-        !context
-            .db
-            .histories
-            .get_by_entity_id(&proof.id.into())
-            .await
-            .values
-            .is_empty()
-    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN
@@ -138,16 +144,21 @@ async fn test_delete_proof_created_issuer_success() {
         )
         .await;
 
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Created),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
-    assert!(
-        !context
-            .db
-            .histories
-            .get_by_entity_id(&proof.id.into())
-            .await
-            .values
-            .is_empty()
-    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN
@@ -219,16 +230,21 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
         )
         .await;
 
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Requested),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
-    assert!(
-        !context
-            .db
-            .histories
-            .get_by_entity_id(&proof.id.into())
-            .await
-            .values
-            .is_empty()
-    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN
@@ -317,16 +333,21 @@ async fn test_delete_proof_old_exchange() {
         )
         .await;
 
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Requested),
+                entity_id: Some(proof.id.into()),
+                entity_type: Some(HistoryEntityType::Proof),
+                ..Default::default()
+            },
+        )
+        .await;
+
     // WHEN
-    assert!(
-        !context
-            .db
-            .histories
-            .get_by_entity_id(&proof.id.into())
-            .await
-            .values
-            .is_empty()
-    );
     let resp = context.api.proofs.delete_proof(proof.id).await;
 
     // THEN

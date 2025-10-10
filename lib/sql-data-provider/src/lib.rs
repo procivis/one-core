@@ -8,7 +8,6 @@ use did::DidProvider;
 use identifier::IdentifierProvider;
 use interaction::InteractionProvider;
 use migration::runner::run_migrations;
-use one_core::proto::session_provider::SessionProvider;
 use one_core::repository::DataRepository;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::blob_repository::BlobRepository;
@@ -34,7 +33,6 @@ use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestat
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
-use proof::history::ProofHistoryDecorator;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use trust_anchor::TrustAnchorProvider;
@@ -112,11 +110,7 @@ pub struct DataLayer {
 }
 
 impl DataLayer {
-    pub fn build(
-        db: DbConn,
-        exportable_storages: Vec<String>,
-        session_provider: Arc<dyn SessionProvider>,
-    ) -> Self {
+    pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
         let history_repository = Arc::new(HistoryProvider { db: db.clone() });
 
         let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
@@ -206,12 +200,6 @@ impl DataLayer {
             certificate_repository: certificate_repository.clone(),
             interaction_repository: interaction_repository.clone(),
             key_repository: key_repository.clone(),
-        });
-
-        let proof_repository = Arc::new(ProofHistoryDecorator {
-            history_repository: history_repository.clone(),
-            inner: proof_repository,
-            session_provider: session_provider.clone(),
         });
 
         let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));
