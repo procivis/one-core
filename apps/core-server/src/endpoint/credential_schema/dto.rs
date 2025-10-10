@@ -243,9 +243,17 @@ pub(crate) enum SortableCredentialSchemaColumnRestEnum {
 #[into("one_core::model::credential_schema::WalletStorageTypeEnum")]
 #[from("one_core::model::credential_schema::WalletStorageTypeEnum")]
 pub(crate) enum WalletStorageTypeRestEnum {
+    /// Requires the wallet to use software-based key storage.
     Software,
+    /// Requires the wallet to use hardware-based key storage (for example,
+    /// a secure element on the device).
     Hardware,
+    /// Requires the wallet to use remote secure element key storage
+    /// (for example, an HSM in a data center).
     RemoteSecureElement,
+    /// Requires the wallet to meet EUDI compliance standards: must use
+    /// either hardware or remote secure element key storage and must
+    /// provide a valid wallet unit attestation.
     EudiCompliant,
 }
 
@@ -277,9 +285,9 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
-    /// Indication of what type of key storage the wallet should use.
-    /// Note that credentials with different `walletStorageType` cannot be
-    /// combined into the same proof schema.
+    /// Specifies requirements that the holder's wallet must meet for
+    /// credential issuance, including key storage type and wallet
+    /// attestation.
     #[try_into(with_fn = convert_inner, infallible)]
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     /// Determines the general appearance of the credential in the holder's
