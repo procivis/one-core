@@ -117,7 +117,7 @@ pub(crate) struct OpenID4VPDraftClientMetadataResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub jwks: Option<OpenID4VPClientMetadataJwksRestDTO>,
     pub jwks_uri: Option<String>,
-    pub id_token_ecrypted_response_enc: Option<String>,
+    pub id_token_encrypted_response_enc: Option<String>,
     pub id_token_encrypted_response_alg: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub subject_syntax_types_supported: Vec<String>,
