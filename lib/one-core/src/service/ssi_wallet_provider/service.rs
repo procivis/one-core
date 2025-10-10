@@ -516,7 +516,7 @@ impl SSIWalletProviderService {
 
         let now = self.clock.now_utc();
         if let Some(last_issuance) = wallet_unit.last_issuance
-            && last_issuance.add(Duration::minutes(
+            && last_issuance.add(Duration::seconds(
                 config_params.lifetime.minimum_refresh_time,
             )) > now
         {
