@@ -39,7 +39,7 @@ async fn test_get_history_list_simple() {
 
     let resp = resp.json_value().await;
     let values = resp["values"].as_array().unwrap();
-    assert_eq!(2, values.len());
+    assert_eq!(1, values.len());
 }
 
 #[tokio::test]

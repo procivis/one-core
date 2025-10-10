@@ -33,14 +33,12 @@ use one_core::repository::validity_credential_repository::ValidityCredentialRepo
 use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use organisation::OrganisationProvider;
-use organisation::history::OrganisationHistoryDecorator;
 use proof::ProofProvider;
 use proof::history::ProofHistoryDecorator;
 use proof_schema::ProofSchemaProvider;
 use sea_orm::{ConnectOptions, DatabaseConnection, DbErr};
 use trust_anchor::TrustAnchorProvider;
 use trust_entity::TrustEntityProvider;
-use trust_entity::history::TrustEntityHistoryDecorator;
 use validity_credential::ValidityCredentialProvider;
 use wallet_unit::WalletUnitProvider;
 
@@ -129,11 +127,6 @@ impl DataLayer {
         });
 
         let organisation_repository = Arc::new(OrganisationProvider { db: db.clone() });
-        let organisation_repository = Arc::new(OrganisationHistoryDecorator {
-            inner: organisation_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
-        });
 
         let interaction_repository = Arc::new(InteractionProvider {
             db: db.clone(),
@@ -191,11 +184,6 @@ impl DataLayer {
             db: db.clone(),
             trust_anchor_repository: trust_anchor_repository.clone(),
             organisation_repository: organisation_repository.clone(),
-        });
-        let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
-            inner: trust_entity_repository,
-            history_repository: history_repository.clone(),
-            session_provider: session_provider.clone(),
         });
 
         let credential_repository = Arc::new(CredentialProvider {

@@ -1,19 +1,16 @@
 use std::sync::Arc;
 
-use one_core::model::history::{History, HistoryAction, HistoryEntityType};
-use one_core::model::organisation::{
-    Organisation, OrganisationRelations, UpdateOrganisationRequest,
-};
-use one_core::proto::session_provider::{SessionExt, SessionProvider};
-use one_core::repository::error::DataLayerError;
-use one_core::repository::history_repository::HistoryRepository;
-use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::DbErr;
+use anyhow::Context;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::mapper::to_data_layer_error;
+use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::{Organisation, OrganisationRelations, UpdateOrganisationRequest};
+use crate::proto::session_provider::{SessionExt, SessionProvider};
+use crate::repository::error::DataLayerError;
+use crate::repository::history_repository::HistoryRepository;
+use crate::repository::organisation_repository::OrganisationRepository;
 
 pub struct OrganisationHistoryDecorator {
     pub history_repository: Arc<dyn HistoryRepository>,
@@ -21,21 +18,20 @@ pub struct OrganisationHistoryDecorator {
     pub session_provider: Arc<dyn SessionProvider>,
 }
 
-#[async_trait::async_trait]
-impl OrganisationRepository for OrganisationHistoryDecorator {
-    async fn create_organisation(
+impl OrganisationHistoryDecorator {
+    async fn write_history(
         &self,
-        request: Organisation,
-    ) -> Result<OrganisationId, DataLayerError> {
-        let organisation_id = self.inner.create_organisation(request.clone()).await?;
-
+        name: String,
+        action: HistoryAction,
+        organisation_id: OrganisationId,
+    ) {
         let result = self
             .history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
-                created_date: request.created_date,
-                action: HistoryAction::Created,
-                name: request.name,
+                created_date: OffsetDateTime::now_utc(),
+                action,
+                name,
                 target: None,
                 entity_id: Some(organisation_id.into()),
                 entity_type: HistoryEntityType::Organisation,
@@ -48,6 +44,19 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
         if let Err(err) = result {
             tracing::warn!("failed to insert organisation history event: {err:?}");
         }
+    }
+}
+
+#[async_trait::async_trait]
+impl OrganisationRepository for OrganisationHistoryDecorator {
+    async fn create_organisation(
+        &self,
+        request: Organisation,
+    ) -> Result<OrganisationId, DataLayerError> {
+        let organisation_id = self.inner.create_organisation(request.clone()).await?;
+
+        self.write_history(request.name, HistoryAction::Created, organisation_id)
+            .await;
 
         Ok(organisation_id)
     }
@@ -62,46 +71,31 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
             .inner
             .get_organisation(&request.id, &OrganisationRelations::default())
             .await?
-            .ok_or(to_data_layer_error(DbErr::RecordNotFound(
-                request.id.to_string(),
-            )))?;
+            .context("organisation missing")?;
 
-        let mut history_actions = vec![];
         if request.name.is_some()
             || request.wallet_provider_issuer.is_some()
             || request.wallet_provider.is_some()
         {
-            history_actions.push(HistoryAction::Updated);
+            self.write_history(
+                updated_entry.name.to_owned(),
+                HistoryAction::Updated,
+                updated_entry.id,
+            )
+            .await;
         }
 
         if let Some(deactivate) = request.deactivate {
-            if deactivate {
-                history_actions.push(HistoryAction::Deactivated);
-            } else {
-                history_actions.push(HistoryAction::Reactivated);
-            }
-        }
-
-        for action in history_actions {
-            let result = self
-                .history_repository
-                .create_history(History {
-                    id: Uuid::new_v4().into(),
-                    created_date: OffsetDateTime::now_utc(),
-                    action,
-                    name: updated_entry.name.clone(),
-                    target: None,
-                    entity_id: Some(request.id.into()),
-                    entity_type: HistoryEntityType::Organisation,
-                    metadata: None,
-                    organisation_id: Some(request.id),
-                    user: self.session_provider.session().user(),
-                })
-                .await;
-
-            if let Err(err) = result {
-                tracing::warn!("failed to insert organisation history event: {err:?}");
-            }
+            self.write_history(
+                updated_entry.name,
+                if deactivate {
+                    HistoryAction::Deactivated
+                } else {
+                    HistoryAction::Reactivated
+                },
+                updated_entry.id,
+            )
+            .await;
         }
 
         Ok(())

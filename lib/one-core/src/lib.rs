@@ -46,7 +46,9 @@ use crate::proto::history_decorator::credential_schema::CredentialSchemaHistoryD
 use crate::proto::history_decorator::did::DidHistoryDecorator;
 use crate::proto::history_decorator::identifier::IdentifierHistoryDecorator;
 use crate::proto::history_decorator::key::KeyHistoryDecorator;
+use crate::proto::history_decorator::organisation::OrganisationHistoryDecorator;
 use crate::proto::history_decorator::proof_schema::ProofSchemaHistoryDecorator;
+use crate::proto::history_decorator::trust_entity::TrustEntityHistoryDecorator;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::{
     BlobStorageProviderImpl, blob_storage_providers_from_config,
@@ -522,6 +524,12 @@ impl OneCore {
         .map_err(OneCoreBuildError::Config)?;
         let blob_storage_provider = Arc::new(BlobStorageProviderImpl::new(blob_storage_providers));
 
+        let organisation_repository = Arc::new(OrganisationHistoryDecorator {
+            inner: data_provider.get_organisation_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+        });
+
         let credential_schema_repository = Arc::new(CredentialSchemaHistoryDecorator {
             history_repository: data_provider.get_history_repository(),
             inner: data_provider.get_credential_schema_repository(),
@@ -563,6 +571,12 @@ impl OneCore {
 
         let identifier_repository = Arc::new(IdentifierHistoryDecorator {
             inner: data_provider.get_identifier_repository(),
+            history_repository: data_provider.get_history_repository(),
+            session_provider: providers.session_provider.clone(),
+        });
+
+        let trust_entity_repository = Arc::new(TrustEntityHistoryDecorator {
+            inner: data_provider.get_trust_entity_repository(),
             history_repository: data_provider.get_history_repository(),
             session_provider: providers.session_provider.clone(),
         });
@@ -624,7 +638,7 @@ impl OneCore {
             did_repository.clone(),
             key_repository.clone(),
             identifier_repository.clone(),
-            data_provider.get_organisation_repository(),
+            organisation_repository.clone(),
             did_method_provider.clone(),
             key_algorithm_provider.clone(),
             key_provider.clone(),
@@ -671,16 +685,16 @@ impl OneCore {
         Ok(OneCore {
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
-                data_provider.get_trust_entity_repository(),
+                trust_entity_repository.clone(),
                 providers.core_base_url.clone(),
                 config.clone(),
             ),
             trust_entity_service: TrustEntityService::new(
                 data_provider.get_trust_anchor_repository(),
-                data_provider.get_trust_entity_repository(),
+                trust_entity_repository,
                 did_repository.clone(),
                 identifier_repository.clone(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 trust_management_provider,
@@ -691,11 +705,11 @@ impl OneCore {
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),
                 data_provider.get_history_repository(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 config.clone(),
             ),
             organisation_service: OrganisationService::new(
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 identifier_repository.clone(),
                 config.clone(),
             ),
@@ -831,7 +845,7 @@ impl OneCore {
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),
                 credential_schema_repository.clone(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
@@ -840,7 +854,7 @@ impl OneCore {
             history_service: HistoryService::new(data_provider.get_history_repository()),
             key_service: KeyService::new(
                 key_repository.clone(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
                 key_algorithm_provider.clone(),
@@ -850,7 +864,7 @@ impl OneCore {
             proof_schema_service: ProofSchemaService::new(
                 proof_schema_repository.clone(),
                 credential_schema_repository.clone(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 config.clone(),
@@ -878,7 +892,7 @@ impl OneCore {
                 ble_waiter,
                 config.clone(),
                 providers.core_base_url.clone(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
                 key_repository.clone(),
@@ -908,7 +922,7 @@ impl OneCore {
             ssi_holder_service: SSIHolderService::new(
                 credential_repository,
                 data_provider.get_proof_repository(),
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 data_provider.get_interaction_repository(),
                 credential_schema_repository,
                 data_provider.get_validity_credential_repository(),
@@ -930,7 +944,7 @@ impl OneCore {
                 Arc::new(OSInfoProviderImpl),
             ),
             ssi_wallet_provider_service: SSIWalletProviderService::new(
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 data_provider.get_wallet_unit_repository(),
                 identifier_repository.clone(),
                 data_provider.get_history_repository(),
@@ -952,14 +966,14 @@ impl OneCore {
                 identifier_repository,
                 key_repository.clone(),
                 certificate_repository,
-                data_provider.get_organisation_repository(),
+                organisation_repository.clone(),
                 did_service,
                 certificate_service,
                 config.clone(),
                 providers.session_provider.clone(),
             ),
             wallet_unit_service: WalletUnitService::new(
-                data_provider.get_organisation_repository(),
+                organisation_repository,
                 data_provider.get_wallet_unit_repository(),
                 data_provider.get_wallet_unit_attestation_repository(),
                 data_provider.get_history_repository(),

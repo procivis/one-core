@@ -4,4 +4,6 @@ pub mod credential_schema;
 pub mod did;
 pub mod identifier;
 pub mod key;
+pub mod organisation;
 pub mod proof_schema;
+pub mod trust_entity;
