@@ -616,10 +616,6 @@ async fn test_share_credential_success() {
             .times(1)
             .with(eq(clone.id), always())
             .returning(move |_, _| Ok(Some(clone.clone())));
-        credential_repository
-            .expect_update_credential()
-            .times(1)
-            .returning(move |_, _| Ok(()));
     }
 
     let mut interaction_repository = MockInteractionRepository::default();
@@ -632,7 +628,9 @@ async fn test_share_credential_success() {
     credential_repository
         .expect_update_credential()
         .once()
-        .withf(move |id, _| *id == credential.id)
+        .withf(move |id, update| {
+            id == &credential.id && update.state == Some(CredentialStateEnum::Pending)
+        })
         .returning(|_, _| Ok(()));
 
     let service = setup_service(Repositories {

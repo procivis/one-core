@@ -646,11 +646,8 @@ impl ProofService {
             .update_proof(
                 &proof.id,
                 UpdateProofRequest {
-                    state: if previous_state == ProofStateEnum::Created {
-                        Some(ProofStateEnum::Pending)
-                    } else {
-                        None
-                    },
+                    state: (previous_state == ProofStateEnum::Created)
+                        .then_some(ProofStateEnum::Pending),
                     interaction: Some(Some(interaction_id)),
                     engagement: Some(Some(DEFAULT_ENGAGEMENT.to_string())),
                     ..Default::default()

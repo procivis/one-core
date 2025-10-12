@@ -50,9 +50,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
-use crate::util::interactions::{
-    add_new_interaction, clear_previous_interaction, update_credentials_interaction,
-};
+use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::oidc::detect_format_with_crypto_suite;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 
@@ -543,18 +541,6 @@ impl CredentialService {
             context,
         } = exchange.issuer_share_credential(&credential).await?;
 
-        if credential.state == CredentialStateEnum::Created {
-            self.credential_repository
-                .update_credential(
-                    *credential_id,
-                    UpdateCredentialRequest {
-                        state: Some(CredentialStateEnum::Pending),
-                        ..Default::default()
-                    },
-                )
-                .await?;
-        }
-
         add_new_interaction(
             interaction_id,
             &self.base_url,
@@ -563,7 +549,16 @@ impl CredentialService {
             Some(organisation.to_owned()),
         )
         .await?;
-        update_credentials_interaction(credential.id, interaction_id, &*self.credential_repository)
+        self.credential_repository
+            .update_credential(
+                *credential_id,
+                UpdateCredentialRequest {
+                    state: (credential.state == CredentialStateEnum::Created)
+                        .then_some(CredentialStateEnum::Pending),
+                    interaction: Some(interaction_id),
+                    ..Default::default()
+                },
+            )
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 

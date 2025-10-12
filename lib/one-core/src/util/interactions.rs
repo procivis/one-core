@@ -1,14 +1,11 @@
-use shared_types::CredentialId;
 use time::OffsetDateTime;
 
-use crate::model::credential::UpdateCredentialRequest;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::model::organisation::Organisation;
-use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::ServiceError;
 
-pub async fn add_new_interaction(
+pub(crate) async fn add_new_interaction(
     interaction_id: InteractionId,
     base_url: &Option<String>,
     interaction_repository: &dyn InteractionRepository,
@@ -40,23 +37,7 @@ pub async fn add_new_interaction(
     Ok(new_interaction)
 }
 
-pub async fn update_credentials_interaction(
-    credential_id: CredentialId,
-    interaction_id: InteractionId,
-    credential_repository: &dyn CredentialRepository,
-) -> Result<(), ServiceError> {
-    let update = UpdateCredentialRequest {
-        interaction: Some(interaction_id.to_owned()),
-        ..Default::default()
-    };
-
-    credential_repository
-        .update_credential(credential_id, update)
-        .await?;
-    Ok(())
-}
-
-pub async fn clear_previous_interaction(
+pub(crate) async fn clear_previous_interaction(
     interaction_repository: &dyn InteractionRepository,
     interaction: &Option<Interaction>,
 ) -> Result<(), ServiceError> {
