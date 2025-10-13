@@ -12,7 +12,8 @@ use url::Url;
 
 use crate::common_mapper::opt_secret_string;
 use crate::model::credential_schema::{
-    CredentialFormat, LayoutProperties, LayoutType, RevocationMethod, WalletStorageTypeEnum,
+    CodeTypeEnum, CredentialFormat, LayoutProperties, LayoutType, RevocationMethod,
+    WalletStorageTypeEnum,
 };
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
@@ -136,22 +137,7 @@ pub(crate) struct HolderInteractionData {
     pub credential_configuration_id: String,
 }
 
-#[skip_serializing_none]
-#[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
-    pub name: String,
-    pub locale: Option<String>,
-    pub logo: Option<OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO>,
-    pub background_color: Option<String>,
-    pub text_color: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, Default)]
-pub struct OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO {
-    pub url: String,
-    pub alt_text: Option<String>,
-}
-
+// https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub credential_issuer: String,
@@ -164,42 +150,111 @@ pub struct OpenID4VCIIssuerMetadataResponseDTO {
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCIIssuerMetadataDisplayResponseDTO {
     pub name: String,
-    pub locale: String,
+    pub locale: Option<String>,
+    pub logo: Option<OpenID4VCIIssuerMetadataLogoDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Deserialize, Serialize, Default)]
+pub struct OpenID4VCIIssuerMetadataLogoDTO {
+    pub uri: String,
+    pub alt_text: Option<String>,
 }
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCICredentialConfigurationData {
     pub format: String,
-    #[serde(rename = "@context")]
-    pub context: Option<Vec<ContextType>>,
-    pub order: Option<Vec<String>>,
-    pub doctype: Option<String>,
-    pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
-    pub vct: Option<String>,
-    pub procivis_schema: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     pub scope: Option<String>,
+
+    // custom - TODO: remove in ONE-7546
+    pub procivis_schema: Option<String>,
+
+    // mandatory for W3C formats
+    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.2
+    pub credential_definition: Option<OpenID4VCICredentialDefinition>,
+
+    // mandatory for mso_mdoc
+    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.2.2
+    pub doctype: Option<String>,
+
+    // mandatory for SD-JWT VC
+    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.3.2
+    pub vct: Option<String>,
 }
 
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct OpenID4VCICredentialDefinition {
+    pub r#type: Vec<String>,
+    #[serde(rename = "@context")]
+    pub context: Option<Vec<ContextType>>,
+}
+
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCICredentialMetadataResponseDTO {
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
     pub claims: Option<Vec<OpenID4VCICredentialMetadataClaimResponseDTO>>,
+
+    // procivis extension
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO {
+    pub name: String,
+    pub locale: Option<String>,
+    pub logo: Option<OpenID4VCIIssuerMetadataLogoDTO>,
+    pub description: Option<String>,
+    pub background_color: Option<String>,
+    pub background_image: Option<OpenID4VCIIssuerMetadataCredentialMetadataImage>,
+    pub text_color: Option<String>,
+
+    // procivis extension
+    pub procivis_design: Option<OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct OpenID4VCIIssuerMetadataCredentialMetadataImage {
+    pub uri: String,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign {
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
+    pub picture_attribute: Option<String>,
+    pub code_attribute: Option<String>,
+    pub code_type: Option<CodeTypeEnum>,
+}
+
+// https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-B.2
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenID4VCICredentialMetadataClaimResponseDTO {
     pub path: Vec<String>,
-    pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseDTO>>,
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataClaimDisplay>>,
     pub mandatory: Option<bool>,
     pub additional_values: Option<IndexMap<String, serde_json::Value>>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct OpenID4VCIIssuerMetadataClaimDisplay {
+    pub name: Option<String>,
+    pub locale: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

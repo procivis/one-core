@@ -1,16 +1,19 @@
 use indexmap::IndexMap;
 use one_core::common_mapper::{opt_secret_string, secret_string};
+use one_core::provider::credential_formatter::vcdm::ContextType;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialMetadataClaimResponseDTO,
-    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
-    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
-    OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
+    OpenID4VCICredentialDefinition, OpenID4VCICredentialDefinitionRequestDTO,
+    OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
+    OpenID4VCICredentialRequestProofs, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants, OpenID4VCIIssuerMetadataClaimDisplay,
+    OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO, OpenID4VCIIssuerMetadataDisplayResponseDTO,
+    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataLogoDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenResponseDTO,
 };
@@ -25,24 +28,31 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use utoipa::ToSchema;
 
+use crate::endpoint::credential_schema::dto::{
+    CredentialSchemaCodeTypeRestEnum, WalletStorageTypeRestEnum,
+};
+
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
     pub credential_issuer: String,
     pub authorization_servers: Option<Vec<String>>,
     pub credential_endpoint: String,
+    pub nonce_endpoint: Option<String>,
     pub notification_endpoint: Option<String>,
     pub credential_configurations_supported:
         IndexMap<String, OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO>,
-    pub nonce_endpoint: Option<String>,
     pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCIIssuerMetadataDisplayResponseDTO)]
-pub struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
+pub(crate) struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
     pub name: String,
-    pub locale: String,
+    pub locale: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub logo: Option<OpenID4VCIIssuerMetadataLogoRestDTO>,
 }
 
 #[options_not_nullable]
@@ -50,70 +60,100 @@ pub struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
 #[from(OpenID4VCICredentialConfigurationData)]
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
-    #[from(with_fn = convert_inner_of_inner)]
-    pub order: Option<Vec<String>>,
     pub doctype: Option<String>,
-    #[from(with_fn = convert_inner_of_inner)]
-    pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
-    #[from(with_fn = convert_inner)]
     pub procivis_schema: Option<String>,
-    #[from(with_fn = convert_inner)]
     pub vct: Option<String>,
     #[from(with_fn = convert_inner)]
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseRestDTO>,
-    #[from(with_fn = convert_inner)]
     pub scope: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     #[schema(value_type = Object)]
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+    #[from(with_fn = convert_inner)]
+    pub credential_definition: Option<OpenID4VCICredentialDefinitionRestDTO>,
 }
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialMetadataResponseDTO)]
-pub struct OpenID4VCICredentialMetadataResponseRestDTO {
+pub(crate) struct OpenID4VCICredentialMetadataResponseRestDTO {
     #[from(with_fn = convert_inner_of_inner)]
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
     #[from(with_fn = convert_inner_of_inner)]
     pub claims: Option<Vec<OpenID4VCICredentialMetadataClaimResponseRestDTO>>,
+    #[from(with_fn = convert_inner)]
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCICredentialDefinition)]
+pub(crate) struct OpenID4VCICredentialDefinitionRestDTO {
+    pub r#type: Vec<String>,
+    #[serde(rename = "@context")]
+    #[schema(value_type = Vec<String>)]
+    pub context: Option<Vec<ContextType>>,
 }
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(OpenID4VCICredentialMetadataClaimResponseDTO)]
-pub struct OpenID4VCICredentialMetadataClaimResponseRestDTO {
-    #[from(with_fn = convert_inner)]
+pub(crate) struct OpenID4VCICredentialMetadataClaimResponseRestDTO {
     pub path: Vec<String>,
     #[from(with_fn = convert_inner_of_inner)]
-    pub display: Option<Vec<OpenID4VCIIssuerMetadataDisplayResponseRestDTO>>,
-    #[from(with_fn = convert_inner)]
+    pub display: Option<Vec<OpenID4VCIIssuerMetadataClaimDisplayRestDTO>>,
     pub mandatory: Option<bool>,
     pub additional_values: Option<IndexMap<String, serde_json::Value>>,
 }
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
-pub struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
-    pub name: String,
-    #[from(with_fn = convert_inner)]
+#[from(OpenID4VCIIssuerMetadataClaimDisplay)]
+pub(crate) struct OpenID4VCIIssuerMetadataClaimDisplayRestDTO {
+    pub name: Option<String>,
     pub locale: Option<String>,
-    #[from(with_fn = convert_inner)]
-    pub logo: Option<OpenID4VCIIssuerMetadataCredentialSupportedLogoRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub background_color: Option<String>,
-    #[from(with_fn = convert_inner)]
-    pub text_color: Option<String>,
 }
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO)]
-pub struct OpenID4VCIIssuerMetadataCredentialSupportedLogoRestDTO {
-    pub url: String,
+#[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
+pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
+    pub name: String,
+    pub locale: Option<String>,
     #[from(with_fn = convert_inner)]
+    pub logo: Option<OpenID4VCIIssuerMetadataLogoRestDTO>,
+    pub description: Option<String>,
+    pub background_color: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub background_image: Option<OpenID4VCIIssuerMetadataCredentialMetadataImageRestDTO>,
+    pub text_color: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub procivis_design: Option<OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesignRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataLogoDTO)]
+pub(crate) struct OpenID4VCIIssuerMetadataLogoRestDTO {
+    pub uri: String,
     pub alt_text: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIIssuerMetadataCredentialMetadataImage)]
+pub(crate) struct OpenID4VCIIssuerMetadataCredentialMetadataImageRestDTO {
+    pub uri: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema)]
+pub(crate) struct OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesignRestDTO {
+    pub primary_attribute: Option<String>,
+    pub secondary_attribute: Option<String>,
+    pub picture_attribute: Option<String>,
+    pub code_attribute: Option<String>,
+    pub code_type: Option<CredentialSchemaCodeTypeRestEnum>,
 }
 
 #[options_not_nullable]

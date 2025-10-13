@@ -11,9 +11,9 @@ use super::mapper::{credentials_supported_mdoc, map_cryptographic_binding_method
 use super::model::{
     ExtendedSubjectDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
-    OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO, OpenID4VCIIssuerMetadataDisplayResponseDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIPreAuthorizedCodeGrant,
-    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
+    OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    Timestamp,
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::CoreConfig;
@@ -26,6 +26,8 @@ use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialMetadataClaimResponseDTO,
     OpenID4VCICredentialMetadataResponseDTO, OpenID4VCIFinal1CredentialOfferDTO,
+    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign, OpenID4VCIIssuerMetadataLogoDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
     throw_if_interaction_created_date, throw_if_interaction_pre_authorized_code_used,
@@ -85,7 +87,8 @@ pub(crate) fn create_issuer_metadata_response(
                 ))?
                 .name
                 .clone(),
-            locale: "en".to_string(),
+            locale: Some("en".to_string()),
+            logo: None,
         }]),
     })
 }
@@ -128,9 +131,9 @@ fn credential_configurations_supported(
                         path,
                         mandatory: Some(claim.required),
                         additional_values: None,
-                        display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
-                            name,
-                            locale: "en".to_string(),
+                        display: Some(vec![OpenID4VCIIssuerMetadataClaimDisplay {
+                            name: Some(name),
+                            locale: Some("en".to_string()),
                         }]),
                     })
                 })
@@ -145,6 +148,7 @@ fn credential_configurations_supported(
     let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
         display: Some(vec![display_dto]),
         claims: Some(credential_metadata_claims),
+        wallet_storage_type: credential_schema.wallet_storage_type,
     };
 
     Ok(IndexMap::from([(
@@ -212,31 +216,52 @@ pub(crate) fn create_display_dto_from_schema(
         logo: None,
         background_color: None,
         text_color: None,
+        description: None,
+        background_image: None,
+        procivis_design: None,
     };
 
     if let Some(layout_properties) = &credential_schema.layout_properties {
-        // Extract background color
-        if let Some(background) = &layout_properties.background
-            && let Some(color) = &background.color
-        {
-            display.background_color = Some(color.clone());
+        // Extract background
+        if let Some(background) = &layout_properties.background {
+            if let Some(color) = &background.color {
+                display.background_color = Some(color.clone());
+            }
+            if let Some(image) = &background.image {
+                display.background_image =
+                    Some(OpenID4VCIIssuerMetadataCredentialMetadataImage { uri: image.clone() });
+            }
         }
 
-        // Extract logo and text color
-        if let Some(logo_props) = &layout_properties.logo {
+        // Extract logo
+        if let Some(logo) = &layout_properties.logo {
             // Use font_color as text_color
-            if let Some(font_color) = &logo_props.font_color {
+            if let Some(font_color) = &logo.font_color {
                 display.text_color = Some(font_color.clone());
             }
 
             // Create logo DTO if image is available
-            if let Some(image_url) = &logo_props.image {
-                display.logo = Some(OpenID4VCIIssuerMetadataCredentialSupportedLogoDTO {
-                    url: image_url.clone(),
+            if let Some(image) = &logo.image {
+                display.logo = Some(OpenID4VCIIssuerMetadataLogoDTO {
+                    uri: image.clone(),
                     alt_text: Some(format!("{} logo", credential_schema.name)),
                 });
             }
         }
+
+        display.procivis_design = Some(OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign {
+            primary_attribute: layout_properties.primary_attribute.to_owned(),
+            secondary_attribute: layout_properties.secondary_attribute.to_owned(),
+            picture_attribute: layout_properties.picture_attribute.to_owned(),
+            code_attribute: layout_properties
+                .code
+                .as_ref()
+                .map(|code| code.attribute.to_owned()),
+            code_type: layout_properties
+                .code
+                .as_ref()
+                .map(|code| code.r#type.to_owned()),
+        });
     }
 
     display
@@ -250,8 +275,8 @@ fn jsonld_configuration(
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> OpenID4VCICredentialConfigurationData {
     OpenID4VCICredentialConfigurationData {
-        context: None, //TODO! Fill for json_ld
         format: oidc_format.into(),
+        credential_definition: None, //TODO! Fill for json_ld
         credential_metadata: Some(credential_metadata),
         procivis_schema: Some(credential_schema.imported_source_url.clone()),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
@@ -270,6 +295,7 @@ fn jwt_configuration(
 ) -> OpenID4VCICredentialConfigurationData {
     OpenID4VCICredentialConfigurationData {
         format: oidc_format.into(),
+        credential_definition: None, //TODO! Fill with W3C types
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         procivis_schema: Some(credential_schema.imported_source_url.clone()),
         credential_metadata: Some(credential_metadata),

@@ -532,7 +532,10 @@ async fn test_get_issuer_metadata_mdoc() {
     let result = service.get_issuer_metadata(&schema.id).await.unwrap();
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("mso_mdoc".to_string(), credential.format);
-    assert_eq!(schema.name, credential.display.unwrap()[0].name);
+    assert_eq!(
+        schema.name,
+        credential.credential_metadata.unwrap().display.unwrap()[0].name
+    );
     assert_eq!(
         credential.cryptographic_binding_methods_supported.unwrap(),
         vec!["did:key".to_string(), "jwk".to_string()]

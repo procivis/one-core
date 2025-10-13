@@ -12,7 +12,6 @@ use super::model::{
     CredentialSchemaLogoPropertiesRequestDTO, OpenID4VCICredentialConfigurationData,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCITokenResponseDTO,
 };
-use super::service::create_display_dto_from_schema;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, Params};
 use crate::config::{ConfigError, ConfigParsingError};
@@ -646,21 +645,6 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
     }
 }
 
-// impl From<CredentialSchemaClaim> for CredentialClaimSchemaDTO {
-//     fn from(value: CredentialSchemaClaim) -> Self {
-//         Self {
-//             id: value.schema.id,
-//             created_date: value.schema.created_date,
-//             last_modified: value.schema.last_modified,
-//             key: value.schema.key,
-//             datatype: value.schema.data_type,
-//             required: value.required,
-//             array: value.schema.array,
-//             claims: vec![],
-//         }
-//     }
-// }
-
 pub(super) fn credentials_supported_mdoc(
     schema: CredentialSchema,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
@@ -668,50 +652,18 @@ pub(super) fn credentials_supported_mdoc(
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
-    let claim_schemas: &Vec<CredentialSchemaClaim> =
-        schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "claim_schemas is None".to_string(),
-            ))?;
-
-    // order of namespaces and elements inside MDOC schema as defined in OpenID4VCI mdoc spec: `{namespace}~{element}`
-    let element_order: Vec<String> = claim_schemas
-        .iter()
-        .filter(|claim| !claim.schema.metadata)
-        .filter(|claim| {
-            claim
-                .schema
-                .key
-                .chars()
-                .filter(|c| *c == NESTED_CLAIM_MARKER)
-                .count()
-                == 1
-        })
-        .map(|element| element.schema.key.replace(NESTED_CLAIM_MARKER, "~"))
-        .collect();
-
     let format_type = config
         .format
         .get_fields(&schema.format)
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
         .r#type;
 
-    let display_dto = create_display_dto_from_schema(&schema);
-
     let credential_configuration = OpenID4VCICredentialConfigurationData {
         format: map_to_openid4vp_format(&format_type)
             .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?
             .to_string(),
-        order: if element_order.len() > 1 {
-            Some(element_order)
-        } else {
-            None
-        },
         doctype: Some(schema.schema_id.clone()),
         credential_metadata: Some(credential_metadata),
-        display: Some(vec![display_dto]),
         procivis_schema: Some(schema.imported_source_url.clone()),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
