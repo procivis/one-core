@@ -3,19 +3,18 @@ use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
 use shared_types::CredentialSchemaId;
 
+use crate::config::core_config::KeyAlgorithmType;
+use crate::model::credential::Credential;
+use crate::model::credential_schema::CredentialSchema;
+use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
+use crate::provider::credential_formatter::model::HolderBindingCtx;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
-pub mod error;
-
 pub(crate) mod common;
+pub mod error;
 pub use common::nest_claims;
-
-use crate::config::core_config::KeyAlgorithmType;
-use crate::model::credential_schema::CredentialSchema;
-use crate::model::identifier::Identifier;
-use crate::provider::credential_formatter::model::HolderBindingCtx;
 
 // Implementation
 pub mod json_ld_bbsplus;
@@ -127,4 +126,11 @@ pub trait CredentialFormatter: Send + Sync {
     /// Returns path segments
     /// Returns empty if user claims do not appear nested in any specific metadata claim
     fn user_claims_path(&self) -> Vec<String>;
+
+    /// Parse issued credential on holder side.
+    /// Reconstructs credential_schema, claims, issuer identifiers etc.
+    async fn parse_credential(&self, _credential: &str) -> Result<Credential, FormatterError> {
+        // TODO: implement in ONE-7543 and ONE-7545
+        unimplemented!()
+    }
 }
