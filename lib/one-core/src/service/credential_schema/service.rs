@@ -1,7 +1,6 @@
 use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
-use super::import::import_credential_schema;
 use crate::common_mapper::list_response_into;
 use crate::common_validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
@@ -244,15 +243,17 @@ impl CredentialSchemaService {
             );
         }
 
-        let credential_schema = import_credential_schema(
-            request.schema,
-            organisation,
-            &self.config,
-            &*self.credential_schema_repository,
-            &*self.formatter_provider,
-            &*self.revocation_method_provider,
-        )
-        .await?;
+        let credential_schema = self.import_parser.parse_import_credential_schema(
+            crate::proto::credential_schema::dto::ImportCredentialSchemaRequestDTO {
+                organisation,
+                schema: request.schema.into(),
+            },
+        )?;
+
+        let credential_schema = self
+            .importer_proto
+            .import_credential_schema(credential_schema)
+            .await?;
 
         Ok(credential_schema.id)
     }

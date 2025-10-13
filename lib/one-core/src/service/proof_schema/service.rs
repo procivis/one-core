@@ -30,12 +30,12 @@ use crate::model::proof_schema::{
     ProofInputSchema, ProofInputSchemaRelations, ProofSchema, ProofSchemaClaimRelations,
     ProofSchemaRelations,
 };
+use crate::proto::credential_schema::dto::ImportCredentialSchemaRequestDTO;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
 };
-use crate::service::credential_schema::import::import_credential_schema;
 use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
@@ -385,15 +385,17 @@ impl ProofSchemaService {
             .context("parsing error")
             .map_err(VerificationProtocolError::Transport)?;
 
-        let credential_schema = import_credential_schema(
-            credential_schema_import_request,
-            organisation.to_owned(),
-            &self.config,
-            &*self.credential_schema_repository,
-            &*self.formatter_provider,
-            &*self.revocation_method_provider,
-        )
-        .await?;
+        let credential_schema = self
+            .credential_schema_import_parser
+            .parse_import_credential_schema(ImportCredentialSchemaRequestDTO {
+                organisation: organisation.to_owned(),
+                schema: credential_schema_import_request.into(),
+            })?;
+
+        let credential_schema = self
+            .credential_schema_importer
+            .import_credential_schema(credential_schema)
+            .await?;
 
         Ok(credential_schema)
     }

@@ -245,7 +245,8 @@ pub struct ImportCredentialSchemaRequestDTO {
     pub schema: ImportCredentialSchemaRequestSchemaDTO,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Into)]
+#[into(crate::proto::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub id: Uuid,
@@ -257,19 +258,24 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub format: String,
     pub revocation_method: String,
     pub organisation_id: Uuid,
+    #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     #[serde(default)]
     pub external_schema: bool,
+    #[into(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
+    #[into(with_fn = convert_inner)]
     pub layout_type: Option<LayoutType>,
+    #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize, Into)]
+#[into(crate::proto::credential_schema::dto::ImportCredentialSchemaClaimSchemaDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub id: Uuid,
@@ -282,11 +288,12 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub required: bool,
     pub array: Option<bool>,
     #[serde(default)]
+    #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
 }
 
 #[derive(Clone, Debug, Into, Deserialize)]
-#[into(CredentialSchemaLayoutPropertiesRequestDTO)]
+#[into(crate::proto::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaLayoutPropertiesDTO {
     #[serde(default)]

@@ -40,6 +40,8 @@ use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
+use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
+use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
 use crate::proto::history_decorator::certificate::CertificateHistoryDecorator;
 use crate::proto::history_decorator::credential::CredentialHistoryDecorator;
 use crate::proto::history_decorator::credential_schema::CredentialSchemaHistoryDecorator;
@@ -690,6 +692,17 @@ impl OneCore {
         .map_err(OneCoreBuildError::Config)?;
         let task_provider = Arc::new(TaskProviderImpl::new(task_providers));
 
+        let credential_schema_import_parser = Arc::new(CredentialSchemaImportParserImpl::new(
+            config.clone(),
+            credential_formatter_provider.clone(),
+            revocation_method_provider.clone(),
+        ));
+
+        let credential_schema_importer_proto = Arc::new(CredentialSchemaImporterProto::new(
+            credential_formatter_provider.clone(),
+            data_provider.get_credential_schema_repository(),
+        ));
+
         Ok(OneCore {
             trust_anchor_service: TrustAnchorService::new(
                 data_provider.get_trust_anchor_repository(),
@@ -858,6 +871,8 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 config.clone(),
                 providers.session_provider.clone(),
+                credential_schema_import_parser.clone(),
+                credential_schema_importer_proto.clone(),
             ),
             history_service: HistoryService::new(data_provider.get_history_repository()),
             key_service: KeyService::new(
@@ -874,11 +889,12 @@ impl OneCore {
                 credential_schema_repository.clone(),
                 organisation_repository.clone(),
                 credential_formatter_provider.clone(),
-                revocation_method_provider.clone(),
                 config.clone(),
                 providers.core_base_url.clone(),
                 client.clone(),
                 providers.session_provider.clone(),
+                credential_schema_import_parser,
+                credential_schema_importer_proto,
             ),
             proof_service: ProofService::new(
                 proof_repository.clone(),

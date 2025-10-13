@@ -3,12 +3,15 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO};
+use super::dto::{
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaFilterValue, CredentialSchemaLogoPropertiesRequestDTO,
+};
 use crate::common_mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
@@ -261,20 +264,36 @@ fn unnest_claim_schemas_inner(
     result
 }
 
-impl From<ImportCredentialSchemaRequestSchemaDTO> for CreateCredentialSchemaRequestDTO {
-    fn from(value: ImportCredentialSchemaRequestSchemaDTO) -> Self {
-        CreateCredentialSchemaRequestDTO {
-            name: value.name,
-            format: value.format,
-            revocation_method: value.revocation_method,
-            organisation_id: value.organisation_id.into(),
-            claims: value.claims.into_iter().map(Into::into).collect(),
-            external_schema: value.external_schema,
-            wallet_storage_type: convert_inner(value.wallet_storage_type),
-            layout_type: value.layout_type.unwrap_or(LayoutType::Card),
-            layout_properties: convert_inner(value.layout_properties),
-            schema_id: Some(value.schema_id),
-            allow_suspension: value.allow_suspension,
+impl From<CredentialSchemaLogoPropertiesRequestDTO>
+    for crate::proto::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO
+{
+    fn from(value: CredentialSchemaLogoPropertiesRequestDTO) -> Self {
+        Self {
+            font_color: value.font_color,
+            background_color: value.background_color,
+            image: value.image,
+        }
+    }
+}
+
+impl From<CredentialSchemaCodePropertiesDTO>
+    for crate::proto::credential_schema::dto::CredentialSchemaCodePropertiesDTO
+{
+    fn from(value: CredentialSchemaCodePropertiesDTO) -> Self {
+        Self {
+            attribute: value.attribute,
+            r#type: value.r#type.into(),
+        }
+    }
+}
+
+impl From<CredentialSchemaBackgroundPropertiesRequestDTO>
+    for crate::proto::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO
+{
+    fn from(value: CredentialSchemaBackgroundPropertiesRequestDTO) -> Self {
+        Self {
+            color: value.color,
+            image: value.image,
         }
     }
 }

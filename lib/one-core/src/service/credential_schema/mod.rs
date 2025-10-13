@@ -1,13 +1,13 @@
 pub mod dto;
 pub mod mapper;
 pub mod service;
-
-pub(crate) mod import;
 pub(crate) mod validator;
 
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
+use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -23,6 +23,8 @@ pub struct CredentialSchemaService {
     config: Arc<core_config::CoreConfig>,
     core_base_url: Option<String>,
     session_provider: Arc<dyn SessionProvider>,
+    import_parser: Arc<dyn CredentialSchemaImportParser>,
+    importer_proto: Arc<dyn CredentialSchemaImporter>,
 }
 
 impl CredentialSchemaService {
@@ -35,6 +37,8 @@ impl CredentialSchemaService {
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         config: Arc<core_config::CoreConfig>,
         session_provider: Arc<dyn SessionProvider>,
+        credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
+        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     ) -> Self {
         Self {
             credential_schema_repository: repository,
@@ -44,6 +48,8 @@ impl CredentialSchemaService {
             config,
             core_base_url,
             session_provider,
+            import_parser: credential_schema_import_parser,
+            importer_proto: credential_schema_importer,
         }
     }
 }

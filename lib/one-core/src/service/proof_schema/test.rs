@@ -23,6 +23,12 @@ use crate::model::proof_schema::{
     GetProofSchemaList, ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations,
     ProofSchema, ProofSchemaRelations,
 };
+use crate::proto::credential_schema::importer::{
+    CredentialSchemaImporterProto, MockCredentialSchemaImporter,
+};
+use crate::proto::credential_schema::parser::{
+    CredentialSchemaImportParserImpl, MockCredentialSchemaImportParser,
+};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -70,18 +76,32 @@ struct Repositories {
 }
 
 fn setup_service(repositories: Repositories) -> ProofSchemaService {
+    let formatter_provider = Arc::new(repositories.formatter_provider);
+    let credential_schema_repository = Arc::new(repositories.credential_schema_repository);
+    let revocation_method_provider = Arc::new(repositories.revocation_method_provider);
+    let config = Arc::new(repositories.config.unwrap_or(generic_config().core));
+
     ProofSchemaService {
         proof_schema_repository: Arc::new(repositories.proof_schema_repository),
-        credential_schema_repository: Arc::new(repositories.credential_schema_repository),
+        credential_schema_repository: credential_schema_repository.clone(),
         organisation_repository: Arc::new(repositories.organisation_repository),
-        formatter_provider: Arc::new(repositories.formatter_provider),
-        revocation_method_provider: Arc::new(repositories.revocation_method_provider),
-        config: Arc::new(repositories.config.unwrap_or(generic_config().core)),
+        formatter_provider: formatter_provider.clone(),
+        config: config.clone(),
         base_url: Some("BASE_URL".to_string()),
         client: Arc::new(MockHttpClient::new()),
         session_provider: repositories
             .session_provider
             .unwrap_or(Arc::new(NoSessionProvider)),
+
+        credential_schema_import_parser: Arc::new(CredentialSchemaImportParserImpl::new(
+            config,
+            formatter_provider.clone(),
+            revocation_method_provider,
+        )),
+        credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
+            formatter_provider,
+            credential_schema_repository,
+        )),
     }
 }
 
@@ -1459,16 +1479,29 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
         .with(eq("NONE"))
         .return_once(move |_| Some(Arc::new(revocation_method)));
 
+    let formatter_provider = Arc::new(formatter_provider);
+    let credential_schema_repository = Arc::new(credential_schema_repository);
+    let revocation_method_provider = Arc::new(revocation_method_provider);
+    let config = Arc::new(generic_config().core);
+
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
-        credential_schema_repository: Arc::new(credential_schema_repository),
+        credential_schema_repository: credential_schema_repository.clone(),
         organisation_repository: Arc::new(organisation_repository),
-        formatter_provider: Arc::new(formatter_provider),
-        revocation_method_provider: Arc::new(revocation_method_provider),
+        formatter_provider: formatter_provider.clone(),
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(http_client),
         session_provider: Arc::new(NoSessionProvider),
+        credential_schema_import_parser: Arc::new(CredentialSchemaImportParserImpl::new(
+            config.clone(),
+            formatter_provider.clone(),
+            revocation_method_provider.clone(),
+        )),
+        credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
+            formatter_provider,
+            credential_schema_repository,
+        )),
     };
 
     service
@@ -1650,16 +1683,29 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
         .with(eq("NONE"))
         .return_once(move |_| Some(Arc::new(revocation_method)));
 
+    let formatter_provider = Arc::new(formatter_provider);
+    let credential_schema_repository = Arc::new(credential_schema_repository);
+    let revocation_method_provider = Arc::new(revocation_method_provider);
+    let config = Arc::new(generic_config().core);
+
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
-        credential_schema_repository: Arc::new(credential_schema_repository),
+        credential_schema_repository: credential_schema_repository.clone(),
         organisation_repository: Arc::new(organisation_repository),
-        formatter_provider: Arc::new(formatter_provider),
-        revocation_method_provider: Arc::new(revocation_method_provider),
-        config: Arc::new(generic_config().core),
+        formatter_provider: formatter_provider.clone(),
+        config: config.clone(),
         base_url: None,
         client: Arc::new(http_client),
         session_provider: Arc::new(NoSessionProvider),
+        credential_schema_import_parser: Arc::new(CredentialSchemaImportParserImpl::new(
+            config.clone(),
+            formatter_provider.clone(),
+            revocation_method_provider.clone(),
+        )),
+        credential_schema_importer: Arc::new(CredentialSchemaImporterProto::new(
+            formatter_provider,
+            credential_schema_repository,
+        )),
     };
 
     service
@@ -1803,16 +1849,30 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
         .with(eq("MDOC"))
         .return_once(move |_| Some(Arc::new(formatter)));
 
+    let formatter_provider = Arc::new(formatter_provider);
+    let credential_schema_repository = Arc::new(credential_schema_repository);
+    let import_parser = CredentialSchemaImportParserImpl::new(
+        Arc::new(generic_config().core),
+        formatter_provider.clone(),
+        Arc::new(MockRevocationMethodProvider::new()),
+    );
+
+    let importer = CredentialSchemaImporterProto::new(
+        formatter_provider.clone(),
+        credential_schema_repository.clone(),
+    );
+
     let service = ProofSchemaService {
         proof_schema_repository: Arc::new(proof_schema_repository),
-        credential_schema_repository: Arc::new(credential_schema_repository),
+        credential_schema_repository,
         organisation_repository: Arc::new(organisation_repository),
-        formatter_provider: Arc::new(formatter_provider),
-        revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
+        formatter_provider,
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(MockHttpClient::new()),
         session_provider: Arc::new(NoSessionProvider),
+        credential_schema_import_parser: Arc::new(import_parser),
+        credential_schema_importer: Arc::new(importer),
     };
 
     service
@@ -1887,11 +1947,12 @@ async fn test_import_proof_failed_existing_proof_schema() {
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         organisation_repository: Arc::new(organisation_repository),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
-        revocation_method_provider: Arc::new(MockRevocationMethodProvider::new()),
         config: Arc::new(generic_config().core),
         base_url: None,
         client: Arc::new(MockHttpClient::new()),
         session_provider: Arc::new(NoSessionProvider),
+        credential_schema_import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
+        credential_schema_importer: Arc::new(MockCredentialSchemaImporter::default()),
     };
 
     let result = service

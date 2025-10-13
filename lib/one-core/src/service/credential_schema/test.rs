@@ -22,6 +22,12 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::credential_schema::importer::{
+    CredentialSchemaImporterProto, MockCredentialSchemaImporter,
+};
+use crate::proto::credential_schema::parser::{
+    CredentialSchemaImportParserImpl, MockCredentialSchemaImportParser,
+};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -56,14 +62,30 @@ fn setup_service(
     revocation_method_provider: MockRevocationMethodProvider,
     config: CoreConfig,
 ) -> CredentialSchemaService {
+    let formatter_provider = Arc::new(formatter_provider);
+    let credential_schema_repository = Arc::new(credential_schema_repository);
+    let revocation_method_provider = Arc::new(revocation_method_provider);
+    let import_parser = CredentialSchemaImportParserImpl::new(
+        Arc::new(generic_config().core),
+        formatter_provider.clone(),
+        revocation_method_provider.clone(),
+    );
+
+    let importer = CredentialSchemaImporterProto::new(
+        formatter_provider.clone(),
+        credential_schema_repository.clone(),
+    );
+
     CredentialSchemaService::new(
         Some("http://127.0.0.1:4321".to_string()),
-        Arc::new(credential_schema_repository),
+        credential_schema_repository,
         Arc::new(organisation_repository),
-        Arc::new(formatter_provider),
-        Arc::new(revocation_method_provider),
+        formatter_provider,
+        revocation_method_provider,
         Arc::new(config),
         Arc::new(NoSessionProvider),
+        Arc::new(import_parser),
+        Arc::new(importer),
     )
 }
 
@@ -2828,10 +2850,11 @@ async fn test_import_credential_schema_success() {
             ..Default::default()
         });
     formatter.expect_get_metadata_claims().returning(Vec::new);
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
+        .times(2)
+        .returning(move |_| Some(formatter.clone()));
 
     repository
         .expect_get_credential_schema_list()
@@ -3004,6 +3027,8 @@ async fn test_create_credential_schema_fail_session_org_mismatch() {
         config: Arc::new(generic_config().core),
         core_base_url: None,
         session_provider: Arc::new(StaticSessionProvider::new_random()),
+        import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
+        importer_proto: Arc::new(MockCredentialSchemaImporter::default()),
     };
 
     let result = service
@@ -3037,6 +3062,8 @@ async fn test_list_credential_schema_fail_session_org_mismatch() {
         config: Arc::new(generic_config().core),
         core_base_url: None,
         session_provider: Arc::new(StaticSessionProvider::new_random()),
+        import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
+        importer_proto: Arc::new(MockCredentialSchemaImporter::default()),
     };
 
     let result = service
@@ -3070,6 +3097,8 @@ async fn test_credential_schema_ops_session_org_mismatch() {
         config: Arc::new(generic_config().core),
         core_base_url: None,
         session_provider: Arc::new(StaticSessionProvider::new_random()),
+        import_parser: Arc::new(MockCredentialSchemaImportParser::default()),
+        importer_proto: Arc::new(MockCredentialSchemaImporter::default()),
     };
 
     let result = service.get_credential_schema(&Uuid::new_v4().into()).await;
