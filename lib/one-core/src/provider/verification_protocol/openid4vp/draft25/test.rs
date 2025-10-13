@@ -8,7 +8,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::OpenID4VP25HTTP;
-use super::model::{OpenID4VC25PresentationHolderParams, OpenID4Vp25Params};
+use super::model::OpenID4Vp25Params;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -27,8 +27,8 @@ use crate::provider::presentation_formatter::provider::MockPresentationFormatter
 use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VC25PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCRedirectUriParams, OpenID4VPDraftClientMetadata,
-    OpenID4VPPresentationDefinition,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
+    OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
@@ -68,7 +68,7 @@ fn generic_params() -> OpenID4Vp25Params {
         allow_insecure_http_transport: true,
         use_request_uri: false,
         url_scheme: "openid4vp".to_string(),
-        holder: OpenID4VC25PresentationHolderParams {
+        holder: OpenID4VCPresentationHolderParams {
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,

@@ -46,7 +46,7 @@ use crate::provider::verification_protocol::openid4vp::dcql::{
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
-    JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    DcqlSubmissionEudi, JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, VpSubmissionData,
 };
@@ -251,10 +251,21 @@ impl OpenID4VPFinal1_0 {
                 })
                 .or_insert(vec![formatted_presentation.vp_token]);
         }
-        Ok((
-            VpSubmissionData::Dcql(DcqlSubmission { vp_token }),
-            encryption_info,
-        ))
+        if self.params.holder.dcql_vp_token_single_presentation {
+            let vp_token = vp_token
+                .into_iter()
+                .filter_map(|(key, value)| Some((key, value.into_iter().next()?)))
+                .collect();
+            Ok((
+                VpSubmissionData::DcqlEudi(DcqlSubmissionEudi { vp_token }),
+                encryption_info,
+            ))
+        } else {
+            Ok((
+                VpSubmissionData::Dcql(DcqlSubmission { vp_token }),
+                encryption_info,
+            ))
+        }
     }
 }
 

@@ -397,6 +397,9 @@ pub(crate) fn default_presentation_url_scheme() -> String {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCPresentationHolderParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
+    /// EUDI compatibility flag for non-standard compliant vp_token formatting
+    #[serde(default)]
+    pub dcql_vp_token_single_presentation: bool,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Deserialize, Serialize, Display, EnumString)]

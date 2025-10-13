@@ -178,23 +178,32 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-  OPENID4VP_DRAFT25_EUDI:
+  OPENID4VP_FINAL1_EUDI:
     display:
-      en: "OpenID4VP draft 25 (EUDI)"
-      de: "OpenID4VP draft 25 (EUDI)"
+      en: "OpenID4VP Final 1.0 (EUDI)"
+      de: "OpenID4VP Final 1.0 (EUDI)"
     order: 8
-    type: "OPENID4VP_DRAFT25"
+    type: "OPENID4VP_FINAL1"
     params:
       public:
         useRequestUri: true
         urlScheme: eudi-openid4vp
         verifier:
-          useDcql: false
           supportedClientIdSchemes:
-            [x509_san_dns, redirect_uri, verifier_attestation, did]
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+            ]
         holder:
           supportedClientIdSchemes:
-            [redirect_uri, verifier_attestation, did, x509_san_dns]
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+            ]
           # EUDI compatibility flag for non-standard compliant vp_token formatting
           dcqlVpTokenSinglePresentation: true
         redirectUri:

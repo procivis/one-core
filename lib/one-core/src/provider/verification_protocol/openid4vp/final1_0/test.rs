@@ -81,6 +81,7 @@ fn generic_params() -> Params {
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
             ],
+            dcql_vp_token_single_presentation: false,
         },
         verifier: PresentationVerifierParams {
             supported_client_id_schemes: vec![

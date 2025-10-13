@@ -7,7 +7,7 @@ use anyhow::Context;
 use shared_types::DidValue;
 use url::Url;
 
-use super::mappers::decode_client_id_with_scheme;
+use super::mappers::{decode_client_id_with_scheme, map_client_metadata};
 use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
 use crate::model::did::KeyRole;
 use crate::provider::credential_formatter::model::{
@@ -362,7 +362,7 @@ pub(crate) async fn interaction_data_from_openid4vp_query(
     let query_params: AuthorizationRequestQueryParams = serde_qs::from_str(query)
         .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
 
-    let (authorization_request, verifier_details) =
+    let (mut authorization_request, verifier_details) =
         match (&query_params.request_uri, &query_params.request) {
             (Some(_), Some(_)) => {
                 return Err(VerificationProtocolError::InvalidRequest(
@@ -404,6 +404,12 @@ pub(crate) async fn interaction_data_from_openid4vp_query(
                 ));
             }
         }?;
+
+    if let Some(OpenID4VPClientMetadata::Draft(data)) = authorization_request.client_metadata {
+        // EUDI compatibility shim: map draft client metadata to new data model
+        let client_metadata = map_client_metadata(data)?;
+        authorization_request.client_metadata = client_metadata
+    }
     Ok((authorization_request, verifier_details))
 }
 
