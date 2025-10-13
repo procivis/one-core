@@ -492,6 +492,10 @@ impl SSIWalletProviderService {
             .await?
             .ok_or(EntityNotFoundError::WalletUnit(wallet_unit_id))?;
 
+        if wallet_unit.status != WalletUnitStatus::Active {
+            return Err(WalletProviderError::WalletUnitRevoked.into());
+        }
+
         let Some(organisation) = &wallet_unit.organisation else {
             return Err(ServiceError::MappingError(format!(
                 "Missing organisation on wallet unit `{}`",
@@ -521,10 +525,6 @@ impl SSIWalletProviderService {
             )) > now
         {
             return Err(WalletProviderError::RefreshTimeNotReached.into());
-        }
-
-        if wallet_unit.status != WalletUnitStatus::Active {
-            return Err(WalletProviderError::WalletUnitRevoked.into());
         }
 
         let (signed_attestation, attestation_hash) = self
