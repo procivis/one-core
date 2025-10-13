@@ -580,6 +580,7 @@ async fn test_holder_accept_credential_success() {
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+            challenge_endpoint: None,
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
@@ -793,6 +794,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: None,
+            challenge_endpoint: None,
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
@@ -1016,6 +1018,7 @@ async fn test_holder_accept_expired_credential_fails() {
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+            challenge_endpoint: None,
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),
@@ -1216,6 +1219,7 @@ async fn test_holder_reject_credential() {
             token_endpoint: Some(format!("{}/token", mock_server.uri())),
             nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
             notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+            challenge_endpoint: None,
             grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
                 OpenID4VCIPreAuthorizedCodeGrant {
                     pre_authorized_code: "code".to_string(),

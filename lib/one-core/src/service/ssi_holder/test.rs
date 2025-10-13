@@ -42,6 +42,9 @@ use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabili
 use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
+};
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -81,7 +84,6 @@ use crate::service::test_utilities::{
     dummy_blob, dummy_did, dummy_identifier, dummy_key, dummy_organisation, dummy_proof,
     generic_config, generic_formatter_capabilities, get_dummy_date,
 };
-use crate::util::oauth_client::{OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod};
 
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested()
@@ -1563,9 +1565,16 @@ async fn test_initiate_issuance() {
         .respond_with(
             ResponseTemplate::new(200).set_body_json(OAuthAuthorizationServerMetadata {
                 issuer: issuer.parse().unwrap(),
-                authorization_endpoint: Url::parse(authorization_endpoint).unwrap(),
+                authorization_endpoint: Some(Url::parse(authorization_endpoint).unwrap()),
+                token_endpoint: None,
                 pushed_authorization_request_endpoint: None,
                 code_challenge_methods_supported: vec![],
+                response_types_supported: vec![],
+                grant_types_supported: vec![],
+                token_endpoint_auth_methods_supported: vec![],
+                challenge_endpoint: None,
+                client_attestation_signing_alg_values_supported: None,
+                client_attestation_pop_signing_alg_values_supported: None,
             }),
         )
         .expect(1)
@@ -1729,9 +1738,18 @@ async fn test_initiate_issuance_pkce() {
         .respond_with(
             ResponseTemplate::new(200).set_body_json(OAuthAuthorizationServerMetadata {
                 issuer: issuer.parse().unwrap(),
-                authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                authorization_endpoint: Some(
+                    Url::parse("https://authorize.com/authorize").unwrap(),
+                ),
+                token_endpoint: None,
                 pushed_authorization_request_endpoint: None,
                 code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
+                response_types_supported: vec![],
+                grant_types_supported: vec![],
+                token_endpoint_auth_methods_supported: vec![],
+                challenge_endpoint: None,
+                client_attestation_signing_alg_values_supported: None,
+                client_attestation_pop_signing_alg_values_supported: None,
             }),
         )
         .expect(1)

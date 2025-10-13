@@ -44,12 +44,13 @@ use crate::provider::issuance_protocol::error::{
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialRequestDTO,
-    OpenID4VCICredentialRequestProofs, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
-    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
-    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
+    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OAuthAuthorizationServerMetadata,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestProofs,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent,
+    OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
@@ -210,15 +211,45 @@ impl OID4VCIFinal1_0Service {
             _ => vec![],
         };
 
-        Ok(OAuthAuthorizationServerMetadataResponseDTO {
-            issuer: issuer.to_owned(),
-            token_endpoint: format!("{issuer}/{credential_schema_id}/token"),
-            response_types_supported: Some(vec!["code".to_string()]),
+        // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
+        // If token_endpoint_auth_methods_supported includes attest_jwt_client_auth, we MUST include these fields
+        let (
+            client_attestation_signing_alg_values_supported,
+            client_attestation_pop_signing_alg_values_supported,
+        ) = if token_endpoint_auth_methods_supported.contains(&"attest_jwt_client_auth".to_string())
+        {
+            (
+                Some(vec!["ES256".to_string()]),
+                Some(vec!["ES256".to_string()]),
+            )
+        } else {
+            (None, None)
+        };
+
+        Ok(OAuthAuthorizationServerMetadata {
+            issuer: issuer
+                .parse()
+                .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
+            authorization_endpoint: None,
+            token_endpoint: Some(
+                format!("{issuer}/{credential_schema_id}/token")
+                    .parse()
+                    .map_err(|e| {
+                        ServiceError::MappingError(format!("Invalid token endpoint URL: {e}"))
+                    })?,
+            ),
+            pushed_authorization_request_endpoint: None,
+            code_challenge_methods_supported: vec![],
+            response_types_supported: vec!["code".to_string()],
             grant_types_supported: vec![
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
             ],
             token_endpoint_auth_methods_supported,
-        })
+            challenge_endpoint: None,
+            client_attestation_signing_alg_values_supported,
+            client_attestation_pop_signing_alg_values_supported,
+        }
+        .into())
     }
 
     pub async fn get_credential_offer(

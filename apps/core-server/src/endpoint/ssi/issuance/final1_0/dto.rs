@@ -121,11 +121,26 @@ pub struct OpenID4VCIIssuerMetadataCredentialSupportedLogoRestDTO {
 #[from(OAuthAuthorizationServerMetadataResponseDTO)]
 pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     pub issuer: String,
-    pub token_endpoint: String,
     #[from(with_fn = convert_inner)]
-    pub response_types_supported: Option<Vec<String>>,
+    pub authorization_endpoint: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub token_endpoint: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub pushed_authorization_request_endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub code_challenge_methods_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub response_types_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub grant_types_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub token_endpoint_auth_methods_supported: Vec<String>,
+    #[from(with_fn = convert_inner)]
+    pub challenge_endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

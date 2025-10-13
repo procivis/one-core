@@ -11,8 +11,8 @@ use indexmap::IndexMap;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
 use secrecy::ExposeSecret;
-use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use shared_types::{BlobId, CertificateId, CredentialId, DidValue, IdentifierId};
 use time::{Duration, OffsetDateTime};
@@ -32,10 +32,11 @@ use super::openid4vci_final1_0::mapper::{
     parse_credential_issuer_params,
 };
 use super::openid4vci_final1_0::model::{
-    ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialRequestDTO,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
-    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    ChallengeResponseDTO, ExtendedSubjectDTO, HolderInteractionData,
+    OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params, OpenID4VCIGrants,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
@@ -529,6 +530,32 @@ impl OpenID4VCIFinal1_0 {
         Ok(response.c_nonce)
     }
 
+    /// Fetches a challenge from the attestation-based client authentication challenge endpoint
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-8>
+    async fn holder_fetch_challenge(
+        &self,
+        challenge_endpoint: &str,
+    ) -> Result<String, IssuanceProtocolError> {
+        let response: ChallengeResponseDTO = self
+            .client
+            .get(challenge_endpoint)
+            .send()
+            .await
+            .context("Error during challenge_endpoint response")
+            .map_err(IssuanceProtocolError::Transport)?
+            .error_for_status()
+            .context("status error")
+            .map_err(IssuanceProtocolError::Transport)?
+            .json()
+            .map_err(|error| {
+                IssuanceProtocolError::Failed(format!(
+                    "Failed decoding challenge response json {error}"
+                ))
+            })?;
+
+        Ok(response.attestation_challenge)
+    }
+
     async fn holder_process_accepted_credential(
         &self,
         issuer_response: SubmitIssuerResponse,
@@ -948,11 +975,19 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     "Missing Wallet Unit key".to_string(),
                 ))?;
 
+            // Fetch challenge if challenge_endpoint is present
+            let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
+                Some(self.holder_fetch_challenge(challenge_endpoint).await?)
+            } else {
+                None
+            };
+
             let signed_proof = create_wallet_unit_attestation_pop(
                 &*self.key_provider,
                 self.key_algorithm_provider.clone(),
                 &wua_key,
                 &interaction_data.issuer_url,
+                challenge,
             )
             .await?;
 
@@ -1874,6 +1909,10 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         .as_ref()
         .map(|oauth_metadata| oauth_metadata.token_endpoint_auth_methods_supported.clone());
 
+    let challenge_endpoint = oauth_authorization_server_metadata
+        .as_ref()
+        .and_then(|oauth_metadata| oauth_metadata.challenge_endpoint.clone());
+
     let schema_data =
         handle_invitation_operations.find_schema_data(credential_config, configuration_id)?;
 
@@ -1882,6 +1921,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         credential_endpoint: issuer_metadata.credential_endpoint.clone(),
         notification_endpoint: issuer_metadata.notification_endpoint.to_owned(),
         nonce_endpoint: issuer_metadata.nonce_endpoint.to_owned(),
+        challenge_endpoint,
         token_endpoint: Some(token_endpoint),
         grants: Some(grants),
         continue_issuance,
@@ -2449,14 +2489,20 @@ async fn create_wallet_unit_attestation_pop(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key: &Key,
     audience: &str,
+    challenge: Option<String>,
 ) -> Result<String, IssuanceProtocolError> {
+    #[derive(Serialize)]
+    struct WalletUnitPopCustomClaims {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        challenge: Option<String>,
+    }
+
     let now = OffsetDateTime::now_utc();
 
     let attestation_auth_fn = key_provider
         .get_attestation_signature_provider(key, None, key_algorithm_provider.clone())
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-    // TODO EG Attempt both key storages here
     let auth_fn = key_provider
         .get_signature_provider(key, None, key_algorithm_provider)
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
@@ -2477,7 +2523,7 @@ async fn create_wallet_unit_attestation_pop(
             issuer: None,
             subject: None,
             proof_of_possession_key: None,
-            custom: (),
+            custom: WalletUnitPopCustomClaims { challenge },
         },
     );
 

@@ -8,6 +8,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use time::OffsetDateTime;
+use url::Url;
 
 use crate::common_mapper::opt_secret_string;
 use crate::model::credential_schema::{
@@ -55,6 +56,51 @@ pub(crate) struct OpenID4VCNonceParams {
     pub expiration: Option<u64>,
 }
 
+/// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>
+///
+/// [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414#section-2)
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub(crate) struct OAuthAuthorizationServerMetadata {
+    pub issuer: Url,
+    pub authorization_endpoint: Option<Url>,
+    pub token_endpoint: Option<Url>,
+    pub pushed_authorization_request_endpoint: Option<Url>,
+
+    #[serde(default)]
+    pub code_challenge_methods_supported: Vec<OAuthCodeChallengeMethod>,
+    #[serde(default)]
+    pub response_types_supported: Vec<String>,
+    #[serde(default)]
+    pub grant_types_supported: Vec<String>,
+    #[serde(default)]
+    pub token_endpoint_auth_methods_supported: Vec<String>,
+
+    /// Attestation-Based Client Authentication challenge endpoint
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-13.1>
+    pub challenge_endpoint: Option<Url>,
+
+    /// Attestation-Based Client Authentication - supported signing algorithms for client attestation
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
+
+    /// Attestation-Based Client Authentication - supported signing algorithms for client attestation PoP
+    /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1>
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+}
+
+/// [IANA registry](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#pkce-code-challenge-method)
+///
+/// [RFC7636](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.2)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum OAuthCodeChallengeMethod {
+    #[serde(rename = "plain")]
+    Plain,
+    #[serde(rename = "S256")]
+    S256,
+}
+
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub(crate) struct HolderInteractionData {
@@ -66,6 +112,8 @@ pub(crate) struct HolderInteractionData {
     pub notification_endpoint: Option<String>,
     #[serde(default)]
     pub nonce_endpoint: Option<String>,
+    #[serde(default)]
+    pub challenge_endpoint: Option<String>,
     #[serde(default)]
     pub grants: Option<OpenID4VCIGrants>,
     #[serde(default)]
@@ -172,6 +220,13 @@ pub struct OpenID4VCITokenResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub struct OpenID4VCINonceResponseDTO {
     pub c_nonce: String,
+}
+
+/// Response from the attestation-based client authentication challenge endpoint
+/// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-8>
+#[derive(Clone, Debug, Deserialize)]
+pub struct ChallengeResponseDTO {
+    pub attestation_challenge: String,
 }
 
 #[skip_serializing_none]

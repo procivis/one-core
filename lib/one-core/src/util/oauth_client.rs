@@ -8,6 +8,9 @@ use thiserror::Error;
 use url::Url;
 
 use crate::provider::http_client::HttpClient;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
+    OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
+};
 
 pub(crate) struct OAuthClient {
     http_client: Arc<dyn HttpClient>,
@@ -57,7 +60,11 @@ impl OAuthClient {
             };
 
         // construct authorization URL by adding all necessary query parameters
-        let mut url = metadata.authorization_endpoint;
+        let mut url = metadata.authorization_endpoint.ok_or_else(|| {
+            OAuthClientError::Failed(
+                "Authorization endpoint not found in authorization server metadata".to_string(),
+            )
+        })?;
         url.set_query(Some(&response_params));
 
         Ok(OAuthAuthorizationResponse { url, code_verifier })
@@ -160,30 +167,6 @@ pub(crate) enum OAuthClientError {
     Serialization(#[from] serde_urlencoded::ser::Error),
 }
 
-/// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>
-///
-/// [RFC8414](https://datatracker.ietf.org/doc/html/rfc8414#section-2)
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub(crate) struct OAuthAuthorizationServerMetadata {
-    pub issuer: Url,
-    pub authorization_endpoint: Url,
-    pub pushed_authorization_request_endpoint: Option<Url>,
-
-    #[serde(default)]
-    pub code_challenge_methods_supported: Vec<OAuthCodeChallengeMethod>,
-}
-
-/// [IANA registry](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#pkce-code-challenge-method)
-///
-/// [RFC7636](https://www.rfc-editor.org/rfc/rfc7636.html#section-4.2)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum OAuthCodeChallengeMethod {
-    #[serde(rename = "plain")]
-    Plain,
-    #[serde(rename = "S256")]
-    S256,
-}
-
 /// <https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1>
 #[derive(Clone, Debug, Serialize)]
 pub(crate) struct OAuthAuthorizationRequest {
@@ -276,9 +259,18 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(
                 OAuthAuthorizationServerMetadata {
                     issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                    authorization_endpoint: Some(
+                        Url::parse("https://authorize.com/authorize").unwrap(),
+                    ),
+                    token_endpoint: None,
                     pushed_authorization_request_endpoint: None,
                     code_challenge_methods_supported: vec![],
+                    response_types_supported: vec![],
+                    grant_types_supported: vec![],
+                    token_endpoint_auth_methods_supported: vec![],
+                    challenge_endpoint: None,
+                    client_attestation_signing_alg_values_supported: None,
+                    client_attestation_pop_signing_alg_values_supported: None,
                 },
             ))
             .expect(1)
@@ -335,9 +327,18 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(
                 OAuthAuthorizationServerMetadata {
                     issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                    authorization_endpoint: Some(
+                        Url::parse("https://authorize.com/authorize").unwrap(),
+                    ),
+                    token_endpoint: None,
                     pushed_authorization_request_endpoint: None,
                     code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
+                    response_types_supported: vec![],
+                    grant_types_supported: vec![],
+                    token_endpoint_auth_methods_supported: vec![],
+                    challenge_endpoint: None,
+                    client_attestation_signing_alg_values_supported: None,
+                    client_attestation_pop_signing_alg_values_supported: None,
                 },
             ))
             .expect(1)
@@ -392,11 +393,20 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(
                 OAuthAuthorizationServerMetadata {
                     issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                    authorization_endpoint: Some(
+                        Url::parse("https://authorize.com/authorize").unwrap(),
+                    ),
+                    token_endpoint: None,
                     pushed_authorization_request_endpoint: Some(
                         Url::parse(&format!("{issuer}/par")).unwrap(),
                     ),
                     code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
+                    response_types_supported: vec![],
+                    grant_types_supported: vec![],
+                    token_endpoint_auth_methods_supported: vec![],
+                    challenge_endpoint: None,
+                    client_attestation_signing_alg_values_supported: None,
+                    client_attestation_pop_signing_alg_values_supported: None,
                 },
             ))
             .expect(1)
@@ -468,11 +478,20 @@ mod tests {
             .respond_with(ResponseTemplate::new(200).set_body_json(
                 OAuthAuthorizationServerMetadata {
                     issuer: issuer.parse().unwrap(),
-                    authorization_endpoint: Url::parse("https://authorize.com/authorize").unwrap(),
+                    authorization_endpoint: Some(
+                        Url::parse("https://authorize.com/authorize").unwrap(),
+                    ),
+                    token_endpoint: None,
                     pushed_authorization_request_endpoint: Some(
                         Url::parse(&format!("{issuer}/par")).unwrap(),
                     ),
                     code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
+                    response_types_supported: vec![],
+                    grant_types_supported: vec![],
+                    token_endpoint_auth_methods_supported: vec![],
+                    challenge_endpoint: None,
+                    client_attestation_signing_alg_values_supported: None,
+                    client_attestation_pop_signing_alg_values_supported: None,
                 },
             ))
             .expect(1)
