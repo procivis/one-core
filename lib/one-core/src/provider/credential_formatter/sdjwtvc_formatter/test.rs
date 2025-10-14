@@ -171,7 +171,7 @@ async fn test_format_credential() {
     assert_eq!(
         jwt_parts[0],
         &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"ES256","kid":"#key0","typ":"vc+sd-jwt"}"##
+            r##"{"alg":"ES256","kid":"#key0","typ":"dc+sd-jwt"}"##
         )
         .unwrap()
     );
@@ -363,7 +363,7 @@ async fn test_format_credential_swiyu() {
     assert_eq!(
         jwt_parts[0],
         &Base64UrlSafeNoPadding::encode_to_string(
-            r##"{"alg":"ES256","kid":"#key0","typ":"vc+sd-jwt"}"##
+            r##"{"alg":"ES256","kid":"#key0","typ":"dc+sd-jwt"}"##
         )
         .unwrap()
     );

@@ -110,7 +110,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
-            token_type: "vc+sd-jwt".to_string(),
+            token_type: "dc+sd-jwt".to_string(),
             swiyu_proof_of_possession: self.params.swiyu_mode,
             issuer_certificate: credential_data.issuer_certificate,
         };
