@@ -93,6 +93,7 @@ impl MigrationTrait for Migration {
 struct LengthFunc;
 
 impl Iden for LengthFunc {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
         write!(s, "LENGTH").unwrap();
     }

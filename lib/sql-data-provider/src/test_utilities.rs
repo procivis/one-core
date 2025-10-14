@@ -405,6 +405,7 @@ pub async fn get_proof_schema_with_id(
     proof_schema::Entity::find_by_id(id).one(database).await
 }
 
+#[allow(clippy::unwrap_used)]
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
     let db_conn = db_conn(database_url, true).await.unwrap();
     DataLayer::build(db_conn, vec![])
@@ -604,6 +605,7 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
     }
 }
 
+#[allow(clippy::unwrap_used)]
 pub fn dummy_did() -> Did {
     Did {
         id: Uuid::new_v4().into(),

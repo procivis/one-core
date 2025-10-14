@@ -49,6 +49,7 @@ pub enum CredentialSchemaType {
 pub struct CredentialSchemaTypeEnum;
 
 impl sea_orm::sea_query::Iden for CredentialSchemaTypeEnum {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn std::fmt::Write) {
         write!(s, "CredentialSchemaType").unwrap();
     }

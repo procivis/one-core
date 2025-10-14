@@ -141,7 +141,7 @@ impl Resolver for MockAndroidAttestationCrlResolver {
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
         Ok(ResolveResult::NewValue {
-            content: serde_json::to_vec(&self.crl).unwrap(),
+            content: serde_json::to_vec(&self.crl).map_err(Self::Error::InvalidResponseBody)?,
             media_type: Some("application/json".to_string()),
             expiry_date: None,
         })

@@ -234,6 +234,7 @@ pub(crate) fn get_equals_condition(column: impl ColumnTrait, value: impl Into<Va
 pub struct SubStr;
 
 impl sea_orm::Iden for SubStr {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
         write!(s, "substr").unwrap();
     }
@@ -242,6 +243,7 @@ impl sea_orm::Iden for SubStr {
 pub struct Hex;
 
 impl sea_orm::Iden for Hex {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
         write!(s, "hex").unwrap();
     }

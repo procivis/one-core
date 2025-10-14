@@ -18,6 +18,7 @@ pub async fn open_sqlite_on_path(path: &Path) -> Result<DatabaseConnection, Data
 pub struct JsonObject;
 
 impl sea_orm::Iden for JsonObject {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
         write!(s, "json_object").unwrap();
     }
@@ -26,6 +27,7 @@ impl sea_orm::Iden for JsonObject {
 pub struct JsonArray;
 
 impl sea_orm::Iden for JsonArray {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
         write!(s, "json_array").unwrap();
     }
@@ -34,6 +36,7 @@ impl sea_orm::Iden for JsonArray {
 pub struct JsonAgg;
 
 impl sea_orm::Iden for JsonAgg {
+    #[allow(clippy::unwrap_used)]
     fn unquoted(&self, s: &mut dyn Write) {
         write!(s, "json_group_array").unwrap();
     }
