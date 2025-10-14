@@ -590,6 +590,17 @@ impl OneCore {
             session_provider: providers.session_provider.clone(),
         });
 
+        let credential_schema_import_parser = Arc::new(CredentialSchemaImportParserImpl::new(
+            Arc::new(core_config.clone()),
+            credential_formatter_provider.clone(),
+            revocation_method_provider.clone(),
+        ));
+
+        let credential_schema_importer_proto = Arc::new(CredentialSchemaImporterProto::new(
+            credential_formatter_provider.clone(),
+            data_provider.get_credential_schema_repository(),
+        ));
+
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
@@ -608,6 +619,8 @@ impl OneCore {
             certificate_validator.clone(),
             client.clone(),
             blob_storage_provider.clone(),
+            credential_schema_import_parser,
+            credential_schema_importer_proto,
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 

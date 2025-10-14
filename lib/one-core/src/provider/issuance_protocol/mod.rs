@@ -53,6 +53,9 @@ pub mod openid4vci_final1_0;
 pub(crate) mod provider;
 use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, UpdateResponse};
 
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
+use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
+
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
 ) -> Result<DataDTO, IssuanceProtocolError> {
@@ -87,6 +90,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
+    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
 ) -> Result<HashMap<String, Arc<dyn IssuanceProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
 
@@ -151,6 +156,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     vct_type_metadata_cache.clone(),
                     client.clone(),
                     formatter_provider.clone(),
+                    credential_schema_parser.clone(),
+                    credential_schema_importer.clone(),
                 );
 
                 Arc::new(OpenID4VCI13::new(
@@ -185,6 +192,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     vct_type_metadata_cache.clone(),
                     client.clone(),
                     formatter_provider.clone(),
+                    credential_schema_parser.clone(),
+                    credential_schema_importer.clone(),
                 );
 
                 Arc::new(OpenID4VCI13Swiyu::new(

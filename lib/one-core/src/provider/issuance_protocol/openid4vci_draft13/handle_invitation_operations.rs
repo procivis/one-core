@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use super::mapper::{
     claim_schema_from_metadata_claim_schema, fetch_procivis_schema, from_create_request,
-    parse_procivis_schema_claim,
+    map_to_import_credential_schema_request,
 };
 use super::model::OpenID4VCICredentialConfigurationData;
 use crate::model::credential_schema::{
@@ -16,6 +16,8 @@ use crate::model::credential_schema::{
     CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
 };
 use crate::model::organisation::Organisation;
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
+use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::http_client::HttpClient;
@@ -42,6 +44,8 @@ pub(crate) struct HandleInvitationOperationsImpl {
     pub vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     pub http_client: Arc<dyn HttpClient>,
     pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    pub credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
+    pub credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
 }
 
 /// Interface to be implemented in order to use an exchange protocol.
@@ -77,12 +81,16 @@ impl HandleInvitationOperationsImpl {
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         http_client: Arc<dyn HttpClient>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
+        credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
+        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     ) -> Self {
         Self {
             credential_schemas,
             vct_type_metadata_cache,
             http_client,
             formatter_provider,
+            credential_schema_parser,
+            credential_schema_importer,
         }
     }
 
@@ -186,32 +194,36 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     .await
                     .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
 
-                let mut schema = from_create_request(
-                    CreateCredentialSchemaRequestDTO {
-                        name: procivis_schema.name,
-                        format: procivis_schema.format,
-                        revocation_method: procivis_schema.revocation_method,
-                        external_schema: false,
-                        claims: procivis_schema
-                            .claims
-                            .into_iter()
-                            .map(parse_procivis_schema_claim)
-                            .collect(),
-                        wallet_storage_type: procivis_schema.wallet_storage_type,
-                        layout_type: procivis_schema.layout_type.unwrap_or(LayoutType::Card),
-                        layout_properties: procivis_schema.layout_properties,
-                        schema_id: schema.id.clone(),
-                        imported_source_url: schema_url,
-                    },
+                if procivis_schema.claims.is_empty() {
+                    return Err(IssuanceProtocolError::Failed(
+                        "Claim schemas cannot be empty".to_string(),
+                    ));
+                }
+
+                let now = OffsetDateTime::now_utc();
+                let import_credential_schema_request_dto = map_to_import_credential_schema_request(
+                    now,
+                    schema.id.clone(),
+                    schema_url,
                     organisation.clone(),
-                    procivis_schema.schema_type,
+                    procivis_schema,
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
-                self.add_metadata_claim_schemas(&mut schema)?;
+
+                let schema = self
+                    .credential_schema_parser
+                    .parse_import_credential_schema(import_credential_schema_request_dto)
+                    .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
+
+                let schema = self
+                    .credential_schema_importer
+                    .import_credential_schema(schema)
+                    .await
+                    .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
 
                 let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
-                BuildCredentialSchemaResponse { claims, schema }
+                return Ok(BuildCredentialSchemaResponse { claims, schema });
             }
             "mdoc" => {
                 let result = fetch_procivis_schema(&schema_url, &*self.http_client).await;
