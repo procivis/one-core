@@ -4,6 +4,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
+use serde_json::json;
 use shared_types::DidValue;
 use url::Url;
 
@@ -569,7 +570,14 @@ pub(crate) fn validate_interaction_data(
 
     // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed
     match mso_mdoc {
-        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
+        None
+        | Some(OpenID4VpPresentationFormat::Empty(_))
+        // EUDI compatibility shim: allow null object and null values
+        | Some(OpenID4VpPresentationFormat::Other(serde_json::Value::Null)) => {}
+         Some(OpenID4VpPresentationFormat::Other(val)) if *val == json!({
+                "issuerauth_alg_values": null,
+                "deviceauth_alg_values": null
+            }) => {}
         Some(OpenID4VpPresentationFormat::MdocAlgs(mso_mdoc)) => {
             if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
