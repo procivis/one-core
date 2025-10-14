@@ -1,5 +1,6 @@
 use dcql::DcqlQuery;
 use one_core::model::identifier::Identifier;
+use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
@@ -23,6 +24,7 @@ pub(crate) async fn proof_for_dcql_query(
             "http://localhost",
             &interaction_data_dcql(dcql_query),
             org,
+            InteractionType::Verification,
         )
         .await;
 

@@ -8,6 +8,7 @@ use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTyp
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
+use one_core::model::interaction::InteractionType;
 use rcgen::CertificateParams;
 use serde_json::json;
 use shared_types::DidValue;
@@ -163,6 +164,7 @@ async fn test_issuance_accept_openid4vc() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -358,6 +360,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -524,6 +527,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -685,6 +689,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -851,6 +856,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -954,6 +960,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1074,6 +1081,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1192,6 +1200,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1328,6 +1337,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1442,6 +1452,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1568,6 +1579,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1719,6 +1731,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1889,6 +1902,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -2112,6 +2126,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 

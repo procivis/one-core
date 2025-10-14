@@ -25,7 +25,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
-use crate::model::interaction::InteractionRelations;
+use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
@@ -547,6 +547,7 @@ impl CredentialService {
             &*self.interaction_repository,
             serde_json::to_vec(&context).ok(),
             Some(organisation.to_owned()),
+            InteractionType::Issuance,
         )
         .await?;
         self.credential_repository

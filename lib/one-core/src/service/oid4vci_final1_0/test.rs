@@ -21,7 +21,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
@@ -184,6 +184,7 @@ fn dummy_interaction(
         data: Some(data.to_string().into_bytes()),
         organisation: None,
         nonce_id: None,
+        interaction_type: InteractionType::Issuance,
     }
 }
 

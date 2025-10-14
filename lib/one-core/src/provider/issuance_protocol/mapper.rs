@@ -4,7 +4,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 
 pub(super) fn get_issued_credential_update(
@@ -34,5 +34,6 @@ pub(crate) fn interaction_from_handle_invitation(
         data,
         organisation,
         nonce_id: None,
+        interaction_type: InteractionType::Issuance,
     }
 }

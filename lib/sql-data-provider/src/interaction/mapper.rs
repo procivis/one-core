@@ -23,6 +23,7 @@ impl TryFrom<Interaction> for interaction::ActiveModel {
             data: Set(value.data),
             organisation_id: Set(organisation_id),
             nonce_id: Set(value.nonce_id.map(NonceId::from)),
+            interaction_type: Set(value.interaction_type.into()),
         })
     }
 }
@@ -61,5 +62,6 @@ pub(super) fn interaction_from_models(
         data: interaction.data,
         organisation,
         nonce_id: interaction.nonce_id.map(Uuid::from),
+        interaction_type: interaction.interaction_type.into(),
     })
 }

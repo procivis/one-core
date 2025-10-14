@@ -1,7 +1,7 @@
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
-use one_core::model::interaction::Interaction;
+use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofStateEnum};
 use serde_json::json;
@@ -394,6 +394,7 @@ async fn setup_submittable_presentation_dcql(
         .to_string()
         .as_bytes(),
         organisation,
+        InteractionType::Verification,
     )
     .await;
 

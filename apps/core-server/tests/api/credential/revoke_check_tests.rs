@@ -2,6 +2,7 @@ use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnu
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
+use one_core::model::interaction::InteractionType;
 use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::provider::credential_formatter::mdoc_formatter::Params;
 use one_core::provider::credential_formatter::model::{CredentialData, CredentialSchema, Issuer};
@@ -985,6 +986,7 @@ async fn test_revoke_check_mdoc_update() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1148,6 +1150,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
     let expired_credential = expired_mdoc_credential().await;
@@ -1311,6 +1314,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1478,6 +1482,7 @@ async fn test_revoke_check_token_update() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1626,6 +1631,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1776,6 +1782,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -1924,6 +1931,7 @@ async fn test_suspended_to_valid_mdoc() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -2119,6 +2127,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 

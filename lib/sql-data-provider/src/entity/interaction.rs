@@ -1,3 +1,4 @@
+use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{NonceId, OrganisationId};
 use time::OffsetDateTime;
@@ -14,6 +15,7 @@ pub struct Model {
     pub data: Option<Vec<u8>>,
     pub organisation_id: OrganisationId,
     pub nonce_id: Option<NonceId>,
+    pub interaction_type: InteractionType,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -51,3 +53,14 @@ impl Related<super::organisation::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+#[from(one_core::model::interaction::InteractionType)]
+#[into(one_core::model::interaction::InteractionType)]
+pub enum InteractionType {
+    #[sea_orm(string_value = "ISSUANCE")]
+    Issuance,
+    #[sea_orm(string_value = "VERIFICATION")]
+    Verification,
+}

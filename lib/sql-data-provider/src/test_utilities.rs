@@ -21,6 +21,7 @@ use crate::entity::blob::BlobType;
 use crate::entity::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
+use crate::entity::interaction::InteractionType;
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::{
@@ -515,6 +516,7 @@ pub async fn insert_interaction(
     data: &[u8],
     organisation_id: OrganisationId,
     nonce_id: Option<Uuid>,
+    interaction_type: InteractionType,
 ) -> Result<String, DbErr> {
     let now = OffsetDateTime::now_utc();
 
@@ -526,6 +528,7 @@ pub async fn insert_interaction(
         data: Set(Some(data.to_owned())),
         organisation_id: Set(organisation_id),
         nonce_id: Set(nonce_id.map(NonceId::from)),
+        interaction_type: Set(interaction_type),
     }
     .insert(database)
     .await?;

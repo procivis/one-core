@@ -5,7 +5,7 @@ use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
-use one_core::model::interaction::InteractionId;
+use one_core::model::interaction::{InteractionId, InteractionType};
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::revocation_list::{
@@ -353,6 +353,7 @@ async fn test_post_issuer_credential_with(
             base_url,
             &serde_json::to_vec(&interaction_data).unwrap(),
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -525,7 +526,13 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), base_url, &data, &organisation)
+        .create(
+            Some(interaction_id),
+            base_url,
+            &data,
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let credential = context

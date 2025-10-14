@@ -23,7 +23,7 @@ use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
-use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::model::proof::{
@@ -574,6 +574,7 @@ pub async fn create_interaction_with_id(
     host: &str,
     data: &[u8],
     organisation: &Organisation,
+    interaction_type: InteractionType,
 ) -> Interaction {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -585,6 +586,7 @@ pub async fn create_interaction_with_id(
         data: Some(data.into()),
         organisation: Some(organisation.to_owned()),
         nonce_id: None,
+        interaction_type,
     };
 
     data_layer
@@ -601,8 +603,17 @@ pub async fn create_interaction(
     host: &str,
     data: &[u8],
     organisation: &Organisation,
+    interaction_type: InteractionType,
 ) -> Interaction {
-    create_interaction_with_id(Uuid::new_v4(), db_conn, host, data, organisation).await
+    create_interaction_with_id(
+        Uuid::new_v4(),
+        db_conn,
+        host,
+        data,
+        organisation,
+        interaction_type,
+    )
+    .await
 }
 
 pub async fn create_revocation_list(

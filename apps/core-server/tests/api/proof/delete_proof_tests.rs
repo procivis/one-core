@@ -1,5 +1,6 @@
 use one_core::model::blob::BlobType;
 use one_core::model::history::{HistoryAction, HistoryEntityType};
+use one_core::model::interaction::InteractionType;
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
@@ -19,7 +20,13 @@ async fn test_delete_proof_created_holder_success() {
     let interaction = context
         .db
         .interactions
-        .create(None, "https://example.com", &[], &organisation)
+        .create(
+            None,
+            "https://example.com",
+            &[],
+            &organisation,
+            InteractionType::Verification,
+        )
         .await;
 
     let blob = context
@@ -95,7 +102,13 @@ async fn test_delete_proof_accepted_holder_fail() {
     let interaction = context
         .db
         .interactions
-        .create(None, "https://example.com", &[], &organisation)
+        .create(
+            None,
+            "https://example.com",
+            &[],
+            &organisation,
+            InteractionType::Verification,
+        )
         .await;
     let proof = context
         .db

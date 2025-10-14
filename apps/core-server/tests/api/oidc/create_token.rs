@@ -1,5 +1,6 @@
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::credential_schema::CredentialSchemaType;
+use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -39,6 +40,7 @@ async fn test_oidc_issuer_create_token() {
             &context.config.app.core_base_url,
             &serde_json::to_vec(&data).unwrap(),
             &org,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -109,6 +111,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             &context.config.app.core_base_url,
             &serde_json::to_vec(&data).unwrap(),
             &org,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -184,6 +187,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             &context.config.app.core_base_url,
             &serde_json::to_vec(&data).unwrap(),
             &org,
+            InteractionType::Issuance,
         )
         .await;
 

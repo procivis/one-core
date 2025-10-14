@@ -25,7 +25,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
@@ -109,6 +109,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     data: None,
                     organisation: None,
                     nonce_id: None,
+                    interaction_type: InteractionType::Verification,
                 }),
                 ..dummy_proof()
             }))
@@ -176,6 +177,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                         data: None,
                         organisation: None,
                         nonce_id: None,
+                        interaction_type: InteractionType::Verification,
                     }),
                     ..dummy_proof()
                 }))
@@ -226,6 +228,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                     data: None,
                     organisation: None,
                     nonce_id: None,
+                    interaction_type: InteractionType::Verification,
                 }),
                 ..dummy_proof()
             }))
@@ -316,6 +319,7 @@ async fn test_submit_proof_succeeds() {
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
+                    interaction_type: InteractionType::Verification,
                 }),
                 ..dummy_proof()
             }))
@@ -524,6 +528,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
+                    interaction_type: InteractionType::Verification,
                 }),
                 ..dummy_proof()
             }))
@@ -752,6 +757,7 @@ async fn test_submit_proof_succeeds_with_did() {
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
+                    interaction_type: InteractionType::Verification,
                 }),
                 ..dummy_proof()
             }))
@@ -959,6 +965,7 @@ async fn test_submit_proof_repeating_claims() {
                     data: Some(serde_json::to_vec(&()).unwrap()),
                     organisation: None,
                     nonce_id: None,
+                    interaction_type: InteractionType::Verification,
                 }),
                 ..dummy_proof()
             }))
@@ -1651,6 +1658,7 @@ async fn test_continue_issuance() {
                 data: Some(serde_json::to_vec(&interaction_data).unwrap()),
                 organisation: Some(organisation.clone()),
                 nonce_id: None,
+                interaction_type: InteractionType::Verification,
             }))
         });
 
@@ -1884,6 +1892,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             data: Some(b"interaction data".to_vec()),
             organisation: Some(dummy_organisation(organisation_id)),
             nonce_id: None,
+            interaction_type: InteractionType::Verification,
         }),
         revocation_list: None,
         key: None,

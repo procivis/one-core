@@ -6,6 +6,7 @@ use one_core::model::credential_schema::CredentialSchemaClaim;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::IdentifierType;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
 use serde_json_path::JsonPath;
 use similar_asserts::assert_eq;
@@ -1144,7 +1145,13 @@ async fn test_get_proof_as_holder_success() {
     let interaction = context
         .db
         .interactions
-        .create(None, "https://example.com", &[], &organisation)
+        .create(
+            None,
+            "https://example.com",
+            &[],
+            &organisation,
+            InteractionType::Verification,
+        )
         .await;
 
     let proof = context

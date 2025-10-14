@@ -23,7 +23,7 @@ use crate::config::core_config::{
 };
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{Interaction, InteractionId, InteractionType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -686,6 +686,7 @@ pub(super) async fn create_interaction_and_proof(
         data: interaction_data,
         organisation: Some(organisation),
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     };
 
     let interaction_id = storage_access

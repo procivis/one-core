@@ -17,7 +17,7 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
@@ -180,6 +180,7 @@ async fn test_presentation_reject_ok() {
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Verification,
         }),
         profile: None,
         proof_blob_id: None,

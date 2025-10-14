@@ -1,4 +1,5 @@
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
 
@@ -32,6 +33,7 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
     let credential = context
@@ -97,6 +99,7 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
             &context.server_mock.uri(),
             &interaction_data,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
     let credential = context

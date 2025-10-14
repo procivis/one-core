@@ -1,6 +1,7 @@
 use one_core::model::blob::BlobType;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::HistoryAction;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
 use shared_types::EntityId;
 use similar_asserts::assert_eq;
@@ -61,6 +62,7 @@ async fn test_delete_proof_claims_success() {
             "https://www.procivis.ch",
             &[],
             &organisation,
+            InteractionType::Verification,
         )
         .await;
 

@@ -42,7 +42,7 @@ use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::InteractionRelations;
+use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::key::KeyRelations;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -537,6 +537,7 @@ impl ProofService {
                         &*self.interaction_repository,
                         serde_json::to_vec(&data).ok(),
                         proof_schema.organisation.clone(),
+                        InteractionType::Verification,
                     )
                     .await?,
                 );
@@ -639,6 +640,7 @@ impl ProofService {
             &*self.interaction_repository,
             serde_json::to_vec(&context).ok(),
             Some(organisation.to_owned()),
+            InteractionType::Verification,
         )
         .await?;
 
@@ -878,6 +880,7 @@ impl ProofService {
             &*self.interaction_repository,
             Some(interaction_data),
             organisation,
+            InteractionType::Verification,
         )
         .await?;
 

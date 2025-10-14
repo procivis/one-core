@@ -16,7 +16,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
@@ -227,6 +227,7 @@ async fn test_presentation_definition_success() {
                         data: Some(interaction_data),
                         organisation: None,
                         nonce_id: None,
+                        interaction_type: InteractionType::Verification,
                     }),
                 }))
             });
@@ -312,6 +313,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         data: Some(interaction_data_serialized),
         organisation: None,
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     };
 
     let interaction_id_copy = interaction_id.to_owned();
@@ -632,6 +634,7 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         data: Some(interaction_data_serialized),
         organisation: None,
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     };
 
     let interaction_id_copy = interaction_id.to_owned();

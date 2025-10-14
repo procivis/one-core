@@ -1,4 +1,5 @@
 use one_core::model::credential::CredentialStateEnum;
+use one_core::model::interaction::InteractionType;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -21,7 +22,13 @@ async fn test_get_credential_offer_success_jwt() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .create(
+            None,
+            "http://test.com",
+            "NONE".as_bytes(),
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let credential = context
@@ -113,7 +120,13 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .create(
+            None,
+            "http://test.com",
+            "NONE".as_bytes(),
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let namespace_obj_claim_id = key_to_claim_schema_id("namespace", &credential_schema);
@@ -281,7 +294,13 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .create(
+            None,
+            "http://test.com",
+            "NONE".as_bytes(),
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let credential = context
@@ -351,7 +370,13 @@ async fn test_get_credential_offer_success_mdoc() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .create(
+            None,
+            "http://test.com",
+            "NONE".as_bytes(),
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let credential = context
@@ -422,7 +447,13 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
     let interaction = context
         .db
         .interactions
-        .create(None, "http://test.com", "NONE".as_bytes(), &organisation)
+        .create(
+            None,
+            "http://test.com",
+            "NONE".as_bytes(),
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let root_field_claim_id = key_to_claim_schema_id("namespace/root_field", &credential_schema);

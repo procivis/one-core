@@ -1,6 +1,6 @@
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
-use one_core::model::interaction::Interaction;
+use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::key::Key;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::proof_schema::ProofSchema;
@@ -124,6 +124,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
             &context.server_mock.uri(),
             interaction_data.to_string().as_bytes(),
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 

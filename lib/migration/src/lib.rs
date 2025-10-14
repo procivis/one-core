@@ -158,6 +158,7 @@ mod m20250916_140953_add_metadata_index_to_history;
 mod m20250919_095358_nonce_id;
 mod m20250922_102649_adds_user_column_to_history;
 mod m20251001_103610_adds_wua_column_to_credential;
+mod m20251014_101039_adds_interaction_type;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -318,6 +319,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20250919_095358_nonce_id::Migration),
             Box::new(m20250922_102649_adds_user_column_to_history::Migration),
             Box::new(m20251001_103610_adds_wua_column_to_credential::Migration),
+            Box::new(m20251014_101039_adds_interaction_type::Migration),
         ]
     }
 }

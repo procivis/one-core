@@ -11,7 +11,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
     WalletStorageTypeEnum,
 };
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::provider::verification_protocol::dto::{CredentialGroup, CredentialGroupItem};
 use crate::provider::verification_protocol::mapper::get_relevant_credentials_to_credential_schemas;
 use crate::service::storage_proxy::MockStorageProxy;
@@ -508,6 +508,7 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         }),
         key: None,
         revocation_list: None,

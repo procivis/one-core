@@ -1,6 +1,6 @@
 use time::OffsetDateTime;
 
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{Interaction, InteractionId, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::ServiceError;
@@ -11,6 +11,7 @@ pub(crate) async fn add_new_interaction(
     interaction_repository: &dyn InteractionRepository,
     data: Option<Vec<u8>>,
     organisation: Option<Organisation>,
+    interaction_type: InteractionType,
 ) -> Result<Interaction, ServiceError> {
     let now = OffsetDateTime::now_utc();
     let host = base_url
@@ -29,6 +30,7 @@ pub(crate) async fn add_new_interaction(
         data,
         organisation,
         nonce_id: None,
+        interaction_type,
     };
 
     interaction_repository

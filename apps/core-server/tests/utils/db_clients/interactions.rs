@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use one_core::model::interaction::{Interaction, InteractionId};
+use one_core::model::interaction::{Interaction, InteractionId, InteractionType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::interaction_repository::InteractionRepository;
 use time::OffsetDateTime;
@@ -22,6 +22,7 @@ impl InteractionsDB {
         host: &str,
         data: &[u8],
         organisation: &Organisation,
+        interaction_type: InteractionType,
     ) -> Interaction {
         let interaction = Interaction {
             id: id.unwrap_or_else(Uuid::new_v4),
@@ -31,6 +32,7 @@ impl InteractionsDB {
             data: Some(data.into()),
             organisation: Some(organisation.to_owned()),
             nonce_id: None,
+            interaction_type,
         };
 
         self.repository

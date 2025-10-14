@@ -2,6 +2,7 @@ use std::collections::HashSet;
 
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use shared_types::ProofId;
 use similar_asserts::assert_eq;
@@ -962,7 +963,13 @@ async fn test_list_proofs_with_org_by_interaction() {
     let interaction = context
         .db
         .interactions
-        .create(None, "https://example.com", &[], &organisation)
+        .create(
+            None,
+            "https://example.com",
+            &[],
+            &organisation,
+            InteractionType::Verification,
+        )
         .await;
 
     let mut proofs = vec![];
@@ -1148,7 +1155,13 @@ async fn test_list_proofs_by_role() {
     let interaction = context
         .db
         .interactions
-        .create(None, "https://example.com", &[], &organisation)
+        .create(
+            None,
+            "https://example.com",
+            &[],
+            &organisation,
+            InteractionType::Verification,
+        )
         .await;
     let holder_proof = context
         .db

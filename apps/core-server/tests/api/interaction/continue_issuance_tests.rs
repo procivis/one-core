@@ -1,5 +1,6 @@
 use axum::http::Method;
 use one_core::model::credential_schema::WalletStorageTypeEnum;
+use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -44,6 +45,7 @@ async fn test_continue_issuance_endpoint() {
             "https://www.procivis.ch",
             &interaction_body,
             &organisation,
+            InteractionType::Issuance,
         )
         .await;
 
@@ -333,6 +335,7 @@ async fn test_continue_issuance_endpoint_failed_invalid_authorization_server() {
             credential_issuer.as_str(),
             &interaction_body,
             &organisation,
+            InteractionType::Issuance,
         )
         .await
         .id;

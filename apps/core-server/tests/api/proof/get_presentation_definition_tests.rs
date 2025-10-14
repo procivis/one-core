@@ -2,6 +2,7 @@ use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::DidType;
 use one_core::model::identifier::IdentifierType;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
@@ -87,6 +88,7 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
         "http://localhost",
         &get_open_id_interaction_data(&credential_schema_1),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -291,6 +293,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             "http://localhost",
             &get_open_id_interaction_data(&credential_schema),
             &organisation,
+            InteractionType::Verification,
         )
         .await;
 
@@ -368,6 +371,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             "http://localhost",
             &get_open_id_interaction_data(&credential_schema),
             &organisation,
+            InteractionType::Verification,
         )
         .await;
 
@@ -423,6 +427,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
         "http://localhost",
         &get_open_id_interaction_data(&credential_schema),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -584,6 +589,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             "http://localhost",
             &get_open_id_interaction_data_without_vp_formats(&credential_schema),
             &organisation,
+            InteractionType::Verification,
         )
         .await;
 
@@ -807,6 +813,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         .to_string()
         .into_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
     let proof = fixtures::create_proof(
@@ -1056,6 +1063,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             .to_string()
             .into_bytes(),
             &organisation,
+            InteractionType::Verification,
         )
         .await;
 

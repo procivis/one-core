@@ -17,7 +17,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::service::credential::dto::{
@@ -39,6 +39,7 @@ pub(crate) fn interaction_from_handle_invitation(
         data,
         organisation,
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     }
 }
 

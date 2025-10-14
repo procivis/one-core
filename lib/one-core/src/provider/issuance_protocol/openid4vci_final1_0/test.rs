@@ -27,7 +27,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -315,6 +315,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             last_modified: now,
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         }),
         key: None,
         revocation_list: None,
@@ -607,6 +608,7 @@ async fn test_holder_accept_credential_success() {
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         });
 
         credential
@@ -821,6 +823,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         });
 
         credential
@@ -1045,6 +1048,7 @@ async fn test_holder_accept_expired_credential_fails() {
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         });
 
         credential
@@ -1246,6 +1250,7 @@ async fn test_holder_reject_credential() {
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         });
 
         credential

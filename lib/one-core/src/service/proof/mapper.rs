@@ -19,7 +19,7 @@ use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::history::History;
 use crate::model::identifier::Identifier;
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofClaim, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -755,6 +755,7 @@ pub fn proof_for_scan_to_verify(
             data: Some(interaction_data),
             organisation: schema.organisation,
             nonce_id: None,
+            interaction_type: InteractionType::Verification,
         }),
         proof_blob_id: None,
         engagement: None,

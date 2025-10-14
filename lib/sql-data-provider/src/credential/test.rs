@@ -14,7 +14,7 @@ use one_core::model::credential_schema::{
 };
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use one_core::model::interaction::{Interaction, InteractionRelations};
+use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use one_core::model::list_filter::{ComparisonType, ListFilterValue, StringMatch, ValueComparison};
 use one_core::model::list_query::ListPagination;
 use one_core::model::organisation::OrganisationRelations;
@@ -44,8 +44,8 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialProvider;
-use crate::entity::claim;
 use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::{claim, interaction};
 use crate::test_utilities;
 use crate::test_utilities::*;
 
@@ -1057,6 +1057,7 @@ async fn test_update_credential_success() {
                 data: None,
                 organisation: None,
                 nonce_id: None,
+                interaction_type: InteractionType::Issuance,
             }))
         });
 
@@ -1085,9 +1086,16 @@ async fn test_update_credential_success() {
         .unwrap();
 
     let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &[], organisation_id, None)
-            .await
-            .unwrap(),
+        &insert_interaction(
+            &db,
+            "host",
+            &[],
+            organisation_id,
+            None,
+            interaction::InteractionType::Issuance,
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
 
@@ -1169,6 +1177,7 @@ async fn test_update_credential_success_no_claims() {
                 data: None,
                 organisation: None,
                 nonce_id: None,
+                interaction_type: InteractionType::Issuance,
             }))
         });
 
@@ -1198,9 +1207,16 @@ async fn test_update_credential_success_no_claims() {
         .unwrap();
 
     let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &[], organisation_id, None)
-            .await
-            .unwrap(),
+        &insert_interaction(
+            &db,
+            "host",
+            &[],
+            organisation_id,
+            None,
+            interaction::InteractionType::Issuance,
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
 

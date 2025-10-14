@@ -1,4 +1,5 @@
 use one_core::model::blob::BlobType;
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -106,6 +107,7 @@ async fn test_direct_post_draft25_with_dcql_query() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -269,6 +271,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 

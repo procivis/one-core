@@ -9,7 +9,9 @@ use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
-use one_core::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use one_core::model::interaction::{
+    Interaction, InteractionId, InteractionRelations, InteractionType,
+};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
@@ -42,7 +44,7 @@ use uuid::Uuid;
 use super::ProofProvider;
 use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::key_did::KeyRole;
-use crate::entity::{blob, claim, credential, proof_claim};
+use crate::entity::{blob, claim, credential, interaction, proof_claim};
 use crate::test_utilities::*;
 
 struct TestSetup {
@@ -155,9 +157,16 @@ async fn setup(
     .unwrap();
 
     let interaction_id = Uuid::parse_str(
-        &insert_interaction(&db, "host", &[1, 2, 3], organisation_id, None)
-            .await
-            .unwrap(),
+        &insert_interaction(
+            &db,
+            "host",
+            &[1, 2, 3],
+            organisation_id,
+            None,
+            interaction::InteractionType::Verification,
+        )
+        .await
+        .unwrap(),
     )
     .unwrap();
 
@@ -501,6 +510,7 @@ async fn test_get_proof_with_relations() {
                 host: Some("http://www.host.co".parse().unwrap()),
                 organisation: None,
                 nonce_id: None,
+                interaction_type: InteractionType::Verification,
             }))
         });
 
@@ -782,6 +792,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 host: Some("http://www.host.co/".parse().unwrap()),
                 organisation: None,
                 nonce_id: None,
+                interaction_type: InteractionType::Verification,
             }))
         });
 

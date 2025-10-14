@@ -2,7 +2,7 @@ use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnu
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
-use one_core::model::interaction::Interaction;
+use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::organisation::Organisation;
 use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use serde_json::{Value, json};
@@ -792,6 +792,7 @@ async fn setup_submittable_presentation(
         &verifier_url,
         interaction_data.to_string().as_bytes(),
         organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -1030,6 +1031,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         .to_string()
         .as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -1418,6 +1420,7 @@ async fn setup_submittable_presentation_dcql(
         .to_string()
         .as_bytes(),
         organisation,
+        InteractionType::Verification,
     )
     .await;
 

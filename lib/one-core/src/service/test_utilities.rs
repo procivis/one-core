@@ -20,7 +20,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::interaction::Interaction;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
@@ -357,6 +357,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             data: Some(b"interaction data".to_vec()),
             organisation: None,
             nonce_id: None,
+            interaction_type: InteractionType::Issuance,
         }),
         revocation_list: None,
         key: None,

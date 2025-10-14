@@ -32,7 +32,9 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use crate::model::interaction::{
+    Interaction, InteractionId, InteractionRelations, InteractionType,
+};
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -732,6 +734,7 @@ async fn test_get_proof_with_array_holder() {
             data: None,
             organisation: Some(organisation),
             nonce_id: None,
+            interaction_type: InteractionType::Verification,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -1005,6 +1008,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             data: None,
             organisation: Some(organisation),
             nonce_id: None,
+            interaction_type: InteractionType::Verification,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -1293,6 +1297,7 @@ async fn test_get_proof_with_object_array_holder() {
             data: None,
             organisation: Some(dummy_organisation(None)),
             nonce_id: None,
+            interaction_type: InteractionType::Verification,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -4001,6 +4006,7 @@ async fn test_delete_proof_ok_for_allowed_state(
         data: Some(vec![]),
         organisation: None,
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4079,6 +4085,7 @@ async fn test_delete_proof_ok_for_requested_state() {
         data: Some(vec![]),
         organisation: None,
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4160,6 +4167,7 @@ async fn test_delete_proof_fails_for_invalid_state(
         data: None,
         organisation: None,
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4255,6 +4263,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             serde_json::to_vec(&data).unwrap()
         }),
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4345,6 +4354,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         data: None,
         organisation: Some(dummy_organisation(None)),
         nonce_id: None,
+        interaction_type: InteractionType::Verification,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();

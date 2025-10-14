@@ -2,7 +2,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
 
-use one_core::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
+use one_core::model::interaction::{
+    Interaction, InteractionRelations, InteractionType, UpdateInteractionRequest,
+};
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
@@ -58,9 +60,16 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
         .await
         .unwrap();
 
-    let id = insert_interaction(&setup.db, host.as_str(), &data, organisation_id, None)
-        .await
-        .unwrap();
+    let id = insert_interaction(
+        &setup.db,
+        host.as_str(),
+        &data,
+        organisation_id,
+        None,
+        crate::entity::interaction::InteractionType::Issuance,
+    )
+    .await
+    .unwrap();
 
     let id = Uuid::from_str(&id).unwrap();
 
@@ -92,6 +101,7 @@ async fn test_create_interaction() {
         data: Some(vec![1, 2, 3]),
         organisation: Some(organisation),
         nonce_id: Some(nonce_id),
+        interaction_type: InteractionType::Issuance,
     };
 
     let result = setup.provider.create_interaction(interaction).await;
@@ -142,6 +152,7 @@ async fn test_get_interaction_by_nonce_id() {
         &[],
         organisation_id,
         Some(nonce_id),
+        crate::entity::interaction::InteractionType::Issuance,
     )
     .await
     .unwrap();

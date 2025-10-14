@@ -29,7 +29,9 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{Interaction, InteractionId, InteractionRelations};
+use crate::model::interaction::{
+    Interaction, InteractionId, InteractionRelations, InteractionType,
+};
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::blob_storage_provider::BlobStorageType;
@@ -731,6 +733,7 @@ impl SSIHolderService {
                 data: Some(data),
                 organisation: Some(organisation),
                 nonce_id: None,
+                interaction_type: InteractionType::Issuance,
             })
             .await?;
 

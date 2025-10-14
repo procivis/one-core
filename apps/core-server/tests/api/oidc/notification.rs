@@ -2,6 +2,7 @@ use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
+use one_core::model::interaction::InteractionType;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCINotificationEvent;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -154,7 +155,13 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
     let interaction = context
         .db
         .interactions
-        .create(Some(interaction_id), base_url, &data, &organisation)
+        .create(
+            Some(interaction_id),
+            base_url,
+            &data,
+            &organisation,
+            InteractionType::Issuance,
+        )
         .await;
 
     let credential = context

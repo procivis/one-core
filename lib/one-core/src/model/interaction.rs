@@ -15,6 +15,7 @@ pub struct Interaction {
     pub data: Option<Vec<u8>>,
     pub organisation: Option<Organisation>,
     pub nonce_id: Option<Uuid>,
+    pub interaction_type: InteractionType,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -27,6 +28,12 @@ pub struct UpdateInteractionRequest {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct InteractionRelations {
     pub organisation: Option<OrganisationRelations>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum InteractionType {
+    Issuance,
+    Verification,
 }
 
 impl From<Interaction> for UpdateInteractionRequest {

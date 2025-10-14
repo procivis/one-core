@@ -2,6 +2,7 @@ use std::collections::BTreeSet;
 
 use one_core::model::blob::BlobType;
 use one_core::model::did::{KeyRole, RelatedKey};
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::{ProofRole, ProofStateEnum};
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -127,6 +128,7 @@ async fn test_direct_post_one_credential_correct() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -286,6 +288,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -462,6 +465,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -723,6 +727,7 @@ async fn test_direct_post_multiple_presentations() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -924,6 +929,7 @@ async fn test_direct_post_wrong_claim_format() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -1066,6 +1072,7 @@ async fn test_direct_post_draft25() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
@@ -1233,6 +1240,7 @@ async fn test_direct_post_with_profile_verification() {
         &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
+        InteractionType::Verification,
     )
     .await;
 
