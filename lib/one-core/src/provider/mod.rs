@@ -2,6 +2,7 @@ pub mod blob_storage_provider;
 pub mod bluetooth_low_energy;
 pub mod caching_loader;
 pub mod credential_formatter;
+pub mod data_type;
 pub mod did_method;
 pub mod http_client;
 pub mod issuance_protocol;
