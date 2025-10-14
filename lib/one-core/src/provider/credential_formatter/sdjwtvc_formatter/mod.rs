@@ -106,11 +106,17 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .map(|schema| schema.id.to_owned())
             .ok_or_else(|| FormatterError::Failed("Missing credential schema id".to_string()))?;
 
+        let token_type = if self.params.swiyu_mode {
+            // SWIYU still uses the old typ
+            "vc+sd-jwt".to_string()
+        } else {
+            "dc+sd-jwt".to_string()
+        };
         let inputs = SdJwtFormattingInputs {
             holder_identifier: credential_data.holder_identifier,
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
-            token_type: "dc+sd-jwt".to_string(),
+            token_type,
             swiyu_proof_of_possession: self.params.swiyu_mode,
             issuer_certificate: credential_data.issuer_certificate,
         };
