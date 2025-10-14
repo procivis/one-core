@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
-use aes::Aes128;
 use aes::cipher::block_padding::Pkcs7;
-use aes::cipher::{BlockDecryptMut, BlockEncryptMut};
+use aes::cipher::consts::{U12, U16};
+use aes::cipher::{BlockCipher, BlockDecryptMut, BlockEncrypt, BlockEncryptMut, BlockSizeUser};
+use aes::{Aes128, Aes256};
 use aes_gcm::aead::generic_array::GenericArray;
-use aes_gcm::{AeadCore, AeadInPlace, Aes256Gcm, KeyInit};
+use aes_gcm::{AeadCore, AeadInPlace, Aes128Gcm, Aes256Gcm, AesGcm, KeyInit};
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use hmac::Mac;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
@@ -57,6 +58,7 @@ pub struct RemoteJwk {
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Display)]
 pub enum EncryptionAlgorithm {
     // AES GCM using 256-bit key
+    A128GCM,
     A256GCM,
     #[serde(rename = "A128CBC-HS256")]
     #[strum(to_string = "A128CBC-HS256")]
@@ -101,7 +103,12 @@ pub fn build_jwe(
 
     let mut encrypted = payload.to_vec();
     let AeadOutput { tag_b64, iv_b64 } = match encryption_alg {
-        EncryptionAlgorithm::A256GCM => encrypt_in_place_aes_gcm(
+        EncryptionAlgorithm::A128GCM => encrypt_in_place_aes_gmc::<Aes128>(
+            &mut encrypted,
+            protected_header_b64.as_bytes(),
+            &encryption_key,
+        )?,
+        EncryptionAlgorithm::A256GCM => encrypt_in_place_aes_gmc::<Aes256>(
             &mut encrypted,
             protected_header_b64.as_bytes(),
             &encryption_key,
@@ -130,13 +137,16 @@ struct AeadOutput {
     iv_b64: String,
 }
 
-fn encrypt_in_place_aes_gcm(
+fn encrypt_in_place_aes_gmc<Aes>(
     buf: &mut [u8],
     associated_data: &[u8],
     key: &SecretSlice<u8>,
-) -> Result<AeadOutput, EncryptionError> {
-    let iv = Aes256Gcm::generate_nonce(get_rng());
-    let cipher = Aes256Gcm::new(GenericArray::from_slice(key.expose_secret()));
+) -> Result<AeadOutput, EncryptionError>
+where
+    Aes: BlockSizeUser<BlockSize = U16> + BlockEncrypt + KeyInit + BlockCipher,
+{
+    let iv = AesGcm::<Aes, U12>::generate_nonce(get_rng());
+    let cipher = AesGcm::<Aes, U12>::new(GenericArray::from_slice(key.expose_secret()));
     let tag = cipher
         .encrypt_in_place_detached(&iv, associated_data, buf)
         .map_err(|e| EncryptionError::Crypto(format!("Failed to encrypt JWE: {e}")))?;
@@ -339,6 +349,20 @@ impl EncryptedJWE {
                 .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?
                 .to_vec()
             }
+            EncryptionAlgorithm::A128GCM => {
+                let cipher =
+                    Aes128Gcm::new(GenericArray::from_slice(encryption_key.expose_secret()));
+                let mut buf = self.payload.clone();
+                cipher
+                    .decrypt_in_place_detached(
+                        GenericArray::from_slice(&self.nonce),
+                        self.protected_header_b64.as_bytes(),
+                        &mut buf,
+                        GenericArray::from_slice(&self.tag),
+                    )
+                    .map_err(|e| EncryptionError::Crypto(format!("Failed to decrypt JWE: {e}")))?;
+                buf
+            }
         };
 
         Ok(decrypted)
@@ -370,15 +394,15 @@ impl EncryptedJWE {
     }
 }
 
-fn derive_encryption_key(
+pub(super) fn derive_encryption_key(
     shared_secret: &SecretSlice<u8>,
     apu: &[u8],
     apv: &[u8],
     alg: &EncryptionAlgorithm,
 ) -> Result<SecretSlice<u8>, EncryptionError> {
-    let key_len: u32 = match alg {
-        EncryptionAlgorithm::A256GCM => 256,
-        EncryptionAlgorithm::A128CBCHS256 => 256,
+    let (key_len, key_buffer): (u32, _) = match alg {
+        EncryptionAlgorithm::A128GCM => (128, vec![0u8; 16]),
+        EncryptionAlgorithm::A256GCM | EncryptionAlgorithm::A128CBCHS256 => (256, vec![0u8; 32]),
     };
 
     let alg = alg.to_string();
@@ -391,7 +415,7 @@ fn derive_encryption_key(
     other_info.extend(apv);
     other_info.extend(key_len.to_be_bytes());
 
-    let mut encryption_key = SecretSlice::from(vec![0u8; 32]);
+    let mut encryption_key = SecretSlice::from(key_buffer);
     concat_kdf::derive_key_into::<sha2::Sha256>(
         shared_secret.expose_secret(),
         &other_info,
@@ -441,7 +465,7 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::jwe::EncryptionAlgorithm::{A128CBCHS256, A256GCM};
+    use crate::jwe::EncryptionAlgorithm::{A128CBCHS256, A128GCM, A256GCM};
     use crate::signer::ecdsa::ECDSASigner;
     use crate::signer::eddsa::EDDSASigner;
 
@@ -696,5 +720,24 @@ mod test {
         )
         .unwrap();
         assert_eq!(decrypted, expected_plaintext);
+    }
+
+    // Spec example: https://www.rfc-editor.org/rfc/rfc7518.html#appendix-C
+    #[tokio::test]
+    async fn test_derive_encryption_key_aes128() {
+        let z = SecretSlice::from(vec![
+            158, 86, 217, 29, 129, 113, 53, 211, 114, 131, 66, 131, 191, 132, 38, 156, 251, 49,
+            110, 163, 218, 128, 106, 72, 246, 218, 167, 121, 140, 254, 144, 196,
+        ]);
+
+        let key =
+            derive_encryption_key(&z, "Alice".as_bytes(), "Bob".as_bytes(), &A128GCM).unwrap();
+
+        assert_eq!(
+            [
+                86, 170, 141, 234, 248, 35, 109, 32, 92, 34, 40, 205, 113, 167, 16, 26
+            ],
+            key.expose_secret()
+        );
     }
 }

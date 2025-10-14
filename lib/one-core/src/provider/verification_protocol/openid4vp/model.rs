@@ -128,6 +128,7 @@ pub enum AuthorizationEncryptedResponseAlgorithm {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, Into)]
 #[into(EncryptionAlgorithm)]
 pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
+    A128GCM,
     // AES GCM using 256-bit key
     A256GCM,
     #[serde(rename = "A128CBC-HS256")]

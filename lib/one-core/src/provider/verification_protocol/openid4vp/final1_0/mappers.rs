@@ -15,12 +15,9 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_verifier_attestation,
     format_authorization_request_client_id_scheme_x509_san_dns,
 };
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VpPresentationFormat::MdocAlgs;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, OpenID4VPAlgs,
-    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks,
-    OpenID4VPDraftClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPMdocAlgs,
-    OpenID4VpPresentationFormat,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
+    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPHolderInteractionData,
 };
 use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
@@ -281,53 +278,6 @@ impl TryFrom<AuthorizationRequest> for OpenID4VPHolderInteractionData {
             verifier_details: None,
         })
     }
-}
-
-pub(super) fn map_client_metadata(
-    data: OpenID4VPDraftClientMetadata,
-) -> Result<Option<OpenID4VPClientMetadata>, VerificationProtocolError> {
-    let mut vp_formats_supported = data.vp_formats;
-    if let Some(mso_mdoc) = vp_formats_supported.remove("mso_mdoc") {
-        let format = match mso_mdoc {
-            val @ MdocAlgs(_) => val,
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs { alg }) => {
-                let mdoc_algs = alg
-                    .into_iter()
-                    .map(|v| match v.as_str() {
-                        "ES256" => Ok(-7),
-                        "EdDSA" => Ok(-8),
-                        alg => Err(VerificationProtocolError::InvalidRequest(format!(
-                            "Unsupported algorithm: {alg}"
-                        ))),
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-                MdocAlgs(OpenID4VPMdocAlgs {
-                    issuerauth_alg_values: mdoc_algs.clone(),
-                    deviceauth_alg_values: mdoc_algs,
-                })
-            }
-            val => {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "Unsupported presentation format: {val:?}"
-                )));
-            }
-        };
-        vp_formats_supported.insert("mso_mdoc".to_string(), format);
-    }
-    let client_metadata = Some(OpenID4VPClientMetadata::Final1_0(
-        OpenID4VPFinal1_0ClientMetadata {
-            jwks: data.jwks,
-            jwks_uri: data.jwks_uri,
-            vp_formats_supported,
-            encrypted_response_enc_values_supported: data
-                .authorization_encrypted_response_enc
-                .map(|v| vec![v]),
-            id_token_encrypted_response_enc: data.id_token_encrypted_response_enc,
-            id_token_encrypted_response_alg: data.id_token_encrypted_response_alg,
-            subject_syntax_types_supported: data.subject_syntax_types_supported,
-        },
-    ));
-    Ok(client_metadata)
 }
 
 #[cfg(test)]

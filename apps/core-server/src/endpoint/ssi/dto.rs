@@ -202,6 +202,7 @@ pub(crate) enum OID4VPAuthorizationEncryptedResponseAlgorithm {
 #[derive(Debug, Clone, Serialize, PartialEq, ToSchema, Display, From)]
 #[from(AuthorizationEncryptedResponseContentEncryptionAlgorithm)]
 pub(crate) enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
+    A128GCM,
     A256GCM,
     #[serde(rename = "A128CBC-HS256")]
     #[strum(serialize = "A128CBC-HS256")]
