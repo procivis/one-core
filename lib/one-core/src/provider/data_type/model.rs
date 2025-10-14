@@ -13,7 +13,6 @@ pub enum ExtractionResult {
 }
 
 /// Extracted claim value from a credential.
-#[expect(unused)]
 pub struct ExtractedClaim {
     /// Name of the data type provider
     pub data_type: String,
@@ -65,4 +64,18 @@ pub struct DataTypeProviderInit {
     pub name: String,
     pub fallback: bool,
     pub provider: Arc<dyn DataType>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[serde(rename_all = "camelCase")]
+pub struct HolderDataTypeParams {
+    pub value_extraction: ValueExtractionConfig,
+}
+
+#[derive(Debug, Display, Serialize, Deserialize, Clone, Copy, Eq, PartialEq, Hash)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum ValueExtractionConfig {
+    Enabled,
+    Disabled,
+    EnabledFallback,
 }

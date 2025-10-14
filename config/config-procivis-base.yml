@@ -366,7 +366,10 @@ datatype:
     display: "datatype.string"
     type: "STRING"
     order: 100
-    params: null
+    params:
+      private:
+        holder:
+          valueExtraction: ENABLED_FALLBACK
   NUMBER:
     display: "datatype.number"
     type: "NUMBER"

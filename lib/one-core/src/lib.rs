@@ -58,6 +58,7 @@ use crate::provider::blob_storage_provider::{
 };
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
+use crate::provider::data_type::data_type_provider_from_config;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -589,6 +590,10 @@ impl OneCore {
             history_repository: data_provider.get_history_repository(),
             session_provider: providers.session_provider.clone(),
         });
+
+        #[expect(unused)]
+        let data_type_provider = data_type_provider_from_config(&mut core_config.datatype)
+            .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
         let credential_schema_import_parser = Arc::new(CredentialSchemaImportParserImpl::new(
             Arc::new(core_config.clone()),

@@ -1,4 +1,5 @@
 use self::validator::datatype::DatatypeValidationError;
+use crate::provider::data_type::model::ValueType;
 
 pub mod validator;
 
@@ -49,4 +50,6 @@ pub enum ConfigValidationError {
     DuplicateUrlScheme { key: String, scheme: String },
     #[error("Missing CA certificate for the client id scheme x509_san_dns")]
     MissingX509CaCertificate,
+    #[error("Multiple fallback data types configured for value type: `{value_type}`")]
+    MultipleFallbackProviders { value_type: ValueType },
 }

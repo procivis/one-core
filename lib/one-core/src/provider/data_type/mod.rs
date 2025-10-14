@@ -1,10 +1,55 @@
-mod error;
+pub mod error;
 mod mapper;
-mod model;
-mod provider;
+pub mod model;
+pub mod provider;
+mod string;
 
+use std::sync::Arc;
+
+use serde_json::json;
+
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::provider::data_type::error::DataTypeError;
-use crate::provider::data_type::model::{DataTypeCapabilities, ExtractionResult};
+use crate::provider::data_type::model::{
+    DataTypeCapabilities, DataTypeProviderInit, ExtractionResult, ValueExtractionConfig,
+};
+use crate::provider::data_type::provider::{DataTypeProvider, DataTypeProviderImpl};
+use crate::provider::data_type::string::StringDataType;
+
+pub(crate) fn data_type_provider_from_config(
+    config: &mut DatatypeConfig,
+) -> Result<Arc<dyn DataTypeProvider>, ConfigValidationError> {
+    let mut data_type_provider = vec![];
+    for (name, fields) in config.iter_mut() {
+        match fields.r#type {
+            DatatypeType::String => {
+                let params = fields.deserialize::<string::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                let Some(holder_config) = &params.holder else {
+                    continue;
+                };
+                let fallback =
+                    holder_config.value_extraction == ValueExtractionConfig::EnabledFallback;
+                let provider = Arc::new(StringDataType::new(params));
+                fields.capabilities = Some(json!(provider.get_capabilities()));
+                data_type_provider.push(DataTypeProviderInit {
+                    name: name.to_string(),
+                    fallback,
+                    provider,
+                });
+            }
+            _ => {
+                // skip for now
+            }
+        }
+    }
+    Ok(Arc::new(DataTypeProviderImpl::new(data_type_provider)?))
+}
 
 #[allow(clippy::too_many_arguments)]
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

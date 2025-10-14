@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::config::ConfigValidationError;
 use crate::provider::data_type::DataType;
 use crate::provider::data_type::error::{DataTypeError, DataTypeProviderError};
 use crate::provider::data_type::model::{
@@ -41,8 +42,7 @@ pub struct DataTypeProviderImpl {
 }
 
 impl DataTypeProviderImpl {
-    #[expect(dead_code)]
-    pub fn new(providers: Vec<DataTypeProviderInit>) -> Result<Self, DataTypeProviderError> {
+    pub fn new(providers: Vec<DataTypeProviderInit>) -> Result<Self, ConfigValidationError> {
         let mut fallback = HashMap::new();
         let mut data_types = HashMap::new();
 
@@ -73,7 +73,7 @@ impl DataTypeProviderImpl {
                         },
                     );
                     if existing.is_some() {
-                        return Err(DataTypeProviderError::MultipleFallbackProviders {
+                        return Err(ConfigValidationError::MultipleFallbackProviders {
                             value_type,
                         });
                     }
@@ -125,7 +125,6 @@ impl DataTypeProviderImpl {
         result
     }
 
-    #[expect(unused)]
     fn extract_claim<'a, T>(
         &self,
         value: &'a T,

@@ -1491,6 +1491,7 @@ impl ErrorCodeMixin for ConfigValidationError {
             | Self::InvalidType(_, _)
             | Self::DatatypeValidation(_)
             | Self::DuplicateUrlScheme { .. }
+            | Self::MultipleFallbackProviders { .. }
             | Self::MissingX509CaCertificate => ErrorCode::BR_0051,
         }
     }
