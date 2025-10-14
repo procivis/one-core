@@ -664,19 +664,8 @@ impl OpenID4VCIFinal1_0 {
                 )
                 .await?
             }
-            IdentifierDetails::Certificate(CertificateDetails {
-                chain,
-                fingerprint,
-                expiry,
-            }) => {
-                prepare_certificate_identifier(
-                    chain,
-                    fingerprint,
-                    expiry,
-                    organisation,
-                    storage_access,
-                )
-                .await?
+            IdentifierDetails::Certificate(certificate) => {
+                prepare_certificate_identifier(certificate, organisation, storage_access).await?
             }
             IdentifierDetails::Key(public_key) => {
                 prepare_key_identifier(
@@ -1694,6 +1683,7 @@ async fn handle_credential_invitation(
                         not_after,
                         ..
                     },
+                subject_common_name,
                 ..
             } = certificate_validator
                 .parse_pem_chain(
@@ -1713,6 +1703,7 @@ async fn handle_credential_invitation(
                             chain: issuer_certificate,
                             fingerprint,
                             expiry: not_after,
+                            subject_common_name,
                         }),
                         IdentifierRole::Issuer,
                     )
@@ -2343,14 +2334,12 @@ async fn prepare_did_identifier(
 }
 
 async fn prepare_certificate_identifier(
-    chain: String,
-    fingerprint: String,
-    expiry: OffsetDateTime,
+    certificate: CertificateDetails,
     organisation: &Organisation,
     storage_access: &StorageAccess,
 ) -> Result<IdentifierUpdates, IssuanceProtocolError> {
     match storage_access
-        .get_certificate_by_fingerprint(&fingerprint, organisation.id)
+        .get_certificate_by_fingerprint(&certificate.fingerprint, organisation.id)
         .await
         .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
     {
@@ -2370,14 +2359,16 @@ async fn prepare_certificate_identifier(
             let certificate = Certificate {
                 id,
                 identifier_id,
-                name: format!("issuer certificate {id}"),
-                chain,
-                fingerprint,
+                name: certificate
+                    .subject_common_name
+                    .unwrap_or(format!("issuer certificate {id}")),
+                chain: certificate.chain,
+                fingerprint: certificate.fingerprint,
                 state: CertificateState::Active,
                 created_date: now,
                 last_modified: now,
                 organisation_id: Some(organisation.id),
-                expiry_date: expiry,
+                expiry_date: certificate.expiry,
                 key: None,
             };
 

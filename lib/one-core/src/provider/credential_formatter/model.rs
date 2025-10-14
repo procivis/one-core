@@ -81,11 +81,13 @@ pub trait SettableClaims {
     fn set_claims(&mut self, claims: CredentialClaim) -> Result<(), FormatterError>;
 }
 
+#[skip_serializing_none]
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct CertificateDetails {
     pub chain: String,
     pub fingerprint: String,
     pub expiry: OffsetDateTime,
+    pub subject_common_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]

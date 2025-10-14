@@ -408,7 +408,11 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     })?;
                     let validation_options =
                         CertificateValidationOptions::signature_and_revocation(None);
-                    let ParsedCertificate { attributes, .. } = certificate_validator
+                    let ParsedCertificate {
+                        attributes,
+                        subject_common_name,
+                        ..
+                    } = certificate_validator
                         .parse_pem_chain(&chain, validation_options)
                         .await
                         .map_err(|err| {
@@ -423,6 +427,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                             chain,
                             fingerprint: attributes.fingerprint,
                             expiry: attributes.not_after,
+                            subject_common_name,
                         }),
                     )
                 }

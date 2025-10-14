@@ -945,6 +945,7 @@ impl CredentialService {
                     chain: certificate.chain,
                     fingerprint: certificate.fingerprint,
                     expiry: certificate.expiry_date,
+                    subject_common_name: None,
                 })
             }
             _ => {

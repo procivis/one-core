@@ -626,6 +626,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             .to_string(),
             fingerprint: "fingerprint".to_string(),
             expiry,
+            subject_common_name: Some("common name".to_string())
         }),
         credential.issuer
     );

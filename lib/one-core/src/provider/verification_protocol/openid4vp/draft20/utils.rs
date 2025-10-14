@@ -47,6 +47,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
     let ParsedCertificate {
         public_key,
         attributes,
+        subject_common_name,
         ..
     } = certificate_validator
         .parse_pem_chain(
@@ -99,6 +100,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             chain: pem_chain,
             fingerprint: attributes.fingerprint,
             expiry: attributes.not_after,
+            subject_common_name,
         },
     ))
 }

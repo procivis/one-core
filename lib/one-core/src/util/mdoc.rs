@@ -333,7 +333,11 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
         CertificateValidationOptions::no_validation()
     };
 
-    let ParsedCertificate { attributes, .. } = certificate_validator
+    let ParsedCertificate {
+        attributes,
+        subject_common_name,
+        ..
+    } = certificate_validator
         .parse_pem_chain(&chain, validation_context)
         .await
         .map_err(|err| FormatterError::Failed(format!("Failed to validate pem chain: {err}")))?;
@@ -342,6 +346,7 @@ pub(crate) async fn extract_certificate_from_x5chain_header(
         chain,
         fingerprint: attributes.fingerprint,
         expiry: attributes.not_after,
+        subject_common_name,
     })
 }
 
