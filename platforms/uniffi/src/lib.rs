@@ -28,6 +28,7 @@ use one_core::provider::credential_formatter::physical_card::PhysicalCardFormatt
 use one_core::provider::credential_formatter::provider::CredentialFormatterProviderImpl;
 use one_core::provider::credential_formatter::sdjwt_formatter::SDJWTFormatter;
 use one_core::provider::credential_formatter::sdjwtvc_formatter::SDJWTVCFormatter;
+use one_core::provider::data_type::data_type_provider_from_config;
 use one_core::provider::did_method::DidMethod;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
@@ -76,9 +77,9 @@ use one_core::service::certificate::validator::CertificateValidatorImpl;
 use one_core::service::error::ServiceError;
 use one_core::util::clock::DefaultClock;
 use one_core::{
-    CertificateValidatorCreator, DataProviderCreator, DidMethodCreator, FormatterProviderCreator,
-    KeyAlgorithmCreator, KeyStorageCreator, OneCoreBuildError, OneCoreBuilder,
-    RevocationMethodCreator,
+    CertificateValidatorCreator, DataProviderCreator, DataTypeCreator, DidMethodCreator,
+    FormatterProviderCreator, KeyAlgorithmCreator, KeyStorageCreator, OneCoreBuildError,
+    OneCoreBuilder, RevocationMethodCreator,
 };
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::bbs::BBSSigner;
@@ -350,6 +351,13 @@ async fn initialize(
                     SDKError::InitializationFailure("Failed to create reqwest::Client".to_string())
                 })?;
 
+            let datatype_creator: DataTypeCreator = {
+                Box::new(move |config| {
+                    data_type_provider_from_config(config)
+                        .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))
+                })
+            };
+
             let client: Arc<dyn HttpClient> = Arc::new(ReqwestClient::new(reqwest_client));
             let data_provider = data_repository.clone();
             let did_method_creator: DidMethodCreator = {
@@ -539,6 +547,10 @@ async fn initialize(
                                 "crypto provider".to_string(),
                             ))?;
 
+                    let datatype_provider = providers.datatype_provider.as_ref().ok_or(
+                        OneCoreBuildError::MissingDependency("datatype provider".to_string()),
+                    )?;
+
                     for (name, field) in format_config.iter() {
                         let formatter = match field.r#type {
                             FormatType::Jwt => {
@@ -624,6 +636,8 @@ async fn initialize(
                                     certificate_validator.clone(),
                                     did_method_provider.clone(),
                                     datatype_config.clone(),
+                                    datatype_provider.clone(),
+                                    key_algorithm_provider.clone(),
                                 )) as _
                             }
                         };
@@ -833,6 +847,7 @@ async fn initialize(
                 .and_then(|b| b.with_certificate_validator(certificate_validator_creator))
                 .and_then(|b| b.with_key_storage_provider(key_storage_creator))
                 .and_then(|b| b.with_did_method_provider(did_method_creator))
+                .and_then(|b| b.with_datatype_provider(datatype_creator))
                 .and_then(|b| b.with_formatter_provider(formatter_provider_creator))
                 .and_then(|b| b.with_revocation_method_provider(revocation_method_creator))
                 .map(|b| b.with_ble(ble_peripheral, ble_central))

@@ -13,6 +13,7 @@ use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver
 use one_core::provider::credential_formatter::CredentialFormatter;
 use one_core::provider::credential_formatter::mdoc_formatter::{MdocFormatter, Params};
 use one_core::provider::credential_formatter::model::CredentialData;
+use one_core::provider::data_type::data_type_provider_from_config;
 use one_core::provider::did_method::DidMethod;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
@@ -114,6 +115,8 @@ pub(crate) async fn format_mdoc_credential(
         key: None,
     });
 
+    let mut datatype_config = datatype_config();
+    let datatype_provider = data_type_provider_from_config(&mut datatype_config).unwrap();
     let formatter = MdocFormatter::new(
         params,
         Arc::new(CertificateValidatorImpl::new(
@@ -123,7 +126,9 @@ pub(crate) async fn format_mdoc_credential(
             android_key_attestation_crl_cache,
         )) as _,
         did_method_provider.clone(),
-        datatype_config(),
+        datatype_config,
+        datatype_provider,
+        key_algorithm_provider,
     );
     formatter
         .format_credential(credential_data, ecdsa::signature_provider())

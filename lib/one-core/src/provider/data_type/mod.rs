@@ -17,7 +17,7 @@ use crate::provider::data_type::model::{
 use crate::provider::data_type::provider::{DataTypeProvider, DataTypeProviderImpl};
 use crate::provider::data_type::string::StringDataType;
 
-pub(crate) fn data_type_provider_from_config(
+pub fn data_type_provider_from_config(
     config: &mut DatatypeConfig,
 ) -> Result<Arc<dyn DataTypeProvider>, ConfigValidationError> {
     let mut data_type_provider = vec![];
@@ -44,7 +44,7 @@ pub(crate) fn data_type_provider_from_config(
                 });
             }
             _ => {
-                // skip for now
+                // skip for now, TODO: ONE-7544, ONE-7578
             }
         }
     }

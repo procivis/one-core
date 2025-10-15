@@ -17,11 +17,13 @@ use crate::provider::credential_formatter::model::{
     CertificateDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -336,6 +338,8 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(MockCertificateValidator::new()),
         Arc::new(did_method_provider),
         config.datatype,
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
     );
 
     let mut auth_fn = MockSignatureProvider::new();
@@ -579,6 +583,8 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
         config.datatype,
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
     );
 
     let mut auth_fn = MockSignatureProvider::new();
@@ -862,6 +868,8 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         Arc::new(certificate_validator),
         Arc::new(did_method_provider),
         config.datatype,
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
     );
 
     let mut auth_fn = MockSignatureProvider::new();
@@ -901,6 +909,8 @@ fn test_credential_schema_id() {
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockDidMethodProvider::new()),
         generic_config().core.datatype,
+        Arc::new(MockDataTypeProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
     );
     let schema_id = "schema_id_name".to_string();
     let request_dto = CreateCredentialSchemaRequestDTO {

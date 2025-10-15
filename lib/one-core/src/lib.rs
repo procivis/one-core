@@ -58,7 +58,7 @@ use crate::provider::blob_storage_provider::{
 };
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::data_type::data_type_provider_from_config;
+use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::http_client::reqwest_client::ReqwestClient;
@@ -136,6 +136,10 @@ pub type FormatterProviderCreator = Box<
         > + Send,
 >;
 
+pub type DataTypeCreator = Box<
+    dyn FnOnce(&mut DatatypeConfig) -> Result<Arc<dyn DataTypeProvider>, OneCoreBuildError> + Send,
+>;
+
 pub type DataProviderCreator =
     Box<dyn FnOnce() -> Result<Arc<dyn DataRepository>, OneCoreBuildError> + Send>;
 
@@ -199,6 +203,7 @@ pub struct OneCoreBuilderProviders {
     pub presentation_formatter_provider: Option<Arc<dyn PresentationFormatterProvider>>,
     pub revocation_method_provider: Option<Arc<dyn RevocationMethodProvider>>,
     pub certificate_validator: Option<Arc<dyn CertificateValidator>>,
+    pub datatype_provider: Option<Arc<dyn DataTypeProvider>>,
     pub session_provider: Arc<dyn SessionProvider>,
     //repository and providers that we initialize as we build
 }
@@ -215,6 +220,7 @@ impl Default for OneCoreBuilderProviders {
             presentation_formatter_provider: None,
             revocation_method_provider: None,
             certificate_validator: None,
+            datatype_provider: None,
             session_provider: Arc::new(NoSessionProvider),
         }
     }
@@ -327,6 +333,15 @@ impl OneCoreBuilder {
         self.providers.credential_formatter_provider = Some(credential_formatter_provider);
         self.providers.presentation_formatter_provider = Some(presentation_formatter_provider);
 
+        Ok(self)
+    }
+
+    pub fn with_datatype_provider(
+        mut self,
+        creator: DataTypeCreator,
+    ) -> Result<Self, OneCoreBuildError> {
+        let provider = creator(&mut self.core_config.datatype)?;
+        self.providers.datatype_provider = Some(provider);
         Ok(self)
     }
 
@@ -590,10 +605,6 @@ impl OneCore {
             history_repository: data_provider.get_history_repository(),
             session_provider: providers.session_provider.clone(),
         });
-
-        #[expect(unused)]
-        let data_type_provider = data_type_provider_from_config(&mut core_config.datatype)
-            .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
         let credential_schema_import_parser = Arc::new(CredentialSchemaImportParserImpl::new(
             Arc::new(core_config.clone()),

@@ -22,6 +22,7 @@ use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
+use uuid::Uuid;
 
 use super::nest_claims;
 use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
@@ -29,9 +30,11 @@ use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaType;
-use crate::model::identifier::Identifier;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::identifier::{Identifier, IdentifierState};
+use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -41,7 +44,9 @@ use crate::provider::credential_formatter::model::{
     PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
+use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -67,6 +72,9 @@ pub struct MdocFormatter {
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
     datatype_config: DatatypeConfig,
+    #[expect(dead_code)]
+    datatype_provider: Arc<dyn DataTypeProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 #[serde_as]
@@ -89,12 +97,16 @@ impl MdocFormatter {
         certificate_validator: Arc<dyn CertificateValidator>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         datatype_config: DatatypeConfig,
+        datatype_provider: Arc<dyn DataTypeProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             certificate_validator,
             params,
             did_method_provider,
             datatype_config,
+            datatype_provider,
+            key_algorithm_provider,
         }
     }
 }
@@ -395,6 +407,132 @@ impl CredentialFormatter for MdocFormatter {
 
     fn user_claims_path(&self) -> Vec<String> {
         vec![]
+    }
+
+    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+        let issuer_signed: IssuerSigned = decode_cbor_base64(credential)?;
+        let issuer_certificate = extract_certificate_from_x5chain_header(
+            &*self.certificate_validator,
+            &issuer_signed.issuer_auth,
+            true,
+        )
+        .await?;
+
+        let credential =
+            extract_credentials_internal(&*self.certificate_validator, credential, true).await?;
+
+        let Some(schema) = credential.credential_schema else {
+            return Err(FormatterError::Failed("schema not found".to_owned()));
+        };
+
+        let credential_schema = crate::model::credential_schema::CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: schema.id.to_owned(),
+            format: "MDOC".to_string(),
+            revocation_method: "NONE".to_string(),
+            wallet_storage_type: None,
+            layout_type: crate::model::credential_schema::LayoutType::Card,
+            layout_properties: None,
+            schema_id: schema.id,
+            schema_type: CredentialSchemaType::Mdoc,
+            imported_source_url: "".to_string(),
+            allow_suspension: false,
+            external_schema: true,
+            organisation: None,
+            claim_schemas: Some(vec![]), // TODO ONE-7545
+        };
+
+        let issuer_id = Uuid::new_v4().into();
+        let name = format!("issuer {issuer_id}");
+        let certificate_id = Uuid::new_v4().into();
+        let issuer_certificate = Certificate {
+            id: certificate_id,
+            identifier_id: issuer_id,
+            organisation_id: None,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            expiry_date: issuer_certificate.expiry,
+            name: issuer_certificate
+                .subject_common_name
+                .unwrap_or_else(|| name.to_owned()),
+            chain: issuer_certificate.chain,
+            fingerprint: issuer_certificate.fingerprint,
+            state: CertificateState::Active,
+            key: None,
+        };
+        let issuer_identifier = Identifier {
+            id: issuer_id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name,
+            r#type: crate::model::identifier::IdentifierType::Certificate,
+            is_remote: true,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: None,
+            certificates: Some(vec![issuer_certificate.to_owned()]),
+        };
+
+        let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
+        let holder_key = self
+            .key_algorithm_provider
+            .parse_jwk(&holder_jwk)
+            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+        let holder_id = Uuid::new_v4().into();
+        let name = format!("holder {holder_id}");
+        let holder_identifier = Identifier {
+            id: holder_id,
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: name.to_owned(),
+            r#type: crate::model::identifier::IdentifierType::Key,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: None,
+            key: Some(Key {
+                id: Uuid::new_v4().into(),
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                public_key: holder_key.key.public_key_as_raw(),
+                name,
+                key_reference: None,
+                storage_type: "UNKNOWN".to_string(),
+                key_type: holder_key.algorithm_type.to_string(),
+                organisation: None,
+            }),
+            certificates: None,
+        };
+
+        Ok(Credential {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            issuance_date: credential.issuance_date,
+            deleted_at: None,
+            protocol: "".to_string(),
+            redirect_uri: None,
+            role: CredentialRole::Holder,
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            profile: None,
+            credential_blob_id: None,
+            wallet_unit_attestation_blob_id: None,
+            issuer_identifier: Some(issuer_identifier),
+            issuer_certificate: Some(issuer_certificate),
+            holder_identifier: Some(holder_identifier),
+            schema: Some(credential_schema),
+            interaction: None,
+            revocation_list: None,
+            key: None,
+            claims: Some(vec![]), // TODO ONE-7545
+        })
     }
 }
 
