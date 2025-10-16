@@ -358,7 +358,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 "Missing issuer in sd-jwt".to_string(),
             ))?;
 
-        let (issuer, params, isuer_details) = if issuer.starts_with("did:") {
+        let (params, isuer_details) = if issuer.starts_with("did:") {
             let did: DidValue = issuer
                 .parse()
                 .context("issuer did parsing error")
@@ -367,7 +367,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 did: Cow::Owned(did.clone()),
                 key_id: decomposed_token.header.key_id.as_deref(),
             };
-            (issuer.clone(), params, IdentifierDetails::Did(did))
+            (params, IdentifierDetails::Did(did))
         } else {
             match decomposed_token.header.x5c.as_ref() {
                 None => {
@@ -396,7 +396,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                         did: Cow::Owned(did.clone()),
                         key_id: decomposed_token.header.key_id.as_deref(),
                     };
-                    (issuer.clone(), params, IdentifierDetails::Did(did))
+                    (params, IdentifierDetails::Did(did))
                 }
                 Some(x5c) => {
                     let certificate_validator = certificate_validator.ok_or(
@@ -421,7 +421,6 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                             ))
                         })?;
                     (
-                        issuer.clone(),
                         params,
                         IdentifierDetails::Certificate(CertificateDetails {
                             chain,
@@ -491,7 +490,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
             invalid_before: decomposed_token.payload.invalid_before,
             issued_at: decomposed_token.payload.issued_at,
             expires_at: decomposed_token.payload.expires_at,
-            issuer: Some(issuer),
+            issuer: Some(issuer.clone()),
             subject,
             audience: None,
             jwt_id: decomposed_token.payload.jwt_id,

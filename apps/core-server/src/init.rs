@@ -418,6 +418,7 @@ pub async fn initialize_core(
                             certificate_validator.clone(),
                             datatype_config.clone(),
                             client.clone(),
+                            datatype_provider.clone(),
                         )) as _
                     }
                     FormatType::JsonLdClassic => {

@@ -36,6 +36,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFormatter};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
+use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
@@ -136,6 +137,7 @@ async fn test_format_credential() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -323,6 +325,7 @@ async fn test_format_credential_swiyu() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -457,6 +460,7 @@ async fn test_extract_credentials() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -595,6 +599,7 @@ async fn test_extract_credentials_swiyu() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -789,6 +794,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(http_client),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -859,6 +865,7 @@ fn test_schema_id_internal() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -903,6 +910,7 @@ fn test_schema_id_external() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
     let vct = "https://example.com/vct/xyz%20some_vct_type";
     let request_dto = CreateCredentialSchemaRequestDTO {
@@ -1414,8 +1422,448 @@ fn formatter_for_params(
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
     (key_algorithm_provider, did_method_provider, formatter)
+}
+
+#[tokio::test]
+async fn test_parse_credential_eudi() {
+    const CREDENTIAL: &str = "eyJhbGciOiJFUzI1NiIsInR5cCI6InZjK3NkLWp3dCIsIng1YyI6WyJNSUlDK1RDQ0FxQ2dBd0lCQWdJVUQwaStTd0JnQjZ1b3QvSnFpUmc2VlMvZmprOHdDZ1lJS29aSXpqMEVBd0l3WERFZU1Cd0dBMVVFQXd3VlVFbEVJRWx6YzNWbGNpQkRRU0F0SUZWVUlEQXlNUzB3S3dZRFZRUUtEQ1JGVlVSSklGZGhiR3hsZENCU1pXWmxjbVZ1WTJVZ1NXMXdiR1Z0Wlc1MFlYUnBiMjR4Q3pBSkJnTlZCQVlUQWxWVU1CNFhEVEkxTURjeU1qRXpNemd3TjFvWERUSTNNRGN5TWpFek16Z3dObG93UlRFVU1CSUdBMVVFQXd3TFVISnZZMmwyYVhNZ1FVY3hDakFJQmdOVkJBVVRBVEF4RkRBU0JnTlZCQW9NQzFCeWIyTnBkbWx6SUVGSE1Rc3dDUVlEVlFRR0V3SlZWREJaTUJNR0J5cUdTTTQ5QWdFR0NDcUdTTTQ5QXdFSEEwSUFCTmFSWnBBTXlnNDJhUjZVWjFUMlJKaFViQTNSSTVpMEp5OVptK040Q0hPODVpZUhHTkdDOU94Y052NTBsZUxZemJibk82cjFWaWNPSXp6Ylh5T09hZHlqZ2dGVk1JSUJVVEFNQmdOVkhSTUJBZjhFQWpBQU1COEdBMVVkSXdRWU1CYUFGR0xIbEVjb3ZRK2lGaUNubXNKSmxFVHhBZFBITURrR0ExVWRFUVF5TURDQkUzTjFjSEJ2Y25SQWNISnZZMmwyYVhNdVkyaUNHV052Y21VdVpHVjJMbkJ5YjJOcGRtbHpMVzl1WlM1amIyMHdFZ1lEVlIwbEJBc3dDUVlIS0lHTVhRVUJCakJEQmdOVkhSOEVQREE2TURpZ05xQTBoakpvZEhSd2N6b3ZMM0J5WlhCeWIyUXVjR3RwTG1WMVpHbDNMbVJsZGk5amNtd3ZjR2xrWDBOQlgxVlVYekF5TG1OeWJEQWRCZ05WSFE0RUZnUVVwSktpd25LVDdTMXBEWEhabFU3TkNBTjAwcTR3RGdZRFZSMFBBUUgvQkFRREFnZUFNRjBHQTFVZEVnUldNRlNHVW1oMGRIQnpPaTh2WjJsMGFIVmlMbU52YlM5bGRTMWthV2RwZEdGc0xXbGtaVzUwYVhSNUxYZGhiR3hsZEM5aGNtTm9hWFJsWTNSMWNtVXRZVzVrTFhKbFptVnlaVzVqWlMxbWNtRnRaWGR2Y21zd0NnWUlLb1pJemowRUF3SURSd0F3UkFJZkk2RTRLcnYrcXFtMFVFajJRTFViWXljMklJTXlnelN1LzRTdTJrekhVQUloQUowd2ZOTzBjWmRXTFdleG5lOXlsV1lFRmtpRU51TGlWUUN2R3ZRdUhXZTUiXX0.eyJpYXQiOjE3NTc1NzczMjEsImV4cCI6MTgyMDY0OTMyMSwibmJmIjoxNzU3NTc3MzIxLCJpc3MiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL29wZW5pZDR2Y2kvZHJhZnQtMTMvMjhhZWUwNjktNDhjMC00ZmY5LTljZTktNzU2MDFhZWM4MjZkIiwic3ViIjoiZGlkOmtleTp6RG5hZWJ2eVZwd0czUjdRajF6bnJWeTlydHNpNk44VGdqV1BLWmh5QmRhMnF2NTh3IiwiY25mIjp7Imp3ayI6eyJrdHkiOiJFQyIsImNydiI6IlAtMjU2IiwieCI6InF0N3BDelJjOHhCVFlkNDh0WWNuRWRZSVFVWE9HRnRZOXZxWkxEbklTNFEiLCJ5IjoiMnRHOTZlU3JPLU5KeFVhQldzUnhXaThrampDMUZKaEZxTmtRRzM1WnR1WSJ9fSwidmN0IjoidXJuOmV1ZGk6cGlkOjEiLCJfc2QiOlsiNUx0NTVNM2J5S0JlX0p1RkFKX3Rta09JVWV0VnZ1ZjVkY1BRODlnYVdQQSIsIjdwQTNtaUlGenRIVUJsQXM1UkFwVFZIMkN3TVNmMk1MeUtOMHFjWUp2LVUiLCJSS2w4YW90eU5kcHI3NTVfN0ZXY0dzOEVtYl93NlV2ZTR1S2dhU2VNZWRZIiwiZUw5dEhnMi1JQ3hUMk9OTE5iV0VlNzVqQWJJZURRV2c4Q1JRa1JSX3F0OCIsImtZMmVaM3VrTlVjdnlnN25UQnNmZ0JBaHBja2tFR2xEQUV0a3Q1SGFrT1EiLCJ1Rk1Gb2M5aXdfOXo0NnB1akpNWER0ZUEwT1MyNHZJaFhGdUZ0SzRMemNVIiwidmJ4d212alZEcnQ5U2tHU0p4OXMxOU1Ua2tzSjN3V0NwbHdQZXhpbWdOTSJdLCJfc2RfYWxnIjoic2hhLTI1NiIsInN0YXR1cyI6eyJzdGF0dXNfbGlzdCI6eyJpZHgiOjMwLCJ1cmkiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC9mNWI1NGNhNS05NmVjLTQxZmQtYjRkMS0zODM0NDQ1NGNjY2EifX19.SoKrlj3ZQcDD0JpA2s50gJfPDL1eQpNg7TjchIIMERwJoNeYsm8fkk1ODzkiSLSxU3OFRa-FF-HQmoZJpryZyQ~WyJWS2Nqd1pIOFFBUVAyeUY1a1MtN0xnIiwiYmlydGhkYXRlIiwiMTk5MC0wMS0wMSJd~WyJ6Y0tDREgxcjlFSFJPVmhJQVhTN1pRIiwiZmFtaWx5X25hbWUiLCJNdXN0ZXIiXQ~WyJqOGVrVEtLWDhiLU9WYTdEcHFRZ013IiwiZ2l2ZW5fbmFtZSIsIk1heCJd~WyJ5TnplR1djT0xLY2lXNzcyR28wQjN3IiwiaXNzdWluZ19hdXRob3JpdHkiLCJUZXN0Il0~WyJzelhMdmwyUGJmTnFMdG9yNWduQTdBIiwiaXNzdWluZ19jb3VudHJ5IiwiQ0giXQ~WyJlZkQ2eGlXS2ZjQy1neTRGaEZGaVVRIiwiQ0giXQ~WyJESF9rNnVFQmhDNHJiVkNnVlFzVVlRIiwiSVQiXQ~WyI0SmNDT0tjeEEyQlJPOTZpcW9pWUl3IiwiREUiXQ~WyI3TTNvVVZ4c1ZKUlpEWWRWYnhGX0FBIiwibmF0aW9uYWxpdGllcyIsW3siLi4uIjoiZU9aTncxWEZIcERWWHZPUWcwYmJpWDFTUWJISlIwWFFfYnNjMXJMZWJsYyJ9LHsiLi4uIjoicXg0X3RaMV81XzlnRGMyMmd0TDFNdjViV3VCeWxVck5oMGRPaHhLek9VRSJ9LHsiLi4uIjoiQXA4X09NZ3ljbFhHME9jZC1HeEtJSENvMlFYOTVsdzhuTWlxTzNNVVhiQSJ9XV0~WyJ1eUxxOUFMNHkzNUoxcFpMMlZMbTF3IiwibG9jYWxpdHkiLCJDSCJd~WyJieTdYN3FmZXBiZHJhUzNGVHhkRHJnIiwicGxhY2Vfb2ZfYmlydGgiLHsiX3NkIjpbIjhzaVdNN2lmZnFSaXU3cDRvM1Z3b2ttOU1oTHFWakhJUGlSU1dlNWRjU1UiXX1d~";
+
+    let params = Params {
+        leeway: 60,
+        embed_layout_properties: false,
+        swiyu_mode: false,
+        sd_array_elements: true,
+    };
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
+    };
+
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .returning(|_, _| {
+            use crate::provider::key_algorithm::key::{
+                KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
+            };
+            use crate::service::certificate::dto::CertificateX509AttributesDTO;
+            use crate::service::certificate::validator::ParsedCertificate;
+            let now = OffsetDateTime::now_utc();
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "test".to_string(),
+                    not_before: now,
+                    not_after: now,
+                    issuer: "Test Issuer".to_string(),
+                    subject: "Test Subject".to_string(),
+                    fingerprint: "test".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("Test".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                ))),
+            })
+        });
+
+    let mut datatype_provider = MockDataTypeProvider::new();
+    datatype_provider
+        .expect_extract_json_claim()
+        .returning(|value| {
+            use crate::provider::data_type::model::ExtractedClaim;
+            match value {
+                serde_json::Value::Bool(b) => Ok(ExtractedClaim {
+                    data_type: "BOOLEAN".to_string(),
+                    value: b.to_string(),
+                }),
+                serde_json::Value::String(s) => Ok(ExtractedClaim {
+                    data_type: "STRING".to_string(),
+                    value: s.clone(),
+                }),
+                serde_json::Value::Number(n) => Ok(ExtractedClaim {
+                    data_type: "NUMBER".to_string(),
+                    value: n.to_string(),
+                }),
+                _ => Err(
+                    crate::provider::data_type::error::DataTypeProviderError::UnableToExtract(
+                        crate::provider::data_type::model::JsonOrCbor::Json(value.clone()),
+                    ),
+                ),
+            }
+        });
+
+    let formatter = SDJWTVCFormatter::new(
+        params,
+        crypto,
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(certificate_validator),
+        generic_config().core.datatype,
+        Arc::new(MockHttpClient::new()),
+        Arc::new(datatype_provider),
+    );
+
+    let result = formatter.parse_credential(CREDENTIAL).await.unwrap();
+
+    // Verify claims were parsed
+    assert!(result.claims.is_some());
+    let claims = result.claims.as_ref().unwrap();
+
+    assert_eq!(claims.len(), 17);
+
+    // Verify vct metadata claim
+    let vct_claim = claims.iter().find(|c| c.path == "vct").unwrap();
+    assert_eq!(vct_claim.value.as_deref(), Some("urn:eudi:pid:1"));
+    assert_eq!(vct_claim.selectively_disclosable, false);
+    let vct_schema = vct_claim.schema.as_ref().unwrap();
+    assert_eq!(vct_schema.key, "vct");
+    assert_eq!(vct_schema.data_type, "STRING");
+    assert_eq!(vct_schema.array, false);
+    assert_eq!(vct_schema.metadata, true);
+
+    // Verify issuing_authority claim
+    let issuing_authority_claim = claims
+        .iter()
+        .find(|c| c.path == "issuing_authority")
+        .unwrap();
+    assert_eq!(issuing_authority_claim.value.as_deref(), Some("Test"));
+    assert_eq!(issuing_authority_claim.selectively_disclosable, true);
+    assert_eq!(
+        issuing_authority_claim.schema.as_ref().unwrap().key,
+        "issuing_authority"
+    );
+    assert_eq!(
+        issuing_authority_claim.schema.as_ref().unwrap().data_type,
+        "STRING"
+    );
+
+    // Verify issuing_country claim
+    let issuing_country_claim = claims.iter().find(|c| c.path == "issuing_country").unwrap();
+    assert_eq!(issuing_country_claim.value.as_deref(), Some("CH"));
+    assert_eq!(issuing_country_claim.selectively_disclosable, true);
+    assert_eq!(
+        issuing_country_claim.schema.as_ref().unwrap().key,
+        "issuing_country"
+    );
+    assert_eq!(
+        issuing_country_claim.schema.as_ref().unwrap().data_type,
+        "STRING"
+    );
+
+    // Verify given_name claim
+    let given_name_claim = claims.iter().find(|c| c.path == "given_name").unwrap();
+    assert_eq!(given_name_claim.value.as_deref(), Some("Max"));
+    assert_eq!(given_name_claim.selectively_disclosable, true);
+    assert_eq!(given_name_claim.schema.as_ref().unwrap().key, "given_name");
+    assert_eq!(
+        given_name_claim.schema.as_ref().unwrap().data_type,
+        "STRING"
+    );
+
+    // Verify family_name claim
+    let family_name_claim = claims.iter().find(|c| c.path == "family_name").unwrap();
+    assert_eq!(family_name_claim.value.as_deref(), Some("Muster"));
+    assert_eq!(family_name_claim.selectively_disclosable, true);
+    assert_eq!(
+        family_name_claim.schema.as_ref().unwrap().key,
+        "family_name"
+    );
+    assert_eq!(
+        family_name_claim.schema.as_ref().unwrap().data_type,
+        "STRING"
+    );
+
+    // Verify birthdate claim
+    let birthdate_claim = claims.iter().find(|c| c.path == "birthdate").unwrap();
+    assert_eq!(birthdate_claim.value.as_deref(), Some("1990-01-01"));
+    assert_eq!(birthdate_claim.selectively_disclosable, true);
+    assert_eq!(birthdate_claim.schema.as_ref().unwrap().key, "birthdate");
+    assert_eq!(birthdate_claim.schema.as_ref().unwrap().data_type, "STRING");
+
+    // Verify nationalities array claim
+    let nationalities_claim = claims.iter().find(|c| c.path == "nationalities").unwrap();
+    assert_eq!(nationalities_claim.value, None);
+    assert_eq!(nationalities_claim.selectively_disclosable, true);
+    let nationalities_schema = nationalities_claim.schema.as_ref().unwrap();
+    assert_eq!(nationalities_schema.key, "nationalities");
+    assert_eq!(nationalities_schema.data_type, "STRING");
+    assert_eq!(nationalities_schema.array, true);
+    assert_eq!(nationalities_schema.metadata, false);
+
+    // Verify nationalities array elements (each is individually selectively disclosable)
+    let nat0_claim = claims.iter().find(|c| c.path == "nationalities/0").unwrap();
+    assert_eq!(nat0_claim.value.as_deref(), Some("CH"));
+    assert_eq!(nat0_claim.selectively_disclosable, true);
+
+    let nat1_claim = claims.iter().find(|c| c.path == "nationalities/1").unwrap();
+    assert_eq!(nat1_claim.value.as_deref(), Some("IT"));
+    assert_eq!(nat1_claim.selectively_disclosable, true);
+
+    let nat2_claim = claims.iter().find(|c| c.path == "nationalities/2").unwrap();
+    assert_eq!(nat2_claim.value.as_deref(), Some("DE"));
+    assert_eq!(nat2_claim.selectively_disclosable, true);
+
+    // Verify place_of_birth object claim
+    let place_of_birth_claim = claims.iter().find(|c| c.path == "place_of_birth").unwrap();
+    assert_eq!(place_of_birth_claim.value, None);
+    assert_eq!(place_of_birth_claim.selectively_disclosable, true);
+    let place_of_birth_schema = place_of_birth_claim.schema.as_ref().unwrap();
+    assert_eq!(place_of_birth_schema.key, "place_of_birth");
+    assert_eq!(place_of_birth_schema.data_type, "OBJECT");
+    assert_eq!(place_of_birth_schema.array, false);
+    assert_eq!(place_of_birth_schema.metadata, false);
+
+    let locality_claim = claims
+        .iter()
+        .find(|c| c.path == "place_of_birth/locality")
+        .unwrap();
+    assert_eq!(locality_claim.value.as_deref(), Some("CH"));
+    assert_eq!(locality_claim.selectively_disclosable, true);
+    assert_eq!(
+        locality_claim.schema.as_ref().unwrap().key,
+        "place_of_birth/locality"
+    );
+    assert_eq!(locality_claim.schema.as_ref().unwrap().data_type, "STRING");
+
+    // Verify claim_schemas were populated and deduplicated
+    assert!(result.schema.is_some());
+    let schema = result.schema.as_ref().unwrap();
+    assert!(schema.claim_schemas.is_some());
+    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+
+    assert_eq!(claim_schemas.len(), 14);
+
+    // Verify claim schema keys
+    let schema_keys: Vec<(&str, bool)> = claim_schemas
+        .iter()
+        .map(|cs| (cs.schema.key.as_str(), cs.schema.array))
+        .collect();
+
+    // Metadata schemas
+    assert!(schema_keys.contains(&("vct", false)));
+    assert!(schema_keys.contains(&("iss", false)));
+    assert!(schema_keys.contains(&("iat", false)));
+    assert!(schema_keys.contains(&("exp", false)));
+    assert!(schema_keys.contains(&("nbf", false)));
+    assert!(schema_keys.contains(&("sub", false)));
+
+    // User claim schemas
+    assert!(schema_keys.contains(&("issuing_authority", false)));
+    assert!(schema_keys.contains(&("issuing_country", false)));
+    assert!(schema_keys.contains(&("given_name", false)));
+    assert!(schema_keys.contains(&("family_name", false)));
+    assert!(schema_keys.contains(&("birthdate", false)));
+    assert!(schema_keys.contains(&("nationalities", true))); // only array schema, elements reuse same ID
+    assert!(schema_keys.contains(&("place_of_birth", false)));
+    assert!(schema_keys.contains(&("place_of_birth/locality", false)));
+
+    // Verify array elements reuse the array schema's ID
+    let nat_array_schema_id = claim_schemas
+        .iter()
+        .find(|cs| cs.schema.key == "nationalities" && cs.schema.array)
+        .unwrap()
+        .schema
+        .id;
+    let nat0_schema_id = claims
+        .iter()
+        .find(|c| c.path == "nationalities/0")
+        .unwrap()
+        .schema
+        .as_ref()
+        .unwrap()
+        .id;
+    assert_eq!(nat_array_schema_id, nat0_schema_id);
+}
+
+#[tokio::test]
+async fn test_parse_credential() {
+    const CREDENTIAL: &str = "eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImRjK3NkLWp3dCIsICJraWQiOiAiZG9jLXNpZ25lci0wNS0yNS0yMDIyIn0.eyJfc2QiOiBbIjA5dktySk1PbHlUV00wc2pwdV9wZE9CVkJRMk0xeTNLaHBINTE1blhrcFkiLCAiMnJzakdiYUMwa3k4bVQwcEpyUGlvV1RxMF9kYXcxc1g3NnBvVWxnQ3diSSIsICJFa084ZGhXMGRIRUpidlVIbEVfVkNldUM5dVJFTE9pZUxaaGg3WGJVVHRBIiwgIklsRHpJS2VpWmREd3BxcEs2WmZieXBoRnZ6NUZnbldhLXNONndxUVhDaXciLCAiSnpZakg0c3ZsaUgwUjNQeUVNZmVadTZKdDY5dTVxZWhabzdGN0VQWWxTRSIsICJQb3JGYnBLdVZ1Nnh5bUphZ3ZrRnNGWEFiUm9jMkpHbEFVQTJCQTRvN2NJIiwgIlRHZjRvTGJnd2Q1SlFhSHlLVlFaVTlVZEdFMHc1cnREc3JaemZVYW9tTG8iLCAiamRyVEU4WWNiWTRFaWZ1Z2loaUFlX0JQZWt4SlFaSUNlaVVRd1k5UXF4SSIsICJqc3U5eVZ1bHdRUWxoRmxNXzNKbHpNYVNGemdsaFFHMERwZmF5UXdMVUs0Il0sICJpc3MiOiAiaHR0cHM6Ly9leGFtcGxlLmNvbS9pc3N1ZXIiLCAiaWF0IjogMTY4MzAwMDAwMCwgImV4cCI6IDE4ODMwMDAwMDAsICJ2Y3QiOiAiaHR0cHM6Ly9jcmVkZW50aWFscy5leGFtcGxlLmNvbS9pZGVudGl0eV9jcmVkZW50aWFsIiwgIl9zZF9hbGciOiAic2hhLTI1NiIsICJjbmYiOiB7Imp3ayI6IHsia3R5IjogIkVDIiwgImNydiI6ICJQLTI1NiIsICJ4IjogIlRDQUVSMTladnUzT0hGNGo0VzR2ZlNWb0hJUDFJTGlsRGxzN3ZDZUdlbWMiLCAieSI6ICJaeGppV1diWk1RR0hWV0tWUTRoYlNJaXJzVmZ1ZWNDRTZ0NGpUOUYySFpRIn19fQ.UjmuruClAiGb_73ZlUFbk8D47xZBfHrFDoshHyVYev2hotn_HUe9S-lOKHIaniLO5THEK52WWT1lcpQVE4rAXw~WyJsa2x4RjVqTVlsR1RQVW92TU5JdkNBIiwgImlzX292ZXJfNjUiLCB0cnVlXQ~WyJRZ19PNjR6cUF4ZTQxMmExMDhpcm9BIiwgImFkZHJlc3MiLCB7InN0cmVldF9hZGRyZXNzIjogIjEyMyBNYWluIFN0IiwgImxvY2FsaXR5IjogIkFueXRvd24iLCAicmVnaW9uIjogIkFueXN0YXRlIiwgImNvdW50cnkiOiAiVVMifV0~eyJhbGciOiAiRVMyNTYiLCAidHlwIjogImtiK2p3dCJ9.eyJub25jZSI6ICIxMjM0NTY3ODkwIiwgImF1ZCI6ICJodHRwczovL2V4YW1wbGUuY29tL3ZlcmlmaWVyIiwgImlhdCI6IDE3NTc5NTQ1OTMsICJzZF9oYXNoIjogImlDVDUyYTZiQ3IzU2JIS0NmVGhXM0E5QWo4LXBKdWZnTG5TVWJ1a1JFV0EifQ.u5ysVyH__ALmpsfCMigshvjoDnFqGA8eepMoway-HH3Zbie_LFqxmA0cLx_j6SBtEUtqed-FGEGmV_j-EK4Yaw";
+    const ISSUER_URL: &str = "https://example.com/.well-known/jwt-vc-issuer/issuer";
+    let params = Params {
+        leeway: 60,
+        embed_layout_properties: false,
+        swiyu_mode: false,
+        sd_array_elements: true,
+    };
+    let hashers = hashmap! {
+        "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
+    };
+    let mut client = MockHttpClient::new();
+
+    client.expect_get().with(eq(ISSUER_URL)).returning(|url| {
+        let mut inner_client = MockHttpClient::new();
+        inner_client.expect_send().once().returning(|_, _, _, _| {
+            Ok(Response {
+                body: ISSUER_URL_RESPONSE.as_bytes().to_vec(),
+                headers: Default::default(),
+                status: StatusCode(200),
+                request: Request {
+                    body: None,
+                    headers: Default::default(),
+                    method: Method::Get,
+                    url: ISSUER_URL.to_string(),
+                },
+            })
+        });
+
+        RequestBuilder::new(Arc::new(inner_client), Method::Get, url)
+    });
+
+    let crypto = Arc::new(CryptoProviderImpl::new(hashers, HashMap::new()));
+
+    let mut datatype_provider = MockDataTypeProvider::new();
+    // Set up expectations for all claim extractions
+    datatype_provider
+        .expect_extract_json_claim()
+        .returning(|value| {
+            use crate::provider::data_type::model::ExtractedClaim;
+            match value {
+                serde_json::Value::Bool(b) => Ok(ExtractedClaim {
+                    data_type: "BOOLEAN".to_string(),
+                    value: b.to_string(),
+                }),
+                serde_json::Value::String(s) => Ok(ExtractedClaim {
+                    data_type: "STRING".to_string(),
+                    value: s.clone(),
+                }),
+                serde_json::Value::Number(n) => Ok(ExtractedClaim {
+                    data_type: "NUMBER".to_string(),
+                    value: n.to_string(),
+                }),
+                _ => Err(
+                    crate::provider::data_type::error::DataTypeProviderError::UnableToExtract(
+                        crate::provider::data_type::model::JsonOrCbor::Json(value.clone()),
+                    ),
+                ),
+            }
+        });
+
+    let formatter = SDJWTVCFormatter::new(
+        params,
+        crypto,
+        Arc::new(MockDidMethodProvider::new()),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockVctTypeMetadataFetcher::new()),
+        Arc::new(MockCertificateValidator::new()),
+        generic_config().core.datatype,
+        Arc::new(client),
+        Arc::new(datatype_provider),
+    );
+
+    let result = formatter.parse_credential(CREDENTIAL).await.unwrap();
+
+    // Verify claims were parsed
+    assert!(result.claims.is_some());
+    let claims = result.claims.as_ref().unwrap();
+
+    assert_eq!(claims.len(), 11);
+
+    // Verify vct metadata claim
+    let vct_claim = claims.iter().find(|c| c.path == "vct").unwrap();
+    assert_eq!(
+        vct_claim.value.as_deref(),
+        Some("https://credentials.example.com/identity_credential")
+    );
+    assert_eq!(vct_claim.selectively_disclosable, false);
+    let vct_schema = vct_claim.schema.as_ref().unwrap();
+    assert_eq!(vct_schema.key, "vct");
+    assert_eq!(vct_schema.data_type, "STRING");
+    assert_eq!(vct_schema.array, false);
+    assert_eq!(vct_schema.metadata, true);
+
+    // Verify is_over_65 claim
+    let is_over_65_claim = claims.iter().find(|c| c.path == "is_over_65").unwrap();
+    assert_eq!(is_over_65_claim.value.as_deref(), Some("true"));
+    assert_eq!(is_over_65_claim.selectively_disclosable, true);
+    let is_over_65_schema = is_over_65_claim.schema.as_ref().unwrap();
+    assert_eq!(is_over_65_schema.key, "is_over_65");
+    assert_eq!(is_over_65_schema.data_type, "BOOLEAN");
+    assert_eq!(is_over_65_schema.array, false);
+    assert_eq!(is_over_65_schema.metadata, false);
+
+    // Verify address object claim
+    let address_claim = claims.iter().find(|c| c.path == "address").unwrap();
+    assert_eq!(address_claim.value, None);
+    assert_eq!(address_claim.selectively_disclosable, true);
+    let address_schema = address_claim.schema.as_ref().unwrap();
+    assert_eq!(address_schema.key, "address");
+    assert_eq!(address_schema.data_type, "OBJECT");
+    assert_eq!(address_schema.array, false);
+    assert_eq!(address_schema.metadata, false);
+
+    // Verify address nested fields
+    let street_claim = claims
+        .iter()
+        .find(|c| c.path == "address/street_address")
+        .unwrap();
+    assert_eq!(street_claim.value.as_deref(), Some("123 Main St"));
+    assert_eq!(street_claim.selectively_disclosable, false);
+    assert_eq!(
+        street_claim.schema.as_ref().unwrap().key,
+        "address/street_address"
+    );
+    assert_eq!(street_claim.schema.as_ref().unwrap().data_type, "STRING");
+
+    let locality_claim = claims
+        .iter()
+        .find(|c| c.path == "address/locality")
+        .unwrap();
+    assert_eq!(locality_claim.value.as_deref(), Some("Anytown"));
+    assert_eq!(locality_claim.selectively_disclosable, false);
+    assert_eq!(
+        locality_claim.schema.as_ref().unwrap().key,
+        "address/locality"
+    );
+    assert_eq!(locality_claim.schema.as_ref().unwrap().data_type, "STRING");
+
+    let region_claim = claims.iter().find(|c| c.path == "address/region").unwrap();
+    assert_eq!(region_claim.value.as_deref(), Some("Anystate"));
+    assert_eq!(region_claim.selectively_disclosable, false);
+    assert_eq!(region_claim.schema.as_ref().unwrap().key, "address/region");
+    assert_eq!(region_claim.schema.as_ref().unwrap().data_type, "STRING");
+
+    let country_claim = claims.iter().find(|c| c.path == "address/country").unwrap();
+    assert_eq!(country_claim.value.as_deref(), Some("US"));
+    assert_eq!(country_claim.selectively_disclosable, false);
+    assert_eq!(
+        country_claim.schema.as_ref().unwrap().key,
+        "address/country"
+    );
+    assert_eq!(country_claim.schema.as_ref().unwrap().data_type, "STRING");
+
+    // Verify claim_schemas were populated
+    assert!(result.schema.is_some());
+    let schema = result.schema.as_ref().unwrap();
+    assert!(schema.claim_schemas.is_some());
+    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+
+    assert_eq!(claim_schemas.len(), 11);
+
+    // Verify claim schema keys
+    let schema_keys: Vec<&str> = claim_schemas
+        .iter()
+        .map(|cs| cs.schema.key.as_str())
+        .collect();
+
+    // Metadata schemas
+    assert!(schema_keys.contains(&"vct"));
+    assert!(schema_keys.contains(&"iss"));
+    assert!(schema_keys.contains(&"iat"));
+    assert!(schema_keys.contains(&"exp"));
+
+    // User claim schemas
+    assert!(schema_keys.contains(&"is_over_65"));
+    assert!(schema_keys.contains(&"address"));
+    assert!(schema_keys.contains(&"address/street_address"));
+    assert!(schema_keys.contains(&"address/locality"));
+    assert!(schema_keys.contains(&"address/region"));
+    assert!(schema_keys.contains(&"address/country"));
 }
 
 #[tokio::test]
@@ -1439,6 +1887,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let token = "eyJhbGciOiJFZERTQSIsImtpZCI6ImRpZDpqd2s6ZXlKcmRIa2lPaUpQUzFBaUxDSmpjbllpT2lKRlpESTFOVEU1SWl3aWVDSTZJbGhMU25sbWVtcDBSVlYyTTBocFZHNDVVVUpSWkdwS1oyUXlTMEpPTVhKMk5qRlVkRkJJZFVRNWFrRWlmUSMwIiwidHlwIjoidmMrc2Qtand0In0.eyJpYXQiOjE3NTcwNzU3MjgsImV4cCI6MTc1NzA3NTczOCwibmJmIjoxNzU3MDc1NzI4LCJpc3MiOiJkaWQ6andrOmV5SnJkSGtpT2lKUFMxQWlMQ0pqY25ZaU9pSkZaREkxTlRFNUlpd2llQ0k2SWxoTFNubG1lbXAwUlZWMk0waHBWRzQ1VVVKUlpHcEtaMlF5UzBKT01YSjJOakZVZEZCSWRVUTVha0VpZlEiLCJzdWIiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInZjdCI6ImNyZWRlbnRpYWwtc2NoZW1hLWlkIiwiX3NkIjpbIk9VamJWRlZ1RGhoRkRReXpJdllfd3AzQTJRVnBadjlsZ0JoRUdMYlVSTXMiLCJod1ZXdW9CeG1hcEd2RHZCdDJ1RGR6RmlfMjNIR3ZQd3hJT3lCdGNVRjZBIiwidVBCaWJWdzVOMFVqalF3cjJwSURPbTRwRlltS3MzbFVUdWQ4ZTRxajlCbyJdLCJfc2RfYWxnIjoic2hhLTI1NiJ9.4mDkXOv500AjcM-HtMLHsadP7-qb0kXlY10i6EfQzJCku4NypM_tQBlsbCQL5JJRxNqrm6BE2aetfPOmLjeABA~WyJpZWg1U1YwTjcwT2NkQkljMi00akxRIiwiYWdlIiwyMl0~WyJtY2p2TERkc1hsd2lDSDdXekd2aTVnIiwiaXNfb3Zlcl8xOCIsdHJ1ZV0~WyJSeExGd2VhQVdyeEp4XzRRVFF5VEJnIiwibWVhc3VyZW1lbnRzIixbeyJhaXIgcG9sbHV0aW9uIjoyNC42fV1d~WyJqWTFOM0R1cEJiczVuUUdRVUFCSmdRIiwibmFtZSIsIk1pa2UiXQ~WyJQWl9kRThIbXhKQ2xxVHVQUGhhOGhnIiwib2JqZWN0Iix7Il9zZCI6WyJBczVEX241c0pjaURMQlM5THNxaGlwc3doOGRzeVBrOEtiQjZERW94Q1NnIiwiWjBQaFV1V19jTnpVYnFEeC1kZFFXVV9yYzVZemxiWFlRYV9xN2FCZEpUQSJdfV0~";
@@ -1485,6 +1934,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         Arc::new(MockCertificateValidator::new()),
         generic_config().core.datatype,
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockDataTypeProvider::new()),
     );
 
     let credential_presentation = CredentialPresentation {

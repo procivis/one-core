@@ -590,6 +590,7 @@ async fn initialize(
                                     certificate_validator.clone(),
                                     datatype_config.clone(),
                                     client.clone(),
+                                    datatype_provider.clone(),
                                 )) as _
                             }
                             FormatType::JsonLdClassic => {

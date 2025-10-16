@@ -18,7 +18,8 @@ use sdjwt::format_credential;
 use serde::Deserialize;
 use serde_json::Value;
 use shared_types::{CredentialSchemaId, DidValue};
-use time::Duration;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 use super::model::{
     CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, HolderBindingCtx,
@@ -29,11 +30,19 @@ use super::sdjwt::model::KeyBindingPayload;
 use super::vcdm::VcdmCredential;
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{
-    DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
-    KeyStorageType, RevocationType, VerificationProtocolType,
+    DatatypeConfig, DatatypeType, DidType, FormatType, IdentifierType, IssuanceProtocolType,
+    KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
-use crate::model::credential_schema::CredentialSchema;
-use crate::model::identifier::Identifier;
+use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
+};
+use crate::model::did::Did;
+use crate::model::identifier::{Identifier, IdentifierState};
+use crate::model::key::Key;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -49,6 +58,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::credential_formatter::{
     CredentialFormatter, MetadataClaimSchema, StatusListType,
 };
+use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -69,6 +79,7 @@ pub struct SDJWTVCFormatter {
     certificate_validator: Arc<dyn CertificateValidator>,
     datatype_config: DatatypeConfig,
     http_client: Arc<dyn HttpClient>,
+    data_type_provider: Arc<dyn DataTypeProvider>,
     params: Params,
 }
 
@@ -90,6 +101,159 @@ fn default_sd_array_elements() -> bool {
 
 #[async_trait]
 impl CredentialFormatter for SDJWTVCFormatter {
+    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+        let now = OffsetDateTime::now_utc();
+
+        let (parsed_credential, _, issuer): (Jwt<SdJwtVc>, _, _) =
+            Jwt::build_from_token_with_disclosures(
+                credential,
+                &*self.crypto,
+                None,
+                SdJwtHolderBindingParams {
+                    holder_binding_context: None,
+                    leeway: Duration::seconds(self.get_leeway() as i64),
+                    skip_holder_binding_aud_check: true,
+                },
+                Some(&*self.certificate_validator),
+                &*self.http_client,
+            )
+            .await?;
+
+        let revocation_method = match parsed_credential.payload.custom.status {
+            None => RevocationType::None,
+            Some(_) => RevocationType::TokenStatusList,
+        };
+
+        let credential_id = Uuid::new_v4().into();
+        let vct = parsed_credential.payload.custom.vc_type.clone();
+
+        // Get metadata claims first (includes vct and standard JWT claims)
+        let metadata_claims = parsed_credential.get_metadata_claims()?;
+
+        // Parse claims from public_claims
+        let mut claims = parse_claims(
+            parsed_credential.payload.custom.public_claims,
+            self.data_type_provider.as_ref(),
+            credential_id,
+        )?;
+
+        // Add parsed metadata claims
+        let metadata_parsed_claims = parse_claims(
+            metadata_claims,
+            self.data_type_provider.as_ref(),
+            credential_id,
+        )?;
+        claims.extend(metadata_parsed_claims);
+
+        // Deduplicate claim schemas
+        // For arrays: only the array schema (array:true) goes into claim_schemas
+        // Array elements share the same schema ID but with array:false when attached to claims
+
+        let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
+        let mut seen_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
+
+        // Add array schemas first
+        for claim in &claims {
+            if let Some(schema) = &claim.schema
+                && schema.array
+                && seen_keys.insert(schema.key.clone())
+            {
+                claim_schemas.push(CredentialSchemaClaim {
+                    schema: schema.clone(),
+                    required: false,
+                });
+            }
+        }
+
+        // Add non-array schemas that don't have array versions
+        for claim in &claims {
+            if let Some(schema) = &claim.schema
+                && !schema.array
+                && seen_keys.insert(schema.key.clone())
+            {
+                claim_schemas.push(CredentialSchemaClaim {
+                    schema: schema.clone(),
+                    required: false,
+                });
+            }
+        }
+
+        // Second pass: update all claims to reuse the deduplicated schema IDs
+        for claim in claims.iter_mut() {
+            let Some(schema) = claim.schema.as_ref() else {
+                continue;
+            };
+
+            if let Some(canonical_schema) =
+                claim_schemas.iter().find(|s| s.schema.key == schema.key)
+            {
+                // Reuse the canonical schema's ID, but preserve this claim's array flag
+                let mut reused_schema = canonical_schema.schema.clone();
+                reused_schema.array = schema.array;
+                claim.schema = Some(reused_schema);
+            }
+        }
+
+        let schema = CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            // Will be overridden based on issuer metadata
+            name: vct.clone(),
+            format: FormatType::SdJwtVc.to_string(),
+            revocation_method: revocation_method.to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: vct,
+            schema_type: CredentialSchemaType::SdJwtVc,
+            imported_source_url: "".to_string(),
+            allow_suspension: false,
+            external_schema: false,
+            claim_schemas: Some(claim_schemas),
+            organisation: None,
+        };
+
+        let issuer_identifier = self.parse_identifier(&issuer)?;
+        let holder_identifier = parsed_credential
+            .payload
+            .subject
+            .map(|did| DidValue::from_str(&did))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map(IdentifierDetails::Did)
+            .map(|details| self.parse_identifier(&details))
+            .transpose()?;
+
+        Ok(Credential {
+            id: credential_id,
+            created_date: now,
+            issuance_date: parsed_credential.payload.issued_at,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "".to_string(),
+            redirect_uri: None,
+            role: CredentialRole::Holder,
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            profile: None,
+            credential_blob_id: None,
+            wallet_unit_attestation_blob_id: None,
+            claims: Some(claims),
+            issuer_certificate: issuer_identifier
+                .certificates
+                .as_ref()
+                .and_then(|certs| certs.first().cloned()),
+            issuer_identifier: Some(issuer_identifier),
+            holder_identifier,
+            schema: Some(schema),
+            interaction: None,
+            revocation_list: None,
+            key: None,
+        })
+    }
+
     async fn format_credential(
         &self,
         credential_data: CredentialData,
@@ -350,6 +514,7 @@ impl SDJWTVCFormatter {
         certificate_validator: Arc<dyn CertificateValidator>,
         datatype_config: DatatypeConfig,
         http_client: Arc<dyn HttpClient>,
+        data_type_provider: Arc<dyn DataTypeProvider>,
     ) -> Self {
         Self {
             params,
@@ -360,7 +525,101 @@ impl SDJWTVCFormatter {
             certificate_validator,
             datatype_config,
             http_client,
+            data_type_provider,
         }
+    }
+
+    fn parse_identifier(&self, detail: &IdentifierDetails) -> Result<Identifier, FormatterError> {
+        let now = OffsetDateTime::now_utc();
+        let identifier_id = Uuid::new_v4().into();
+        let name = format!("identifier {identifier_id}");
+
+        let (identifier_certificate, identifier_did, identifier_key, identifier_type) = match detail
+        {
+            IdentifierDetails::Certificate(certificate) => {
+                let cert = Certificate {
+                    id: Uuid::new_v4().into(),
+                    identifier_id,
+                    organisation_id: None,
+                    created_date: now,
+                    last_modified: now,
+                    expiry_date: certificate.expiry,
+                    name: certificate
+                        .subject_common_name
+                        .clone()
+                        .unwrap_or(name.clone()),
+                    chain: certificate.chain.clone(),
+                    fingerprint: certificate.fingerprint.clone(),
+                    state: CertificateState::Active,
+                    key: None,
+                };
+                (
+                    Some(cert),
+                    None,
+                    None,
+                    crate::model::identifier::IdentifierType::Certificate,
+                )
+            }
+            IdentifierDetails::Did(did) => {
+                let did_model = Did {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: format!("did {identifier_id}"),
+                    did: did.to_owned(),
+                    did_type: crate::model::did::DidType::Remote,
+                    did_method: did.method().to_string(),
+                    deactivated: false,
+                    log: None,
+                    keys: None,
+                    organisation: None,
+                };
+                (
+                    None,
+                    Some(did_model),
+                    None,
+                    crate::model::identifier::IdentifierType::Did,
+                )
+            }
+            IdentifierDetails::Key(key) => {
+                let parsed_key = self
+                    .key_algorithm_provider
+                    .parse_jwk(key)
+                    .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+                let key_model = Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    public_key: parsed_key.key.public_key_as_raw(),
+                    name: format!("key {identifier_id}"),
+                    key_reference: None,
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: parsed_key.algorithm_type.to_string(),
+                    organisation: None,
+                };
+                (
+                    None,
+                    None,
+                    Some(key_model),
+                    crate::model::identifier::IdentifierType::Key,
+                )
+            }
+        };
+
+        Ok(Identifier {
+            id: identifier_id,
+            created_date: now,
+            last_modified: now,
+            name,
+            r#type: identifier_type,
+            is_remote: true,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: identifier_did,
+            key: identifier_key,
+            certificates: identifier_certificate.map(|c| vec![c]),
+        })
     }
 
     async fn extract_credentials_internal(
@@ -480,6 +739,175 @@ impl SDJWTVCFormatter {
                 .map(|(key, value)| (key, serde_json::Value::from(value.value))),
         )))
     }
+}
+
+/// Parse claims from SD-JWT VC public_claims into Claim objects with ClaimSchema
+fn parse_claims(
+    public_claims: HashMap<String, CredentialClaim>,
+    datatype_provider: &dyn DataTypeProvider,
+    credential_id: shared_types::CredentialId,
+) -> Result<Vec<Claim>, FormatterError> {
+    let mut result = vec![];
+
+    for (key, claim_value) in public_claims {
+        let claims = parse_claim(&key, &key, claim_value, datatype_provider, credential_id)?;
+        result.extend(claims);
+    }
+
+    Ok(result)
+}
+
+/// Recursively parse a claim and its nested values, creating Claim objects with ClaimSchema
+fn parse_claim(
+    claim_path: &str,
+    claim_schema_path: &str,
+    claim_value: CredentialClaim,
+    datatype_provider: &dyn DataTypeProvider,
+    credential_id: shared_types::CredentialId,
+) -> Result<Vec<Claim>, FormatterError> {
+    let now = OffsetDateTime::now_utc();
+
+    Ok(match claim_value.value {
+        CredentialClaimValue::Array(values) => {
+            // Check if array has all elements with the same type
+            let Some(first) = values.first() else {
+                return Ok(vec![]);
+            };
+            if !values
+                .iter()
+                .all(|item| is_same_type(&item.value, &first.value))
+            {
+                return Err(FormatterError::CouldNotExtractCredentials(format!(
+                    "Non-homogenous array at: {claim_path}"
+                )));
+            }
+
+            let mut result: Vec<Claim> = vec![];
+            for (index, value) in values.into_iter().enumerate() {
+                let item_path = format!("{claim_path}/{index}");
+                let claims = parse_claim(
+                    &item_path,
+                    claim_schema_path,
+                    value,
+                    datatype_provider,
+                    credential_id,
+                )?;
+                result.extend(claims);
+            }
+
+            // data type of the array elements based on first item data_type
+            let Some(first) = result.first().and_then(|claim| claim.schema.as_ref()) else {
+                return Ok(vec![]);
+            };
+
+            result.push(Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: None,
+                path: claim_path.to_string(),
+                selectively_disclosable: claim_value.selectively_disclosable,
+                schema: Some(ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: claim_schema_path.to_string(),
+                    data_type: first.data_type.to_owned(),
+                    array: true,
+                    metadata: claim_value.metadata,
+                }),
+            });
+
+            result
+        }
+        CredentialClaimValue::Object(map) => {
+            let mut result = vec![];
+            for (key, value) in map {
+                let item_path = format!("{claim_path}/{key}");
+                let item_schema_path = format!("{claim_schema_path}/{key}");
+                let claims = parse_claim(
+                    &item_path,
+                    &item_schema_path,
+                    value,
+                    datatype_provider,
+                    credential_id,
+                )?;
+                result.extend(claims);
+            }
+
+            result.push(Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: None,
+                path: claim_path.to_string(),
+                selectively_disclosable: claim_value.selectively_disclosable,
+                schema: Some(ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: claim_schema_path.to_string(),
+                    data_type: "OBJECT".to_owned(),
+                    array: false,
+                    metadata: claim_value.metadata,
+                }),
+            });
+
+            result
+        }
+        simple_value => {
+            // Convert CredentialClaimValue to JSON value for extraction
+            let json_value = serde_json::Value::from(simple_value);
+            let extracted = datatype_provider
+                .extract_json_claim(&json_value)
+                .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+
+            vec![Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: Some(extracted.value),
+                path: claim_path.to_string(),
+                selectively_disclosable: claim_value.selectively_disclosable,
+                schema: Some(ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: claim_schema_path.to_string(),
+                    data_type: extracted.data_type,
+                    array: false,
+                    metadata: claim_value.metadata,
+                }),
+            }]
+        }
+    })
+}
+
+/// Check if two CredentialClaimValue have the same type
+fn is_same_type(a: &CredentialClaimValue, b: &CredentialClaimValue) -> bool {
+    matches!(
+        (a, b),
+        (CredentialClaimValue::Bool(_), CredentialClaimValue::Bool(_))
+            | (
+                CredentialClaimValue::Number(_),
+                CredentialClaimValue::Number(_)
+            )
+            | (
+                CredentialClaimValue::String(_),
+                CredentialClaimValue::String(_)
+            )
+            | (
+                CredentialClaimValue::Array(_),
+                CredentialClaimValue::Array(_)
+            )
+            | (
+                CredentialClaimValue::Object(_),
+                CredentialClaimValue::Object(_)
+            )
+    )
 }
 
 fn post_process_claims(
