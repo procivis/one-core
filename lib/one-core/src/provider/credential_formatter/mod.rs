@@ -13,10 +13,10 @@ use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
 pub(crate) mod common;
-pub mod error;
 pub use common::nest_claims;
 
-// Implementation
+pub mod error;
+mod json_claims;
 pub mod json_ld_bbsplus;
 pub mod json_ld_classic;
 pub mod jwt_formatter;

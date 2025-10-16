@@ -451,32 +451,17 @@ impl CredentialFormatter for MdocFormatter {
             }),
         });
 
+        // Collect unique claim schemas
         let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
-        for claim in claims.iter_mut() {
-            let Some(schema) = claim.schema.as_ref() else {
-                continue;
-            };
-
-            match claim_schemas.iter().find(|s| s.schema.key == schema.key) {
-                Some(matching_schema) => {
-                    let parsed_datatype = claim.schema.as_ref().map(|schema| &schema.data_type);
-                    if Some(&matching_schema.schema.data_type) != parsed_datatype {
-                        tracing::warn!(
-                            "Mismatch of detected datatype ({parsed_datatype:?}) of array claim: '{}'",
-                            claim.path
-                        );
-                    }
-
-                    // reuse the already inserted schema here (to match ids) of array siblings
-                    claim.schema = Some(matching_schema.schema.to_owned());
-                }
-                None => {
-                    claim_schemas.push(CredentialSchemaClaim {
-                        schema: schema.to_owned(),
-                        required: false,
-                    });
-                }
-            };
+        for claim in &claims {
+            if let Some(schema) = &claim.schema
+                && !claim_schemas.iter().any(|s| s.schema.key == schema.key)
+            {
+                claim_schemas.push(CredentialSchemaClaim {
+                    schema: schema.clone(),
+                    required: false,
+                });
+            }
         }
 
         let credential_schema = crate::model::credential_schema::CredentialSchema {
@@ -1209,6 +1194,31 @@ fn parse_claims(
                 metadata: false,
             }),
         });
+    }
+
+    let mut known_schemas: HashMap<String, ClaimSchema> = HashMap::new();
+    for claim in result.iter_mut() {
+        let Some(schema) = claim.schema.as_ref() else {
+            continue;
+        };
+
+        match known_schemas.get(&schema.key) {
+            Some(matching_schema) => {
+                let parsed_datatype = &schema.data_type;
+                if &matching_schema.data_type != parsed_datatype {
+                    tracing::warn!(
+                        "Mismatch of detected datatype ({parsed_datatype:?}) of array claim: '{}'",
+                        claim.path
+                    );
+                }
+
+                // reuse the already inserted schema here (to match ids) of array siblings
+                claim.schema = Some(matching_schema.to_owned());
+            }
+            None => {
+                known_schemas.insert(schema.key.to_owned(), schema.to_owned());
+            }
+        };
     }
 
     Ok(result)

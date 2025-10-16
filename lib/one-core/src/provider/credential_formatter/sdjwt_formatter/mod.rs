@@ -3,6 +3,7 @@
 // https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-05.html
 
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -10,15 +11,21 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
-use time::Duration;
+use shared_types::DidValue;
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
 
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
-use crate::model::credential_schema::CredentialSchema;
-use crate::model::identifier::Identifier;
+use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::identifier::{Identifier, IdentifierState};
+use crate::model::key::Key;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_claims::parse_claims;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
     FormatterCapabilities, HolderBindingCtx, IdentifierDetails, SelectiveDisclosure,
@@ -28,6 +35,7 @@ use crate::provider::credential_formatter::vcdm::vcdm_metadata_claims;
 use crate::provider::credential_formatter::{
     CredentialFormatter, MetadataClaimSchema, StatusListType,
 };
+use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::jwt::Jwt;
@@ -51,6 +59,7 @@ pub struct SDJWTFormatter {
     crypto: Arc<dyn CryptoProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    data_type_provider: Arc<dyn DataTypeProvider>,
     client: Arc<dyn HttpClient>,
     params: Params,
 }
@@ -260,6 +269,149 @@ impl CredentialFormatter for SDJWTFormatter {
     fn user_claims_path(&self) -> Vec<String> {
         vec!["vc".to_string(), "credentialSubject".to_string()]
     }
+
+    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+        let now = OffsetDateTime::now_utc();
+
+        let (parsed_credential, _, issuer): (Jwt<VcClaim>, _, _) =
+            Jwt::build_from_token_with_disclosures(
+                credential,
+                &*self.crypto,
+                None,
+                SdJwtHolderBindingParams {
+                    holder_binding_context: None,
+                    leeway: Duration::seconds(self.get_leeway() as i64),
+                    skip_holder_binding_aud_check: false,
+                },
+                None,
+                &*self.client,
+            )
+            .await?;
+
+        let revocation_method = if let Some(status) = parsed_credential
+            .payload
+            .custom
+            .vc
+            .credential_status
+            .first()
+        {
+            match status.r#type.as_str() {
+                "LVVC" => RevocationType::Lvvc,
+                "BitstringStatusListEntry" => RevocationType::BitstringStatusList,
+                _ => {
+                    return Err(FormatterError::Failed(format!(
+                        "Unknown revocation method: {}",
+                        status.r#type
+                    )));
+                }
+            }
+        } else {
+            RevocationType::None
+        };
+
+        let credential_id = Uuid::new_v4().into();
+        let vc_types = parsed_credential.payload.custom.vc.r#type.clone();
+        let schema_name = vc_types
+            .iter()
+            .find(|t| t != &"VerifiableCredential")
+            .cloned()
+            .unwrap_or_else(|| "VerifiableCredential".to_string());
+
+        // Get metadata claims first (includes vc type and standard JWT claims)
+        let metadata_claims = parsed_credential.get_metadata_claims()?;
+
+        // Parse claims from credential subject
+        let credential_subject = parsed_credential
+            .payload
+            .custom
+            .vc
+            .credential_subject
+            .first()
+            .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+
+        let (mut claims, mut claim_schemas) = parse_claims(
+            HashMap::from_iter(credential_subject.claims.clone()),
+            self.data_type_provider.as_ref(),
+            credential_id,
+        )?;
+
+        // Add parsed metadata claims
+        let (metadata_claims, metadata_claim_schemas) = parse_claims(
+            metadata_claims,
+            self.data_type_provider.as_ref(),
+            credential_id,
+        )?;
+        claims.extend(metadata_claims);
+        claim_schemas.extend(metadata_claim_schemas);
+
+        let schema_id = parsed_credential
+            .payload
+            .custom
+            .vc
+            .credential_schema
+            .as_ref()
+            .and_then(|schema| schema.first())
+            .map(|s| s.id.clone())
+            .unwrap_or_else(|| schema_name.clone());
+
+        let schema = CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: schema_name,
+            format: "SDJWT".to_string(),
+            revocation_method: revocation_method.to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            imported_source_url: "".to_string(),
+            allow_suspension: false,
+            external_schema: false,
+            claim_schemas: Some(claim_schemas),
+            organisation: None,
+        };
+
+        let issuer_identifier = self.parse_identifier(&issuer)?;
+        let holder_identifier = parsed_credential
+            .payload
+            .subject
+            .map(|did| DidValue::from_str(&did))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map(IdentifierDetails::Did)
+            .map(|details| self.parse_identifier(&details))
+            .transpose()?;
+
+        Ok(Credential {
+            id: credential_id,
+            created_date: now,
+            issuance_date: parsed_credential.payload.issued_at,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "".to_string(),
+            redirect_uri: None,
+            role: CredentialRole::Holder,
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            profile: None,
+            credential_blob_id: None,
+            wallet_unit_attestation_blob_id: None,
+            claims: Some(claims),
+            issuer_certificate: issuer_identifier
+                .certificates
+                .as_ref()
+                .and_then(|certs| certs.first().cloned()),
+            issuer_identifier: Some(issuer_identifier),
+            holder_identifier,
+            schema: Some(schema),
+            interaction: None,
+            revocation_list: None,
+            key: None,
+        })
+    }
 }
 
 impl SDJWTFormatter {
@@ -268,6 +420,7 @@ impl SDJWTFormatter {
         crypto: Arc<dyn CryptoProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        data_type_provider: Arc<dyn DataTypeProvider>,
         client: Arc<dyn HttpClient>,
     ) -> Self {
         Self {
@@ -275,6 +428,7 @@ impl SDJWTFormatter {
             crypto,
             did_method_provider,
             key_algorithm_provider,
+            data_type_provider,
             client,
         }
     }
@@ -364,6 +518,101 @@ pub(crate) async fn extract_credentials_internal(
         },
         key_binding_payload,
     ))
+}
+
+impl SDJWTFormatter {
+    fn parse_identifier(&self, detail: &IdentifierDetails) -> Result<Identifier, FormatterError> {
+        let now = OffsetDateTime::now_utc();
+        let identifier_id = Uuid::new_v4().into();
+        let name = format!("identifier {identifier_id}");
+
+        let (identifier_certificate, identifier_did, identifier_key, identifier_type) = match detail
+        {
+            IdentifierDetails::Certificate(certificate) => {
+                let cert = Certificate {
+                    id: Uuid::new_v4().into(),
+                    identifier_id,
+                    organisation_id: None,
+                    created_date: now,
+                    last_modified: now,
+                    expiry_date: certificate.expiry,
+                    name: certificate
+                        .subject_common_name
+                        .clone()
+                        .unwrap_or(name.clone()),
+                    chain: certificate.chain.clone(),
+                    fingerprint: certificate.fingerprint.clone(),
+                    state: CertificateState::Active,
+                    key: None,
+                };
+                (
+                    Some(cert),
+                    None,
+                    None,
+                    crate::model::identifier::IdentifierType::Certificate,
+                )
+            }
+            IdentifierDetails::Did(did) => {
+                let did_model = crate::model::did::Did {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    name: format!("did {identifier_id}"),
+                    did: did.to_owned(),
+                    did_type: crate::model::did::DidType::Remote,
+                    did_method: did.method().to_string(),
+                    deactivated: false,
+                    log: None,
+                    keys: None,
+                    organisation: None,
+                };
+                (
+                    None,
+                    Some(did_model),
+                    None,
+                    crate::model::identifier::IdentifierType::Did,
+                )
+            }
+            IdentifierDetails::Key(key) => {
+                let parsed_key = self
+                    .key_algorithm_provider
+                    .parse_jwk(key)
+                    .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+                let key_model = Key {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    public_key: parsed_key.key.public_key_as_raw(),
+                    name: format!("key {identifier_id}"),
+                    key_reference: None,
+                    storage_type: "INTERNAL".to_string(),
+                    key_type: parsed_key.algorithm_type.to_string(),
+                    organisation: None,
+                };
+                (
+                    None,
+                    None,
+                    Some(key_model),
+                    crate::model::identifier::IdentifierType::Key,
+                )
+            }
+        };
+
+        Ok(Identifier {
+            id: identifier_id,
+            created_date: now,
+            last_modified: now,
+            name,
+            r#type: identifier_type,
+            is_remote: true,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            organisation: None,
+            did: identifier_did,
+            key: identifier_key,
+            certificates: identifier_certificate.map(|c| vec![c]),
+        })
+    }
 }
 
 fn credential_to_claims(credential: &VcdmCredential) -> Result<Value, FormatterError> {

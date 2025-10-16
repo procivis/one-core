@@ -574,6 +574,7 @@ async fn initialize(
                                     crypto.clone(),
                                     did_method_provider.clone(),
                                     key_algorithm_provider.clone(),
+                                    datatype_provider.clone(),
                                     client.clone(),
                                 )) as _
                             }

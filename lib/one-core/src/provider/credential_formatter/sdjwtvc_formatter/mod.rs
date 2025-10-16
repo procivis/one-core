@@ -34,17 +34,14 @@ use crate::config::core_config::{
     KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierState};
 use crate::model::key::Key;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_claims::parse_claims;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
     FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, VerificationFn,
@@ -131,68 +128,20 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let metadata_claims = parsed_credential.get_metadata_claims()?;
 
         // Parse claims from public_claims
-        let mut claims = parse_claims(
+        let (mut claims, mut claim_schemas) = parse_claims(
             parsed_credential.payload.custom.public_claims,
             self.data_type_provider.as_ref(),
             credential_id,
         )?;
 
         // Add parsed metadata claims
-        let metadata_parsed_claims = parse_claims(
+        let (metadata_claims, metadata_claim_schemas) = parse_claims(
             metadata_claims,
             self.data_type_provider.as_ref(),
             credential_id,
         )?;
-        claims.extend(metadata_parsed_claims);
-
-        // Deduplicate claim schemas
-        // For arrays: only the array schema (array:true) goes into claim_schemas
-        // Array elements share the same schema ID but with array:false when attached to claims
-
-        let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
-        let mut seen_keys: std::collections::HashSet<String> = std::collections::HashSet::new();
-
-        // Add array schemas first
-        for claim in &claims {
-            if let Some(schema) = &claim.schema
-                && schema.array
-                && seen_keys.insert(schema.key.clone())
-            {
-                claim_schemas.push(CredentialSchemaClaim {
-                    schema: schema.clone(),
-                    required: false,
-                });
-            }
-        }
-
-        // Add non-array schemas that don't have array versions
-        for claim in &claims {
-            if let Some(schema) = &claim.schema
-                && !schema.array
-                && seen_keys.insert(schema.key.clone())
-            {
-                claim_schemas.push(CredentialSchemaClaim {
-                    schema: schema.clone(),
-                    required: false,
-                });
-            }
-        }
-
-        // Second pass: update all claims to reuse the deduplicated schema IDs
-        for claim in claims.iter_mut() {
-            let Some(schema) = claim.schema.as_ref() else {
-                continue;
-            };
-
-            if let Some(canonical_schema) =
-                claim_schemas.iter().find(|s| s.schema.key == schema.key)
-            {
-                // Reuse the canonical schema's ID, but preserve this claim's array flag
-                let mut reused_schema = canonical_schema.schema.clone();
-                reused_schema.array = schema.array;
-                claim.schema = Some(reused_schema);
-            }
-        }
+        claims.extend(metadata_claims);
+        claim_schemas.extend(metadata_claim_schemas);
 
         let schema = CredentialSchema {
             id: Uuid::new_v4().into(),
@@ -739,175 +688,6 @@ impl SDJWTVCFormatter {
                 .map(|(key, value)| (key, serde_json::Value::from(value.value))),
         )))
     }
-}
-
-/// Parse claims from SD-JWT VC public_claims into Claim objects with ClaimSchema
-fn parse_claims(
-    public_claims: HashMap<String, CredentialClaim>,
-    datatype_provider: &dyn DataTypeProvider,
-    credential_id: shared_types::CredentialId,
-) -> Result<Vec<Claim>, FormatterError> {
-    let mut result = vec![];
-
-    for (key, claim_value) in public_claims {
-        let claims = parse_claim(&key, &key, claim_value, datatype_provider, credential_id)?;
-        result.extend(claims);
-    }
-
-    Ok(result)
-}
-
-/// Recursively parse a claim and its nested values, creating Claim objects with ClaimSchema
-fn parse_claim(
-    claim_path: &str,
-    claim_schema_path: &str,
-    claim_value: CredentialClaim,
-    datatype_provider: &dyn DataTypeProvider,
-    credential_id: shared_types::CredentialId,
-) -> Result<Vec<Claim>, FormatterError> {
-    let now = OffsetDateTime::now_utc();
-
-    Ok(match claim_value.value {
-        CredentialClaimValue::Array(values) => {
-            // Check if array has all elements with the same type
-            let Some(first) = values.first() else {
-                return Ok(vec![]);
-            };
-            if !values
-                .iter()
-                .all(|item| is_same_type(&item.value, &first.value))
-            {
-                return Err(FormatterError::CouldNotExtractCredentials(format!(
-                    "Non-homogenous array at: {claim_path}"
-                )));
-            }
-
-            let mut result: Vec<Claim> = vec![];
-            for (index, value) in values.into_iter().enumerate() {
-                let item_path = format!("{claim_path}/{index}");
-                let claims = parse_claim(
-                    &item_path,
-                    claim_schema_path,
-                    value,
-                    datatype_provider,
-                    credential_id,
-                )?;
-                result.extend(claims);
-            }
-
-            // data type of the array elements based on first item data_type
-            let Some(first) = result.first().and_then(|claim| claim.schema.as_ref()) else {
-                return Ok(vec![]);
-            };
-
-            result.push(Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: claim_path.to_string(),
-                selectively_disclosable: claim_value.selectively_disclosable,
-                schema: Some(ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: claim_schema_path.to_string(),
-                    data_type: first.data_type.to_owned(),
-                    array: true,
-                    metadata: claim_value.metadata,
-                }),
-            });
-
-            result
-        }
-        CredentialClaimValue::Object(map) => {
-            let mut result = vec![];
-            for (key, value) in map {
-                let item_path = format!("{claim_path}/{key}");
-                let item_schema_path = format!("{claim_schema_path}/{key}");
-                let claims = parse_claim(
-                    &item_path,
-                    &item_schema_path,
-                    value,
-                    datatype_provider,
-                    credential_id,
-                )?;
-                result.extend(claims);
-            }
-
-            result.push(Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: None,
-                path: claim_path.to_string(),
-                selectively_disclosable: claim_value.selectively_disclosable,
-                schema: Some(ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: claim_schema_path.to_string(),
-                    data_type: "OBJECT".to_owned(),
-                    array: false,
-                    metadata: claim_value.metadata,
-                }),
-            });
-
-            result
-        }
-        simple_value => {
-            // Convert CredentialClaimValue to JSON value for extraction
-            let json_value = serde_json::Value::from(simple_value);
-            let extracted = datatype_provider
-                .extract_json_claim(&json_value)
-                .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-
-            vec![Claim {
-                id: Uuid::new_v4(),
-                credential_id,
-                created_date: now,
-                last_modified: now,
-                value: Some(extracted.value),
-                path: claim_path.to_string(),
-                selectively_disclosable: claim_value.selectively_disclosable,
-                schema: Some(ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    key: claim_schema_path.to_string(),
-                    data_type: extracted.data_type,
-                    array: false,
-                    metadata: claim_value.metadata,
-                }),
-            }]
-        }
-    })
-}
-
-/// Check if two CredentialClaimValue have the same type
-fn is_same_type(a: &CredentialClaimValue, b: &CredentialClaimValue) -> bool {
-    matches!(
-        (a, b),
-        (CredentialClaimValue::Bool(_), CredentialClaimValue::Bool(_))
-            | (
-                CredentialClaimValue::Number(_),
-                CredentialClaimValue::Number(_)
-            )
-            | (
-                CredentialClaimValue::String(_),
-                CredentialClaimValue::String(_)
-            )
-            | (
-                CredentialClaimValue::Array(_),
-                CredentialClaimValue::Array(_)
-            )
-            | (
-                CredentialClaimValue::Object(_),
-                CredentialClaimValue::Object(_)
-            )
-    )
 }
 
 fn post_process_claims(

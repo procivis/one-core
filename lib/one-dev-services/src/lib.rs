@@ -109,6 +109,7 @@ use one_core::provider::credential_formatter::provider::CredentialFormatterProvi
 use one_core::provider::credential_formatter::sdjwt_formatter::{
     Params as SDJWTParams, SDJWTFormatter,
 };
+use one_core::provider::data_type::provider::DataTypeProviderImpl;
 use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::keys::{Keys, MinMax};
@@ -268,6 +269,9 @@ impl OneDevCore {
         let did_method_provider =
             Arc::new(DidMethodProviderImpl::new(did_caching_loader, did_methods));
 
+        // initialize data type provider with basic types
+        let data_type_provider = Arc::new(DataTypeProviderImpl::new(vec![])?);
+
         // initialize credential formatter provider
         let json_ld_caching_loader = JsonLdCachingLoader::new(
             RemoteEntityType::JsonLdContext,
@@ -305,6 +309,7 @@ impl OneDevCore {
                         crypto_provider.clone(),
                         did_method_provider.clone(),
                         key_algorithm_provider.clone(),
+                        data_type_provider,
                         client.clone(),
                     )) as _,
                 ),
