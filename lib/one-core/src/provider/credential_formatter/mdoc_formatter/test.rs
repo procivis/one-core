@@ -1083,16 +1083,49 @@ async fn test_parse_credential() {
     assert_eq!(schema.schema_id, "pavel.7545.strings");
     let claim_schemas = schema.claim_schemas.unwrap();
     assert_eq!(claim_schemas.len(), 7);
-    assert_eq!(
+
+    let get_claim_schema_keys = |filter: &dyn Fn(&CredentialSchemaClaim) -> bool| {
         HashSet::from_iter(
             claim_schemas
                 .iter()
-                .map(|schema| schema.schema.key.as_str())
-        ),
+                .filter(|schema| filter(schema))
+                .map(|schema| schema.schema.key.as_str()),
+        )
+    };
+
+    assert_eq!(
+        get_claim_schema_keys(&|_| true),
         hashset! {
             "namespace1", "namespace1/str", "namespace1/obj", "namespace1/obj/nestedStr",
             "namespace2", "namespace2/arr",
             "doctype"
         }
+    );
+
+    assert_eq!(
+        get_claim_schema_keys(&|schema| schema.schema.metadata),
+        hashset! { "doctype" }
+    );
+
+    assert_eq!(
+        get_claim_schema_keys(&|schema| schema.schema.data_type == "OBJECT"),
+        hashset! {
+            "namespace1", "namespace1/obj",
+            "namespace2"
+        }
+    );
+
+    assert_eq!(
+        get_claim_schema_keys(&|schema| schema.schema.data_type == "STRING"),
+        hashset! {
+            "namespace1/str", "namespace1/obj/nestedStr",
+            "namespace2/arr",
+            "doctype"
+        }
+    );
+
+    assert_eq!(
+        get_claim_schema_keys(&|schema| schema.schema.array),
+        hashset! { "namespace2/arr" }
     );
 }

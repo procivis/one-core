@@ -1260,7 +1260,7 @@ fn parse_claim(
                 )));
             }
 
-            let mut result: Vec<Claim> = vec![];
+            let mut subclaims: Vec<Claim> = vec![];
             for (index, value) in values.into_iter().enumerate() {
                 let item_path = format!("{claim_path}/{index}");
                 let claims = parse_claim(
@@ -1270,11 +1270,11 @@ fn parse_claim(
                     datatype_provider,
                     credential_id,
                 )?;
-                result.extend(claims);
+                subclaims.extend(claims);
             }
 
             // data type of the array elements based on first item data_type
-            let Some(first) = result
+            let Some(first) = subclaims
                 .iter()
                 .find(|claim| claim.path == format!("{claim_path}/0"))
                 .and_then(|claim| claim.schema.as_ref())
@@ -1282,7 +1282,7 @@ fn parse_claim(
                 return Ok(vec![]);
             };
 
-            result.push(Claim {
+            let mut result = vec![Claim {
                 id: Uuid::new_v4(),
                 credential_id,
                 created_date: now,
@@ -1299,8 +1299,8 @@ fn parse_claim(
                     array: true,
                     metadata: false,
                 }),
-            });
-
+            }];
+            result.extend(subclaims);
             result
         }
         Value::Map(map) => {
