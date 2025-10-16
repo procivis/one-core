@@ -50,7 +50,7 @@ pub fn data_type_provider_from_config(
                         source,
                     }
                 })?;
-                Arc::new(StringDataType::new(params))
+                Arc::new(StringDataType::new(params)?)
             }
             DatatypeType::Date => {
                 let params = fields.deserialize::<date::Params>().map_err(|source| {

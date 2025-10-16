@@ -5,6 +5,7 @@ use strum::Display;
 
 use crate::provider::data_type::DataType;
 
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ExtractionResult {
     /// The provider has successfully extracted a value.
     Value(String),
