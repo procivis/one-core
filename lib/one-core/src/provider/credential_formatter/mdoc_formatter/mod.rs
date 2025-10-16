@@ -833,8 +833,8 @@ fn build_ciborium_value(
 }
 
 // full-date (ISO mDL 7.2.1)
-const FULL_DATE_TAG: u64 = 1004;
-const TDATE_TAG: u64 = 0;
+pub(crate) const FULL_DATE_TAG: u64 = 1004;
+pub(crate) const TDATE_TAG: u64 = 0;
 
 fn map_to_ciborium_value(
     claim: &PublishedClaim,

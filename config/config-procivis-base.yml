@@ -382,6 +382,9 @@ datatype:
     params:
       public:
         formats: ["date", "datetime"]
+      private:
+        holder:
+          valueExtraction: ENABLED
   BIRTH_DATE:
     display: "datatype.birth_date"
     type: "DATE"

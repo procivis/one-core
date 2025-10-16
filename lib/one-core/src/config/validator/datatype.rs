@@ -11,7 +11,7 @@ use time::{Date, OffsetDateTime};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, DatatypeConfig, DatatypeType};
 
-const DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
+pub(crate) const DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
 
 #[derive(Debug, Error)]
 pub enum DatatypeValidationError {
@@ -376,7 +376,7 @@ fn validate_array(_value: &str, _params: ArrayParams) -> Result<(), DatatypeVali
     Err(DatatypeValidationError::ArrayValueShouldNotBeSpecifiedInRequest)
 }
 
-fn parse_min_max_date(value: &str) -> Result<Date, DatatypeValidationError> {
+pub fn parse_min_max_date(value: &str) -> Result<Date, DatatypeValidationError> {
     if value == "NOW" {
         return Ok(OffsetDateTime::now_utc().date());
     }
@@ -384,7 +384,9 @@ fn parse_min_max_date(value: &str) -> Result<Date, DatatypeValidationError> {
     Ok(Date::parse(value, DATE_FORMAT)?)
 }
 
-fn parse_min_max_datetime(value: &str) -> Result<OffsetDateTime, DatatypeValidationError> {
+pub(crate) fn parse_min_max_datetime(
+    value: &str,
+) -> Result<OffsetDateTime, DatatypeValidationError> {
     if value == "NOW" {
         return Ok(OffsetDateTime::now_utc());
     }

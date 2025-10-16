@@ -1,17 +1,14 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use crate::provider::data_type::DataType;
 use crate::provider::data_type::error::DataTypeError;
 use crate::provider::data_type::model::{
-    CborType, DataTypeCapabilities, ExtractionResult, HolderDataTypeParams, JsonType,
+    CborType, DataTypeCapabilities, ExtractionResult, JsonType,
 };
 
-#[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
-pub struct Params {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub holder: Option<HolderDataTypeParams>,
-}
+pub struct Params {}
 
 pub struct StringDataType {
     #[expect(unused)]
