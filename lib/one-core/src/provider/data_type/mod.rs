@@ -1,25 +1,29 @@
+mod boolean;
 mod date;
 pub mod error;
 mod mapper;
 pub mod model;
+mod number;
 pub mod provider;
 mod string;
 
 use std::sync::Arc;
 
-use serde::Deserialize;
-use serde_json::json;
-
-use crate::config::ConfigValidationError;
-use crate::config::core_config::{DatatypeConfig, DatatypeType};
-use crate::provider::data_type::date::DateDataType;
-use crate::provider::data_type::error::DataTypeError;
-use crate::provider::data_type::model::{
+use boolean::BooleanDataType;
+use date::DateDataType;
+use error::DataTypeError;
+use model::{
     DataTypeCapabilities, DataTypeProviderInit, ExtractionResult, HolderDataTypeParams,
     ValueExtractionConfig,
 };
-use crate::provider::data_type::provider::{DataTypeProvider, DataTypeProviderImpl};
-use crate::provider::data_type::string::StringDataType;
+use number::NumberDataType;
+use provider::{DataTypeProvider, DataTypeProviderImpl};
+use serde::Deserialize;
+use serde_json::json;
+use string::StringDataType;
+
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{DatatypeConfig, DatatypeType};
 
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +64,16 @@ pub fn data_type_provider_from_config(
                     }
                 })?;
                 Arc::new(DateDataType::new(params)?)
+            }
+            DatatypeType::Boolean => Arc::new(BooleanDataType),
+            DatatypeType::Number => {
+                let params = fields.deserialize::<number::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                Arc::new(NumberDataType::new(params))
             }
             _ => {
                 // skip for now, TODO: ONE-7544, ONE-7578

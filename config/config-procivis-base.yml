@@ -374,7 +374,10 @@ datatype:
     display: "datatype.number"
     type: "NUMBER"
     order: 200
-    params: null
+    params:
+      private:
+        holder:
+          valueExtraction: ENABLED_FALLBACK
   DATE:
     display: "datatype.date"
     type: "DATE"
@@ -464,7 +467,10 @@ datatype:
     display: "datatype.boolean"
     type: "BOOLEAN"
     order: 301
-    params: null
+    params:
+      private:
+        holder:
+          valueExtraction: ENABLED_FALLBACK
   ARRAY:
     display: "datatype.array"
     type: "ARRAY"
