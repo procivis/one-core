@@ -1,12 +1,13 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::ops::Add;
 
 use coset::{KeyType, Label, RegisteredLabelWithPrivate};
 use hex_literal::hex;
-use maplit::hashmap;
+use maplit::{hashmap, hashset};
 use serde_json::json;
 use shared_types::OrganisationId;
 use similar_asserts::assert_eq;
+use time::macros::datetime;
 use uuid::Uuid;
 
 use super::*;
@@ -17,13 +18,15 @@ use crate::provider::credential_formatter::model::{
     CertificateDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use crate::provider::data_type::error::DataTypeProviderError;
+use crate::provider::data_type::model::JsonOrCbor;
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
@@ -935,4 +938,161 @@ fn test_credential_schema_id() {
 
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), schema_id)
+}
+
+#[tokio::test]
+async fn test_parse_credential() {
+    const ISSUED_MDOC: &str = "ompuYW1lU3BhY2VzompuYW1lc3BhY2UxgtgYWGSkaGRpZ2VzdElEAGZyYW5kb21YIMWtCKe0UpTNc-Som7lMdasvokELGUYt1G6w_S7OPpy8cWVsZW1lbnRJZGVudGlmaWVyY29iamxlbGVtZW50VmFsdWWhaW5lc3RlZFN0cmFu2BhYWaRoZGlnZXN0SUQBZnJhbmRvbVggaVSHtwEJdYhB_UNz0MvoyMmUIQZoj31cvTLyKRfdUKZxZWxlbWVudElkZW50aWZpZXJjc3RybGVsZW1lbnRWYWx1ZWFzam5hbWVzcGFjZTKB2BhYXqRoZGlnZXN0SUQCZnJhbmRvbVggLaV6XEY6vAQWrmoGLk9k4KwhuXKslxhYGQWUQ4CvRi1xZWxlbWVudElkZW50aWZpZXJjYXJybGVsZW1lbnRWYWx1ZYJiYTFiYTJqaXNzdWVyQXV0aIRDoQEmoRghWQNGMIIDQjCCAuegAwIBAgIUJ1lFCR_rFo-SnmIFQI_2spfZ8U0wCgYIKoZIzj0EAwIwgYwxEjAQBgNVBAMMCWxvY2FsaG9zdDEUMBIGA1UECgwLUHJvY2l2aXMgQUcxHjAcBgNVBAsMFUNlcnRpZmljYXRlIEF1dGhvcml0eTEPMA0GA1UEBwwGWnVyaWNoMQswCQYDVQQGEwJDSDEiMCAGCSqGSIb3DQEJARYTc3VwcG9ydEBwcm9jaXZpcy5jaDAeFw0yNTA3MjkxMzEzMDBaFw0yNjA3MjkwMDAwMDBaMBExDzANBgNVBAMMBnNkZ2RmaDBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABJYXmT8MpwCuYqSJ5gCiDhZE_GcW6K_95Yxh5eUi-Mx6TlNSFf0hmG4l8lUc4VBbW-F3aPaJloS-5KxWgrDbmGyjggGfMIIBmzAfBgNVHSMEGDAWgBTt9O0P3c2e__llFNrZnB8VGciUSzAMBgNVHRMBAf8EAjAAMB0GA1UdDgQWBBTpNlM0fkAOmVL_cghB0sc1pEKkdTCByAYIKwYBBQUHAQEEgbswgbgwWgYIKwYBBQUHMAGGTmh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL29jc3AvMkU4NjI5NzVGRDA5MEUxRjM1QTY3NENFQUE0RTZDNTZFNUI2Nzc0OC9jZXJ0LzBaBggrBgEFBQcwAoZOaHR0cDovL2NhLmRldi5tZGwtcGx1cy5jb20vaXNzdWVyLzJFODYyOTc1RkQwOTBFMUYzNUE2NzRDRUFBNEU2QzU2RTVCNjc3NDguZGVyMFkGA1UdHwRSMFAwTqBMoEqGSGh0dHA6Ly9jYS5kZXYubWRsLXBsdXMuY29tL2NybC8yRTg2Mjk3NUZEMDkwRTFGMzVBNjc0Q0VBQTRFNkM1NkU1QjY3NzQ4LzAVBgNVHSUBAf8ECzAJBgcogYxdBQECMA4GA1UdDwEB_wQEAwIHgDAKBggqhkjOPQQDAgNJADBGAiEA1tdLIzHjsFse_1f3G2pB5hlaP0jZJFIWSVMOrq1AL98CIQCviw63vxlUhoWLwG7Y7fxVffGYYRejF_5bO1hI7KH9U1kBydgYWQHEpmd2ZXJzaW9uYzEuMG9kaWdlc3RBbGdvcml0aG1nU0hBLTI1Nmx2YWx1ZURpZ2VzdHOiam5hbWVzcGFjZTGiAFggQbhGiPKR2NS_inPDZW5z1ccREMUkmN6J6kj-5HJe7i4BWCDeAcugZ1WThbFnW5ksTwT5349mVLOwcr4tS_ooBu_w_2puYW1lc3BhY2UyoQJYIKTvsv_kcCp3YmIJ1YFX66idSdQ62z3LkJ2Xn_q5lgz5bWRldmljZUtleUluZm-haWRldmljZUtleaQBAiABIVggWnxj014us6_1nQAqd_kI_3r4mFJqyJWyMwRNrqDtHNMiWCCh53efzDuA5jGknqv3WG_czqFVUwOHla5v2c8pPxkCG2dkb2NUeXBlcnBhdmVsLjc1NDUuc3RyaW5nc2x2YWxpZGl0eUluZm-kZnNpZ25lZMB0MjAyNS0xMC0xNVQwODo1ODoxM1ppdmFsaWRGcm9twHQyMDI1LTEwLTE1VDA4OjU4OjEzWmp2YWxpZFVudGlswHQyMDI1LTEwLTE4VDA4OjU4OjEzWm5leHBlY3RlZFVwZGF0ZcB0MjAyNS0xMC0xNlQwODo1ODoxM1pYQL1m2H0lKYlNRbxmo4fhtTG7-rwi1NPiggmQQFejt8G6kIJghGsJ0aVbvTgPtogN4z67KWv2xK3IUCWjxR4rNUo";
+
+    let params = Params {
+        mso_expires_in: Duration::seconds(10),
+        mso_expected_update_in: Duration::days(10),
+        mso_minimum_refresh_time: Duration::seconds(10),
+        leeway: 60_u64,
+        embed_layout_properties: None,
+    };
+
+    let mut certificate_validator = MockCertificateValidator::new();
+    certificate_validator
+        .expect_parse_pem_chain()
+        .once()
+        .returning(|_, _| {
+            Ok(ParsedCertificate {
+                attributes: CertificateX509AttributesDTO {
+                    serial_number: "".to_string(),
+                    not_before: OffsetDateTime::now_utc() - Duration::days(1),
+                    not_after: OffsetDateTime::now_utc() + Duration::days(1),
+                    issuer: "Some issuer".to_string(),
+                    subject: "Some subject".to_string(),
+                    fingerprint: "fingerprint".to_string(),
+                    extensions: vec![],
+                },
+                subject_common_name: Some("common name".to_string()),
+                subject_key_identifier: None,
+                public_key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                ))),
+            })
+        });
+
+    let mut datatype_provider = MockDataTypeProvider::new();
+    datatype_provider
+        .expect_extract_cbor_claim()
+        .times(5)
+        .returning(|value| {
+            if matches!(value, Value::Array(_)) {
+                return Err(DataTypeProviderError::UnableToExtract(JsonOrCbor::Cbor(
+                    value.to_owned(),
+                )));
+            }
+
+            Ok(ExtractedClaim {
+                data_type: "STRING".to_string(),
+                value: "value".to_string(),
+            })
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_parse_jwk()
+        .once()
+        .returning(|_| {
+            let mut public_key_handle = MockSignaturePublicKeyHandle::new();
+            public_key_handle.expect_as_raw().returning(Vec::new);
+            Ok(ParsedKey {
+                algorithm_type: KeyAlgorithmType::Ecdsa,
+                key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    public_key_handle,
+                ))),
+            })
+        });
+
+    let formatter = MdocFormatter::new(
+        params,
+        Arc::new(certificate_validator),
+        Arc::new(MockDidMethodProvider::new()),
+        generic_config().core.datatype,
+        Arc::new(datatype_provider),
+        Arc::new(key_algorithm_provider),
+    );
+
+    let credential = formatter.parse_credential(ISSUED_MDOC).await.unwrap();
+
+    assert_eq!(credential.role, CredentialRole::Holder);
+    assert_eq!(
+        credential.issuance_date.unwrap(),
+        datetime!(2025-10-15 08:58:13 UTC)
+    );
+    let claims = credential.claims.unwrap();
+    assert_eq!(claims.len(), 9);
+
+    let get_claim_paths = |filter: &dyn Fn(&Claim) -> bool| {
+        HashSet::from_iter(
+            claims
+                .iter()
+                .filter(|claim| filter(claim))
+                .map(|claim| claim.path.as_str()),
+        )
+    };
+
+    // intermediary
+    assert_eq!(
+        get_claim_paths(&|claim| claim.value.is_none()),
+        hashset! {
+            "namespace1", "namespace1/obj",
+            "namespace2", "namespace2/arr"
+        }
+    );
+    // leaf
+    assert_eq!(
+        get_claim_paths(&|claim| claim.value == Some("value".to_string())),
+        hashset! {
+            "namespace1/str", "namespace1/obj/nestedStr",
+            "namespace2/arr/0", "namespace2/arr/1"
+        }
+    );
+    // doctype meta claim
+    let doctype_claim = claims.iter().find(|claim| claim.path == "doctype").unwrap();
+    assert_eq!(doctype_claim.value.as_ref().unwrap(), "pavel.7545.strings");
+    assert!(doctype_claim.schema.as_ref().unwrap().metadata);
+
+    // check selectively disclosable flags
+    assert_eq!(
+        get_claim_paths(&|claim| claim.selectively_disclosable),
+        hashset! {
+            "namespace1", "namespace1/str", "namespace1/obj",
+            "namespace2", "namespace2/arr"
+        }
+    );
+
+    // claim schema ids of siblings must match
+    let arr_0_claim = claims
+        .iter()
+        .find(|claim| claim.path == "namespace2/arr/0")
+        .unwrap();
+    let arr_1_claim = claims
+        .iter()
+        .find(|claim| claim.path == "namespace2/arr/1")
+        .unwrap();
+    assert_eq!(
+        arr_0_claim.schema.as_ref().unwrap().id,
+        arr_1_claim.schema.as_ref().unwrap().id
+    );
+
+    let schema = credential.schema.unwrap();
+    assert_eq!(schema.schema_id, "pavel.7545.strings");
+    let claim_schemas = schema.claim_schemas.unwrap();
+    assert_eq!(claim_schemas.len(), 7);
+    assert_eq!(
+        HashSet::from_iter(
+            claim_schemas
+                .iter()
+                .map(|schema| schema.schema.key.as_str())
+        ),
+        hashset! {
+            "namespace1", "namespace1/str", "namespace1/obj", "namespace1/obj/nestedStr",
+            "namespace2", "namespace2/arr",
+            "doctype"
+        }
+    );
 }

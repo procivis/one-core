@@ -17,7 +17,7 @@ use serde::Deserialize;
 use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
-use shared_types::{CredentialSchemaId, DidValue};
+use shared_types::{CredentialId, CredentialSchemaId, DidValue};
 use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
@@ -31,8 +31,10 @@ use crate::config::core_config::{
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::claim::Claim;
+use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::CredentialSchemaType;
+use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType};
 use crate::model::identifier::{Identifier, IdentifierState};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
@@ -44,6 +46,7 @@ use crate::provider::credential_formatter::model::{
     PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
+use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -72,7 +75,6 @@ pub struct MdocFormatter {
     params: Params,
     did_method_provider: Arc<dyn DidMethodProvider>,
     datatype_config: DatatypeConfig,
-    #[expect(dead_code)]
     datatype_provider: Arc<dyn DataTypeProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
@@ -418,31 +420,83 @@ impl CredentialFormatter for MdocFormatter {
         )
         .await?;
 
-        let credential =
-            extract_credentials_internal(&*self.certificate_validator, credential, true).await?;
-
-        let Some(schema) = credential.credential_schema else {
-            return Err(FormatterError::Failed("schema not found".to_owned()));
+        let mso = try_extract_mobile_security_object(&issuer_signed.issuer_auth)?;
+        let Some(namespaces) = issuer_signed.name_spaces else {
+            return Err(FormatterError::Failed(
+                "IssuerSigned object is missing namespaces".to_owned(),
+            ));
         };
+        verify_digests(&mso, &namespaces)?;
+
+        let now = OffsetDateTime::now_utc();
+        let doctype = mso.doc_type;
+        let credential_id = Uuid::new_v4().into();
+        let mut claims = parse_claims(namespaces, self.datatype_provider.as_ref(), credential_id)?;
+        claims.push(Claim {
+            id: Uuid::new_v4(),
+            credential_id,
+            created_date: now,
+            last_modified: now,
+            value: Some(doctype.to_owned()),
+            path: "doctype".to_string(),
+            selectively_disclosable: false,
+            schema: Some(ClaimSchema {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: "doctype".to_string(),
+                data_type: "STRING".to_owned(),
+                array: false,
+                metadata: true,
+            }),
+        });
+
+        let mut claim_schemas: Vec<CredentialSchemaClaim> = vec![];
+        for claim in claims.iter_mut() {
+            let Some(schema) = claim.schema.as_ref() else {
+                continue;
+            };
+
+            match claim_schemas.iter().find(|s| s.schema.key == schema.key) {
+                Some(matching_schema) => {
+                    let parsed_datatype = claim.schema.as_ref().map(|schema| &schema.data_type);
+                    if Some(&matching_schema.schema.data_type) != parsed_datatype {
+                        tracing::warn!(
+                            "Mismatch of detected datatype ({parsed_datatype:?}) of array claim: '{}'",
+                            claim.path
+                        );
+                    }
+
+                    // reuse the already inserted schema here (to match ids) of array siblings
+                    claim.schema = Some(matching_schema.schema.to_owned());
+                }
+                None => {
+                    claim_schemas.push(CredentialSchemaClaim {
+                        schema: schema.to_owned(),
+                        required: false,
+                    });
+                }
+            };
+        }
 
         let credential_schema = crate::model::credential_schema::CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: schema.id.to_owned(),
+            created_date: now,
+            last_modified: now,
+            name: doctype.to_owned(),
             format: "MDOC".to_string(),
             revocation_method: "NONE".to_string(),
             wallet_storage_type: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
-            schema_id: schema.id,
+            schema_id: doctype,
             schema_type: CredentialSchemaType::Mdoc,
             imported_source_url: "".to_string(),
             allow_suspension: false,
             external_schema: true,
             organisation: None,
-            claim_schemas: Some(vec![]), // TODO ONE-7545
+            claim_schemas: Some(claim_schemas),
         };
 
         let issuer_id = Uuid::new_v4().into();
@@ -452,8 +506,8 @@ impl CredentialFormatter for MdocFormatter {
             id: certificate_id,
             identifier_id: issuer_id,
             organisation_id: None,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: now,
+            last_modified: now,
             expiry_date: issuer_certificate.expiry,
             name: issuer_certificate
                 .subject_common_name
@@ -465,8 +519,8 @@ impl CredentialFormatter for MdocFormatter {
         };
         let issuer_identifier = Identifier {
             id: issuer_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: now,
+            last_modified: now,
             name,
             r#type: crate::model::identifier::IdentifierType::Certificate,
             is_remote: true,
@@ -487,8 +541,8 @@ impl CredentialFormatter for MdocFormatter {
         let name = format!("holder {holder_id}");
         let holder_identifier = Identifier {
             id: holder_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
+            created_date: now,
+            last_modified: now,
             name: name.to_owned(),
             r#type: crate::model::identifier::IdentifierType::Key,
             is_remote: false,
@@ -498,8 +552,8 @@ impl CredentialFormatter for MdocFormatter {
             did: None,
             key: Some(Key {
                 id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
+                created_date: now,
+                last_modified: now,
                 public_key: holder_key.key.public_key_as_raw(),
                 name,
                 key_reference: None,
@@ -511,10 +565,10 @@ impl CredentialFormatter for MdocFormatter {
         };
 
         Ok(Credential {
-            id: Uuid::new_v4().into(),
+            id: credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            issuance_date: credential.issuance_date,
+            issuance_date: Some(mso.validity_info.signed.into()),
             deleted_at: None,
             protocol: "".to_string(),
             redirect_uri: None,
@@ -531,7 +585,7 @@ impl CredentialFormatter for MdocFormatter {
             interaction: None,
             revocation_list: None,
             key: None,
-            claims: Some(vec![]), // TODO ONE-7545
+            claims: Some(claims),
         })
     }
 }
@@ -559,37 +613,7 @@ async fn extract_credentials_internal(
     let holder_jwk = try_extract_holder_public_key(issuer_auth)?;
 
     if verify {
-        let digest_algo = mso.digest_algorithm;
-        let digest_fn = |data: &[u8]| match digest_algo {
-            DigestAlgorithm::Sha256 => Sha256::digest(data).to_vec(),
-            DigestAlgorithm::Sha384 => Sha384::digest(data).to_vec(),
-            DigestAlgorithm::Sha512 => Sha512::digest(data).to_vec(),
-        };
-
-        let digest_values = mso.value_digests;
-
-        for (namespace, signed_items) in &namespaces {
-            let digest_ids = digest_values
-                .get(namespace)
-                .ok_or(FormatterError::CouldNotVerify(format!(
-                    "Missing digest value for namespace {namespace}"
-                )))?;
-
-            for signed_item in signed_items {
-                let digest_id = digest_ids.get(&signed_item.inner().digest_id).ok_or(
-                    FormatterError::CouldNotExtractCredentials("Missing digest_ids".to_owned()),
-                )?;
-
-                let item_as_cbor = signed_item.bytes();
-                let digest = digest_fn(item_as_cbor);
-
-                if digest != digest_id.0 {
-                    return Err(FormatterError::CouldNotExtractCredentials(
-                        "Invalid digest_id".to_owned(),
-                    ));
-                }
-            }
-        }
+        verify_digests(&mso, &namespaces)?;
     }
 
     let mut claims = extract_claims(namespaces)?;
@@ -627,6 +651,48 @@ async fn extract_credentials_internal(
             metadata,
         }),
     })
+}
+
+fn verify_digests(
+    mso: &MobileSecurityObject,
+    namespaces: &Namespaces,
+) -> Result<(), FormatterError> {
+    let digest_algo = mso.digest_algorithm;
+    let digest_fn = |data: &[u8]| match digest_algo {
+        DigestAlgorithm::Sha256 => Sha256::digest(data).to_vec(),
+        DigestAlgorithm::Sha384 => Sha384::digest(data).to_vec(),
+        DigestAlgorithm::Sha512 => Sha512::digest(data).to_vec(),
+    };
+
+    let digest_values = &mso.value_digests;
+
+    for (namespace, signed_items) in namespaces {
+        let digest_ids = digest_values
+            .get(namespace)
+            .ok_or(FormatterError::CouldNotVerify(format!(
+                "Missing digest value for namespace {namespace}"
+            )))?;
+
+        for signed_item in signed_items {
+            let expected_digest = &digest_ids
+                .get(&signed_item.inner().digest_id)
+                .ok_or(FormatterError::CouldNotExtractCredentials(
+                    "Missing digest_ids".to_owned(),
+                ))?
+                .0;
+
+            let item_as_cbor = signed_item.bytes();
+            let digest = digest_fn(item_as_cbor);
+
+            if &digest != expected_digest {
+                return Err(FormatterError::CouldNotExtractCredentials(
+                    "Invalid digest".to_owned(),
+                ));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn try_verify_detached_signature_with_provider(
@@ -1096,4 +1162,209 @@ pub async fn try_extracting_mso_from_token(
 ) -> Result<MobileSecurityObject, FormatterError> {
     let issuer_signed: IssuerSigned = decode_cbor_base64(token)?;
     try_extract_mobile_security_object(&issuer_signed.issuer_auth)
+}
+
+fn parse_claims(
+    namespaces: Namespaces,
+    datatype_provider: &dyn DataTypeProvider,
+    credential_id: CredentialId,
+) -> Result<Vec<Claim>, FormatterError> {
+    let mut result = vec![];
+    for (namespace, inner_claims) in namespaces {
+        for issuer_signed_item in inner_claims {
+            let issuer_signed_item = issuer_signed_item.into_inner();
+            let path = format!("{namespace}/{}", issuer_signed_item.element_identifier);
+            let mut claims = parse_claim(
+                &path,
+                &path,
+                issuer_signed_item.element_value,
+                datatype_provider,
+                credential_id,
+            )?;
+
+            // only the top-level claim / element root is selectively disclosable
+            if let Some(top_level_claim) = claims.iter_mut().find(|claim| claim.path == path) {
+                top_level_claim.selectively_disclosable = true;
+            }
+
+            result.extend(claims);
+        }
+
+        let now = OffsetDateTime::now_utc();
+        result.push(Claim {
+            id: Uuid::new_v4(),
+            credential_id,
+            created_date: now,
+            last_modified: now,
+            value: None,
+            path: namespace.to_string(),
+            selectively_disclosable: true,
+            schema: Some(ClaimSchema {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: namespace,
+                data_type: "OBJECT".to_owned(),
+                array: false,
+                metadata: false,
+            }),
+        });
+    }
+
+    Ok(result)
+}
+
+fn parse_claim(
+    claim_path: &str,
+    claim_schema_path: &str,
+    value: Value,
+    datatype_provider: &dyn DataTypeProvider,
+    credential_id: CredentialId,
+) -> Result<Vec<Claim>, FormatterError> {
+    let now = OffsetDateTime::now_utc();
+
+    // specific case of encoding picture claim as array
+    if matches!(value, Value::Array(_))
+        && let Ok(ExtractedClaim { data_type, value }) =
+            datatype_provider.extract_cbor_claim(&value)
+    {
+        return Ok(vec![Claim {
+            id: Uuid::new_v4(),
+            credential_id,
+            created_date: now,
+            last_modified: now,
+            value: Some(value),
+            path: claim_path.to_string(),
+            selectively_disclosable: false,
+            schema: Some(ClaimSchema {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                key: claim_schema_path.to_string(),
+                data_type,
+                array: false,
+                metadata: false,
+            }),
+        }]);
+    }
+
+    Ok(match value {
+        Value::Array(values) => {
+            // Check if array has all elements with the same type
+            let Some(first) = values.first() else {
+                return Ok(vec![]);
+            };
+            if !values.iter().all(|item| is_same_type(item, first)) {
+                return Err(FormatterError::CouldNotExtractCredentials(format!(
+                    "Non-homogenous array at: {claim_path}"
+                )));
+            }
+
+            let mut result: Vec<Claim> = vec![];
+            for (index, value) in values.into_iter().enumerate() {
+                let item_path = format!("{claim_path}/{index}");
+                let claims = parse_claim(
+                    &item_path,
+                    claim_schema_path,
+                    value,
+                    datatype_provider,
+                    credential_id,
+                )?;
+                result.extend(claims);
+            }
+
+            // data type of the array elements based on first item data_type
+            let Some(first) = result
+                .iter()
+                .find(|claim| claim.path == format!("{claim_path}/0"))
+                .and_then(|claim| claim.schema.as_ref())
+            else {
+                return Ok(vec![]);
+            };
+
+            result.push(Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: None,
+                path: claim_path.to_string(),
+                selectively_disclosable: false,
+                schema: Some(ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: claim_schema_path.to_string(),
+                    data_type: first.data_type.to_owned(),
+                    array: true,
+                    metadata: false,
+                }),
+            });
+
+            result
+        }
+        Value::Map(map) => {
+            let mut result = vec![];
+            for (key, value) in map {
+                let key = key.as_text().ok_or(FormatterError::Failed(
+                    "Expected a text map key".to_string(),
+                ))?;
+                let item_path = format!("{claim_path}/{key}");
+                let item_schema_path = format!("{claim_schema_path}/{key}");
+                let claims = parse_claim(
+                    &item_path,
+                    &item_schema_path,
+                    value,
+                    datatype_provider,
+                    credential_id,
+                )?;
+                result.extend(claims);
+            }
+
+            result.push(Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: None,
+                path: claim_path.to_string(),
+                selectively_disclosable: false,
+                schema: Some(ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: claim_schema_path.to_string(),
+                    data_type: "OBJECT".to_owned(),
+                    array: false,
+                    metadata: false,
+                }),
+            });
+
+            result
+        }
+        simple_value => {
+            let ExtractedClaim { data_type, value } = datatype_provider
+                .extract_cbor_claim(&simple_value)
+                .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
+
+            vec![Claim {
+                id: Uuid::new_v4(),
+                credential_id,
+                created_date: now,
+                last_modified: now,
+                value: Some(value),
+                path: claim_path.to_string(),
+                selectively_disclosable: false,
+                schema: Some(ClaimSchema {
+                    id: Uuid::new_v4().into(),
+                    created_date: now,
+                    last_modified: now,
+                    key: claim_schema_path.to_string(),
+                    data_type,
+                    array: false,
+                    metadata: false,
+                }),
+            }]
+        }
+    })
 }
