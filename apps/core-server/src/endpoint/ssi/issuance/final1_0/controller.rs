@@ -235,8 +235,8 @@ pub(crate) async fn oid4vci_final1_0_get_credential_offer(
     ),
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id"),
-        ("OAuth-Client-Attestation" = Option<String>, Header, description = "OAuth Client Attestation JWT for attestation-based client authentication"),
-        ("OAuth-Client-Attestation-PoP" = Option<String>, Header, description = "OAuth Client Attestation Proof of Possession JWT")
+        ("OAuth-Client-Attestation" = inline(Option<String>), Header, description = "OAuth Client Attestation JWT for attestation-based client authentication", nullable = false),
+        ("OAuth-Client-Attestation-PoP" = inline(Option<String>), Header, description = "OAuth Client Attestation Proof of Possession JWT", nullable = false)
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCITokenResponseRestDTO),

@@ -196,6 +196,7 @@ pub(crate) struct OpenID4VCIDiscoveryResponseRestDTO {
     pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 pub(crate) struct OpenID4VCITokenRequestRestDTO {
     #[schema(example = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
