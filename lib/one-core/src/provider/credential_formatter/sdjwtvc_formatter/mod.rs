@@ -12,7 +12,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use model::SdJwtVcStatus;
+use model::{SdJwtVc, SdJwtVcStatus};
 use one_crypto::CryptoProvider;
 use sdjwt::format_credential;
 use serde::Deserialize;
@@ -21,40 +21,28 @@ use shared_types::{CredentialSchemaId, DidValue};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::error::FormatterError;
+use super::json_claims::{parse_claims, prepare_identifier};
 use super::model::{
-    CredentialClaim, CredentialClaimValue, CredentialData, CredentialStatus, HolderBindingCtx,
-    PublishedClaim,
+    AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
+    CredentialPresentation, CredentialStatus, CredentialSubject, DetailCredential, Features,
+    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, PublishedClaim,
+    SelectiveDisclosure, VerificationFn,
 };
-use super::sdjwt;
-use super::sdjwt::model::KeyBindingPayload;
+use super::sdjwt::disclosures::parse_token;
+use super::sdjwt::model::{DecomposedToken, KeyBindingPayload, SdJwtFormattingInputs};
+use super::sdjwt::{SdJwtHolderBindingParams, prepare_sd_presentation};
 use super::vcdm::VcdmCredential;
+use super::{CredentialFormatter, MetadataClaimSchema, StatusListType, sdjwt};
 use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, FormatType, IdentifierType, IssuanceProtocolType,
     KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
-use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
-use crate::model::did::Did;
-use crate::model::identifier::{Identifier, IdentifierState};
-use crate::model::key::Key;
+use crate::model::identifier::Identifier;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::json_claims::parse_claims;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, CredentialSubject, DetailCredential, Features,
-    FormatterCapabilities, IdentifierDetails, SelectiveDisclosure, VerificationFn,
-};
-use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
-use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, SdJwtFormattingInputs};
-use crate::provider::credential_formatter::sdjwt::{
-    SdJwtHolderBindingParams, prepare_sd_presentation,
-};
-use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
-use crate::provider::credential_formatter::{
-    CredentialFormatter, MetadataClaimSchema, StatusListType,
-};
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
@@ -164,7 +152,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             organisation: None,
         };
 
-        let issuer_identifier = self.parse_identifier(&issuer)?;
+        let issuer_identifier = prepare_identifier(&issuer, self.key_algorithm_provider.as_ref())?;
         let holder_identifier = parsed_credential
             .payload
             .subject
@@ -172,7 +160,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             .transpose()
             .map_err(|e| FormatterError::Failed(e.to_string()))?
             .map(IdentifierDetails::Did)
-            .map(|details| self.parse_identifier(&details))
+            .map(|details| prepare_identifier(&details, self.key_algorithm_provider.as_ref()))
             .transpose()?;
 
         Ok(Credential {
@@ -476,99 +464,6 @@ impl SDJWTVCFormatter {
             http_client,
             data_type_provider,
         }
-    }
-
-    fn parse_identifier(&self, detail: &IdentifierDetails) -> Result<Identifier, FormatterError> {
-        let now = OffsetDateTime::now_utc();
-        let identifier_id = Uuid::new_v4().into();
-        let name = format!("identifier {identifier_id}");
-
-        let (identifier_certificate, identifier_did, identifier_key, identifier_type) = match detail
-        {
-            IdentifierDetails::Certificate(certificate) => {
-                let cert = Certificate {
-                    id: Uuid::new_v4().into(),
-                    identifier_id,
-                    organisation_id: None,
-                    created_date: now,
-                    last_modified: now,
-                    expiry_date: certificate.expiry,
-                    name: certificate
-                        .subject_common_name
-                        .clone()
-                        .unwrap_or(name.clone()),
-                    chain: certificate.chain.clone(),
-                    fingerprint: certificate.fingerprint.clone(),
-                    state: CertificateState::Active,
-                    key: None,
-                };
-                (
-                    Some(cert),
-                    None,
-                    None,
-                    crate::model::identifier::IdentifierType::Certificate,
-                )
-            }
-            IdentifierDetails::Did(did) => {
-                let did_model = Did {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    name: format!("did {identifier_id}"),
-                    did: did.to_owned(),
-                    did_type: crate::model::did::DidType::Remote,
-                    did_method: did.method().to_string(),
-                    deactivated: false,
-                    log: None,
-                    keys: None,
-                    organisation: None,
-                };
-                (
-                    None,
-                    Some(did_model),
-                    None,
-                    crate::model::identifier::IdentifierType::Did,
-                )
-            }
-            IdentifierDetails::Key(key) => {
-                let parsed_key = self
-                    .key_algorithm_provider
-                    .parse_jwk(key)
-                    .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-                let key_model = Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: now,
-                    last_modified: now,
-                    public_key: parsed_key.key.public_key_as_raw(),
-                    name: format!("key {identifier_id}"),
-                    key_reference: None,
-                    storage_type: "INTERNAL".to_string(),
-                    key_type: parsed_key.algorithm_type.to_string(),
-                    organisation: None,
-                };
-                (
-                    None,
-                    None,
-                    Some(key_model),
-                    crate::model::identifier::IdentifierType::Key,
-                )
-            }
-        };
-
-        Ok(Identifier {
-            id: identifier_id,
-            created_date: now,
-            last_modified: now,
-            name,
-            r#type: identifier_type,
-            is_remote: true,
-            state: IdentifierState::Active,
-            deleted_at: None,
-            organisation: None,
-            did: identifier_did,
-            key: identifier_key,
-            certificates: identifier_certificate.map(|c| vec![c]),
-        })
     }
 
     async fn extract_credentials_internal(

@@ -293,6 +293,7 @@ impl OneDevCore {
                                 .embed_layout_properties,
                         },
                         key_algorithm_provider.clone(),
+                        data_type_provider.clone(),
                     )) as _,
                 ),
                 (

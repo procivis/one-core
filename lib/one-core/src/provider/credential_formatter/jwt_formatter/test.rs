@@ -1,21 +1,24 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
+use maplit::hashset;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use similar_asserts::assert_eq;
+use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use super::JWTFormatter;
+use super::model::VcClaim;
+use super::{JWTFormatter, Params};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::credential_schema::{LayoutProperties, LayoutType};
+use crate::model::claim::Claim;
+use crate::model::credential::CredentialRole;
+use crate::model::credential_schema::{CredentialSchemaClaim, LayoutProperties, LayoutType};
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::common::MockAuth;
-use crate::provider::credential_formatter::jwt_formatter::Params;
-use crate::provider::credential_formatter::jwt_formatter::model::VcClaim;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
     CredentialStatus, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource,
@@ -25,6 +28,8 @@ use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
+use crate::provider::data_type::model::ExtractedClaim;
+use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -180,6 +185,7 @@ async fn test_format_credential() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     let mut credential_data = get_credential_data(
@@ -272,6 +278,7 @@ async fn test_format_credential_with_layout_properties() {
             embed_layout_properties: true,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     let mut credential_data = get_credential_data(
@@ -363,6 +370,7 @@ async fn test_format_credential_nested_array() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     let credential_data = get_credential_data_with_array(
@@ -444,6 +452,7 @@ async fn test_extract_credentials() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -550,6 +559,7 @@ async fn test_extract_credentials_nested_array() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -651,6 +661,7 @@ async fn test_format_credential_presentation() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     // Both
@@ -686,6 +697,7 @@ fn test_get_capabilities() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
     assert_eq!(1, jwt_formatter.get_capabilities().features.len());
@@ -699,6 +711,7 @@ fn test_schema_id() {
             embed_layout_properties: false,
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
@@ -721,4 +734,108 @@ fn test_schema_id() {
         result.unwrap(),
         format!("https://example.com/ssi/schema/v1/{id}")
     )
+}
+
+#[tokio::test]
+async fn test_parse_credential() {
+    const TOKEN: &str = "eyJhbGciOiJFUzI1NiIsImtpZCI6ImRpZDp3ZWI6Y29yZS5kZXYucHJvY2l2aXMtb25lLmNvbTpzc2k6ZGlkLXdlYjp2MTpmNjI4MzMwNS02NjdhLTQ3NGItYTdlMy0wMmM0YmE5OTg3OTYja2V5LWYwYjQ2YWI5LTcxZGItNDJmNi04YWI2LWYwOWVlMDFiMGJlNyIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NjA2NzIyMDksImV4cCI6MTgyMzc0NDIwOSwibmJmIjoxNzYwNjcyMjA5LCJpc3MiOiJkaWQ6d2ViOmNvcmUuZGV2LnByb2NpdmlzLW9uZS5jb206c3NpOmRpZC13ZWI6djE6ZjYyODMzMDUtNjY3YS00NzRiLWE3ZTMtMDJjNGJhOTk4Nzk2Iiwic3ViIjoiZGlkOmtleTp6RG5hZW9rVzd4SllXRkxOazV5QThXOUxWVnE3RWUydFlUUXdNSzJkSnlDNGUzckNyIiwidmMiOnsiaXNzdWVyIjoiZGlkOndlYjpjb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tOnNzaTpkaWQtd2ViOnYxOmY2MjgzMzA1LTY2N2EtNDc0Yi1hN2UzLTAyYzRiYTk5ODc5NiIsInZhbGlkRnJvbSI6IjIwMjUtMTAtMTdUMDM6MzY6NDkuMzk5ODIyNjg4WiIsInZhbGlkVW50aWwiOiIyMDI3LTEwLTE3VDAzOjM2OjQ5LjM5OTgyMjY4OFoiLCJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvbnMvY3JlZGVudGlhbHMvdjIiLCJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL2NvbnRleHQvdjEvYjc5YjdiNWItMjBmOS00MzRiLWIyNDctYjBkMTljYzE1MWRhIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiLCI3NTQzTmVzdGVkIl0sImNyZWRlbnRpYWxTdWJqZWN0Ijp7ImFyciI6WyIxIiwiMiJdLCJvYmoiOnsibmVzdGVkU3RyIjoibiJ9LCJzdHIiOiJzIn0sImNyZWRlbnRpYWxTdGF0dXMiOlt7ImlkIjoidXJuOnV1aWQ6MTZlYmI3MmItOWFkYi00MzNiLWFiYjQtYjllZjdhYjk0NzQyIiwidHlwZSI6IkJpdHN0cmluZ1N0YXR1c0xpc3RFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwczovL2NvcmUuZGV2LnByb2NpdmlzLW9uZS5jb20vc3NpL3Jldm9jYXRpb24vdjEvbGlzdC8zMjdmZjU3YS1iYWRkLTRlMDYtYTRmZC0yNTdhNGU1MGZkYzkiLCJzdGF0dXNMaXN0SW5kZXgiOiI0MCJ9LHsiaWQiOiJ1cm46dXVpZDo0MzZjZWRjZC1jYTA2LTQ2NzMtYWU0ZS1hN2UzNTY5ZTgyYWMiLCJ0eXBlIjoiQml0c3RyaW5nU3RhdHVzTGlzdEVudHJ5Iiwic3RhdHVzUHVycG9zZSI6InN1c3BlbnNpb24iLCJzdGF0dXNMaXN0Q3JlZGVudGlhbCI6Imh0dHBzOi8vY29yZS5kZXYucHJvY2l2aXMtb25lLmNvbS9zc2kvcmV2b2NhdGlvbi92MS9saXN0LzJkYjEwY2E2LTIzZGUtNDU4MC04Nzk3LWY0M2ZiNWEwOGY5MiIsInN0YXR1c0xpc3RJbmRleCI6IjQwIn1dLCJjcmVkZW50aWFsU2NoZW1hIjp7ImlkIjoiaHR0cHM6Ly9jb3JlLmRldi5wcm9jaXZpcy1vbmUuY29tL3NzaS9zY2hlbWEvdjEvYjc5YjdiNWItMjBmOS00MzRiLWIyNDctYjBkMTljYzE1MWRhIiwidHlwZSI6IlByb2NpdmlzT25lU2NoZW1hMjAyNCJ9fX0.5_w7xY87jAZJ2N9zhr5xcisb5H-SslFBkll4U_ogLt3kZXHYR4v8131JMbeCKpbQgBupguhospBvHHxp_qrVHQ";
+
+    let mut datatype_provider = MockDataTypeProvider::new();
+    datatype_provider
+        .expect_extract_json_claim()
+        .returning(|_| {
+            Ok(ExtractedClaim {
+                data_type: "STRING".to_string(),
+                value: "value".to_string(),
+            })
+        });
+
+    let jwt_formatter = JWTFormatter {
+        params: Params {
+            leeway: 45,
+            embed_layout_properties: false,
+        },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        data_type_provider: Arc::new(datatype_provider),
+    };
+
+    let credential = jwt_formatter.parse_credential(TOKEN).await.unwrap();
+
+    assert_eq!(credential.role, CredentialRole::Holder);
+    assert_eq!(
+        credential.issuance_date.unwrap(),
+        datetime!(2025-10-17 03:36:49 UTC)
+    );
+
+    let issuer = credential.issuer_identifier.as_ref().unwrap();
+    assert_eq!(
+        issuer.did.as_ref().unwrap().did.to_string(),
+        "did:web:core.dev.procivis-one.com:ssi:did-web:v1:f6283305-667a-474b-a7e3-02c4ba998796"
+    );
+
+    let holder = credential.holder_identifier.as_ref().unwrap();
+    assert_eq!(
+        holder.did.as_ref().unwrap().did.to_string(),
+        "did:key:zDnaeokW7xJYWFLNk5yA8W9LVVq7Ee2tYTQwMK2dJyC4e3rCr"
+    );
+
+    let schema = credential.schema.as_ref().unwrap();
+    assert_eq!(schema.format, "JWT");
+    assert_eq!(schema.revocation_method, "BITSTRINGSTATUSLIST");
+    assert_eq!(schema.name, "7543Nested");
+    assert_eq!(
+        schema.schema_id,
+        "https://core.dev.procivis-one.com/ssi/schema/v1/b79b7b5b-20f9-434b-b247-b0d19cc151da"
+    );
+
+    let claims = credential.claims.as_ref().unwrap();
+    assert_eq!(claims.len(), 15);
+
+    let get_claim_paths = |filter: &dyn Fn(&Claim) -> bool| {
+        HashSet::from_iter(
+            claims
+                .iter()
+                .filter(|claim| filter(claim))
+                .map(|claim| claim.path.as_str()),
+        )
+    };
+
+    // intermediary
+    assert_eq!(
+        get_claim_paths(&|claim| claim.value.is_none() && !claim.schema.as_ref().unwrap().metadata),
+        hashset! { "arr", "obj" }
+    );
+    // leaf
+    assert_eq!(
+        get_claim_paths(&|claim| claim.value == Some("value".to_string())
+            && !claim.schema.as_ref().unwrap().metadata),
+        hashset! { "str", "obj/nestedStr", "arr/0", "arr/1" }
+    );
+    // metadata
+    assert_eq!(
+        get_claim_paths(&|claim| claim.schema.as_ref().unwrap().metadata),
+        hashset! { "iat", "nbf", "iss", "sub", "exp", "vc", "vc/type", "vc/type/0", "vc/type/1" }
+    );
+
+    let claim_schemas = schema.claim_schemas.as_ref().unwrap();
+    assert_eq!(claim_schemas.len(), 11);
+
+    let get_claim_schema_keys = |filter: &dyn Fn(&CredentialSchemaClaim) -> bool| {
+        HashSet::from_iter(
+            claim_schemas
+                .iter()
+                .filter(|schema| filter(schema))
+                .map(|schema| schema.schema.key.as_str()),
+        )
+    };
+
+    assert_eq!(
+        get_claim_schema_keys(&|schema| !schema.schema.metadata),
+        hashset! { "str", "arr", "obj", "obj/nestedStr" }
+    );
+
+    assert_eq!(
+        get_claim_schema_keys(&|schema| schema.schema.metadata),
+        hashset! { "exp", "iss", "iat", "sub", "nbf", "vc", "vc/type" }
+    );
 }

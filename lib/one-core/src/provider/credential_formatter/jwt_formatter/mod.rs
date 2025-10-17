@@ -1,28 +1,34 @@
 //! Implementations for JWT credential format.
 //! https://datatracker.ietf.org/doc/html/rfc7519
 
+use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use async_trait::async_trait;
 use model::VcClaim;
 use serde::Deserialize;
+use shared_types::DidValue;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
-use super::model::{CredentialData, Features, HolderBindingCtx};
+use super::error::FormatterError;
+use super::json_claims::{parse_claims, prepare_identifier};
+use super::model::{
+    AuthenticationFn, CredentialData, CredentialPresentation, DetailCredential, Features,
+    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, VerificationFn,
+};
+use super::vcdm::vcdm_metadata_claims;
+use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
 };
-use crate::model::credential_schema::CredentialSchema;
+use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialPresentation, DetailCredential, FormatterCapabilities,
-    VerificationFn,
-};
-use crate::provider::credential_formatter::vcdm::vcdm_metadata_claims;
-use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
+use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::jwt::Jwt;
@@ -38,6 +44,7 @@ mod status_list;
 pub struct JWTFormatter {
     params: Params,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    data_type_provider: Arc<dyn DataTypeProvider>,
 }
 
 #[derive(Deserialize)]
@@ -48,10 +55,15 @@ pub struct Params {
 }
 
 impl JWTFormatter {
-    pub fn new(params: Params, key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
+    pub fn new(
+        params: Params,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        data_type_provider: Arc<dyn DataTypeProvider>,
+    ) -> Self {
         Self {
             params,
             key_algorithm_provider,
+            data_type_provider,
         }
     }
 }
@@ -255,5 +267,140 @@ impl CredentialFormatter for JWTFormatter {
 
     fn user_claims_path(&self) -> Vec<String> {
         vec!["vc".to_string(), "credentialSubject".to_string()]
+    }
+
+    async fn parse_credential(&self, credential: &str) -> Result<Credential, FormatterError> {
+        let now = OffsetDateTime::now_utc();
+
+        let jwt: Jwt<VcClaim> = Jwt::build_from_token(credential, None, None).await?;
+
+        let revocation_method =
+            if let Some(status) = jwt.payload.custom.vc.credential_status.first() {
+                match status.r#type.as_str() {
+                    "LVVC" => RevocationType::Lvvc,
+                    "BitstringStatusListEntry" => RevocationType::BitstringStatusList,
+                    _ => {
+                        return Err(FormatterError::Failed(format!(
+                            "Unknown revocation method: {}",
+                            status.r#type
+                        )));
+                    }
+                }
+            } else {
+                RevocationType::None
+            };
+
+        let credential_id = Uuid::new_v4().into();
+        let vc_types = jwt.payload.custom.vc.r#type.clone();
+        let schema_name = vc_types
+            .iter()
+            .find(|t| t != &"VerifiableCredential")
+            .cloned()
+            .unwrap_or_else(|| "VerifiableCredential".to_string());
+
+        // Get metadata claims first (includes vc type and standard JWT claims)
+        let metadata_claims = jwt.get_metadata_claims()?;
+
+        // Parse claims from credential subject
+        let credential_subject = jwt
+            .payload
+            .custom
+            .vc
+            .credential_subject
+            .first()
+            .ok_or_else(|| FormatterError::Failed("Missing credential subject".to_string()))?;
+
+        let (mut claims, mut claim_schemas) = parse_claims(
+            HashMap::from_iter(credential_subject.claims.clone()),
+            self.data_type_provider.as_ref(),
+            credential_id,
+        )?;
+
+        // Add parsed metadata claims
+        let (metadata_claims, metadata_claim_schemas) = parse_claims(
+            metadata_claims,
+            self.data_type_provider.as_ref(),
+            credential_id,
+        )?;
+        claims.extend(metadata_claims);
+        claim_schemas.extend(metadata_claim_schemas);
+
+        let schema_id = jwt
+            .payload
+            .custom
+            .vc
+            .credential_schema
+            .as_ref()
+            .and_then(|schema| schema.first())
+            .map(|s| s.id.clone())
+            .unwrap_or_else(|| schema_name.clone());
+
+        let schema = CredentialSchema {
+            id: Uuid::new_v4().into(),
+            deleted_at: None,
+            created_date: now,
+            last_modified: now,
+            name: schema_name,
+            format: "JWT".to_string(),
+            revocation_method: revocation_method.to_string(),
+            wallet_storage_type: None,
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id,
+            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
+            imported_source_url: "".to_string(),
+            allow_suspension: false,
+            external_schema: false,
+            claim_schemas: Some(claim_schemas),
+            organisation: None,
+        };
+
+        let issuer = jwt
+            .payload
+            .issuer
+            .ok_or(FormatterError::Failed("JWT missing issuer".to_string()))?
+            .parse()
+            .map_err(|e: anyhow::Error| FormatterError::Failed(e.to_string()))?;
+
+        let issuer_identifier = prepare_identifier(
+            &IdentifierDetails::Did(issuer),
+            self.key_algorithm_provider.as_ref(),
+        )?;
+        let holder_identifier = jwt
+            .payload
+            .subject
+            .map(|did| DidValue::from_str(&did))
+            .transpose()
+            .map_err(|e| FormatterError::Failed(e.to_string()))?
+            .map(IdentifierDetails::Did)
+            .map(|details| prepare_identifier(&details, self.key_algorithm_provider.as_ref()))
+            .transpose()?;
+
+        Ok(Credential {
+            id: credential_id,
+            created_date: now,
+            issuance_date: jwt.payload.issued_at,
+            last_modified: now,
+            deleted_at: None,
+            protocol: "".to_string(),
+            redirect_uri: None,
+            role: CredentialRole::Holder,
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            profile: None,
+            credential_blob_id: None,
+            wallet_unit_attestation_blob_id: None,
+            claims: Some(claims),
+            issuer_certificate: issuer_identifier
+                .certificates
+                .as_ref()
+                .and_then(|certs| certs.first().cloned()),
+            issuer_identifier: Some(issuer_identifier),
+            holder_identifier,
+            schema: Some(schema),
+            interaction: None,
+            revocation_list: None,
+            key: None,
+        })
     }
 }

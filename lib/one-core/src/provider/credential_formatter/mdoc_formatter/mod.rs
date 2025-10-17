@@ -30,15 +30,15 @@ use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
-use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType};
-use crate::model::identifier::{Identifier, IdentifierState};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::identifier::Identifier;
+use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
     CredentialPresentation, CredentialSchema, CredentialSchemaMetadata, CredentialSubject,
@@ -484,70 +484,16 @@ impl CredentialFormatter for MdocFormatter {
             claim_schemas: Some(claim_schemas),
         };
 
-        let issuer_id = Uuid::new_v4().into();
-        let name = format!("issuer {issuer_id}");
-        let certificate_id = Uuid::new_v4().into();
-        let issuer_certificate = Certificate {
-            id: certificate_id,
-            identifier_id: issuer_id,
-            organisation_id: None,
-            created_date: now,
-            last_modified: now,
-            expiry_date: issuer_certificate.expiry,
-            name: issuer_certificate
-                .subject_common_name
-                .unwrap_or_else(|| name.to_owned()),
-            chain: issuer_certificate.chain,
-            fingerprint: issuer_certificate.fingerprint,
-            state: CertificateState::Active,
-            key: None,
-        };
-        let issuer_identifier = Identifier {
-            id: issuer_id,
-            created_date: now,
-            last_modified: now,
-            name,
-            r#type: crate::model::identifier::IdentifierType::Certificate,
-            is_remote: true,
-            state: IdentifierState::Active,
-            deleted_at: None,
-            organisation: None,
-            did: None,
-            key: None,
-            certificates: Some(vec![issuer_certificate.to_owned()]),
-        };
+        let issuer_identifier = prepare_identifier(
+            &IdentifierDetails::Certificate(issuer_certificate),
+            self.key_algorithm_provider.as_ref(),
+        )?;
 
         let holder_jwk = try_extract_holder_public_key(&issuer_signed.issuer_auth)?;
-        let holder_key = self
-            .key_algorithm_provider
-            .parse_jwk(&holder_jwk)
-            .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
-        let holder_id = Uuid::new_v4().into();
-        let name = format!("holder {holder_id}");
-        let holder_identifier = Identifier {
-            id: holder_id,
-            created_date: now,
-            last_modified: now,
-            name: name.to_owned(),
-            r#type: crate::model::identifier::IdentifierType::Key,
-            is_remote: false,
-            state: IdentifierState::Active,
-            deleted_at: None,
-            organisation: None,
-            did: None,
-            key: Some(Key {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                public_key: holder_key.key.public_key_as_raw(),
-                name,
-                key_reference: None,
-                storage_type: "UNKNOWN".to_string(),
-                key_type: holder_key.algorithm_type.to_string(),
-                organisation: None,
-            }),
-            certificates: None,
-        };
+        let holder_identifier = prepare_identifier(
+            &IdentifierDetails::Key(holder_jwk),
+            self.key_algorithm_provider.as_ref(),
+        )?;
 
         Ok(Credential {
             id: credential_id,
@@ -563,8 +509,11 @@ impl CredentialFormatter for MdocFormatter {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            issuer_certificate: issuer_identifier
+                .certificates
+                .as_ref()
+                .and_then(|certs| certs.first().cloned()),
             issuer_identifier: Some(issuer_identifier),
-            issuer_certificate: Some(issuer_certificate),
             holder_identifier: Some(holder_identifier),
             schema: Some(credential_schema),
             interaction: None,

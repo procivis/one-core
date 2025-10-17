@@ -386,7 +386,11 @@ pub async fn initialize_core(
                         let params = format_config
                             .get(name)
                             .map_err(|e| OneCoreBuildError::Config(e.into()))?;
-                        Arc::new(JWTFormatter::new(params, key_algorithm_provider.clone())) as _
+                        Arc::new(JWTFormatter::new(
+                            params,
+                            key_algorithm_provider.clone(),
+                            datatype_provider.clone(),
+                        )) as _
                     }
                     FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new(
                         crypto.clone(),
