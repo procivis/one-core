@@ -113,9 +113,9 @@ pub fn validate_datatype_value(
     match fields.r#type {
         DatatypeType::String => validate_string(value, config.get(datatype)?)?,
         DatatypeType::Number => validate_number(value, config.get(datatype)?)?,
-        DatatypeType::File | DatatypeType::Picture => {
+        DatatypeType::SwiyuPicture | DatatypeType::Picture => {
             let params: FileParams = config.get(datatype)?;
-            validate_file(value, params.file_size, params.accept.as_deref())?
+            validate_picture(value, params.file_size, params.accept.as_deref())?
         }
         DatatypeType::Object => validate_object(value, config.get(datatype)?)?,
         DatatypeType::Array => validate_array(value, config.get(datatype)?)?,
@@ -298,7 +298,7 @@ struct FileParams {
     pub encode_as_mdl_portrait: Option<bool>,
 }
 
-pub(crate) fn validate_file(
+pub(crate) fn validate_picture(
     value: &str,
     max_size: Option<usize>,
     accept: Option<&[String]>,
@@ -639,7 +639,7 @@ mod tests {
         let datatype_config = indoc! {r#"
         PICTURE:
             display: "datatype.picture"
-            type: "FILE"
+            type: "PICTURE"
             order: 400
             params:
                 public:
@@ -703,9 +703,9 @@ mod tests {
     #[test]
     fn test_validate_values_file() {
         let datatype_config = indoc! {r#"
-        FILE:
+        PICTURE:
             display: "datatype.file"
-            type: "FILE"
+            type: "PICTURE"
             order: 400
             params: null
         "#};
@@ -714,14 +714,14 @@ mod tests {
 
         let valid = validate_datatype_value(
             "data:image/png;base64,dGVzdGNvbnRlbnQ=",
-            "FILE",
+            "PICTURE",
             &datatype_config,
         );
         assert!(valid.is_ok());
 
         let valid = validate_datatype_value(
             "data:image/jpeg;base64,dGVzdGNvbnRlbnQ=",
-            "FILE",
+            "PICTURE",
             &datatype_config,
         );
         assert!(valid.is_ok());

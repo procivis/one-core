@@ -5,8 +5,10 @@ mod mapper;
 pub mod model;
 mod number;
 mod picture;
+mod picture_utils;
 pub mod provider;
 mod string;
+mod swiyu_picture;
 
 use std::sync::Arc;
 
@@ -26,6 +28,7 @@ use string::StringDataType;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
 use crate::provider::data_type::picture::PictureDataType;
+use crate::provider::data_type::swiyu_picture::SwiyuPictureDataType;
 
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -86,8 +89,17 @@ pub fn data_type_provider_from_config(
                 })?;
                 Arc::new(PictureDataType::new(params))
             }
+            DatatypeType::SwiyuPicture => {
+                let params = fields
+                    .deserialize::<swiyu_picture::Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    })?;
+                Arc::new(SwiyuPictureDataType::new(params)?)
+            }
             _ => {
-                // skip for now, TODO: ONE-7544, ONE-7578
+                // skip Array and Objects until we support data extraction for intermediary claims
                 continue;
             }
         };

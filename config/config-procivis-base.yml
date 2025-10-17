@@ -455,7 +455,7 @@ datatype:
     display:
       en: "Picture (SWIYU)"
       de: "Bild (SWIYU)"
-    type: "FILE"
+    type: "SWIYU_PICTURE"
     order: 403
     params:
       public:
@@ -464,6 +464,9 @@ datatype:
         fileSize: 4194304
         supportedInputMode: FILE_UPLOAD
         showAs: IMAGE
+      private:
+        holder:
+          valueExtraction: ENABLED
   COUNT:
     display: "datatype.count"
     type: "NUMBER"

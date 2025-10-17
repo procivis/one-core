@@ -1,18 +1,14 @@
 use ct_codecs::{Base64, Encoder};
-use hex_literal::hex;
 use mime::IMAGE_JPEG;
 use serde::Deserialize;
 
-use crate::config::validator::datatype::{base64_byte_length, validate_file};
+use crate::config::validator::datatype::{base64_byte_length, validate_picture};
 use crate::provider::data_type::DataType;
 use crate::provider::data_type::error::DataTypeError;
 use crate::provider::data_type::model::{
     CborType, DataTypeCapabilities, ExtractionResult, JsonType,
 };
-
-const JPEG_HEADER: [u8; 2] = hex!("FF D8");
-const JPEG_SUFFIX: [u8; 2] = hex!("FF D9");
-const JPEG2000_HEADER: [u8; 12] = hex!("00 00 00 0C 6A 50 20 20 0D 0A 87 0A");
+use crate::provider::data_type::picture_utils::{JPEG_HEADER, JPEG_SUFFIX, JPEG2000_HEADER};
 
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq, Hash)]
 #[serde(rename_all = "camelCase")]
@@ -87,8 +83,12 @@ impl DataType for PictureDataType {
     ) -> Result<ExtractionResult, DataTypeError> {
         match value {
             serde_json::Value::String(value)
-                if validate_file(value, self.params.file_size, self.params.accept.as_deref())
-                    .is_ok() =>
+                if validate_picture(
+                    value,
+                    self.params.file_size,
+                    self.params.accept.as_deref(),
+                )
+                .is_ok() =>
             {
                 Ok(ExtractionResult::Value(value.clone()))
             }
@@ -132,6 +132,7 @@ impl DataType for PictureDataType {
 
 #[cfg(test)]
 mod test {
+    use hex_literal::hex;
     use serde_json::json;
     use similar_asserts::assert_eq;
 

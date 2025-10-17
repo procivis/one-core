@@ -504,7 +504,7 @@ impl SDJWTVCFormatter {
                 else {
                     continue;
                 };
-                if fields.r#type == DatatypeType::File {
+                if fields.r#type == DatatypeType::SwiyuPicture {
                     let path = claim_schema.schema.key.split(NESTED_CLAIM_MARKER).collect();
                     post_process_claims(path, &mut jwt.payload.custom.public_claims, |value| {
                         format!("{JPEG_DATA_URI_PREFIX}{value}")
@@ -569,7 +569,7 @@ impl SDJWTVCFormatter {
                 let Some(fields) = self.datatype_config.get_fields(data_type).ok() else {
                     return false;
                 };
-                fields.r#type == DatatypeType::File
+                fields.r#type == DatatypeType::SwiyuPicture
             }) {
                 let path = published_claim.key.split(NESTED_CLAIM_MARKER).collect();
                 post_process_claims(path, &mut claims, |value| {

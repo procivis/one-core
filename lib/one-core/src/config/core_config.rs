@@ -451,12 +451,12 @@ pub enum DatatypeType {
     #[serde(rename = "DATE")]
     #[strum(serialize = "DATE")]
     Date,
-    #[serde(rename = "FILE")]
-    #[strum(serialize = "FILE")]
-    File,
     #[serde(rename = "PICTURE")]
     #[strum(serialize = "PICTURE")]
     Picture,
+    #[serde(rename = "SWIYU_PICTURE")]
+    #[strum(serialize = "SWIYU_PICTURE")]
+    SwiyuPicture,
     #[serde(rename = "OBJECT")]
     #[strum(serialize = "OBJECT")]
     Object,

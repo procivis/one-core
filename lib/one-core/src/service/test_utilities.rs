@@ -211,7 +211,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params: null
             SWIYU_PICTURE:
                 display: 'display'
-                type: 'FILE'
+                type: 'SWIYU_PICTURE'
                 order: 403
                 params:
                 public:
