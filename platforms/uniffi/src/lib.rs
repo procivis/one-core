@@ -604,9 +604,9 @@ async fn initialize(
                                 Arc::new(JsonLdClassic::new(
                                     params,
                                     crypto.clone(),
-                                    providers.core_base_url.clone(),
-                                    did_method_provider.clone(),
                                     caching_loader.clone(),
+                                    datatype_provider.clone(),
+                                    key_algorithm_provider.clone(),
                                     client.clone(),
                                 )) as _
                             }
@@ -617,8 +617,8 @@ async fn initialize(
                                 Arc::new(JsonLdBbsplus::new(
                                     params,
                                     crypto.clone(),
-                                    providers.core_base_url.clone(),
                                     did_method_provider.clone(),
+                                    datatype_provider.clone(),
                                     key_algorithm_provider.clone(),
                                     caching_loader.clone(),
                                     client.clone(),

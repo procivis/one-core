@@ -129,8 +129,5 @@ pub trait CredentialFormatter: Send + Sync {
 
     /// Parse issued credential on holder side.
     /// Reconstructs credential_schema, claims, issuer identifiers etc.
-    async fn parse_credential(&self, _credential: &str) -> Result<Credential, FormatterError> {
-        // TODO: implement in ONE-7543 and ONE-7545
-        unimplemented!()
-    }
+    async fn parse_credential(&self, _credential: &str) -> Result<Credential, FormatterError>;
 }

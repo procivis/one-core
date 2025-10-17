@@ -12,6 +12,7 @@ use crate::config::core_config::{
     DidType, IdentifierType, KeyAlgorithmType, KeyStorageType, RevocationType,
     VerificationProtocolType,
 };
+use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
@@ -177,6 +178,10 @@ impl CredentialFormatter for PhysicalCardFormatter {
 
     fn user_claims_path(&self) -> Vec<String> {
         vec![]
+    }
+
+    async fn parse_credential(&self, _credential: &str) -> Result<Credential, FormatterError> {
+        unimplemented!()
     }
 }
 
