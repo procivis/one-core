@@ -42,7 +42,6 @@ async fn test_continue_issuance_endpoint() {
         .interactions
         .create(
             Some(interaction_id),
-            "https://www.procivis.ch",
             &interaction_body,
             &organisation,
             InteractionType::Issuance,
@@ -332,7 +331,6 @@ async fn test_continue_issuance_endpoint_failed_invalid_authorization_server() {
         .interactions
         .create(
             None,
-            credential_issuer.as_str(),
             &interaction_body,
             &organisation,
             InteractionType::Issuance,

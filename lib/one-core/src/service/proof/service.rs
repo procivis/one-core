@@ -533,7 +533,6 @@ impl ProofService {
                 maybe_interaction = Some(
                     add_new_interaction(
                         Uuid::new_v4(),
-                        &self.base_url,
                         &*self.interaction_repository,
                         serde_json::to_vec(&data).ok(),
                         proof_schema.organisation.clone(),
@@ -636,7 +635,6 @@ impl ProofService {
 
         add_new_interaction(
             interaction_id,
-            &self.base_url,
             &*self.interaction_repository,
             serde_json::to_vec(&context).ok(),
             Some(organisation.to_owned()),
@@ -876,7 +874,6 @@ impl ProofService {
 
         let interaction = add_new_interaction(
             interaction_id,
-            &self.base_url,
             &*self.interaction_repository,
             Some(interaction_data),
             organisation,

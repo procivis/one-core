@@ -716,17 +716,7 @@ async fn handle_proof_invitation(
     let data = serialize_interaction_data(&interaction_data)?;
 
     let now = OffsetDateTime::now_utc();
-    let interaction = create_and_store_interaction(
-        storage_access,
-        interaction_data
-            .response_uri
-            .ok_or(VerificationProtocolError::Failed(
-                "response_uri is None".to_string(),
-            ))?,
-        data,
-        organisation,
-    )
-    .await?;
+    let interaction = create_and_store_interaction(storage_access, data, organisation).await?;
 
     let interaction_id = interaction.id.to_owned();
 
@@ -750,18 +740,12 @@ async fn handle_proof_invitation(
 
 async fn create_and_store_interaction(
     storage_access: &StorageAccess,
-    credential_issuer_endpoint: Url,
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, VerificationProtocolError> {
     let now = OffsetDateTime::now_utc();
 
-    let interaction = interaction_from_handle_invitation(
-        credential_issuer_endpoint,
-        Some(data),
-        now,
-        organisation,
-    );
+    let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 
     storage_access
         .create_interaction(interaction.clone())

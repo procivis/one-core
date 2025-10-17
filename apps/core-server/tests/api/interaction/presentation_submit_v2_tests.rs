@@ -358,7 +358,6 @@ async fn setup_submittable_presentation_dcql(
     let verifier_url = context.server_mock.uri();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &verifier_url,
         json!(
             {
                 "response_type":"vp_token",

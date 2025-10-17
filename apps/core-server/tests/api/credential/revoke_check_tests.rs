@@ -983,7 +983,6 @@ async fn test_revoke_check_mdoc_update() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1147,7 +1146,6 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1311,7 +1309,6 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1479,7 +1476,6 @@ async fn test_revoke_check_token_update() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1628,7 +1624,6 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1779,7 +1774,6 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1928,7 +1922,6 @@ async fn test_suspended_to_valid_mdoc() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -2124,7 +2117,6 @@ async fn test_suspended_to_suspended_update_failed() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,

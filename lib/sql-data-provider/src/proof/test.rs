@@ -159,7 +159,6 @@ async fn setup(
     let interaction_id = Uuid::parse_str(
         &insert_interaction(
             &db,
-            "host",
             &[1, 2, 3],
             organisation_id,
             None,
@@ -507,7 +506,6 @@ async fn test_get_proof_with_relations() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
-                host: Some("http://www.host.co".parse().unwrap()),
                 organisation: None,
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
@@ -789,7 +787,6 @@ async fn test_get_proof_by_interaction_id_success() {
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(vec![1, 2, 3]),
-                host: Some("http://www.host.co/".parse().unwrap()),
                 organisation: None,
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,

@@ -30,7 +30,6 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -96,7 +95,6 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,

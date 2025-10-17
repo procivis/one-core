@@ -839,7 +839,6 @@ fn dummy_credential() -> Credential {
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
-            host: Some("https://core.dev.one-trust-solution.com".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,

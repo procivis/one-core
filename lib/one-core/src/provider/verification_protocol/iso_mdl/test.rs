@@ -175,7 +175,6 @@ async fn test_presentation_reject_ok() {
         interaction: Some(Interaction {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
-            host: None,
             data: Some(interaction_data),
             last_modified: OffsetDateTime::now_utc(),
             organisation: None,

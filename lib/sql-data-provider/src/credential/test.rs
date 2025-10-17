@@ -1053,7 +1053,6 @@ async fn test_update_credential_success() {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                host: Some("https://host.co".parse().unwrap()),
                 data: None,
                 organisation: None,
                 nonce_id: None,
@@ -1088,7 +1087,6 @@ async fn test_update_credential_success() {
     let interaction_id = Uuid::parse_str(
         &insert_interaction(
             &db,
-            "host",
             &[],
             organisation_id,
             None,
@@ -1173,7 +1171,6 @@ async fn test_update_credential_success_no_claims() {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
-                host: Some("https://host.co".parse().unwrap()),
                 data: None,
                 organisation: None,
                 nonce_id: None,
@@ -1209,7 +1206,6 @@ async fn test_update_credential_success_no_claims() {
     let interaction_id = Uuid::parse_str(
         &insert_interaction(
             &db,
-            "host",
             &[],
             organisation_id,
             None,

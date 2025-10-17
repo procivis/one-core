@@ -101,10 +101,8 @@ async fn test_direct_post_draft25_with_dcql_query() {
         "response_uri": "response_uri"
     });
 
-    let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -137,7 +135,10 @@ async fn test_direct_post_draft25_with_dcql_query() {
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/openid4vp/draft-25/response");
+    let url = format!(
+        "{}/ssi/openid4vp/draft-25/response",
+        context.config.app.core_base_url
+    );
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -265,10 +266,8 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         "response_uri": "response_uri"
     });
 
-    let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -301,7 +300,10 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/openid4vp/draft-25/response");
+    let url = format!(
+        "{}/ssi/openid4vp/draft-25/response",
+        context.config.app.core_base_url
+    );
     let resp = utils::client()
         .post(url)
         .form(&params)

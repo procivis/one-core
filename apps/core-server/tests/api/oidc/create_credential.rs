@@ -344,13 +344,11 @@ async fn test_post_issuer_credential_with(
         interaction_data["nonce"] = interaction_nonce.into();
     }
 
-    let base_url = &context.config.app.core_base_url;
     let interaction = context
         .db
         .interactions
         .create(
             Some(interaction_id),
-            base_url,
             &serde_json::to_vec(&interaction_data).unwrap(),
             &organisation,
             InteractionType::Issuance,
@@ -522,13 +520,11 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
     })).unwrap();
 
-    let base_url = &context.config.app.core_base_url;
     let interaction = context
         .db
         .interactions
         .create(
             Some(interaction_id),
-            base_url,
             &data,
             &organisation,
             InteractionType::Issuance,

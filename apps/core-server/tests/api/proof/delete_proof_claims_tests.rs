@@ -59,7 +59,6 @@ async fn test_delete_proof_claims_success() {
         .interactions
         .create(
             Some(interaction_id),
-            "https://www.procivis.ch",
             &[],
             &organisation,
             InteractionType::Verification,

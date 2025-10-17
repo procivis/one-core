@@ -543,7 +543,6 @@ impl CredentialService {
 
         add_new_interaction(
             interaction_id,
-            &self.base_url,
             &*self.interaction_repository,
             serde_json::to_vec(&context).ok(),
             Some(organisation.to_owned()),

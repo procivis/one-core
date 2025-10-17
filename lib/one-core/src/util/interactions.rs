@@ -7,26 +7,17 @@ use crate::service::error::ServiceError;
 
 pub(crate) async fn add_new_interaction(
     interaction_id: InteractionId,
-    base_url: &Option<String>,
     interaction_repository: &dyn InteractionRepository,
     data: Option<Vec<u8>>,
     organisation: Option<Organisation>,
     interaction_type: InteractionType,
 ) -> Result<Interaction, ServiceError> {
     let now = OffsetDateTime::now_utc();
-    let host = base_url
-        .as_ref()
-        .map(|url| {
-            url.parse()
-                .map_err(|_| ServiceError::MappingError(format!("Invalid base url {url}")))
-        })
-        .transpose()?;
 
     let new_interaction = Interaction {
         id: interaction_id,
         created_date: now,
         last_modified: now,
-        host,
         data,
         organisation,
         nonce_id: None,

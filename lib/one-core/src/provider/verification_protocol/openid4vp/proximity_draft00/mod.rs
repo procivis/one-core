@@ -682,7 +682,6 @@ pub(super) async fn create_interaction_and_proof(
         id: Uuid::new_v4(),
         created_date: now,
         last_modified: now,
-        host: None,
         data: interaction_data,
         organisation: Some(organisation),
         nonce_id: None,

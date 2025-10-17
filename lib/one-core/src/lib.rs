@@ -944,7 +944,6 @@ impl OneCore {
                 did_method_provider.clone(),
                 ble_waiter,
                 config.clone(),
-                providers.core_base_url.clone(),
                 organisation_repository.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),

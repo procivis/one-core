@@ -1145,13 +1145,7 @@ async fn test_get_proof_as_holder_success() {
     let interaction = context
         .db
         .interactions
-        .create(
-            None,
-            "https://example.com",
-            &[],
-            &organisation,
-            InteractionType::Verification,
-        )
+        .create(None, &[], &organisation, InteractionType::Verification)
         .await;
 
     let proof = context

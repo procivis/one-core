@@ -175,7 +175,6 @@ fn dummy_interaction(
         id: id.unwrap_or(Uuid::new_v4()),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        host: Some("http://host-base-url".parse().unwrap()),
         data: Some(data.to_string().into_bytes()),
         organisation: None,
         nonce_id: None,

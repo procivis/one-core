@@ -729,7 +729,6 @@ impl SSIHolderService {
                 id: interaction_id,
                 created_date: now,
                 last_modified: now,
-                host: None,
                 data: Some(data),
                 organisation: Some(organisation),
                 nonce_id: None,

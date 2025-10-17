@@ -353,7 +353,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             id: Uuid::new_v4(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            host: Some("http://www.host.co".parse().unwrap()),
             data: Some(b"interaction data".to_vec()),
             organisation: None,
             nonce_id: None,

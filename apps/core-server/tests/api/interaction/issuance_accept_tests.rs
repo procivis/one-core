@@ -161,7 +161,6 @@ async fn test_issuance_accept_openid4vc() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -357,7 +356,6 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -524,7 +522,6 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -686,7 +683,6 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -853,7 +849,6 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -957,7 +952,6 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1078,7 +1072,6 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1197,7 +1190,6 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1334,7 +1326,6 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1449,7 +1440,6 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1576,7 +1566,6 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1728,7 +1717,6 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -1899,7 +1887,6 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
@@ -2123,7 +2110,6 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             &interaction_data,
             &organisation,
             InteractionType::Issuance,

@@ -751,7 +751,6 @@ pub fn proof_for_scan_to_verify(
             id: Uuid::new_v4(),
             created_date: now,
             last_modified: now,
-            host: None,
             data: Some(interaction_data),
             organisation: schema.organisation,
             nonce_id: None,

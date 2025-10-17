@@ -1,6 +1,5 @@
 use shared_types::{BlobId, IdentifierId};
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
@@ -21,7 +20,6 @@ pub(super) fn get_issued_credential_update(
 }
 
 pub(crate) fn interaction_from_handle_invitation(
-    host: Url,
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
     organisation: Option<Organisation>,
@@ -30,7 +28,6 @@ pub(crate) fn interaction_from_handle_invitation(
         id: Uuid::new_v4(),
         created_date: now,
         last_modified: now,
-        host: Some(host),
         data,
         organisation,
         nonce_id: None,

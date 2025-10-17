@@ -49,7 +49,6 @@ use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
 use sql_data_provider::{DataLayer, DbConn};
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
@@ -571,7 +570,6 @@ pub async fn create_proof_schema(
 pub async fn create_interaction_with_id(
     id: Uuid,
     db_conn: &DbConn,
-    host: &str,
     data: &[u8],
     organisation: &Organisation,
     interaction_type: InteractionType,
@@ -582,7 +580,6 @@ pub async fn create_interaction_with_id(
         id,
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
-        host: Some(Url::parse(host).unwrap()),
         data: Some(data.into()),
         organisation: Some(organisation.to_owned()),
         nonce_id: None,
@@ -600,7 +597,6 @@ pub async fn create_interaction_with_id(
 
 pub async fn create_interaction(
     db_conn: &DbConn,
-    host: &str,
     data: &[u8],
     organisation: &Organisation,
     interaction_type: InteractionType,
@@ -608,7 +604,6 @@ pub async fn create_interaction(
     create_interaction_with_id(
         Uuid::new_v4(),
         db_conn,
-        host,
         data,
         organisation,
         interaction_type,

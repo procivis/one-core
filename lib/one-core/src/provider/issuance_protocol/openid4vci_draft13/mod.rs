@@ -1668,7 +1668,6 @@ async fn handle_credential_invitation(
     let (interaction_id, credentials, issuer_proof_type_supported) =
         prepare_issuance_interaction_and_credentials_with_claims(
             organisation,
-            credential_issuer_endpoint,
             token_endpoint,
             issuer_metadata,
             credential_offer.grants,
@@ -1740,7 +1739,6 @@ async fn handle_continue_issuance(
     let (interaction_id, credentials, issuer_proof_type_supported) =
         prepare_issuance_interaction_and_credentials_with_claims(
             organisation,
-            credential_issuer_endpoint,
             token_endpoint,
             issuer_metadata,
             OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
@@ -1767,7 +1765,6 @@ async fn handle_continue_issuance(
 #[allow(clippy::too_many_arguments)]
 async fn prepare_issuance_interaction_and_credentials_with_claims(
     organisation: Organisation,
-    credential_issuer_endpoint: Url,
     token_endpoint: String,
     issuer_metadata: OpenID4VCIIssuerMetadataResponseDTO,
     grants: OpenID4VCIGrants,
@@ -1836,13 +1833,8 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     };
     let data = serialize_interaction_data(&holder_data)?;
 
-    let interaction = create_and_store_interaction(
-        storage_access,
-        credential_issuer_endpoint,
-        data,
-        Some(organisation.clone()),
-    )
-    .await?;
+    let interaction =
+        create_and_store_interaction(storage_access, data, Some(organisation.clone())).await?;
     let interaction_id = interaction.id;
 
     let credential_id: CredentialId = Uuid::new_v4().into();
@@ -2034,18 +2026,12 @@ async fn get_discovery_and_issuer_metadata(
 
 async fn create_and_store_interaction(
     storage_access: &StorageAccess,
-    credential_issuer_endpoint: Url,
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, IssuanceProtocolError> {
     let now = OffsetDateTime::now_utc();
 
-    let interaction = interaction_from_handle_invitation(
-        credential_issuer_endpoint,
-        Some(data),
-        now,
-        organisation,
-    );
+    let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 
     storage_access
         .create_interaction(interaction.clone())

@@ -4,7 +4,6 @@ use dcql::CredentialSet;
 use one_dto_mapper::convert_inner_of_inner;
 use shared_types::{CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
-use url::Url;
 use uuid::Uuid;
 
 use super::dto::{
@@ -26,7 +25,6 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
 pub(crate) fn interaction_from_handle_invitation(
-    host: Url,
     data: Option<Vec<u8>>,
     now: OffsetDateTime,
     organisation: Option<Organisation>,
@@ -35,7 +33,6 @@ pub(crate) fn interaction_from_handle_invitation(
         id: Uuid::new_v4(),
         created_date: now,
         last_modified: now,
-        host: Some(host),
         data,
         organisation,
         nonce_id: None,

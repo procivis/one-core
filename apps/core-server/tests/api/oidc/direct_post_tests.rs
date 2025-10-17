@@ -122,10 +122,8 @@ async fn test_direct_post_one_credential_correct() {
         "response_uri": "response_uri"
     });
 
-    let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -173,7 +171,10 @@ async fn test_direct_post_one_credential_correct() {
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+    let url = format!(
+        "{}/ssi/openid4vp/draft-20/response",
+        context.config.app.core_base_url
+    );
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -282,10 +283,8 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
         "response_uri": "response_uri"
     });
 
-    let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -317,7 +316,10 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/openid4vp/final-1.0/response");
+    let url = format!(
+        "{}/ssi/openid4vp/final-1.0/response",
+        context.config.app.core_base_url
+    );
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -462,7 +464,6 @@ async fn test_direct_post_one_credential_missing_required_claim() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -724,7 +725,6 @@ async fn test_direct_post_multiple_presentations() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -926,7 +926,6 @@ async fn test_direct_post_wrong_claim_format() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -1066,10 +1065,8 @@ async fn test_direct_post_draft25() {
         "response_uri": "response_uri"
     });
 
-    let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -1117,7 +1114,10 @@ async fn test_direct_post_draft25() {
     ];
 
     // WHEN
-    let url = format!("{base_url}/ssi/openid4vp/draft-25/response");
+    let url = format!(
+        "{}/ssi/openid4vp/draft-25/response",
+        context.config.app.core_base_url
+    );
     let resp = utils::client()
         .post(url)
         .form(&params)
@@ -1237,7 +1237,6 @@ async fn test_direct_post_with_profile_verification() {
     let base_url = context.config.app.core_base_url.clone();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &base_url,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,

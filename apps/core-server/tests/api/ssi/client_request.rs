@@ -84,7 +84,6 @@ async fn test_get_client_request() {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             interaction_data.to_string().as_bytes(),
             &organisation,
             InteractionType::Verification,

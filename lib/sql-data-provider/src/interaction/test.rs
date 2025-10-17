@@ -10,7 +10,6 @@ use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
 use shared_types::NonceId;
 use similar_asserts::assert_eq;
-use url::Url;
 use uuid::Uuid;
 
 use super::InteractionProvider;
@@ -46,14 +45,12 @@ struct TestSetupWithInteraction {
     pub db: sea_orm::DatabaseConnection,
     pub provider: InteractionProvider,
     pub interaction_id: Uuid,
-    pub host: Url,
     pub data: Vec<u8>,
 }
 
 async fn setup_with_interaction() -> TestSetupWithInteraction {
     let setup = setup(Repositories::default()).await;
 
-    let host: Url = "http://www.host.co".parse().unwrap();
     let data = vec![1, 2, 3];
 
     let organisation_id = insert_organisation_to_database(&setup.db, None, None)
@@ -62,7 +59,6 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
 
     let id = insert_interaction(
         &setup.db,
-        host.as_str(),
         &data,
         organisation_id,
         None,
@@ -77,7 +73,6 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
         db: setup.db,
         provider: setup.provider,
         interaction_id: id,
-        host,
         data,
     }
 }
@@ -97,7 +92,6 @@ async fn test_create_interaction() {
         id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        host: Some("http://www.host.co".parse().unwrap()),
         data: Some(vec![1, 2, 3]),
         organisation: Some(organisation),
         nonce_id: Some(nonce_id),
@@ -110,7 +104,6 @@ async fn test_create_interaction() {
     assert_eq!(result.unwrap(), id);
 
     let model = get_interaction(&setup.db, &id).await.unwrap();
-    assert_eq!(model.host, Some("http://www.host.co/".to_owned()));
     assert_eq!(model.data, Some(vec![1, 2, 3]));
     assert_eq!(model.nonce_id, Some(NonceId::from(nonce_id)));
 }
@@ -128,7 +121,6 @@ async fn test_get_interaction() {
     let interaction = result.unwrap();
 
     assert_eq!(interaction.data, Some(setup.data));
-    assert_eq!(interaction.host, Some(setup.host));
 }
 
 #[tokio::test]
@@ -148,7 +140,6 @@ async fn test_get_interaction_by_nonce_id() {
     let nonce_id = Uuid::new_v4();
     let interaction_id = insert_interaction(
         &setup.db,
-        "http://www.host.co/",
         &[],
         organisation_id,
         Some(nonce_id),

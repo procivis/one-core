@@ -520,7 +520,6 @@ impl OID4VCIFinal1_0Service {
                             UpdateInteractionRequest {
                                 data: Some(Some(data)),
                                 nonce_id: Some(Some(nonce_id)),
-                                ..Default::default()
                             },
                         )
                         .await?;

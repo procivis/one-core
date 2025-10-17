@@ -24,7 +24,6 @@ async fn test_get_credential_offer_success_jwt() {
         .interactions
         .create(
             None,
-            "http://test.com",
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
@@ -122,7 +121,6 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
         .interactions
         .create(
             None,
-            "http://test.com",
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
@@ -296,7 +294,6 @@ async fn test_get_credential_offer_success_certificate_identifier() {
         .interactions
         .create(
             None,
-            "http://test.com",
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
@@ -372,7 +369,6 @@ async fn test_get_credential_offer_success_mdoc() {
         .interactions
         .create(
             None,
-            "http://test.com",
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
@@ -449,7 +445,6 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
         .interactions
         .create(
             None,
-            "http://test.com",
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,

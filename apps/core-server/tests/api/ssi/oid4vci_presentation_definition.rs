@@ -121,7 +121,6 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
         .interactions
         .create(
             None,
-            &context.server_mock.uri(),
             interaction_data.to_string().as_bytes(),
             &organisation,
             InteractionType::Issuance,

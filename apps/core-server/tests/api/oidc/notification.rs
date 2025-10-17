@@ -151,13 +151,11 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
         "notification_id": "notification"
     })).unwrap();
 
-    let base_url = &context.config.app.core_base_url;
     let interaction = context
         .db
         .interactions
         .create(
             Some(interaction_id),
-            base_url,
             &data,
             &organisation,
             InteractionType::Issuance,

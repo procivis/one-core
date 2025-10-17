@@ -5,7 +5,6 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
 use shared_types::NonceId;
-use url::Url;
 use uuid::Uuid;
 
 use crate::entity::interaction;
@@ -19,7 +18,6 @@ impl TryFrom<Interaction> for interaction::ActiveModel {
             id: Set(value.id.to_string()),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
-            host: Set(value.host.as_ref().map(ToString::to_string)),
             data: Set(value.data),
             organisation_id: Set(organisation_id),
             nonce_id: Set(value.nonce_id.map(NonceId::from)),
@@ -31,10 +29,6 @@ impl TryFrom<Interaction> for interaction::ActiveModel {
 impl From<UpdateInteractionRequest> for interaction::ActiveModel {
     fn from(value: UpdateInteractionRequest) -> Self {
         Self {
-            host: value
-                .host
-                .map(|url| Set(url.map(|url| url.to_string())))
-                .unwrap_or_default(),
             data: value.data.map(Set).unwrap_or_default(),
             nonce_id: value
                 .nonce_id
@@ -50,15 +44,10 @@ pub(super) fn interaction_from_models(
     organisation: Option<Organisation>,
 ) -> Result<Interaction, DataLayerError> {
     let id = Uuid::from_str(&interaction.id)?;
-    let host = interaction
-        .host
-        .map(|host| Url::parse(&host).map_err(|_| DataLayerError::MappingError))
-        .transpose()?;
     Ok(Interaction {
         id,
         created_date: interaction.created_date,
         last_modified: interaction.last_modified,
-        host,
         data: interaction.data,
         organisation,
         nonce_id: interaction.nonce_id.map(Uuid::from),

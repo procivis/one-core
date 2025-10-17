@@ -807,15 +807,14 @@ async fn handle_proof_invitation(
     validate_interaction_data(&holder_interaction_data)?;
     let data = serialize_interaction_data(&holder_interaction_data)?;
 
-    let Some(response_uri) = holder_interaction_data.response_uri else {
+    let Some(_) = holder_interaction_data.response_uri else {
         return Err(VerificationProtocolError::Failed(
             "response_uri is missing".to_string(),
         ));
     };
 
     let now = OffsetDateTime::now_utc();
-    let interaction =
-        create_and_store_interaction(storage_access, response_uri, data, organisation).await?;
+    let interaction = create_and_store_interaction(storage_access, data, organisation).await?;
 
     let interaction_id = interaction.id.to_owned();
 
@@ -839,18 +838,12 @@ async fn handle_proof_invitation(
 
 async fn create_and_store_interaction(
     storage_access: &StorageAccess,
-    credential_issuer_endpoint: Url,
     data: Vec<u8>,
     organisation: Option<Organisation>,
 ) -> Result<Interaction, VerificationProtocolError> {
     let now = OffsetDateTime::now_utc();
 
-    let interaction = interaction_from_handle_invitation(
-        credential_issuer_endpoint,
-        Some(data),
-        now,
-        organisation,
-    );
+    let interaction = interaction_from_handle_invitation(Some(data), now, organisation);
 
     storage_access
         .create_interaction(interaction.clone())

@@ -85,7 +85,6 @@ async fn test_get_presentation_definition_openid_with_match_multiple_schemas() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        "http://localhost",
         &get_open_id_interaction_data(&credential_schema_1),
         &organisation,
         InteractionType::Verification,
@@ -290,7 +289,6 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
         .interactions
         .create(
             None,
-            "http://localhost",
             &get_open_id_interaction_data(&credential_schema),
             &organisation,
             InteractionType::Verification,
@@ -368,7 +366,6 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
         .interactions
         .create(
             None,
-            "http://localhost",
             &get_open_id_interaction_data(&credential_schema),
             &organisation,
             InteractionType::Verification,
@@ -424,7 +421,6 @@ async fn test_get_presentation_definition_open_id_vp_no_match() {
     let credential_schema = fixtures::create_credential_schema(&db_conn, &organisation, None).await;
     let interaction = fixtures::create_interaction(
         &db_conn,
-        "http://localhost",
         &get_open_id_interaction_data(&credential_schema),
         &organisation,
         InteractionType::Verification,
@@ -586,7 +582,6 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
         .interactions
         .create(
             None,
-            "http://localhost",
             &get_open_id_interaction_data_without_vp_formats(&credential_schema),
             &organisation,
             InteractionType::Verification,
@@ -695,7 +690,6 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
 
     let interaction = fixtures::create_interaction(
         &db_conn,
-        "https://core.test.one-trust-solution.com/ssi/openid4vp/draft-20/response",
         &json!({
             "response_type": "vp_token",
             "state": "30622803-c01a-4b24-9843-1aa4306510cb",
@@ -978,7 +972,6 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
         .interactions
         .create(
             None,
-            "http://localhost",
             &json!({
                 "response_type": "vp_token",
                 "state": "4ae7e7d5-2ac5-4325-858f-d93ff1fb4f8b",

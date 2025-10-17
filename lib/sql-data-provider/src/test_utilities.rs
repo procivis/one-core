@@ -512,7 +512,6 @@ pub async fn insert_identifier(
 
 pub async fn insert_interaction(
     database: &DatabaseConnection,
-    host: &str,
     data: &[u8],
     organisation_id: OrganisationId,
     nonce_id: Option<Uuid>,
@@ -524,7 +523,6 @@ pub async fn insert_interaction(
         id: Set(Uuid::new_v4().to_string()),
         created_date: Set(now),
         last_modified: Set(now),
-        host: Set(Some(host.to_owned())),
         data: Set(Some(data.to_owned())),
         organisation_id: Set(organisation_id),
         nonce_id: Set(nonce_id.map(NonceId::from)),

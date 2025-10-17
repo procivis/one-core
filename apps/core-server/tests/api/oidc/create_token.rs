@@ -37,7 +37,6 @@ async fn test_oidc_issuer_create_token() {
         .interactions
         .create(
             Some(interaction_id),
-            &context.config.app.core_base_url,
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
@@ -108,7 +107,6 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
         .interactions
         .create(
             Some(interaction_id),
-            &context.config.app.core_base_url,
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
@@ -184,7 +182,6 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
         .interactions
         .create(
             Some(interaction_id),
-            &context.config.app.core_base_url,
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,

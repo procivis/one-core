@@ -789,7 +789,6 @@ async fn setup_submittable_presentation(
     ));
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &verifier_url,
         interaction_data.to_string().as_bytes(),
         organisation,
         InteractionType::Verification,
@@ -946,7 +945,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     let claims = credential.claims.clone().unwrap();
     let interaction = fixtures::create_interaction(
         &db_conn,
-        &verifier_url,
         json!(
             {
                 "response_type":"vp_token",
@@ -1384,7 +1382,6 @@ async fn setup_submittable_presentation_dcql(
     let verifier_url = context.server_mock.uri();
     let interaction = fixtures::create_interaction(
         &context.db.db_conn,
-        &verifier_url,
         json!(
             {
                 "response_type":"vp_token",

@@ -21,7 +21,6 @@ pub(crate) async fn proof_for_dcql_query(
         .interactions
         .create(
             None,
-            "http://localhost",
             &interaction_data_dcql(dcql_query),
             org,
             InteractionType::Verification,
