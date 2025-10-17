@@ -1,6 +1,7 @@
 use autometrics::autometrics;
 use one_core::model::organisation::{
-    Organisation, OrganisationRelations, UpdateOrganisationRequest,
+    GetOrganisationList, Organisation, OrganisationListQuery, OrganisationRelations,
+    UpdateOrganisationRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::OrganisationRepository;
@@ -9,7 +10,9 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 use shared_types::OrganisationId;
 
 use super::OrganisationProvider;
+use crate::common::list_query_with_base_model;
 use crate::entity::organisation;
+use crate::list_query_generic::SelectWithListQuery;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
@@ -65,12 +68,12 @@ impl OrganisationRepository for OrganisationProvider {
         Ok(convert_inner(organisations))
     }
 
-    async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {
-        let organisations: Vec<organisation::Model> = organisation::Entity::find()
-            .all(&self.db)
-            .await
-            .map_err(to_data_layer_error)?;
+    async fn get_organisation_list(
+        &self,
+        query_params: OrganisationListQuery,
+    ) -> Result<GetOrganisationList, DataLayerError> {
+        let query = organisation::Entity::find().with_list_query(&query_params);
 
-        Ok(convert_inner(organisations))
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 }

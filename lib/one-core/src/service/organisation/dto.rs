@@ -2,6 +2,7 @@ use one_dto_mapper::Into;
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
+use crate::model::common::GetListResponse;
 use crate::model::organisation::UpdateOrganisationRequest;
 use crate::service::identifier::dto::GetIdentifierListItemResponseDTO;
 
@@ -31,3 +32,6 @@ pub struct GetOrganisationDetailsResponseDTO {
     pub wallet_provider: Option<String>,
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseDTO>,
 }
+
+pub type OrganisationListItemResponseDTO = GetOrganisationDetailsResponseDTO;
+pub type GetOrganisationListResponseDTO = GetListResponse<OrganisationListItemResponseDTO>;

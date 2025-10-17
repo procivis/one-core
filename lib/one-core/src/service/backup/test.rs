@@ -16,6 +16,7 @@ use crate::model::credential_schema::{
     WalletStorageTypeEnum,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
 use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::WalletUnitAttestation;
 use crate::repository::backup_repository::MockBackupRepository;
@@ -177,7 +178,13 @@ async fn test_finalize_import() {
         .once()
         .return_once({
             let organisation = organisation.clone();
-            || Ok(vec![organisation])
+            |_: OrganisationListQuery| {
+                Ok(GetOrganisationList {
+                    values: vec![organisation],
+                    total_items: 1,
+                    total_pages: 1,
+                })
+            }
         });
 
     repositories
@@ -232,7 +239,13 @@ async fn test_backup_flow() {
         .once()
         .return_once({
             let organisation = organisation.clone();
-            || Ok(vec![organisation])
+            |_: OrganisationListQuery| {
+                Ok(GetOrganisationList {
+                    values: vec![organisation],
+                    total_items: 1,
+                    total_pages: 1,
+                })
+            }
         });
 
     repositories

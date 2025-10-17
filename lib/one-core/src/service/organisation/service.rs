@@ -4,11 +4,12 @@ use shared_types::{IdentifierId, OrganisationId};
 
 use super::OrganisationService;
 use super::dto::{
-    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO, UpsertOrganisationRequestDTO,
+    CreateOrganisationRequestDTO, GetOrganisationDetailsResponseDTO,
+    GetOrganisationListResponseDTO, UpsertOrganisationRequestDTO,
 };
 use crate::model::identifier::{Identifier, IdentifierFilterValue, IdentifierListQuery};
 use crate::model::list_filter::ListFilterValue;
-use crate::model::organisation::OrganisationRelations;
+use crate::model::organisation::{OrganisationListQuery, OrganisationRelations};
 use crate::repository::error::DataLayerError;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::organisation::mapper::detail_from_model;
@@ -20,10 +21,15 @@ impl OrganisationService {
     /// Returns all existing organisations
     pub async fn get_organisation_list(
         &self,
-    ) -> Result<Vec<GetOrganisationDetailsResponseDTO>, ServiceError> {
-        let organisations = self.organisation_repository.get_organisation_list().await?;
+        query: OrganisationListQuery,
+    ) -> Result<GetOrganisationListResponseDTO, ServiceError> {
+        let organisations = self
+            .organisation_repository
+            .get_organisation_list(query)
+            .await?;
 
         let wallet_provider_issuers: Vec<IdentifierId> = organisations
+            .values
             .iter()
             .filter_map(|organisation| {
                 organisation
@@ -50,7 +56,8 @@ impl OrganisationService {
                 .collect()
         };
 
-        Ok(organisations
+        let details = organisations
+            .values
             .into_iter()
             .map(|organisation| {
                 let wallet_provider_issuer = organisation
@@ -61,7 +68,13 @@ impl OrganisationService {
 
                 detail_from_model(organisation, wallet_provider_issuer)
             })
-            .collect())
+            .collect();
+
+        Ok(GetOrganisationListResponseDTO {
+            values: details,
+            total_items: organisations.total_items,
+            total_pages: organisations.total_pages,
+        })
     }
 
     /// Returns details of an organisation

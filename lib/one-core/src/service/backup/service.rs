@@ -14,6 +14,7 @@ use super::utils::{
     get_metadata_from_zip, hash_reader, load_db_from_zip, map_error,
 };
 use crate::model::history::HistoryAction;
+use crate::model::organisation::OrganisationListQuery;
 use crate::repository::error::DataLayerError;
 use crate::service::backup::mapper::unexportable_entities_to_response_dto;
 use crate::service::error::ServiceError;
@@ -44,10 +45,11 @@ impl BackupService {
 
         let organisation = self
             .organisation_repository
-            .get_organisation_list()
+            .get_organisation_list(OrganisationListQuery::default())
             .await
             .and_then(|organisations| {
                 organisations
+                    .values
                     .into_iter()
                     .next()
                     .ok_or(DataLayerError::MappingError)
@@ -137,10 +139,11 @@ impl BackupService {
         backup_db_path: impl AsRef<Path>,
     ) -> Result<(), ServiceError> {
         self.organisation_repository
-            .get_organisation_list()
+            .get_organisation_list(OrganisationListQuery::default())
             .map(|result| {
                 result.and_then(|organisations| {
                     organisations
+                        .values
                         .into_iter()
                         .next()
                         .ok_or(DataLayerError::MappingError)

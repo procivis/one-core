@@ -1,8 +1,15 @@
-use one_core::model::organisation::{Organisation, UpdateOrganisationRequest};
-use sea_orm::{Set, Unchanged};
+use one_core::model::list_filter::ListFilterCondition;
+use one_core::model::organisation::{
+    Organisation, OrganisationFilterValue, SortableOrganisationColumn, UpdateOrganisationRequest,
+};
+use sea_orm::sea_query::SimpleExpr;
+use sea_orm::{IntoSimpleExpr, Set, Unchanged};
 use time::OffsetDateTime;
 
 use crate::entity::organisation;
+use crate::list_query_generic::{
+    IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_string_match_condition,
+};
 
 impl From<Organisation> for organisation::ActiveModel {
     fn from(value: Organisation) -> Self {
@@ -43,6 +50,32 @@ impl From<UpdateOrganisationRequest> for organisation::ActiveModel {
                 Some(Some(value)) => Set(Some(value)),
             },
             ..Default::default()
+        }
+    }
+}
+
+impl IntoSortingColumn for SortableOrganisationColumn {
+    fn get_column(&self) -> SimpleExpr {
+        match self {
+            Self::Name => organisation::Column::Name,
+            Self::CreatedDate => organisation::Column::CreatedDate,
+        }
+        .into_simple_expr()
+    }
+}
+
+impl IntoFilterCondition for OrganisationFilterValue {
+    fn get_condition(self, _entire_filter: &ListFilterCondition<Self>) -> sea_orm::Condition {
+        match self {
+            Self::Name(string_match) => {
+                get_string_match_condition(organisation::Column::Name, string_match)
+            }
+            Self::CreatedDate(value) => {
+                get_comparison_condition(organisation::Column::CreatedDate, value)
+            }
+            Self::LastModified(value) => {
+                get_comparison_condition(organisation::Column::LastModified, value)
+            }
         }
     }
 }

@@ -6,7 +6,10 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::organisation::{Organisation, OrganisationRelations, UpdateOrganisationRequest};
+use crate::model::organisation::{
+    GetOrganisationList, Organisation, OrganisationListQuery, OrganisationRelations,
+    UpdateOrganisationRequest,
+};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
 use crate::repository::history_repository::HistoryRepository;
@@ -118,7 +121,10 @@ impl OrganisationRepository for OrganisationHistoryDecorator {
             .await
     }
 
-    async fn get_organisation_list(&self) -> Result<Vec<Organisation>, DataLayerError> {
-        self.inner.get_organisation_list().await
+    async fn get_organisation_list(
+        &self,
+        query: OrganisationListQuery,
+    ) -> Result<GetOrganisationList, DataLayerError> {
+        self.inner.get_organisation_list(query).await
     }
 }

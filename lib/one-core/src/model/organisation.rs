@@ -1,6 +1,10 @@
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 
+use crate::model::common::GetListResponse;
+use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
+use crate::model::list_query::ListQuery;
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Organisation {
     pub id: OrganisationId,
@@ -23,3 +27,22 @@ pub struct UpdateOrganisationRequest {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct OrganisationRelations {}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum SortableOrganisationColumn {
+    Name,
+    CreatedDate,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum OrganisationFilterValue {
+    Name(StringMatch),
+    CreatedDate(ValueComparison<OffsetDateTime>),
+    LastModified(ValueComparison<OffsetDateTime>),
+}
+
+impl ListFilterValue for OrganisationFilterValue {}
+
+pub type OrganisationListQuery = ListQuery<SortableOrganisationColumn, OrganisationFilterValue>;
+
+pub type GetOrganisationList = GetListResponse<Organisation>;

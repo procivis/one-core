@@ -10,6 +10,7 @@ use crate::endpoint::credential_schema::dto::CredentialSchemaListItemResponseRes
 use crate::endpoint::did::dto::DidListItemResponseRestDTO;
 use crate::endpoint::history::dto::HistoryResponseRestDTO;
 use crate::endpoint::key::dto::KeyListItemResponseRestDTO;
+use crate::endpoint::organisation::dto::OrganisationListItemResponseRestDTO;
 use crate::endpoint::proof::dto::ProofListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
@@ -36,6 +37,8 @@ pub(crate) type GetProofSchemaListResponseRestDTO =
     GetListResponseRestDTO<GetProofSchemaListItemResponseRestDTO>;
 pub(crate) type GetKeyListResponseRestDTO = GetListResponseRestDTO<KeyListItemResponseRestDTO>;
 pub(crate) type GetHistoryListResponseRestDTO = GetListResponseRestDTO<HistoryResponseRestDTO>;
+pub(crate) type GetOrganisationListResponseRestDTO =
+    GetListResponseRestDTO<OrganisationListItemResponseRestDTO>;
 pub(crate) type GetTrustAnchorListResponseRestDTO =
     GetListResponseRestDTO<ListTrustAnchorsResponseItemRestDTO>;
 pub(crate) type GetTrustEntityListResponseRestDTO =

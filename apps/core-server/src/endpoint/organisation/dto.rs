@@ -6,9 +6,11 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
+use crate::deserialize::deserialize_timestamp;
+use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
 
@@ -66,3 +68,46 @@ pub(crate) struct GetOrganisationDetailsResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub wallet_provider_issuer: Option<GetIdentifierListItemResponseRestDTO>,
 }
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase")]
+#[into("one_core::model::organisation::SortableOrganisationColumn")]
+pub(crate) enum SortableOrganisationColumnRestDTO {
+    Name,
+    CreatedDate,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OrganisationFilterQueryParamsRest {
+    /// Return all organisations with a name starting with this string. Not case-sensitive.
+    #[param(nullable = false)]
+    pub name: Option<String>,
+    #[param(rename = "exact[]", inline, nullable = false)]
+    pub exact: Option<Vec<ExactColumn>>,
+    /// Return only organisations created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only organisations created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
+    /// Return only organisations last modified after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_after: Option<OffsetDateTime>,
+    /// Return only organisations last modified before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub last_modified_before: Option<OffsetDateTime>,
+}
+
+pub(crate) type GetOrganisationsQuery =
+    ListQueryParamsRest<OrganisationFilterQueryParamsRest, SortableOrganisationColumnRestDTO>;
+
+pub(crate) type OrganisationListItemResponseRestDTO = GetOrganisationDetailsResponseRestDTO;

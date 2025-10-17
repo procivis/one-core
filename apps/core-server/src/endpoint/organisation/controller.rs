@@ -1,18 +1,19 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_dto_mapper::convert_inner;
 use proc_macros::require_permissions;
 use shared_types::OrganisationId;
 
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
-    GetOrganisationDetailsResponseRestDTO, UpsertOrganisationRequestRestDTO,
+    GetOrganisationDetailsResponseRestDTO, GetOrganisationsQuery, UpsertOrganisationRequestRestDTO,
 };
+use crate::dto::common::GetOrganisationListResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{
-    CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse, VecResponse,
-};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::organisation::mapper::upsert_request_from_request;
+use crate::extractor::Qs;
 use crate::permissions::Permission;
 use crate::router::AppState;
 
@@ -42,7 +43,8 @@ pub(crate) async fn get_organisation(
 #[utoipa::path(
     get,
     path = "/api/organisation/v1",
-    responses(OkOrErrorResponse<VecResponse<GetOrganisationDetailsResponseRestDTO>>),
+    responses(OkOrErrorResponse<GetOrganisationListResponseRestDTO>),
+    params(GetOrganisationsQuery),
     tag = "organisation_management",
     security(
         ("bearer" = [])
@@ -53,13 +55,28 @@ pub(crate) async fn get_organisation(
 #[require_permissions(Permission::StsOrganisationList)]
 pub(crate) async fn get_organisations(
     state: State<AppState>,
-) -> OkOrErrorResponse<VecResponse<GetOrganisationDetailsResponseRestDTO>> {
-    let result = state
-        .core
-        .organisation_service
-        .get_organisation_list()
-        .await;
-    OkOrErrorResponse::from_result(result, state, "getting organizations")
+    WithRejection(Qs(query), _): WithRejection<Qs<GetOrganisationsQuery>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<GetOrganisationListResponseRestDTO> {
+    let result = async {
+        state
+            .core
+            .organisation_service
+            .get_organisation_list(query.try_into()?)
+            .await
+    }
+    .await;
+
+    match result {
+        Err(error) => {
+            tracing::error!("Error while getting organisation list: {:?}", error);
+            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+        }
+        Ok(value) => OkOrErrorResponse::Ok(GetOrganisationListResponseRestDTO {
+            values: convert_inner(value.values),
+            total_pages: value.total_pages,
+            total_items: value.total_items,
+        }),
+    }
 }
 
 #[utoipa::path(

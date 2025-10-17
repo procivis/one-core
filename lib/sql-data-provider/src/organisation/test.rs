@@ -1,5 +1,8 @@
+use one_core::model::common::SortDirection;
+use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{
-    Organisation, OrganisationRelations, UpdateOrganisationRequest,
+    Organisation, OrganisationListQuery, OrganisationRelations, SortableOrganisationColumn,
+    UpdateOrganisationRequest,
 };
 use one_core::repository::organisation_repository::OrganisationRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
@@ -92,12 +95,32 @@ async fn test_get_organisation_list() {
         .await
         .unwrap();
 
-    let result = repository.get_organisation_list().await;
+    let org2_id = Uuid::new_v4().into();
+    insert_organisation_to_database(&db, Some(org2_id), None)
+        .await
+        .unwrap();
+
+    let result = repository
+        .get_organisation_list(OrganisationListQuery {
+            pagination: Some(ListPagination {
+                page: 0,
+                page_size: 5,
+            }),
+            sorting: Some(ListSorting {
+                column: SortableOrganisationColumn::CreatedDate,
+                direction: Some(SortDirection::Ascending),
+            }),
+            ..Default::default()
+        })
+        .await;
 
     assert!(result.is_ok());
     let organisations = result.unwrap();
-    assert_eq!(organisations.len(), 1);
-    assert_eq!(organisations[0].id, org_id);
+    assert_eq!(organisations.total_pages, 1);
+    assert_eq!(organisations.total_items, 2);
+    assert_eq!(organisations.values.len(), 2);
+    assert_eq!(organisations.values[0].id, org_id);
+    assert_eq!(organisations.values[1].id, org2_id);
 }
 
 #[tokio::test]
