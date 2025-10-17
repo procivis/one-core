@@ -210,8 +210,8 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Wall
     })
 }
 
-pub(crate) fn webauthn_signed_jwt_to_msg_and_sig(
-    proof: &DecomposedToken<()>,
+pub(crate) fn webauthn_signed_jwt_to_msg_and_sig<T>(
+    proof: &DecomposedToken<T>,
 ) -> Result<(Vec<u8>, Vec<u8>), ServiceError> {
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]

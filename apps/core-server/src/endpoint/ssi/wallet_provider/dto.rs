@@ -55,7 +55,8 @@ pub(crate) struct WalletUnitActivationRequestRestDTO {
     #[serde_as(as = "OneOrMany<_>")]
     #[schema(schema_with = one_or_many::<String>)]
     pub attestation: Vec<String>,
-    pub proof: String,
+    pub attestation_key_proof: String,
+    pub device_signing_key_proof: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

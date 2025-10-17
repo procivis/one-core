@@ -28,19 +28,22 @@ use crate::proto::jwt::model::{
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::error::{EntityNotFoundError, ErrorCodeMixin, ServiceError};
+use crate::service::error::{
+    EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
+};
 use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_provider::app_integrity::android::validate_attestation_android;
 use crate::service::wallet_provider::app_integrity::ios::{
     validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig,
 };
 use crate::service::wallet_provider::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
-    RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
-    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletUnitActivationRequestDTO,
-    WalletUnitActivationResponseDTO, WalletUnitAttestationMetadataDTO,
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, NoncePayload,
+    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO, WalletProviderParams,
+    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
+    WalletUnitAttestationMetadataDTO,
 };
 use crate::service::wallet_provider::error::WalletProviderError;
 use crate::service::wallet_provider::mapper::{
@@ -142,7 +145,7 @@ impl WalletProviderService {
             self.create_integrity_check_nonce(request, organisation, config)
                 .await
         } else {
-            let proof = Jwt::<()>::decompose_token(
+            let proof = Jwt::<NoncePayload>::decompose_token(
                 request
                     .proof
                     .as_ref()
@@ -156,7 +159,7 @@ impl WalletProviderService {
             let public_key = self
                 .parse_jwk(&proof.header.algorithm, &public_key_jwk)
                 .await?;
-            self.verify_proof(
+            self.verify_attestation_proof(
                 &proof,
                 &public_key,
                 request.os,
@@ -165,6 +168,7 @@ impl WalletProviderService {
                     .integrity_check
                     .enabled,
                 LEEWAY,
+                None,
             )
             .await?;
             self.create_wallet_unit_with_attestation(
@@ -408,9 +412,10 @@ impl WalletProviderService {
                 return Err(err.into());
             }
         };
-        let proof = Jwt::<()>::decompose_token(&request.proof)?;
-        self.verify_proof(
-            &proof,
+        let attestation_key_proof =
+            Jwt::<NoncePayload>::decompose_token(&request.attestation_key_proof)?;
+        self.verify_attestation_proof(
+            &attestation_key_proof,
             &attested_public_key,
             wallet_unit.os,
             config_params
@@ -418,10 +423,44 @@ impl WalletProviderService {
                 .integrity_check
                 .enabled,
             LEEWAY,
+            Some(wallet_unit_nonce),
         )
         .await?;
 
-        let jwk = attested_public_key.public_key_as_jwk()?;
+        // Allow devices to have the attestation issued to some other key than the attestation key.
+        // This is necessary as the attestation key might have limitations in regard to general
+        // purpose crypto signatures.
+        // E.g. on iOS the attestation key is only able to produce WebAuthn signatures.
+        let jwk = if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
+            let device_signing_key_proof =
+                Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)?;
+            let (_, alg) = self
+                .key_algorithm_provider
+                .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
+                .ok_or(MissingProviderError::KeyAlgorithmProvider(
+                    KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                        device_signing_key_proof.header.algorithm.clone(),
+                    ),
+                ))?;
+            let device_signing_key =
+                PublicKeyJwk::from(device_signing_key_proof.header.jwk.clone().ok_or(
+                    ServiceError::MappingError(
+                        "Missing JWK in device signing key header".to_string(),
+                    ),
+                )?);
+            let device_signing_key_handle = alg.parse_jwk(&device_signing_key)?;
+            self.verify_device_signing_proof(
+                &device_signing_key_proof,
+                &device_signing_key_handle,
+                LEEWAY,
+                Some(wallet_unit_nonce),
+            )
+            .await?;
+            device_signing_key
+        } else {
+            attested_public_key.public_key_as_jwk()?
+        };
+
         let encoded_public_key = serde_json::to_string(&jwk)
             .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
         let (signed_attestation, attestation_hash) = self
@@ -578,18 +617,9 @@ impl WalletProviderService {
             validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
-        let proof = Jwt::<()>::decompose_token(&request.proof)?;
-        self.verify_proof(
-            &proof,
-            &key,
-            wallet_unit.os,
-            config_params
-                .wallet_unit_attestation
-                .integrity_check
-                .enabled,
-            LEEWAY,
-        )
-        .await?;
+        let proof = Jwt::<NoncePayload>::decompose_token(&request.proof)?;
+        self.verify_device_signing_proof(&proof, &key, LEEWAY, None)
+            .await?;
 
         let now = self.clock.now_utc();
         if let Some(last_issuance) = wallet_unit.last_issuance
@@ -801,13 +831,14 @@ impl WalletProviderService {
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))
     }
 
-    pub(super) async fn verify_proof(
+    pub(super) async fn verify_attestation_proof(
         &self,
-        proof: &DecomposedToken<()>,
+        proof: &DecomposedToken<NoncePayload>,
         public_key: &KeyHandle,
         wallet_unit_os: WalletUnitOs,
         integrity_check_enabled: bool,
         leeway: u64,
+        nonce: Option<&str>,
     ) -> Result<(), ServiceError> {
         let (msg, signature) = match (integrity_check_enabled, wallet_unit_os) {
             (true, WalletUnitOs::Ios) => webauthn_signed_jwt_to_msg_and_sig(proof)?,
@@ -820,6 +851,28 @@ impl WalletProviderService {
         public_key
             .verify(&msg, &signature)
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
+        self.validate_proof_payload(&proof, leeway, nonce)
+    }
+
+    pub(super) async fn verify_device_signing_proof(
+        &self,
+        proof: &DecomposedToken<NoncePayload>,
+        public_key: &KeyHandle,
+        leeway: u64,
+        nonce: Option<&str>,
+    ) -> Result<(), ServiceError> {
+        public_key
+            .verify(proof.unverified_jwt.as_bytes(), &proof.signature)
+            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
+        self.validate_proof_payload(&proof, leeway, nonce)
+    }
+
+    fn validate_proof_payload(
+        &self,
+        proof: &&DecomposedToken<NoncePayload>,
+        leeway: u64,
+        nonce: Option<&str>,
+    ) -> Result<(), ServiceError> {
         validate_issuance_time(&proof.payload.issued_at, leeway)?;
 
         if proof.payload.invalid_before.is_none() {
@@ -837,6 +890,18 @@ impl WalletProviderService {
         };
         if let Some(expected_audience) = self.base_url.as_deref() {
             validate_audience(audience, expected_audience)?;
+        }
+        if let Some(nonce) = nonce
+            && proof
+                .payload
+                .custom
+                .nonce
+                .as_ref()
+                .is_none_or(|client_nonce| client_nonce != nonce)
+        {
+            return Err(
+                WalletProviderError::CouldNotVerifyProof("Invalid nonce".to_string()).into(),
+            );
         }
         Ok(())
     }

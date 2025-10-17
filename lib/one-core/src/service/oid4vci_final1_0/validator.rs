@@ -14,7 +14,6 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
-use crate::service::wallet_provider::webauthn_signed_jwt_to_msg_and_sig;
 use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
@@ -118,24 +117,13 @@ pub(crate) fn verify_pop_signature(
         .parse_jwk(&jwk.into())
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
-    // As of now, we can not tell if the holder is using an iOS, Android or Web based wallet.
-    // We attempt to parse the proof of key possession as a WebAuthn signed JWT first (iOS case) before falling back to the default case.
-    // To be fixed in https://procivis.atlassian.net/browse/ONE-7501
-    let (msg, signature) = match webauthn_signed_jwt_to_msg_and_sig(pop_token) {
-        Ok((msg, signature)) => (msg, signature),
-        Err(_) => (
-            pop_token.unverified_jwt.as_bytes().to_vec(),
-            pop_token.signature.clone(),
-        ),
-    };
-
     pop_signer_key_handle
         .signature()
         .ok_or(ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest,
         ))?
         .public()
-        .verify(&msg, &signature)
+        .verify(pop_token.unverified_jwt.as_bytes(), &pop_token.signature)
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
     Ok(())

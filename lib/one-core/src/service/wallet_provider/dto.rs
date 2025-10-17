@@ -25,7 +25,8 @@ pub struct RegisterWalletUnitResponseDTO {
 #[derive(Clone, Debug)]
 pub struct ActivateWalletUnitRequestDTO {
     pub attestation: Vec<String>,
-    pub proof: String,
+    pub attestation_key_proof: String,
+    pub device_signing_key_proof: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -36,7 +37,8 @@ pub struct ActivateWalletUnitResponseDTO {
 #[derive(Clone, Debug)]
 pub struct WalletUnitActivationRequestDTO {
     pub attestation: Vec<String>,
-    pub proof: String,
+    pub attestation_key_proof: String,
+    pub device_signing_key_proof: Option<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -191,4 +193,9 @@ pub struct WalletUnitAttestationMetadataDTO {
     pub app_integrity_check_required: bool,
     pub enabled: bool,
     pub required: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub(super) struct NoncePayload {
+    pub nonce: Option<String>,
 }

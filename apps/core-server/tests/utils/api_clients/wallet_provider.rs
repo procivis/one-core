@@ -42,7 +42,7 @@ impl WalletProviderApi {
     ) -> Response {
         let body = json!( {
             "attestation": attestation,
-            "proof": proof,
+            "attestationKeyProof": proof,
         });
 
         self.client

@@ -1,14 +1,3 @@
-pub mod dto;
-pub mod error;
-pub mod service;
-mod validator;
-pub(crate) use app_integrity::ios::webauthn_signed_jwt_to_msg_and_sig;
-
-mod app_integrity;
-mod mapper;
-#[cfg(test)]
-mod test;
-
 use std::sync::Arc;
 
 use crate::config::core_config;
@@ -21,6 +10,16 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
 use crate::util::clock::Clock;
+
+pub mod dto;
+pub mod error;
+pub mod service;
+mod validator;
+
+mod app_integrity;
+mod mapper;
+#[cfg(test)]
+mod test;
 
 #[allow(dead_code)]
 #[derive(Clone)]

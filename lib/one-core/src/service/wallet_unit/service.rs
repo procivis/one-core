@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::sync::Arc;
 
 use shared_types::{OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
@@ -6,17 +7,18 @@ use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::key::{Key, KeyRelations};
+use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitClaims, WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
 };
-use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
@@ -31,7 +33,7 @@ use crate::service::wallet_provider::dto::{
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO,
+    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, NoncePayload,
 };
 use crate::service::wallet_unit::error::WalletUnitAttestationError;
 use crate::service::wallet_unit::mapper::key_from_generated_key;
@@ -176,12 +178,9 @@ impl WalletUnitService {
             .get_key_storage(key_storage_id)
             .ok_or(MissingProviderError::KeyStorage(key_storage_id.to_string()))?;
 
-        let key_id = Uuid::new_v4().into();
-        let key = key_storage.generate(key_id, key_type).await?;
-        let key =
-            key_from_generated_key(key_id, key_storage_id, key_type.as_ref(), organisation, key);
-
-        self.store_key(&key).await?;
+        let key = self
+            .new_key(key_storage_id, key_type, organisation, &key_storage)
+            .await?;
 
         let key_handle = key_storage
             .key_handle(&key)
@@ -198,6 +197,7 @@ impl WalletUnitService {
                 &request.wallet_provider.name,
                 auth_fn,
                 &request.wallet_provider.url,
+                None,
             )
             .await?;
 
@@ -249,31 +249,72 @@ impl WalletUnitService {
             .ok_or(MissingProviderError::KeyStorage(key_storage_id.to_string()))?;
 
         let key_id = Uuid::new_v4().into();
-        let key = key_storage
+        let attestation_key = key_storage
             .generate_attestation_key(key_id, Some(nonce.clone()))
             .await?;
-        let key =
-            key_from_generated_key(key_id, key_storage_id, key_type.as_ref(), organisation, key);
+        let attestation_key = key_from_generated_key(
+            key_id,
+            key_storage_id,
+            key_type.as_ref(),
+            organisation.clone(),
+            attestation_key,
+        );
 
-        self.store_key(&key).await?;
-        let attestation = key_storage.generate_attestation(&key, Some(nonce)).await?;
+        self.store_key(&attestation_key).await?;
+        let attestation = key_storage
+            .generate_attestation(&attestation_key, Some(nonce.clone()))
+            .await?;
 
         // Use SignatureProvider that uses the attestation key and the key_storage.sign_with_attestation_key method
         let auth_fn = self.key_provider.get_attestation_signature_provider(
-            &key,
+            &attestation_key,
             None,
             self.key_algorithm_provider.clone(),
         )?;
-        let proof = self
+        let attestation_key_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
                 &request.wallet_provider.name,
                 auth_fn,
                 &request.wallet_provider.url,
+                Some(nonce.clone()),
             )
             .await?;
 
-        let activate_request = ActivateWalletUnitRequestDTO { attestation, proof };
+        let (device_sig_pop, device_sig_key) = if os == WalletUnitOs::Ios {
+            let device_signing_key = self
+                .new_key(key_storage_id, key_type, organisation, &key_storage)
+                .await?;
+
+            let key_handle = key_storage
+                .key_handle(&device_signing_key)
+                .map_err(|e| ServiceError::KeyStorageError(KeyStorageError::SignerError(e)))?;
+
+            let auth_fn = self.key_provider.get_signature_provider(
+                &device_signing_key,
+                None,
+                self.key_algorithm_provider.clone(),
+            )?;
+            let signed_proof = self
+                .create_device_signing_key_pop(
+                    self.clock.now_utc(),
+                    auth_fn,
+                    key_handle.public_key_as_jwk()?,
+                    &request.wallet_provider.name,
+                    &request.wallet_provider.url,
+                    nonce,
+                )
+                .await?;
+            (Some(signed_proof), Some(device_signing_key))
+        } else {
+            (None, None)
+        };
+
+        let activate_request = ActivateWalletUnitRequestDTO {
+            attestation,
+            attestation_key_proof,
+            device_signing_key_proof: device_sig_pop,
+        };
 
         let activation_response = self
             .wallet_provider_client
@@ -287,9 +328,24 @@ impl WalletUnitService {
 
         Ok(Registration {
             wallet_unit_id: register_response.id,
-            key,
+            key: device_sig_key.unwrap_or(attestation_key),
             attestation: activation_response.attestation,
         })
+    }
+
+    async fn new_key(
+        &self,
+        key_storage_id: &str,
+        key_type: KeyAlgorithmType,
+        organisation: Organisation,
+        key_storage: &Arc<dyn KeyStorage>,
+    ) -> Result<Key, ServiceError> {
+        let key_id = Uuid::new_v4().into();
+        let key = key_storage.generate(key_id, key_type).await?;
+        let key =
+            key_from_generated_key(key_id, key_storage_id, key_type.as_ref(), organisation, key);
+        self.store_key(&key).await?;
+        Ok(key)
     }
 
     async fn register(
@@ -380,6 +436,7 @@ impl WalletUnitService {
                 &wallet_unit_attestation.wallet_provider_name,
                 auth_fn,
                 &wallet_unit_attestation.wallet_provider_url,
+                None,
             )
             .await?;
 
@@ -488,6 +545,7 @@ impl WalletUnitService {
         wallet_provider_name: &str,
         auth_fn: AuthenticationFn,
         audience: &str,
+        nonce: Option<String>,
     ) -> Result<String, ServiceError> {
         let proof = Jwt::new(
             "jwt".to_string(),
@@ -508,7 +566,43 @@ impl WalletUnitService {
                 audience: Some(vec![audience.to_owned()]),
                 jwt_id: None,
                 proof_of_possession_key: None,
-                custom: (),
+                custom: NoncePayload { nonce },
+            },
+        );
+
+        let signed_proof = proof.tokenize(Some(auth_fn)).await?;
+        Ok(signed_proof)
+    }
+
+    async fn create_device_signing_key_pop(
+        &self,
+        now: OffsetDateTime,
+        auth_fn: AuthenticationFn,
+        public_key: PublicKeyJwk,
+        wallet_provider_name: &str,
+        audience: &str,
+        nonce: String,
+    ) -> Result<String, ServiceError> {
+        let proof = Jwt::new(
+            "jwt".to_string(),
+            auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
+                "No JOSE alg specified".to_string(),
+            ))?,
+            None,
+            Some(JwtPublicKeyInfo::Jwk(public_key.into())),
+            JWTPayload {
+                issued_at: Some(now),
+                expires_at: Some(now + Duration::minutes(60)),
+                invalid_before: Some(now),
+                issuer: None,
+                subject: self
+                    .base_url
+                    .clone()
+                    .map(|base_url| format!("{base_url}/{wallet_provider_name}")),
+                audience: Some(vec![audience.to_owned()]),
+                jwt_id: None,
+                proof_of_possession_key: None,
+                custom: NoncePayload { nonce: Some(nonce) },
             },
         );
 

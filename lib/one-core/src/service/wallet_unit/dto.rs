@@ -53,3 +53,9 @@ pub struct HolderWalletUnitAttestationResponseDTO {
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
 }
+
+#[derive(Serialize)]
+pub(super) struct NoncePayload {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<String>,
+}

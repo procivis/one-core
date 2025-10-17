@@ -1,5 +1,6 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::WalletUnitId;
 
 use crate::model::wallet_unit::WalletUnitOs;
@@ -9,6 +10,7 @@ use crate::service::wallet_provider::dto::{
     RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, From)]
 #[from(RegisterWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -19,6 +21,7 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub proof: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Into)]
 #[into(RegisterWalletUnitResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -28,12 +31,14 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub nonce: Option<String>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, From)]
 #[from(ActivateWalletUnitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub struct ActivateWalletUnitRequestRestDTO {
     pub attestation: Vec<String>,
-    pub proof: String,
+    pub attestation_key_proof: String,
+    pub device_signing_key_proof: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]
