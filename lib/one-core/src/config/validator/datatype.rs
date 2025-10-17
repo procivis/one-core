@@ -113,7 +113,10 @@ pub fn validate_datatype_value(
     match fields.r#type {
         DatatypeType::String => validate_string(value, config.get(datatype)?)?,
         DatatypeType::Number => validate_number(value, config.get(datatype)?)?,
-        DatatypeType::File => validate_file(value, config.get(datatype)?)?,
+        DatatypeType::File | DatatypeType::Picture => {
+            let params: FileParams = config.get(datatype)?;
+            validate_file(value, params.file_size, params.accept.as_deref())?
+        }
         DatatypeType::Object => validate_object(value, config.get(datatype)?)?,
         DatatypeType::Array => validate_array(value, config.get(datatype)?)?,
         DatatypeType::Boolean => validate_boolean(value, config.get(datatype)?)?,
@@ -295,7 +298,11 @@ struct FileParams {
     pub encode_as_mdl_portrait: Option<bool>,
 }
 
-fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidationError> {
+pub(crate) fn validate_file(
+    value: &str,
+    max_size: Option<usize>,
+    accept: Option<&[String]>,
+) -> Result<(), DatatypeValidationError> {
     let mut parts = value.split(',');
 
     let media_part = parts
@@ -320,7 +327,7 @@ fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidati
     }
 
     // Default policy; Accept all if not provided
-    if let Some(accept) = params.accept {
+    if let Some(accept) = accept {
         let media_type = content_type
             .split(';')
             .next()
@@ -339,23 +346,24 @@ fn validate_file(value: &str, params: FileParams) -> Result<(), DatatypeValidati
         .ok_or(DatatypeValidationError::FileParseMissingDataPart)?;
 
     // Default policy; Accept all if not provided
-    if let Some(max_file_size) = params.file_size {
-        let num_bytes = if data_part.ends_with("==") {
-            2
-        } else if data_part.ends_with('=') {
-            1
-        } else {
-            0
-        };
-
-        let file_size = (data_part.len() * 3 / 4) - num_bytes;
-
-        if file_size > max_file_size {
-            return Err(DatatypeValidationError::FileTooLong);
-        }
+    if let Some(max_file_size) = max_size
+        && base64_byte_length(data_part) > max_file_size
+    {
+        return Err(DatatypeValidationError::FileTooLong);
     }
 
     Ok(())
+}
+
+pub(crate) fn base64_byte_length(data: &str) -> usize {
+    let num_bytes = if data.ends_with("==") {
+        2
+    } else if data.ends_with('=') {
+        1
+    } else {
+        0
+    };
+    (data.len() * 3 / 4) - num_bytes
 }
 
 #[allow(dead_code)]

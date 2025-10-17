@@ -817,7 +817,7 @@ fn map_to_ciborium_value(
             };
             ciborium::Value::Bool(value)
         }
-        DatatypeType::File => {
+        DatatypeType::Picture => {
             let mut file_parts = value_as_string.splitn(2, ',');
 
             let mime_type = file_parts.next().ok_or(FormatterError::Failed(

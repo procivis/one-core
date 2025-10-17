@@ -367,6 +367,8 @@ datatype:
     type: "STRING"
     order: 100
     params:
+      public:
+        supportedInputMode: TEXT
       private:
         holder:
           valueExtraction: ENABLED_FALLBACK
@@ -375,6 +377,8 @@ datatype:
     type: "NUMBER"
     order: 200
     params:
+      public:
+        supportedInputMode: NUMBER_INPUT
       private:
         holder:
           valueExtraction: ENABLED_FALLBACK
@@ -385,6 +389,7 @@ datatype:
     params:
       public:
         formats: ["date", "datetime"]
+        supportedInputMode: DATE_PICKER
       private:
         holder:
           valueExtraction: ENABLED
@@ -401,6 +406,7 @@ datatype:
         error:
           de: "Bitte wählen Sie ein Datum zwischen 1900-1-1 und heute"
           en: "Please choose a date between 1900-1-1 and today"
+        supportedInputMode: DATE_PICKER
   EMAIL:
     display: "datatype.email"
     type: "STRING"
@@ -413,9 +419,10 @@ datatype:
           de: "Please provide email like abc@abc.com"
           en: "Please provide email like abc@abc.com"
         pattern: '^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$'
+        supportedInputMode: TEXT
   PICTURE:
     display: "datatype.picture"
-    type: "FILE"
+    type: "PICTURE"
     order: 400
     params:
       public:
@@ -423,18 +430,27 @@ datatype:
           - image/jpeg
           - image/png
         fileSize: 4194304
+        supportedInputMode: FILE_UPLOAD
         showAs: IMAGE
+      private:
+        holder:
+          valueExtraction: ENABLED
   MDL_PICTURE:
     display: "datatype.mdlPicture"
-    type: "FILE"
+    type: "PICTURE"
     order: 402
     params:
       public:
         accept:
           - image/jpeg
+          - image/jp2
         fileSize: 4194304
         showAs: IMAGE
+        supportedInputMode: FILE_UPLOAD
         encodeAsMdlPortrait: true
+      private:
+        holder:
+          valueExtraction: ENABLED
   SWIYU_PICTURE:
     display:
       en: "Picture (SWIYU)"
@@ -446,6 +462,7 @@ datatype:
         accept:
           - image/jpeg
         fileSize: 4194304
+        supportedInputMode: FILE_UPLOAD
         showAs: IMAGE
   COUNT:
     display: "datatype.count"
@@ -458,6 +475,7 @@ datatype:
         error:
           de: "Bitte wählen Sie eine Zahl zwischen 0 und 9999"
           en: "Please provide a number between 0 and 9999"
+        supportedInputMode: NUMBER_INPUT
   OBJECT:
     display: "datatype.object"
     type: "OBJECT"
@@ -468,6 +486,8 @@ datatype:
     type: "BOOLEAN"
     order: 301
     params:
+      public:
+        supportedInputMode: CHECKBOX
       private:
         holder:
           valueExtraction: ENABLED_FALLBACK

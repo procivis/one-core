@@ -73,7 +73,7 @@ async-trait.workspace      = true
 bs58.workspace             = true
 dcql                       = { version = "0.1.0", path = "../../lib/dcql" }
 hex.workspace              = true
-hex-literal                = { version = "0.4" }
+hex-literal.workspace      = true
 indoc                      = { version = "2.0" }
 maplit.workspace           = true
 rand.workspace             = true

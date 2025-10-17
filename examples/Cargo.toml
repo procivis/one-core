@@ -7,7 +7,7 @@ publish           = false
 version           = "0.1.0"
 
 [dev-dependencies]
-hex-literal      = { version = "0.4" }
+hex-literal      = { workspace = true }
 one-core         = { version = "0.1.0", path = "../lib/one-core" }
 one-dev-services = { version = "0.1.0", path = "../lib/one-dev-services" }
 reqwest          = { workspace = true }

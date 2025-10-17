@@ -454,6 +454,9 @@ pub enum DatatypeType {
     #[serde(rename = "FILE")]
     #[strum(serialize = "FILE")]
     File,
+    #[serde(rename = "PICTURE")]
+    #[strum(serialize = "PICTURE")]
+    Picture,
     #[serde(rename = "OBJECT")]
     #[strum(serialize = "OBJECT")]
     Object,

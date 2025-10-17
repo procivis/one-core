@@ -4,6 +4,7 @@ pub mod error;
 mod mapper;
 pub mod model;
 mod number;
+mod picture;
 pub mod provider;
 mod string;
 
@@ -24,6 +25,7 @@ use string::StringDataType;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::provider::data_type::picture::PictureDataType;
 
 #[derive(Debug, Deserialize, Clone, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -74,6 +76,15 @@ pub fn data_type_provider_from_config(
                     }
                 })?;
                 Arc::new(NumberDataType::new(params))
+            }
+            DatatypeType::Picture => {
+                let params = fields.deserialize::<picture::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                Arc::new(PictureDataType::new(params))
             }
             _ => {
                 // skip for now, TODO: ONE-7544, ONE-7578
