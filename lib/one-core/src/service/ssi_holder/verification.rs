@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
@@ -670,6 +670,12 @@ impl SSIHolderService {
                 user_selections,
             } in credential_selection
             {
+                let deduplicated: HashSet<&String> = HashSet::from_iter(&user_selections);
+                if deduplicated.len() != user_selections.len() {
+                    return Err(BusinessLogicError::InvalidPresentationSubmission {
+                        reason: format!("Invalid user selections for credential `{credential_id}` for `{query_id}`: user selections contain duplicate paths"),
+                    }.into());
+                }
                 let Some(selected_credential) = applicable_credentials
                     .iter()
                     .find(|&credential| credential.id == credential_id)
@@ -683,7 +689,7 @@ impl SSIHolderService {
                     credential_id,
                     presented_paths: presented_claim_paths_from_nested_with_selection(
                         selected_credential,
-                        &user_selections,
+                        user_selections,
                     )?,
                 };
                 creds_paths_to_present
@@ -947,18 +953,25 @@ impl SSIHolderService {
 
 fn presented_claim_paths_from_nested_with_selection(
     credential: &CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>,
-    user_selections: &[String],
+    mut user_selections: Vec<String>,
 ) -> Result<Vec<String>, ServiceError> {
     let mut presented_paths = vec![];
     credential.claims.iter().try_for_each(|child_claim| {
-        select_claims(child_claim, user_selections, &mut presented_paths)
+        select_claims(child_claim, &mut user_selections, &mut presented_paths)
     })?;
+
+    if !user_selections.is_empty() {
+        return Err(BusinessLogicError::InvalidPresentationSubmission {
+            reason: format!("Invalid user selections for credential `{}`. The following selection paths do not match any known claim: [{}]", credential.id, user_selections.join(", ")),
+        }.into());
+    }
+
     Ok(presented_paths)
 }
 
 fn select_claims(
     current: &CredentialDetailClaimExtResponseDTO, // is selected
-    user_selections: &[String],
+    user_selections: &mut Vec<String>,
     selected: &mut Vec<String>,
 ) -> Result<(), ServiceError> {
     if !is_selected_claim(current, user_selections)? {
@@ -977,14 +990,22 @@ fn select_claims(
 
 fn is_selected_claim(
     claim: &CredentialDetailClaimExtResponseDTO,
-    user_selections: &[String],
+    user_selections: &mut Vec<String>,
 ) -> Result<bool, ServiceError> {
-    let is_selected = user_selections.contains(&claim.path);
-    if is_selected && !claim.user_selection {
-        return Err(BusinessLogicError::InvalidPresentationSubmission {
-            reason: format!("Path `{}` is not a valid user selection", &claim.path),
+    let user_selection = user_selections
+        .iter()
+        .find_position(|selection| **selection == claim.path);
+    let is_selected = user_selection.is_some();
+
+    if let Some((idx, _)) = user_selection {
+        if !claim.user_selection {
+            return Err(BusinessLogicError::InvalidPresentationSubmission {
+                reason: format!("Path `{}` is not a valid user selection", &claim.path),
+            }
+            .into());
         }
-        .into());
+        // remove user selections from the list once found
+        user_selections.swap_remove(idx);
     }
 
     let is_child_or_parent_of_selected = user_selections.iter().any(|selected_path| {
