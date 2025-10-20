@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use one_core::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use one_core::repository::blob_repository::BlobRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
@@ -8,6 +10,7 @@ use uuid::Uuid;
 use crate::blob::BlobProvider;
 use crate::entity;
 use crate::test_utilities::{get_dummy_date, setup_test_data_layer_and_connection};
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -20,7 +23,9 @@ async fn setup() -> TestSetup {
 
     TestSetup {
         db: db.clone(),
-        provider: BlobProvider { db },
+        provider: BlobProvider {
+            db: Arc::new(TransactionManagerImpl::new(db)),
+        },
     }
 }
 

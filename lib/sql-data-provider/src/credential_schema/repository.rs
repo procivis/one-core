@@ -45,7 +45,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let credential_schema: credential_schema::ActiveModel = schema.try_into()?;
         let credential_schema =
             credential_schema
-                .insert(&self.db)
+                .insert(&self.db.tx())
                 .await
                 .map_err(|e| match e.sql_err() {
                     Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
@@ -58,14 +58,14 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             let claim_schema_models = claim_schemas_to_model_vec(claim_schemas);
 
             claim_schema::Entity::insert_many(claim_schema_models)
-                .exec(&self.db)
+                .exec(&self.db.tx())
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 
             credential_schema_claim_schema::Entity::insert_many(
                 credential_schema_claim_schema_relations,
             )
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         }
@@ -87,7 +87,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
 
         credential_schema::Entity::update(credential_schema)
             .filter(credential_schema::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -100,7 +100,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         let credential_schema = credential_schema::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -114,7 +114,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     credential_schema_claim_schema::Column::CredentialSchemaId.eq(id.to_string()),
                 )
                 .order_by_asc(credential_schema_claim_schema::Column::Order)
-                .all(&self.db)
+                .all(&self.db.tx())
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -143,7 +143,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let organisation = if let Some(organisation_relations) = &relations.organisation {
             let model = credential_schema
                 .find_related(organisation::Entity)
-                .one(&self.db)
+                .one(&self.db.tx())
                 .await
                 .map_err(to_data_layer_error)?
                 .ok_or(DataLayerError::Db(anyhow!(
@@ -185,8 +185,9 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .order_by_desc(credential_schema::Column::CreatedDate)
             .order_by_desc(credential_schema::Column::Id);
 
+        let tx = self.db.tx();
         let (items_count, credential_schemas) =
-            tokio::join!(query.to_owned().count(&self.db), query.all(&self.db));
+            tokio::join!(query.to_owned().count(&tx), query.all(&tx));
 
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
         let credential_schemas = credential_schemas.map_err(|e| DataLayerError::Db(e.into()))?;
@@ -201,7 +202,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                                     .eq(credential_schema.id.to_string()),
                             )
                             .order_by_asc(credential_schema_claim_schema::Column::Order)
-                            .all(&self.db)
+                            .all(&self.db.tx())
                             .await
                             .map_err(to_data_layer_error)?;
 
@@ -239,7 +240,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                     .then(|credential_schema| async {
                         let model = credential_schema
                             .find_related(organisation::Entity)
-                            .one(&self.db)
+                            .one(&self.db.tx())
                             .await
                             .map_err(to_data_layer_error)?
                             .ok_or(DataLayerError::Db(anyhow!(
@@ -326,7 +327,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         update_model
-            .update(&self.db)
+            .update(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -336,14 +337,14 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             let claim_schema_models = claim_schemas_to_model_vec(claim_schemas);
 
             claim_schema::Entity::insert_many(claim_schema_models)
-                .exec(&self.db)
+                .exec(&self.db.tx())
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 
             credential_schema_claim_schema::Entity::insert_many(
                 credential_schema_claim_schema_relations,
             )
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         }
@@ -363,7 +364,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .filter(credential_schema::Column::SchemaType.eq(schema_type.to_string()))
             .filter(credential_schema::Column::OrganisationId.eq(organisation_id))
             .filter(credential_schema::Column::DeletedAt.is_null())
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -376,7 +377,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             let schemas = credential_schema
                 .find_related(claim_schema::Entity)
                 .select_also(credential_schema_claim_schema::Entity)
-                .all(&self.db)
+                .all(&self.db.tx())
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -405,7 +406,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             organisation = Some(
                 credential_schema
                     .find_related(organisation::Entity)
-                    .one(&self.db)
+                    .one(&self.db.tx())
                     .await
                     .map_err(to_data_layer_error)?
                     .map(Into::into)

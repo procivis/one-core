@@ -8,6 +8,7 @@ use did::DidProvider;
 use identifier::IdentifierProvider;
 use interaction::InteractionProvider;
 use migration::runner::run_migrations;
+use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::DataRepository;
 use one_core::repository::backup_repository::BackupRepository;
 use one_core::repository::blob_repository::BlobRepository;
@@ -47,6 +48,7 @@ use crate::history::HistoryProvider;
 use crate::key::KeyProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
+use crate::transaction_context::TransactionManagerImpl;
 use crate::wallet_unit_attestation::WalletUnitAttestationProvider;
 
 mod common;
@@ -85,6 +87,7 @@ pub struct DataLayer {
     // Used for tests for now
     #[allow(unused)]
     db: DatabaseConnection,
+    transaction_manager: Arc<dyn TransactionManager>,
     organisation_repository: Arc<dyn OrganisationRepository>,
     did_repository: Arc<dyn DidRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
@@ -111,49 +114,58 @@ pub struct DataLayer {
 
 impl DataLayer {
     pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
-        let history_repository = Arc::new(HistoryProvider { db: db.clone() });
+        let transaction_manager = Arc::new(TransactionManagerImpl::new(db.clone()));
+        let history_repository = Arc::new(HistoryProvider {
+            db: transaction_manager.clone(),
+        });
 
-        let claim_schema_repository = Arc::new(ClaimSchemaProvider { db: db.clone() });
+        let claim_schema_repository = Arc::new(ClaimSchemaProvider {
+            db: transaction_manager.clone(),
+        });
 
         let claim_repository = Arc::new(ClaimProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             claim_schema_repository: claim_schema_repository.clone(),
         });
 
-        let organisation_repository = Arc::new(OrganisationProvider { db: db.clone() });
+        let organisation_repository = Arc::new(OrganisationProvider {
+            db: transaction_manager.clone(),
+        });
 
         let interaction_repository = Arc::new(InteractionProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
         let credential_schema_repository = Arc::new(CredentialSchemaProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             claim_schema_repository: claim_schema_repository.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
         let key_repository = Arc::new(KeyProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
-        let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider { db: db.clone() });
+        let json_ld_context_repository = Arc::new(RemoteEntityCacheProvider {
+            db: transaction_manager.clone(),
+        });
 
         let did_repository = Arc::new(DidProvider {
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
-            db: db.clone(),
+            db: transaction_manager.clone(),
         });
 
         let certificate_repository = Arc::new(CertificateProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
         let identifier_repository = Arc::new(IdentifierProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
             did_repository: did_repository.clone(),
             key_repository: key_repository.clone(),
@@ -161,27 +173,29 @@ impl DataLayer {
         });
 
         let proof_schema_repository = Arc::new(ProofSchemaProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             claim_schema_repository: claim_schema_repository.clone(),
             organisation_repository: organisation_repository.clone(),
             credential_schema_repository: credential_schema_repository.clone(),
         });
 
         let revocation_list_repository = Arc::new(RevocationListProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             identifier_repository: identifier_repository.clone(),
         });
 
-        let trust_anchor_repository = Arc::new(TrustAnchorProvider { db: db.clone() });
+        let trust_anchor_repository = Arc::new(TrustAnchorProvider {
+            db: transaction_manager.clone(),
+        });
 
         let trust_entity_repository = Arc::new(TrustEntityProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             trust_anchor_repository: trust_anchor_repository.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
         let credential_repository = Arc::new(CredentialProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             credential_schema_repository: credential_schema_repository.clone(),
             claim_repository: claim_repository.clone(),
             identifier_repository: identifier_repository.clone(),
@@ -192,7 +206,7 @@ impl DataLayer {
         });
 
         let proof_repository = Arc::new(ProofProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             claim_repository: claim_repository.clone(),
             credential_repository: credential_repository.clone(),
             proof_schema_repository: proof_schema_repository.clone(),
@@ -202,23 +216,28 @@ impl DataLayer {
             key_repository: key_repository.clone(),
         });
 
-        let lvvc_repository = Arc::new(ValidityCredentialProvider::new(db.clone()));
-        let backup_repository = Arc::new(BackupProvider::new(db.clone(), exportable_storages));
+        let lvvc_repository =
+            Arc::new(ValidityCredentialProvider::new(transaction_manager.clone()));
+        let backup_repository = Arc::new(BackupProvider::new(
+            transaction_manager.clone(),
+            exportable_storages,
+        ));
 
-        let blob_repository = Arc::new(BlobProvider::new(db.clone()));
+        let blob_repository = Arc::new(BlobProvider::new(transaction_manager.clone()));
 
         let wallet_unit_repository = Arc::new(WalletUnitProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
         let wallet_unit_attestation_repository = Arc::new(WalletUnitAttestationProvider {
-            db: db.clone(),
+            db: transaction_manager.clone(),
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
         });
 
         Self {
+            transaction_manager,
             organisation_repository,
             credential_repository,
             credential_schema_repository,
@@ -317,6 +336,10 @@ impl DataRepository for DataLayer {
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository> {
         self.wallet_unit_attestation_repository.clone()
     }
+
+    fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
+        self.transaction_manager.clone()
+    }
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
@@ -336,4 +359,5 @@ pub async fn db_conn(
 mod blob;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;
+mod transaction_context;
 mod wallet_unit_attestation;

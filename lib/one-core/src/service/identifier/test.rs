@@ -5,6 +5,7 @@ use uuid::Uuid;
 use crate::model::identifier::{Identifier, IdentifierListQuery};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -120,5 +121,6 @@ fn setup_service(identifier: Option<Identifier>) -> IdentifierService {
         did_service,
         certificate_service,
         session_provider,
+        tx_manager: Arc::new(NoTransactionManager),
     }
 }

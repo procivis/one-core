@@ -24,7 +24,7 @@ impl OrganisationRepository for OrganisationProvider {
     ) -> Result<OrganisationId, DataLayerError> {
         let organisation =
             organisation::Entity::insert(organisation::ActiveModel::from(organisation))
-                .exec(&self.db)
+                .exec(&self.db.tx())
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -36,7 +36,7 @@ impl OrganisationRepository for OrganisationProvider {
         request: UpdateOrganisationRequest,
     ) -> Result<(), DataLayerError> {
         organisation::Entity::update(organisation::ActiveModel::from(request))
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
@@ -48,7 +48,7 @@ impl OrganisationRepository for OrganisationProvider {
         _relations: &OrganisationRelations,
     ) -> Result<Option<Organisation>, DataLayerError> {
         let organisation = organisation::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -61,7 +61,7 @@ impl OrganisationRepository for OrganisationProvider {
     ) -> Result<Option<Organisation>, DataLayerError> {
         let organisations: Option<organisation::Model> = organisation::Entity::find()
             .filter(organisation::Column::WalletProvider.eq(wallet_provider))
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -74,6 +74,6 @@ impl OrganisationRepository for OrganisationProvider {
     ) -> Result<GetOrganisationList, DataLayerError> {
         let query = organisation::Entity::find().with_list_query(&query_params);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_base_model(query, query_params, &self.db.tx()).await
     }
 }

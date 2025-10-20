@@ -24,14 +24,17 @@ use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 impl TrustAnchorRepository for TrustAnchorProvider {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError> {
         let anchor: trust_anchor::ActiveModel = anchor.into();
-        let result = anchor.insert(&self.db).await.map_err(to_data_layer_error)?;
+        let result = anchor
+            .insert(&self.db.tx())
+            .await
+            .map_err(to_data_layer_error)?;
 
         Ok(result.id)
     }
 
     async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError> {
         let trust_anchor = trust_anchor::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -61,11 +64,12 @@ impl TrustAnchorRepository for TrustAnchorProvider {
             .order_by_desc(trust_anchor::Column::CreatedDate)
             .order_by_desc(trust_anchor::Column::Id);
 
+        let tx = self.db.tx();
         let (items_count, trust_anchors) = tokio::join!(
-            query.to_owned().count(&self.db),
+            query.to_owned().count(&tx),
             query
                 .into_model::<TrustAnchorsListItemEntityModel>()
-                .all(&self.db)
+                .all(&tx)
         );
 
         let items_count = items_count.map_err(to_data_layer_error)?;
@@ -79,7 +83,7 @@ impl TrustAnchorRepository for TrustAnchorProvider {
     }
 
     async fn delete(&self, id: TrustAnchorId) -> Result<(), DataLayerError> {
-        let tx = self.db.begin().await.map_err(to_data_layer_error)?;
+        let tx = self.db.tx().begin().await.map_err(to_data_layer_error)?;
 
         trust_entity::Entity::delete_many()
             .filter(trust_entity::Column::TrustAnchorId.eq(id))

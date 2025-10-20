@@ -23,6 +23,7 @@ use uuid::Uuid;
 use super::DidProvider;
 use crate::entity::did;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub provider: DidProvider,
@@ -59,7 +60,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
         provider: DidProvider {
             key_repository: Arc::new(repositories.key_repository),
             organisation_repository: Arc::new(repositories.organisation_repository),
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
         },
         organisation: dummy_organisation(Some(organisation_id)),
         key: Key {

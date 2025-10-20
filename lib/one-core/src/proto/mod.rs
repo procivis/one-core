@@ -5,3 +5,4 @@ pub(crate) mod history_decorator;
 pub mod jwt;
 pub mod key_verification;
 pub mod session_provider;
+pub mod transaction_manager;

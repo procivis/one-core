@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -7,6 +9,7 @@ use uuid::Uuid;
 
 use super::ClaimSchemaProvider;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -18,7 +21,9 @@ async fn setup() -> TestSetup {
     let db = data_layer.db;
 
     TestSetup {
-        repository: Box::new(ClaimSchemaProvider { db: db.clone() }),
+        repository: Box::new(ClaimSchemaProvider {
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+        }),
         db,
     }
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
@@ -17,6 +19,7 @@ use crate::entity::wallet_unit::{self};
 use crate::test_utilities::{
     get_dummy_date, insert_organisation_to_database, setup_test_data_layer_and_connection,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub provider: WalletUnitProvider,
@@ -40,7 +43,7 @@ async fn setup(n: usize) -> TestSetup {
 
     TestSetup {
         provider: WalletUnitProvider {
-            db,
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             organisation_repository: data_layer.organisation_repository,
         },
         organisation_id,

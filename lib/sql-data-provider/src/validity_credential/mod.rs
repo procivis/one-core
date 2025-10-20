@@ -1,4 +1,6 @@
-use sea_orm::DatabaseConnection;
+use std::sync::Arc;
+
+use crate::transaction_context::TransactionProvider;
 
 mod mapper;
 mod repository;
@@ -7,11 +9,11 @@ mod repository;
 mod test;
 
 pub struct ValidityCredentialProvider {
-    db_conn: DatabaseConnection,
+    db_conn: Arc<dyn TransactionProvider>,
 }
 
 impl ValidityCredentialProvider {
-    pub fn new(db_conn: DatabaseConnection) -> Self {
+    pub fn new(db_conn: Arc<dyn TransactionProvider>) -> Self {
         Self { db_conn }
     }
 }

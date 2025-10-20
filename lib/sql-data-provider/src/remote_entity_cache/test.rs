@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::vec;
 
 use one_core::model::remote_entity_cache::{
@@ -13,6 +14,7 @@ use uuid::Uuid;
 use super::RemoteEntityCacheProvider;
 use crate::entity::remote_entity_cache;
 use crate::test_utilities::{get_dummy_date, setup_test_data_layer_and_connection};
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub provider: RemoteEntityCacheProvider,
@@ -24,7 +26,9 @@ async fn setup() -> TestSetup {
     let db = data_layer.db;
 
     TestSetup {
-        provider: RemoteEntityCacheProvider { db: db.clone() },
+        provider: RemoteEntityCacheProvider {
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+        },
         db,
     }
 }

@@ -2,11 +2,12 @@ use one_core::model::common::GetListResponse;
 use one_core::model::list_query::ListQuery;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
-use sea_orm::{DatabaseConnection, EntityTrait, PaginatorTrait, Select};
+use sea_orm::{EntityTrait, PaginatorTrait, Select};
 use serde::de::{Deserialize, Deserializer, Error, Unexpected};
 use serde_json::Value;
 
 use crate::mapper::to_data_layer_error;
+use crate::transaction_context::TransactionWrapper;
 
 pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
@@ -51,10 +52,10 @@ pub(crate) async fn list_query_with_base_model<
 >(
     query: Select<E>,
     query_params: ListQuery<SortableColumn, FV, Include>,
-    db: &'db DatabaseConnection,
+    db: &'db TransactionWrapper,
 ) -> Result<GetListResponse<ListItem>, DataLayerError>
 where
-    Select<E>: PaginatorTrait<'db, DatabaseConnection>,
+    Select<E>: PaginatorTrait<'db, TransactionWrapper>,
 {
     let limit = query_params
         .pagination

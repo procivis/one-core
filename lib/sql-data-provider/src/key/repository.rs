@@ -53,7 +53,7 @@ impl KeyRepository for KeyProvider {
             organisation_id: Set(organisation_id),
             deleted_at: NotSet,
         }
-        .insert(&self.db)
+        .insert(&self.db.tx())
         .await
         .map_err(to_data_layer_error)?;
 
@@ -67,7 +67,7 @@ impl KeyRepository for KeyProvider {
     ) -> Result<Option<Key>, DataLayerError> {
         let key = key::Entity::find_by_id(*id)
             .filter(key::Column::DeletedAt.is_null())
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(|e| {
                 tracing::error!("Error while fetching key {}. Error: {}", id, e.to_string());
@@ -89,7 +89,7 @@ impl KeyRepository for KeyProvider {
         let keys = key::Entity::find()
             .filter(key::Column::DeletedAt.is_null())
             .filter(key::Column::Id.is_in(ids.iter().map(ToString::to_string)))
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| {
                 tracing::error!("Error while fetching keys. Error: {}", e.to_string());
@@ -109,6 +109,6 @@ impl KeyRepository for KeyProvider {
             .order_by_desc(key::Column::CreatedDate)
             .order_by_desc(key::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_base_model(query, query_params, &self.db.tx()).await
     }
 }

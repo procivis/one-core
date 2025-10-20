@@ -18,6 +18,7 @@ use super::ClaimProvider;
 use crate::entity::claim_schema;
 use crate::entity::credential_schema::WalletStorageType;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -101,7 +102,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
 
     TestSetup {
         repository: Box::new(ClaimProvider {
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             claim_schema_repository,
         }),
         db,

@@ -26,6 +26,7 @@ use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_did_key, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub provider: IdentifierProvider,
@@ -75,7 +76,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
 
     TestSetup {
         provider: IdentifierProvider {
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             organisation_repository: Arc::new(repositories.organisation_repository),
             did_repository: Arc::new(MockDidRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),

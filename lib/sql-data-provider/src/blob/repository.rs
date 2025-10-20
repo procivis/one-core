@@ -16,7 +16,7 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 impl BlobRepository for BlobProvider {
     async fn create(&self, blob: Blob) -> Result<(), DataLayerError> {
         blob::Entity::insert::<blob::ActiveModel>(blob.into())
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
         Ok(())
@@ -24,7 +24,7 @@ impl BlobRepository for BlobProvider {
 
     async fn get(&self, id: &BlobId) -> Result<Option<Blob>, DataLayerError> {
         let result = blob::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?
             .map(Blob::from);
@@ -41,7 +41,7 @@ impl BlobRepository for BlobProvider {
         };
 
         update_model
-            .update(&self.db)
+            .update(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -50,7 +50,7 @@ impl BlobRepository for BlobProvider {
 
     async fn delete(&self, id: &BlobId) -> Result<(), DataLayerError> {
         blob::Entity::delete_by_id(id)
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -60,7 +60,7 @@ impl BlobRepository for BlobProvider {
     async fn delete_many(&self, ids: &[BlobId]) -> Result<(), DataLayerError> {
         blob::Entity::delete_many()
             .filter(blob::Column::Id.is_in(ids))
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 

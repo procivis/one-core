@@ -46,6 +46,7 @@ use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::key_did::KeyRole;
 use crate::entity::{blob, claim, credential, interaction, proof_claim};
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -171,7 +172,7 @@ async fn setup(
 
     TestSetup {
         repository: Box::new(ProofProvider {
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             proof_schema_repository,
             claim_repository,
             credential_repository,

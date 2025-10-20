@@ -4,15 +4,17 @@ use std::path::Path;
 use anyhow::Context;
 use one_core::repository::error::DataLayerError;
 use sea_orm::sea_query::{Expr, Func, QueryStatementBuilder, SimpleExpr};
-use sea_orm::{ColumnTrait, Database, DatabaseConnection, Iden, Value};
+use sea_orm::{ColumnTrait, Database, Iden, Value};
 
 use crate::list_query_generic::Hex;
+use crate::transaction_context::TransactionWrapper;
 
-pub async fn open_sqlite_on_path(path: &Path) -> Result<DatabaseConnection, DataLayerError> {
-    Database::connect(format!("sqlite:{}?mode=rw", path.to_string_lossy()))
-        .await
-        .context("failed to open sql from path")
-        .map_err(Into::into)
+pub async fn open_sqlite_on_path(path: &Path) -> Result<TransactionWrapper, DataLayerError> {
+    Ok(TransactionWrapper::AutoCommit(
+        Database::connect(format!("sqlite:{}?mode=rw", path.to_string_lossy()))
+            .await
+            .context("failed to open sql from path")?,
+    ))
 }
 
 pub struct JsonObject;

@@ -36,6 +36,7 @@ use super::ProofSchemaProvider;
 use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::proof_schema;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub repository: Box<dyn ProofSchemaRepository>,
@@ -57,7 +58,7 @@ async fn setup_empty(
 
     TestSetup {
         repository: Box::from(ProofSchemaProvider {
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             claim_schema_repository,
             organisation_repository,
             credential_schema_repository,

@@ -13,6 +13,7 @@ use crate::test_utilities::{
     get_dummy_date, insert_identifier, insert_organisation_to_database,
     setup_test_data_layer_and_connection,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub provider: CertificateProvider,
@@ -41,7 +42,7 @@ async fn setup() -> TestSetup {
 
     TestSetup {
         provider: CertificateProvider {
-            db,
+            db: Arc::new(TransactionManagerImpl::new(db)),
             key_repository: Arc::new(MockKeyRepository::default()),
             organisation_repository: Arc::new(MockOrganisationRepository::default()),
         },

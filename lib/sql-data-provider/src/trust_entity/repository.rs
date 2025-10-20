@@ -46,7 +46,7 @@ impl TrustEntityRepository for TrustEntityProvider {
             content: Set(entity.content.map(|s| s.as_bytes().to_vec())),
             organisation_id: Set(entity.organisation.map(|org| org.id)),
         }
-        .insert(&self.db)
+        .insert(&self.db.tx())
         .await
         .map_err(to_data_layer_error)?;
 
@@ -60,7 +60,7 @@ impl TrustEntityRepository for TrustEntityProvider {
         let Some((entity_model, trust_anchor)) = trust_entity::Entity::find()
             .filter(trust_entity::Column::EntityKey.eq(entity_key))
             .find_also_related(trust_anchor::Entity)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?
         else {
@@ -85,7 +85,7 @@ impl TrustEntityRepository for TrustEntityProvider {
                         .and(trust_entity::Column::State.eq(TrustEntityState::Active)),
                 )
                 .find_also_related(organisation::Entity)
-                .all(&self.db)
+                .all(&self.db.tx())
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -101,7 +101,7 @@ impl TrustEntityRepository for TrustEntityProvider {
 
     async fn delete(&self, id: TrustEntityId) -> Result<(), DataLayerError> {
         trust_entity::Entity::delete_by_id(id)
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map(|_| ())
             .map_err(to_data_layer_error)
@@ -113,7 +113,7 @@ impl TrustEntityRepository for TrustEntityProvider {
         relations: &TrustEntityRelations,
     ) -> Result<Option<TrustEntity>, DataLayerError> {
         let entity_model = trust_entity::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -229,11 +229,12 @@ impl TrustEntityRepository for TrustEntityProvider {
             .order_by_desc(trust_entity::Column::CreatedDate)
             .order_by_desc(trust_entity::Column::Id);
 
+        let tx = self.db.tx();
         let (items_count, trust_entities) = tokio::join!(
-            query.to_owned().count(&self.db),
+            query.to_owned().count(&tx),
             query
                 .into_model::<TrustEntityListItemEntityModel>()
-                .all(&self.db)
+                .all(&tx)
         );
 
         let items_count = items_count.map_err(to_data_layer_error)?;
@@ -285,7 +286,7 @@ impl TrustEntityRepository for TrustEntityProvider {
             content: option_to_active_value(request.content.map(|c| Some(c.into_bytes()))),
             ..Default::default()
         }
-        .update(&self.db)
+        .update(&self.db.tx())
         .await
         .map_err(to_update_data_layer_error)?;
 

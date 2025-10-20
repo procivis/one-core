@@ -24,6 +24,7 @@ use super::CredentialSchemaProvider;
 use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::{credential_schema, organisation};
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 #[derive(Default)]
 struct Repositories {
@@ -53,7 +54,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
                 .expect("organisation not found"),
         ),
         repository: Box::new(CredentialSchemaProvider {
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             claim_schema_repository: Arc::from(repositories.claim_schema_repository),
             organisation_repository: Arc::from(repositories.organisation_repository),
         }),

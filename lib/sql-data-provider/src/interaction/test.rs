@@ -17,6 +17,7 @@ use crate::test_utilities::{
     dummy_organisation, get_dummy_date, get_interaction, insert_interaction,
     insert_organisation_to_database, setup_test_data_layer_and_connection,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 #[derive(Default)]
 struct Repositories {
@@ -34,7 +35,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
 
     TestSetup {
         provider: InteractionProvider {
-            db: db.clone(),
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             organisation_repository: Arc::from(repositories.organisation_repository),
         },
         db,

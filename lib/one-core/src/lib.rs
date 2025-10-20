@@ -1022,6 +1022,7 @@ impl OneCore {
                 certificate_service,
                 config.clone(),
                 providers.session_provider.clone(),
+                data_provider.get_tx_manager(),
             ),
             wallet_unit_service: WalletUnitService::new(
                 organisation_repository,

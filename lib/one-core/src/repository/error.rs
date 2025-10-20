@@ -32,6 +32,9 @@ pub enum DataLayerError {
 
     #[error("Missing proof state for proof: {proof}")]
     MissingProofState { proof: ProofId },
+
+    #[error("Transaction error: {0}")]
+    TransactionError(String),
 }
 
 impl From<uuid::Error> for DataLayerError {

@@ -80,7 +80,7 @@ impl IdentifierProvider {
                 .order_by_desc(certificate::Column::ExpiryDate)
                 .order_by_asc(certificate::Column::Name)
                 .into_tuple()
-                .all(&self.db)
+                .all(&self.db.tx())
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -107,7 +107,7 @@ impl IdentifierProvider {
 impl IdentifierRepository for IdentifierProvider {
     async fn create(&self, request: Identifier) -> Result<IdentifierId, DataLayerError> {
         let identifier = identifier::ActiveModel::from(request)
-            .insert(&self.db)
+            .insert(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -120,7 +120,7 @@ impl IdentifierRepository for IdentifierProvider {
         relations: &IdentifierRelations,
     ) -> Result<Option<Identifier>, DataLayerError> {
         let identifier = identifier::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -137,7 +137,7 @@ impl IdentifierRepository for IdentifierProvider {
     ) -> Result<Option<Identifier>, DataLayerError> {
         let identifier = identifier::Entity::find()
             .filter(identifier::Column::DidId.eq(did_id))
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -164,7 +164,7 @@ impl IdentifierRepository for IdentifierProvider {
         };
 
         update_model
-            .update(&self.db)
+            .update(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -183,7 +183,7 @@ impl IdentifierRepository for IdentifierProvider {
 
         identifier::Entity::update(identifier)
             .filter(identifier::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -196,7 +196,7 @@ impl IdentifierRepository for IdentifierProvider {
     ) -> Result<GetIdentifierList, DataLayerError> {
         let query = get_identifier_list_query(&query_params);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_base_model(query, query_params, &self.db.tx()).await
     }
 }
 

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use super::error::ErrorCode;
 use crate::config::core_config;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -28,6 +29,7 @@ pub struct IdentifierService {
     did_service: DidService,
     certificate_service: CertificateService,
     session_provider: Arc<dyn SessionProvider>,
+    tx_manager: Arc<dyn TransactionManager>,
 }
 
 impl IdentifierService {
@@ -41,6 +43,7 @@ impl IdentifierService {
         certificate_service: CertificateService,
         config: Arc<core_config::CoreConfig>,
         session_provider: Arc<dyn SessionProvider>,
+        tx_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
             identifier_repository,
@@ -51,6 +54,7 @@ impl IdentifierService {
             certificate_service,
             config,
             session_provider,
+            tx_manager,
         }
     }
 }

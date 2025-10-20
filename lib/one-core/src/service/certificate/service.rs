@@ -4,19 +4,13 @@ use uuid::Uuid;
 
 use super::CertificateService;
 use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
-use crate::model::certificate::{
-    Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
-    CertificateState,
-};
+use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::key::Key;
-use crate::model::list_filter::ListFilterCondition;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
-};
+use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 use crate::validator::throw_if_org_not_matching_session;
 
 impl CertificateService {
@@ -84,21 +78,6 @@ impl CertificateService {
             None => subject_common_name.ok_or_else(|| {
                 ValidationError::CertificateParsingFailed("missing common-name".to_string())
             })?,
-        };
-
-        if self
-            .certificate_repository
-            .list(CertificateListQuery {
-                filtering: Some(ListFilterCondition::Value(
-                    CertificateFilterValue::Fingerprint(attributes.fingerprint.clone()),
-                )),
-                ..Default::default()
-            })
-            .await?
-            .total_items
-            > 0
-        {
-            return Err(BusinessLogicError::CertificateAlreadyExists.into());
         };
 
         Ok(Certificate {

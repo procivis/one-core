@@ -22,7 +22,7 @@ impl ClaimRepository for ClaimProvider {
             .collect::<Result<Vec<claim::ActiveModel>, _>>()?;
 
         claim::Entity::insert_many(models)
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -35,7 +35,7 @@ impl ClaimRepository for ClaimProvider {
     ) -> Result<(), DataLayerError> {
         claim::Entity::delete_many()
             .filter(claim::Column::CredentialId.eq(request))
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -48,7 +48,7 @@ impl ClaimRepository for ClaimProvider {
     ) -> Result<(), DataLayerError> {
         claim::Entity::delete_many()
             .filter(claim::Column::CredentialId.is_in(request))
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -69,7 +69,7 @@ impl ClaimRepository for ClaimProvider {
 
         let mut models = claim::Entity::find()
             .filter(claim::Column::Id.is_in(claim_id_to_index.keys()))
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 

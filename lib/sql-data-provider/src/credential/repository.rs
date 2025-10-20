@@ -20,9 +20,8 @@ use one_dto_mapper::convert_inner;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::sea_query::{Expr, IntoCondition};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, DatabaseConnection, EntityTrait, FromQueryResult, JoinType,
-    PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr,
-    Unchanged,
+    ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, JoinType, PaginatorTrait,
+    QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
 use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
@@ -37,6 +36,7 @@ use crate::entity::{
 };
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
+use crate::transaction_context::TransactionProvider;
 
 async fn get_credential_schema(
     schema_id: &CredentialSchemaId,
@@ -60,7 +60,7 @@ async fn get_credential_schema(
 async fn get_claims(
     credential: &credential::Model,
     relations: &ClaimRelations,
-    db: &DatabaseConnection,
+    db: &dyn TransactionProvider,
     claim_repository: Arc<dyn ClaimRepository>,
 ) -> Result<Vec<Claim>, DataLayerError> {
     #[derive(FromQueryResult)]
@@ -80,7 +80,7 @@ async fn get_claims(
         // sorting claims according to the order from credential_schema
         .order_by_asc(credential_schema_claim_schema::Column::Order)
         .into_model::<ClaimIdModel>()
-        .all(db)
+        .all(&db.tx())
         .await
         .map_err(|e| DataLayerError::Db(e.into()))?
         .into_iter()
@@ -122,7 +122,7 @@ impl CredentialProvider {
                 get_claims(
                     &credential,
                     claim_relations,
-                    &self.db,
+                    &*self.db,
                     self.claim_repository.clone(),
                 )
                 .await?,
@@ -403,7 +403,7 @@ impl CredentialRepository for CredentialProvider {
             request.credential_blob_id,
             request.wallet_unit_attestation_blob_id,
         )
-        .insert(&self.db)
+        .insert(&self.db.tx())
         .await
         .map_err(|e| match e.sql_err() {
             Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
@@ -428,7 +428,7 @@ impl CredentialRepository for CredentialProvider {
 
         credential::Entity::update(credential)
             .filter(credential::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map(|_| ())
             .map_err(to_update_data_layer_error)
@@ -440,7 +440,7 @@ impl CredentialRepository for CredentialProvider {
         relations: &CredentialRelations,
     ) -> Result<Option<Credential>, DataLayerError> {
         let credential = credential::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
 
@@ -463,7 +463,7 @@ impl CredentialRepository for CredentialProvider {
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
             .filter(credential::Column::InteractionId.eq(interaction_id.to_string()))
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -478,7 +478,7 @@ impl CredentialRepository for CredentialProvider {
         let credentials = credential::Entity::find()
             .filter(credential::Column::IssuerIdentifierId.eq(issuer_identifier_id))
             .order_by_asc(credential::Column::CreatedDate)
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -496,11 +496,10 @@ impl CredentialRepository for CredentialProvider {
 
         let query = get_credential_list_query(query_params);
 
+        let tx = self.db.tx();
         let (items_count, credentials) = tokio::join!(
-            query.to_owned().count(&self.db),
-            query
-                .into_model::<CredentialListEntityModel>()
-                .all(&self.db)
+            query.to_owned().count(&tx),
+            query.into_model::<CredentialListEntityModel>().all(&tx)
         );
 
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
@@ -611,7 +610,7 @@ impl CredentialRepository for CredentialProvider {
         }
 
         update_model
-            .update(&self.db)
+            .update(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -636,7 +635,7 @@ impl CredentialRepository for CredentialProvider {
                     }),
             )
             .distinct()
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -662,7 +661,7 @@ impl CredentialRepository for CredentialProvider {
                         .into_condition()
                     }),
             )
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -686,7 +685,7 @@ impl CredentialRepository for CredentialProvider {
                             .into_condition()
                     }),
             )
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -709,7 +708,7 @@ impl CredentialRepository for CredentialProvider {
                 credential_blob_id: Set(None),
                 ..Default::default()
             })
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())

@@ -1,4 +1,6 @@
-use sea_orm::DatabaseConnection;
+use std::sync::Arc;
+
+use crate::transaction_context::TransactionProvider;
 
 mod mapper;
 pub mod repository;
@@ -7,5 +9,5 @@ pub mod repository;
 mod test;
 
 pub(crate) struct OrganisationProvider {
-    pub db: DatabaseConnection,
+    pub db: Arc<dyn TransactionProvider>,
 }

@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use one_core::model::common::SortDirection;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{
@@ -12,6 +14,7 @@ use uuid::Uuid;
 
 use super::OrganisationProvider;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
@@ -22,7 +25,9 @@ async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
     TestSetup {
-        repository: Box::new(OrganisationProvider { db: db.clone() }),
+        repository: Box::new(OrganisationProvider {
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+        }),
         db,
     }
 }

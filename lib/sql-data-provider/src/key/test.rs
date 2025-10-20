@@ -18,6 +18,7 @@ use crate::entity::key;
 use crate::test_utilities::{
     dummy_organisation, insert_organisation_to_database, setup_test_data_layer_and_connection,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
@@ -107,7 +108,7 @@ async fn test_create_key_success() {
     } = setup().await;
 
     let provider = KeyProvider {
-        db: db.clone(),
+        db: Arc::new(TransactionManagerImpl::new(db.clone())),
         organisation_repository: Arc::new(organisation_repository),
     };
 
@@ -139,7 +140,7 @@ async fn test_get_key_success() {
     let TestSetup { db, key_id, .. } = setup().await;
 
     let provider = KeyProvider {
-        db: db.clone(),
+        db: Arc::new(TransactionManagerImpl::new(db.clone())),
         organisation_repository: Arc::new(organisation_repository),
     };
 
@@ -163,7 +164,7 @@ async fn test_get_key_list_success() {
     } = setup_list().await;
 
     let provider = KeyProvider {
-        db: db.clone(),
+        db: Arc::new(TransactionManagerImpl::new(db.clone())),
         organisation_repository: Arc::new(organisation_repository),
     };
 

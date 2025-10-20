@@ -1,3 +1,4 @@
+use futures::FutureExt;
 use shared_types::{IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -218,31 +219,40 @@ impl IdentifierService {
                     );
                 }
 
-                self.identifier_repository
-                    .create(Identifier {
-                        id,
-                        created_date: now,
-                        last_modified: now,
-                        name: request.name,
-                        organisation: Some(organisation),
-                        r#type: IdentifierType::Certificate,
-                        is_remote: false,
-                        state: IdentifierState::Active,
-                        deleted_at: None,
-                        did: None,
-                        key: None,
-                        certificates: None,
-                    })
-                    .await
-                    .map_err(map_already_exists_error)?;
-
-                for certificate in certificates {
-                    self.certificate_repository
-                        .create(certificate)
+                let repository_actions = async {
+                    self.identifier_repository
+                        .create(Identifier {
+                            id,
+                            created_date: now,
+                            last_modified: now,
+                            name: request.name,
+                            organisation: Some(organisation),
+                            r#type: IdentifierType::Certificate,
+                            is_remote: false,
+                            state: IdentifierState::Active,
+                            deleted_at: None,
+                            did: None,
+                            key: None,
+                            certificates: None,
+                        })
                         .await
                         .map_err(map_already_exists_error)?;
-                }
 
+                    for certificate in certificates {
+                        self.certificate_repository
+                            .create(certificate)
+                            .await
+                            .map_err(|err| match err {
+                                DataLayerError::AlreadyExists => ServiceError::BusinessLogic(
+                                    BusinessLogicError::CertificateAlreadyExists,
+                                ),
+                                e => e.into(),
+                            })?;
+                    }
+                    Ok(())
+                }
+                .boxed();
+                self.tx_manager.transaction(repository_actions).await??;
                 Ok(id)
             }
             // invalid input combinations

@@ -22,7 +22,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         request: RemoteEntityCacheEntry,
     ) -> Result<RemoteEntityCacheEntryId, DataLayerError> {
         let context = remote_entity_cache::ActiveModel::from(request)
-            .insert(&self.db)
+            .insert(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -40,7 +40,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         remote_entity_cache::Entity::delete_many()
             .filter(remote_entity_cache::Column::ExpirationDate.lt(OffsetDateTime::now_utc()))
             .filter(remote_entity_cache::Column::Type.eq(cache_type))
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -62,14 +62,14 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
             .order_by_asc(remote_entity_cache::Column::LastUsed)
             .limit(still_to_remove as u64)
             .into_tuple()
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
         if !to_remove.is_empty() {
             remote_entity_cache::Entity::delete_many()
                 .filter(remote_entity_cache::Column::Id.is_in(to_remove))
-                .exec(&self.db)
+                .exec(&self.db.tx())
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
         }
@@ -86,7 +86,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
                         .is_in(value.into_iter().map(remote_entity_cache::CacheType::from)),
                 )
             })
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
@@ -98,7 +98,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
         _relations: &RemoteEntityCacheRelations,
     ) -> Result<Option<RemoteEntityCacheEntry>, DataLayerError> {
         let context = remote_entity_cache::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -111,7 +111,7 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
     ) -> Result<Option<RemoteEntityCacheEntry>, DataLayerError> {
         let context = remote_entity_cache::Entity::find()
             .filter(remote_entity_cache::Column::Key.eq(key))
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -123,14 +123,14 @@ impl RemoteEntityCacheRepository for RemoteEntityCacheProvider {
             .filter(
                 remote_entity_cache::Column::Type.eq(remote_entity_cache::CacheType::from(r#type)),
             )
-            .count(&self.db)
+            .count(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))? as u32)
     }
 
     async fn update(&self, request: RemoteEntityCacheEntry) -> Result<(), DataLayerError> {
         remote_entity_cache::ActiveModel::from(request)
-            .update(&self.db)
+            .update(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

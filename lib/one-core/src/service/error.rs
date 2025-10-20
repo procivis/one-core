@@ -1790,7 +1790,8 @@ impl ErrorCodeMixin for DataLayerError {
             | Self::IncompleteClaimsSchemaList { .. }
             | Self::MissingProofState { .. }
             | Self::MissingRequiredRelation { .. }
-            | Self::MissingClaimsSchemaForClaim(_, _) => ErrorCode::BR_0000,
+            | Self::MissingClaimsSchemaForClaim(_, _)
+            | Self::TransactionError(_) => ErrorCode::BR_0000,
         }
     }
 }

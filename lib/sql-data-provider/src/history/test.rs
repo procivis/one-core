@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
@@ -17,6 +19,7 @@ use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::key_did::KeyRole;
 use crate::history::HistoryProvider;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub provider: HistoryProvider,
@@ -33,7 +36,9 @@ async fn setup_empty() -> TestSetup {
         .unwrap();
 
     TestSetup {
-        provider: HistoryProvider { db: db.clone() },
+        provider: HistoryProvider {
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+        },
         organisation: dummy_organisation(Some(organisation_id)),
         db,
     }

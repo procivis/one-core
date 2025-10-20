@@ -1,4 +1,5 @@
 use std::path::Path;
+use std::sync::Arc;
 
 use anyhow::Context;
 use autometrics::autometrics;
@@ -10,9 +11,9 @@ use one_dto_mapper::{Into, convert_inner, try_convert_inner};
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func, Query, SelectStatement, SimpleExpr};
 use sea_orm::{
-    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DatabaseConnection, DbBackend,
-    EntityTrait, FromQueryResult, Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect,
-    QueryTrait, RelationTrait, Statement, UpdateResult, Values,
+    ActiveModelTrait, ColumnTrait, Condition, ConnectionTrait, DbBackend, EntityTrait,
+    FromQueryResult, Iterable, JoinType, PaginatorTrait, QueryFilter, QuerySelect, QueryTrait,
+    RelationTrait, Statement, UpdateResult, Values,
 };
 use time::OffsetDateTime;
 
@@ -27,9 +28,10 @@ use crate::entity::{
     wallet_unit_attestation,
 };
 use crate::mapper::to_data_layer_error;
+use crate::transaction_context::{TransactionProvider, TransactionWrapper};
 
 impl BackupProvider {
-    pub fn new(db: DatabaseConnection, exportable_storages: Vec<String>) -> Self {
+    pub fn new(db: Arc<dyn TransactionProvider>, exportable_storages: Vec<String>) -> Self {
         Self {
             db,
             exportable_storages,
@@ -129,6 +131,7 @@ impl BackupRepository for BackupProvider {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn copy_db_to(&self, path: &Path) -> Result<Metadata, DataLayerError> {
         self.db
+            .tx()
             .execute(Statement {
                 sql: "VACUUM INTO ?;".into(),
                 values: Values(vec![path.to_string_lossy().into()]).into(),
@@ -164,7 +167,7 @@ impl BackupRepository for BackupProvider {
     ) -> Result<UnexportableEntities, DataLayerError> {
         let db = match path {
             Some(path) => open_sqlite_on_path(path).await?,
-            None => self.db.clone(),
+            None => self.db.tx(),
         };
 
         let select_keys = key::Entity::find()
@@ -529,7 +532,7 @@ impl BackupRepository for BackupProvider {
 }
 
 fn update_identifiers_matching_subquery(
-    db: &DatabaseConnection,
+    db: &TransactionWrapper,
     now: OffsetDateTime,
     subquery: SelectStatement,
 ) -> impl Future<Output = Result<UpdateResult, sea_orm::DbErr>> {
@@ -544,7 +547,7 @@ fn update_identifiers_matching_subquery(
         .exec(db)
 }
 
-async fn delete_wallet_unit_attestations(db: &DatabaseConnection) -> Result<(), sea_orm::DbErr> {
+async fn delete_wallet_unit_attestations(db: &TransactionWrapper) -> Result<(), sea_orm::DbErr> {
     wallet_unit_attestation::Entity::delete_many()
         .exec(db)
         .await?;
@@ -552,7 +555,7 @@ async fn delete_wallet_unit_attestations(db: &DatabaseConnection) -> Result<(), 
 }
 
 async fn delete_history_related_to_wallet_unit_attestations(
-    db: &DatabaseConnection,
+    db: &TransactionWrapper,
 ) -> Result<(), sea_orm::DbErr> {
     history::Entity::delete_many()
         .filter(history::Column::EntityType.eq(history::HistoryEntityType::WalletUnitAttestation))

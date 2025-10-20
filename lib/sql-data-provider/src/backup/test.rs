@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use sea_orm::ActiveValue::NotSet;
@@ -23,6 +25,7 @@ use crate::test_utilities::{
     insert_credential_schema_to_database, insert_key_did, insert_many_claims_schema_to_database,
     insert_many_claims_to_database, insert_organisation_to_database,
 };
+use crate::transaction_context::TransactionManagerImpl;
 
 async fn insert_key_to_database(
     database: &DatabaseConnection,
@@ -244,7 +247,7 @@ async fn setup_empty() -> TestSetup {
     TestSetup {
         db: db.clone(),
         provider: BackupProvider {
-            db,
+            db: Arc::new(TransactionManagerImpl::new(db.clone())),
             exportable_storages: vec!["INTERNAL".into()],
         },
         organisation_id,

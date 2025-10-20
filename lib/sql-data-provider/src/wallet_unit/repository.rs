@@ -24,7 +24,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         request: WalletUnit,
     ) -> Result<WalletUnitId, DataLayerError> {
         let wallet_unit = wallet_unit::ActiveModel::try_from(request)?
-            .insert(&self.db)
+            .insert(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -37,7 +37,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         relations: &WalletUnitRelations,
     ) -> Result<Option<WalletUnit>, DataLayerError> {
         let Some(wallet_unit) = wallet_unit::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?
         else {
@@ -75,11 +75,14 @@ impl WalletUnitRepository for WalletUnitProvider {
                 .order_by_desc(wallet_unit::Column::Id);
         }
 
-        let wallet_units = query.all(&self.db).await.map_err(to_data_layer_error)?;
+        let wallet_units = query
+            .all(&self.db.tx())
+            .await
+            .map_err(to_data_layer_error)?;
 
         let total_items = wallet_unit::Entity::find()
             .with_list_query(&query_params)
-            .count(&self.db)
+            .count(&self.db.tx())
             .await
             .map_err(to_data_layer_error)?;
 
@@ -122,7 +125,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         };
 
         update_model
-            .update(&self.db)
+            .update(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -131,7 +134,7 @@ impl WalletUnitRepository for WalletUnitProvider {
 
     async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), DataLayerError> {
         wallet_unit::Entity::delete_by_id(id)
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

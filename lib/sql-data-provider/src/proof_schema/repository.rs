@@ -78,6 +78,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
 
         let tx = self
             .db
+            .tx()
             .begin()
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
@@ -164,7 +165,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
         relations: &ProofSchemaRelations,
     ) -> Result<Option<ProofSchema>, DataLayerError> {
         let proof_schema_model = crate::entity::proof_schema::Entity::find_by_id(id)
-            .one(&self.db)
+            .one(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -205,7 +206,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             .order_by_desc(proof_schema::Column::CreatedDate)
             .order_by_desc(proof_schema::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db).await
+        list_query_with_base_model(query, query_params, &self.db.tx()).await
     }
 
     async fn delete_proof_schema(
@@ -221,7 +222,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
 
         proof_schema::Entity::update(schema)
             .filter(proof_schema::Column::DeletedAt.is_null())
-            .exec(&self.db)
+            .exec(&self.db.tx())
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -254,7 +255,7 @@ impl ProofSchemaProvider {
         let input_schemas = crate::entity::proof_input_schema::Entity::find()
             .filter(proof_input_schema::Column::ProofSchema.eq(proof_schema_id.to_string()))
             .order_by_asc(proof_input_schema::Column::Order)
-            .all(&self.db)
+            .all(&self.db.tx())
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -273,7 +274,7 @@ impl ProofSchemaProvider {
                                 .eq(input_schema.id),
                         )
                         .order_by_asc(proof_input_claim_schema::Column::Order)
-                        .all(&self.db)
+                        .all(&self.db.tx())
                         .await
                         .map_err(|e| DataLayerError::Db(e.into()))?;
 

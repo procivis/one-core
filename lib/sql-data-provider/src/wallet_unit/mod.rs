@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use one_core::repository::organisation_repository::OrganisationRepository;
-use sea_orm::DatabaseConnection;
+
+use crate::transaction_context::TransactionProvider;
 
 pub mod mapper;
 pub mod repository;
@@ -10,6 +11,6 @@ pub mod repository;
 mod test;
 
 pub(crate) struct WalletUnitProvider {
-    pub db: DatabaseConnection,
+    pub db: Arc<dyn TransactionProvider>,
     pub organisation_repository: Arc<dyn OrganisationRepository>,
 }

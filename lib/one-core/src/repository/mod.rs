@@ -49,6 +49,7 @@ use validity_credential_repository::ValidityCredentialRepository;
 use self::blob_repository::BlobRepository;
 use self::trust_entity_repository::TrustEntityRepository;
 use self::wallet_unit_repository::WalletUnitRepository;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 
 pub trait DataRepository: Send + Sync {
@@ -74,4 +75,6 @@ pub trait DataRepository: Send + Sync {
     fn get_blob_repository(&self) -> Arc<dyn BlobRepository>;
     fn get_wallet_unit_repository(&self) -> Arc<dyn WalletUnitRepository>;
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository>;
+
+    fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }

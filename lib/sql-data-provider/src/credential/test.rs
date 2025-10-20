@@ -48,6 +48,7 @@ use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::{claim, interaction};
 use crate::test_utilities;
 use crate::test_utilities::*;
+use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: sea_orm::DatabaseConnection,
@@ -256,7 +257,7 @@ fn credential_repository(
 ) -> impl CredentialRepository {
     let repositories = repositories.unwrap_or_default();
     CredentialProvider {
-        db,
+        db: Arc::new(TransactionManagerImpl::new(db)),
         credential_schema_repository: repositories.credential_schema_repository,
         claim_repository: repositories.claim_repository,
         identifier_repository: repositories.identifier_repository,

@@ -1,4 +1,6 @@
-use sea_orm::DatabaseConnection;
+use std::sync::Arc;
+
+use crate::transaction_context::TransactionProvider;
 
 mod helpers;
 mod mappers;
@@ -6,7 +8,7 @@ mod models;
 pub mod repository;
 
 pub(crate) struct BackupProvider {
-    db: DatabaseConnection,
+    db: Arc<dyn TransactionProvider>,
     exportable_storages: Vec<String>,
 }
 
