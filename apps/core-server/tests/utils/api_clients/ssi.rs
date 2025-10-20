@@ -228,4 +228,10 @@ impl SSIApi {
         );
         self.client.get(&url).await
     }
+
+    pub async fn get_wallet_provider_metadata(&self, wallet_provider: impl AsRef<str>) -> Response {
+        let wallet_provider = wallet_provider.as_ref();
+        let url = format!("/ssi/wallet-provider/v1/{}", wallet_provider);
+        self.client.get(&url).await
+    }
 }

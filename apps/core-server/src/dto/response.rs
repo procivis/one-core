@@ -46,8 +46,8 @@ impl ErrorResponse {
     fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
         let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
         match error {
-            ServiceError::EntityNotFound(_) => Self::NotFound(response),
-            ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
+            ServiceError::EntityNotFound(_)
+            | ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
             | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))
             | ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))
             | ServiceError::BusinessLogic(BusinessLogicError::MissingTrustEntity(_)) => {

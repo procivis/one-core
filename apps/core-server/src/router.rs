@@ -545,6 +545,10 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 "/ssi/wallet-unit/v1/{id}/refresh",
                 post(ssi::wallet_provider::controller::refresh_wallet_unit)
             )
+            .route(
+                "/ssi/wallet-provider/v1/{walletProvider}",
+                get(ssi::wallet_provider::controller::get_wallet_provider_metadata),
+            )
     } else {
         if let Some(paths) = openapi_paths.as_mut() {
             paths.shift_remove("/ssi");

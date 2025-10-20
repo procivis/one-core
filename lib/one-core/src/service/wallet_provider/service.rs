@@ -39,7 +39,8 @@ use crate::service::wallet_provider::app_integrity::ios::{
 use crate::service::wallet_provider::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
     RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
-    WalletProviderParams, WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
+    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletUnitActivationRequestDTO,
+    WalletUnitActivationResponseDTO, WalletUnitAttestationMetadataDTO,
 };
 use crate::service::wallet_provider::error::WalletProviderError;
 use crate::service::wallet_provider::mapper::{
@@ -117,7 +118,10 @@ impl WalletProviderService {
         };
         let issuer = validate_org_wallet_provider(&organisation, &request.wallet_provider)?;
 
-        if !config_params.integrity_check.enabled
+        if !config_params
+            .wallet_unit_attestation
+            .integrity_check
+            .enabled
             && request.proof.is_none()
             && request.public_key.is_none()
         {
@@ -126,7 +130,12 @@ impl WalletProviderService {
             return Err(WalletProviderError::AppIntegrityCheckNotRequired.into());
         }
 
-        if config_params.integrity_check.enabled && request.os != WalletUnitOs::Web {
+        if config_params
+            .wallet_unit_attestation
+            .integrity_check
+            .enabled
+            && request.os != WalletUnitOs::Web
+        {
             if request.public_key.is_some() || request.proof.is_some() {
                 return Err(WalletProviderError::AppIntegrityCheckRequired.into());
             }
@@ -151,7 +160,10 @@ impl WalletProviderService {
                 &proof,
                 &public_key,
                 request.os,
-                config_params.integrity_check.enabled,
+                config_params
+                    .wallet_unit_attestation
+                    .integrity_check
+                    .enabled,
                 LEEWAY,
             )
             .await?;
@@ -351,7 +363,12 @@ impl WalletProviderService {
             validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         if wallet_unit.last_modified
-            + Duration::seconds(config_params.integrity_check.timeout as i64)
+            + Duration::seconds(
+                config_params
+                    .wallet_unit_attestation
+                    .integrity_check
+                    .timeout as i64,
+            )
             < self.clock.now_utc()
         {
             let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
@@ -396,7 +413,10 @@ impl WalletProviderService {
             &proof,
             &attested_public_key,
             wallet_unit.os,
-            config_params.integrity_check.enabled,
+            config_params
+                .wallet_unit_attestation
+                .integrity_check
+                .enabled,
             LEEWAY,
         )
         .await?;
@@ -453,7 +473,7 @@ impl WalletProviderService {
                         .ok_or(WalletProviderError::AppIntegrityValidationError(
                             "Missing attestation".to_string(),
                         ))?;
-                let bundle = config_params.ios.as_ref().ok_or(
+                let bundle = config_params.wallet_unit_attestation.ios.as_ref().ok_or(
                     WalletProviderError::AppIntegrityValidationError(
                         "Missing iOS app integrity config".to_string(),
                     ),
@@ -472,11 +492,13 @@ impl WalletProviderService {
                         "Missing attestation".to_string(),
                     ));
                 }
-                let bundle = config_params.android.as_ref().ok_or(
-                    WalletProviderError::AppIntegrityValidationError(
+                let bundle = config_params
+                    .wallet_unit_attestation
+                    .android
+                    .as_ref()
+                    .ok_or(WalletProviderError::AppIntegrityValidationError(
                         "Missing Android app integrity config".to_string(),
-                    ),
-                )?;
+                    ))?;
                 validate_attestation_android(
                     attestation,
                     wallet_unit_nonce,
@@ -561,7 +583,10 @@ impl WalletProviderService {
             &proof,
             &key,
             wallet_unit.os,
-            config_params.integrity_check.enabled,
+            config_params
+                .wallet_unit_attestation
+                .integrity_check
+                .enabled,
             LEEWAY,
         )
         .await?;
@@ -569,7 +594,10 @@ impl WalletProviderService {
         let now = self.clock.now_utc();
         if let Some(last_issuance) = wallet_unit.last_issuance
             && last_issuance.add(Duration::seconds(
-                config_params.lifetime.minimum_refresh_time,
+                config_params
+                    .wallet_unit_attestation
+                    .lifetime
+                    .minimum_refresh_time,
             )) > now
         {
             return Err(WalletProviderError::RefreshTimeNotReached.into());
@@ -649,7 +677,12 @@ impl WalletProviderService {
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: Some(
-                    now.add(Duration::seconds(config_params.lifetime.expiration_time)),
+                    now.add(Duration::seconds(
+                        config_params
+                            .wallet_unit_attestation
+                            .lifetime
+                            .expiration_time,
+                    )),
                 ),
                 invalid_before: Some(now),
                 issuer: self.base_url.clone(),
@@ -666,8 +699,8 @@ impl WalletProviderService {
                     },
                 }),
                 custom: WalletUnitClaims {
-                    wallet_name: Some(config_params.wallet_name.clone()),
-                    wallet_link: Some(config_params.wallet_link.clone()),
+                    wallet_name: Some(config_params.wallet_unit_attestation.wallet_name.clone()),
+                    wallet_link: Some(config_params.wallet_unit_attestation.wallet_link.clone()),
                 },
             },
         ))
@@ -869,5 +902,24 @@ impl WalletProviderService {
             .await
             .inspect_err(|e| tracing::warn!("Failed to write wallet unit history: {e}"));
         Ok(())
+    }
+
+    pub async fn get_wallet_provider_metadata(
+        &self,
+        wallet_provider: String,
+    ) -> Result<WalletProviderMetadataResponseDTO, ServiceError> {
+        let (_, params) = self.get_wallet_provider_config_params(&wallet_provider)?;
+        Ok(WalletProviderMetadataResponseDTO {
+            wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
+                app_integrity_check_required: params
+                    .wallet_unit_attestation
+                    .integrity_check
+                    .enabled,
+                enabled: params.wallet_unit_attestation.enabled,
+                required: params.wallet_unit_attestation.required,
+            },
+            name: wallet_provider,
+            app_version: params.app_version,
+        })
     }
 }

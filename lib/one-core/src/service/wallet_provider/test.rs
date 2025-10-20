@@ -75,25 +75,31 @@ fn wallet_provider_config(
         capabilities: None,
         params: Some(Params {
             public: Some(json!({
-                "walletName": "Procivis One Dev Wallet",
-                "walletLink": "https://procivis.ch",
-                "android": {
-                    "bundleId": "com.procivis...",
-                    "signingCertificateFingerprints": ["test"],
-                    "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
+                "walletUnitAttestation": {
+                    "walletName": "Procivis One Dev Wallet",
+                    "walletLink": "https://procivis.ch",
+                    "android": {
+                        "bundleId": "com.procivis...",
+                        "signingCertificateFingerprints": ["test"],
+                        "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
+                    },
+                    "ios": {
+                        "bundleId": "com.procivis...",
+                        "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."],
+                        "enforceProductionBuild": true
+                    },
+                    "lifetime": {
+                      "expirationTime": 60,
+                      "minimumRefreshTime": 60
+                    },
+                    "integrityCheck": {
+                        "enabled": integrity_check_enabled
+                    },
+                    "required": true,
                 },
-                "ios": {
-                    "bundleId": "com.procivis...",
-                    "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."],
-                    "enforceProductionBuild": true
+                "appVersion": {
+                    "minimum": "v1.50.0",
                 },
-                "lifetime": {
-                  "expirationTime": 60,
-                  "minimumRefreshTime": 60
-                },
-                "integrityCheck": {
-                    "enabled": integrity_check_enabled
-                }
             })),
             private: None,
         }),

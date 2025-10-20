@@ -1,5 +1,5 @@
 use one_dto_mapper::From;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use shared_types::WalletUnitId;
 use time::OffsetDateTime;
 
@@ -58,17 +58,41 @@ pub struct RefreshWalletUnitResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WalletProviderParams {
-    #[allow(unused)]
+    pub wallet_unit_attestation: WalletUnitAttestationParams,
+    pub app_version: Option<AppVersionDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WalletUnitAttestationParams {
     pub wallet_name: String,
-    #[allow(unused)]
     pub wallet_link: String,
-    #[allow(unused)]
     pub android: Option<AndroidBundle>,
-    #[allow(unused)]
     pub ios: Option<IOSBundle>,
     pub lifetime: Lifetime,
     #[serde(default)]
     pub integrity_check: IntegrityCheck,
+    // Information for wallet whether it enforce having a wallet unit attestation when starting app
+    pub required: bool,
+    // Information for wallet if wallet unit attestation is enabled as a functionality
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppVersionDTO {
+    pub minimum: String,
+    pub minimum_recommended: Option<String>,
+    #[serde(default)]
+    pub reject: Vec<String>,
+    pub update_screen: Option<UpdateScreenDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateScreenDTO {
+    pub link: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -154,3 +178,17 @@ pub struct GetWalletUnitResponseDTO {
 }
 
 pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;
+
+#[derive(Clone, Debug)]
+pub struct WalletProviderMetadataResponseDTO {
+    pub wallet_unit_attestation: WalletUnitAttestationMetadataDTO,
+    pub name: String,
+    pub app_version: Option<AppVersionDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct WalletUnitAttestationMetadataDTO {
+    pub app_integrity_check_required: bool,
+    pub enabled: bool,
+    pub required: bool,
+}

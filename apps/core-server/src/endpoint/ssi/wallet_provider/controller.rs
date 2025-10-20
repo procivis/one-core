@@ -8,7 +8,8 @@ use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::ssi::wallet_provider::dto::{
     RefreshWalletUnitRequestRestDTO, RefreshWalletUnitResponseRestDTO,
     RegisterWalletUnitRequestRestDTO, RegisterWalletUnitResponseRestDTO,
-    WalletUnitActivationRequestRestDTO, WalletUnitActivationResponseRestDTO,
+    WalletProviderMetadataResponseRestDTO, WalletUnitActivationRequestRestDTO,
+    WalletUnitActivationResponseRestDTO,
 };
 use crate::router::AppState;
 
@@ -96,4 +97,29 @@ pub(crate) async fn refresh_wallet_unit(
         .refresh_wallet_unit(id, request.into())
         .await;
     OkOrErrorResponse::from_result(result, state, "register wallet unit")
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/wallet-provider/v1/{walletProvider}",
+    params(
+        ("walletProvider" = String, Path, description = "Wallet provider")
+    ),
+    responses(OkOrErrorResponse<WalletProviderMetadataResponseRestDTO>),
+    tag = "ssi",
+    summary = "Returns metadata of given wallet provider",
+    description = indoc::formatdoc! {"
+        Returns metadata of given wallet provider.
+    "},
+)]
+pub(crate) async fn get_wallet_provider_metadata(
+    state: State<AppState>,
+    WithRejection(Path(wallet_provider), _): WithRejection<Path<String>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<WalletProviderMetadataResponseRestDTO> {
+    let result = state
+        .core
+        .wallet_provider_service
+        .get_wallet_provider_metadata(wallet_provider)
+        .await;
+    OkOrErrorResponse::from_result(result, state, "get wallet provider metadata")
 }

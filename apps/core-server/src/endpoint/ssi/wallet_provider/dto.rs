@@ -64,3 +64,45 @@ pub(crate) struct WalletUnitActivationRequestRestDTO {
 pub(crate) struct WalletUnitActivationResponseRestDTO {
     pub attestation: String,
 }
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::WalletProviderMetadataResponseDTO)]
+pub(crate) struct WalletProviderMetadataResponseRestDTO {
+    wallet_unit_attestation: WalletUnitAttestationMetadataRestDTO,
+    name: String,
+    #[from(with_fn = convert_inner)]
+    app_version: Option<AppVersionRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::WalletUnitAttestationMetadataDTO)]
+pub(crate) struct WalletUnitAttestationMetadataRestDTO {
+    app_integrity_check_required: bool,
+    enabled: bool,
+    required: bool,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::AppVersionDTO)]
+pub(crate) struct AppVersionRestDTO {
+    minimum: String,
+    minimum_recommended: Option<String>,
+    #[schema(nullable = false)]
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    reject: Vec<String>,
+    #[from(with_fn = convert_inner)]
+    update_screen: Option<UpdateScreenRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[serde(rename_all = "camelCase")]
+#[from(dto::UpdateScreenDTO)]
+pub struct UpdateScreenRestDTO {
+    pub link: Option<String>,
+}
