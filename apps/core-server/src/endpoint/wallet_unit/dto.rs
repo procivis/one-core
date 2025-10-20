@@ -1,60 +1,18 @@
-use one_core::model::wallet_unit::{
-    SortableWalletUnitColumn, WalletProviderType, WalletUnitOs, WalletUnitStatus,
-};
+use one_core::model::wallet_unit::{WalletProviderType, WalletUnitOs, WalletUnitStatus};
 use one_core::service::error::ServiceError;
 use one_core::service::wallet_unit::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, HolderRefreshWalletUnitRequestDTO,
-    HolderRegisterWalletUnitRequestDTO, HolderRegisterWalletUnitResponseDTO,
-    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
+    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner};
+use one_dto_mapper::{From, Into, TryInto};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId};
 use time::OffsetDateTime;
-use utoipa::{IntoParams, ToSchema};
+use utoipa::ToSchema;
 
-use crate::deserialize::deserialize_timestamp;
-use crate::dto::common::ListQueryParamsRest;
 use crate::dto::mapper::fallback_organisation_id_from_session;
-use crate::serialize::{front_time, front_time_option};
-
-pub(crate) type ListWalletUnitsQuery =
-    ListQueryParamsRest<WalletUnitFilterQueryParamsRestDTO, SortableWalletUnitColumnRest>;
-
-#[options_not_nullable]
-#[derive(Debug, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(GetWalletUnitListResponseDTO)]
-pub(crate) struct GetWalletUnitsResponseRestDTO {
-    pub total_pages: u64,
-    pub total_items: u64,
-    #[from(with_fn = convert_inner)]
-    pub values: Vec<WalletUnitResponseRestDTO>,
-}
-
-#[options_not_nullable]
-#[derive(Debug, Deserialize, Serialize, ToSchema, From)]
-#[serde(rename_all = "camelCase")]
-#[from(GetWalletUnitResponseDTO)]
-pub(crate) struct WalletUnitResponseRestDTO {
-    pub id: WalletUnitId,
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    #[serde(serialize_with = "front_time")]
-    pub created_date: OffsetDateTime,
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    #[serde(serialize_with = "front_time")]
-    pub last_modified: OffsetDateTime,
-    #[schema(example = "2023-06-09T14:19:57.000Z")]
-    #[serde(serialize_with = "front_time_option")]
-    pub last_issuance: Option<OffsetDateTime>,
-    pub name: String,
-    pub os: WalletUnitOsRestEnum,
-    pub status: WalletUnitStatusRestEnum,
-    pub wallet_provider_type: WalletProviderTypeRestEnum,
-    pub wallet_provider_name: String,
-    pub public_key: Option<String>,
-}
+use crate::serialize::front_time;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
 #[from(WalletUnitOs)]
@@ -85,53 +43,6 @@ pub(crate) enum WalletProviderTypeRestEnum {
     ProcivisOne,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
-    /// Specify the organization from which to return wallet units.
-    #[param(nullable = false)]
-    pub organisation_id: Option<OrganisationId>,
-    /// Return only wallet units with a name starting with this string.
-    #[param(nullable = false)]
-    pub name: Option<String>,
-    /// Filter by specific wallet unit UUIDs.
-    #[param(rename = "ids[]", inline, nullable = false)]
-    pub ids: Option<Vec<WalletUnitId>>,
-    /// Return only wallet units with the specified status.
-    #[param(rename = "status[]", inline, nullable = false)]
-    pub status: Option<Vec<WalletUnitStatusRestEnum>>,
-    /// Return only wallet units with the specified operating systems.
-    #[param(rename = "os[]", inline, nullable = false)]
-    pub os: Option<Vec<WalletUnitOsRestEnum>>,
-    /// Return only wallet units with the specified wallet provider types.
-    #[param(rename = "walletProviderType[]", inline, nullable = false)]
-    pub wallet_provider_type: Option<Vec<String>>,
-    /// Return only the wallet unit with the specified attestation.
-    #[param(rename = "attestation", inline, nullable = false)]
-    pub attestation: Option<String>,
-    /// Return only wallet units created after this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
-    #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
-    pub created_date_after: Option<OffsetDateTime>,
-    /// Return only wallet units created before this time.
-    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
-    #[serde(default, deserialize_with = "deserialize_timestamp")]
-    #[param(nullable = false)]
-    pub created_date_before: Option<OffsetDateTime>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
-#[serde(rename_all = "camelCase")]
-#[from(SortableWalletUnitColumn)]
-#[into(SortableWalletUnitColumn)]
-pub(crate) enum SortableWalletUnitColumnRest {
-    CreatedDate,
-    LastModified,
-    Name,
-    Status,
-    Os,
-}
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = HolderRegisterWalletUnitRequestDTO, Error = ServiceError)]

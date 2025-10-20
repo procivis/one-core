@@ -14,7 +14,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
-use crate::service::ssi_wallet_provider::webauthn_signed_jwt_to_msg_and_sig;
+use crate::service::wallet_provider::webauthn_signed_jwt_to_msg_and_sig;
 use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };

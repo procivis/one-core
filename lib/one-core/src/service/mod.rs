@@ -26,7 +26,6 @@ pub mod revocation_list;
 pub mod ssi_holder;
 pub mod ssi_issuer;
 mod ssi_validator;
-pub mod ssi_wallet_provider;
 pub mod storage_proxy;
 pub mod task;
 #[cfg(test)]
@@ -34,4 +33,5 @@ pub mod test_utilities;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod vc_api;
+pub mod wallet_provider;
 pub mod wallet_unit;

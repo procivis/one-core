@@ -8,8 +8,8 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_dto_mapper::convert_inner;
 
-use super::dto::WalletUnitFilterQueryParamsRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
+use crate::endpoint::wallet_provider::dto::WalletUnitFilterQueryParamsRestDTO;
 
 impl TryFrom<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletUnitFilterValue> {
     type Error = ServiceError;

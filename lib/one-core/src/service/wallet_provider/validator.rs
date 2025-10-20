@@ -1,7 +1,7 @@
 use shared_types::IdentifierId;
 
 use crate::model::organisation::Organisation;
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::error::WalletProviderError;
 
 pub(crate) fn validate_org_wallet_provider(
     organisation: &Organisation,

@@ -9,8 +9,8 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
-use crate::service::ssi_wallet_provider::dto::RegisterWalletUnitRequestDTO;
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::dto::RegisterWalletUnitRequestDTO;
+use crate::service::wallet_provider::error::WalletProviderError;
 
 pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,

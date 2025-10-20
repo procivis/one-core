@@ -1,7 +1,10 @@
+use one_dto_mapper::From;
 use serde::{Deserialize, Deserializer};
 use shared_types::WalletUnitId;
+use time::OffsetDateTime;
 
-use crate::model::wallet_unit::WalletUnitOs;
+use crate::model::common::GetListResponse;
+use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Clone, Debug)]
@@ -134,3 +137,20 @@ pub(super) struct IOSBundle {
     pub trusted_attestation_cas: Vec<String>,
     pub enforce_production_build: bool,
 }
+
+#[derive(From)]
+#[from(WalletUnit)]
+pub struct GetWalletUnitResponseDTO {
+    pub id: WalletUnitId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
+    pub last_issuance: Option<OffsetDateTime>,
+    pub name: String,
+    pub os: WalletUnitOs,
+    pub status: WalletUnitStatus,
+    pub wallet_provider_type: WalletProviderType,
+    pub wallet_provider_name: String,
+    pub public_key: Option<String>,
+}
+
+pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;

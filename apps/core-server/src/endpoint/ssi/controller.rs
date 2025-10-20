@@ -8,18 +8,14 @@ use headers::Authorization;
 use headers::authorization::Bearer;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
-    TrustAnchorId, WalletUnitId,
+    CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId, TrustAnchorId,
 };
 use uuid::Uuid;
 
 use super::dto::{
     DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, JsonLDContextResponseRestDTO,
-    LVVCIssuerResponseRestDTO, PatchTrustEntityRequestRestDTO, RefreshWalletUnitRequestRestDTO,
-    RefreshWalletUnitResponseRestDTO, RegisterWalletUnitRequestRestDTO,
-    RegisterWalletUnitResponseRestDTO, SSIPostTrustEntityRequestRestDTO,
-    SdJwtVcTypeMetadataResponseRestDTO, WalletUnitActivationRequestRestDTO,
-    WalletUnitActivationResponseRestDTO,
+    LVVCIssuerResponseRestDTO, PatchTrustEntityRequestRestDTO, SSIPostTrustEntityRequestRestDTO,
+    SdJwtVcTypeMetadataResponseRestDTO,
 };
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -486,90 +482,4 @@ pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
         .get_vct_metadata(organisation_id, vct_type)
         .await;
     OkOrErrorResponse::from_result(result, state, "getting SD-JWT VC type metadata")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/wallet-unit/v1",
-    request_body = RegisterWalletUnitRequestRestDTO,
-    responses(OkOrErrorResponse<RegisterWalletUnitResponseRestDTO>),
-    tag = "ssi",
-    summary = "Register wallet unit and generate attestation.",
-    description = indoc::formatdoc! {"
-        Register new wallet unit. Generates attestation based on parameters.
-    "},
-)]
-pub(crate) async fn ssi_register_wallet_unit(
-    state: State<AppState>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<RegisterWalletUnitRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<RegisterWalletUnitResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_wallet_provider_service
-        .register_wallet_unit(request.into())
-        .await;
-    OkOrErrorResponse::from_result(result, state, "register wallet unit")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/wallet-unit/v1/{id}/activate",
-    params(
-        ("id" = WalletUnitId, Path, description = "Wallet unit id")
-    ),
-    request_body = WalletUnitActivationRequestRestDTO,
-    responses(OkOrErrorResponse<WalletUnitActivationResponseRestDTO>),
-    tag = "ssi",
-    summary = "Activates wallet unit.",
-    description = indoc::formatdoc! {"
-        Activates wallet unit.
-    "},
-)]
-pub(crate) async fn ssi_activate_wallet_unit(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<WalletUnitActivationRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<WalletUnitActivationResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_wallet_provider_service
-        .activate_wallet_unit(id, request.into())
-        .await;
-    OkOrErrorResponse::from_result(result, state, "activate wallet unit")
-}
-
-#[utoipa::path(
-    post,
-    path = "/ssi/wallet-unit/v1/{id}/refresh",
-    params(
-        ("id" = WalletUnitId, Path, description = "Wallet unit id")
-    ),
-    request_body = RefreshWalletUnitRequestRestDTO,
-    responses(OkOrErrorResponse<RefreshWalletUnitResponseRestDTO>),
-    tag = "ssi",
-    summary = "Refreshes wallet unit attestation.",
-    description = indoc::formatdoc! {"
-        Refreshes wallet unit attestation.
-    "},
-)]
-pub(crate) async fn ssi_refresh_wallet_unit(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
-    WithRejection(Json(request), _): WithRejection<
-        Json<RefreshWalletUnitRequestRestDTO>,
-        ErrorResponseRestDTO,
-    >,
-) -> OkOrErrorResponse<RefreshWalletUnitResponseRestDTO> {
-    let result = state
-        .core
-        .ssi_wallet_provider_service
-        .refresh_wallet_unit(id, request.into())
-        .await;
-    OkOrErrorResponse::from_result(result, state, "register wallet unit")
 }

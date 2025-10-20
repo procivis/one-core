@@ -4,3 +4,4 @@ pub mod issuance;
 pub mod verification;
 
 mod mapper;
+pub mod wallet_provider;

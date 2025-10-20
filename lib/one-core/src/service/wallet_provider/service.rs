@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
+use crate::mapper::list_response_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
 use crate::model::history::{
@@ -18,8 +19,8 @@ use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{
-    UpdateWalletUnitRequest, WalletUnit, WalletUnitClaims, WalletUnitOs, WalletUnitRelations,
-    WalletUnitStatus,
+    UpdateWalletUnitRequest, WalletUnit, WalletUnitClaims, WalletUnitListQuery, WalletUnitOs,
+    WalletUnitRelations, WalletUnitStatus,
 };
 use crate::proto::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -30,29 +31,76 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::{EntityNotFoundError, ErrorCodeMixin, ServiceError};
-use crate::service::ssi_wallet_provider::SSIWalletProviderService;
-use crate::service::ssi_wallet_provider::app_integrity::android::validate_attestation_android;
-use crate::service::ssi_wallet_provider::app_integrity::ios::{
+use crate::service::wallet_provider::WalletProviderService;
+use crate::service::wallet_provider::app_integrity::android::validate_attestation_android;
+use crate::service::wallet_provider::app_integrity::ios::{
     validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig,
 };
-use crate::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletProviderParams, WalletUnitActivationRequestDTO,
-    WalletUnitActivationResponseDTO,
+use crate::service::wallet_provider::dto::{
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
+    RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    WalletProviderParams, WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
 };
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
-use crate::service::ssi_wallet_provider::mapper::{
+use crate::service::wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::mapper::{
     map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
-use crate::service::ssi_wallet_provider::validator::validate_org_wallet_provider;
+use crate::service::wallet_provider::validator::validate_org_wallet_provider;
 use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
     validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
 
 const WUA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
 const LEEWAY: u64 = 60;
 
-impl SSIWalletProviderService {
+impl WalletProviderService {
+    /// Returns details of a wallet unit
+    ///
+    /// # Arguments
+    ///
+    /// * `id` - Wallet unit uuid
+    pub async fn get_wallet_unit(
+        &self,
+        id: &WalletUnitId,
+    ) -> Result<GetWalletUnitResponseDTO, ServiceError> {
+        let result = self
+            .wallet_unit_repository
+            .get_wallet_unit(
+                id,
+                &WalletUnitRelations {
+                    organisation: Some(OrganisationRelations::default()),
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::WalletUnit(*id))?;
+        throw_if_org_relation_not_matching_session(
+            result.organisation.as_ref(),
+            &*self.session_provider,
+        )?;
+
+        Ok(result.into())
+    }
+
+    /// Returns list of wallet units according to query
+    ///
+    /// # Arguments
+    ///
+    /// * `query` - query parameters
+    pub async fn get_wallet_unit_list(
+        &self,
+        organisation_id: &OrganisationId,
+        query: WalletUnitListQuery,
+    ) -> Result<GetWalletUnitListResponseDTO, ServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
+        let result = self
+            .wallet_unit_repository
+            .get_wallet_unit_list(query)
+            .await?;
+
+        Ok(list_response_into(result))
+    }
+
     pub async fn register_wallet_unit(
         &self,
         request: RegisterWalletUnitRequestDTO,

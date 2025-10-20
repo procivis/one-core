@@ -1,4 +1,4 @@
-use crate::service::ssi_wallet_provider::dto::RefreshWalletUnitResponseDTO;
+use crate::service::wallet_provider::dto::RefreshWalletUnitResponseDTO;
 
 #[derive(Clone, Debug)]
 pub enum RefreshWalletUnitResponse {

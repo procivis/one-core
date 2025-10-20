@@ -6,7 +6,7 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::api_ssi_wallet_provider_tests::{
+use crate::fixtures::wallet_provider::{
     create_key_possession_proof, create_wallet_unit_attestation_issuer_identifier,
 };
 use crate::utils::context::TestContext;

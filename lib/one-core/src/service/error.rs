@@ -35,7 +35,7 @@ use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::error::WalletProviderError;
 use crate::service::wallet_unit::error::WalletUnitAttestationError;
 
 #[derive(Debug, Error)]

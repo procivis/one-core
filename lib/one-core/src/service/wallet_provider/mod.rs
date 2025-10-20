@@ -24,7 +24,7 @@ use crate::util::clock::Clock;
 
 #[allow(dead_code)]
 #[derive(Clone)]
-pub struct SSIWalletProviderService {
+pub struct WalletProviderService {
     organisation_repository: Arc<dyn OrganisationRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
@@ -38,7 +38,7 @@ pub struct SSIWalletProviderService {
     config: Arc<core_config::CoreConfig>,
 }
 
-impl SSIWalletProviderService {
+impl WalletProviderService {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,

@@ -8,7 +8,7 @@ use crate::model::key::KeyRelations;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::error::WalletProviderError;
 
 pub(super) async fn validate_wallet_provider_issuer(
     id: Option<&OrganisationId>,

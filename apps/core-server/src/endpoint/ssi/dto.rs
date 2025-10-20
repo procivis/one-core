@@ -20,10 +20,6 @@ use one_core::service::ssi_issuer::dto::{
     SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
-use one_core::service::ssi_wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
-};
 use one_core::service::trust_anchor::dto::{
     GetTrustAnchorEntityListResponseDTO, GetTrustAnchorResponseDTO,
 };
@@ -39,7 +35,7 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey, WalletUnitId};
+use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
 use strum::Display;
 use time::OffsetDateTime;
 use url::Url;
@@ -50,7 +46,6 @@ use crate::endpoint::credential_schema::dto::CredentialSchemaLayoutPropertiesRes
 use crate::endpoint::trust_entity::dto::{
     TrustEntityRoleRest, TrustEntityStateRest, TrustEntityTypeRest,
 };
-use crate::endpoint::wallet_unit::dto::WalletUnitOsRestEnum;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
@@ -492,59 +487,4 @@ pub(crate) struct SSIPostTrustEntityRequestRestDTO {
     pub privacy_url: Option<String>,
     #[try_into(infallible)]
     pub role: TrustEntityRoleRest,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(RegisterWalletUnitRequestDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct RegisterWalletUnitRequestRestDTO {
-    pub wallet_provider: String,
-    pub os: WalletUnitOsRestEnum,
-    #[into(with_fn = convert_inner)]
-    pub public_key: Option<PublicKeyJwkRestDTO>,
-    pub proof: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(RegisterWalletUnitResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct RegisterWalletUnitResponseRestDTO {
-    pub id: WalletUnitId,
-    pub attestation: Option<String>,
-    pub nonce: Option<String>,
-}
-
-#[serde_as]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(WalletUnitActivationRequestDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WalletUnitActivationRequestRestDTO {
-    #[serde_as(as = "OneOrMany<_>")]
-    #[schema(schema_with = one_or_many::<String>)]
-    pub attestation: Vec<String>,
-    pub proof: String,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(WalletUnitActivationResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WalletUnitActivationResponseRestDTO {
-    pub attestation: String,
-}
-
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(RefreshWalletUnitRequestDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct RefreshWalletUnitRequestRestDTO {
-    pub proof: String,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(RefreshWalletUnitResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct RefreshWalletUnitResponseRestDTO {
-    pub id: WalletUnitId,
-    pub attestation: String,
 }

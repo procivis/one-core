@@ -1,6 +1,7 @@
 pub(crate) mod certificate;
 pub(crate) mod dcql;
 pub(crate) mod mdoc;
+pub(crate) mod wallet_provider;
 
 use std::str::FromStr;
 

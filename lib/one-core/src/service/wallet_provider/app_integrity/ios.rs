@@ -16,8 +16,8 @@ use crate::proto::certificate_validator::{
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::ServiceError;
-use crate::service::ssi_wallet_provider::dto::IOSBundle;
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::dto::IOSBundle;
+use crate::service::wallet_provider::error::WalletProviderError;
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
 

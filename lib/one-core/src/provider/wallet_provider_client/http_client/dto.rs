@@ -4,7 +4,7 @@ use shared_types::WalletUnitId;
 
 use crate::model::wallet_unit::WalletUnitOs;
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::service::ssi_wallet_provider::dto::{
+use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
     RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };

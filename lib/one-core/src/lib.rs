@@ -82,7 +82,7 @@ use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::oid4vci_final1_0::OID4VCIFinal1_0Service;
 use crate::service::oid4vp_final1_0::OID4VPFinal1_0Service;
 use crate::service::revocation_list::RevocationListService;
-use crate::service::ssi_wallet_provider::SSIWalletProviderService;
+use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_unit::WalletUnitService;
 use crate::util::clock::DefaultClock;
 
@@ -183,7 +183,7 @@ pub struct OneCore {
     pub oid4vp_final1_0_service: OID4VPFinal1_0Service,
     pub ssi_issuer_service: SSIIssuerService,
     pub ssi_holder_service: SSIHolderService,
-    pub ssi_wallet_provider_service: SSIWalletProviderService,
+    pub wallet_provider_service: WalletProviderService,
     pub task_service: TaskService,
     pub jsonld_service: JsonLdService,
     pub config: Arc<CoreConfig>,
@@ -995,7 +995,7 @@ impl OneCore {
                 providers.session_provider.clone(),
                 Arc::new(OSInfoProviderImpl),
             ),
-            ssi_wallet_provider_service: SSIWalletProviderService::new(
+            wallet_provider_service: WalletProviderService::new(
                 organisation_repository.clone(),
                 data_provider.get_wallet_unit_repository(),
                 identifier_repository.clone(),
@@ -1026,7 +1026,6 @@ impl OneCore {
             ),
             wallet_unit_service: WalletUnitService::new(
                 organisation_repository,
-                data_provider.get_wallet_unit_repository(),
                 data_provider.get_wallet_unit_attestation_repository(),
                 data_provider.get_history_repository(),
                 key_repository,

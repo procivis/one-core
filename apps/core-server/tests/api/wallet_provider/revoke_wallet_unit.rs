@@ -3,7 +3,7 @@ use one_core::model::wallet_unit::WalletUnitStatus;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 
-use crate::api_ssi_wallet_provider_tests::create_wallet_unit_attestation_issuer_identifier;
+use crate::fixtures::wallet_provider::create_wallet_unit_attestation_issuer_identifier;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::wallet_units::TestWalletUnit;
 

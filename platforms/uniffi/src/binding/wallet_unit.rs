@@ -6,10 +6,11 @@ use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, WalletProviderType, WalletUnitFilterValue, WalletUnitListQuery,
     WalletUnitOs, WalletUnitStatus,
 };
+use one_core::service::wallet_provider::dto;
 use one_core::service::wallet_unit::dto::{
-    AttestationKeyRequestDTO, GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO,
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    AttestationKeyRequestDTO, HolderRefreshWalletUnitRequestDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderRegisterWalletUnitResponseDTO,
+    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -28,7 +29,7 @@ impl OneCoreBinding {
     pub async fn get_wallet_unit(&self, id: String) -> Result<WalletUnitBindingDTO, BindingError> {
         let core = self.use_core().await?;
         Ok(core
-            .wallet_unit_service
+            .wallet_provider_service
             .get_wallet_unit(&into_id(id)?)
             .await?
             .into())
@@ -163,7 +164,7 @@ impl OneCoreBinding {
             include: None,
         };
         Ok(core
-            .wallet_unit_service
+            .wallet_provider_service
             .get_wallet_unit_list(&organisation_id, query)
             .await?
             .into())
@@ -209,7 +210,7 @@ impl OneCoreBinding {
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
-#[from(GetWalletUnitListResponseDTO)]
+#[from(dto::GetWalletUnitListResponseDTO)]
 pub struct WalletUnitListBindingDTO {
     #[from(with_fn = convert_inner)]
     pub values: Vec<WalletUnitBindingDTO>,
@@ -218,7 +219,7 @@ pub struct WalletUnitListBindingDTO {
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
-#[from(GetWalletUnitResponseDTO)]
+#[from(dto::GetWalletUnitResponseDTO)]
 pub struct WalletUnitBindingDTO {
     #[from(with_fn_ref = "ToString::to_string")]
     pub id: String,

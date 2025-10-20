@@ -6,7 +6,7 @@ use shared_types::WalletUnitId;
 
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
-use crate::service::ssi_wallet_provider::dto::{
+use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };

@@ -7,9 +7,9 @@ use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CrlMode, ParsedCertificate,
 };
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::ssi_wallet_provider::dto::AndroidBundle;
-use crate::service::ssi_wallet_provider::error::WalletProviderError;
-use crate::service::ssi_wallet_provider::error::WalletProviderError::AppIntegrityValidationError;
+use crate::service::wallet_provider::dto::AndroidBundle;
+use crate::service::wallet_provider::error::WalletProviderError;
+use crate::service::wallet_provider::error::WalletProviderError::AppIntegrityValidationError;
 
 static ATTESTATION_EXTENSION_OID: &str = "1.3.6.1.4.1.11129.2.1.17";
 

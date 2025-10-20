@@ -24,7 +24,7 @@ use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
     identifier, interaction, jsonld, key, misc, organisation, proof, proof_schema, ssi, task,
-    trust_anchor, trust_entity, vc_api, wallet_unit,
+    trust_anchor, trust_entity, vc_api, wallet_provider, wallet_unit,
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
@@ -299,16 +299,16 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             )
             .route(
                 "/api/wallet-unit/v1",
-                get(wallet_unit::controller::get_wallet_unit_list),
+                get(wallet_provider::controller::get_wallet_unit_list),
             )
             .route(
                 "/api/wallet-unit/v1/{id}",
-                get(wallet_unit::controller::get_wallet_unit_details)
-                    .delete(wallet_unit::controller::remove_wallet_unit),
+                get(wallet_provider::controller::get_wallet_unit_details)
+                    .delete(wallet_provider::controller::remove_wallet_unit),
             )
             .route(
                 "/api/wallet-unit/v1/{id}/revoke",
-                post(wallet_unit::controller::revoke_wallet_unit),
+                post(wallet_provider::controller::revoke_wallet_unit),
             )
             .route(
                 "/api/trust-entity/remote/v1/{did_id}",
@@ -535,15 +535,15 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             )
             .route(
                 "/ssi/wallet-unit/v1",
-                post(ssi::controller::ssi_register_wallet_unit)
+                post(ssi::wallet_provider::controller::register_wallet_unit)
             )
             .route(
                 "/ssi/wallet-unit/v1/{id}/activate",
-                post(ssi::controller::ssi_activate_wallet_unit),
+                post(ssi::wallet_provider::controller::activate_wallet_unit),
             )
             .route(
                 "/ssi/wallet-unit/v1/{id}/refresh",
-                post(ssi::controller::ssi_refresh_wallet_unit)
+                post(ssi::wallet_provider::controller::refresh_wallet_unit)
             )
     } else {
         if let Some(paths) = openapi_paths.as_mut() {

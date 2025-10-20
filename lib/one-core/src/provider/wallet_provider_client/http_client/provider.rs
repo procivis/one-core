@@ -13,7 +13,7 @@ use crate::provider::wallet_provider_client::http_client::dto::{
     RefreshWalletUnitRequestRestDTO, RefreshWalletUnitResponseRestDTO,
     RegisterWalletUnitRequestRestDTO, RegisterWalletUnitResponseRestDTO,
 };
-use crate::service::ssi_wallet_provider::dto::{
+use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
