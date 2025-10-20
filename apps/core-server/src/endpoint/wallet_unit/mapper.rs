@@ -1,5 +1,6 @@
 use one_core::model::list_filter::{
-    ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
+    ValueComparison,
 };
 use one_core::model::wallet_unit::WalletUnitFilterValue;
 use one_core::service::error::ServiceError;
@@ -47,6 +48,27 @@ impl TryFrom<WalletUnitFilterQueryParamsRestDTO> for ListFilterCondition<WalletU
             .wallet_provider_type
             .map(WalletUnitFilterValue::WalletProviderType);
 
-        Ok(organisation_id & name & ids & status & os & wallet_provider_type & attestation)
+        let created_date_after = value.created_date_after.map(|date| {
+            WalletUnitFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::GreaterThanOrEqual,
+                value: date,
+            })
+        });
+        let created_date_before = value.created_date_before.map(|date| {
+            WalletUnitFilterValue::CreatedDate(ValueComparison {
+                comparison: ComparisonType::LessThanOrEqual,
+                value: date,
+            })
+        });
+
+        Ok(organisation_id
+            & name
+            & ids
+            & status
+            & os
+            & wallet_provider_type
+            & attestation
+            & created_date_after
+            & created_date_before)
     }
 }

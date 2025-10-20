@@ -14,6 +14,7 @@ use shared_types::{KeyId, OrganisationId, WalletUnitAttestationId, WalletUnitId}
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::serialize::{front_time, front_time_option};
@@ -108,6 +109,16 @@ pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
     /// Return only the wallet unit with the specified attestation.
     #[param(rename = "attestation", inline, nullable = false)]
     pub attestation: Option<String>,
+    /// Return only wallet units created after this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_after: Option<OffsetDateTime>,
+    /// Return only wallet units created before this time.
+    /// Timestamp in RFC3339 format (e.g. '2023-06-09T14:19:57.000Z').
+    #[serde(default, deserialize_with = "deserialize_timestamp")]
+    #[param(nullable = false)]
+    pub created_date_before: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
