@@ -2,10 +2,9 @@ use std::sync::Arc;
 
 use time::OffsetDateTime;
 
-use super::mapper::{
-    claim_schema_from_metadata_claim_schema, fetch_procivis_schema, from_create_request,
-};
+use super::mapper::{fetch_procivis_schema, from_create_request};
 use super::model::OpenID4VCICredentialConfigurationData;
+use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::model::credential_schema::{
     CredentialFormat, CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
 };

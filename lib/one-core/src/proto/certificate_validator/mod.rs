@@ -26,7 +26,7 @@ pub struct ParsedCertificate {
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait CertificateValidator: Send + Sync {
-    /// Extract leaf certificate from the provided PEM chain
+    /// Extract leaf certificate_validator from the provided PEM chain
     /// Optionally validate the chain depending on the options
     async fn parse_pem_chain(
         &self,
@@ -34,9 +34,9 @@ pub trait CertificateValidator: Send + Sync {
         validation: CertificateValidationOptions,
     ) -> Result<ParsedCertificate, ServiceError>;
 
-    /// Validates the pem_chain starting from a leaf certificate against a ca_chain starting
+    /// Validates the pem_chain starting from a leaf certificate_validator against a ca_chain starting
     /// from an intermediary or root CA.
-    /// Returns the parsed certificate according to the `cert_selection`.
+    /// Returns the parsed certificate_validator according to the `cert_selection`.
     async fn validate_chain_against_ca_chain(
         &self,
         pem_chain: &str,
@@ -47,9 +47,9 @@ pub trait CertificateValidator: Send + Sync {
 }
 
 pub enum CertSelection {
-    /// Last certificate in the CA chain
+    /// Last certificate_validator in the CA chain
     LowestCaChain,
-    /// Leaf certificate of the whole chain
+    /// Leaf certificate_validator of the whole chain
     Leaf,
 }
 
@@ -72,9 +72,9 @@ pub struct CertificateValidationOptions {
     pub integrity_check: bool,
     /// if specified, perform revocation/expiration checks
     pub validity_check: Option<CrlMode>,
-    /// will fail if the leaf certificate does not declare an enforced key-usage
+    /// will fail if the leaf certificate_validator does not declare an enforced key-usage
     pub required_leaf_cert_key_usage: Vec<EnforceKeyUsage>,
-    /// OID of extensions that cannot be present outside of the leaf certificate.
+    /// OID of extensions that cannot be present outside of the leaf certificate_validator.
     /// This is specifically used in the Android App integrity check.
     pub leaf_only_extensions: Vec<String>,
 }
@@ -91,7 +91,7 @@ impl CertificateValidationOptions {
         }
     }
 
-    /// Full validation is performed, each certificate must be:
+    /// Full validation is performed, each certificate_validator must be:
     /// * not expired
     /// * not revoked
     /// * correctly signed by the parent cert in the chain

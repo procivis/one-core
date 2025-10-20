@@ -22,10 +22,6 @@ use super::validator::{
     validate_redirect_uri, validate_verification_key_storage_compatibility,
     validate_verifier_engagement,
 };
-use crate::common_mapper::list_response_try_into;
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
 use crate::config::core_config::{TransportType, VerificationEngagement, VerificationProtocolType};
 use crate::config::validator::protocol::{
     validate_identifier, validate_protocol_did_compatibility, validate_protocol_type,
@@ -33,6 +29,7 @@ use crate::config::validator::protocol::{
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
+use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -82,6 +79,9 @@ use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::mdoc::EmbeddedCbor;
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 
 const DEFAULT_ENGAGEMENT: &str = "QR_CODE";
 

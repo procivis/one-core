@@ -13,8 +13,8 @@ use super::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO,
 };
-use crate::common_mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::mapper::{NESTED_CLAIM_MARKER, NESTED_CLAIM_MARKER_STR};
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::history::History;

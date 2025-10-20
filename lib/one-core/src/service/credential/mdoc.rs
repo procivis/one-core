@@ -9,6 +9,7 @@ use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::did::KeyRole;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::error::DidMethodProviderError;
@@ -26,7 +27,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
-use crate::util::key_verification::KeyVerification;
 
 impl CredentialService {
     pub(super) async fn check_mdoc_update(

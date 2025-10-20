@@ -21,6 +21,9 @@ use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaTyp
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
+use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::vct::{
     MockVctTypeMetadataFetcher, SdJwtVcTypeMetadataCacheItem,
 };
@@ -52,14 +55,11 @@ use crate::provider::key_algorithm::provider::{
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::remote_entity_storage::RemoteEntityType;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
     dummy_did, dummy_did_document, dummy_identifier, dummy_jwk, generic_config,
 };
-use crate::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
-use crate::util::key_verification::KeyVerification;
 use crate::util::test_utilities::assert_time_diff_less_than;
 
 #[tokio::test]
@@ -1447,11 +1447,11 @@ async fn test_parse_credential_eudi() {
     certificate_validator
         .expect_parse_pem_chain()
         .returning(|_, _| {
+            use crate::proto::certificate_validator::ParsedCertificate;
             use crate::provider::key_algorithm::key::{
                 KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
             };
             use crate::service::certificate::dto::CertificateX509AttributesDTO;
-            use crate::service::certificate::validator::ParsedCertificate;
             let now = OffsetDateTime::now_utc();
             Ok(ParsedCertificate {
                 attributes: CertificateX509AttributesDTO {

@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::credential_formatter::status_list_jwt_formatter::StatusList2021JWTFormatter;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -16,8 +18,6 @@ use crate::provider::revocation::model::{
     RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
-use crate::service::certificate::validator::CertificateValidator;
-use crate::util::key_verification::KeyVerification;
 
 pub struct StatusList2021 {
     pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

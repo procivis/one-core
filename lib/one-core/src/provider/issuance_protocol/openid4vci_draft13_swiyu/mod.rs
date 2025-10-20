@@ -13,6 +13,7 @@ use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -33,7 +34,6 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::params::deserialize_encryption_key;
 

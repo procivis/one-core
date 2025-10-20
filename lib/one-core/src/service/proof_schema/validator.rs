@@ -9,8 +9,8 @@ use super::dto::{
     CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
     ProofInputSchemaRequestDTO,
 };
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{ConfigExt, CoreConfig, FormatType};
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::provider::credential_formatter::CredentialFormatter;

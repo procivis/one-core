@@ -18,6 +18,7 @@ use crate::model::credential::CredentialRole;
 use crate::model::credential_schema::{CredentialSchemaClaim, LayoutProperties, LayoutType};
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
@@ -34,7 +35,6 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::test_utilities::{dummy_did, dummy_identifier};
-use crate::util::jwt::model::JWTPayload;
 
 fn get_credential_data(status: CredentialStatus, core_base_url: &str) -> CredentialData {
     let issuance_date: OffsetDateTime = OffsetDateTime::now_utc();

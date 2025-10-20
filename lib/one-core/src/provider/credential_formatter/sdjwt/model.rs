@@ -10,13 +10,13 @@ use url::Url;
 
 use crate::model::certificate::Certificate;
 use crate::model::identifier::Identifier;
+use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, CredentialSchema, CredentialStatus, Issuer,
     SettableClaims,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, JwtVcdmCredential};
-use crate::util::jwt::WithMetadata;
 
 #[skip_serializing_none]
 #[serde_as]

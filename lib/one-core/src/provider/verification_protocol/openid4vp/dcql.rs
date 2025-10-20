@@ -7,16 +7,15 @@ use itertools::Itertools;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use shared_types::{CredentialId, OrganisationId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, FormatType};
+use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::model::claim::Claim;
-use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::proof::Proof;
+use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
     CredentialQueryFailureHintResponseDTO, CredentialQueryFailureReasonEnum,
@@ -515,7 +514,12 @@ fn first_applicable_claim_set(
                         &formatter
                             .get_metadata_claims()
                             .into_iter()
-                            .map(claim_schema_from_metadata_claim_schema)
+                            .map(|metadata| {
+                                claim_schema_from_metadata_claim_schema(
+                                    metadata,
+                                    OffsetDateTime::now_utc(),
+                                )
+                            })
                             .collect::<Vec<_>>(),
                         &user_claim_path,
                     ) {
@@ -639,24 +643,6 @@ fn first_applicable_claim_set(
         applicable_credentials,
         inapplicable_credentials,
     })
-}
-
-fn claim_schema_from_metadata_claim_schema(
-    metadata_claim: MetadataClaimSchema,
-) -> CredentialSchemaClaim {
-    let now = OffsetDateTime::now_utc();
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: metadata_claim.key,
-            data_type: metadata_claim.data_type,
-            created_date: now,
-            last_modified: now,
-            array: metadata_claim.array,
-            metadata: true,
-        },
-        required: metadata_claim.required,
-    }
 }
 
 fn formatter_for_dcql_format(

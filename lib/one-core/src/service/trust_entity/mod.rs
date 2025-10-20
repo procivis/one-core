@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -10,7 +11,6 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::trust_anchor_repository::TrustAnchorRepository;
 use crate::repository::trust_entity_repository::TrustEntityRepository;
-use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;

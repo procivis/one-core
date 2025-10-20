@@ -6,9 +6,6 @@ use super::IdentifierService;
 use super::dto::{
     CreateIdentifierRequestDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
 use crate::config::core_config;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::DidRelations;
@@ -23,6 +20,9 @@ use crate::service::error::{
 };
 use crate::service::identifier::mapper::{map_already_exists_error, to_create_did_request};
 use crate::service::identifier::validator::validate_identifier_type;
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 
 impl IdentifierService {
     /// Returns details of an identifier

@@ -95,6 +95,7 @@ use config::OneCoreConfig;
 use indexmap::IndexMap;
 use model::{CredentialFormat, DidMethodType, StorageType};
 use one_core::config::core_config;
+use one_core::proto::certificate_validator::CertificateValidatorImpl;
 use one_core::provider::caching_loader::CachingLoader;
 use one_core::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
@@ -132,7 +133,6 @@ use one_core::provider::key_storage::internal::{
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use one_core::service::certificate::validator::CertificateValidatorImpl;
 use one_core::util::clock::DefaultClock;
 use one_crypto::CryptoProviderImpl;
 use one_crypto::hasher::sha256::SHA256;

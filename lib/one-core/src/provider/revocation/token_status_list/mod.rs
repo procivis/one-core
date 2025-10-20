@@ -12,6 +12,9 @@ use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::jwt::Jwt;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
@@ -37,9 +40,6 @@ use crate::provider::revocation::token_status_list::resolver::StatusListCachingL
 use crate::provider::revocation::token_status_list::util::{
     PREFERRED_ENTRY_SIZE, calculate_preferred_token_size,
 };
-use crate::service::certificate::validator::CertificateValidator;
-use crate::util::jwt::Jwt;
-use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
 pub mod model;

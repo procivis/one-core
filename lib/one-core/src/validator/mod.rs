@@ -4,6 +4,8 @@ use std::time::Duration;
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
 
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{CoreConfig, VerificationProtocolType};
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
@@ -159,6 +161,23 @@ pub fn validate_audience(audience: &[String], expected: &str) -> Result<(), Serv
         )));
     }
     Ok(())
+}
+
+pub(crate) fn validate_verification_protocol_config_exists(
+    config: &CoreConfig,
+    protocol: VerificationProtocolType,
+) -> Result<(), ConfigValidationError> {
+    if !config
+        .verification_protocol
+        .iter()
+        .any(|(_, v)| v.r#type == protocol)
+    {
+        Err(ConfigValidationError::EntryNotFound(
+            "No exchange method with type OPENID4VC".to_string(),
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]

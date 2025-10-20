@@ -15,8 +15,8 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::common_mapper::RemoteIdentifierRelation;
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
+use crate::mapper::RemoteIdentifierRelation;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -29,6 +29,7 @@ use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -68,7 +69,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize, Serializer, ser};
 use serde_with::skip_serializing_none;
 
 use super::session_transcript::SessionTranscript;
-use crate::util::cose::CoseSign1;
+use crate::proto::cose::CoseSign1;
 use crate::util::mdoc::{
     DataElementIdentifier, DataElementValue, EmbeddedCbor, IssuerSigned, Namespace,
 };

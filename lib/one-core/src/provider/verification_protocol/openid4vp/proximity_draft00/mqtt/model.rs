@@ -2,7 +2,7 @@ use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::common_mapper::secret_slice;
+use crate::mapper::secret_slice;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
 };

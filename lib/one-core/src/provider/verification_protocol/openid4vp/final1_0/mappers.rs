@@ -4,7 +4,7 @@ use serde::Deserialize;
 use url::Url;
 
 use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
-use crate::common_mapper::PublicKeyWithJwk;
+use crate::mapper::PublicKeyWithJwk;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;

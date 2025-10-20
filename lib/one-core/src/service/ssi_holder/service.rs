@@ -3,8 +3,8 @@ use url::Url;
 
 use super::SSIHolderService;
 use super::dto::HandleInvitationResultDTO;
-use crate::common_validator::throw_if_org_not_matching_session;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::validator::throw_if_org_not_matching_session;
 
 impl SSIHolderService {
     pub async fn handle_invitation(

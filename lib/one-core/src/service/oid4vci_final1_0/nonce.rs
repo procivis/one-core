@@ -6,14 +6,14 @@ use serde::{Deserialize, Serialize};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCNonceParams;
 use crate::service::error::ServiceError;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{DecomposedToken, JWTPayload};
+use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct NonceJwtPayload {

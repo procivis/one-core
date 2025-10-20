@@ -4,8 +4,8 @@ use itertools::Itertools;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CredentialSchema, CredentialSchemaClaim,

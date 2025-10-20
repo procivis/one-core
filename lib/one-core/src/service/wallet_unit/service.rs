@@ -4,11 +4,8 @@ use shared_types::{OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::common_mapper::list_response_into;
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
+use crate::mapper::list_response_into;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -18,6 +15,8 @@ use crate::model::wallet_unit::{
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
 };
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -40,8 +39,9 @@ use crate::service::wallet_unit::dto::{
 };
 use crate::service::wallet_unit::error::WalletUnitAttestationError;
 use crate::service::wallet_unit::mapper::key_from_generated_key;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{DecomposedToken, JWTPayload};
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 
 impl WalletUnitService {
     /// Returns details of a wallet unit

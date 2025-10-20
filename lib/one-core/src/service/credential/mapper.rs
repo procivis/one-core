@@ -8,8 +8,8 @@ use uuid::Uuid;
 use super::dto::{
     CredentialSchemaType, DetailCredentialSchemaResponseDTO, WalletUnitAttestationDTO,
 };
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType};
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;

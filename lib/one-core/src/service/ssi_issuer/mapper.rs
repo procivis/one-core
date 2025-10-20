@@ -9,7 +9,7 @@ use super::dto::{
     SdJwtVcClaimSd, SdJwtVcDisplayMetadataDTO, SdJwtVcRenderingDTO, SdJwtVcSimpleRenderingDTO,
     SdJwtVcSimpleRenderingLogoDTO, SdJwtVcTypeMetadataResponseDTO,
 };
-use crate::common_mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedTypeView,
     CredentialSchemaClaimsNestedView,

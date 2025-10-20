@@ -6,13 +6,9 @@ use super::validator::{
     throw_if_credential_schema_not_in_session_org, validate_format_and_did_method_compatibility,
     validate_redirect_uri, verify_suspension_support,
 };
-use crate::common_mapper::list_response_try_into;
-use crate::common_validator::{
-    throw_if_credential_state_eq, throw_if_org_not_matching_session,
-    throw_if_org_relation_not_matching_session, throw_if_state_not_in,
-};
 use crate::config::core_config::RevocationType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
+use crate::mapper::list_response_try_into;
 use crate::model::blob::Blob;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -53,6 +49,10 @@ use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_acti
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
 use crate::util::oidc::detect_format_with_crypto_suite;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
+use crate::validator::{
+    throw_if_credential_state_eq, throw_if_org_not_matching_session,
+    throw_if_org_relation_not_matching_session, throw_if_state_not_in,
+};
 
 impl CredentialService {
     /// Creates a credential according to request

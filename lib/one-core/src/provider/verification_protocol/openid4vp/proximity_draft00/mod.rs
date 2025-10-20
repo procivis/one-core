@@ -58,11 +58,11 @@ use crate::provider::verification_protocol::{
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::certificate::validator::CertificateValidator;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;
-use crate::util::key_verification::KeyVerification;
+use crate::proto::key_verification::KeyVerification;
 
 mod async_verifier_flow;
 pub mod ble;

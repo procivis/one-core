@@ -7,11 +7,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::{CredentialId, DidId, DidValue, KeyId};
 use strum::Display;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
@@ -32,14 +30,14 @@ use crate::model::key::{JwkUse, Key, KeyFilterValue, KeyListQuery, PublicKeyJwk}
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, CredentialClaim, CredentialClaimValue, IdentifierDetails,
 };
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
-use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
-use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -49,10 +47,13 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+
+pub mod credential_schema_claim;
+pub mod exchange;
+pub mod oidc;
+pub mod openid4vp;
+pub mod x509;
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 pub const NESTED_CLAIM_MARKER_STR: &str = "/";
@@ -80,120 +81,6 @@ pub(crate) fn list_response_try_into<T, F: TryInto<T>>(
         total_pages: input.total_pages,
         total_items: input.total_items,
     })
-}
-
-pub(crate) fn get_exchange_param_pre_authorization_expires_in(
-    config: &CoreConfig,
-    exchange: &str,
-) -> Result<Duration, ServiceError> {
-    let fields = config.issuance_protocol.get_fields(exchange)?;
-    let pre_authorized_code_expires_in = match fields.r#type {
-        IssuanceProtocolType::OpenId4VciDraft13 => {
-            let params = fields
-                .deserialize::<OpenID4VCIDraft13Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.pre_authorized_code_expires_in
-        }
-        IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
-            let params = fields
-                .deserialize::<OpenID4VCISwiyuParams>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.pre_authorized_code_expires_in
-        }
-        IssuanceProtocolType::OpenId4VciFinal1_0 => {
-            let params = fields
-                .deserialize::<OpenID4VCIFinal1Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.pre_authorized_code_expires_in
-        }
-    };
-
-    Ok(Duration::seconds(pre_authorized_code_expires_in as _))
-}
-
-pub(crate) fn get_exchange_param_token_expires_in(
-    config: &CoreConfig,
-    exchange: &str,
-) -> Result<Duration, ServiceError> {
-    let fields = config.issuance_protocol.get_fields(exchange)?;
-    let token_expires_in = match fields.r#type {
-        IssuanceProtocolType::OpenId4VciDraft13 => {
-            let params = fields
-                .deserialize::<OpenID4VCIDraft13Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.token_expires_in
-        }
-        IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
-            let params = fields
-                .deserialize::<OpenID4VCISwiyuParams>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.token_expires_in
-        }
-        IssuanceProtocolType::OpenId4VciFinal1_0 => {
-            let params = fields
-                .deserialize::<OpenID4VCIFinal1Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.token_expires_in
-        }
-    };
-
-    Ok(Duration::seconds(token_expires_in as _))
-}
-
-pub(crate) fn get_exchange_param_refresh_token_expires_in(
-    config: &CoreConfig,
-    exchange: &str,
-) -> Result<Duration, ServiceError> {
-    let fields = config.issuance_protocol.get_fields(exchange)?;
-    let refresh_expires_in = match fields.r#type {
-        IssuanceProtocolType::OpenId4VciDraft13 => {
-            let params = fields
-                .deserialize::<OpenID4VCIDraft13Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.refresh_expires_in
-        }
-        IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
-            let params = fields
-                .deserialize::<OpenID4VCISwiyuParams>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.refresh_expires_in
-        }
-        IssuanceProtocolType::OpenId4VciFinal1_0 => {
-            let params = fields
-                .deserialize::<OpenID4VCIFinal1Params>()
-                .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                    key: exchange.to_string(),
-                    source,
-                })?;
-            params.refresh_expires_in
-        }
-    };
-
-    Ok(Duration::seconds(refresh_expires_in as _))
 }
 
 #[derive(Debug, Display)]

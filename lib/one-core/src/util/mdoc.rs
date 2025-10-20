@@ -14,12 +14,12 @@ use time::format_description::well_known::Rfc3339;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::CertificateDetails;
-use crate::service::certificate::validator::{
+use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
-use crate::util::cose::CoseSign1;
+use crate::proto::cose::CoseSign1;
+use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::model::CertificateDetails;
 
 const EMBEDDED_CBOR_TAG: u64 = 24;
 const DATE_TIME_CBOR_TAG: u64 = 0;

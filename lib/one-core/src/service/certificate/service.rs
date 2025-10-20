@@ -4,19 +4,20 @@ use uuid::Uuid;
 
 use super::CertificateService;
 use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
-use super::validator::ParsedCertificate;
-use crate::common_validator::throw_if_org_not_matching_session;
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
     CertificateState,
 };
 use crate::model::key::Key;
 use crate::model::list_filter::ListFilterCondition;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, EnforceKeyUsage, ParsedCertificate,
+};
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::certificate::validator::{CertificateValidationOptions, EnforceKeyUsage};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
+use crate::validator::throw_if_org_not_matching_session;
 
 impl CertificateService {
     pub async fn get_certificate(

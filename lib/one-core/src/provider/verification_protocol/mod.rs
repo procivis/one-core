@@ -25,6 +25,7 @@ use crate::config::core_config::{
 };
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::history_decorator::proof::ProofHistoryDecorator;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
@@ -41,7 +42,6 @@ use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp2
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
 use crate::util::ble_resource::BleWaiter;

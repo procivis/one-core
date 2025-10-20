@@ -6,6 +6,7 @@ use similar_asserts::assert_eq;
 use time::Duration;
 
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
+use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     IdentifierDetails, MockTokenVerifier, PublicKeySource,
@@ -18,7 +19,6 @@ use crate::provider::presentation_formatter::jwt_vp_json::{JwtVpPresentationForm
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, FormattedPresentation,
 };
-use crate::util::jwt::model::JWTPayload;
 
 #[tokio::test]
 async fn test_extract_presentation() {

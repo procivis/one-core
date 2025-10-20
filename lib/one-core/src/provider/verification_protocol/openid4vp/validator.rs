@@ -7,10 +7,12 @@ use std::time::Duration;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{DidType, VerificationProtocolType};
+use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::key::PublicKeyJwk;
 use crate::model::proof_schema::ProofInputSchema;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::mdoc_formatter::try_extracting_mso_from_token;
 use crate::provider::credential_formatter::model::{
@@ -31,9 +33,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::ValidatedProofClaimDTO;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::util::key_verification::KeyVerification;
 use crate::util::mdoc::MobileSecurityObject;
-use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 use crate::util::x509::is_dns_name_matching;
 
 pub(super) async fn peek_presentation(

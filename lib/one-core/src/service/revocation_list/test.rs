@@ -9,6 +9,7 @@ use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
     StatusListType,
 };
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -17,7 +18,6 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::revocation_list::RevocationListService;
 use crate::service::revocation_list::dto::RevocationListResponseDTO;
 use crate::service::test_utilities::generic_config;

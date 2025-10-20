@@ -34,14 +34,17 @@ use super::sdjwt::model::{DecomposedToken, KeyBindingPayload, SdJwtFormattingInp
 use super::sdjwt::{SdJwtHolderBindingParams, prepare_sd_presentation};
 use super::vcdm::VcdmCredential;
 use super::{CredentialFormatter, MetadataClaimSchema, StatusListType, sdjwt};
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, FormatType, IdentifierType, IssuanceProtocolType,
     KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
 use crate::model::identifier::Identifier;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -49,10 +52,7 @@ use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::credential_status_from_sdjwt_status;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{JWTPayload, jwt_metadata_claims};
 
 const JPEG_DATA_URI_PREFIX: &str = "data:image/jpeg;base64,";
 

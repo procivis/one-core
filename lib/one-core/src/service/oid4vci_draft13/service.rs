@@ -11,14 +11,16 @@ use uuid::Uuid;
 
 use super::OID4VCIDraft13Service;
 use super::dto::OpenID4VCICredentialResponseDTO;
-use crate::common_mapper::{
-    IdentifierRole, get_exchange_param_pre_authorization_expires_in,
-    get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
-    get_or_create_did_and_identifier, get_or_create_key_identifier,
-};
-use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{self, IssuanceProtocolType};
+use crate::mapper::exchange::{
+    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
+    get_exchange_param_token_expires_in,
+};
+use crate::mapper::oidc::map_to_openid4vp_format;
+use crate::mapper::{
+    IdentifierRole, get_or_create_did_and_identifier, get_or_create_key_identifier,
+};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -30,6 +32,7 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -58,9 +61,8 @@ use crate::service::oid4vci_draft13::validator::{
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_issuance_protocol_type;
-use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
+use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIDraft13Service {
     pub async fn get_issuer_metadata(

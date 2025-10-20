@@ -9,11 +9,10 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::OID4VPFinal1_0Service;
-use super::mapper::credential_from_proved;
 use super::proof_request::generate_authorization_request_params_final1_0;
-use crate::common_mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType;
+use crate::mapper::openid4vp::credential_from_proved;
+use crate::mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -55,12 +54,17 @@ use crate::service::error::{
 };
 use crate::service::oid4vp_final1_0::mapper::parse_interaction_content;
 use crate::service::oid4vp_final1_0::proof_request::select_key_agreement_key_from_proof;
-use crate::service::oid4vp_final1_0::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
+use crate::validator::{
+    throw_if_latest_proof_state_not_eq, validate_verification_protocol_config_exists,
+};
 
 impl OID4VPFinal1_0Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )?;
 
         let proof = self
             .proof_repository
@@ -181,7 +185,10 @@ impl OID4VPFinal1_0Service {
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPFinal1_0ClientMetadata, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )?;
 
         let proof = self
             .proof_repository
@@ -222,7 +229,10 @@ impl OID4VPFinal1_0Service {
         &self,
         request: OpenID4VPDirectPostRequestDTO,
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
         let interaction_id = unpacked_request.state;

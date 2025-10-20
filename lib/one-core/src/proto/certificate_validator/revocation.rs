@@ -13,9 +13,9 @@ use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
 
 impl CertificateValidatorImpl {
-    /// Returns `true` if certificate revoked, `false` if not revoked
+    /// Returns `true` if certificate_validator revoked, `false` if not revoked
     /// and `Err` if checking fails for some reason
-    pub(super) async fn check_revocation(
+    pub(crate) async fn check_revocation(
         &self,
         certificate: &X509Certificate<'_>,
         parent: Option<&X509Certificate<'_>>,
@@ -106,7 +106,8 @@ impl CertificateValidatorImpl {
         if let Ok(Some(key_usage)) = parent.key_usage() {
             if !key_usage.value.crl_sign() {
                 return Err(ValidationError::CRLCheckFailed(
-                    "CRL signer certificate key usage does not include crlSign".to_string(),
+                    "CRL signer certificate_validator key usage does not include crlSign"
+                        .to_string(),
                 )
                 .into());
             }

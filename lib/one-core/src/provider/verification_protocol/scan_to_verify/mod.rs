@@ -19,13 +19,13 @@ use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::did::KeyRole;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::proof::dto::{ScanToVerifyRequestDTO, ShareProofRequestParamsDTO};
-use crate::util::key_verification::KeyVerification;
 
 pub mod dto;
 

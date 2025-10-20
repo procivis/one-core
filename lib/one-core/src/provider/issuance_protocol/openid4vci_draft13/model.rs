@@ -9,7 +9,7 @@ use serde_with::skip_serializing_none;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
 use time::OffsetDateTime;
 
-use crate::common_mapper::opt_secret_string;
+use crate::mapper::opt_secret_string;
 use crate::model::credential_schema::{
     CredentialFormat, LayoutProperties, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };

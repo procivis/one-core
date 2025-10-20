@@ -9,6 +9,7 @@ use serde_json::Value;
 use self::suspend_check::SuspendCheckProvider;
 use crate::config::core_config::{ConfigFields, Fields, TaskConfig, TaskType};
 use crate::config::{ConfigError, ConfigParsingError};
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::task::holder_check_credential_status::HolderCheckCredentialStatus;
 use crate::repository::certificate_repository::CertificateRepository;
@@ -17,7 +18,6 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential::CredentialService;
 use crate::service::error::ServiceError;
 

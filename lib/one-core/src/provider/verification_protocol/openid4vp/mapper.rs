@@ -18,11 +18,13 @@ use super::model::{
     OpenID4VPVerifierInteractionContent, ProvedCredential,
 };
 use super::{JWTSigner, get_jwt_signer};
-use crate::common_mapper::{
+use crate::config::core_config::{ConfigExt, CoreConfig, FormatType, VerificationProtocolType};
+use crate::mapper::oidc::map_to_openid4vp_format;
+use crate::mapper::x509::pem_chain_into_x5c;
+use crate::mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation,
     get_encryption_key_jwk_from_proof, get_or_create_identifier, value_to_model_claims,
 };
-use crate::config::core_config::{ConfigExt, CoreConfig, FormatType, VerificationProtocolType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
@@ -35,6 +37,9 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialClaim, IdentifierDetails,
 };
@@ -68,13 +73,8 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::util::mdoc::MobileSecurityObject;
-use crate::util::oidc::map_to_openid4vp_format;
-use crate::util::x509::pem_chain_into_x5c;
 
 pub(super) fn presentation_definition_from_interaction_data(
     proof_id: ProofId,

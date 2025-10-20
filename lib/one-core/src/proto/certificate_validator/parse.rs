@@ -216,7 +216,7 @@ impl CertificateValidatorImpl {
             }
             other => {
                 return Err(ValidationError::CertificateParsingFailed(format!(
-                    "certificate with unsupported algorithm. oid: {other}"
+                    "certificate_validator with unsupported algorithm. oid: {other}"
                 ))
                 .into());
             }
@@ -236,8 +236,8 @@ impl CertificateValidatorImpl {
         Ok(key_handle)
     }
 
-    /// Validates the path length constraints for each certificate in the chain.
-    /// For each certificate with a BasicConstraints extension and a pathLenConstraint,
+    /// Validates the path length constraints for each certificate_validator in the chain.
+    /// For each certificate_validator with a BasicConstraints extension and a pathLenConstraint,
     /// ensures that the number of remaining intermediate CA certificates in the chain does not exceed the constraint.
     fn validate_path_length(
         &self,
@@ -256,7 +256,7 @@ impl CertificateValidatorImpl {
                 if let ParsedExtension::BasicConstraints(bc) = &ext.parsed_extension()
                     && let Some(path_len_constraint) = bc.path_len_constraint
                 {
-                    // chain_idx is the number of intermediate CAs that "follow" this certificate
+                    // chain_idx is the number of intermediate CAs that "follow" this certificate_validator
                     let intermediate_cas_following = chain_idx;
                     if (path_len_constraint as usize) < intermediate_cas_following {
                         return Err(ValidationError::BasicConstraintsViolation(
@@ -365,9 +365,9 @@ fn parse_x509_attributes(
     })
 }
 
-/// Tries to connect two certificate chains into a single chain
-/// * `leaf_certs` - The chain beginning with a leaf/child certificate
-/// * `ca_certs` - The chain beginning with an intermediate CA certificate, potentially ending with a root CA certificate
+/// Tries to connect two certificate_validator chains into a single chain
+/// * `leaf_certs` - The chain beginning with a leaf/child certificate_validator
+/// * `ca_certs` - The chain beginning with an intermediate CA certificate_validator, potentially ending with a root CA certificate_validator
 ///
 /// The two chains can overlap (e.g. if `leaf_certs` specifies the whole chain already)
 ///
@@ -378,13 +378,13 @@ fn connect_chains<'a>(
 ) -> Result<Vec<X509Certificate<'a>>, ValidationError> {
     let Some(first_ca_cert) = ca_certs.first() else {
         return Err(ValidationError::InvalidCaCertificateChain(
-            "CA certificate chain is empty".to_string(),
+            "CA certificate_validator chain is empty".to_string(),
         ));
     };
 
     let first_ca_subject_key_identifier = subject_key_identifier(first_ca_cert)?.ok_or(
         ValidationError::InvalidCaCertificateChain(format!(
-            "CA certificate (subject: {}) is missing subject key identifier",
+            "CA certificate_validator (subject: {}) is missing subject key identifier",
             first_ca_cert.subject
         )),
     )?;

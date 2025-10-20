@@ -10,7 +10,14 @@ use super::mappers::decode_client_id_with_scheme;
 use super::model::{
     OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
 };
+use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
 };
@@ -25,13 +32,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
 };
-use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::DecomposedToken;
-use crate::util::key_verification::KeyVerification;
-use crate::util::x509::{is_dns_name_matching, x5c_into_pem_chain};
+use crate::util::x509::is_dns_name_matching;
 
 async fn parse_referenced_data_from_x509_san_dns_token(
     request_token: DecomposedToken<OpenID4VP25AuthorizationRequest>,

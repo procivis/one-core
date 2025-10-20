@@ -5,11 +5,11 @@ use one_crypto::Hasher;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 
-use crate::common_mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
+use crate::mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
+use crate::proto::jwt::mapper::string_to_b64url_string;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::credential_formatter::sdjwt::model::{DecomposedToken, Disclosure};
-use crate::util::jwt::mapper::string_to_b64url_string;
 
 pub(crate) const SELECTIVE_DISCLOSURE_MARKER: &str = "_sd";
 pub(crate) const SELECTIVE_DISCLOSURE_ARRAY_MARKER: &str = "...";

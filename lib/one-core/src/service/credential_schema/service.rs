@@ -1,10 +1,8 @@
 use shared_types::{CredentialSchemaId, OrganisationId};
 use uuid::Uuid;
 
-use crate::common_mapper::list_response_into;
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
+use crate::mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::organisation::OrganisationRelations;
@@ -15,12 +13,13 @@ use crate::service::credential_schema::dto::{
     CredentialSchemaShareResponseDTO, GetCredentialSchemaListResponseDTO,
     GetCredentialSchemaQueryDTO, ImportCredentialSchemaRequestDTO,
 };
-use crate::service::credential_schema::mapper::{
-    claim_schema_from_metadata_claim_schema, from_create_request_with_id,
-};
+use crate::service::credential_schema::mapper::from_create_request_with_id;
 use crate::service::credential_schema::validator::UniquenessCheckResult;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
+};
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
 
 impl CredentialSchemaService {

@@ -2,6 +2,7 @@ mod service;
 
 use std::sync::Arc;
 
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::caching_loader::json_ld_context::ContextCache;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -11,7 +12,6 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::service::certificate::validator::CertificateValidator;
 
 pub mod dto;
 pub mod mapper;

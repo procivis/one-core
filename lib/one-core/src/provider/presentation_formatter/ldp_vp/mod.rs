@@ -13,6 +13,7 @@ pub mod model;
 mod test;
 
 use crate::config::core_config::{FormatType, KeyAlgorithmType};
+use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_classic::{
@@ -31,7 +32,6 @@ use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
     FormattedPresentation, PresentationFormatterCapabilities,
 };
-use crate::util::oidc::map_to_openid4vp_format;
 use crate::util::rdf_canonization::json_ld_processor_options;
 use crate::util::vcdm_jsonld_contexts::{DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid};
 

@@ -4,10 +4,6 @@ use std::str::FromStr;
 use url::Url;
 
 use super::dto::CreateProofRequestDTO;
-use crate::common_validator::{
-    throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
-    throw_if_org_relation_not_matching_session,
-};
 use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
@@ -26,6 +22,10 @@ use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4Vp
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp25Params;
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
+};
+use crate::validator::{
+    throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
+    throw_if_org_relation_not_matching_session,
 };
 
 pub(super) fn throw_if_proof_not_in_session_org(

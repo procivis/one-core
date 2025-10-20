@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, HolderBindingCtx,
@@ -28,7 +29,6 @@ use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
 use crate::service::test_utilities::{dummy_did, dummy_identifier};
-use crate::util::jwt::Jwt;
 
 const W3C_USER_CLAIM_PATH: [&str; 2] = ["vc", "credentialSubject"];
 

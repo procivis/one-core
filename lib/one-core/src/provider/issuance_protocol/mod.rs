@@ -19,6 +19,7 @@ use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -40,7 +41,6 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;

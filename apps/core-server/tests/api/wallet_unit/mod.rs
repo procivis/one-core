@@ -1,11 +1,11 @@
 use std::ops::Add;
 
 use one_core::model::key::PublicKeyJwk;
+use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
+use one_core::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
-use one_core::util::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
-use one_core::util::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
-use one_core::util::jwt::{Jwt, JwtPublicKeyInfo};
 use time::{Duration, OffsetDateTime};
 
 pub mod get_wallet_unit_tests;

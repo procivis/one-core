@@ -1,8 +1,8 @@
 use convert_case::{Case, Casing};
 use dcql::{ClaimQuery, ClaimQueryId, CredentialFormat, CredentialQuery, DcqlQuery};
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::FormatType;
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;

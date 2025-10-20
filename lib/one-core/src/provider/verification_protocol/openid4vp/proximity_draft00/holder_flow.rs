@@ -2,10 +2,11 @@ use async_trait::async_trait;
 use shared_types::DidValue;
 use url::Url;
 
-use crate::common_mapper::IdentifierRole;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::mapper::IdentifierRole;
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
+use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::{IdentifierDetails, VerificationFn};
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -17,7 +18,6 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
     CreatePresentationParams, create_interaction_and_proof, create_presentation,
 };
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::jwt::Jwt;
 
 #[async_trait]
 pub(crate) trait ProximityHolderTransport: Send + Sync {

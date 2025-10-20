@@ -15,10 +15,7 @@ use super::validator::{
     extract_claims_from_credential_schema, proof_schema_name_already_exists,
     validate_create_request, validate_imported_proof_schema,
 };
-use crate::common_mapper::list_response_into;
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
+use crate::mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
@@ -44,6 +41,9 @@ use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
 use crate::service::proof_schema::validator::{
     throw_if_proof_schema_contains_physical_card_schema_with_other_schemas,
     throw_if_validity_constraint_missing_for_lvvc,
+};
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
 
 impl ProofSchemaService {

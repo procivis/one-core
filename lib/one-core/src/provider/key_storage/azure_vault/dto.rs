@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 
-use crate::common_mapper::secret_string;
+use crate::mapper::secret_string;
 use crate::model::key::PrivateKeyJwk;
 use crate::provider::key_storage::error::KeyStorageError;
 

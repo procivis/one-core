@@ -11,9 +11,6 @@ use uuid::Uuid;
 use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyRequestDTO, PrivateKeyJwkDTO};
 use super::mapper::request_to_certificate_params;
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
@@ -30,6 +27,9 @@ use crate::service::key::dto::{
 };
 use crate::service::key::mapper::from_create_request;
 use crate::service::key::validator::{validate_generate_request, validate_key_algorithm_for_csr};
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+};
 
 impl KeyService {
     /// Returns details of a key

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -15,12 +16,10 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::certificate::validator::CertificateValidator;
 
 pub mod mapper;
 pub(crate) mod proof_request;
 pub mod service;
-pub mod validator;
 
 #[derive(Clone)]
 pub struct OID4VPFinal1_0Service {

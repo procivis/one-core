@@ -10,6 +10,10 @@ use time::{Duration, OffsetDateTime};
 use x509_parser::pem::Pem;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::proto::certificate_validator::{
+    CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
+    CrlMode,
+};
 use crate::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -24,10 +28,6 @@ use crate::provider::key_algorithm::provider::{
 };
 use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use crate::service::certificate::validator::{
-    CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
-    CrlMode,
-};
 use crate::service::error::{ServiceError, ValidationError};
 use crate::util::clock::DefaultClock;
 

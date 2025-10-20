@@ -7,10 +7,11 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::mapper::{
-    claim_schema_from_metadata_claim_schema, fetch_procivis_schema, from_create_request,
-    map_to_import_credential_schema_request,
+    fetch_procivis_schema, from_create_request, map_to_import_credential_schema_request,
 };
 use super::model::OpenID4VCICredentialConfigurationData;
+use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
+use crate::mapper::oidc::map_from_openid4vp_format;
 use crate::model::credential_schema::{
     BackgroundProperties, CredentialFormat, CredentialSchema, CredentialSchemaClaim,
     CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
@@ -33,7 +34,6 @@ use crate::provider::issuance_protocol::{BasicSchemaData, BuildCredentialSchemaR
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::error::MissingProviderError;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
-use crate::util::oidc::map_from_openid4vp_format;
 
 #[allow(clippy::expect_used)]
 static SCHEMA_URL_REPLACEMENT_REGEX: LazyLock<Regex> =

@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 
 use super::SdjwtVCPresentationFormatter;
 use crate::config::core_config::{KeyAlgorithmType, VerificationProtocolType};
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::credential_formatter::model::{
     IdentifierDetails, MockTokenVerifier, PublicKeySource,
 };
@@ -21,7 +22,6 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
-use crate::service::certificate::validator::MockCertificateValidator;
 
 const ISSUER_URL: &str = "https://example.com/.well-known/jwt-vc-issuer/issuer";
 const ISSUER_URL_RESPONSE: &str = r#"{

@@ -9,13 +9,12 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::OID4VPDraft25Service;
-use super::mapper::credential_from_proved;
 use super::proof_request::generate_authorization_request_params_draft25;
-use crate::common_mapper::{
+use crate::config::core_config::VerificationProtocolType;
+use crate::mapper::openid4vp::credential_from_proved;
+use crate::mapper::{
     IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
 };
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
-use crate::config::core_config::VerificationProtocolType;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -55,12 +54,17 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::service::oid4vp_draft25::mapper::parse_interaction_content;
-use crate::service::oid4vp_draft25::validator::validate_config_entity_presence;
 use crate::service::ssi_validator::validate_verification_protocol_type;
+use crate::validator::{
+    throw_if_latest_proof_state_not_eq, validate_verification_protocol_config_exists,
+};
 
 impl OID4VPDraft25Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpDraft25,
+        )?;
 
         let proof = self
             .proof_repository
@@ -185,7 +189,10 @@ impl OID4VPDraft25Service {
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPDraftClientMetadata, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpDraft25,
+        )?;
 
         let proof = self
             .proof_repository
@@ -227,7 +234,10 @@ impl OID4VPDraft25Service {
         &self,
         request: OpenID4VPDirectPostRequestDTO,
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpDraft25,
+        )?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
         let interaction_id = unpacked_request.state;
@@ -439,7 +449,10 @@ impl OID4VPDraft25Service {
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            VerificationProtocolType::OpenId4VpDraft25,
+        )?;
 
         let proof = self
             .proof_repository

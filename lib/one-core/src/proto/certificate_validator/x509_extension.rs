@@ -6,11 +6,11 @@ use x509_parser::prelude::{
 };
 use x509_parser::x509::X509Name;
 
+use crate::proto::certificate_validator::EnforceKeyUsage;
 use crate::service::certificate::dto::CertificateX509ExtensionDTO;
-use crate::service::certificate::validator::EnforceKeyUsage;
 use crate::service::error::ValidationError;
 
-pub(super) fn parse(
+pub(crate) fn parse(
     extension: &X509Extension,
 ) -> Result<CertificateX509ExtensionDTO, ValidationError> {
     let values = match extension.parsed_extension() {
@@ -57,7 +57,7 @@ pub(super) fn parse(
 
 /// Fail if found an unknown critical extension
 /// <https://www.rfc-editor.org/rfc/rfc5280.html#appendix-B>
-pub(super) fn validate_critical_extensions(
+pub(crate) fn validate_critical_extensions(
     certificate: &X509Certificate,
 ) -> Result<(), ValidationError> {
     for extension in certificate.extensions() {
@@ -78,7 +78,7 @@ pub(super) fn validate_critical_extensions(
 
 /// Validates key usage constraint according to RFC 5280 section 4.2.1.3
 /// CA certificates must have keyCertSign usage (always enforced)
-pub(super) fn validate_ca_key_usage(certificate: &X509Certificate) -> Result<(), ValidationError> {
+pub(crate) fn validate_ca_key_usage(certificate: &X509Certificate) -> Result<(), ValidationError> {
     if !certificate.is_ca() {
         return Ok(());
     }
@@ -88,19 +88,19 @@ pub(super) fn validate_ca_key_usage(certificate: &X509Certificate) -> Result<(),
         .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?;
 
     let key_usage = key_usage.ok_or(ValidationError::KeyUsageViolation(
-        "CA certificate missing Key Usage extension".to_string(),
+        "CA certificate_validator missing Key Usage extension".to_string(),
     ))?;
 
     if !key_usage.value.key_cert_sign() {
         return Err(ValidationError::KeyUsageViolation(
-            "CA certificate missing keyCertSign usage".to_string(),
+            "CA certificate_validator missing keyCertSign usage".to_string(),
         ));
     }
 
     Ok(())
 }
 
-pub(super) fn validate_required_cert_key_usage(
+pub(crate) fn validate_required_cert_key_usage(
     certificate: &X509Certificate,
     required_key_usages: &[EnforceKeyUsage],
 ) -> Result<(), ValidationError> {
@@ -108,7 +108,7 @@ pub(super) fn validate_required_cert_key_usage(
         .key_usage()
         .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
         .ok_or(ValidationError::KeyUsageViolation(
-            "Leaf certificate missing required Key Usage extension".to_string(),
+            "Leaf certificate_validator missing required Key Usage extension".to_string(),
         ))?;
 
     for required_key_usage in required_key_usages {
@@ -116,7 +116,8 @@ pub(super) fn validate_required_cert_key_usage(
             EnforceKeyUsage::DigitalSignature => {
                 if !key_usage.value.digital_signature() {
                     return Err(ValidationError::KeyUsageViolation(
-                        "End-entity certificate missing DigitalSignature usage".to_string(),
+                        "End-entity certificate_validator missing DigitalSignature usage"
+                            .to_string(),
                     ));
                 }
             }

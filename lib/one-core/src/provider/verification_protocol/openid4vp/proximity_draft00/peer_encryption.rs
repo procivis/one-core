@@ -7,7 +7,7 @@ use secrecy::{ExposeSecret, SecretSlice};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 
-use crate::common_mapper::secret_slice;
+use crate::mapper::secret_slice;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub(crate) struct PeerEncryption {

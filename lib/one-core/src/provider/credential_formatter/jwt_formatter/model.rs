@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use maplit::hashmap;
 use serde::{Deserialize, Serialize};
 
+use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::credential_formatter::vcdm::JwtVcdmCredential;
-use crate::util::jwt::WithMetadata;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use one_core::common_mapper::{opt_secret_string, secret_string};
+use one_core::mapper::{opt_secret_string, secret_string};
 use one_core::provider::credential_formatter::vcdm::ContextType;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;

@@ -4,17 +4,17 @@ use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::KeyProvider;
-use crate::common_validator::validate_expiration_time;
 use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTHeader, JWTPayload};
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::TokenVerifier;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{JWTHeader, JWTPayload};
-use crate::util::key_verification::KeyVerification;
+use crate::validator::validate_expiration_time;
 
 /// JWT authorization token for use of authenticated holder/verifier access (LVVC fetching, remote trust-entity)
 pub(crate) async fn prepare_bearer_token(

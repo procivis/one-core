@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use one_core::common_mapper::{opt_secret_string, secret_string};
+use one_core::mapper::{opt_secret_string, secret_string};
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{

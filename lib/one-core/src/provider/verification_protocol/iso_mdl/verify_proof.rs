@@ -4,17 +4,18 @@ use std::sync::Arc;
 use shared_types::{ClaimSchemaId, CredentialSchemaId};
 
 use super::common::to_cbor;
-use crate::common_mapper::{
+use crate::config::core_config::VerificationProtocolType;
+use crate::mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, extracted_credential_to_model, get_or_create_identifier,
 };
-use crate::common_validator::{validate_expiration_time, validate_issuance_time};
-use crate::config::core_config::VerificationProtocolType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, IdentifierDetails,
 };
@@ -30,9 +31,8 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError};
-use crate::util::key_verification::KeyVerification;
+use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 #[derive(Clone, Debug)]
 pub(crate) struct ValidatedProofClaimDTO {

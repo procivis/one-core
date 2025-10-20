@@ -4,12 +4,11 @@ use itertools::Itertools;
 use regex::Regex;
 use url::Url;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
-use crate::common_validator::throw_if_org_relation_not_matching_session;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, IssuanceProtocolType};
 use crate::config::validator::datatype::{DatatypeValidationError, validate_datatype_value};
 use crate::config::validator::protocol::validate_protocol_type;
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::proto::session_provider::SessionProvider;
@@ -20,6 +19,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFi
 use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use crate::validator::throw_if_org_relation_not_matching_session;
 
 pub(super) fn throw_if_credential_schema_not_in_session_org(
     credential: &Credential,

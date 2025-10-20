@@ -17,14 +17,15 @@ use super::validator::{
     validate_config_entity_presence, validate_pop_audience, validate_timestamps,
     verify_pop_signature, verify_wua_signature,
 };
-use crate::common_mapper::{
-    IdentifierRole, get_exchange_param_pre_authorization_expires_in,
-    get_exchange_param_refresh_token_expires_in, get_exchange_param_token_expires_in,
-    get_or_create_did_and_identifier, get_or_create_key_identifier,
-};
-use crate::common_validator::throw_if_credential_state_not_eq;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
+use crate::mapper::exchange::{
+    get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
+    get_exchange_param_token_expires_in,
+};
+use crate::mapper::{
+    IdentifierRole, get_or_create_did_and_identifier, get_or_create_key_identifier,
+};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
@@ -38,6 +39,8 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
 use crate::model::wallet_unit::WalletUnitClaims;
+use crate::proto::jwt::Jwt;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
@@ -65,9 +68,8 @@ use crate::service::error::{
 };
 use crate::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
-use crate::util::jwt::Jwt;
-use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
+use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIFinal1_0Service {
     pub async fn get_issuer_metadata(

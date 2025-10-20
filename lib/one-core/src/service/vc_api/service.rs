@@ -15,6 +15,8 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::json_ld_context::ContextCache;
 use crate::provider::credential_formatter::model::CredentialData;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -27,10 +29,8 @@ use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::vc_api::model::LdCredential;
-use crate::util::key_verification::KeyVerification;
 use crate::util::revocation_update::get_or_create_revocation_list_id;
 
 impl VCAPIService {

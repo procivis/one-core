@@ -19,9 +19,12 @@ use self::model::{
 };
 use self::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use self::session_transcript::{Handover, SessionTranscript};
-use crate::common_mapper::{decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
+use crate::mapper::x509::pem_chain_into_x5c;
+use crate::mapper::{decode_cbor_base64, encode_cbor_base64};
 use crate::model::key::PublicKeyJwk;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, IdentifierDetails, PublicKeySource, SignatureProvider, TokenVerifier,
@@ -34,13 +37,10 @@ use crate::provider::presentation_formatter::model::{
     FormattedPresentation, PresentationFormatterCapabilities,
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
-use crate::service::certificate::validator::CertificateValidator;
-use crate::util::cose::{CoseSign1, CoseSign1Builder};
 use crate::util::mdoc::{
     EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header,
     try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
 };
-use crate::util::x509::pem_chain_into_x5c;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

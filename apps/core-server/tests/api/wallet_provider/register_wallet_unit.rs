@@ -1,7 +1,7 @@
 use one_core::model::wallet_unit::{WalletUnitClaims, WalletUnitListQuery, WalletUnitStatus};
+use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
-use one_core::util::jwt::Jwt;
 use similar_asserts::assert_eq;
 
 use crate::api_ssi_wallet_provider_tests::{

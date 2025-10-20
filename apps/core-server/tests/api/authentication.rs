@@ -2,12 +2,12 @@ use std::time::Duration;
 
 use axum::http::Method;
 use one_core::model::key::PublicKeyJwk;
+use one_core::proto::jwt::mapper::bin_to_b64url_string;
+use one_core::proto::jwt::model::JWTPayload;
+use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::model::GeneratedKey;
-use one_core::util::jwt::mapper::bin_to_b64url_string;
-use one_core::util::jwt::model::JWTPayload;
-use one_core::util::jwt::{Jwt, JwtPublicKeyInfo};
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
 use serde_json::json;

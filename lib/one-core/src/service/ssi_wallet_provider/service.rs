@@ -7,9 +7,6 @@ use shared_types::{EntityId, IdentifierId, OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::common_validator::{
-    validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
-};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
 use crate::model::certificate::CertificateRelations;
@@ -24,6 +21,10 @@ use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitClaims, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
 };
+use crate::proto::jwt::model::{
+    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -44,10 +45,9 @@ use crate::service::ssi_wallet_provider::mapper::{
     map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
 use crate::service::ssi_wallet_provider::validator::validate_org_wallet_provider;
-use crate::util::jwt::model::{
-    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+use crate::validator::{
+    validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
-use crate::util::jwt::{Jwt, JwtPublicKeyInfo};
 
 const WUA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
 const LEEWAY: u64 = 60;

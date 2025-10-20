@@ -11,6 +11,7 @@ use one_core::config::core_config::{
     DidType, FormatType, InputFormat, KeyAlgorithmType, KeyStorageType, RevocationType,
 };
 use one_core::config::{ConfigError, ConfigValidationError};
+use one_core::proto::certificate_validator::CertificateValidatorImpl;
 use one_core::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -73,7 +74,6 @@ use one_core::provider::revocation::token_status_list::TokenStatusList;
 use one_core::repository::DataRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
-use one_core::service::certificate::validator::CertificateValidatorImpl;
 use one_core::service::error::ServiceError;
 use one_core::util::clock::DefaultClock;
 use one_core::{

@@ -14,6 +14,7 @@ use super::*;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, LayoutType};
 use crate::model::did::Did;
+use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::provider::credential_formatter::model::{
     CertificateDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
 };
@@ -30,7 +31,6 @@ use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedK
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::certificate::validator::{MockCertificateValidator, ParsedCertificate};
 use crate::service::test_utilities::{dummy_did, dummy_identifier, generic_config, get_dummy_date};
 
 #[test]

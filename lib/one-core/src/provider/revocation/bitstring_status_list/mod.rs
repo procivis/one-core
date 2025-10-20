@@ -15,6 +15,8 @@ use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
@@ -36,8 +38,6 @@ use crate::provider::revocation::model::{
     RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
-use crate::service::certificate::validator::CertificateValidator;
-use crate::util::key_verification::KeyVerification;
 use crate::util::params::convert_params;
 
 mod jwt_formatter;

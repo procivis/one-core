@@ -20,11 +20,11 @@ use uuid::Uuid;
 
 use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use super::{IssuanceProtocol, IssuanceProtocolError, StorageAccess};
-use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
-use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
 };
+use crate::mapper::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
+use crate::mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::ClaimRelations;
@@ -45,6 +45,10 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -99,18 +103,14 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
 use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
+use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 pub mod handle_invitation_operations;
 pub(crate) mod mapper;

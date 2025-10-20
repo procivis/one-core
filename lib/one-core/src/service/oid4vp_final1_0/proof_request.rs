@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dcql::DcqlQuery;
 use url::Url;
 
-use crate::common_mapper::PublicKeyWithJwk;
+use crate::mapper::PublicKeyWithJwk;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;

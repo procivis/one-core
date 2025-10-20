@@ -3,6 +3,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::model::identifier::{Identifier, IdentifierListQuery};
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -13,7 +14,6 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::service::certificate::CertificateService;
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::did::DidService;
 use crate::service::error::{ServiceError, ValidationError};
 use crate::service::identifier::IdentifierService;

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
-use super::certificate::validator::CertificateValidator;
 use crate::config::core_config;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;

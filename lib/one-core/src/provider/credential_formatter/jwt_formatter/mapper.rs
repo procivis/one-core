@@ -3,10 +3,10 @@ use std::collections::HashMap;
 use shared_types::DidValue;
 
 use super::model::VcClaim;
+use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::{
     CredentialSchema, CredentialSchemaData, CredentialSubject, DetailCredential, IdentifierDetails,
 };
-use crate::util::jwt::Jwt;
 
 impl From<CredentialSchemaData> for Option<CredentialSchema> {
     fn from(credential_schema: CredentialSchemaData) -> Self {

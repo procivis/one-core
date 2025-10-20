@@ -6,11 +6,11 @@ use serde_json::Value;
 use serde_with::{serde_as, skip_serializing_none};
 use url::Url;
 
+use crate::proto::jwt::WithMetadata;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, CredentialClaimValue, SettableClaims,
 };
-use crate::util::jwt::WithMetadata;
 
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize)]

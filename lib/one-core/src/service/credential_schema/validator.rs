@@ -2,11 +2,11 @@ use std::collections::HashSet;
 
 use shared_types::OrganisationId;
 
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
 use crate::config::validator::datatype::validate_datatypes;
 use crate::config::validator::format::validate_format;
 use crate::config::validator::revocation::validate_revocation;
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::Features;

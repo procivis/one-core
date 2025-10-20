@@ -6,7 +6,7 @@ use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::common_mapper::secret_string;
+use crate::mapper::secret_string;
 use crate::model::common::{GetListQueryParams, GetListResponse};
 use crate::model::key::{
     Key, PrivateKeyJwk, PrivateKeyJwkEllipticData, PrivateKeyJwkMlweData, PublicKeyJwk,

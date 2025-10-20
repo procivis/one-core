@@ -2,7 +2,7 @@ use one_dto_mapper::convert_inner;
 
 use super::dto::CertificateResponseDTO;
 use crate::model::certificate::Certificate;
-use crate::service::certificate::validator::parse::parse_chain_to_x509_attributes;
+use crate::proto::certificate_validator::parse::parse_chain_to_x509_attributes;
 use crate::service::error::ValidationError;
 
 impl TryFrom<Certificate> for CertificateResponseDTO {

@@ -11,9 +11,9 @@ use crate::model::certificate::{
 };
 use crate::model::identifier::{IdentifierRelations, IdentifierState, UpdateIdentifierRequest};
 use crate::model::list_filter::{ComparisonType, ListFilterValue, ValueComparison};
+use crate::proto::certificate_validator::{CertificateValidationOptions, CertificateValidator};
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::service::certificate::validator::{CertificateValidationOptions, CertificateValidator};
 use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
 
 pub mod dto;

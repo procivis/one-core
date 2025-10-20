@@ -10,8 +10,8 @@ use super::dto::{
     ImportProofSchemaInputSchemaDTO, ProofClaimSchemaResponseDTO, ProofInputSchemaResponseDTO,
     ProofSchemaFilterValue,
 };
-use crate::common_mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::config::core_config::{DatatypeConfig, DatatypeType};
+use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::list_filter::{ListFilterValue, StringMatch};

@@ -3,7 +3,7 @@ use indexmap::map::Entry;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
-use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -14,9 +14,11 @@ use super::model::{
     OpenID4VCICredentialSubjectItem, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
 };
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeType, Params};
 use crate::config::{ConfigError, ConfigParsingError};
+use crate::mapper::NESTED_CLAIM_MARKER;
+use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
+use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -35,7 +37,6 @@ use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
     ImportCredentialSchemaRequestSchemaDTO,
 };
-use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::provider::http_client;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
@@ -47,7 +48,6 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{ServiceError, ValidationError};
-use crate::util::oidc::map_to_openid4vp_format;
 
 pub(crate) fn prepare_nested_representation(
     credential_schema: &CredentialSchema,
@@ -518,46 +518,6 @@ pub(crate) fn parse_mdoc_schema_claims(
     }
 
     claims_by_namespace
-}
-
-fn from_jwt_request_claim_schema(
-    now: OffsetDateTime,
-    id: ClaimSchemaId,
-    key: String,
-    datatype: String,
-    required: bool,
-    array: Option<bool>,
-) -> CredentialSchemaClaim {
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id,
-            key,
-            data_type: datatype,
-            created_date: now,
-            last_modified: now,
-            array: array.unwrap_or(false),
-            metadata: false,
-        },
-        required,
-    }
-}
-
-pub(crate) fn claim_schema_from_metadata_claim_schema(
-    metadata_claim: MetadataClaimSchema,
-    now: OffsetDateTime,
-) -> CredentialSchemaClaim {
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: metadata_claim.key,
-            data_type: metadata_claim.data_type,
-            created_date: now,
-            last_modified: now,
-            array: metadata_claim.array,
-            metadata: true,
-        },
-        required: metadata_claim.required,
-    }
 }
 
 pub(crate) async fn fetch_procivis_schema(

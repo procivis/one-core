@@ -9,6 +9,8 @@ use url::Url;
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::http_client::HttpClient;
 use crate::provider::verification_protocol::VerificationProtocol;
@@ -31,8 +33,6 @@ use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::DecomposedToken;
 
 pub(crate) struct OpenID4VP20Swiyu {
     allow_insecure_http_transport: bool,

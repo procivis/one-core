@@ -16,9 +16,9 @@ use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{
     TrustEntity, TrustEntityState, TrustEntityType, UpdateTrustEntityRequest,
 };
+use crate::proto::certificate_validator::ParsedCertificate;
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::certificate::validator::ParsedCertificate;
 use crate::service::error::{ServiceError, ValidationError};
 
 impl TryFrom<&ParsedCertificate> for TrustEntityKey {

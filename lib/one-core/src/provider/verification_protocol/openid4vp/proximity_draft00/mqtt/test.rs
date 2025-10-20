@@ -8,7 +8,7 @@ use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::common_mapper::RemoteIdentifierRelation;
+use crate::mapper::RemoteIdentifierRelation;
 use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};

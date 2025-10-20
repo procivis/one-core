@@ -9,15 +9,15 @@ use one_crypto::utilities::ecdsa_sig_from_der;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 
-use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::certificate::validator::{
+use crate::mapper::x509::der_chain_into_pem_chain;
+use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
+use crate::proto::jwt::model::DecomposedToken;
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::dto::IOSBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
-use crate::util::jwt::model::DecomposedToken;
-use crate::util::x509::der_chain_into_pem_chain;
 
 static CRED_CERT_EXTENSION_OID: &str = "1.2.840.113635.100.8.2";
 
@@ -249,6 +249,10 @@ mod tests {
     use super::*;
     use crate::config;
     use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+    use crate::proto::certificate_validator::{
+        CertificateValidationOptions, CertificateValidatorImpl,
+    };
+    use crate::proto::jwt::Jwt;
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
     };
@@ -258,11 +262,7 @@ mod tests {
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-    use crate::service::certificate::validator::{
-        CertificateValidationOptions, CertificateValidatorImpl,
-    };
     use crate::util::clock::{Clock, DefaultClock, MockClock};
-    use crate::util::jwt::Jwt;
 
     static APPLE_ATTESTATION_CA: &str = "-----BEGIN CERTIFICATE-----
 MIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw

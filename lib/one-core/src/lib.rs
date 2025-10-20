@@ -40,6 +40,7 @@ use thiserror::Error;
 use util::ble_resource::BleWaiter;
 
 use crate::config::core_config::{DidConfig, RevocationConfig};
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
 use crate::proto::history_decorator::certificate::CertificateHistoryDecorator;
@@ -72,7 +73,6 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::service::cache::CacheService;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::CredentialSchemaService;
 use crate::service::history::HistoryService;
 use crate::service::identifier::IdentifierService;
@@ -93,10 +93,10 @@ pub mod model;
 pub mod repository;
 pub mod service;
 
-pub mod common_mapper;
-pub mod common_validator;
+pub mod mapper;
 pub mod proto;
 pub mod util;
+pub mod validator;
 
 pub type DidMethodCreator = Box<
     dyn FnOnce(

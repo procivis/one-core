@@ -11,8 +11,8 @@ use tracing::warn;
 use uuid::Uuid;
 
 use super::ProofService;
-use crate::common_mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
 use crate::config::core_config::{TransportType, VerificationProtocolType};
+use crate::mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;

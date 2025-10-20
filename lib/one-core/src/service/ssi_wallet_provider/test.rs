@@ -19,6 +19,9 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitClaims, WalletUnitOs};
+use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
@@ -31,15 +34,12 @@ use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::ssi_wallet_provider::SSIWalletProviderService;
 use crate::service::ssi_wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
 };
 use crate::service::test_utilities::get_dummy_date;
 use crate::util::clock::DefaultClock;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{JWTHeader, JWTPayload};
 
 const BASE_URL: &str = "https://localhost";
 

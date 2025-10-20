@@ -6,13 +6,13 @@ use time::OffsetDateTime;
 use tokio_util::either::Either;
 
 use crate::model::key::PublicKeyJwk;
+use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
 };
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::util::jwt::model::{DecomposedToken, JWTPayload};
-use crate::util::jwt::{Jwt, JwtPublicKeyInfo};
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
 
@@ -178,6 +178,8 @@ mod test {
     use crate::config::core_config::KeyAlgorithmType;
     use crate::model::did::KeyRole;
     use crate::model::key::{Key, PublicKeyJwk};
+    use crate::proto::certificate_validator::MockCertificateValidator;
+    use crate::proto::key_verification::KeyVerification;
     use crate::provider::credential_formatter::model::SignatureProvider;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -185,8 +187,6 @@ mod test {
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::key_storage::provider::SignatureProviderImpl;
-    use crate::service::certificate::validator::MockCertificateValidator;
-    use crate::util::key_verification::KeyVerification;
 
     #[tokio::test]
     async fn test_format_then_verify_proof_with_holder_key_id() {

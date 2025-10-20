@@ -12,12 +12,12 @@ mod validator {
     use std::fmt::Debug;
     use std::sync::Arc;
 
-    use one_core::common_validator::{
+    use one_core::proto::jwt::Jwt;
+    use one_core::proto::jwt::model::{DecomposedToken, JWTPayload};
+    use one_core::provider::credential_formatter::error::FormatterError;
+    use one_core::validator::{
         validate_audience, validate_expiration_time, validate_not_before_time,
     };
-    use one_core::provider::credential_formatter::error::FormatterError;
-    use one_core::util::jwt::Jwt;
-    use one_core::util::jwt::model::{DecomposedToken, JWTPayload};
     use one_crypto::SignerError;
     use serde::de::DeserializeOwned;
     use thiserror::Error;

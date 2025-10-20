@@ -10,8 +10,8 @@ use super::dto::{
     CredentialGroup, CredentialGroupItem, CredentialSetResponseDTO, PresentationDefinitionFieldDTO,
 };
 use super::{StorageAccess, VerificationProtocolError};
-use crate::common_mapper::NESTED_CLAIM_MARKER;
 use crate::config::core_config::{CoreConfig, DatatypeConfig, DatatypeType};
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;

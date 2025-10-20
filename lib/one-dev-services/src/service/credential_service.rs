@@ -10,6 +10,8 @@ use std::sync::Arc;
 
 use one_core::model::did::KeyRole;
 use one_core::model::key::Key;
+use one_core::proto::certificate_validator::CertificateValidator;
+use one_core::proto::key_verification::KeyVerification;
 use one_core::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, DetailCredential,
 };
@@ -17,8 +19,6 @@ use one_core::provider::credential_formatter::provider::CredentialFormatterProvi
 use one_core::provider::did_method::provider::DidMethodProvider;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use one_core::provider::key_storage::provider::KeyProvider;
-use one_core::service::certificate::validator::CertificateValidator;
-use one_core::util::key_verification::KeyVerification;
 
 use crate::model::CredentialFormat;
 use crate::service::error::CredentialServiceError;

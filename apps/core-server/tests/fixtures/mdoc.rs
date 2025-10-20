@@ -6,6 +6,7 @@ use indexmap::IndexMap;
 use indoc::indoc;
 use one_core::config::core_config::{AppConfig, DatatypeConfig, InputFormat, KeyAlgorithmType};
 use one_core::model::certificate::{Certificate, CertificateState};
+use one_core::proto::certificate_validator::CertificateValidatorImpl;
 use one_core::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -26,7 +27,6 @@ use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use one_core::service::certificate::validator::CertificateValidatorImpl;
 use one_core::util::clock::DefaultClock;
 use rcgen::CertificateParams;
 use time::{Duration, OffsetDateTime};

@@ -25,11 +25,12 @@ use time::{Date, Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::nest_claims;
-use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
     KeyStorageType, RevocationType, VerificationProtocolType,
 };
+use crate::mapper::x509::pem_chain_into_x5c;
+use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -37,6 +38,8 @@ use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaTyp
 use crate::model::identifier::Identifier;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::{
@@ -51,9 +54,7 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::util::cose::{CoseSign1, CoseSign1Builder};
 use crate::util::mdoc::{
     Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
     EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
@@ -61,7 +62,6 @@ use crate::util::mdoc::{
     extract_algorithm_from_header, extract_certificate_from_x5chain_header,
     try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
 };
-use crate::util::x509::pem_chain_into_x5c;
 
 #[cfg(test)]
 mod test;

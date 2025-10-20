@@ -8,6 +8,9 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::config::core_config::FormatType;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, IdentifierDetails, VerificationFn,
@@ -21,9 +24,6 @@ use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
     FormattedPresentation, PresentationFormatterCapabilities,
 };
-use crate::service::certificate::validator::CertificateValidator;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::JWTPayload;
 
 #[cfg(test)]
 mod test;

@@ -14,9 +14,6 @@ use super::mapper::{
     did_from_did_request, did_update_to_update_request, identifier_from_did, map_did_to_did_keys,
 };
 use super::validator::validate_deactivation_request;
-use crate::common_validator::{
-    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-};
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::config::validator::did::validate_did_method;
 use crate::model::did::{Did, DidListQuery, DidRelations, RelatedKey};
@@ -34,6 +31,9 @@ use crate::service::did::mapper::map_did_model_to_did_web_response;
 use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+};
+use crate::validator::{
+    throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
 
 impl DidService {

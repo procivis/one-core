@@ -2,13 +2,11 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use time::OffsetDateTime;
 
-use crate::common_validator::{
-    validate_expiration_time, validate_issuance_time, validate_not_before_time,
-};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::wallet_unit::WalletUnitClaims;
+use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
@@ -17,7 +15,9 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
 use crate::service::ssi_wallet_provider::webauthn_signed_jwt_to_msg_and_sig;
-use crate::util::jwt::model::DecomposedToken;
+use crate::validator::{
+    validate_expiration_time, validate_issuance_time, validate_not_before_time,
+};
 
 pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,

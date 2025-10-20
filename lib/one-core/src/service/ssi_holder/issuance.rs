@@ -13,11 +13,7 @@ use super::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
     HandleInvitationResultDTO,
 };
-use crate::common_mapper::value_to_model_claims;
-use crate::common_validator::{
-    throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
-    throw_if_org_relation_not_matching_session,
-};
+use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -62,6 +58,10 @@ use crate::service::ssi_holder::validator::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
+use crate::validator::{
+    throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
+    throw_if_org_relation_not_matching_session,
+};
 
 const STATE: &str = "state";
 const AUTHORIZATION_CODE: &str = "code";

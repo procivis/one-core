@@ -4,6 +4,7 @@ use time::Duration;
 use uuid::Uuid;
 
 use crate::model::identifier::Identifier;
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::http_client::MockHttpClient;
@@ -14,7 +15,6 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::BitstringStatusList;
 use crate::provider::revocation::bitstring_status_list::resolver::StatusListCachingLoader;
 use crate::provider::revocation::model::{CredentialAdditionalData, CredentialRevocationInfo};
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::test_utilities::{dummy_credential, dummy_did, dummy_identifier};
 
 #[tokio::test]

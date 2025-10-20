@@ -4,16 +4,16 @@ use url::Url;
 
 use super::JWTFormatter;
 use super::model::{TokenStatusListContent, TokenStatusListSubject, VcClaim};
+use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateState;
 use crate::model::identifier::{Identifier, IdentifierType};
+use crate::proto::jwt::model::JWTPayload;
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, Issuer};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
-use crate::util::jwt::model::JWTPayload;
-use crate::util::jwt::{Jwt, JwtPublicKeyInfo};
-use crate::util::x509::pem_chain_into_x5c;
 
 impl JWTFormatter {
     pub(super) async fn format_bitstring_status_list(

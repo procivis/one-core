@@ -1,4 +1,3 @@
-use crate::common_validator::throw_if_org_relation_not_matching_session;
 use crate::config::core_config::{self, CoreConfig};
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::model::credential::Credential;
@@ -13,6 +12,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::ssi_holder::dto::InitiateIssuanceRequestDTO;
+use crate::validator::throw_if_org_relation_not_matching_session;
 
 pub(super) fn validate_credentials_match_session_organisation(
     credentials: &[Credential],

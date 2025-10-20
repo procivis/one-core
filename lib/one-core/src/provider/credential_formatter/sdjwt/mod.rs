@@ -14,8 +14,16 @@ use super::model::{
     AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
     PublicKeySource, SettableClaims, VerificationFn,
 };
+use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
+use crate::proto::jwt::model::{
+    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
+use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
@@ -30,15 +38,7 @@ use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::util::jwt::model::{
-    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
-};
-use crate::util::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
-use crate::util::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 
 pub mod disclosures;
 pub mod mapper;

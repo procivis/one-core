@@ -16,8 +16,9 @@ use super::mapper::{
     trust_entity_from_identifier_and_anchor, trust_entity_from_partial_and_did_and_anchor,
     trust_entity_from_request, update_request_from_dto,
 };
-use crate::common_mapper::{IdentifierRole, get_or_create_did_and_identifier};
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
+use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
+use crate::mapper::{IdentifierRole, get_or_create_did_and_identifier};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, DidType};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -28,12 +29,12 @@ use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{
     TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityType,
 };
+use crate::proto::certificate_validator::{
+    CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
+};
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::{TrustEntityKeyBatch, TrustOperation};
 use crate::repository::error::DataLayerError;
-use crate::service::certificate::validator::{
-    CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
-};
 use crate::service::error::BusinessLogicError::IdentifierCertificateIdMismatch;
 use crate::service::error::ServiceError::MappingError;
 use crate::service::error::{
@@ -45,7 +46,6 @@ use crate::service::trust_entity::dto::{
 };
 use crate::service::trust_entity::mapper::get_detail_trust_entity_response;
 use crate::util::bearer_token::validate_bearer_token;
-use crate::util::x509::pem_chain_to_authority_key_identifiers;
 
 impl TrustEntityService {
     pub async fn create_trust_entity(

@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::config::core_config::IssuanceProtocolType;
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OID4VCI_DRAFT13_SWIYU_VERSION;
@@ -20,7 +21,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::oid4vci_draft13::OID4VCIDraft13Service;
 
 #[derive(Clone)]

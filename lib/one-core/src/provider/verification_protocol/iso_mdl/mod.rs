@@ -26,10 +26,10 @@ use super::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocol,
     VerificationProtocolError,
 };
-use crate::common_mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationEngagement,
 };
+use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};

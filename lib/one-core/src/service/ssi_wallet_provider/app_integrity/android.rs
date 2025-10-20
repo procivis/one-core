@@ -3,10 +3,10 @@ use itertools::Itertools;
 use x509_parser::der_parser::error::BerError;
 use x509_parser::der_parser::parse_der;
 
-use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::certificate::validator::{
+use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CrlMode, ParsedCertificate,
 };
+use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::ssi_wallet_provider::dto::AndroidBundle;
 use crate::service::ssi_wallet_provider::error::WalletProviderError;
 use crate::service::ssi_wallet_provider::error::WalletProviderError::AppIntegrityValidationError;
@@ -189,6 +189,7 @@ mod test {
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
+    use crate::proto::certificate_validator::CertificateValidatorImpl;
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidCertificateInfo, AndroidKeyAttestationsCrl,
         CertificateStatus, MockAndroidAttestationCrlResolver,
@@ -199,7 +200,6 @@ mod test {
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-    use crate::service::certificate::validator::CertificateValidatorImpl;
     use crate::util::clock::MockClock;
 
     // Test vector taken from here: https://github.com/android/keyattestation/blob/main/testdata/akita/sdk34/TEE_EC_NONE.pem

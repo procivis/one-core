@@ -10,6 +10,7 @@ use one_dto_mapper::convert_inner;
 use super::dto::{CredentialGroup, CredentialGroupItem, PresentationDefinitionResponseDTO};
 use super::{FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError};
 use crate::config::core_config::CoreConfig;
+use crate::mapper::oidc::map_from_openid4vp_format;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::model::proof::Proof;
@@ -24,7 +25,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPClientMetadata, OpenID4VPPresentationDefinition,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::util::oidc::map_from_openid4vp_format;
 pub(crate) mod dcql;
 pub mod draft20;
 pub mod draft20_swiyu;

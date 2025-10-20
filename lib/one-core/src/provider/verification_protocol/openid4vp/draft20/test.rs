@@ -24,6 +24,7 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{FormatterCapabilities, IdentifierDetails};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -49,7 +50,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
 };
-use crate::service::certificate::validator::MockCertificateValidator;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation};

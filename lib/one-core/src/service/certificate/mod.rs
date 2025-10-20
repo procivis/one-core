@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
-use validator::CertificateValidator;
-
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::session_provider::SessionProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -11,7 +10,6 @@ pub(crate) mod mapper;
 pub mod service;
 #[cfg(test)]
 mod test;
-pub mod validator;
 
 #[derive(Clone)]
 pub struct CertificateService {

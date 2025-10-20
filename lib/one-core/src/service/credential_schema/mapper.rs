@@ -1,5 +1,5 @@
 use one_dto_mapper::convert_inner;
-use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -7,16 +7,13 @@ use super::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
     CredentialSchemaFilterValue, CredentialSchemaLogoPropertiesRequestDTO,
 };
-use crate::common_mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
 use crate::config::core_config::FormatType;
-use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType,
-};
+use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
+use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType};
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
-use crate::provider::credential_formatter::MetadataClaimSchema;
 use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, GetCredentialSchemaQueryDTO,
@@ -149,46 +146,6 @@ pub(super) fn from_create_request_with_id(
         schema_id,
         allow_suspension: request.allow_suspension.unwrap_or_default(),
     })
-}
-
-fn from_jwt_request_claim_schema(
-    now: OffsetDateTime,
-    id: ClaimSchemaId,
-    key: String,
-    datatype: String,
-    required: bool,
-    array: Option<bool>,
-) -> CredentialSchemaClaim {
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id,
-            key,
-            data_type: datatype,
-            created_date: now,
-            last_modified: now,
-            array: array.unwrap_or(false),
-            metadata: false,
-        },
-        required,
-    }
-}
-
-pub(crate) fn claim_schema_from_metadata_claim_schema(
-    metadata_claim: MetadataClaimSchema,
-    now: OffsetDateTime,
-) -> CredentialSchemaClaim {
-    CredentialSchemaClaim {
-        schema: ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: metadata_claim.key,
-            data_type: metadata_claim.data_type,
-            created_date: now,
-            last_modified: now,
-            array: metadata_claim.array,
-            metadata: true,
-        },
-        required: metadata_claim.required,
-    }
 }
 
 pub(super) fn renest_claim_schemas(

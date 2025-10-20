@@ -3,8 +3,8 @@ use std::sync::Arc;
 use anyhow::Context;
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 
-use crate::common_mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
 use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -21,6 +21,7 @@ use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -31,7 +32,6 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };

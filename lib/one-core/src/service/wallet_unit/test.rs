@@ -20,6 +20,8 @@ use crate::model::wallet_unit::{
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation,
 };
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::common::SignatureProvider;
@@ -48,8 +50,6 @@ use crate::service::wallet_unit::dto::{
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO, WalletProviderDTO,
 };
 use crate::util::clock::DefaultClock;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::{JWTHeader, JWTPayload};
 
 const BASE_URL: &str = "https://localhost";
 

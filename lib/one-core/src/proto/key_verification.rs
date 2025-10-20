@@ -5,15 +5,15 @@ use one_crypto::SignerError;
 use shared_types::DidValue;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::did::KeyRole;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::provider::credential_formatter::model::{PublicKeySource, TokenVerifier};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
-use crate::util::x509::x5c_into_pem_chain;
 
 #[derive(Clone)]
 pub struct KeyVerification {
@@ -133,6 +133,7 @@ mod test {
 
     use super::*;
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use crate::proto::certificate_validator::MockCertificateValidator;
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
     use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -141,7 +142,6 @@ mod test {
         KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
     };
     use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-    use crate::service::certificate::validator::MockCertificateValidator;
 
     fn get_dummy_did_document() -> DidDocument {
         DidDocument {

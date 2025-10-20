@@ -13,14 +13,16 @@ use super::model::{
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
     PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
-use crate::common_mapper::PublicKeyWithJwk;
-use crate::common_validator::throw_if_latest_proof_state_not_eq;
 use crate::config::core_config::VerificationProtocolType;
+use crate::mapper::PublicKeyWithJwk;
+use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, HolderBindingCtx, IdentifierDetails,
 };
@@ -44,10 +46,8 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
 };
-use crate::service::certificate::validator::CertificateValidator;
-use crate::util::key_verification::KeyVerification;
 use crate::util::mdoc::MobileSecurityObject;
-use crate::util::oidc::map_from_oidc_format_to_core_detailed;
+use crate::validator::throw_if_latest_proof_state_not_eq;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_draft(
     jwk: Option<PublicKeyWithJwk>,

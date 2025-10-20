@@ -14,10 +14,11 @@ use super::common::{
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
-use crate::common_mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
+use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
+use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::bluetooth_low_energy::low_level::ble_central::{
     BleCentral, TrackingBleCentral,
 };
@@ -39,7 +40,6 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::certificate::validator::CertificateValidator;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
 use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};

@@ -4,13 +4,13 @@ use time::OffsetDateTime;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
+use crate::mapper::oidc::map_from_openid4vp_format;
 use crate::model::credential_schema::CredentialSchema;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::service::error::ServiceError;
-use crate::util::oidc::map_from_openid4vp_format;
 
 pub(crate) fn throw_if_credential_request_invalid(
     schema: &CredentialSchema,

@@ -7,6 +7,7 @@ use time::format_description::well_known::iso8601::{
     Config, EncodedConfig, FormattedComponents, TimePrecision,
 };
 
+use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
@@ -15,7 +16,6 @@ use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO,
 };
-use crate::service::credential_schema::mapper::claim_schema_from_metadata_claim_schema;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 const DATE_TIME_NO_MILLIS: EncodedConfig = Config::DEFAULT

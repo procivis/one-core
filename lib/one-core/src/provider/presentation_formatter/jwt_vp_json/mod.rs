@@ -6,6 +6,8 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::FormatType;
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
 use crate::provider::presentation_formatter::PresentationFormatter;
@@ -16,8 +18,6 @@ use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
     FormattedPresentation, PresentationFormatterCapabilities,
 };
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::JWTPayload;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
 mod mapper;

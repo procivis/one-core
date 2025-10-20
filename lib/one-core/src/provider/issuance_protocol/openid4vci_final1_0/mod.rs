@@ -47,11 +47,11 @@ use super::{
     IssuanceProtocol, IssuanceProtocolError, StorageAccess, deserialize_interaction_data,
     serialize_interaction_data,
 };
-use crate::common_mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
-use crate::common_validator::{validate_expiration_time, validate_issuance_time};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
 };
+use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
+use crate::mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::ClaimRelations;
@@ -73,6 +73,12 @@ use crate::model::revocation_list::{
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::JWTPayload;
+use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -100,9 +106,6 @@ use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::certificate::validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_final1_0::dto::{
@@ -110,13 +113,10 @@ use crate::service::oid4vci_final1_0::dto::{
 };
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-use crate::util::jwt::Jwt;
-use crate::util::jwt::model::JWTPayload;
-use crate::util::key_verification::KeyVerification;
-use crate::util::oidc::map_from_oidc_format_to_core_detailed;
 use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
+use crate::validator::{validate_expiration_time, validate_issuance_time};
 
 pub mod handle_invitation_operations;
 pub(crate) mod mapper;
