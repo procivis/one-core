@@ -152,10 +152,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 )?;
 
                 let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
-                    credential_schema_repository.clone(),
                     vct_type_metadata_cache.clone(),
                     client.clone(),
-                    formatter_provider.clone(),
                     credential_schema_parser.clone(),
                     credential_schema_importer.clone(),
                 );
@@ -188,10 +186,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 validate_url_scheme_unique(&mut openid_url_schemes, name, "swiyu".to_string())?;
 
                 let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
-                    credential_schema_repository.clone(),
                     vct_type_metadata_cache.clone(),
                     client.clone(),
-                    formatter_provider.clone(),
                     credential_schema_parser.clone(),
                     credential_schema_importer.clone(),
                 );

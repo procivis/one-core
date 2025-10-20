@@ -16,6 +16,7 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
@@ -1824,6 +1825,358 @@ async fn test_handle_invitation_mdoc() {
     assert!(!field.required);
     assert!(!field.schema.array);
     assert_eq!(&field.schema.data_type, "STRING");
+}
+
+#[tokio::test]
+async fn test_handle_invitation_mdoc_with_duplicate_schema_name() {
+    let mock_server = MockServer::start().await;
+    let (context, organistion) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/draft-13/{credential_schema_id}",
+        mock_server.uri()
+    );
+
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": [
+            "custom-doctype"
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
+            }
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported":
+                {
+                    "custom-doctype":
+                    {
+                        "claims": {
+                            "first.namespace": {
+                                "field": {
+                                    "value_type": "string",
+                                    "mandatory": true
+                                },
+                                "string_array": {
+                                    "value_type": "string[]"
+                                },
+                                "object_array": [
+                                    {
+                                        "field1": {
+                                            "value_type": "string",
+                                            "mandatory": true
+                                        },
+                                        "field2": {
+                                            "value_type": "string",
+                                            "mandatory": false
+                                        },
+                                    }
+                                ]
+                            },
+                            "company": {
+                                "address": {
+                                    "streetName": {
+                                        "value_type": "string"
+                                    },
+                                    "streetNumber": {
+                                        "value_type": "number"
+                                    },
+                                    "order": ["streetName", "streetNumber"]
+                                }
+                            }
+                        },
+                        "format": "mso_mdoc",
+                        "doctype": "custom-doctype",
+                        "order": ["first.namespace~field", "company~address"]
+                    }
+                }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let token_endpoint = format!("{credential_issuer}/token");
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    context
+        .db
+        .credential_schemas
+        .create(
+            "custom-doctype",
+            &organistion,
+            "NONE",
+            TestingCreateSchemaParams::default(),
+        )
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organistion.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+
+    let resp = resp.json_value().await;
+    assert!(resp.get("interactionId").is_some());
+
+    let credential = context
+        .db
+        .credentials
+        .get(&resp["credentialIds"][0].parse())
+        .await;
+
+    let claim_schemas = credential.schema.unwrap().claim_schemas.unwrap();
+
+    let claim_schema_keys: HashSet<&str> = claim_schemas
+        .iter()
+        .map(|claim_schema| claim_schema.schema.key.as_str())
+        .collect();
+
+    assert_eq!(
+        HashSet::from([
+            "first.namespace",
+            "first.namespace/field",
+            "first.namespace/string_array",
+            "first.namespace/object_array",
+            "first.namespace/object_array/field1",
+            "first.namespace/object_array/field2",
+            "company",
+            "company/address",
+            "company/address/streetName",
+            "company/address/streetNumber",
+            "doctype"
+        ]),
+        claim_schema_keys
+    );
+
+    let field = claim_schemas
+        .iter()
+        .find(|schema| schema.schema.key == "first.namespace/field")
+        .unwrap();
+    assert!(field.required);
+    assert!(!field.schema.array);
+    assert_eq!(&field.schema.data_type, "STRING");
+
+    let field = claim_schemas
+        .iter()
+        .find(|schema| schema.schema.key == "first.namespace/string_array")
+        .unwrap();
+    assert!(!field.required);
+    assert!(field.schema.array);
+    assert_eq!(&field.schema.data_type, "STRING");
+
+    let field = claim_schemas
+        .iter()
+        .find(|schema| schema.schema.key == "first.namespace/object_array")
+        .unwrap();
+    assert!(!field.required);
+    assert!(field.schema.array);
+    assert_eq!(&field.schema.data_type, "OBJECT");
+
+    let field = claim_schemas
+        .iter()
+        .find(|schema| schema.schema.key == "first.namespace/object_array/field1")
+        .unwrap();
+    assert!(field.required);
+    assert!(!field.schema.array);
+    assert_eq!(&field.schema.data_type, "STRING");
+
+    let field = claim_schemas
+        .iter()
+        .find(|schema| schema.schema.key == "first.namespace/object_array/field2")
+        .unwrap();
+    assert!(!field.required);
+    assert!(!field.schema.array);
+    assert_eq!(&field.schema.data_type, "STRING");
+}
+
+#[tokio::test]
+async fn test_handle_invitation_mdoc_with_duplicate_schema_id() {
+    let mock_server = MockServer::start().await;
+    let (context, organistion) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema_id = Uuid::new_v4();
+    let credential_issuer = format!(
+        "{}/ssi/openid4vci/draft-13/{credential_schema_id}",
+        mock_server.uri()
+    );
+
+    let credential_offer = json!({
+        "credential_issuer": credential_issuer,
+        "credential_configuration_ids": [
+            "custom-doctype"
+        ],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
+            }
+        }
+    });
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{credential_issuer}/credential"),
+                "credential_issuer": credential_issuer,
+                "credential_configurations_supported":
+                {
+                    "custom-doctype":
+                    {
+                        "claims": {
+                            "first.namespace": {
+                                "field": {
+                                    "value_type": "string",
+                                    "mandatory": true
+                                },
+                                "string_array": {
+                                    "value_type": "string[]"
+                                },
+                                "object_array": [
+                                    {
+                                        "field1": {
+                                            "value_type": "string",
+                                            "mandatory": true
+                                        },
+                                        "field2": {
+                                            "value_type": "string",
+                                            "mandatory": false
+                                        },
+                                    }
+                                ]
+                            },
+                            "company": {
+                                "address": {
+                                    "streetName": {
+                                        "value_type": "string"
+                                    },
+                                    "streetNumber": {
+                                        "value_type": "number"
+                                    },
+                                    "order": ["streetName", "streetNumber"]
+                                }
+                            }
+                        },
+                        "format": "mso_mdoc",
+                        "doctype": "custom-doctype",
+                        "order": ["first.namespace~field", "company~address"]
+                    }
+                }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let token_endpoint = format!("{credential_issuer}/token");
+
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+        )))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                "grant_types_supported": [
+                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                ],
+                "id_token_signing_alg_values_supported": [],
+                "issuer": credential_issuer,
+                "jwks_uri": format!("{credential_issuer}/jwks"),
+                "response_types_supported": [
+                    "token"
+                ],
+                "subject_types_supported": [
+                    "public"
+                ],
+                "token_endpoint": token_endpoint
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    context
+        .db
+        .credential_schemas
+        .create(
+            "custom-doctype",
+            &organistion,
+            "NONE",
+            TestingCreateSchemaParams {
+                schema_id: Some("custom-doctype".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
+    credential_offer_url
+        .query_pairs_mut()
+        .append_pair("credential_offer", &credential_offer);
+
+    let resp = context
+        .api
+        .interactions
+        .handle_invitation(organistion.id, credential_offer_url.as_ref())
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 500);
+
+    let resp = resp.json_value().await;
+    assert_eq!(resp["code"], "BR_0062");
+    assert_eq!(resp["message"], "Exchange protocol provider error");
 }
 
 #[tokio::test]

@@ -10,17 +10,15 @@ use super::mapper::{
     fetch_procivis_schema, from_create_request, map_to_import_credential_schema_request,
 };
 use super::model::OpenID4VCICredentialConfigurationData;
-use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::mapper::oidc::map_from_openid4vp_format;
 use crate::model::credential_schema::{
-    BackgroundProperties, CredentialFormat, CredentialSchema, CredentialSchemaClaim,
-    CredentialSchemaType, LayoutProperties, LayoutType, LogoProperties,
+    BackgroundProperties, CredentialSchema, CredentialSchemaType, LayoutProperties, LayoutType,
+    LogoProperties,
 };
 use crate::model::organisation::Organisation;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
-use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
@@ -31,8 +29,6 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIIssuerMetadataResponseDTO,
 };
 use crate::provider::issuance_protocol::{BasicSchemaData, BuildCredentialSchemaResponse};
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::service::error::MissingProviderError;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 
 #[allow(clippy::expect_used)]
@@ -40,10 +36,8 @@ static SCHEMA_URL_REPLACEMENT_REGEX: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"/ssi/openid4vci/[\w-]+/").expect("Failed to compile regex"));
 
 pub(crate) struct HandleInvitationOperationsImpl {
-    pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
     pub vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     pub http_client: Arc<dyn HttpClient>,
-    pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
     pub credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
     pub credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
 }
@@ -77,40 +71,17 @@ pub(crate) type HandleInvitationOperationsAccess = dyn HandleInvitationOperation
 
 impl HandleInvitationOperationsImpl {
     pub(crate) fn new(
-        credential_schemas: Arc<dyn CredentialSchemaRepository>,
         vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
         http_client: Arc<dyn HttpClient>,
-        formatter_provider: Arc<dyn CredentialFormatterProvider>,
         credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     ) -> Self {
         Self {
-            credential_schemas,
             vct_type_metadata_cache,
             http_client,
-            formatter_provider,
             credential_schema_parser,
             credential_schema_importer,
         }
-    }
-
-    fn add_metadata_claim_schemas(
-        &self,
-        schema: &mut CredentialSchema,
-    ) -> Result<(), IssuanceProtocolError> {
-        let metadata_claims = get_metadata_claim_schemas(
-            &*self.formatter_provider,
-            schema.format.clone(),
-            schema.created_date,
-        )?;
-        schema
-            .claim_schemas
-            .as_mut()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing claim schemas".to_string(),
-            ))?
-            .extend(metadata_claims);
-        Ok(())
     }
 }
 
@@ -188,7 +159,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
             Some(&display.name)
         });
 
-        let result = match schema.r#type.as_str() {
+        match schema.r#type.as_str() {
             "ProcivisOneSchema2024" | "SdJwtVc" if !schema.external_schema => {
                 let procivis_schema = fetch_procivis_schema(&schema_url, &*self.http_client)
                     .await
@@ -223,7 +194,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                 let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
-                return Ok(BuildCredentialSchemaResponse { claims, schema });
+                Ok(BuildCredentialSchemaResponse { claims, schema })
             }
             "mdoc" => {
                 let result = fetch_procivis_schema(&schema_url, &*self.http_client).await;
@@ -262,7 +233,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         IssuanceProtocolError::Failed("MDOC metadata missing doctype".to_string())
                     })?;
 
-                let mut credential_schema = from_create_request(
+                let credential_schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
                         name,
                         format: credential_format,
@@ -283,27 +254,42 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     "mdoc".to_string(),
                 )
                 .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?;
-                self.add_metadata_claim_schemas(&mut credential_schema)?;
 
                 if claims_specified {
-                    let claims =
-                        extract_offered_claims(&credential_schema, *credential_id, claim_keys)?;
+                    let schema = self
+                        .credential_schema_importer
+                        .import_credential_schema(credential_schema)
+                        .await
+                        .map_err(|error| {
+                            tracing::error!("Failed to import credential schema: {}", error);
+                            IssuanceProtocolError::Failed(
+                                "Could not store credential schema".to_string(),
+                            )
+                        })?;
+                    let claims = extract_offered_claims(&schema, *credential_id, claim_keys)?;
 
-                    BuildCredentialSchemaResponse {
-                        claims,
-                        schema: credential_schema,
-                    }
+                    Ok(BuildCredentialSchemaResponse { claims, schema })
                 } else {
+                    let schema = self
+                        .credential_schema_importer
+                        .import_credential_schema(credential_schema)
+                        .await
+                        .map_err(|error| {
+                            tracing::error!("Failed to import credential schema: {}", error);
+                            IssuanceProtocolError::Failed(
+                                "Could not store credential schema".to_string(),
+                            )
+                        })?;
                     let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                         create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
-                    BuildCredentialSchemaResponse {
+                    Ok(BuildCredentialSchemaResponse {
                         claims,
                         schema: CredentialSchema {
                             claim_schemas: Some(claim_schemas),
-                            ..credential_schema
+                            ..schema
                         },
-                    }
+                    })
                 }
             }
             // external schema
@@ -354,7 +340,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                 let now = OffsetDateTime::now_utc();
                 let id = Uuid::new_v4();
-                let mut credential_schema = CredentialSchema {
+                let credential_schema = CredentialSchema {
                     id: id.into(),
                     deleted_at: None,
                     created_date: now,
@@ -373,43 +359,22 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     organisation: Some(organisation.clone()),
                     allow_suspension: false,
                 };
-                self.add_metadata_claim_schemas(&mut credential_schema)?;
 
-                BuildCredentialSchemaResponse {
-                    claims,
-                    schema: credential_schema,
-                }
+                let schema = self
+                    .credential_schema_importer
+                    .import_credential_schema(credential_schema)
+                    .await
+                    .map_err(|error| {
+                        tracing::error!("Failed to import credential schema: {}", error);
+                        IssuanceProtocolError::Failed(
+                            "Could not store credential schema".to_string(),
+                        )
+                    })?;
+
+                Ok(BuildCredentialSchemaResponse { claims, schema })
             }
-        };
-
-        let mut schema = result.schema.clone();
-        schema.organisation = Some(organisation.to_owned());
-
-        self.credential_schemas
-            .create_credential_schema(schema)
-            .await
-            .map_err(|_| {
-                IssuanceProtocolError::Failed("Could not store credential schema".to_string())
-            })?;
-
-        Ok(result)
+        }
     }
-}
-
-fn get_metadata_claim_schemas(
-    formatter_provider: &dyn CredentialFormatterProvider,
-    format: CredentialFormat,
-    now: OffsetDateTime,
-) -> Result<Vec<CredentialSchemaClaim>, IssuanceProtocolError> {
-    let formatter = formatter_provider.get_credential_formatter(&format).ok_or(
-        IssuanceProtocolError::Other(MissingProviderError::Formatter(format.to_string()).into()),
-    )?;
-    let metadata_claims = formatter
-        .get_metadata_claims()
-        .into_iter()
-        .map(|metadata_claim| claim_schema_from_metadata_claim_schema(metadata_claim, now))
-        .collect::<Vec<_>>();
-    Ok(metadata_claims)
 }
 
 fn map_layout_properties(

@@ -3,7 +3,7 @@ use indexmap::map::Entry;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -17,7 +17,6 @@ use super::model::{
 use crate::config::core_config::{CoreConfig, DatatypeType, Params};
 use crate::config::{ConfigError, ConfigParsingError};
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
@@ -518,6 +517,28 @@ pub(crate) fn parse_mdoc_schema_claims(
     }
 
     claims_by_namespace
+}
+
+fn from_jwt_request_claim_schema(
+    now: OffsetDateTime,
+    id: ClaimSchemaId,
+    key: String,
+    datatype: String,
+    required: bool,
+    array: Option<bool>,
+) -> CredentialSchemaClaim {
+    CredentialSchemaClaim {
+        schema: ClaimSchema {
+            id,
+            key,
+            data_type: datatype,
+            created_date: now,
+            last_modified: now,
+            array: array.unwrap_or(false),
+            metadata: false,
+        },
+        required,
+    }
 }
 
 pub(crate) async fn fetch_procivis_schema(
