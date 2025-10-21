@@ -7,7 +7,7 @@ walletProvider:
       public:
         walletUnitAttestation:
           walletName: "Procivis One Demo Wallet"
-          walletLink: "https://procivis.ch"
+          walletLink: "https://docs.procivis.ch/components/wallet-app"
           android:
             bundleId: ch.procivis.one.wallet.demo
             signingCertificateFingerprints: [
