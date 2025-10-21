@@ -1,13 +1,11 @@
 use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
-use one_core::model::credential_schema::WalletStorageTypeEnum;
-use one_core::model::did::DidType;
 use one_core::provider::verification_protocol::openid4vp::model::{
     OpenID4VPAlgs, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
     OpenID4VpPresentationFormat,
 };
-use serde_json::json;
+use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use url::Url;
 use uuid::Uuid;
@@ -301,31 +299,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
-    let credential_id = resp["credentialIds"][0].parse();
-    let credential = context.db.credentials.get(&credential_id).await;
-    assert_eq!(
-        credential.schema.unwrap().wallet_storage_type,
-        Some(WalletStorageTypeEnum::Software)
-    );
-    let did = context
-        .db
-        .dids
-        .get_did_by_value(&issuer_did.parse().unwrap())
-        .await;
-    assert_eq!(did.did_type, DidType::Remote);
-
-    let proof_types =
-        resp["credentialConfigurationsSupported"][credential_id.to_string()]["proofTypesSupported"]
-            ["jwt"]["proofSigningAlgValuesSupported"]
-            .parse::<Vec<String>>();
-    assert!(proof_types.contains(&"EdDSA".to_string()));
-    assert!(proof_types.contains(&"EDDSA".to_string()));
-    assert!(proof_types.contains(&"DILITHIUM".to_string()));
-    assert!(proof_types.contains(&"ES256".to_string()));
-    assert!(proof_types.contains(&"BBS_PLUS".to_string()));
-
-    assert!(!proof_types.contains(&"CRYDI3".to_string()));
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -496,57 +471,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-    let claim_schema_keys: Vec<String> = credential
-        .schema
-        .unwrap()
-        .claim_schemas
-        .unwrap()
-        .iter()
-        .map(|claim_schema| claim_schema.schema.key.to_owned())
-        .collect();
-    assert_eq!(
-        vec![
-            // payload claims
-            "address",
-            "address/location",
-            "address/location/position",
-            "address/location/position/x",
-            // metadata claims
-            "iss",
-            "sub",
-            "aud",
-            "exp",
-            "nbf",
-            "iat",
-            "jti",
-            "vc",
-            "vc/type",
-            "vc/id",
-        ],
-        claim_schema_keys
-    );
-    let claim_paths: Vec<String> = credential
-        .claims
-        .unwrap()
-        .iter()
-        .map(|claim| claim.path.to_owned())
-        .collect();
-    assert_eq!(
-        vec![
-            "address",
-            "address/location",
-            "address/location/position",
-            "address/location/position/x",
-        ],
-        claim_paths
-    );
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -724,45 +650,9 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     // THEN
     assert_eq!(resp.status(), 201);
-
     let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-    let claim_schema_keys: Vec<String> = credential
-        .schema
-        .unwrap()
-        .claim_schemas
-        .unwrap()
-        .iter()
-        .map(|claim_schema| claim_schema.schema.key.to_owned())
-        .collect();
-    assert_eq!(
-        vec![
-            // payload claims
-            "address",
-            "address/field",
-            "address/location",
-            "address/location/position",
-            "address/location/position/x",
-            // metadata claims
-            "iss",
-            "sub",
-            "aud",
-            "exp",
-            "nbf",
-            "iat",
-            "jti",
-            "vc",
-            "vc/type",
-            "vc/id",
-        ],
-        claim_schema_keys
-    );
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -943,42 +833,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-    let claim_schema_keys: Vec<String> = credential
-        .schema
-        .unwrap()
-        .claim_schemas
-        .unwrap()
-        .iter()
-        .map(|claim_schema| claim_schema.schema.key.to_owned())
-        .collect();
-    assert_eq!(
-        vec![
-            // payload claims
-            "address",
-            "address/field",
-            "address/field of location",
-            "address/field of location/position",
-            "address/field of location/position/x",
-            // metadata claims
-            "iss",
-            "sub",
-            "aud",
-            "exp",
-            "nbf",
-            "iat",
-            "jti",
-            "vc",
-            "vc/type",
-            "vc/id",
-        ],
-        claim_schema_keys
-    );
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -1110,195 +966,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-
-    let credential_schema = credential.schema.unwrap();
-    assert_eq!(credential_schema.name, "MatchedSchema");
-}
-
-#[tokio::test]
-async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_should_not_match_deleted_schema()
- {
-    let mock_server = MockServer::start().await;
-    let (context, organisation) = TestContext::new_with_organisation(None).await;
-
-    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![(
-        Uuid::from_str("48db4654-01c4-4a43-9df4-300f1f425c40").unwrap(),
-        "key",
-        true,
-        "STRING",
-        false,
-    )];
-
-    let credential_schema_id = Uuid::new_v4();
-    let deleted_schema_id = Uuid::new_v4();
-
-    let deleted_credential_schema = context
-        .db
-        .credential_schemas
-        .create_with_claims(
-            &deleted_schema_id,
-            "MatchedSchema",
-            &organisation,
-            "NONE",
-            &new_claim_schemas,
-            "JWT",
-            &format!(
-                "{}/ssi/schema/v1/{}",
-                &mock_server.uri(),
-                credential_schema_id
-            ),
-        )
-        .await;
-    context
-        .db
-        .credential_schemas
-        .delete(&deleted_credential_schema)
-        .await;
-
-    let credential_issuer = format!(
-        "{}/ssi/openid4vci/draft-13/{credential_schema_id}",
-        mock_server.uri()
-    );
-    let credential_offer = json!({
-        "credential_issuer": credential_issuer,
-        "credential_configuration_ids": [
-            format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri())
-        ],
-        "grants": {
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
-                "pre-authorized_code": "78db97c3-dbda-4bb2-a17c-b971ae7d6740"
-            }
-        },
-        "credential_subject": {
-            "keys": {
-                "key": {"value": "foo", "value_type": "STRING"},
-            },
-            "wallet_storage_type": "SOFTWARE"
-        }
-    });
-
-    Mock::given(method(Method::GET))
-        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "id": "a170ddf1-17b3-4547-abdd-3f8ee2836747",
-                "createdDate": "2005-04-02T21:37:00.000Z",
-                "lastModified": "2005-04-02T21:37:00.000Z",
-                "name": "MatchedSchema",
-                "format": "JWT",
-                "revocationMethod": "NONE",
-                "organisationId": "bb6c2535-e1d7-4319-b9db-f8949bb50758",
-                "claims": [
-                    {
-                        "id": "48db4654-01c4-4a43-9df4-300f1f425c40",
-                        "createdDate": "2005-04-02T21:37:00.000Z",
-                        "lastModified": "2005-04-02T21:37:00.000Z",
-                        "key": "key",
-                        "datatype": "STRING",
-                        "required": true,
-                        "array": false
-                    }
-                ],
-                "walletStorageType": null,
-                "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
-                "schemaType": "ProcivisOneSchema2024",
-                "importedSourceUrl": "CORE_URL",
-                "allowSuspension": true
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "credential_endpoint": format!("{credential_issuer}/credential"),
-                "credential_issuer": credential_issuer,
-                "credential_configurations_supported":
-                {
-                    format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()): {
-                    "wallet_storage_type": "SOFTWARE",
-                    "credential_definition": {
-                        "type": [
-                            "VerifiableCredential"
-                        ],
-                        "credentialSubject" : {
-                            "field": {
-                                "value_type": "string"
-                            }
-                        }
-                    },
-                    "format": "vc+sd-jwt",
-                    }
-                }
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    let token_endpoint = format!("{credential_issuer}/token");
-
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "authorization_endpoint": format!("{credential_issuer}/authorize"),
-                "grant_types_supported": [
-                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-                ],
-                "id_token_signing_alg_values_supported": [],
-                "issuer": credential_issuer,
-                "jwks_uri": format!("{credential_issuer}/jwks"),
-                "response_types_supported": [
-                    "token"
-                ],
-                "subject_types_supported": [
-                    "public"
-                ],
-                "token_endpoint": token_endpoint
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    // WHEN
-    let credential_offer = serde_json::to_string(&credential_offer).unwrap();
-    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
-    credential_offer_url
-        .query_pairs_mut()
-        .append_pair("credential_offer", &credential_offer);
-
-    let resp = context
-        .api
-        .interactions
-        .handle_invitation(organisation.id, credential_offer_url.as_ref())
-        .await;
-
-    // THEN
-    assert_eq!(resp.status(), 201);
-
-    let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-
-    let credential_schemas = context.db.credential_schemas.list().await;
-    assert_eq!(credential_schemas.len(), 1); // the deleted one is _not_ listed
-
-    // the current schema is a newly created one and not the deleted one
-    assert_ne!(credential_schemas[0].id, deleted_credential_schema.id);
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -1444,19 +1113,9 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
 
     // THEN
     assert_eq!(resp.status(), 201);
-
     let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-    assert_eq!(
-        credential.schema.unwrap().wallet_storage_type,
-        Some(WalletStorageTypeEnum::Software)
-    );
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -1512,6 +1171,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
+    assert_eq!(resp["interactionType"], "VERIFICATION");
 }
 
 #[tokio::test]
@@ -1550,6 +1210,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
+    assert_eq!(resp["interactionType"], "VERIFICATION");
 }
 
 #[tokio::test]
@@ -1627,6 +1288,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
+    assert_eq!(resp["interactionType"], "VERIFICATION");
 }
 
 #[tokio::test]
@@ -1755,76 +1417,8 @@ async fn test_handle_invitation_mdoc() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-
-    let claim_schemas = credential.schema.unwrap().claim_schemas.unwrap();
-
-    let claim_schema_keys: HashSet<&str> = claim_schemas
-        .iter()
-        .map(|claim_schema| claim_schema.schema.key.as_str())
-        .collect();
-
-    assert_eq!(
-        HashSet::from([
-            "first.namespace",
-            "first.namespace/field",
-            "first.namespace/string_array",
-            "first.namespace/object_array",
-            "first.namespace/object_array/field1",
-            "first.namespace/object_array/field2",
-            "company",
-            "company/address",
-            "company/address/streetName",
-            "company/address/streetNumber",
-            "doctype"
-        ]),
-        claim_schema_keys
-    );
-
-    let field = claim_schemas
-        .iter()
-        .find(|schema| schema.schema.key == "first.namespace/field")
-        .unwrap();
-    assert!(field.required);
-    assert!(!field.schema.array);
-    assert_eq!(&field.schema.data_type, "STRING");
-
-    let field = claim_schemas
-        .iter()
-        .find(|schema| schema.schema.key == "first.namespace/string_array")
-        .unwrap();
-    assert!(!field.required);
-    assert!(field.schema.array);
-    assert_eq!(&field.schema.data_type, "STRING");
-
-    let field = claim_schemas
-        .iter()
-        .find(|schema| schema.schema.key == "first.namespace/object_array")
-        .unwrap();
-    assert!(!field.required);
-    assert!(field.schema.array);
-    assert_eq!(&field.schema.data_type, "OBJECT");
-
-    let field = claim_schemas
-        .iter()
-        .find(|schema| schema.schema.key == "first.namespace/object_array/field1")
-        .unwrap();
-    assert!(field.required);
-    assert!(!field.schema.array);
-    assert_eq!(&field.schema.data_type, "STRING");
-
-    let field = claim_schemas
-        .iter()
-        .find(|schema| schema.schema.key == "first.namespace/object_array/field2")
-        .unwrap();
-    assert!(!field.required);
-    assert!(!field.schema.array);
-    assert_eq!(&field.schema.data_type, "STRING");
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], Value::Null);
 }
 
 #[tokio::test]
@@ -1963,12 +1557,11 @@ async fn test_handle_invitation_mdoc_with_duplicate_schema_name() {
     assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
 
     let credential = context
         .db
         .credentials
-        .get(&resp["credentialIds"][0].parse())
+        .get_credential_by_interaction_id(&resp["interactionId"].parse())
         .await;
 
     let claim_schemas = credential.schema.unwrap().claim_schemas.unwrap();
@@ -2331,7 +1924,8 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_t
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
     let code = &resp["txCode"];
     assert_eq!(code["input_mode"], "numeric");
     assert_eq!(code["length"], 5);
@@ -2591,18 +2185,9 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
 
     // THEN
     assert_eq!(resp.status(), 201);
-
     let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-
-    let credential = context
-        .db
-        .credentials
-        .get(&resp["credentialIds"][0].parse())
-        .await;
-
-    let claims = credential.claims.unwrap();
-    assert!(claims.is_empty());
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]
@@ -2765,28 +2350,8 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
-    let resp = context
-        .api
-        .credentials
-        .get(&resp["credentialIds"][0].as_str().unwrap())
-        .await;
-
-    assert_eq!(resp.status(), 200);
-
-    let resp = resp.json_value().await;
-    assert_eq!("SD_JWT_VC", resp["schema"]["format"]);
-
-    assert_eq!(
-        "#12107c",
-        resp["schema"]["layoutProperties"]["background"]["color"]
-    );
-    assert_eq!(
-        "https://betelgeuse.example.com/public/education-logo.png",
-        resp["schema"]["layoutProperties"]["logo"]["image"]
-    );
-
-    assert!(resp["claims"].as_array().unwrap().is_empty());
+    assert_eq!(resp["interactionType"], "ISSUANCE");
+    assert_eq!(resp["walletStorageType"], Value::Null);
 }
 
 #[tokio::test]
@@ -2946,6 +2511,7 @@ async fn test_handle_invitation_authorization_code_issuer_state() {
 
     let resp = resp.json_value().await;
     assert!(resp["interactionId"].is_string());
+    assert_eq!(resp["interactionType"], "ISSUANCE");
     let authorization_code_flow_url = resp["authorizationCodeFlowUrl"].as_str().unwrap();
 
     assert!(authorization_code_flow_url.starts_with(authorization_endpoint));
@@ -3037,6 +2603,7 @@ async fn test_handle_invitation_authorization_code_authorization_server() {
 
     let resp = resp.json_value().await;
     assert!(resp["interactionId"].is_string());
+    assert_eq!(resp["interactionType"], "ISSUANCE");
     let authorization_code_flow_url = resp["authorizationCodeFlowUrl"].as_str().unwrap();
     assert!(authorization_code_flow_url.starts_with(authorization_endpoint));
 }
@@ -3229,47 +2796,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
         .mount(&mock_server)
         .await;
 
-    Mock::given(method(Method::GET))
-        .and(path(format!("/ssi/schema/v1/{credential_schema_id}")))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "id": credential_schema_id,
-            "createdDate": "2024-05-16T10:47:48.093Z",
-            "lastModified": "2024-05-16T10:47:48.093Z",
-            "name": "test",
-            "format": "SD_JWT",
-            "revocationMethod": "NONE",
-            "organisationId": organisation.id,
-            "claims": [
-              {
-                  "id": "73535006-f102-481b-8a23-5a45b912372e",
-                  "createdDate": "2024-10-17T10:36:55.019Z",
-                  "lastModified": "2024-10-17T10:36:55.019Z",
-                  "key": "namespace1",
-                  "datatype": "OBJECT",
-                  "required": true,
-                  "array": false,
-                  "claims": [
-                  {
-                      "id": "e8ab7052-38f7-4cbf-bace-18f94210d5c1",
-                      "createdDate": "2024-10-17T10:36:55.019Z",
-                      "lastModified": "2024-10-17T10:36:55.019Z",
-                      "key": "string_array",
-                      "datatype": "STRING",
-                      "required": true,
-                      "array": true
-                  }
-                  ]
-              }
-              ],
-            "walletStorageType": "SOFTWARE",
-            "schemaId": format!("{}/ssi/schema/v1/{credential_schema_id}", mock_server.uri()),
-            "schemaType": "ProcivisOneSchema2024",
-            "layoutType": "CARD",
-        })))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();
     let mut credential_offer_url: Url = "openid-credential-offer-final1://".parse().unwrap();
@@ -3287,13 +2813,10 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
     assert_eq!(resp.status(), 201);
 
     let resp = resp.json_value().await;
-    assert!(resp.get("interactionId").is_some());
-
-    let credential_id = resp["credentialIds"][0].parse();
-    let credential = context.db.credentials.get(&credential_id).await;
+    let interaction_id: Uuid = resp["interactionId"].parse();
+    let interaction = context.db.interactions.get(interaction_id).await.unwrap();
 
     // Verify that the interaction was created and contains the OAuth authorization server metadata
-    let interaction = credential.interaction.unwrap();
     let interaction_data: serde_json::Value =
         serde_json::from_slice(interaction.data.as_ref().unwrap()).unwrap();
 

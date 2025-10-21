@@ -1,12 +1,10 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use indexmap::IndexMap;
 use mockall::predicate;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
-use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -16,7 +14,6 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
-use crate::mapper::RemoteIdentifierRelation;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -29,31 +26,24 @@ use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
-};
+use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::MockHandleInvitationOperations;
-use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::extract_offered_claims;
+use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIFinal1Params,
-    OpenID4VCIGrants, OpenID4VCIPreAuthorizedCodeGrant,
+    HolderInteractionData, OpenID4VCIFinal1Params, OpenID4VCIGrants,
+    OpenID4VCIPreAuthorizedCodeGrant,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::create_credential_offer;
-use crate::provider::issuance_protocol::openid4vci_final1_0::{
-    IssuanceProtocolError, OpenID4VCIFinal1_0,
-};
-use crate::provider::issuance_protocol::{BasicSchemaData, IssuanceProtocol};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -86,11 +76,9 @@ struct TestInputs {
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
-    pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIFinal1Params>,
-    pub handle_invitation_operations: MockHandleInvitationOperations,
 }
 
 fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
@@ -105,7 +93,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
-        Arc::new(inputs.certificate_validator),
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
@@ -124,7 +111,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
             rejection_identifier: None,
             enable_credential_preview: true,
         }),
-        Arc::new(inputs.handle_invitation_operations),
+        "OPENID4VCI_FINAL1".to_string(),
     )
 }
 
@@ -519,44 +506,8 @@ async fn test_generate_share_credentials_offer_by_value() {
 async fn test_handle_invitation_credential_by_ref_with_did_success() {
     let credential = generic_credential_did();
 
-    let mut storage_proxy = MockStorageProxy::default();
-    let credential_clone = credential.clone();
-    storage_proxy
-        .expect_get_or_create_identifier()
-        .times(1)
-        .returning(move |_, _, _| {
-            let did = credential_clone
-                .issuer_identifier
-                .as_ref()
-                .unwrap()
-                .did
-                .as_ref()
-                .unwrap()
-                .clone();
-            let relation = RemoteIdentifierRelation::Did(did.clone());
-            Ok((
-                Identifier {
-                    id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-                        .unwrap()
-                        .into(),
-                    did: Some(did.clone()),
-                    created_date: did.created_date,
-                    last_modified: did.last_modified,
-                    name: did.name,
-                    r#type: IdentifierType::Did,
-                    is_remote: true,
-                    state: IdentifierState::Active,
-                    deleted_at: None,
-                    organisation: did.organisation,
-                    key: None,
-                    certificates: None,
-                },
-                relation,
-            ))
-        });
-
     inner_test_handle_invitation_credential_by_ref_success(
-        storage_proxy,
+        MockStorageProxy::default(),
         credential,
         Some("did:example:123".to_string()),
         true,
@@ -571,45 +522,44 @@ async fn test_holder_accept_credential_success() {
     let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
 
-    let credential = {
-        let mut credential = generic_credential_did();
+    let credential = generic_credential_did();
 
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
-            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            challenge_endpoint: None,
-            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
-                OpenID4VCIPreAuthorizedCodeGrant {
-                    pre_authorized_code: "code".to_string(),
-                    tx_code: None,
-                    authorization_server: None,
-                },
-            )),
-            access_token: None,
-            access_token_expires_at: None,
-            refresh_token: None,
-            token_endpoint_auth_methods_supported: None,
-            refresh_token_expires_at: None,
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            continue_issuance: None,
-            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
-        };
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        challenge_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        token_endpoint_auth_methods_supported: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        continue_issuance: None,
+        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_metadata: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        format: "jwt_vc_json".to_string(),
+    };
 
-        credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-            nonce_id: None,
-            interaction_type: InteractionType::Issuance,
-        });
-
-        credential
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
     };
 
     Mock::given(method(Method::POST))
@@ -661,44 +611,33 @@ async fn test_holder_accept_credential_success() {
         .mount(&mock_server)
         .await;
 
+    let mut formatter = MockCredentialFormatter::new();
+    formatter.expect_get_leeway().returning(|| 1000);
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_| Ok(clone.clone())
+    });
+
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
-        .returning(move |_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_get_leeway().returning(|| 1000);
+        .returning(move |_| Some(formatter.clone()));
 
-            formatter
-                .expect_extract_credentials()
-                .returning(move |_, _, _, _| {
-                    Ok(DetailCredential {
-                        id: None,
-                        issuance_date: None,
-                        valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
-                        valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
-                        update_at: None,
-                        invalid_before: None,
-                        issuer: IdentifierDetails::Did(dummy_did().did),
-                        subject: None,
-                        claims: CredentialSubject {
-                            id: None,
-                            claims: HashMap::new(),
-                        },
-                        status: vec![],
-                        credential_schema: None,
-                    })
-                });
-
-            Some(Arc::new(formatter))
-        });
-
+    let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access
-        .expect_update_interaction()
-        .returning(|_, _| Ok(()));
+        .expect_get_schema()
+        .once()
+        .returning(move |_, _, _| Ok(Some(schema.clone())));
 
     storage_access
         .expect_get_did_by_value()
         .returning(|_, _| Ok(Some(dummy_did())));
+
+    storage_access
+        .expect_update_interaction()
+        .once()
+        .returning(move |_, _| Ok(()));
 
     let identifier = dummy_identifier();
     storage_access.expect_get_identifier_for_did().returning({
@@ -756,7 +695,7 @@ async fn test_holder_accept_credential_success() {
 
     let result = openid_provider
         .holder_accept_credential(
-            &credential,
+            interaction,
             &dummy_did(),
             &dummy_key(),
             None,
@@ -770,10 +709,10 @@ async fn test_holder_accept_credential_success() {
     assert_eq!(issuer_response.credential, "credential");
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 
-    let update_credential = result.update_credential.unwrap();
-    assert_eq!(update_credential.0, credential.id);
+    let create_credential = result.create_credential.unwrap();
+    assert_eq!(create_credential.id, credential.id);
     assert_eq!(
-        update_credential.1.issuer_identifier_id.unwrap(),
+        create_credential.issuer_identifier.unwrap().id,
         identifier.id
     );
 }
@@ -785,45 +724,44 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
 
-    let credential = {
-        let mut credential = generic_credential_key();
+    let credential = generic_credential_key();
 
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
-            notification_endpoint: None,
-            challenge_endpoint: None,
-            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
-                OpenID4VCIPreAuthorizedCodeGrant {
-                    pre_authorized_code: "code".to_string(),
-                    tx_code: None,
-                    authorization_server: None,
-                },
-            )),
-            access_token: None,
-            access_token_expires_at: None,
-            token_endpoint_auth_methods_supported: None,
-            refresh_token: None,
-            refresh_token_expires_at: None,
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            continue_issuance: None,
-            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
-        };
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+        notification_endpoint: None,
+        challenge_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        token_endpoint_auth_methods_supported: None,
+        refresh_token: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        continue_issuance: None,
+        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_metadata: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        format: "jwt_vc_json".to_string(),
+    };
 
-        credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-            nonce_id: None,
-            interaction_type: InteractionType::Issuance,
-        });
-
-        credential
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
     };
 
     Mock::given(method(Method::POST))
@@ -864,57 +802,38 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .mount(&mock_server)
         .await;
 
+    let mut formatter = MockCredentialFormatter::new();
+    formatter.expect_get_leeway().returning(|| 1000);
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_| Ok(clone.clone())
+    });
+    let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
-        .returning(move |_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_get_leeway().returning(|| 1000);
+        .returning(move |_| Some(formatter.clone()));
 
-            formatter
-                .expect_extract_credentials()
-                .returning(move |_, _, _, _| {
-                    Ok(DetailCredential {
-                        id: None,
-                        issuance_date: None,
-                        valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
-                        valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
-                        update_at: None,
-                        invalid_before: None,
-                        issuer: IdentifierDetails::Key(PublicKeyJwk::Ec(
-                            PublicKeyJwkEllipticData {
-                                alg: None,
-                                r#use: None,
-                                kid: None,
-                                crv: "P-256".to_string(),
-                                x: "ShVYnVH7gJEbuydvCuxK3erCLINJQ27Ym_HU-I2uSkQ".to_string(),
-                                y: Some("4oKwI2kCcDpDpC6ZNVpkO9v0UjLKqMNEXuMDHjRMnPM".to_string()),
-                            },
-                        )),
-                        subject: None,
-                        claims: CredentialSubject {
-                            id: None,
-                            claims: HashMap::new(),
-                        },
-                        status: vec![],
-                        credential_schema: None,
-                    })
-                });
-
-            Some(Arc::new(formatter))
-        });
-
+    let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access
-        .expect_update_interaction()
-        .returning(|_, _| Ok(()));
+        .expect_get_schema()
+        .once()
+        .returning(move |_, _, _| Ok(Some(schema.clone())));
 
     storage_access
         .expect_get_key_by_raw_key_and_type()
+        .once()
         .returning(|_, _, _| Ok(None));
 
     storage_access
         .expect_get_identifier_for_key()
+        .once()
         .returning(move |_, _| Ok(None));
+
+    storage_access
+        .expect_update_interaction()
+        .once()
+        .returning(move |_, _| Ok(()));
 
     key_provider
         .expect_get_signature_provider()
@@ -974,7 +893,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
     let result = openid_provider
         .holder_accept_credential(
-            &credential,
+            interaction,
             &dummy_did(),
             &dummy_key(),
             None,
@@ -994,213 +913,11 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .expect("should return create identifier");
     assert_eq!(Some(create_key), create_identifier.key);
 
-    let update_credential = result.update_credential.unwrap();
-    assert_eq!(update_credential.0, credential.id);
+    let create_credential = result.create_credential.unwrap();
+    assert_eq!(create_credential.id, credential.id);
     assert_eq!(
-        update_credential.1.issuer_identifier_id.unwrap(),
+        create_credential.issuer_identifier.unwrap().id,
         create_identifier.id
-    );
-}
-
-#[tokio::test]
-async fn test_holder_accept_expired_credential_fails() {
-    let mock_server = MockServer::start().await;
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-    let mut storage_access = MockStorageProxy::default();
-    let mut key_provider = MockKeyProvider::default();
-
-    let credential = {
-        let mut credential = generic_credential_did();
-
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
-            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            challenge_endpoint: None,
-            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
-                OpenID4VCIPreAuthorizedCodeGrant {
-                    pre_authorized_code: "code".to_string(),
-                    tx_code: None,
-                    authorization_server: None,
-                },
-            )),
-            access_token: None,
-            access_token_expires_at: None,
-            refresh_token: None,
-            refresh_token_expires_at: None,
-            token_endpoint_auth_methods_supported: None,
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            continue_issuance: None,
-            credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
-        };
-
-        credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-            nonce_id: None,
-            interaction_type: InteractionType::Issuance,
-        });
-
-        credential
-    };
-
-    Mock::given(method(Method::POST))
-        .and(path("/token"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "access_token": "321",
-                "token_type": "bearer",
-                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-                "refresh_token": "321",
-                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/nonce"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "c_nonce": "123"
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/credential"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "credentials": [{"credential": "credential"}],
-                "notification_id": "notification_id"
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/notification"))
-        .and(body_json(json!({
-            "notification_id": "notification_id",
-            "event": "credential_failure",
-            "event_description": "Issuance protocol failure: `Validation error: `Expired``"
-        })))
-        .respond_with(ResponseTemplate::new(204))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    formatter_provider
-        .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
-        .returning(move |_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_get_leeway().returning(|| 1000);
-
-            formatter
-                .expect_extract_credentials()
-                .returning(move |_, _, _, _| {
-                    Ok(DetailCredential {
-                        id: None,
-                        issuance_date: None,
-                        valid_from: Some(get_dummy_date() - Duration::weeks(2)),
-                        valid_until: Some(get_dummy_date() - Duration::weeks(1)),
-                        update_at: None,
-                        invalid_before: None,
-                        issuer: IdentifierDetails::Did(dummy_did().did),
-                        subject: None,
-                        claims: CredentialSubject {
-                            id: None,
-                            claims: HashMap::new(),
-                        },
-                        status: vec![],
-                        credential_schema: None,
-                    })
-                });
-
-            Some(Arc::new(formatter))
-        });
-
-    storage_access
-        .expect_update_interaction()
-        .returning(|_, _| Ok(()));
-
-    key_provider
-        .expect_get_signature_provider()
-        .returning(move |_, _, _| {
-            let mut mock_signature_provider = MockSignatureProvider::new();
-            mock_signature_provider
-                .expect_jose_alg()
-                .returning(|| Some("EdDSA".to_string()));
-
-            mock_signature_provider
-                .expect_get_key_id()
-                .returning(|| Some("key-id".to_string()));
-
-            mock_signature_provider
-                .expect_sign()
-                .returning(|_| Ok(vec![0; 32]));
-
-            Ok(Box::new(mock_signature_provider))
-        });
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_reconstruct_key()
-        .returning(|_, _, _, _| {
-            let mut key_handle = MockSignaturePublicKeyHandle::default();
-            key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                    alg: None,
-                    r#use: None,
-                    kid: None,
-                    crv: "P-256".to_string(),
-                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
-                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
-                }))
-            });
-
-            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
-                Arc::new(key_handle),
-            )))
-        });
-
-    let openid_provider = setup_protocol(TestInputs {
-        formatter_provider,
-        key_provider,
-        key_algorithm_provider,
-        config: dummy_config(),
-        ..Default::default()
-    });
-
-    let result = openid_provider
-        .holder_accept_credential(
-            &credential,
-            &dummy_did(),
-            &dummy_key(),
-            None,
-            &storage_access,
-            None,
-        )
-        .await;
-
-    assert!(result.is_err());
-    assert!(
-        result
-            .err()
-            .unwrap()
-            .to_string()
-            .contains("Validation error: `Expired`")
     );
 }
 
@@ -1236,6 +953,9 @@ async fn test_holder_reject_credential() {
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
             credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+            credential_metadata: None,
+            protocol: "OPENID4VCI_FINAL1".to_string(),
+            format: "jwt_vc_json".to_string(),
         };
 
         credential.interaction = Some(Interaction {
@@ -1515,37 +1235,22 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .mount(&mock_server)
         .await;
 
+    let capture_integration_id = Arc::new(Mutex::new(None));
     storage_proxy
         .expect_create_interaction()
         .times(1)
-        .returning(|_| Ok(Uuid::new_v4()));
-    storage_proxy
-        .expect_get_schema()
-        .times(1)
-        .returning(|_, _, _| Ok(None));
-
-    let mut operations = MockHandleInvitationOperations::default();
-    let credential_clone = credential.clone();
-    operations
-        .expect_find_schema_data()
-        .once()
-        .returning(move |_, _| {
-            Ok(BasicSchemaData {
-                id: credential_schema_id.to_string(),
-                r#type: "SD_JWT_VC".to_string(),
-                external_schema: false,
-                offer_id: credential_clone.id.to_string(),
-            })
+        .returning({
+            let capture_integration_id = capture_integration_id.clone();
+            move |i: Interaction| {
+                let mut guard = capture_integration_id.lock().unwrap();
+                *guard = Some(i.id);
+                Ok(i.id)
+            }
         });
-    operations
-        .expect_create_new_schema()
-        .once()
-        .returning(move |_, _, _| Ok(credential.schema.clone().unwrap()));
 
     let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
 
     let protocol = setup_protocol(TestInputs {
-        handle_invitation_operations: operations,
         ..Default::default()
     });
     let result = protocol
@@ -1553,27 +1258,20 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .await
         .unwrap();
 
-    let InvitationResponseEnum::Credential { credentials, .. } = result else {
+    let InvitationResponseEnum::Credential {
+        interaction_id,
+        wallet_storage_type,
+        ..
+    } = result
+    else {
         panic!("Invalid response type");
     };
 
-    assert_eq!(credentials.len(), 1);
-
-    if let Some(issuer_did) = issuer_did {
-        assert_eq!(
-            credentials[0]
-                .issuer_identifier
-                .as_ref()
-                .unwrap()
-                .did
-                .as_ref()
-                .unwrap()
-                .did,
-            DidValue::from_str(issuer_did.as_str()).unwrap()
-        );
-    } else {
-        assert!(credentials[0].issuer_identifier.is_none());
-    }
+    assert_eq!(
+        capture_integration_id.lock().unwrap().unwrap(),
+        interaction_id
+    );
+    assert_eq!(wallet_storage_type, None);
 }
 
 #[tokio::test]
@@ -1683,35 +1381,19 @@ async fn inner_continue_issuance_test(
         .mount(&mock_server)
         .await;
 
+    let capture_integration_id = Arc::new(Mutex::new(None));
     storage_proxy
         .expect_create_interaction()
         .times(1)
-        .returning(|_| Ok(Uuid::new_v4()));
-    storage_proxy
-        .expect_get_schema()
-        .times(1)
-        .returning(|_, _, _| Ok(None));
-
-    let mut operations = MockHandleInvitationOperations::default();
-    let credential_clone = credential.clone();
-    operations
-        .expect_find_schema_data()
-        .once()
-        .returning(move |_, _| {
-            Ok(BasicSchemaData {
-                id: credential_schema_id.to_string(),
-                r#type: "SD_JWT_VC".to_string(),
-                external_schema: false,
-                offer_id: credential_clone.id.to_string(),
-            })
+        .returning({
+            let capture_integration_id = capture_integration_id.clone();
+            move |i: Interaction| {
+                let mut guard = capture_integration_id.lock().unwrap();
+                *guard = Some(i.id);
+                Ok(i.id)
+            }
         });
-    operations
-        .expect_create_new_schema()
-        .once()
-        .returning(move |_, _, _| Ok(credential.schema.clone().unwrap()));
-
     let protocol = setup_protocol(TestInputs {
-        handle_invitation_operations: operations,
         ..Default::default()
     });
 
@@ -1747,680 +1429,10 @@ async fn inner_continue_issuance_test(
         .await
         .unwrap();
 
-    let credentials = result.credentials;
-
-    assert_eq!(credentials.len(), 1);
-    assert!(credentials[0].issuer_identifier.is_none());
-}
-
-fn generic_schema() -> CredentialSchema {
-    CredentialSchema {
-        id: Uuid::new_v4().into(),
-        deleted_at: None,
-        imported_source_url: "CORE_URL".to_string(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_BBSPLUS".to_string(),
-        revocation_method: "NONE".to_string(),
-        wallet_storage_type: None,
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        external_schema: false,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        claim_schemas: Some(vec![
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "First Name".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Last Name".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address".to_string(),
-                    data_type: "OBJECT".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address/Street".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address/Number".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address/Apartment".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address/Zip".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address/City".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-        ]),
-        organisation: Some(dummy_organisation(None)),
-        allow_suspension: true,
-    }
-}
-
-fn generic_schema_array_object() -> CredentialSchema {
-    CredentialSchema {
-        id: Uuid::new_v4().into(),
-        deleted_at: None,
-        created_date: get_dummy_date(),
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: get_dummy_date(),
-        name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_CLASSIC".to_string(),
-        revocation_method: "NONE".to_string(),
-        wallet_storage_type: None,
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        external_schema: false,
-        schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        claim_schemas: Some(vec![
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "array_string".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: true,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "optional_array_string".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: true,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "array_object".to_string(),
-                    data_type: "OBJECT".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: true,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "array_object/Field 1".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "array_object/Field 2".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "array_object/Field array".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: true,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address".to_string(),
-                    data_type: "OBJECT".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "Address/Street".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-        ]),
-        organisation: Some(dummy_organisation(None)),
-        allow_suspension: true,
-    }
-}
-
-fn generic_schema_object_hell() -> CredentialSchema {
-    CredentialSchema {
-        id: Uuid::new_v4().into(),
-        deleted_at: None,
-        created_date: get_dummy_date(),
-        imported_source_url: "CORE_URL".to_string(),
-        last_modified: get_dummy_date(),
-        name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_CLASSIC".to_string(),
-        revocation_method: "NONE".to_string(),
-        wallet_storage_type: None,
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        external_schema: false,
-        claim_schemas: Some(vec![
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "opt_obj".to_string(),
-                    data_type: "OBJECT".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "opt_obj/obj_str".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "opt_obj/opt_obj".to_string(),
-                    data_type: "OBJECT".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: false,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "opt_obj/opt_obj/field_man".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: true,
-            },
-            CredentialSchemaClaim {
-                schema: ClaimSchema {
-                    id: Uuid::new_v4().into(),
-                    key: "opt_obj/opt_obj/field_opt".to_string(),
-                    data_type: "STRING".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    array: false,
-                    metadata: false,
-                },
-                required: false,
-            },
-        ]),
-        organisation: Some(dummy_organisation(None)),
-        allow_suspension: true,
-    }
-}
-
-#[test]
-fn test_extract_offered_claims_success_missing_optional_object() {
-    let schema = generic_schema();
-
-    let claim_keys = IndexMap::from([
-        (
-            "Last Name".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Last Name Value".to_string()),
-            },
-        ),
-        (
-            "First Name".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("First Name Value".to_string()),
-            },
-        ),
-    ]);
-
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(2, result.len());
-
-    let result = result
-        .into_iter()
-        .map(|v| (v.path, v.value))
-        .collect::<HashMap<_, _>>();
-
-    assert_eq!(claim_keys["First Name"].value, result["First Name"]);
-    assert_eq!(claim_keys["Last Name"].value, result["Last Name"]);
-}
-
-#[test]
-fn test_extract_offered_claims_failed_partially_missing_optional_object() {
-    let schema = generic_schema();
-
-    let claim_keys = IndexMap::from([
-        (
-            "Last Name".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Last Name Value".to_string()),
-            },
-        ),
-        (
-            "First Name".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("First Name Value".to_string()),
-            },
-        ),
-        (
-            "Address/Street".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Street Value".to_string()),
-            },
-        ),
-    ]);
-
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys);
-    assert!(matches!(result, Err(IssuanceProtocolError::Failed(_))));
-}
-
-#[test]
-fn test_extract_offered_claims_success_object_array() {
-    let schema = generic_schema_array_object();
-
-    let claim_keys = IndexMap::from([
-        (
-            "array_string/0".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("111".to_string()),
-            },
-        ),
-        (
-            "array_string/1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("222".to_string()),
-            },
-        ),
-        (
-            "array_string/2".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("333".to_string()),
-            },
-        ),
-        (
-            "optional_array_string/0".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("opt111".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("01".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 2".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("02".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field array/0".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("0array0".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field array/1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("0array1".to_string()),
-            },
-        ),
-        (
-            "array_object/1/Field 1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("11".to_string()),
-            },
-        ),
-        (
-            "Address/Street".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Street Value".to_string()),
-            },
-        ),
-        // Field 2 and array is missing for array object 2
-    ]);
-
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(17, result.len());
-
-    for claim in result {
-        if claim.value.is_some() {
-            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
-        }
-    }
-}
-
-#[test]
-fn test_extract_offered_claims_success_optional_array_missing() {
-    let schema = generic_schema_array_object();
-
-    let claim_keys = IndexMap::from([
-        (
-            "array_string/0".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("1".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("01".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 2".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("02".to_string()),
-            },
-        ),
-        (
-            "Address/Street".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Street Value".to_string()),
-            },
-        ),
-    ]);
-
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(8, result.len());
-
-    for claim in result {
-        if claim.value.is_some() {
-            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
-        }
-    }
-}
-
-#[test]
-fn test_extract_offered_claims_mandatory_array_missing_error() {
-    let schema = generic_schema_array_object();
-
-    let claim_keys = IndexMap::from([
-        (
-            "array_object/0/Field 1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("01".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 2".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("02".to_string()),
-            },
-        ),
-        (
-            "Address/Street".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Street Value".to_string()),
-            },
-        ),
-    ]);
-
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
-}
-
-#[test]
-fn test_extract_offered_claims_mandatory_array_object_field_missing_error() {
-    let schema = generic_schema_array_object();
-
-    let claim_keys = IndexMap::from([
-        (
-            "array_string/0".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("1".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 2".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("02".to_string()),
-            },
-        ),
-        (
-            "Address/Street".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("Street Value".to_string()),
-            },
-        ),
-    ]);
-
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
-}
-
-#[test]
-fn test_extract_offered_claims_mandatory_object_error() {
-    let schema = generic_schema_array_object();
-
-    let claim_keys = IndexMap::from([
-        (
-            "array_string/0".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("1".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 1".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("02".to_string()),
-            },
-        ),
-        (
-            "array_object/0/Field 2".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("02".to_string()),
-            },
-        ),
-    ]);
-
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
-}
-
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_present() {
-    let schema = generic_schema_object_hell();
-
-    let claim_keys = IndexMap::from([
-        (
-            "opt_obj/obj_str".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("os".to_string()),
-            },
-        ),
-        (
-            "opt_obj/opt_obj/field_man".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("oofm".to_string()),
-            },
-        ),
-    ]);
-
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(4, result.len());
-
-    for claim in result {
-        if claim.value.is_some() {
-            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
-        }
-    }
-}
-
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_missing() {
-    let schema = generic_schema_object_hell();
-
-    let claim_keys = IndexMap::from([(
-        "opt_obj/obj_str".to_string(),
-        OpenID4VCICredentialValueDetails {
-            value: Some("os".to_string()),
-        },
-    )]);
-
-    let result = extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).unwrap();
-    assert_eq!(2, result.len());
-
-    for claim in result {
-        if claim.value.is_some() {
-            assert_eq!(claim_keys[claim.path.as_str()].value, claim.value)
-        }
-    }
-}
-
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_present_man_field_missing_error() {
-    let schema = generic_schema_object_hell();
-
-    let claim_keys = IndexMap::from([
-        (
-            "opt_obj/obj_str".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("os".to_string()),
-            },
-        ),
-        (
-            "opt_obj/opt_obj/field_opt".to_string(),
-            OpenID4VCICredentialValueDetails {
-                value: Some("oofm".to_string()),
-            },
-        ),
-    ]);
-
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
-}
-
-#[test]
-fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing_error() {
-    let schema = generic_schema_object_hell();
-
-    let claim_keys = IndexMap::from([(
-        "opt_obj/opt_obj/field_man".to_string(),
-        OpenID4VCICredentialValueDetails {
-            value: Some("oofm".to_string()),
-        },
-    )]);
-
-    assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
+    assert_eq!(
+        capture_integration_id.lock().unwrap().unwrap(),
+        result.interaction_id
+    );
 }
 
 #[tokio::test]

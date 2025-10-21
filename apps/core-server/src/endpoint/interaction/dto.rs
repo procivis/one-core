@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use one_core::model::interaction::InteractionType;
 use one_core::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
 };
@@ -21,6 +22,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::dto::mapper::fallback_organisation_id_from_session;
+use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
@@ -44,8 +46,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HandleInvitationResponseRestDTO {
     pub interaction_id: Uuid,
-    /// Offered credential.
-    pub credential_ids: Option<Vec<CredentialId>>,
+    pub interaction_type: InteractionTypeRestEnum,
     /// Requested proof.
     pub proof_id: Option<ProofId>,
     /// Metadata for entering a transaction code.
@@ -53,12 +54,18 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     /// wallet user must input a transaction code to receive the offered credential.
     /// This code is typically sent through a separate channel such as SMS or email.
     pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
-    /// Metadata for selecting an appropriate key.
-    pub credential_configurations_supported:
-        Option<HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>>,
     /// For issuer-initiated Authorization Code Flows, use this URL to start the
     /// authorization process with the authorization server.
     pub authorization_code_flow_url: Option<String>,
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(InteractionType)]
+#[serde(rename_all = "UPPERCASE")]
+pub(crate) enum InteractionTypeRestEnum {
+    Issuance,
+    Verification,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -67,12 +74,9 @@ pub(crate) struct HandleInvitationResponseRestDTO {
 pub(crate) struct ContinueIssuanceResponseRestDTO {
     /// For reference.
     pub interaction_id: Uuid,
-    /// Offered credential.
-    pub credential_ids: Vec<CredentialId>,
+    pub interaction_type: InteractionTypeRestEnum,
     #[from(with_fn = convert_inner)]
-    /// Metadata for selecting an appropriate key.
-    pub credential_configurations_supported:
-        HashMap<CredentialId, CredentialConfigurationSupportedResponseRestDTO>,
+    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[options_not_nullable]

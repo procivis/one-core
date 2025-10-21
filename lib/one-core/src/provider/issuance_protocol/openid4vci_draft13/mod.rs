@@ -21,7 +21,7 @@ use uuid::Uuid;
 use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use super::{IssuanceProtocol, IssuanceProtocolError, StorageAccess};
 use crate::config::core_config::{
-    CoreConfig, DidType as ConfigDidType, FormatType, RevocationType,
+    CoreConfig, DidType as ConfigDidType, FormatType, IssuanceProtocolType, RevocationType,
 };
 use crate::mapper::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
 use crate::mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
@@ -34,7 +34,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
-    UpdateCredentialSchemaRequest,
+    UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
@@ -66,8 +66,8 @@ use crate::provider::issuance_protocol::mapper::{
     get_issued_credential_update, interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCIProofTypeSupported,
-    OpenID4VCRejectionIdentifierParams, ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRejectionIdentifierParams,
+    ShareResponse, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
     HandleInvitationOperations, HandleInvitationOperationsAccess,
@@ -657,6 +657,7 @@ impl OpenID4VCI13 {
                 layout_type,
                 layout_properties,
             }),
+            create_credential_schema: None,
             update_credential: Some((
                 credential.id,
                 UpdateCredentialRequest {
@@ -668,6 +669,7 @@ impl OpenID4VCI13 {
                     ..Default::default()
                 },
             )),
+            create_credential: None,
             create_key: identifier_updates.create_key,
         })
     }
@@ -857,34 +859,30 @@ impl IssuanceProtocol for OpenID4VCI13 {
         storage_access: &StorageAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
-        if !self.holder_can_handle(&url) {
-            return Err(IssuanceProtocolError::Failed(
-                "No OpenID4VC query params detected".to_string(),
-            ));
-        }
-
-        handle_credential_invitation(
+        self.holder_handle_invitation_with_protocol(
             url,
             organisation,
-            &*self.client,
-            &*self.certificate_validator,
+            IssuanceProtocolType::OpenId4VciDraft13,
             storage_access,
-            &*self.handle_invitation_operations,
             redirect_uri,
-            &self.config,
         )
         .await
     }
 
     async fn holder_accept_credential(
         &self,
-        credential: &Credential,
+        mut interaction: Interaction,
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
+        let credential = storage_access
+            .get_credential_by_interaction_id(&interaction.id)
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
         let schema = credential
             .schema
             .as_ref()
@@ -896,14 +894,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .get_fields(&schema.format)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
             .r#type;
-
-        let mut interaction = credential
-            .interaction
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "interaction is None".to_string(),
-            ))?
-            .to_owned();
 
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
@@ -978,7 +968,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         let notification_id = credential_response.notification_id.to_owned();
 
         let result = self
-            .holder_process_accepted_credential(credential_response, credential, storage_access)
+            .holder_process_accepted_credential(credential_response, &credential, storage_access)
             .await;
 
         if let (Some(notification_id), Some(notification_endpoint)) =
@@ -1477,12 +1467,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
         organisation: Organisation,
         storage_access: &StorageAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
-        handle_continue_issuance(
+        self.holder_continue_issuance_with_protocol(
             continue_issuance_dto,
             organisation,
-            &*self.client,
+            IssuanceProtocolType::OpenId4VciDraft13,
             storage_access,
-            &*self.handle_invitation_operations,
         )
         .await
     }
@@ -1504,10 +1493,59 @@ impl IssuanceProtocol for OpenID4VCI13 {
     }
 }
 
+impl OpenID4VCI13 {
+    pub(super) async fn holder_handle_invitation_with_protocol(
+        &self,
+        url: Url,
+        organisation: Organisation,
+        protocol: IssuanceProtocolType,
+        storage_access: &StorageAccess,
+        redirect_uri: Option<String>,
+    ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
+        if !self.holder_can_handle(&url) {
+            return Err(IssuanceProtocolError::Failed(
+                "No OpenID4VC query params detected".to_string(),
+            ));
+        }
+
+        handle_credential_invitation(
+            url,
+            organisation,
+            protocol,
+            &*self.client,
+            &*self.certificate_validator,
+            storage_access,
+            &*self.handle_invitation_operations,
+            redirect_uri,
+            &self.config,
+        )
+        .await
+    }
+
+    pub(super) async fn holder_continue_issuance_with_protocol(
+        &self,
+        continue_issuance_dto: ContinueIssuanceDTO,
+        organisation: Organisation,
+        protocol: IssuanceProtocolType,
+        storage_access: &StorageAccess,
+    ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
+        handle_continue_issuance(
+            continue_issuance_dto,
+            organisation,
+            protocol,
+            &*self.client,
+            storage_access,
+            &*self.handle_invitation_operations,
+        )
+        .await
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
+    protocol: IssuanceProtocolType,
     client: &dyn HttpClient,
     certificate_validator: &dyn CertificateValidator,
     storage_access: &StorageAccess,
@@ -1665,7 +1703,7 @@ async fn handle_credential_invitation(
     let (token_endpoint, issuer_metadata) =
         get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
 
-    let (interaction_id, credentials, issuer_proof_type_supported) =
+    let (interaction_id, credentials, wallet_storage_type) =
         prepare_issuance_interaction_and_credentials_with_claims(
             organisation,
             token_endpoint,
@@ -1681,11 +1719,18 @@ async fn handle_credential_invitation(
         )
         .await?;
 
+    for mut credential in credentials {
+        credential.protocol = protocol.to_string();
+        storage_access
+            .create_credential(credential)
+            .await
+            .map_err(IssuanceProtocolError::StorageAccessError)?;
+    }
+
     Ok(InvitationResponseEnum::Credential {
-        issuer_proof_type_supported,
         interaction_id,
-        credentials,
         tx_code,
+        wallet_storage_type,
     })
 }
 
@@ -1693,6 +1738,7 @@ async fn handle_credential_invitation(
 async fn handle_continue_issuance(
     continue_issuance_dto: ContinueIssuanceDTO,
     organisation: Organisation,
+    protocol: IssuanceProtocolType,
     client: &dyn HttpClient,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
@@ -1736,7 +1782,7 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
-    let (interaction_id, credentials, issuer_proof_type_supported) =
+    let (interaction_id, credentials, wallet_storage_type) =
         prepare_issuance_interaction_and_credentials_with_claims(
             organisation,
             token_endpoint,
@@ -1755,10 +1801,17 @@ async fn handle_continue_issuance(
         )
         .await?;
 
+    for mut credential in credentials {
+        credential.protocol = protocol.to_string();
+        storage_access
+            .create_credential(credential)
+            .await
+            .map_err(IssuanceProtocolError::StorageAccessError)?;
+    }
+
     Ok(ContinueIssuanceResponseDTO {
         interaction_id,
-        credentials,
-        issuer_proof_type_supported,
+        wallet_storage_type,
     })
 }
 
@@ -1779,7 +1832,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     (
         InteractionId,
         Vec<Credential>,
-        HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+        Option<WalletStorageTypeEnum>,
     ),
     IssuanceProtocolError,
 > {
@@ -1898,14 +1951,10 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         issuer_certificate,
     );
 
-    let issuer_proof_type_supported = HashMap::from([(
-        credential.id,
-        credential_config.proof_types_supported.clone(),
-    )]);
     Ok((
         interaction_id,
         vec![credential],
-        issuer_proof_type_supported,
+        credential_config.wallet_storage_type,
     ))
 }
 

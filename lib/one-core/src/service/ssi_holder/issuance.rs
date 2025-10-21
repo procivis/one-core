@@ -1,8 +1,5 @@
-use std::borrow::Cow;
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use indexmap::IndexMap;
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
@@ -10,9 +7,14 @@ use uuid::Uuid;
 
 use super::SSIHolderService;
 use super::dto::{
-    ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
-    HandleInvitationResultDTO,
+    ContinueIssuanceResponseDTO, HandleInvitationResultDTO, InitiateIssuanceRequestDTO,
+    InitiateIssuanceResponseDTO, OpenIDAuthorizationCodeFlowInteractionData,
 };
+use super::validator::{
+    validate_credentials_match_session_organisation, validate_holder_capabilities,
+    validate_initiate_issuance_request,
+};
+use crate::config::core_config::FormatType;
 use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
@@ -33,12 +35,12 @@ use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
-use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, OpenID4VCIProofTypeSupported, OpenID4VCITxCode, SubmitIssuerResponse,
-    UpdateResponse,
+use crate::provider::issuance_protocol::error::{
+    IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
+use crate::provider::issuance_protocol::model::{
+    InvitationResponseEnum, SubmitIssuerResponse, UpdateResponse,
+};
 use crate::provider::issuance_protocol::{
     IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
@@ -48,15 +50,7 @@ use crate::service::error::ServiceError::BusinessLogic;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::ssi_holder::dto::{
-    InitiateIssuanceRequestDTO, InitiateIssuanceResponseDTO,
-    OpenIDAuthorizationCodeFlowInteractionData,
-};
-use crate::service::ssi_holder::validator::{
-    validate_credentials_match_session_organisation, validate_holder_capabilities,
-    validate_initiate_issuance_request,
-};
-use crate::service::storage_proxy::StorageProxyImpl;
+use crate::service::storage_proxy::{StorageAccess, StorageProxyImpl};
 use crate::util::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 use crate::validator::{
     throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
@@ -69,16 +63,16 @@ const AUTHORIZATION_CODE: &str = "code";
 impl SSIHolderService {
     pub async fn accept_credential(
         &self,
-        interaction_id: &InteractionId,
+        interaction_id: InteractionId,
         did_id: Option<DidId>,
         identifier_id: Option<IdentifierId>,
         key_id: Option<KeyId>,
         tx_code: Option<String>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<CredentialId, ServiceError> {
         let credentials = self
             .credential_repository
             .get_credentials_by_interaction_id(
-                interaction_id,
+                &interaction_id,
                 &CredentialRelations {
                     interaction: Some(InteractionRelations {
                         organisation: Some(OrganisationRelations::default()),
@@ -87,24 +81,10 @@ impl SSIHolderService {
                         organisation: Some(OrganisationRelations::default()),
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                     }),
-                    issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
-                    issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },
             )
             .await?;
-
-        if credentials.is_empty() {
-            return Err(BusinessLogicError::MissingCredentialsForInteraction {
-                interaction_id: *interaction_id,
-            }
-            .into());
-        }
-
-        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
 
         let identifier = match (did_id, identifier_id) {
             (Some(did_id), None) => self
@@ -175,12 +155,30 @@ impl SSIHolderService {
             .get_capabilities()
             .security;
 
+        if credentials.is_empty() {
+            return self
+                .accept_credential_final1(
+                    interaction_id,
+                    &did,
+                    &identifier,
+                    &key_security,
+                    selected_key,
+                    holder_jwk_key_id,
+                    tx_code,
+                )
+                .await;
+        }
+
+        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
+
         // Errors are gathered into vec, so we can try to accept all credentials.
         let mut errors = vec![];
 
+        let mut credential_id = None;
         for credential in credentials {
+            credential_id = Some(credential.id);
             if let Err(error) = self
-                .accept_and_save_credential(
+                .accept_and_save_credential_draft13(
                     &credential,
                     &did,
                     &identifier,
@@ -212,11 +210,147 @@ impl SSIHolderService {
             return Err(error);
         }
 
-        Ok(())
+        Ok(credential_id.ok_or(IssuanceProtocolError::Failed(
+            "No credential issued".to_string(),
+        ))?)
+    }
+
+    /// specific handling for the final-1 protocol, credential gets created after issued
+    #[allow(clippy::too_many_arguments)]
+    async fn accept_credential_final1(
+        &self,
+        interaction_id: InteractionId,
+        holder_did: &Did,
+        holder_identifier: &Identifier,
+        key_security: &[KeySecurity],
+        selected_key: &Key,
+        holder_jwk_key_id: String,
+        tx_code: Option<String>,
+    ) -> Result<CredentialId, ServiceError> {
+        let interaction = self
+            .interaction_repository
+            .get_interaction(
+                &interaction_id,
+                &InteractionRelations {
+                    organisation: Some(Default::default()),
+                },
+            )
+            .await?
+            .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
+
+        if interaction.interaction_type != InteractionType::Issuance {
+            return Err(
+                BusinessLogicError::MissingCredentialsForInteraction { interaction_id }.into(),
+            );
+        }
+
+        let data: issuance_protocol::openid4vci_final1_0::model::HolderInteractionData =
+            deserialize_interaction_data(interaction.data.as_ref())?;
+
+        self.validate_key_compliance(
+            data.credential_metadata
+                .as_ref()
+                .and_then(|metadata| metadata.wallet_storage_type.as_ref()),
+            key_security,
+        )
+        .await?;
+
+        let format_type = match data.format.as_str() {
+            "jwt_vc_json" => FormatType::Jwt,
+            "dc+sd-jwt" => FormatType::SdJwtVc,
+            "vc+sd-jwt" => FormatType::SdJwt,
+            "mso_mdoc" => FormatType::Mdoc,
+            "ldp_vc" => {
+                if data
+                    .credential_signing_alg_values_supported
+                    .is_some_and(|values| values.contains(&"ES256".to_string()))
+                {
+                    FormatType::JsonLdClassic
+                } else {
+                    FormatType::JsonLdBbsPlus
+                }
+            }
+            _ => {
+                return Err(OpenIDIssuanceError::OpenID4VCI(
+                    OpenID4VCIError::UnsupportedCredentialFormat,
+                )
+                .into());
+            }
+        };
+
+        let format = format_type.to_string();
+        let formatter = self
+            .formatter_provider
+            .get_credential_formatter(&format)
+            .ok_or(ServiceError::MissingProvider(
+                MissingProviderError::Formatter(format),
+            ))?;
+
+        validate_holder_capabilities(
+            &self.config,
+            holder_did,
+            holder_identifier,
+            selected_key,
+            &formatter.get_capabilities(),
+            self.key_algorithm_provider.as_ref(),
+        )?;
+
+        let protocol = self
+            .issuance_protocol_provider
+            .get_protocol(&data.protocol)
+            .ok_or(MissingProviderError::ExchangeProtocol(data.protocol))?;
+
+        let storage_proxy = self.create_storage_proxy();
+        let issuer_response = protocol
+            .holder_accept_credential(
+                interaction,
+                holder_did,
+                selected_key,
+                Some(holder_jwk_key_id),
+                storage_proxy.as_ref(),
+                tx_code,
+            )
+            .await?;
+
+        let credential = issuer_response
+            .create_credential
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Credential missing".to_string(),
+            ))?
+            .to_owned();
+
+        let issuer_response = self.resolve_update_issuer_response(issuer_response).await?;
+
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        let blob = Blob::new(
+            issuer_response.credential.as_bytes().to_vec(),
+            BlobType::Credential,
+        );
+        let blob_id = blob.id;
+        db_blob_storage.create(blob.clone()).await?;
+
+        let credential_id = self
+            .credential_repository
+            .create_credential(Credential {
+                state: CredentialStateEnum::Accepted,
+                holder_identifier: Some(holder_identifier.to_owned()),
+                key: Some(selected_key.to_owned()),
+                credential_blob_id: Some(blob_id),
+                ..credential
+            })
+            .await?;
+
+        Ok(credential_id)
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn accept_and_save_credential(
+    async fn accept_and_save_credential_draft13(
         &self,
         credential: &Credential,
         holder_did: &Did,
@@ -228,49 +362,13 @@ impl SSIHolderService {
     ) -> Result<(), ServiceError> {
         throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)?;
 
-        let os = self.os_info_provider.get_os_name().await;
-        let wallet_storage_matches = match credential
-            .schema
-            .as_ref()
-            .and_then(|schema| schema.wallet_storage_type.as_ref())
-        {
-            Some(WalletStorageTypeEnum::Hardware) => key_security.contains(&KeySecurity::Hardware),
-            Some(WalletStorageTypeEnum::Software) => key_security.contains(&KeySecurity::Software),
-            Some(WalletStorageTypeEnum::RemoteSecureElement) => {
-                key_security.contains(&KeySecurity::RemoteSecureElement)
-            }
-            Some(WalletStorageTypeEnum::EudiCompliant) => match os {
-                // We can not satisfy hardware / remote secure element security for web wallets, therefore we allow software
-                OSName::Web => true,
-                _ => {
-                    key_security.contains(&KeySecurity::Hardware)
-                        || key_security.contains(&KeySecurity::RemoteSecureElement)
-                }
-            },
-            None => true,
-        };
-
-        if !wallet_storage_matches {
-            return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
-        }
-
-        let storage_access = StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema_repository.clone(),
-            self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.certificate_repository.clone(),
-            self.certificate_validator.clone(),
-            self.key_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            self.key_algorithm_provider.clone(),
-        );
-
         let schema = credential
             .schema
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
+
+        self.validate_key_compliance(schema.wallet_storage_type.as_ref(), key_security)
+            .await?;
 
         let format = &schema.format;
         let formatter = self
@@ -289,6 +387,15 @@ impl SSIHolderService {
             self.key_algorithm_provider.as_ref(),
         )?;
 
+        let interaction = credential
+            .interaction
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "interaction is None".to_string(),
+            ))?
+            .to_owned();
+
+        let storage_proxy = self.create_storage_proxy();
         let issuer_response = self
             .issuance_protocol_provider
             .get_protocol(&credential.protocol)
@@ -296,12 +403,12 @@ impl SSIHolderService {
                 credential.protocol.clone(),
             ))?
             .holder_accept_credential(
-                credential,
+                interaction,
                 holder_did,
                 selected_key,
                 Some(holder_jwk_key_id.to_string()),
-                &storage_access,
-                tx_code.clone(),
+                storage_proxy.as_ref(),
+                tx_code,
             )
             .await?;
 
@@ -514,20 +621,14 @@ impl SSIHolderService {
 
         match result {
             InvitationResponseEnum::Credential {
-                credentials,
                 interaction_id,
                 tx_code,
-                issuer_proof_type_supported,
-            } => {
-                self.handle_credential_issuance(
-                    exchange,
-                    interaction_id,
-                    credentials,
-                    tx_code,
-                    issuer_proof_type_supported,
-                )
-                .await
-            }
+                wallet_storage_type,
+            } => Ok(HandleInvitationResultDTO::Credential {
+                interaction_id,
+                tx_code,
+                wallet_storage_type,
+            }),
             InvitationResponseEnum::AuthorizationFlow {
                 organisation_id,
                 issuer,
@@ -562,54 +663,6 @@ impl SSIHolderService {
         }
     }
 
-    async fn handle_credential_issuance(
-        &self,
-        exchange: String,
-        interaction_id: InteractionId,
-        credentials: Vec<Credential>,
-        tx_code: Option<OpenID4VCITxCode>,
-        mut issuer_proof_type_supported: HashMap<
-            CredentialId,
-            Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
-        >,
-    ) -> Result<HandleInvitationResultDTO, ServiceError> {
-        let mut holder_proof_types_supported = self
-            .key_algorithm_provider
-            .supported_verification_jose_alg_ids();
-        holder_proof_types_supported.sort();
-
-        let result = HandleInvitationResultDTO::Credential {
-            interaction_id,
-            credential_ids: credentials.iter().map(|c| c.id).collect(),
-            tx_code,
-            credential_configurations_supported: credentials
-                .iter()
-                .map(|c| {
-                    (
-                        c.id,
-                        CredentialConfigurationSupportedResponseDTO {
-                            proof_types_supported: Some(map_proof_types_supported(
-                                self.resolve_proof_types_supported(
-                                    issuer_proof_type_supported.remove(&c.id).flatten(),
-                                    &holder_proof_types_supported,
-                                ),
-                            )),
-                        },
-                    )
-                })
-                .collect(),
-        };
-
-        for mut credential in credentials {
-            credential.protocol = exchange.to_owned();
-            self.credential_repository
-                .create_credential(credential)
-                .await?;
-        }
-
-        Ok(result)
-    }
-
     async fn resolve_update_issuer_response(
         &self,
         update_response: UpdateResponse<SubmitIssuerResponse>,
@@ -626,6 +679,11 @@ impl SSIHolderService {
         if let Some(certificate) = update_response.create_certificate {
             self.certificate_repository.create(certificate).await?;
         }
+        if let Some(create_credential_schema) = update_response.create_credential_schema {
+            self.credential_schema_repository
+                .create_credential_schema(create_credential_schema)
+                .await?;
+        }
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository
                 .update_credential_schema(update_credential_schema)
@@ -637,35 +695,6 @@ impl SSIHolderService {
                 .await?;
         }
         Ok(update_response.result)
-    }
-
-    fn resolve_proof_types_supported(
-        &self,
-        issuer_proof_type_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
-        holder_proof_type_supported: &[String],
-    ) -> Vec<String> {
-        let Some(mut issuer_proof_type_supported) = issuer_proof_type_supported else {
-            return holder_proof_type_supported.to_vec();
-        };
-
-        let Some(issuer_proof_type_supported) = issuer_proof_type_supported.shift_remove("jwt")
-        else {
-            return vec![];
-        };
-
-        let holder_proof_type_supported = if !holder_proof_type_supported.is_sorted() {
-            let mut sorted_holder_proof_type = holder_proof_type_supported.to_vec();
-            sorted_holder_proof_type.sort();
-            Cow::Owned(sorted_holder_proof_type)
-        } else {
-            Cow::Borrowed(holder_proof_type_supported)
-        };
-
-        issuer_proof_type_supported
-            .proof_signing_alg_values_supported
-            .into_iter()
-            .filter(|t| holder_proof_type_supported.binary_search(t).is_ok())
-            .collect()
     }
 
     pub async fn initiate_issuance(
@@ -816,9 +845,8 @@ impl SSIHolderService {
         );
 
         let issuance_protocol::model::ContinueIssuanceResponseDTO {
-            credentials,
             interaction_id,
-            mut issuer_proof_type_supported,
+            wallet_storage_type,
         } = self
             .issuance_protocol_provider
             .get_protocol(&issuance.request.protocol)
@@ -847,39 +875,55 @@ impl SSIHolderService {
             )
             .await?;
 
-        let mut holder_proof_types_supported = self
-            .key_algorithm_provider
-            .supported_verification_jose_alg_ids();
-        holder_proof_types_supported.sort();
-
-        let result = ContinueIssuanceResponseDTO {
+        Ok(ContinueIssuanceResponseDTO {
             interaction_id,
-            credential_ids: credentials.iter().map(|c| c.id).collect(),
-            credential_configurations_supported: credentials
-                .iter()
-                .map(|c| {
-                    (
-                        c.id,
-                        CredentialConfigurationSupportedResponseDTO {
-                            proof_types_supported: Some(map_proof_types_supported(
-                                self.resolve_proof_types_supported(
-                                    issuer_proof_type_supported.remove(&c.id).flatten(),
-                                    &holder_proof_types_supported,
-                                ),
-                            )),
-                        },
-                    )
-                })
-                .collect(),
+            interaction_type: InteractionType::Issuance,
+            wallet_storage_type,
+        })
+    }
+
+    async fn validate_key_compliance(
+        &self,
+        wallet_storage_type: Option<&WalletStorageTypeEnum>,
+        key_security: &[KeySecurity],
+    ) -> Result<(), ServiceError> {
+        let os = self.os_info_provider.get_os_name().await;
+        let wallet_storage_matches = match wallet_storage_type {
+            Some(WalletStorageTypeEnum::Hardware) => key_security.contains(&KeySecurity::Hardware),
+            Some(WalletStorageTypeEnum::Software) => key_security.contains(&KeySecurity::Software),
+            Some(WalletStorageTypeEnum::RemoteSecureElement) => {
+                key_security.contains(&KeySecurity::RemoteSecureElement)
+            }
+            Some(WalletStorageTypeEnum::EudiCompliant) => match os {
+                // We can not satisfy hardware / remote secure element security for web wallets, therefore we allow software
+                OSName::Web => true,
+                _ => {
+                    key_security.contains(&KeySecurity::Hardware)
+                        || key_security.contains(&KeySecurity::RemoteSecureElement)
+                }
+            },
+            None => true,
         };
 
-        for mut credential in credentials {
-            credential.protocol = issuance.request.protocol.to_owned();
-            self.credential_repository
-                .create_credential(credential)
-                .await?;
+        if !wallet_storage_matches {
+            return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
         }
 
-        Ok(result)
+        Ok(())
+    }
+
+    fn create_storage_proxy(&self) -> Arc<StorageAccess> {
+        Arc::new(StorageProxyImpl::new(
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+            self.did_repository.clone(),
+            self.certificate_repository.clone(),
+            self.certificate_validator.clone(),
+            self.key_repository.clone(),
+            self.identifier_repository.clone(),
+            self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
+        ))
     }
 }

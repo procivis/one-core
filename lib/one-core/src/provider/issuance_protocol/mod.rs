@@ -17,6 +17,7 @@ use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -37,7 +38,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
@@ -77,7 +77,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     issuance_config: &mut IssuanceProtocolConfig,
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
-    credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
@@ -113,12 +112,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     params.url_scheme.to_string(),
                 )?;
 
-                let handle_operations = openid4vci_final1_0::handle_invitation_operations::HandleInvitationOperationsImpl::new(
-                    credential_schema_repository.clone(),
-                    client.clone(),
-                    formatter_provider.clone(),
-                );
-
                 Arc::new(OpenID4VCIFinal1_0::new(
                     client.clone(),
                     credential_repository.clone(),
@@ -130,12 +123,11 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
-                    certificate_validator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),
                     params,
-                    Arc::new(handle_operations),
+                    name.to_owned(),
                 ))
             }
             IssuanceProtocolType::OpenId4VciDraft13 => {
@@ -266,11 +258,9 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError>;
 
     /// Accepts an offered credential.
-    ///
-    /// Storage access must be implemented.
     async fn holder_accept_credential(
         &self,
-        credential: &Credential,
+        interaction: Interaction,
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,

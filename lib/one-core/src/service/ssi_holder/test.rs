@@ -1246,6 +1246,8 @@ async fn test_accept_credential() {
                 update_credential: None,
                 update_credential_schema: None,
                 create_key: None,
+                create_credential: None,
+                create_credential_schema: None,
             })
         });
 
@@ -1327,7 +1329,7 @@ async fn test_accept_credential() {
 
     let interaction_id = Uuid::new_v4();
     service
-        .accept_credential(&interaction_id, None, Some(identifier_id), None, None)
+        .accept_credential(interaction_id, None, Some(identifier_id), None, None)
         .await
         .unwrap();
 }
@@ -1412,6 +1414,8 @@ async fn test_accept_credential_with_did() {
                 update_credential: None,
                 update_credential_schema: None,
                 create_key: None,
+                create_credential: None,
+                create_credential_schema: None,
             })
         });
 
@@ -1493,7 +1497,7 @@ async fn test_accept_credential_with_did() {
 
     let interaction_id = Uuid::new_v4();
     service
-        .accept_credential(&interaction_id, Some(did_id), None, None, None)
+        .accept_credential(interaction_id, Some(did_id), None, None, None)
         .await
         .unwrap();
 }
@@ -1620,8 +1624,6 @@ async fn test_initiate_issuance() {
 async fn test_continue_issuance() {
     // given
     let organisation = dummy_organisation(None);
-    let credential = dummy_credential(None);
-    let credential_id = credential.id;
     let interaction_id = Uuid::new_v4();
 
     let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
@@ -1661,8 +1663,7 @@ async fn test_continue_issuance() {
         .returning(move |_, _, _| {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
-                credentials: vec![credential.clone()],
-                issuer_proof_type_supported: Default::default(),
+                wallet_storage_type: None,
             })
         });
 
@@ -1702,7 +1703,6 @@ async fn test_continue_issuance() {
 
     // then
     assert_eq!(response.interaction_id, interaction_id);
-    assert_eq!(response.credential_ids, vec![credential_id]);
 }
 
 #[tokio::test]
@@ -1956,7 +1956,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(&Uuid::new_v4(), None, Some(identifier_id), None, None)
+        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None)
         .await;
     assert!(matches!(
         result,
@@ -1992,9 +1992,23 @@ async fn test_accept_credential_credential_org_mismatch() {
         .expect_get_credentials_by_interaction_id()
         .once()
         .return_once(move |_, _| Ok(vec![dummy_credential(Some(organisation_id))]));
+
+    let mut key_provider = MockKeyProvider::new();
+    key_provider.expect_get_key_storage().returning(|_| {
+        let mut key_storage = MockKeyStorage::new();
+        key_storage
+            .expect_get_capabilities()
+            .return_once(|| KeyStorageCapabilities {
+                features: vec![],
+                algorithms: vec![],
+                security: vec![KeySecurity::Software],
+            });
+        Some(Arc::new(key_storage))
+    });
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         identifier_repository: Arc::new(identifier_repository),
+        key_provider: Arc::new(key_provider),
         session_provider: Arc::new(StaticSessionProvider(Session {
             organisation_id: Some(session_organisation_id),
             user_id: "test-user".to_string(),
@@ -2003,7 +2017,7 @@ async fn test_accept_credential_credential_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(&Uuid::new_v4(), None, Some(identifier_id), None, None)
+        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None)
         .await;
     assert!(matches!(
         result,

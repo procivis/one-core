@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
@@ -16,7 +16,9 @@ use crate::model::did::Did;
 use crate::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierType,
 };
-use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
+use crate::model::interaction::{
+    Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
+};
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
@@ -47,6 +49,8 @@ pub(crate) trait StorageProxy: Send + Sync {
     /// Store an interaction with a chosen storage layer.
     async fn create_interaction(&self, interaction: Interaction) -> anyhow::Result<InteractionId>;
 
+    async fn create_credential(&self, credential: Credential) -> anyhow::Result<CredentialId>;
+
     /// Store an interaction with a chosen storage layer.
     async fn update_interaction(
         &self,
@@ -68,6 +72,11 @@ pub(crate) trait StorageProxy: Send + Sync {
         schema_id: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Vec<Credential>>;
+
+    async fn get_credential_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> anyhow::Result<Credential>;
 
     /// Get a credential schema from the storage layer matching any of the specified schema_ids.
     async fn find_schema_by_schema_ids(
@@ -274,6 +283,44 @@ impl StorageProxy for StorageProxyImpl {
             .collect::<Vec<_>>())
     }
 
+    async fn get_credential_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> anyhow::Result<Credential> {
+        Ok(self
+            .credentials
+            .get_credentials_by_interaction_id(
+                interaction_id,
+                &CredentialRelations {
+                    holder_identifier: Some(IdentifierRelations {
+                        ..Default::default()
+                    }),
+                    issuer_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        certificates: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    issuer_certificate: Some(Default::default()),
+                    claims: Some(ClaimRelations {
+                        schema: Some(Default::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                    }),
+                    interaction: Some(InteractionRelations {
+                        organisation: Some(Default::default()),
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await
+            .context("Error while fetching credential by interaction id")?
+            .into_iter()
+            .next()
+            .context("No credential by interaction id")?)
+    }
+
     async fn get_did_by_value(
         &self,
         value: &DidValue,
@@ -350,6 +397,13 @@ impl StorageProxy for StorageProxyImpl {
             .and_then(|identifier| {
                 identifier.ok_or(anyhow::anyhow!("Could not find identifier by didId"))
             })
+    }
+
+    async fn create_credential(&self, credential: Credential) -> anyhow::Result<CredentialId> {
+        self.credentials
+            .create_credential(credential)
+            .await
+            .context("Create credential error")
     }
 
     async fn get_or_create_identifier(

@@ -622,7 +622,6 @@ impl OneCore {
             &mut core_config.issuance_protocol,
             providers.core_base_url.clone(),
             credential_repository.clone(),
-            credential_schema_repository.clone(),
             data_provider.get_validity_credential_repository(),
             data_provider.get_revocation_list_repository(),
             data_provider.get_wallet_unit_attestation_repository(),

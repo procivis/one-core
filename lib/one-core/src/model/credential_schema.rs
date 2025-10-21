@@ -152,14 +152,14 @@ pub struct LayoutProperties {
     pub code: Option<CodeProperties>,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BackgroundProperties {
     pub color: Option<String>,
     pub image: Option<String>,
 }
 
-#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Eq, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct LogoProperties {
     pub font_color: Option<String>,

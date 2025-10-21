@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use assert2::let_assert;
 use indexmap::IndexMap;
 use mockall::predicate;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
-use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -577,42 +577,40 @@ async fn test_holder_accept_credential_success() {
     let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
 
-    let credential = {
-        let mut credential = generic_credential_did();
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        nonce: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        continue_issuance: None,
+    };
 
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
-                OpenID4VCIPreAuthorizedCodeGrant {
-                    pre_authorized_code: "code".to_string(),
-                    tx_code: None,
-                    authorization_server: None,
-                },
-            )),
-            access_token: None,
-            access_token_expires_at: None,
-            refresh_token: None,
-            nonce: None,
-            refresh_token_expires_at: None,
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            continue_issuance: None,
-        };
-
-        credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-            nonce_id: None,
-            interaction_type: InteractionType::Issuance,
-        });
-
-        credential
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: None,
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+    };
+    let credential = Credential {
+        interaction: Some(interaction.clone()),
+        ..generic_credential_did()
     };
 
     Mock::given(method(Method::POST))
@@ -685,6 +683,13 @@ async fn test_holder_accept_credential_success() {
         });
 
     storage_access
+        .expect_get_credential_by_interaction_id()
+        .returning({
+            let clone = credential.clone();
+            move |_| Ok(clone.clone())
+        });
+
+    storage_access
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
 
@@ -748,7 +753,7 @@ async fn test_holder_accept_credential_success() {
 
     let result = openid_provider
         .holder_accept_credential(
-            &credential,
+            interaction,
             &dummy_did(),
             &dummy_key(),
             None,
@@ -777,42 +782,41 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
 
-    let credential = {
-        let mut credential = generic_credential_key();
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        notification_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        nonce: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        continue_issuance: None,
+    };
 
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            notification_endpoint: None,
-            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
-                OpenID4VCIPreAuthorizedCodeGrant {
-                    pre_authorized_code: "code".to_string(),
-                    tx_code: None,
-                    authorization_server: None,
-                },
-            )),
-            access_token: None,
-            access_token_expires_at: None,
-            refresh_token: None,
-            nonce: None,
-            refresh_token_expires_at: None,
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            continue_issuance: None,
-        };
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: None,
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+    };
 
-        credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-            nonce_id: None,
-            interaction_type: InteractionType::Issuance,
-        });
-
-        credential
+    let credential = Credential {
+        interaction: Some(interaction.clone()),
+        ..generic_credential_key()
     };
 
     Mock::given(method(Method::POST))
@@ -880,6 +884,13 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                 });
 
             Some(Arc::new(formatter))
+        });
+
+    storage_access
+        .expect_get_credential_by_interaction_id()
+        .returning({
+            let clone = credential.clone();
+            move |_| Ok(clone.clone())
         });
 
     storage_access
@@ -952,7 +963,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
     let result = openid_provider
         .holder_accept_credential(
-            &credential,
+            interaction,
             &dummy_did(),
             &dummy_key(),
             None,
@@ -987,42 +998,41 @@ async fn test_holder_accept_expired_credential_fails() {
     let mut storage_access = MockStorageProxy::default();
     let mut key_provider = MockKeyProvider::default();
 
-    let credential = {
-        let mut credential = generic_credential_did();
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        nonce: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        continue_issuance: None,
+    };
 
-        let interaction_data = HolderInteractionData {
-            issuer_url: mock_server.uri(),
-            credential_endpoint: format!("{}/credential", mock_server.uri()),
-            token_endpoint: Some(format!("{}/token", mock_server.uri())),
-            notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
-            grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
-                OpenID4VCIPreAuthorizedCodeGrant {
-                    pre_authorized_code: "code".to_string(),
-                    tx_code: None,
-                    authorization_server: None,
-                },
-            )),
-            access_token: None,
-            access_token_expires_at: None,
-            refresh_token: None,
-            nonce: None,
-            refresh_token_expires_at: None,
-            cryptographic_binding_methods_supported: None,
-            credential_signing_alg_values_supported: None,
-            continue_issuance: None,
-        };
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: None,
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+    };
 
-        credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            data: Some(serde_json::to_vec(&interaction_data).unwrap()),
-            organisation: None,
-            nonce_id: None,
-            interaction_type: InteractionType::Issuance,
-        });
-
-        credential
+    let credential = Credential {
+        interaction: Some(interaction.clone()),
+        ..generic_credential_did()
     };
 
     Mock::given(method(Method::POST))
@@ -1096,6 +1106,13 @@ async fn test_holder_accept_expired_credential_fails() {
         });
 
     storage_access
+        .expect_get_credential_by_interaction_id()
+        .returning({
+            let clone = credential.clone();
+            move |_| Ok(clone.clone())
+        });
+
+    storage_access
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
 
@@ -1149,7 +1166,7 @@ async fn test_holder_accept_expired_credential_fails() {
 
     let result = openid_provider
         .holder_accept_credential(
-            &credential,
+            interaction,
             &dummy_did(),
             &dummy_key(),
             None,
@@ -1466,14 +1483,26 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .mount(&mock_server)
         .await;
 
+    let capture_integration_id = Arc::new(Mutex::new(None));
     storage_proxy
         .expect_create_interaction()
         .times(1)
-        .returning(|_| Ok(Uuid::new_v4()));
+        .returning({
+            let capture_integration_id = capture_integration_id.clone();
+            move |i: Interaction| {
+                let mut guard = capture_integration_id.lock().unwrap();
+                *guard = Some(i.id);
+                Ok(i.id)
+            }
+        });
     storage_proxy
         .expect_get_schema()
         .times(1)
         .returning(|_, _, _| Ok(None));
+    storage_proxy
+        .expect_create_credential()
+        .times(1)
+        .returning(|c| Ok(c.id));
 
     let mut operations = MockHandleInvitationOperations::default();
     let credential_clone = credential.clone();
@@ -1509,26 +1538,13 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .await
         .unwrap();
 
-    let InvitationResponseEnum::Credential { credentials, .. } = result else {
+    let InvitationResponseEnum::Credential { interaction_id, .. } = result else {
         panic!("Invalid response type");
     };
-    assert_eq!(credentials.len(), 1);
-
-    if let Some(issuer_did) = issuer_did {
-        assert_eq!(
-            credentials[0]
-                .issuer_identifier
-                .as_ref()
-                .unwrap()
-                .did
-                .as_ref()
-                .unwrap()
-                .did,
-            DidValue::from_str(issuer_did.as_str()).unwrap()
-        );
-    } else {
-        assert!(credentials[0].issuer_identifier.is_none());
-    }
+    assert_eq!(
+        capture_integration_id.lock().unwrap().unwrap(),
+        interaction_id
+    );
 }
 
 #[tokio::test]
@@ -1629,6 +1645,11 @@ async fn inner_continue_issuance_test(
         .await;
 
     storage_proxy
+        .expect_create_credential()
+        .times(1)
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    storage_proxy
         .expect_create_interaction()
         .times(1)
         .returning(|_| Ok(Uuid::new_v4()));
@@ -1694,13 +1715,8 @@ async fn inner_continue_issuance_test(
             dummy_organisation(None),
             &storage_proxy,
         )
-        .await
-        .unwrap();
-
-    let credentials = result.credentials;
-
-    assert_eq!(credentials.len(), 1);
-    assert!(credentials[0].issuer_identifier.is_none());
+        .await;
+    let_assert!(Ok(_) = result);
 }
 
 #[test]

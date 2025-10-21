@@ -6,15 +6,12 @@ use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{DidValue, OrganisationId};
 use time::OffsetDateTime;
 use url::Url;
 
 use crate::mapper::opt_secret_string;
-use crate::model::credential_schema::{
-    CodeTypeEnum, CredentialFormat, LayoutProperties, LayoutType, RevocationMethod,
-    WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CodeTypeEnum, LayoutProperties, WalletStorageTypeEnum};
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
@@ -22,7 +19,6 @@ use crate::provider::issuance_protocol::model::{
     OpenID4VCRejectionIdentifierParams, default_enable_credential_preview,
     default_issuance_url_scheme,
 };
-use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::util::params::deserialize_encryption_key;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -133,8 +129,15 @@ pub(crate) struct HolderInteractionData {
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(default)]
     pub token_endpoint_auth_methods_supported: Option<Vec<String>>,
-
+    #[serde(default)]
+    pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
     pub credential_configuration_id: String,
+
+    /// selected issuance protocol (config identifier)
+    pub protocol: String,
+
+    /// OpenID4VCI credential format (of the offered credential)
+    pub format: String,
 }
 
 // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4
@@ -689,53 +692,6 @@ pub struct CredentialSubjectDisplay {
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
 pub struct OpenID4VCICredentialValueDetails {
     pub value: Option<String>,
-}
-
-/// deserializes from CredentialSchemaResponseRestDTO
-#[allow(dead_code)]
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct CredentialSchemaDetailResponseDTO {
-    pub id: CredentialSchemaId,
-    #[serde(with = "time::serde::rfc3339")]
-    pub created_date: OffsetDateTime,
-    #[serde(with = "time::serde::rfc3339")]
-    pub last_modified: OffsetDateTime,
-    pub name: String,
-    pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
-    pub organisation_id: OrganisationId,
-    pub claims: Vec<CredentialClaimSchemaDTO>,
-    #[serde(default)]
-    pub external_schema: bool,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    pub schema_id: String,
-    pub schema_type: String,
-    pub layout_type: Option<LayoutType>,
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
-}
-
-#[derive(Clone, Debug)]
-pub(crate) struct CreateCredentialSchemaRequestDTO {
-    pub name: String,
-    pub format: String,
-    pub revocation_method: String,
-    pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    pub layout_type: LayoutType,
-    pub external_schema: bool,
-    pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
-    pub schema_id: String,
-    pub imported_source_url: String,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct CredentialClaimSchemaRequestDTO {
-    pub key: String,
-    pub datatype: String,
-    pub required: bool,
-    pub array: Option<bool>,
-    pub claims: Vec<CredentialClaimSchemaRequestDTO>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

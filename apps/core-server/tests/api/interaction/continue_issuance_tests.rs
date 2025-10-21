@@ -1,5 +1,4 @@
 use axum::http::Method;
-use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -8,7 +7,6 @@ use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::utils::context::TestContext;
-use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn test_continue_issuance_endpoint() {
@@ -290,13 +288,7 @@ async fn test_continue_issuance_endpoint() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-
-    let credential_id = resp["credentialIds"][0].parse();
-    let credential = context.db.credentials.get(&credential_id).await;
-    assert_eq!(
-        credential.schema.unwrap().wallet_storage_type,
-        Some(WalletStorageTypeEnum::Software)
-    );
+    assert_eq!(resp["walletStorageType"], "SOFTWARE");
 }
 
 #[tokio::test]

@@ -229,18 +229,13 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
     fn from(value: HandleInvitationResultDTO) -> Self {
         match value {
             HandleInvitationResultDTO::Credential {
-                credential_ids,
                 interaction_id,
                 tx_code,
-                credential_configurations_supported,
+                wallet_storage_type,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
-                credential_ids: credential_ids.iter().map(|item| item.to_string()).collect(),
                 tx_code: convert_inner(tx_code),
-                credential_configurations_supported: credential_configurations_supported
-                    .into_iter()
-                    .map(|(id, conf)| (id.to_string(), conf.into()))
-                    .collect(),
+                wallet_storage_type: convert_inner(wallet_storage_type),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,

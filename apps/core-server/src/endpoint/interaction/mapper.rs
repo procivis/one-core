@@ -2,7 +2,7 @@ use one_core::service::error::ServiceError;
 use one_core::service::ssi_holder::dto::{HandleInvitationResultDTO, InitiateIssuanceRequestDTO};
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
-use super::dto::HandleInvitationResponseRestDTO;
+use super::dto::{HandleInvitationResponseRestDTO, InteractionTypeRestEnum};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::interaction::dto::InitiateIssuanceRequestRestDTO;
 
@@ -10,42 +10,38 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
     fn from(value: HandleInvitationResultDTO) -> Self {
         match value {
             HandleInvitationResultDTO::Credential {
-                credential_ids,
                 interaction_id,
                 tx_code,
-                credential_configurations_supported,
+                wallet_storage_type,
             } => Self {
                 interaction_id,
-                credential_ids: Some(credential_ids),
                 proof_id: None,
                 tx_code: convert_inner(tx_code),
-                credential_configurations_supported: Some(convert_inner(
-                    credential_configurations_supported,
-                )),
+                interaction_type: InteractionTypeRestEnum::Issuance,
                 authorization_code_flow_url: None,
+                wallet_storage_type: convert_inner(wallet_storage_type),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
                 authorization_code_flow_url,
             } => Self {
                 interaction_id,
-                credential_ids: None,
+                interaction_type: InteractionTypeRestEnum::Issuance,
                 proof_id: None,
                 tx_code: None,
-                credential_configurations_supported: None,
                 authorization_code_flow_url: Some(authorization_code_flow_url),
+                wallet_storage_type: None,
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
                 interaction_id,
-                ..
             } => Self {
                 interaction_id,
-                credential_ids: None,
+                interaction_type: InteractionTypeRestEnum::Verification,
                 proof_id: Some(proof_id),
                 tx_code: None,
-                credential_configurations_supported: None,
                 authorization_code_flow_url: None,
+                wallet_storage_type: None,
             },
         }
     }

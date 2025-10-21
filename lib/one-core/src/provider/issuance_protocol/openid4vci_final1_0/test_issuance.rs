@@ -28,7 +28,6 @@ use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
@@ -38,7 +37,6 @@ use crate::provider::http_client::MockHttpClient;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
-use crate::provider::issuance_protocol::openid4vci_final1_0::handle_invitation_operations::MockHandleInvitationOperations;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -230,7 +228,6 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(MockCertificateValidator::new()),
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
@@ -249,7 +246,7 @@ async fn test_issuer_submit_succeeds() {
             rejection_identifier: None,
             enable_credential_preview: true,
         },
-        Arc::new(MockHandleInvitationOperations::new()),
+        "OPENID4VCI_FINAL1".to_string(),
     );
 
     let result = provider
@@ -429,7 +426,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(MockCertificateValidator::new()),
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
@@ -448,7 +444,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
             rejection_identifier: None,
             enable_credential_preview: true,
         },
-        Arc::new(MockHandleInvitationOperations::new()),
+        "OPENID4VCI_FINAL1".to_string(),
     );
 
     service
@@ -615,7 +611,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
-        Arc::new(MockCertificateValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
@@ -634,7 +629,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             rejection_identifier: None,
             enable_credential_preview: true,
         },
-        Arc::new(MockHandleInvitationOperations::new()),
+        "OPENID4VCI_FINAL1".to_string(),
     );
 
     service
@@ -716,7 +711,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeyProvider::new()),
-        Arc::new(MockCertificateValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),
         Arc::new(config),
@@ -735,7 +729,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             rejection_identifier: None,
             enable_credential_preview: true,
         },
-        Arc::new(MockHandleInvitationOperations::new()),
+        "OPENID4VCI_FINAL1".to_string(),
     );
 
     assert!(matches!(

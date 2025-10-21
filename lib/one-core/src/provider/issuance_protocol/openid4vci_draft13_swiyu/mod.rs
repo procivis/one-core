@@ -6,11 +6,12 @@ use serde_json::Value;
 use shared_types::CredentialId;
 use url::Url;
 
-use crate::config::core_config::CoreConfig;
 use crate::config::core_config::DidType::WebVh;
+use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -126,13 +127,19 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
         self.inner
-            .holder_handle_invitation(url, organisation, storage_access, redirect_uri)
+            .holder_handle_invitation_with_protocol(
+                url,
+                organisation,
+                IssuanceProtocolType::OpenId4VciDraft13Swiyu,
+                storage_access,
+                redirect_uri,
+            )
             .await
     }
 
     async fn holder_accept_credential(
         &self,
-        credential: &Credential,
+        interaction: Interaction,
         holder_did: &Did,
         key: &Key,
         jwk_key_id: Option<String>,
@@ -141,7 +148,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
         self.inner
             .holder_accept_credential(
-                credential,
+                interaction,
                 holder_did,
                 key,
                 jwk_key_id,
@@ -192,7 +199,12 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         storage_access: &StorageAccess,
     ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
         self.inner
-            .holder_continue_issuance(continue_issuance_dto, organisation, storage_access)
+            .holder_continue_issuance_with_protocol(
+                continue_issuance_dto,
+                organisation,
+                IssuanceProtocolType::OpenId4VciDraft13Swiyu,
+                storage_access,
+            )
             .await
     }
 

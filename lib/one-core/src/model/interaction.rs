@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -27,7 +29,9 @@ pub struct InteractionRelations {
     pub organisation: Option<OrganisationRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq, EnumString, AsRefStr, Serialize, Deserialize)]
+#[strum(serialize_all = "UPPERCASE")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum InteractionType {
     Issuance,
     Verification,

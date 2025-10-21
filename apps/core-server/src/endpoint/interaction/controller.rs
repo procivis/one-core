@@ -10,6 +10,7 @@ use super::dto::{
     PresentationSubmitRequestRestDTO, PresentationSubmitV2RequestRestDTO,
     ProposeProofRequestRestDTO,
 };
+use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -66,7 +67,7 @@ pub(crate) async fn handle_invitation(
     post,
     path = "/api/interaction/v1/issuance-accept",
     request_body = IssuanceAcceptRequestRestDTO,
-    responses(EmptyOrErrorResponse),
+    responses(OkOrErrorResponse<EntityResponseRestDTO>),
     tag = "interaction",
     security(
         ("bearer" = [])
@@ -86,19 +87,19 @@ pub(crate) async fn issuance_accept(
         Json<IssuanceAcceptRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> EmptyOrErrorResponse {
+) -> OkOrErrorResponse<EntityResponseRestDTO> {
     let result = state
         .core
         .ssi_holder_service
         .accept_credential(
-            &request.interaction_id,
+            request.interaction_id,
             request.did_id,
             request.identifier_id,
             request.key_id,
             request.tx_code,
         )
         .await;
-    EmptyOrErrorResponse::from_result(result, state, "accepting credential")
+    OkOrErrorResponse::from_result(result, state, "accepting credential")
 }
 
 #[utoipa::path(

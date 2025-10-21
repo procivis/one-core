@@ -1,6 +1,3 @@
-use std::collections::HashMap;
-
-use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, OrganisationId};
@@ -10,7 +7,9 @@ use uuid::Uuid;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::Certificate;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
-use crate::model::credential_schema::UpdateCredentialSchemaRequest;
+use crate::model::credential_schema::{
+    CredentialSchema, UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
+};
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
@@ -44,10 +43,8 @@ pub(super) fn default_enable_credential_preview() -> bool {
 pub(crate) enum InvitationResponseEnum {
     Credential {
         interaction_id: InteractionId,
-        credentials: Vec<Credential>,
         tx_code: Option<OpenID4VCITxCode>,
-        issuer_proof_type_supported:
-            HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+        wallet_storage_type: Option<WalletStorageTypeEnum>,
     },
     AuthorizationFlow {
         organisation_id: OrganisationId,
@@ -94,6 +91,8 @@ pub(crate) struct UpdateResponse<T> {
     pub create_key: Option<Key>,
     pub create_certificate: Option<Certificate>,
     pub create_identifier: Option<Identifier>,
+    pub create_credential: Option<Credential>,
+    pub create_credential_schema: Option<CredentialSchema>,
     pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,
     pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }
@@ -116,7 +115,5 @@ pub(crate) struct ShareResponse<T> {
 #[derive(Clone, Debug)]
 pub(crate) struct ContinueIssuanceResponseDTO {
     pub interaction_id: InteractionId,
-    pub credentials: Vec<Credential>,
-    pub issuer_proof_type_supported:
-        HashMap<CredentialId, Option<IndexMap<String, OpenID4VCIProofTypeSupported>>>,
+    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }

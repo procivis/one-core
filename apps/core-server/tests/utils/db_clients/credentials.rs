@@ -8,6 +8,7 @@ use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
 };
 use one_core::model::identifier::{Identifier, IdentifierRelations};
+use one_core::model::interaction::InteractionId;
 use one_core::repository::credential_repository::CredentialRepository;
 use rand::{RngCore, thread_rng};
 use shared_types::CredentialId;
@@ -50,6 +51,39 @@ impl CredentialsDB {
             )
             .await
             .unwrap()
+            .unwrap()
+    }
+
+    pub async fn get_credential_by_interaction_id(
+        &self,
+        interaction_id: &InteractionId,
+    ) -> Credential {
+        self.repository
+            .get_credentials_by_interaction_id(
+                interaction_id,
+                &CredentialRelations {
+                    claims: Some(ClaimRelations {
+                        schema: Some(Default::default()),
+                    }),
+                    schema: Some(CredentialSchemaRelations {
+                        claim_schemas: Some(Default::default()),
+                        organisation: Some(Default::default()),
+                    }),
+                    interaction: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    key: Some(Default::default()),
+                    issuer_identifier: Some(Default::default()),
+                    issuer_certificate: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await
+            .unwrap()
+            .into_iter()
+            .next()
             .unwrap()
     }
 

@@ -8,10 +8,11 @@ use one_core::service::ssi_holder::dto::{
     ContinueIssuanceResponseDTO, CredentialConfigurationSupportedResponseDTO,
     InitiateIssuanceAuthorizationDetailDTO, InitiateIssuanceResponseDTO,
 };
-use one_dto_mapper::{From, Into};
+use one_dto_mapper::{From, Into, convert_inner};
 use url::Url;
 
 use crate::OneCoreBinding;
+use crate::binding::credential_schema::WalletStorageTypeBindingEnum;
 use crate::error::BindingError;
 use crate::utils::into_id;
 
@@ -54,18 +55,19 @@ impl OneCoreBinding {
         identifier_id: Option<String>,
         key_id: Option<String>,
         tx_code: Option<String>,
-    ) -> Result<(), BindingError> {
+    ) -> Result<String, BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .ssi_holder_service
             .accept_credential(
-                &into_id(&interaction_id)?,
+                into_id(interaction_id)?,
                 did_id.map(into_id).transpose()?,
                 identifier_id.map(into_id).transpose()?,
                 key_id.map(into_id).transpose()?,
                 tx_code,
             )
-            .await?)
+            .await?
+            .to_string())
     }
 
     /// Rejects an offered credential.
@@ -133,16 +135,12 @@ pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         /// For reference.
         interaction_id: String,
-        /// Offered credential.
-        credential_ids: Vec<String>,
+        wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
         /// Metadata for entering a transaction code
         /// If a pre-authorized code is issued with a transaction code object, the
         /// wallet user must input a transaction code to receive the offered credential.
         /// This code is typically sent through a separate channel such as SMS or email.
         tx_code: Option<OpenID4VCITxCodeBindingDTO>,
-        /// Metadata for selecting an appropriate key.
-        credential_configurations_supported:
-            HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
     },
     AuthorizationCodeFlow {
         /// For reference.
@@ -163,27 +161,14 @@ pub enum HandleInvitationResponseBindingEnum {
 pub struct ContinueIssuanceResponseBindingDTO {
     /// For reference.
     pub interaction_id: String,
-    /// Offered credential.
-    pub credential_ids: Vec<String>,
-    /// Metadata for selecting an appropriate key.
-    pub credential_configurations_supported:
-        HashMap<String, CredentialConfigurationSupportedResponseBindingDTO>,
+    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
 }
 
 impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
     fn from(value: ContinueIssuanceResponseDTO) -> Self {
         Self {
             interaction_id: value.interaction_id.to_string(),
-            credential_ids: value
-                .credential_ids
-                .iter()
-                .map(ToString::to_string)
-                .collect(),
-            credential_configurations_supported: value
-                .credential_configurations_supported
-                .into_iter()
-                .map(|(k, v)| (k.to_string(), v.into()))
-                .collect(),
+            wallet_storage_type: convert_inner(value.wallet_storage_type),
         }
     }
 }

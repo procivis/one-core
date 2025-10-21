@@ -201,7 +201,9 @@ async fn test_issuance_accept_openid4vc() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["id"].as_str().unwrap(), credential.id.to_string());
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
@@ -887,7 +889,9 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .issuance_accept(interaction.id, holder_did.id, Some(key.id), None)
         .await;
 
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["id"].as_str().unwrap(), credential.id.to_string());
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
@@ -1758,7 +1762,9 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["id"].as_str().unwrap(), credential.id.to_string());
 
     let credential = context.db.credentials.get(&credential.id).await;
     assert_eq!(
@@ -1932,7 +1938,9 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["id"].as_str().unwrap(), credential.id.to_string());
 
     let credential = context.db.credentials.get(&credential.id).await;
     let claims = credential.claims.unwrap();
@@ -2198,7 +2206,9 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 204);
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["id"].as_str().unwrap(), credential.id.to_string());
 
     let credential = context.db.credentials.get(&credential.id).await;
     let claims = credential.claims.unwrap();
