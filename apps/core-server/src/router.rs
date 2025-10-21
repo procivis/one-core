@@ -649,8 +649,8 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                         method = context.method,
                         path = context.path,
                         service = "one-core",
-                        RequestId = context.request_id,
-                        SessionId = context.session_id, // Derived from x-session-id header
+                        requestId = context.request_id,
+                        sessionId = context.session_id, // Derived from x-session-id header
                     )
                 })
                 .on_request(|request: &Request<_>, _span: &Span| {
