@@ -35,6 +35,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = json!(["HTTP"]))]
     /// For configurations with multiple transport protocols enabled you can
     /// specify which one to use for this interaction.
+    #[schema(nullable = false)]
     pub transport: Option<Vec<String>>,
     /// For issuer-initiated Authorization Code Flow, provide the authorization server
     /// with the URI it should return the user to once authorization is complete.
