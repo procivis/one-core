@@ -61,7 +61,6 @@ impl From<OpenID4VCISwiyuParams> for OpenID4VCIDraft13Params {
             encryption: value.encryption,
             url_scheme: "swiyu".to_string(),
             redirect_uri: value.redirect_uri,
-            rejection_identifier: None,
             enable_credential_preview: false,
         }
     }
@@ -160,9 +159,12 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
 
     async fn holder_reject_credential(
         &self,
-        credential: &Credential,
+        credential: Credential,
+        storage_access: &StorageAccess,
     ) -> Result<(), IssuanceProtocolError> {
-        self.inner.holder_reject_credential(credential).await
+        self.inner
+            .holder_reject_credential(credential, storage_access)
+            .await
     }
 
     async fn issuer_share_credential(

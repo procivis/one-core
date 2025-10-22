@@ -17,8 +17,7 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCRedirectUriParams,
-    OpenID4VCRejectionIdentifierParams, default_enable_credential_preview,
-    default_issuance_url_scheme,
+    default_enable_credential_preview, default_issuance_url_scheme,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::util::params::deserialize_encryption_key;
@@ -38,8 +37,6 @@ pub(crate) struct OpenID4VCIDraft13Params {
     pub url_scheme: String,
 
     pub redirect_uri: OpenID4VCRedirectUriParams,
-
-    pub rejection_identifier: Option<OpenID4VCRejectionIdentifierParams>,
 
     #[serde(default = "default_enable_credential_preview")]
     pub enable_credential_preview: bool,
@@ -72,6 +69,8 @@ pub(crate) struct HolderInteractionData {
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    #[serde(default)]
+    pub notification_id: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

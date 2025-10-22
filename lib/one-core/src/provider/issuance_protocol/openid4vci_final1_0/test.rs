@@ -3,6 +3,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate;
+use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
@@ -36,7 +37,7 @@ use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
+    InvitationResponseEnum, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::OpenID4VCIFinal1_0;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -108,7 +109,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
                 allowed_schemes: vec!["https".to_string()],
             },
             nonce: None,
-            rejection_identifier: None,
             enable_credential_preview: true,
         }),
         "OPENID4VCI_FINAL1".to_string(),
@@ -483,7 +483,6 @@ async fn test_generate_share_credentials_offer_by_value() {
                 allowed_schemes: vec!["https".to_string()],
             },
             nonce: None,
-            rejection_identifier: None,
             enable_credential_preview: true,
         }),
         ..Default::default()
@@ -548,6 +547,7 @@ async fn test_holder_accept_credential_success() {
         continue_issuance: None,
         credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         credential_metadata: None,
+        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
     };
@@ -750,6 +750,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         continue_issuance: None,
         credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         credential_metadata: None,
+        notification_id: None,
         protocol: "OPENID4VCI_FINAL1".to_string(),
         format: "jwt_vc_json".to_string(),
     };
@@ -924,11 +925,15 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 #[tokio::test]
 async fn test_holder_reject_credential() {
     let mock_server = MockServer::start().await;
+    let mut storage_access = MockStorageProxy::default();
     let mut did_method_provider = MockDidMethodProvider::default();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
+    let encryption = SecretSlice::from(vec![0; 32]);
+
     let credential = {
         let mut credential = generic_credential_did();
+        credential.state = CredentialStateEnum::Accepted;
 
         let interaction_data = HolderInteractionData {
             issuer_url: mock_server.uri(),
@@ -946,7 +951,9 @@ async fn test_holder_reject_credential() {
             )),
             access_token: None,
             access_token_expires_at: None,
-            refresh_token: None,
+            refresh_token: Some(
+                encrypt_data(&SecretSlice::from(vec![0; 32]), &encryption).unwrap(),
+            ),
             refresh_token_expires_at: None,
             token_endpoint_auth_methods_supported: None,
             cryptographic_binding_methods_supported: None,
@@ -954,6 +961,7 @@ async fn test_holder_reject_credential() {
             continue_issuance: None,
             credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
             credential_metadata: None,
+            notification_id: Some("notification_id".to_string()),
             protocol: "OPENID4VCI_FINAL1".to_string(),
             format: "jwt_vc_json".to_string(),
         };
@@ -980,29 +988,6 @@ async fn test_holder_reject_credential() {
                 "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
                 "refresh_token": "321",
                 "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/nonce"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "c_nonce": "123"
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/credential"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "credentials": [{"credential": "credential"}],
-                "notification_id": "notification_id"
             }
         )))
         .expect(1)
@@ -1075,6 +1060,11 @@ async fn test_holder_reject_credential() {
         Some(Arc::new(method))
     });
 
+    storage_access
+        .expect_update_interaction()
+        .once()
+        .returning(move |_, _| Ok(()));
+
     let openid_provider = setup_protocol(TestInputs {
         did_method_provider,
         key_algorithm_provider,
@@ -1084,24 +1074,20 @@ async fn test_holder_reject_credential() {
             token_expires_in: 10,
             credential_offer_by_value: true,
             refresh_expires_in: 1000,
-            encryption: SecretSlice::from(vec![0; 32]),
+            encryption,
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
             nonce: None,
-            rejection_identifier: Some(OpenID4VCRejectionIdentifierParams {
-                did_method: "KEY".to_string(),
-                key_algorithm: KeyAlgorithmType::Ecdsa,
-            }),
             enable_credential_preview: true,
         }),
         ..Default::default()
     });
 
     openid_provider
-        .holder_reject_credential(&credential)
+        .holder_reject_credential(credential, &storage_access)
         .await
         .unwrap();
 }
@@ -1507,7 +1493,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
             allowed_schemes: vec!["https".to_string()],
         },
         nonce: None,
-        rejection_identifier: None,
         enable_credential_preview: true,
     }
 }

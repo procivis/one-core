@@ -7,9 +7,9 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use indexmap::IndexMap;
-use one_crypto::encryption::encrypt_string;
+use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::utilities::generate_alphanumeric;
-use secrecy::ExposeSecret;
+use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
@@ -36,9 +36,9 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
     UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole, RelatedKey};
+use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::revocation_list::{
@@ -58,7 +58,6 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::did_method::{DidCreated, DidKeys};
 use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::TxCodeError;
@@ -66,8 +65,8 @@ use crate::provider::issuance_protocol::mapper::{
     get_issued_credential_update, interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, OpenID4VCRejectionIdentifierParams,
-    ShareResponse, SubmitIssuerResponse, UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, ShareResponse, SubmitIssuerResponse,
+    UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
     HandleInvitationOperations, HandleInvitationOperationsAccess,
@@ -93,9 +92,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::validator::validate_
 use crate::provider::issuance_protocol::{
     BuildCredentialSchemaResponse, deserialize_interaction_data, serialize_interaction_data,
 };
-use crate::provider::key_algorithm::model::GeneratedKey;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::provider::{KeyProvider, SignatureProviderImpl};
+use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::revocation::{RevocationMethod, token_status_list};
@@ -521,6 +519,113 @@ impl OpenID4VCI13 {
             .map_err(IssuanceProtocolError::Transport)
     }
 
+    async fn holder_reuse_or_refresh_token(
+        &self,
+        interaction_id: InteractionId,
+        interaction_data: &mut HolderInteractionData,
+        storage_access: &StorageAccess,
+    ) -> Result<SecretString, IssuanceProtocolError> {
+        let now = OffsetDateTime::now_utc();
+        if let Some(encrypted_token) = &interaction_data.access_token {
+            let token_valid = interaction_data
+                .access_token_expires_at
+                .map(|v| v > now)
+                .unwrap_or(true);
+            if token_valid {
+                let access_token = decrypt_string(encrypted_token, &self.params.encryption)
+                    .map_err(|err| {
+                        IssuanceProtocolError::Failed(format!(
+                            "failed to decrypt access token: {err}"
+                        ))
+                    })?;
+                return Ok(access_token);
+            }
+        }
+
+        // Fetch a new one
+        let refresh_token = if let Some(refresh_token) = interaction_data.refresh_token.as_ref() {
+            decrypt_string(refresh_token, &self.params.encryption).map_err(|err| {
+                IssuanceProtocolError::Failed(format!("failed to decrypt refresh token: {err}"))
+            })?
+        } else {
+            return Err(IssuanceProtocolError::Failed(
+                "no refresh token saved".to_owned(),
+            ));
+        };
+
+        if interaction_data
+            .refresh_token_expires_at
+            .is_some_and(|expires_at| expires_at <= now)
+        {
+            // Expired refresh token
+            return Err(IssuanceProtocolError::Failed(
+                "expired refresh token".to_owned(),
+            ));
+        }
+
+        let token_endpoint =
+            interaction_data
+                .token_endpoint
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "token endpoint is missing".to_string(),
+                ))?;
+
+        let token_response: OpenID4VCITokenResponseDTO = self
+            .client
+            .post(token_endpoint)
+            .form(&[
+                ("refresh_token", refresh_token.expose_secret().to_string()),
+                ("grant_type", "refresh_token".to_string()),
+            ])
+            .context("form error")
+            .map_err(IssuanceProtocolError::Transport)?
+            .send()
+            .await
+            .context("send error")
+            .map_err(IssuanceProtocolError::Transport)?
+            .error_for_status()
+            .context("status error")
+            .map_err(IssuanceProtocolError::Transport)?
+            .json()
+            .context("parsing error")
+            .map_err(IssuanceProtocolError::Transport)?;
+
+        let encrypted_access_token =
+            encrypt_string(&token_response.access_token, &self.params.encryption).map_err(
+                |err| {
+                    IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
+                },
+            )?;
+        interaction_data.access_token = Some(encrypted_access_token);
+        interaction_data.access_token_expires_at =
+            OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
+
+        if let Some(new_refresh_token) = token_response.refresh_token {
+            let encrypted_refresh_token =
+                encrypt_string(&new_refresh_token, &self.params.encryption).map_err(|err| {
+                    IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
+                })?;
+            interaction_data.refresh_token = Some(encrypted_refresh_token);
+            interaction_data.access_token_expires_at = token_response
+                .refresh_token_expires_in
+                .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
+        }
+
+        storage_access
+            .update_interaction(
+                interaction_id,
+                UpdateInteractionRequest {
+                    data: Some(Some(serialize_interaction_data(&interaction_data)?)),
+                    ..Default::default()
+                },
+            )
+            .await
+            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
+
+        Ok(token_response.access_token)
+    }
+
     async fn holder_process_accepted_credential(
         &self,
         issuer_response: SubmitIssuerResponse,
@@ -900,18 +1005,18 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let token_response = self.holder_fetch_token(&interaction_data, tx_code).await?;
 
-        // only mdoc credentials support refreshing, do not store the tokens otherwise
+        let encrypted_access_token =
+            encrypt_string(&token_response.access_token, &self.params.encryption).map_err(
+                |err| {
+                    IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
+                },
+            )?;
+        interaction_data.access_token = Some(encrypted_access_token);
+        interaction_data.access_token_expires_at =
+            OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
+
+        // only mdoc credentials support refreshing, do not store refresh tokens otherwise
         if format_type == FormatType::Mdoc {
-            let encrypted_access_token = encrypt_string(
-                &token_response.access_token,
-                &self.params.encryption,
-            )
-            .map_err(|err| {
-                IssuanceProtocolError::Failed(format!("failed to encrypt access token: {err}"))
-            })?;
-            interaction_data.access_token = Some(encrypted_access_token);
-            interaction_data.access_token_expires_at =
-                OffsetDateTime::from_unix_timestamp(token_response.expires_in.0).ok();
             interaction_data.refresh_token = token_response
                 .refresh_token
                 .map(|token| encrypt_string(&token, &self.params.encryption))
@@ -924,14 +1029,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
             interaction_data.nonce = token_response.c_nonce.clone();
         }
-
-        let data = serialize_interaction_data(&interaction_data)?;
-        interaction.data = Some(data);
-
-        storage_access
-            .update_interaction(interaction.id, interaction.into())
-            .await
-            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
         let auth_fn = self
             .key_provider
@@ -966,6 +1063,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .await?;
 
         let notification_id = credential_response.notification_id.to_owned();
+
+        interaction_data.notification_id = notification_id.clone();
+        interaction.data = Some(serialize_interaction_data(&interaction_data)?);
+        storage_access
+            .update_interaction(interaction.id, interaction.into())
+            .await
+            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
         let result = self
             .holder_process_accepted_credential(credential_response, &credential, storage_access)
@@ -1004,16 +1108,9 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
     async fn holder_reject_credential(
         &self,
-        credential: &Credential,
+        credential: Credential,
+        storage_access: &StorageAccess,
     ) -> Result<(), IssuanceProtocolError> {
-        let Some(OpenID4VCRejectionIdentifierParams {
-            did_method,
-            key_algorithm: key_algorithm_type,
-        }) = self.params.rejection_identifier.to_owned()
-        else {
-            return Err(IssuanceProtocolError::OperationNotSupported);
-        };
-
         let interaction = credential
             .interaction
             .as_ref()
@@ -1022,131 +1119,28 @@ impl IssuanceProtocol for OpenID4VCI13 {
             ))?
             .to_owned();
 
-        let interaction_data: HolderInteractionData =
+        let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
-        let Some(notification_endpoint) = &interaction_data.notification_endpoint else {
-            // if there's no notification endpoint specified by the issuer, we cannot notify the deletion
-            tracing::info!("No notification_endpoint provided by issuer");
-            return Ok(());
+        let notification_endpoint = match &interaction_data.notification_endpoint {
+            Some(value) => value.clone(),
+            None => {
+                // if there's no notification endpoint specified by the issuer, we cannot notify the deletion
+                tracing::info!("No notification_endpoint provided by issuer");
+                return Ok(());
+            }
+        };
+        let notification_id = match &interaction_data.notification_id {
+            Some(value) => value.clone(),
+            None => {
+                tracing::info!("No notification_id saved for interaction");
+                return Ok(());
+            }
         };
 
-        // issue the credential and then immediately notify its deletion to mimic user rejection
-        let schema = credential
-            .schema
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
-
-        // construct a temporary in-memory key/did
-        let key_algorithm = self
-            .key_algorithm_provider
-            .key_algorithm_from_type(key_algorithm_type)
-            .ok_or(IssuanceProtocolError::Failed(format!(
-                "algorithm not found: {key_algorithm_type}",
-            )))?;
-
-        let GeneratedKey {
-            public: public_key,
-            key: key_handle,
-            ..
-        } = key_algorithm
-            .generate_key()
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        let key = Key {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            public_key,
-            name: "temporary-rejection".to_string(),
-            key_reference: None,
-            storage_type: "memory".to_string(),
-            key_type: key_algorithm_type.to_string(),
-            organisation: None,
-        };
-
-        let did_method_impl = self.did_method_provider.get_did_method(&did_method).ok_or(
-            IssuanceProtocolError::Failed(format!("did method not found: {did_method}")),
-        )?;
-
-        let DidCreated {
-            did: holder_did, ..
-        } = did_method_impl
-            .create(
-                None,
-                &None,
-                Some(DidKeys {
-                    authentication: vec![key.clone()],
-                    assertion_method: vec![key.clone()],
-                    key_agreement: vec![key.clone()],
-                    capability_invocation: vec![key.clone()],
-                    capability_delegation: vec![key.clone()],
-                    update_keys: None,
-                }),
-            )
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        let related_key = RelatedKey {
-            role: KeyRole::AssertionMethod,
-            key: key.to_owned(),
-            reference: did_method_impl
-                .get_reference_for_key(&key)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-        };
-        let did = Did {
-            id: Uuid::new_v4().into(),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            name: "temporary-rejection".to_string(),
-            did: holder_did.to_owned(),
-            did_type: DidType::Local,
-            did_method,
-            deactivated: false,
-            log: None,
-            keys: Some(vec![related_key.to_owned()]),
-            organisation: None,
-        };
-
-        let jwk_key_id = did.verification_method_id(&related_key);
-
-        let jwk = key_handle
-            .public_key_as_jwk()
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        let auth_fn = Box::new(SignatureProviderImpl {
-            key,
-            key_handle,
-            jwk_key_id: Some(jwk_key_id),
-            key_algorithm_provider: self.key_algorithm_provider.clone(),
-        });
-
-        let token_response = self
-            .holder_fetch_token(
-                &interaction_data,
-                // TODO: ONE-6088 rejection will fail, if tx_code is required for issuance
-                None,
-            )
+        let access_token = self
+            .holder_reuse_or_refresh_token(interaction.id, &mut interaction_data, storage_access)
             .await?;
-
-        // request credential and then notify deletion
-        let access_token = token_response.access_token.expose_secret();
-        let response = self
-            .holder_request_credential(
-                &interaction_data,
-                &holder_did,
-                jwk,
-                schema,
-                token_response.c_nonce,
-                auth_fn,
-                access_token,
-            )
-            .await?;
-
-        let Some(notification_id) = response.notification_id else {
-            tracing::warn!("No notification_id provided by issuer");
-            return Ok(());
-        };
 
         self.send_notification(
             OpenID4VCINotificationRequestDTO {
@@ -1154,8 +1148,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 event: OpenID4VCINotificationEvent::CredentialDeleted,
                 event_description: None,
             },
-            notification_endpoint,
-            access_token,
+            notification_endpoint.as_str(),
+            access_token.expose_secret(),
         )
         .await
     }
@@ -1477,12 +1471,8 @@ impl IssuanceProtocol for OpenID4VCI13 {
     }
 
     fn get_capabilities(&self) -> IssuanceProtocolCapabilities {
-        let mut features = vec![];
-        if self.params.rejection_identifier.is_some() {
-            features.push(Features::SupportsRejection);
-        }
         IssuanceProtocolCapabilities {
-            features,
+            features: vec![Features::SupportsRejection],
             did_methods: vec![
                 ConfigDidType::Key,
                 ConfigDidType::Jwk,
@@ -1883,6 +1873,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
             .cryptographic_binding_methods_supported
             .clone(),
         nonce: None,
+        notification_id: None,
     };
     let data = serialize_interaction_data(&holder_data)?;
 

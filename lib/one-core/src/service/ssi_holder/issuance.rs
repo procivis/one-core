@@ -544,29 +544,39 @@ impl SSIHolderService {
             .into());
         }
         validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
+
+        let credential_protocol_pairs = credentials
+            .into_iter()
+            .map(|credential| {
+                throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Accepted)?;
+
+                let protocol = self
+                    .issuance_protocol_provider
+                    .get_protocol(&credential.protocol)
+                    .ok_or(MissingProviderError::ExchangeProtocol(
+                        credential.protocol.clone(),
+                    ))?;
+
+                if !protocol
+                    .get_capabilities()
+                    .features
+                    .contains(&Features::SupportsRejection)
+                {
+                    return Err(BusinessLogicError::RejectionNotSupported.into());
+                }
+
+                Ok((credential, protocol))
+            })
+            .collect::<Result<Vec<_>, ServiceError>>()?;
+
+        let storage_proxy = self.create_storage_proxy();
+
         let mut result: Result<(), ServiceError> = Ok(());
-
-        for credential in credentials {
-            throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending).or(
-                throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Offered),
-            )?;
-
-            let protocol = self
-                .issuance_protocol_provider
-                .get_protocol(&credential.protocol)
-                .ok_or(MissingProviderError::ExchangeProtocol(
-                    credential.protocol.clone(),
-                ))?;
-
-            if !protocol
-                .get_capabilities()
-                .features
-                .contains(&Features::SupportsRejection)
+        for (credential, protocol) in credential_protocol_pairs {
+            if let Err(err) = self
+                .reject_single_credential(credential, &*protocol, &*storage_proxy)
+                .await
             {
-                return Err(BusinessLogicError::RejectionNotSupported.into());
-            }
-
-            if let Err(err) = self.reject_single_credential(&credential, &*protocol).await {
                 result = Err(err);
             };
         }
@@ -576,14 +586,18 @@ impl SSIHolderService {
 
     async fn reject_single_credential(
         &self,
-        credential: &Credential,
+        credential: Credential,
         protocol: &dyn IssuanceProtocol,
+        storage_access: &StorageAccess,
     ) -> Result<(), ServiceError> {
-        protocol.holder_reject_credential(credential).await?;
+        let credential_id = credential.id;
+        protocol
+            .holder_reject_credential(credential, storage_access)
+            .await?;
 
         self.credential_repository
             .update_credential(
-                credential.id,
+                credential_id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Rejected),
                     ..Default::default()

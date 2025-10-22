@@ -268,10 +268,11 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         tx_code: Option<String>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError>;
 
-    /// Rejects an offered credential.
+    /// Rejects a previously-accepted credential offer.
     async fn holder_reject_credential(
         &self,
-        credential: &Credential,
+        credential: Credential,
+        storage_access: &StorageAccess,
     ) -> Result<(), IssuanceProtocolError>;
 
     /// Generates QR-code content to start the credential issuance flow.

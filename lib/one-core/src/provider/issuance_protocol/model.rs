@@ -4,7 +4,6 @@ use shared_types::{CredentialId, OrganisationId};
 use strum::Display;
 use uuid::Uuid;
 
-use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::Certificate;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
@@ -15,13 +14,6 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct OpenID4VCRejectionIdentifierParams {
-    pub did_method: String,
-    pub key_algorithm: KeyAlgorithmType,
-}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

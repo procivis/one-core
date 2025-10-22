@@ -5,6 +5,7 @@ use std::sync::{Arc, Mutex};
 use assert2::let_assert;
 use indexmap::IndexMap;
 use mockall::predicate;
+use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
@@ -41,7 +42,7 @@ use crate::provider::did_method::{DidCreated, MockDidMethod};
 use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
-    InvitationResponseEnum, OpenID4VCRedirectUriParams, OpenID4VCRejectionIdentifierParams,
+    InvitationResponseEnum, OpenID4VCRedirectUriParams,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
@@ -119,7 +120,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
-            rejection_identifier: None,
             enable_credential_preview: true,
         }),
         Arc::new(inputs.handle_invitation_operations),
@@ -502,7 +502,6 @@ async fn test_generate_share_credentials_offer_by_value() {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
-            rejection_identifier: None,
             enable_credential_preview: true,
         }),
         ..Default::default()
@@ -597,6 +596,7 @@ async fn test_holder_accept_credential_success() {
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
         continue_issuance: None,
+        notification_id: None,
     };
 
     let interaction = Interaction {
@@ -802,6 +802,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
         continue_issuance: None,
+        notification_id: None,
     };
 
     let interaction = Interaction {
@@ -1018,6 +1019,7 @@ async fn test_holder_accept_expired_credential_fails() {
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
         continue_issuance: None,
+        notification_id: None,
     };
 
     let interaction = Interaction {
@@ -1188,11 +1190,15 @@ async fn test_holder_accept_expired_credential_fails() {
 #[tokio::test]
 async fn test_holder_reject_credential() {
     let mock_server = MockServer::start().await;
+    let mut storage_access = MockStorageProxy::default();
     let mut did_method_provider = MockDidMethodProvider::default();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
 
+    let encryption = SecretSlice::from(vec![0; 32]);
+
     let credential = {
         let mut credential = generic_credential_did();
+        credential.state = CredentialStateEnum::Accepted;
 
         let interaction_data = HolderInteractionData {
             issuer_url: mock_server.uri(),
@@ -1208,12 +1214,15 @@ async fn test_holder_reject_credential() {
             )),
             access_token: None,
             access_token_expires_at: None,
-            refresh_token: None,
+            refresh_token: Some(
+                encrypt_data(&SecretSlice::from(vec![0; 32]), &encryption).unwrap(),
+            ),
             nonce: None,
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
+            notification_id: Some("notification_id".to_string()),
         };
 
         credential.interaction = Some(Interaction {
@@ -1238,18 +1247,6 @@ async fn test_holder_reject_credential() {
                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
                    "refresh_token": "321",
                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
-
-    Mock::given(method(Method::POST))
-        .and(path("/credential"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "credential": "credential",
-                "notification_id": "notification_id"
             }
         )))
         .expect(1)
@@ -1322,6 +1319,11 @@ async fn test_holder_reject_credential() {
         Some(Arc::new(method))
     });
 
+    storage_access
+        .expect_update_interaction()
+        .once()
+        .returning(move |_, _| Ok(()));
+
     let openid_provider = setup_protocol(TestInputs {
         did_method_provider,
         key_algorithm_provider,
@@ -1331,23 +1333,19 @@ async fn test_holder_reject_credential() {
             token_expires_in: 10,
             credential_offer_by_value: true,
             refresh_expires_in: 1000,
-            encryption: SecretSlice::from(vec![0; 32]),
+            encryption,
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
                 enabled: true,
                 allowed_schemes: vec!["https".to_string()],
             },
-            rejection_identifier: Some(OpenID4VCRejectionIdentifierParams {
-                did_method: "KEY".to_string(),
-                key_algorithm: KeyAlgorithmType::Ecdsa,
-            }),
             enable_credential_preview: true,
         }),
         ..Default::default()
     });
 
     openid_provider
-        .holder_reject_credential(&credential)
+        .holder_reject_credential(credential, &storage_access)
         .await
         .unwrap();
 }
@@ -2504,7 +2502,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIDraft13Params {
             enabled: true,
             allowed_schemes: vec!["https".to_string()],
         },
-        rejection_identifier: None,
         enable_credential_preview: true,
     }
 }

@@ -94,10 +94,6 @@ issuanceProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-      private:
-        rejectionIdentifier:
-          didMethod: KEY
-          keyAlgorithm: ECDSA
   OPENID4VCI_DRAFT13_SWIYU:
     display:
       en: "OpenID4VCI (SWIYU)"
@@ -125,10 +121,6 @@ issuanceProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-      private:
-        rejectionIdentifier:
-          didMethod: KEY
-          keyAlgorithm: ECDSA
 verificationProtocol:
   OPENID4VP_DRAFT20:
     display: "exchange.openid4vp20"

@@ -1504,11 +1504,14 @@ async fn test_accept_credential_with_did() {
 
 #[tokio::test]
 async fn test_reject_credential() {
+    let mut credential = dummy_credential(None);
+    credential.state = CredentialStateEnum::Accepted;
+
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
-        .return_once(move |_, _| Ok(vec![dummy_credential(None)]));
+        .return_once(move |_, _| Ok(vec![credential]));
     credential_repository
         .expect_update_credential()
         .once()
@@ -1524,7 +1527,7 @@ async fn test_reject_credential() {
     exchange_protocol_mock
         .expect_holder_reject_credential()
         .once()
-        .returning(|_| Ok(()));
+        .returning(|_, _| Ok(()));
 
     let mut issuance_protocol_provider = MockIssuanceProtocolProvider::new();
     issuance_protocol_provider
