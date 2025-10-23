@@ -2069,6 +2069,7 @@ async fn prepare_certificate_identifier(
             let now = OffsetDateTime::now_utc();
             let identifier_id: IdentifierId = Uuid::new_v4().into();
             let certificate = Certificate {
+                identifier_id,
                 organisation_id: Some(organisation.id),
                 ..certificate
             };

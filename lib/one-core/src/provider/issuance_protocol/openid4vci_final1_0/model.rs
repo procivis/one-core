@@ -355,7 +355,7 @@ pub struct OpenID4VCICredentialRequestDTO {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub enum OpenID4VCICredentialRequestIdentifier {
     CredentialConfigurationId(String),
     CredentialIdentifier(String),

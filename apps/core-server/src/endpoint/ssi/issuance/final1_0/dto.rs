@@ -239,7 +239,7 @@ pub(crate) struct OpenID4VCIFinal1CredentialRequestRestDTO {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCICredentialRequestIdentifier)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub(crate) enum OpenID4VCICredentialRequestIdentifierRest {
     CredentialConfigurationId(String),
     CredentialIdentifier(String),
