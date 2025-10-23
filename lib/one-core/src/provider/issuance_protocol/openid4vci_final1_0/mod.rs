@@ -1859,16 +1859,22 @@ async fn get_discovery_and_issuer_metadata(
             .map_err(IssuanceProtocolError::Transport)
     }
 
-    let oauth_authorization_server_metadata_future = async {
-        let oauth_authorization_server_metadata_endpoint = {
-            let origin = {
-                let mut cloned_endpoint_url = credential_issuer_endpoint.clone();
-                cloned_endpoint_url.set_path("");
-                cloned_endpoint_url.to_string()
-            };
-            let path = credential_issuer_endpoint.path();
-            format!("{origin}.well-known/oauth-authorization-server{path}")
+    let prepend_well_known_path = |well_known_path_segment: &str| -> String {
+        let origin = {
+            let mut url = credential_issuer_endpoint.clone();
+            url.set_path("");
+            url.to_string()
         };
+        let path = match credential_issuer_endpoint.path() {
+            "/" => "", // do not append trailing slash for empty path
+            path => path,
+        };
+        format!("{origin}.well-known/{well_known_path_segment}{path}")
+    };
+
+    let oauth_authorization_server_metadata_future = async {
+        let oauth_authorization_server_metadata_endpoint =
+            prepend_well_known_path("oauth-authorization-server");
 
         let response: Result<OAuthAuthorizationServerMetadataResponseDTO, IssuanceProtocolError> =
             client
@@ -1900,16 +1906,7 @@ async fn get_discovery_and_issuer_metadata(
     };
 
     let token_endpoint_future = async {
-        let openid_configuration_endpoint = {
-            let origin = {
-                let mut cloned_endpoint_url = credential_issuer_endpoint.clone();
-                cloned_endpoint_url.set_path("");
-                cloned_endpoint_url.to_string()
-            };
-            // All path elements will be included after .well-known/openid-credential-issuer
-            let path = credential_issuer_endpoint.path();
-            format!("{origin}.well-known/openid-configuration{path}")
-        };
+        let openid_configuration_endpoint = prepend_well_known_path("openid-configuration");
 
         let response = client
             .get(&openid_configuration_endpoint)
@@ -1935,18 +1932,7 @@ async fn get_discovery_and_issuer_metadata(
         }
     };
 
-    let issuer_metadata_endpoint = {
-        // Includes scheme, host, port
-        let origin = {
-            let mut cloned_endpoint_url = credential_issuer_endpoint.clone();
-            cloned_endpoint_url.set_path("");
-            cloned_endpoint_url.to_string()
-        };
-        // All path elements will be included after .well-known/openid-credential-issuer
-        let path = credential_issuer_endpoint.path();
-
-        format!("{origin}.well-known/openid-credential-issuer{path}")
-    };
+    let issuer_metadata_endpoint = prepend_well_known_path("openid-credential-issuer");
 
     let issuer_metadata = fetch(client, issuer_metadata_endpoint);
     tokio::try_join!(
