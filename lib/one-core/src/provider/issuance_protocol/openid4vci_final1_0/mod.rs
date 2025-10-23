@@ -645,7 +645,8 @@ impl OpenID4VCIFinal1_0 {
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
         storage_access: &StorageAccess,
-        organisation: Organisation,
+        organisation: &Organisation,
+        interaction: &Interaction,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
         let format = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
@@ -700,7 +701,7 @@ impl OpenID4VCIFinal1_0 {
             }) if r#type == &IdentifierType::Did => {
                 prepare_did_identifier(
                     did.did.to_owned(),
-                    &organisation,
+                    organisation,
                     storage_access,
                     self.did_method_provider.as_ref(),
                 )
@@ -713,7 +714,7 @@ impl OpenID4VCIFinal1_0 {
             }) if r#type == &IdentifierType::Certificate => {
                 prepare_certificate_identifier(
                     certificates.first().cloned(),
-                    &organisation,
+                    organisation,
                     storage_access,
                 )
                 .await?
@@ -723,7 +724,7 @@ impl OpenID4VCIFinal1_0 {
                 r#type,
                 ..
             }) if r#type == &IdentifierType::Key => {
-                prepare_key_identifier(key.to_owned(), &organisation, storage_access).await?
+                prepare_key_identifier(key.to_owned(), organisation, storage_access).await?
             }
             _ => {
                 return Err(IssuanceProtocolError::Failed(
@@ -735,6 +736,7 @@ impl OpenID4VCIFinal1_0 {
         credential.redirect_uri = issuer_response.redirect_uri.clone();
         credential.state = CredentialStateEnum::Accepted;
         credential.protocol = self.config_id.to_owned();
+        credential.interaction = Some(interaction.to_owned());
         if let Some(identifier) = credential.issuer_identifier.as_mut() {
             identifier.id = identifier_updates.issuer_identifier_id;
         }
@@ -746,7 +748,7 @@ impl OpenID4VCIFinal1_0 {
 
         let credential_schema_updates = prepare_credential_schema(
             schema.to_owned(),
-            &organisation,
+            organisation,
             storage_access,
             &mut credential,
         )
@@ -965,11 +967,13 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         storage_access: &StorageAccess,
         tx_code: Option<String>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
-        let organisation = interaction
-            .organisation
-            .ok_or(IssuanceProtocolError::Failed(
-                "organisation is None".to_string(),
-            ))?;
+        let organisation =
+            interaction
+                .organisation
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "organisation is None".to_string(),
+                ))?;
 
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
@@ -1095,6 +1099,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 &interaction_data,
                 storage_access,
                 organisation,
+                &interaction,
             )
             .await;
 
