@@ -63,7 +63,7 @@ stages:
   - export APP_FLAVOR=${APP_FLAVOR:-procivis}
   - export APP_VERSION=$(echo "$CI_COMMIT_TAG" | sed -E 's/^(v[0-9]+\.[0-9]+\.[0-9]+.*)$/\1/; t; s/.*/'"$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"'/')
   - export IMAGE_NAME=$CI_REGISTRY_IMAGE/$APP_FLAVOR
-  - export IMAGE_TAG=$IMAGE_NAME:$APP_VERSION
+  - export IMAGE_TAG=$APP_VERSION
   - export D_TRACK_PROJECT_VERSION=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
   - export DEPLOY_IMAGE_TAG=$APP_VERSION
 
@@ -180,7 +180,7 @@ build_image:
   stage: build
   dependencies: []
   extends:
-    - .docker_publish
+    - .release_docker_image
   variables:
     APP_FLAVOR: procivis
     EXTRA_BUILD_ARGS: >-
@@ -190,7 +190,7 @@ build_image_acr:
   stage: build
   dependencies: []
   extends:
-    - .docker_acr_publish
+    - .release_docker_image:acr
     - .rule:default:on_tag_only
   variables:
     EXTRA_BUILD_ARGS: >-
