@@ -49,7 +49,7 @@ walletProvider:
           lifetime:
             expirationTime: 86400 # 24*60*60 seconds
             minimumRefreshTime: 60
-          required: true
+          required: false
         appVersion:
           minimum: "v1.50.0"
 format:

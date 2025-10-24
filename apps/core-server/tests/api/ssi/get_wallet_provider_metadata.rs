@@ -23,7 +23,7 @@ async fn test_wallet_provider_metadata_success() {
             "walletUnitAttestation": {
                 "appIntegrityCheckRequired": true,
                 "enabled": true,
-                "required": true
+                "required": false
             },
             "name":"PROCIVIS_ONE",
             "appVersion": {
@@ -115,7 +115,7 @@ async fn test_wallet_provider_metadata_fails_disabled_wallet_provider() {
             "walletUnitAttestation": {
                 "appIntegrityCheckRequired": true,
                 "enabled": true,
-                "required": true
+                "required": false
             },
             "name":"PROCIVIS_ONE",
             "appVersion": {
