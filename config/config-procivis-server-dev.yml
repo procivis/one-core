@@ -34,7 +34,7 @@ walletProvider:
             minimumRefreshTime: 60
           required: true
         appVersion:
-          minimum: "v1.50.0"
+          minimum: "v1.0.0"
 format:
   MDOC_SHORT_EXPIRY:
     type: "MDOC"
