@@ -6,7 +6,8 @@ use x509_parser::pem::Pem;
 use x509_parser::prelude::{ASN1Time, X509Certificate};
 
 use super::x509_extension::{
-    validate_ca_key_usage, validate_critical_extensions, validate_required_cert_key_usage,
+    validate_ca_key_cert_sign_key_usage, validate_critical_extensions,
+    validate_required_cert_key_usage,
 };
 use super::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
@@ -120,9 +121,8 @@ impl CertificateValidatorImpl {
                 result = Some(current);
             }
 
-            let next = chain.peek();
             if validation.integrity_check {
-                if let Some(parent) = next {
+                if let Some(parent) = chain.peek() {
                     if !parent.is_ca() {
                         return Err(ValidationError::InvalidCaCertificateChain(
                             "Certificate chain containing non-CA parents".to_string(),
@@ -130,12 +130,13 @@ impl CertificateValidatorImpl {
                         .into());
                     };
 
+                    validate_ca_key_cert_sign_key_usage(parent)?;
+
                     current
                         .verify_signature(Some(parent.public_key()))
                         .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
                 }
 
-                validate_ca_key_usage(current)?;
                 validate_critical_extensions(current)?;
             }
 
@@ -143,7 +144,7 @@ impl CertificateValidatorImpl {
                 self.check_validity_with_leeway(current, LEEWAY)?;
 
                 let revoked = self
-                    .check_revocation(current, next.copied(), crl_mode)
+                    .check_revocation(current, chain.peek().copied(), crl_mode)
                     .await?;
                 if revoked {
                     return Err(ValidationError::CertificateRevoked.into());

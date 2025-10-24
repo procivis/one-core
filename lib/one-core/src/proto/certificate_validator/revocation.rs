@@ -87,6 +87,20 @@ impl CertificateValidatorImpl {
         crl: &CertificateRevocationList<'_>,
         parent: &X509Certificate<'_>,
     ) -> Result<(), ServiceError> {
+        // check key usage
+        let key_usage = parent
+            .key_usage()
+            .map_err(|e| ValidationError::CRLCheckFailed(e.to_string()))?
+            .ok_or(ValidationError::CRLCheckFailed(
+                "Parent CA cert key usage not found".to_string(),
+            ))?;
+        if !key_usage.value.crl_sign() {
+            return Err(ValidationError::CRLCheckFailed(
+                "CRL signer certificate_validator key usage does not include crlSign".to_string(),
+            )
+            .into());
+        }
+
         let Some(parent_cert_key_identifier) = parent.extensions().iter().find_map(|extension| {
             if let ParsedExtension::SubjectKeyIdentifier(key_identifier) =
                 extension.parsed_extension()
@@ -98,22 +112,6 @@ impl CertificateValidatorImpl {
         }) else {
             return Err(ValidationError::CRLCheckFailed(
                 "Parent CA cert subject key identifier not found".to_string(),
-            )
-            .into());
-        };
-
-        // check key usage
-        if let Ok(Some(key_usage)) = parent.key_usage() {
-            if !key_usage.value.crl_sign() {
-                return Err(ValidationError::CRLCheckFailed(
-                    "CRL signer certificate_validator key usage does not include crlSign"
-                        .to_string(),
-                )
-                .into());
-            }
-        } else {
-            return Err(ValidationError::CRLCheckFailed(
-                "Parent CA cert key usage not found".to_string(),
             )
             .into());
         };
