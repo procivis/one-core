@@ -1,175 +1,17 @@
-use one_core::model::list_filter::{
-    ComparisonType, ListFilterCondition, StringMatch, StringMatchType, ValueComparison,
-};
-use one_core::model::list_query::{ListPagination, ListSorting};
-use one_core::model::wallet_unit::{
-    SortableWalletUnitColumn, WalletProviderType, WalletUnitFilterValue, WalletUnitListQuery,
-    WalletUnitOs, WalletUnitStatus,
-};
-use one_core::service::wallet_provider::dto;
+use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use one_core::service::wallet_unit::dto::{
-    AttestationKeyRequestDTO, HolderRefreshWalletUnitRequestDTO,
-    HolderRegisterWalletUnitRequestDTO, HolderRegisterWalletUnitResponseDTO,
-    HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
+    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
 };
-use one_crypto::Hasher;
-use one_crypto::hasher::sha256::SHA256;
-use one_dto_mapper::{From, Into, TryInto, convert_inner};
+use one_dto_mapper::{From, Into, TryInto};
 
 use crate::ServiceError;
 use crate::binding::OneCoreBinding;
-use crate::binding::common::SortDirection;
-use crate::binding::mapper::{deserialize_timestamp, optional_time};
 use crate::error::BindingError;
 use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
-    #[uniffi::method]
-    pub async fn get_wallet_unit(&self, id: String) -> Result<WalletUnitBindingDTO, BindingError> {
-        let core = self.use_core().await?;
-        Ok(core
-            .wallet_provider_service
-            .get_wallet_unit(&into_id(id)?)
-            .await?
-            .into())
-    }
-
-    #[uniffi::method]
-    pub async fn list_wallet_units(
-        &self,
-        query: WalletUnitListQueryBindingDTO,
-    ) -> Result<WalletUnitListBindingDTO, BindingError> {
-        let core = self.use_core().await?;
-        let organisation_id = into_id(&query.organisation_id)?;
-        let condition = {
-            let organisation = WalletUnitFilterValue::OrganisationId(organisation_id);
-            let exact = query.exact.unwrap_or_default();
-
-            let name = query.name.map(|name| {
-                WalletUnitFilterValue::Name(StringMatch {
-                    value: name,
-                    r#match: if exact.contains(&ExactWalletUnitFilterColumnBindingEnum::Name) {
-                        StringMatchType::Equals
-                    } else {
-                        StringMatchType::StartsWith
-                    },
-                })
-            });
-
-            let ids = match query.ids {
-                Some(ids) => {
-                    let ids = ids.iter().map(into_id).collect::<Result<Vec<_>, _>>()?;
-                    Some(WalletUnitFilterValue::Ids(ids))
-                }
-                None => None,
-            };
-
-            let status = query.status.map(|status| {
-                WalletUnitFilterValue::Status(status.iter().map(|st| st.clone().into()).collect())
-            });
-
-            let wallet_provider_type = query.wallet_provider_type.map(|wp_type| {
-                WalletUnitFilterValue::WalletProviderType(
-                    wp_type
-                        .iter()
-                        .map(|wpt| {
-                            let core_type: WalletProviderType = wpt.clone().into();
-                            core_type.to_string()
-                        })
-                        .collect(),
-                )
-            });
-
-            let os = query
-                .os
-                .map(|os| WalletUnitFilterValue::Os(os.iter().map(|o| o.clone().into()).collect()));
-
-            let attestation = if let Some(attestation) = query.attestation {
-                let attestation_hash = SHA256.hash_base64(attestation.as_bytes()).map_err(|e| {
-                    ServiceError::MappingError(format!(
-                        "Could not hash wallet unit attestation: {e}"
-                    ))
-                })?;
-                Some(WalletUnitFilterValue::AttestationHash(attestation_hash))
-            } else {
-                None
-            };
-
-            let created_date_after = query
-                .created_date_after
-                .map(|date| {
-                    Ok::<_, BindingError>(WalletUnitFilterValue::CreatedDate(ValueComparison {
-                        comparison: ComparisonType::GreaterThanOrEqual,
-                        value: deserialize_timestamp(&date)?,
-                    }))
-                })
-                .transpose()?;
-            let created_date_before = query
-                .created_date_before
-                .map(|date| {
-                    Ok::<_, BindingError>(WalletUnitFilterValue::CreatedDate(ValueComparison {
-                        comparison: ComparisonType::LessThanOrEqual,
-                        value: deserialize_timestamp(&date)?,
-                    }))
-                })
-                .transpose()?;
-
-            let last_modified_after = query
-                .last_modified_after
-                .map(|date| {
-                    Ok::<_, BindingError>(WalletUnitFilterValue::LastModified(ValueComparison {
-                        comparison: ComparisonType::GreaterThanOrEqual,
-                        value: deserialize_timestamp(&date)?,
-                    }))
-                })
-                .transpose()?;
-
-            let last_modified_before = query
-                .last_modified_before
-                .map(|date| {
-                    Ok::<_, BindingError>(WalletUnitFilterValue::LastModified(ValueComparison {
-                        comparison: ComparisonType::LessThanOrEqual,
-                        value: deserialize_timestamp(&date)?,
-                    }))
-                })
-                .transpose()?;
-
-            ListFilterCondition::<WalletUnitFilterValue>::default()
-                & organisation
-                & name
-                & ids
-                & status
-                & wallet_provider_type
-                & os
-                & attestation
-                & created_date_after
-                & created_date_before
-                & last_modified_after
-                & last_modified_before
-        };
-
-        let sorting = query.sort.map(|sort| ListSorting {
-            column: sort.into(),
-            direction: query.sort_direction.map(Into::into),
-        });
-
-        let query = WalletUnitListQuery {
-            pagination: Some(ListPagination {
-                page: query.page,
-                page_size: query.page_size,
-            }),
-            sorting,
-            filtering: Some(condition),
-            include: None,
-        };
-        Ok(core
-            .wallet_provider_service
-            .get_wallet_unit_list(&organisation_id, query)
-            .await?
-            .into())
-    }
-
     #[uniffi::method]
     pub async fn holder_register_wallet_unit(
         &self,
@@ -209,43 +51,6 @@ impl OneCoreBinding {
     }
 }
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(dto::GetWalletUnitListResponseDTO)]
-pub struct WalletUnitListBindingDTO {
-    #[from(with_fn = convert_inner)]
-    pub values: Vec<WalletUnitBindingDTO>,
-    pub total_pages: u64,
-    pub total_items: u64,
-}
-
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(dto::GetWalletUnitResponseDTO)]
-pub struct WalletUnitBindingDTO {
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_modified: String,
-    #[from(with_fn = "optional_time")]
-    pub last_issuance: Option<String>,
-    pub name: String,
-    pub os: WalletUnitOsBindingEnum,
-    pub status: WalletUnitStatusBindingEnum,
-    pub wallet_provider_type: WalletProviderTypeBindingEnum,
-    pub wallet_provider_name: String,
-    pub public_key: Option<String>,
-}
-
-#[derive(Clone, Debug, uniffi::Enum, Into, From)]
-#[into(WalletUnitOs)]
-#[from(WalletUnitOs)]
-pub enum WalletUnitOsBindingEnum {
-    Android,
-    Web,
-    Ios,
-}
-
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]
 #[into(WalletUnitStatus)]
 #[from(WalletUnitStatus)]
@@ -261,44 +66,6 @@ pub enum WalletUnitStatusBindingEnum {
 #[from(WalletProviderType)]
 pub enum WalletProviderTypeBindingEnum {
     ProcivisOne,
-}
-
-#[derive(Clone, Debug, uniffi::Record)]
-pub struct WalletUnitListQueryBindingDTO {
-    pub page: u32,
-    pub page_size: u32,
-
-    pub sort: Option<SortableWalletUnitColumnBindingEnum>,
-    pub sort_direction: Option<SortDirection>,
-
-    pub organisation_id: String,
-    pub name: Option<String>,
-    pub exact: Option<Vec<ExactWalletUnitFilterColumnBindingEnum>>,
-    pub ids: Option<Vec<String>>,
-    pub status: Option<Vec<WalletUnitStatusBindingEnum>>,
-    pub wallet_provider_type: Option<Vec<WalletProviderTypeBindingEnum>>,
-    pub os: Option<Vec<WalletUnitOsBindingEnum>>,
-    pub attestation: Option<String>,
-    pub created_date_after: Option<String>,
-    pub created_date_before: Option<String>,
-    pub last_modified_after: Option<String>,
-    pub last_modified_before: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq, uniffi::Enum)]
-pub enum ExactWalletUnitFilterColumnBindingEnum {
-    Name,
-}
-
-#[derive(Clone, Debug, uniffi::Enum, Into, From)]
-#[into(SortableWalletUnitColumn)]
-#[from(SortableWalletUnitColumn)]
-pub enum SortableWalletUnitColumnBindingEnum {
-    Name,
-    CreatedDate,
-    LastModified,
-    Os,
-    Status,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
@@ -357,17 +124,4 @@ struct WalletProviderBindingDTO {
     r#type: WalletProviderTypeBindingEnum,
     name: String,
     pub app_integrity_check_required: bool,
-}
-
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T = AttestationKeyRequestDTO, Error = ServiceError)]
-pub struct AttestationKeyRequestBindingDTO {
-    #[try_into(with_fn_ref = into_id)]
-    pub organisation_id: String,
-    #[try_into(infallible)]
-    pub name: String,
-    #[try_into(infallible)]
-    pub key_type: String,
-    #[try_into(infallible)]
-    pub nonce: Option<String>,
 }

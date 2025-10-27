@@ -459,13 +459,11 @@ impl WalletProviderService {
             attested_public_key.public_key_as_jwk()?
         };
 
-        let encoded_public_key = serde_json::to_string(&jwk)
-            .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
         let (signed_attestation, attestation_hash) = self
             .sign_attestation(
                 issuer_identifier,
                 &config_params,
-                jwk,
+                jwk.clone(),
                 &wallet_unit.wallet_provider_name,
             )
             .await?;
@@ -476,7 +474,7 @@ impl WalletProviderService {
                 UpdateWalletUnitRequest {
                     status: Some(WalletUnitStatus::Active),
                     last_issuance: Some(self.clock.now_utc()),
-                    public_key: Some(encoded_public_key),
+                    authentication_key_jwk: Some(jwk),
                 },
             )
             .await?;
@@ -561,7 +559,7 @@ impl WalletProviderService {
                 UpdateWalletUnitRequest {
                     status: Some(WalletUnitStatus::Error),
                     last_issuance: None,
-                    public_key: None,
+                    authentication_key_jwk: None,
                 },
             )
             .await?;

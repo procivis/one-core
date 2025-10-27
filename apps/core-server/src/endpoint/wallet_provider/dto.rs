@@ -9,6 +9,7 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
+use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
 use crate::endpoint::wallet_unit::dto::{
     WalletProviderTypeRestEnum, WalletUnitOsRestEnum, WalletUnitStatusRestEnum,
 };
@@ -47,7 +48,8 @@ pub(crate) struct WalletUnitResponseRestDTO {
     pub status: WalletUnitStatusRestEnum,
     pub wallet_provider_type: WalletProviderTypeRestEnum,
     pub wallet_provider_name: String,
-    pub public_key: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub authentication_key_jwk: Option<PublicKeyJwkRestDTO>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]

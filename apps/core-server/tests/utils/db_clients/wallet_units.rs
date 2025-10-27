@@ -47,9 +47,7 @@ impl WalletUnitsDB {
             status: test_wallet_unit.status.unwrap_or(WalletUnitStatus::Active),
             wallet_provider_type: WalletProviderType::ProcivisOne,
             wallet_provider_name: "PROCIVIS_ONE".to_string(),
-            public_key: test_wallet_unit
-                .public_key
-                .map(|v| serde_json::to_string(&v).unwrap()),
+            authentication_key_jwk: test_wallet_unit.public_key,
             last_issuance: test_wallet_unit
                 .last_issuance
                 .unwrap_or(Some(six_hours_ago)),

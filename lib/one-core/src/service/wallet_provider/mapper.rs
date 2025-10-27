@@ -20,11 +20,6 @@ pub(crate) fn wallet_unit_from_request(
     now: OffsetDateTime,
     nonce: Option<String>,
 ) -> Result<WalletUnit, ServiceError> {
-    let encoded_public_key = public_key
-        .map(serde_json::to_string)
-        .transpose()
-        .map_err(|e| ServiceError::MappingError(format!("Could not encode public key: {e}")))?;
-
     let (status, last_issuance) = match &nonce {
         None => (WalletUnitStatus::Active, Some(now)),
         Some(_) => (WalletUnitStatus::Pending, None),
@@ -39,7 +34,7 @@ pub(crate) fn wallet_unit_from_request(
         status,
         wallet_provider_name: request.wallet_provider,
         wallet_provider_type: config.r#type.into(),
-        public_key: encoded_public_key,
+        authentication_key_jwk: public_key.cloned(),
         nonce,
         organisation: Some(organisation),
     })
@@ -57,14 +52,12 @@ pub(crate) fn public_key_from_wallet_unit(
     wallet_unit: &WalletUnit,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<KeyHandle, ServiceError> {
-    let decoded_public_key = serde_json::from_str::<PublicKeyJwk>(
+    let ParsedKey { key, .. } = key_algorithm_provider.parse_jwk(
         wallet_unit
-            .public_key
+            .authentication_key_jwk
             .as_ref()
             .ok_or(ServiceError::MappingError("Missing public key".to_string()))?,
-    )
-    .map_err(|e| ServiceError::MappingError(format!("Could not decode public key: {e}")))?;
-    let ParsedKey { key, .. } = key_algorithm_provider.parse_jwk(&decoded_public_key)?;
+    )?;
     Ok(key)
 }
 

@@ -1,4 +1,4 @@
-use one_dto_mapper::From;
+use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Deserializer, Serialize};
 use shared_types::WalletUnitId;
 use time::OffsetDateTime;
@@ -177,7 +177,8 @@ pub struct GetWalletUnitResponseDTO {
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub public_key: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub authentication_key_jwk: Option<PublicKeyJwkDTO>,
 }
 
 pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;

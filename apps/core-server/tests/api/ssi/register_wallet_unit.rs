@@ -109,7 +109,7 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled() {
     resp_json["nonce"].assert_eq(&wallet_unit.nonce);
     assert_eq!(wallet_unit.status, WalletUnitStatus::Pending);
     assert_eq!(wallet_unit.last_issuance, None);
-    assert_eq!(wallet_unit.public_key, None);
+    assert_eq!(wallet_unit.authentication_key_jwk, None);
 }
 
 #[tokio::test]

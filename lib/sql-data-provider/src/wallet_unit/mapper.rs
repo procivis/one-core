@@ -4,6 +4,7 @@ use one_core::model::wallet_unit::{
     SortableWalletUnitColumn, WalletProviderType, WalletUnit, WalletUnitFilterValue, WalletUnitOs,
     WalletUnitStatus,
 };
+use one_core::repository::error::DataLayerError;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{Query, SimpleExpr};
 use sea_orm::{ColumnTrait, Condition, IntoSimpleExpr};
@@ -14,9 +15,11 @@ use crate::list_query_generic::{
     get_comparison_condition, get_equals_condition, get_string_match_condition,
 };
 
-impl From<wallet_unit::Model> for WalletUnit {
-    fn from(value: wallet_unit::Model) -> Self {
-        Self {
+impl TryFrom<wallet_unit::Model> for WalletUnit {
+    type Error = DataLayerError;
+
+    fn try_from(value: wallet_unit::Model) -> Result<Self, DataLayerError> {
+        Ok(Self {
             id: value.id,
             created_date: value.created_date,
             last_modified: value.last_modified,
@@ -24,12 +27,16 @@ impl From<wallet_unit::Model> for WalletUnit {
             status: WalletUnitStatus::from(value.status),
             wallet_provider_type: WalletProviderType::from(value.wallet_provider_type),
             wallet_provider_name: value.wallet_provider_name,
-            public_key: value.public_key,
+            authentication_key_jwk: value
+                .authentication_key_jwk
+                .map(|jwk| serde_json::from_str(&jwk))
+                .transpose()
+                .map_err(|_| DataLayerError::MappingError)?,
             last_issuance: value.last_issuance,
             name: value.name,
             organisation: None,
             nonce: value.nonce,
-        }
+        })
     }
 }
 

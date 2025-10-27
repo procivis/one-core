@@ -434,8 +434,6 @@ async fn test_refresh_wallet_unit_success() {
 
     // wallet unit keypair (used by the app to prove possession)
     let (proof, holder_key_handle) = create_proof().await;
-    let holder_public_key_str =
-        serde_json::to_string(&holder_key_handle.public_key_as_jwk().unwrap()).unwrap();
 
     let now = OffsetDateTime::now_utc();
     let wallet_unit_id = Uuid::new_v4().into();
@@ -451,10 +449,10 @@ async fn test_refresh_wallet_unit_success() {
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
                     os: WalletUnitOs::Android,
-                    status: crate::model::wallet_unit::WalletUnitStatus::Active,
+                    status: WalletUnitStatus::Active,
                     wallet_provider_name: "PROCIVIS_ONE".to_string(),
                     wallet_provider_type: WalletProviderType::ProcivisOne,
-                    public_key: Some(holder_public_key_str),
+                    authentication_key_jwk: Some(holder_key_handle.public_key_as_jwk().unwrap()),
                     // ensure refresh window has passed
                     last_issuance: Some(now.sub(Duration::minutes(120))),
                     nonce: None,
@@ -539,7 +537,7 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         status: WalletUnitStatus::Active,
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "test provider".to_string(),
-        public_key: None,
+        authentication_key_jwk: None,
         last_issuance: None,
         nonce: None,
         organisation: Some(dummy_organisation(None)),

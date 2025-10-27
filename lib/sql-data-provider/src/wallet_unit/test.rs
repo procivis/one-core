@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use one_core::model::key::PublicKeyJwk;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
@@ -8,6 +9,8 @@ use one_core::model::wallet_unit::{
     WalletUnitFilterValue, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
 };
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use sea_orm::{ActiveModelTrait, Set};
 use shared_types::{OrganisationId, WalletUnitId};
@@ -59,9 +62,6 @@ async fn insert_wallet_unit_to_database(
     let id: WalletUnitId = Uuid::new_v4().into();
     let now = get_dummy_date();
 
-    // Generate unique public key to avoid constraint violations
-    let unique_suffix = id.to_string();
-
     wallet_unit::ActiveModel {
         id: Set(id),
         created_date: Set(now),
@@ -72,7 +72,8 @@ async fn insert_wallet_unit_to_database(
         status: Set(wallet_unit::WalletUnitStatus::Active),
         wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
         wallet_provider_name: Set("Test Provider Name".to_string()),
-        public_key: Set(Some(format!("test_public_key_{unique_suffix}"))),
+        // Generate unique public key to avoid constraint violations
+        authentication_key_jwk: Set(Some(random_jwk_string())),
         nonce: Set(None),
         organisation_id: Set(organisation_id),
     }
@@ -81,6 +82,15 @@ async fn insert_wallet_unit_to_database(
     .unwrap();
 
     id
+}
+
+fn random_jwk_string() -> String {
+    serde_json::to_string(&random_jwk()).unwrap()
+}
+
+fn random_jwk() -> PublicKeyJwk {
+    let unique_suffix = Ecdsa.generate_key().unwrap();
+    unique_suffix.key.public_key_as_jwk().unwrap()
 }
 
 fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
@@ -95,7 +105,7 @@ fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
         status: WalletUnitStatus::Active,
         wallet_provider_type: WalletProviderType::ProcivisOne,
         wallet_provider_name: "Test Provider Name".to_string(),
-        public_key: Some(format!("test_public_key_{id}")),
+        authentication_key_jwk: Some(random_jwk()),
         nonce: None,
         organisation: Some(Organisation {
             id: org,
@@ -141,7 +151,10 @@ async fn test_create_wallet_unit_success() {
         stored_wallet_unit.wallet_provider_name,
         wallet_unit.wallet_provider_name
     );
-    assert_eq!(stored_wallet_unit.public_key, wallet_unit.public_key);
+    assert_eq!(
+        stored_wallet_unit.authentication_key_jwk,
+        wallet_unit.authentication_key_jwk
+    );
 }
 
 #[tokio::test]
@@ -158,7 +171,7 @@ async fn test_create_wallet_unit_duplicate_id() {
 
     // Try to create second wallet unit with same ID - should fail
     let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id, Uuid::new_v4().into());
-    wallet_unit2.public_key = Some(format!("different_key_{wallet_unit_id}"));
+    wallet_unit2.authentication_key_jwk = Some(random_jwk());
 
     let result2 = provider.create_wallet_unit(wallet_unit2).await;
     assert!(result2.is_err());
@@ -180,7 +193,7 @@ async fn test_create_wallet_unit_duplicate_public_key() {
 
     // Try to create second wallet unit with same public key - should fail
     let mut wallet_unit2 = dummy_wallet_unit(wallet_unit_id2, test_setup.organisation_id);
-    wallet_unit2.public_key = wallet_unit1.public_key; // Same public key
+    wallet_unit2.authentication_key_jwk = wallet_unit1.authentication_key_jwk; // Same public key
 
     let result2 = provider.create_wallet_unit(wallet_unit2).await;
     assert!(result2.is_err());
@@ -328,12 +341,7 @@ async fn test_get_wallet_unit_success() {
         WalletProviderType::ProcivisOne
     );
     assert_eq!(wallet_unit.wallet_provider_name, "Test Provider Name");
-    assert!(
-        wallet_unit
-            .public_key
-            .unwrap()
-            .starts_with("test_public_key_")
-    );
+    assert!(wallet_unit.authentication_key_jwk.is_some());
 }
 
 #[tokio::test]
@@ -615,7 +623,7 @@ async fn test_update_wallet_unit_status_success() {
     let original_os = wallet_unit.os;
     let original_provider_type = wallet_unit.wallet_provider_type.clone();
     let original_provider_name = wallet_unit.wallet_provider_name.clone();
-    let original_public_key = wallet_unit.public_key.clone();
+    let original_public_key = wallet_unit.authentication_key_jwk.clone();
 
     provider.create_wallet_unit(wallet_unit).await.unwrap();
 
@@ -623,7 +631,7 @@ async fn test_update_wallet_unit_status_success() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
-        public_key: None,
+        authentication_key_jwk: None,
     };
 
     let result = provider
@@ -652,7 +660,10 @@ async fn test_update_wallet_unit_status_success() {
         updated_wallet_unit.wallet_provider_name,
         original_provider_name
     );
-    assert_eq!(updated_wallet_unit.public_key, original_public_key);
+    assert_eq!(
+        updated_wallet_unit.authentication_key_jwk,
+        original_public_key
+    );
 
     // Verify last_modified was updated (should be different from created_date)
     assert!(updated_wallet_unit.last_modified > updated_wallet_unit.created_date);
@@ -667,7 +678,7 @@ async fn test_update_wallet_unit_nonexistent() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
-        public_key: None,
+        authentication_key_jwk: None,
     };
 
     let result = provider
@@ -731,7 +742,7 @@ async fn test_update_wallet_unit_status_changes() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
-        public_key: None,
+        authentication_key_jwk: None,
     };
 
     let result = provider
@@ -751,7 +762,7 @@ async fn test_update_wallet_unit_status_changes() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Active),
         last_issuance: None,
-        public_key: None,
+        authentication_key_jwk: None,
     };
 
     let result = provider
@@ -775,19 +786,20 @@ async fn test_update_wallet_unit_public_key_changes() {
 
     let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
     let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
-    wallet_unit.public_key = None;
+    wallet_unit.authentication_key_jwk = None;
     provider.create_wallet_unit(wallet_unit).await.unwrap();
     let created_wallet_unit = provider
         .get_wallet_unit(&wallet_unit_id, &WalletUnitRelations::default())
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(created_wallet_unit.public_key, None);
+    assert_eq!(created_wallet_unit.authentication_key_jwk, None);
 
+    let new_jwk = random_jwk();
     let update_request = UpdateWalletUnitRequest {
         status: None,
         last_issuance: None,
-        public_key: Some("new_value".to_string()),
+        authentication_key_jwk: Some(new_jwk.clone()),
     };
 
     let result = provider
@@ -801,10 +813,7 @@ async fn test_update_wallet_unit_public_key_changes() {
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(
-        updated_wallet_unit.public_key,
-        Some("new_value".to_string())
-    );
+    assert_eq!(updated_wallet_unit.authentication_key_jwk, Some(new_jwk));
 }
 
 #[tokio::test]
@@ -828,7 +837,7 @@ async fn test_update_and_list_wallet_units() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
-        public_key: None,
+        authentication_key_jwk: None,
     };
 
     provider
@@ -1221,7 +1230,7 @@ async fn test_sort_by_last_modified_after_updates() {
     let update_request = UpdateWalletUnitRequest {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
-        public_key: None,
+        authentication_key_jwk: None,
     };
     provider
         .update_wallet_unit(&wallet_unit_id1, update_request)

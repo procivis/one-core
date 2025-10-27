@@ -22,7 +22,7 @@ pub struct Model {
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub public_key: Option<String>,
+    pub authentication_key_jwk: Option<String>,
     pub nonce: Option<String>,
     pub organisation_id: OrganisationId,
 }
@@ -86,6 +86,12 @@ pub enum WalletProviderType {
 impl TryFrom<WalletUnit> for ActiveModel {
     type Error = DataLayerError;
     fn try_from(wallet_unit: WalletUnit) -> Result<Self, Self::Error> {
+        let authentication_key_jwk = wallet_unit
+            .authentication_key_jwk
+            .as_ref()
+            .map(serde_json::to_string)
+            .transpose()
+            .map_err(|_| DataLayerError::MappingError)?;
         Ok(Self {
             id: Set(wallet_unit.id),
             created_date: Set(wallet_unit.created_date),
@@ -96,7 +102,7 @@ impl TryFrom<WalletUnit> for ActiveModel {
             status: Set(wallet_unit.status.into()),
             wallet_provider_type: Set(wallet_unit.wallet_provider_type.into()),
             wallet_provider_name: Set(wallet_unit.wallet_provider_name),
-            public_key: Set(wallet_unit.public_key),
+            authentication_key_jwk: Set(authentication_key_jwk),
             nonce: Set(wallet_unit.nonce),
             organisation_id: Set(wallet_unit
                 .organisation

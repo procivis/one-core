@@ -59,7 +59,7 @@ async fn test_list_wallet_unit_success() {
     assert!(values[0]["status"].is_string());
     assert!(values[0]["walletProviderType"].is_string());
     assert!(values[0]["walletProviderName"].is_string());
-    assert!(values[0]["publicKey"].is_string());
+    assert!(values[0]["authenticationKeyJwk"].is_object()); // JWK
 }
 
 #[tokio::test]
@@ -194,7 +194,7 @@ async fn test_list_wallet_unit_by_attestation_success() {
     assert!(values[0]["status"].is_string());
     assert!(values[0]["walletProviderType"].is_string());
     assert!(values[0]["walletProviderName"].is_string());
-    assert!(values[0]["publicKey"].is_string());
+    assert!(values[0]["authenticationKeyJwk"].is_object()); // JWK
 }
 
 #[tokio::test]

@@ -28,7 +28,7 @@ async fn test_get_wallet_unit_success() {
     resp["status"].assert_eq(&String::from("ACTIVE"));
     resp["walletProviderType"].assert_eq(&String::from("PROCIVIS_ONE"));
     resp["walletProviderName"].assert_eq(&wallet_unit.wallet_provider_name);
-    resp["publicKey"].assert_eq(&wallet_unit.public_key);
+    resp["publicKey"].assert_eq(&wallet_unit.authentication_key_jwk);
     assert!(resp["createdDate"].is_string());
     assert!(resp["lastModified"].is_string());
     assert!(resp["lastIssuance"].is_string());
@@ -63,7 +63,7 @@ async fn test_get_revoked_wallet_unit_success() {
     resp["status"].assert_eq(&String::from("REVOKED"));
     resp["walletProviderType"].assert_eq(&String::from("PROCIVIS_ONE"));
     resp["walletProviderName"].assert_eq(&wallet_unit.wallet_provider_name);
-    resp["publicKey"].assert_eq(&wallet_unit.public_key);
+    resp["publicKey"].assert_eq(&wallet_unit.authentication_key_jwk);
     assert!(resp["createdDate"].is_string());
     assert!(resp["lastModified"].is_string());
     assert!(resp["lastIssuance"].is_string());

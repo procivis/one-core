@@ -5,7 +5,7 @@ use one_core::model::wallet_unit::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
-use one_dto_mapper::convert_inner;
+use one_dto_mapper::try_convert_inner;
 use sea_orm::{ActiveModelTrait, EntityTrait, PaginatorTrait, QueryOrder, Set, Unchanged};
 use shared_types::WalletUnitId;
 use time::OffsetDateTime;
@@ -44,7 +44,7 @@ impl WalletUnitRepository for WalletUnitProvider {
             return Ok(None);
         };
         let organisation_id = wallet_unit.organisation_id;
-        let mut wallet_unit = WalletUnit::from(wallet_unit);
+        let mut wallet_unit = WalletUnit::try_from(wallet_unit)?;
 
         if let Some(org_relations) = &relations.organisation {
             let org = self
@@ -95,7 +95,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         let total_pages = calculate_pages_count(total_items, page_size);
 
         Ok(GetWalletUnitList {
-            values: convert_inner(wallet_units),
+            values: try_convert_inner(wallet_units)?,
             total_pages,
             total_items,
         })
@@ -106,6 +106,11 @@ impl WalletUnitRepository for WalletUnitProvider {
         id: &WalletUnitId,
         request: UpdateWalletUnitRequest,
     ) -> Result<(), DataLayerError> {
+        let authentication_key_jwk = request
+            .authentication_key_jwk
+            .map(|pk| serde_json::to_string(&pk))
+            .transpose()
+            .map_err(|_| DataLayerError::MappingError)?;
         let update_model = wallet_unit::ActiveModel {
             id: Unchanged(*id),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -117,9 +122,8 @@ impl WalletUnitRepository for WalletUnitProvider {
                 .last_issuance
                 .map(|last_issuance| Set(last_issuance.into()))
                 .unwrap_or_default(),
-            public_key: request
-                .public_key
-                .map(|pk| Set(pk.into()))
+            authentication_key_jwk: authentication_key_jwk
+                .map(|key| Set(Some(key)))
                 .unwrap_or_default(),
             ..Default::default()
         };

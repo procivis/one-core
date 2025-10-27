@@ -7,6 +7,7 @@ use time::OffsetDateTime;
 use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use crate::config;
+use crate::model::key::PublicKeyJwk;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 
@@ -20,7 +21,7 @@ pub struct WalletUnit {
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub public_key: Option<String>,
+    pub authentication_key_jwk: Option<PublicKeyJwk>,
     pub last_issuance: Option<OffsetDateTime>,
     pub nonce: Option<String>,
 
@@ -92,7 +93,7 @@ pub type GetWalletUnitList = GetListResponse<WalletUnit>;
 pub struct UpdateWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<OffsetDateTime>,
-    pub public_key: Option<String>,
+    pub authentication_key_jwk: Option<PublicKeyJwk>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
