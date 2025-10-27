@@ -8,6 +8,7 @@ use url::Url;
 
 use crate::config::core_config::DidType::WebVh;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
+use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential::Credential;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
@@ -15,10 +16,10 @@ use crate::model::interaction::Interaction;
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::http_client::HttpClient;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -36,7 +37,6 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::params::deserialize_encryption_key;
 
 pub(crate) const OID4VCI_DRAFT13_SWIYU_VERSION: &str = "draft-13-swiyu";
 

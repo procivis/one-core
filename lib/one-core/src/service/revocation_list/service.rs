@@ -10,13 +10,13 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::{Lvvc, ValidityCredentialType};
+use crate::proto::bearer_token::validate_bearer_token;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::RevocationListService;
 use crate::service::revocation_list::dto::RevocationListId;
-use crate::util::bearer_token::validate_bearer_token;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(

@@ -151,8 +151,8 @@ mod test {
     use similar_asserts::assert_eq;
 
     use super::*;
+    use crate::proto::http_client::MockHttpClient;
     use crate::provider::caching_loader::json_ld_context::ContextCache;
-    use crate::provider::http_client::MockHttpClient;
     use crate::util::test_utilities::prepare_caching_loader;
 
     #[tokio::test]

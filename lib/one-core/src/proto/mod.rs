@@ -1,8 +1,16 @@
+pub(crate) mod bearer_token;
+pub mod bluetooth_low_energy;
 pub mod certificate_validator;
-pub mod cose;
+pub mod clock;
+pub(crate) mod cose;
 pub(crate) mod credential_schema;
 pub(crate) mod history_decorator;
+pub mod http_client;
 pub mod jwt;
 pub mod key_verification;
+pub mod mqtt_client;
+pub mod nfc;
+pub(crate) mod oauth_client;
+pub(crate) mod os_provider;
 pub mod session_provider;
 pub mod transaction_manager;

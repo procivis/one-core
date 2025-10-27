@@ -14,8 +14,8 @@ use crate::model::organisation::Organisation;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::http_client::MockHttpClient;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,

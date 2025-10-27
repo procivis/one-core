@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use super::{
     CacheError, CachingLoader, CachingLoaderError, ResolveResult, Resolver, ResolverError,
 };
-use crate::provider::http_client::HttpClient;
+use crate::proto::http_client::HttpClient;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 
 pub struct X509CrlCache {
@@ -84,9 +84,9 @@ mod test {
     use wiremock::matchers::method;
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::x509_crl::X509CrlResolver;
     use crate::provider::caching_loader::{ResolveResult, Resolver};
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
 
     #[tokio::test]
     async fn test_cached_crl_expiry() {

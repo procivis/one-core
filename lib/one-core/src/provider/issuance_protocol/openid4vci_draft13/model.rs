@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use url::Url;
 
 use crate::mapper::opt_secret_string;
+use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{
     CredentialFormat, LayoutProperties, LayoutType, RevocationMethod, WalletStorageTypeEnum,
 };
@@ -21,7 +22,6 @@ use crate::provider::issuance_protocol::model::{
     default_enable_credential_preview, default_issuance_url_scheme,
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::util::params::deserialize_encryption_key;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

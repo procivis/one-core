@@ -49,11 +49,14 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
-pub mod credential_schema_claim;
-pub mod exchange;
-pub mod oidc;
-pub mod openid4vp;
-pub mod x509;
+pub(crate) mod credential_schema_claim;
+pub(crate) mod exchange;
+pub(crate) mod identifier;
+pub(crate) mod oidc;
+pub(crate) mod openid4vp;
+pub(crate) mod params;
+pub(crate) mod timestamp;
+pub(crate) mod x509;
 
 pub const NESTED_CLAIM_MARKER: char = '/';
 pub const NESTED_CLAIM_MARKER_STR: &str = "/";

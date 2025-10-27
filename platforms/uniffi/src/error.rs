@@ -129,8 +129,8 @@ impl From<NativeKeyStorageError> for SignerError {
 }
 
 #[derive(Debug, Clone, From, Into, Error, uniffi::Error)]
-#[from(one_core::provider::bluetooth_low_energy::BleError)]
-#[into(one_core::provider::bluetooth_low_energy::BleError)]
+#[from(one_core::proto::bluetooth_low_energy::BleError)]
+#[into(one_core::proto::bluetooth_low_energy::BleError)]
 pub enum BleError {
     #[error("BLE adapter not enabled")]
     AdapterNotEnabled,
@@ -183,8 +183,8 @@ impl From<uniffi::UnexpectedUniFFICallbackError> for BleError {
 }
 
 #[derive(Debug, Clone, From, Into, Error, uniffi::Error)]
-#[from(one_core::provider::nfc::NfcError)]
-#[into(one_core::provider::nfc::NfcError)]
+#[from(one_core::proto::nfc::NfcError)]
+#[into(one_core::proto::nfc::NfcError)]
 pub enum NfcError {
     #[error("NFC Adapter not enabled")]
     NotEnabled,

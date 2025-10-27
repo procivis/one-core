@@ -7,7 +7,7 @@ where
     S: Serializer,
 {
     match dt {
-        Some(dt) => crate::util::timestamp::into_timestamp(dt, s),
+        Some(dt) => crate::mapper::timestamp::into_timestamp(dt, s),
         None => s.serialize_none(),
     }
 }

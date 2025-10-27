@@ -190,17 +190,17 @@ mod test {
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
     use crate::proto::certificate_validator::CertificateValidatorImpl;
+    use crate::proto::clock::MockClock;
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidCertificateInfo, AndroidKeyAttestationsCrl,
         CertificateStatus, MockAndroidAttestationCrlResolver,
     };
     use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-    use crate::util::clock::MockClock;
 
     // Test vector taken from here: https://github.com/android/keyattestation/blob/main/testdata/akita/sdk34/TEE_EC_NONE.pem
     static GOOGLE_CA: &str = "-----BEGIN CERTIFICATE-----

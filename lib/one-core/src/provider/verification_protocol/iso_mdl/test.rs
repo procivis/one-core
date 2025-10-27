@@ -20,8 +20,10 @@ use crate::model::credential_schema::{
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
-use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict};
+use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
+use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
@@ -36,8 +38,6 @@ use crate::provider::verification_protocol::iso_mdl::common::{
 };
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
-use crate::util::ble_resource::{BleWaiter, OnConflict};
-use crate::util::mdoc::EmbeddedCbor;
 
 #[tokio::test]
 async fn test_presentation_reject_ok() {

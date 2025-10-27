@@ -9,6 +9,7 @@ use time::Duration;
 
 use crate::config::core_config::FormatType;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -18,7 +19,6 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::sdjwt::SdJwtHolderBindingParams;
 use crate::provider::credential_formatter::sdjwt::model::KeyBindingPayload;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
-use crate::provider::http_client::HttpClient;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,

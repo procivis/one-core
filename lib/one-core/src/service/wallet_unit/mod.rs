@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
 use crate::config::core_config::CoreConfig;
+use crate::proto::clock::Clock;
+use crate::proto::os_provider::OSInfoProvider;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::os_provider::OSInfoProvider;
 use crate::provider::wallet_provider_client::WalletProviderClient;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
-use crate::util::clock::Clock;
 
 pub mod dto;
 pub mod error;

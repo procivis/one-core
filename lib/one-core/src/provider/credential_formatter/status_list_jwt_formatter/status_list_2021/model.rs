@@ -2,10 +2,10 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
+use crate::mapper::timestamp::into_timestamp;
 use crate::provider::credential_formatter::status_list_jwt_formatter::common::{
     StatusPurpose, from_timestamp,
 };
-use crate::util::timestamp::into_timestamp;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum ContentType {

@@ -1,7 +1,7 @@
 use ciborium::cbor;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 
-use crate::util::mdoc::Bstr;
+use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// NFCHandover ISO 18013-5 9.1.5.1
 #[derive(Debug, Clone, PartialEq)]

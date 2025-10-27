@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use url::Url;
 
+use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::http_client::HttpClient;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 pub async fn resolve_jwks_url(

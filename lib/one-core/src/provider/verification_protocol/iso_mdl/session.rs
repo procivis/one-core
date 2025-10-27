@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use super::common::EReaderKey;
-use crate::util::mdoc::{Bstr, EmbeddedCbor};
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, PartialEq)]
 #[repr(u8)]

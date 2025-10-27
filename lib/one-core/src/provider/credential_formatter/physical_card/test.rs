@@ -8,6 +8,7 @@ use time::{Duration, OffsetDateTime};
 
 use super::PhysicalCardFormatter;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{MockTokenVerifier, PublicKeySource};
@@ -15,7 +16,6 @@ use crate::provider::credential_formatter::physical_card::mappers::terse_bitstri
 use crate::provider::credential_formatter::physical_card::model::{
     OptiocalBarcodeCredential, TerseBitstringStatusListEntry,
 };
-use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::remote_entity_storage::{
     MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
 };

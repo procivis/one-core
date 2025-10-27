@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+pub(crate) mod ble_resource;
 pub mod low_level;
 
 #[derive(Debug, Error, Serialize, Deserialize, Clone)]

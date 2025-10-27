@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use url::Url;
 
-use crate::provider::http_client::HttpClient;
+use crate::proto::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OAuthAuthorizationServerMetadata, OAuthCodeChallengeMethod,
 };
@@ -245,7 +245,7 @@ mod tests {
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     use super::*;
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
 
     #[tokio::test]
     async fn send_authorization_request_plain() {

@@ -12,6 +12,10 @@ use one_core::config::core_config::{
 };
 use one_core::config::{ConfigError, ConfigValidationError};
 use one_core::proto::certificate_validator::CertificateValidatorImpl;
+use one_core::proto::clock::DefaultClock;
+use one_core::proto::http_client::HttpClient;
+use one_core::proto::http_client::reqwest_client::ReqwestClient;
+use one_core::proto::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -38,8 +42,6 @@ use one_core::provider::did_method::resolver::DidCachingLoader;
 use one_core::provider::did_method::universal::UniversalDidMethod;
 use one_core::provider::did_method::web::WebDidMethod;
 use one_core::provider::did_method::webvh::DidWebVh;
-use one_core::provider::http_client::HttpClient;
-use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::bbs::BBS;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -51,7 +53,6 @@ use one_core::provider::key_storage::internal::InternalKeyProvider;
 use one_core::provider::key_storage::provider::KeyProviderImpl;
 use one_core::provider::key_storage::remote_secure_element::RemoteSecureElementKeyProvider;
 use one_core::provider::key_storage::secure_element::SecureElementKeyProvider;
-use one_core::provider::mqtt_client::rumqttc_client::RumqttcClient;
 use one_core::provider::presentation_formatter::PresentationFormatter;
 use one_core::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
 use one_core::provider::presentation_formatter::ldp_vp::LdpVpPresentationFormatter;
@@ -75,7 +76,6 @@ use one_core::repository::DataRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use one_core::service::error::ServiceError;
-use one_core::util::clock::DefaultClock;
 use one_core::{
     CertificateValidatorCreator, DataProviderCreator, DataTypeCreator, DidMethodCreator,
     FormatterProviderCreator, KeyAlgorithmCreator, KeyStorageCreator, OneCoreBuildError,

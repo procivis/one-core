@@ -12,11 +12,11 @@ use time::OffsetDateTime;
 use super::SdjwtVCPresentationFormatter;
 use crate::config::core_config::{KeyAlgorithmType, VerificationProtocolType};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::provider::credential_formatter::model::{
     IdentifierDetails, MockTokenVerifier, PublicKeySource,
-};
-use crate::provider::http_client::{
-    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
 };
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;

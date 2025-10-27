@@ -7,7 +7,7 @@ use super::super::dto::{
     ServiceUUID,
 };
 use super::BleCentral;
-use crate::provider::bluetooth_low_energy::BleError;
+use crate::proto::bluetooth_low_energy::BleError;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct SubscriptionKey {

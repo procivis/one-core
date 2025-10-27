@@ -16,11 +16,10 @@ use super::{
     TransferSummaryReport,
 };
 use crate::config::core_config::TransportType;
-use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::{
-    BleCentral, TrackingBleCentral,
-};
-use crate::provider::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
+use crate::proto::bluetooth_low_energy::BleError;
+use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConflict};
+use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
+use crate::proto::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::verification_protocol::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
@@ -38,7 +37,6 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
     HolderCommonVPInteractionData, ProximityHolderTransport,
 };
-use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 
 pub(crate) struct BleHolderTransport {
     ble: BleWaiter,

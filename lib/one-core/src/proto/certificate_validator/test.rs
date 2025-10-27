@@ -14,14 +14,15 @@ use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
     CrlMode,
 };
+use crate::proto::clock::DefaultClock;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
 use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
-use crate::provider::http_client::reqwest_client::ReqwestClient;
-use crate::provider::http_client::{
-    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
-};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
@@ -29,7 +30,6 @@ use crate::provider::key_algorithm::provider::{
 use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::service::error::{ServiceError, ValidationError};
-use crate::util::clock::DefaultClock;
 
 #[tokio::test]
 async fn test_revocation_check_uses_crl_cache() {

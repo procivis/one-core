@@ -17,7 +17,7 @@ use super::dto::AzureHsmGetTokenResponse;
 use super::{AzureVaultKeyProvider, Params};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PrivateKeyJwk, PrivateKeyJwkEllipticData};
-use crate::provider::http_client::reqwest_client::ReqwestClient;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 

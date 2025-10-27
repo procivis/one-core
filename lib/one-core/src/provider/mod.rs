@@ -1,17 +1,11 @@
 pub mod blob_storage_provider;
-pub mod bluetooth_low_energy;
 pub mod caching_loader;
 pub mod credential_formatter;
 pub mod data_type;
 pub mod did_method;
-pub mod http_client;
 pub mod issuance_protocol;
 pub mod key_algorithm;
 pub mod key_storage;
-mod key_utils;
-pub mod mqtt_client;
-pub mod nfc;
-pub mod os_provider;
 pub mod presentation_formatter;
 pub mod remote_entity_storage;
 pub mod revocation;

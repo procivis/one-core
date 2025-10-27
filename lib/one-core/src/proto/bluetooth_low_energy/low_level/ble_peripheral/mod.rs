@@ -1,7 +1,7 @@
 use super::dto::{
     CharacteristicUUID, ConnectionEvent, DeviceAddress, MacAddress, ServiceDescription, ServiceUUID,
 };
-use crate::provider::bluetooth_low_energy::BleError;
+use crate::proto::bluetooth_low_energy::BleError;
 
 mod tracking_wrapper;
 pub use tracking_wrapper::TrackingBlePeripheral;

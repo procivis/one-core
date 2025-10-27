@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
-use crate::provider::http_client;
+use crate::proto::http_client;
 
 pub mod android_attestation_crl;
 pub mod json_ld_context;

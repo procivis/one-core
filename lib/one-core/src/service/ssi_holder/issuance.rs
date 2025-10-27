@@ -32,6 +32,8 @@ use crate::model::interaction::{
 };
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
+use crate::proto::os_provider::dto::OSName;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
@@ -45,13 +47,11 @@ use crate::provider::issuance_protocol::{
     IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::provider::key_storage::model::KeySecurity;
-use crate::provider::os_provider::dto::OSName;
 use crate::service::error::ServiceError::BusinessLogic;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::storage_proxy::{StorageAccess, StorageProxyImpl};
-use crate::util::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 use crate::validator::{
     throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
     throw_if_org_relation_not_matching_session,

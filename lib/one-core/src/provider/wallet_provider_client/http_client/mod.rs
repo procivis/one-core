@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use crate::provider::http_client::HttpClient;
+use crate::proto::http_client::HttpClient;
 
 mod dto;
 pub mod provider;

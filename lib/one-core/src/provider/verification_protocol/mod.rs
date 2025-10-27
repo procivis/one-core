@@ -18,23 +18,24 @@ use serde::de::Deserialize;
 use serde_json::json;
 use url::Url;
 
-use super::mqtt_client::MqttClient;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
     CoreConfig, FormatType, VerificationProtocolConfig, VerificationProtocolType,
 };
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::history_decorator::proof::ProofHistoryDecorator;
+use crate::proto::http_client::HttpClient;
+use crate::proto::mqtt_client::MqttClient;
+use crate::proto::nfc::hce::NfcHce;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::provider::verification_protocol::iso_mdl::IsoMdl;
@@ -44,7 +45,6 @@ use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
 use crate::repository::DataRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::ble_resource::BleWaiter;
 
 pub mod dto;
 pub mod error;

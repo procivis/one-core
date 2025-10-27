@@ -26,6 +26,10 @@ use crate::model::key::PublicKeyJwk;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::provider::credential_formatter::error::FormatterError;
+use crate::provider::credential_formatter::mdoc_formatter::util::{
+    EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header,
+    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
+};
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, IdentifierDetails, PublicKeySource, SignatureProvider, TokenVerifier,
     VerificationFn,
@@ -37,10 +41,6 @@ use crate::provider::presentation_formatter::model::{
     FormattedPresentation, PresentationFormatterCapabilities,
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
-use crate::util::mdoc::{
-    EmbeddedCbor, IssuerSigned, extract_certificate_from_x5chain_header,
-    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
-};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]

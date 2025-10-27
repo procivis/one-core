@@ -7,13 +7,13 @@ use shared_types::DidValue;
 use time::Duration;
 
 use crate::config::core_config::FormatType;
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::model::DecomposedToken;
 use crate::provider::credential_formatter::sdjwt_formatter::extract_credentials_internal;
-use crate::provider::http_client::HttpClient;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
 use crate::provider::presentation_formatter::model::{

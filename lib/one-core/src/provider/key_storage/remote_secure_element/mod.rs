@@ -7,6 +7,9 @@ use shared_types::KeyId;
 use super::secure_element::NativeKeyStorage;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PrivateKeyJwk, PublicKeyJwk};
+use crate::provider::key_algorithm::eddsa::{
+    eddsa_public_key_as_jwk, eddsa_public_key_as_multibase,
+};
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
@@ -16,7 +19,6 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
-use crate::provider::key_utils::{eddsa_public_key_as_jwk, eddsa_public_key_as_multibase};
 
 pub struct RemoteSecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,

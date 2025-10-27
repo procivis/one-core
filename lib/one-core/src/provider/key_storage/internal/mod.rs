@@ -9,6 +9,7 @@ use serde::Deserialize;
 use shared_types::KeyId;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::mapper::params::deserialize_encryption_key;
 use crate::model::key::{Key, PrivateKeyJwk};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -17,7 +18,6 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
-use crate::util::params::deserialize_encryption_key;
 
 #[cfg(test)]
 mod test;

@@ -29,6 +29,7 @@ use crate::model::trust_anchor::{TrustAnchor, TrustAnchorRelations};
 use crate::model::trust_entity::{
     TrustEntity, TrustEntityRelations, TrustEntityRole, TrustEntityType,
 };
+use crate::proto::bearer_token::validate_bearer_token;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
 };
@@ -45,7 +46,6 @@ use crate::service::trust_entity::dto::{
     ResolvedIdentifierTrustEntityResponseDTO, UpdateTrustEntityActionFromDidRequestDTO,
 };
 use crate::service::trust_entity::mapper::get_detail_trust_entity_response;
-use crate::util::bearer_token::validate_bearer_token;
 
 impl TrustEntityService {
     pub async fn create_trust_entity(

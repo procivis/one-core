@@ -19,9 +19,6 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::{KeyAlgorithm, parse_multibase_with_tag};
-use crate::provider::key_utils::{
-    eddsa_public_key_as_jwk, eddsa_public_key_as_multibase, x25519_public_key_as_multibase,
-};
 
 pub struct Eddsa;
 
@@ -323,4 +320,41 @@ impl PublicKeyAgreementHandle for X25519PublicKeyHandle {
     fn as_raw(&self) -> Vec<u8> {
         self.public_key.clone()
     }
+}
+
+pub(crate) fn eddsa_public_key_as_jwk(
+    public_key: &[u8],
+    curve: &str,
+    r#use: Option<JwkUse>,
+) -> Result<PublicKeyJwk, KeyHandleError> {
+    let alg = match r#use {
+        Some(JwkUse::Encryption) => Some("ECDH-ES".to_string()),
+        Some(JwkUse::Signature) => Some("EdDSA".to_string()),
+        _ => None,
+    };
+    Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        alg,
+        r#use,
+        kid: None,
+        crv: curve.to_string(),
+        x: Base64UrlSafeNoPadding::encode_to_string(public_key)
+            .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+        y: None,
+    }))
+}
+
+pub(crate) fn eddsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+    let codec = &[0xed, 0x1];
+    let key = EDDSASigner::check_public_key(public_key)
+        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let data = [codec, key.as_slice()].concat();
+    Ok(format!("z{}", bs58::encode(data).into_string()))
+}
+
+pub(crate) fn x25519_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+    let codec = &[0xec, 0x1];
+    let key = EDDSASigner::check_x25519_public_key(public_key)
+        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let data = [codec, key.as_slice()].concat();
+    Ok(format!("z{}", bs58::encode(data).into_string()))
 }

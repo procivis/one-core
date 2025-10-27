@@ -6,8 +6,8 @@ use serde_with::skip_serializing_none;
 use time::{Duration, OffsetDateTime};
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::InvalidCachedValueError;
-use crate::provider::http_client::HttpClient;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 
 /// <https://developer.android.com/privacy-and-security/security-key-attestation#certificate_status>
@@ -155,9 +155,9 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::AndroidAttestationCrlResolver;
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::android_attestation_crl::AndroidKeyAttestationsCrl;
     use crate::provider::caching_loader::{ResolveResult, Resolver};
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
 
     #[tokio::test]
     async fn test_android_crl_resolver_real_google_api() {

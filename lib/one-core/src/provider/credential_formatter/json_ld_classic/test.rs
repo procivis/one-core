@@ -18,6 +18,8 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialSchema, CredentialSchemaMetadata, Issuer, MockSignatureProvider,
     PublishedClaim, PublishedClaimValue,
@@ -26,8 +28,6 @@ use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredential
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::model::ExtractedClaim;
 use crate::provider::data_type::provider::MockDataTypeProvider;
-use crate::provider::http_client::HttpClient;
-use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::test_utilities::{dummy_did, dummy_identifier};

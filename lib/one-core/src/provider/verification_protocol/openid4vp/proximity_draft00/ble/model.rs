@@ -25,7 +25,7 @@ mod tests {
     use secrecy::SecretSlice;
 
     use super::*;
-    use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
+    use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
     use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
     use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
     use crate::provider::verification_protocol::{

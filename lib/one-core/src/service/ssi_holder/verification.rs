@@ -16,6 +16,7 @@ use crate::config::core_config::{Fields, RevocationType};
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
+use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::mapper::{
     IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation, get_or_create_identifier,
     paths_to_leafs,
@@ -52,7 +53,6 @@ use crate::service::error::{
 };
 use crate::service::ssi_holder::validator::validate_holder_capabilities;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::oidc::detect_format_with_crypto_suite;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
 };

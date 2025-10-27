@@ -29,6 +29,9 @@ use crate::proto::credential_schema::importer::{
 use crate::proto::credential_schema::parser::{
     CredentialSchemaImportParserImpl, MockCredentialSchemaImportParser,
 };
+use crate::proto::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -36,9 +39,6 @@ use crate::provider::credential_formatter::model::{
     Features, FormatterCapabilities, SelectiveDisclosure,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::http_client::{
-    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
-};
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::RevocationMethodCapabilities;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;

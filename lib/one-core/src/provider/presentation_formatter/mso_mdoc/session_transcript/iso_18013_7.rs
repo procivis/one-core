@@ -3,7 +3,7 @@ use ciborium::cbor;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use sha2::{Digest, Sha256};
 
-use crate::util::mdoc::Bstr;
+use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// ISO 18013-7 Annex B OpenID4VP Handover structure
 ///

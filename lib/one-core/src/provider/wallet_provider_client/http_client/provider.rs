@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 use shared_types::WalletUnitId;
 use url::Url;
 
-use crate::provider::http_client::Error;
+use crate::proto::http_client::Error;
 use crate::provider::wallet_provider_client::WalletProviderClient;
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;

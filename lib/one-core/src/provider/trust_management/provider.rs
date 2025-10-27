@@ -10,8 +10,8 @@ use crate::config::core_config::{ConfigFields, TrustManagementConfig, TrustManag
 use crate::model::credential::Credential;
 use crate::model::interaction::Interaction;
 use crate::model::trust_entity::TrustEntityRole;
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::trust_list::TrustListCache;
-use crate::provider::http_client::HttpClient;
 
 #[cfg_attr(test, mockall::automock)]
 pub trait TrustManagementProvider: Send + Sync {

@@ -19,13 +19,15 @@ use crate::config::core_config::VerificationEngagement;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::Interaction;
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
-use crate::provider::bluetooth_low_energy::low_level::dto::{
+use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
+use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
+use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceAddress, DeviceInfo, ServiceDescription,
 };
-use crate::provider::nfc::hce::NfcHce;
-use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
+use crate::proto::nfc::hce::NfcHce;
+use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::presentation_formatter::mso_mdoc::model::DeviceResponse;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
@@ -36,8 +38,6 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{ErrorCodeMixin, ServiceError};
-use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
-use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub(crate) struct MdocBleHolderInteractionData {

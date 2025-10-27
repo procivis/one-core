@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
-use crate::provider::nfc::scanner::NfcScanner;
+use crate::proto::nfc::scanner::NfcScanner;
 
 pub mod dto;
 mod service;

@@ -8,11 +8,13 @@ use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, IdentifierId};
 
+use crate::mapper::params::convert_params;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::CredentialFormatter;
@@ -24,7 +26,6 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -40,7 +41,6 @@ use crate::provider::revocation::token_status_list::resolver::StatusListCachingL
 use crate::provider::revocation::token_status_list::util::{
     PREFERRED_ENTRY_SIZE, calculate_preferred_token_size,
 };
-use crate::util::params::convert_params;
 
 pub mod model;
 pub mod resolver;

@@ -18,6 +18,7 @@ use super::SDJWTFormatter;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
+use crate::proto::http_client::MockHttpClient;
 use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
@@ -36,7 +37,6 @@ use crate::provider::credential_formatter::vcdm::{
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::service::test_utilities::{dummy_did, dummy_did_document, dummy_identifier, dummy_jwk};

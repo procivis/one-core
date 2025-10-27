@@ -18,13 +18,13 @@ use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
-use crate::proto::certificate_validator::CertificateValidator;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::{
-    BleCentral, TrackingBleCentral,
-};
-use crate::provider::bluetooth_low_energy::low_level::dto::{
+use crate::proto::bluetooth_low_energy::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
+use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
+use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -42,8 +42,6 @@ use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
-use crate::util::ble_resource::{BleWaiter, OnConflict, ScheduleResult};
-use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Debug, Clone)]
 pub(crate) struct VerifierSession {

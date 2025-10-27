@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use super::key_agreement_key::KeyAgreementKey;
 use crate::config::core_config::TransportType;
-use crate::provider::mqtt_client::{MqttClient, MqttTopic};
+use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;

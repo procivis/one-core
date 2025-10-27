@@ -23,6 +23,7 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
+use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, HolderBindingCtx, IdentifierDetails,
 };
@@ -46,7 +47,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
 };
-use crate::util::mdoc::MobileSecurityObject;
 use crate::validator::throw_if_latest_proof_state_not_eq;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_draft(

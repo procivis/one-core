@@ -18,8 +18,8 @@ use crate::model::credential_schema::{
 use crate::model::organisation::Organisation;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
-use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     create_claims_from_credential_definition, extract_offered_claims, parse_mdoc_schema_claims,

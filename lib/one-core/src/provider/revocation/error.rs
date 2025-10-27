@@ -5,10 +5,10 @@ use thiserror::Error;
 
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::KeyRole;
+use crate::proto::http_client;
 use crate::provider::caching_loader::ResolverError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::DidMethodProviderError;
-use crate::provider::http_client;
 use crate::provider::key_storage::error::KeyStorageProviderError;
 use crate::provider::remote_entity_storage::RemoteEntityStorageError;
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;

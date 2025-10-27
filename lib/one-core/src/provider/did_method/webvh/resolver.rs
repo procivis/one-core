@@ -4,13 +4,13 @@ use itertools::Itertools;
 use shared_types::DidValue;
 use url::Url;
 
+use crate::proto::http_client::HttpClient;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::webvh::Params;
 use crate::provider::did_method::webvh::deserialize::DidLogEntry;
 use crate::provider::did_method::webvh::verification::verify_did_log;
-use crate::provider::http_client::HttpClient;
 
 pub async fn resolve(
     did: &DidValue,
@@ -137,6 +137,7 @@ mod test {
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
     use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+    use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::credential_formatter::vcdm::VcdmProof;
     use crate::provider::did_method::DidMethod;
     use crate::provider::did_method::dto::DidDocumentDTO;
@@ -149,7 +150,6 @@ mod test {
     use crate::provider::did_method::resolver::DidCachingLoader;
     use crate::provider::did_method::webvh::common::DidLogParameters;
     use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
-    use crate::provider::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::eddsa::Eddsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;

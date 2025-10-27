@@ -4,7 +4,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::provider::credential_formatter::error::FormatterError;
 
-pub fn convert_params<T, R>(input: T) -> Result<R, FormatterError>
+pub(crate) fn convert_params<T, R>(input: T) -> Result<R, FormatterError>
 where
     T: Serialize,
     R: DeserializeOwned,
@@ -13,7 +13,9 @@ where
     serde_json::from_value(result).map_err(|e| FormatterError::Failed(e.to_string()))
 }
 
-pub fn deserialize_encryption_key<'de, D>(deserializer: D) -> Result<SecretSlice<u8>, D::Error>
+pub(crate) fn deserialize_encryption_key<'de, D>(
+    deserializer: D,
+) -> Result<SecretSlice<u8>, D::Error>
 where
     D: Deserializer<'de>,
 {

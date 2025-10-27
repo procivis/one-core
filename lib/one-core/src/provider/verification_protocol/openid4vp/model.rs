@@ -17,12 +17,12 @@ use crate::model::claim::Claim;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::proof_schema::ProofInputClaimSchema;
+use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, IdentifierDetails,
 };
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::service::key::dto::PublicKeyJwkDTO;
-use crate::util::mdoc::MobileSecurityObject;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JwePayload {

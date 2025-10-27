@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::ble_holder::ServerInfo;
 use super::device_engagement::DeviceEngagement;
-use crate::util::mdoc::EmbeddedCbor;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 
 // ISO 18013-5 8.2.2.1
 pub(super) const DEVICE_ENGAGMENT_RECORD_ID: &[u8] = b"mdoc";

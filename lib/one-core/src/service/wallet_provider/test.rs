@@ -23,6 +23,7 @@ use crate::model::wallet_unit::{
     WalletUnitStatus,
 };
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::clock::DefaultClock;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::proto::session_provider::NoSessionProvider;
@@ -44,7 +45,6 @@ use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_provider::dto::{
     RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
 };
-use crate::util::clock::DefaultClock;
 
 const BASE_URL: &str = "https://localhost";
 

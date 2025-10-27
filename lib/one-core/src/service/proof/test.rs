@@ -46,13 +46,15 @@ use crate::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
+use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
+use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
+use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
-use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::credential_formatter::{CredentialFormatter, MockCredentialFormatter};
@@ -65,7 +67,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::nfc::hce::{MockNfcHce, NfcHce};
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
@@ -98,7 +99,6 @@ use crate::service::error::{
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
-use crate::util::ble_resource::BleWaiter;
 
 #[derive(Default)]
 struct Repositories {

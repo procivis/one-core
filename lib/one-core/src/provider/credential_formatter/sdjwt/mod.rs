@@ -20,6 +20,7 @@ use crate::model::identifier::IdentifierType;
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
@@ -36,7 +37,6 @@ use crate::provider::credential_formatter::sdjwt::x5c::resolve_jwks_url;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
 

@@ -4,9 +4,9 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use self::iso_18013_7::OID4VPDraftHandover;
 use self::nfc::NFCHandover;
 use self::openid4vp_final1_0::OID4VPFinal1_0Handover;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::verification_protocol::iso_mdl::common::EReaderKey;
 use crate::provider::verification_protocol::iso_mdl::device_engagement::DeviceEngagement;
-use crate::util::mdoc::EmbeddedCbor;
 
 pub mod iso_18013_7;
 pub mod nfc;

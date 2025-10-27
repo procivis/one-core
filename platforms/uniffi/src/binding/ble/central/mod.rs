@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_core::provider::bluetooth_low_energy::low_level::dto::{
+use one_core::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicUUID, CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
     ServiceUUID,
 };

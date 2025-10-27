@@ -9,13 +9,13 @@ use super::dto::{
 };
 use crate::model::did::{Did, DidRelations, DidType};
 use crate::model::key::KeyRelations;
+use crate::proto::bearer_token::prepare_bearer_token;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::trust_entity::dto::{
     CreateTrustEntityFromDidPublisherResponseDTO, UpdateTrustEntityActionFromDidRequestDTO,
 };
-use crate::util::bearer_token::prepare_bearer_token;
 
 impl TrustEntityService {
     pub async fn create_remote_trust_entity_for_did(

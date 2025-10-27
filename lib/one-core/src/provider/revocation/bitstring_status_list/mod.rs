@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, IdentifierId};
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::mapper::params::convert_params;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
@@ -16,6 +17,7 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -23,7 +25,6 @@ use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierD
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -38,7 +39,6 @@ use crate::provider::revocation::model::{
     RevocationMethodCapabilities, RevocationUpdate,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
-use crate::util::params::convert_params;
 
 mod jwt_formatter;
 pub mod model;

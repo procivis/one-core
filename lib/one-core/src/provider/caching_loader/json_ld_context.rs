@@ -6,8 +6,8 @@ use time::OffsetDateTime;
 use time::format_description::well_known::Rfc2822;
 use time::macros::offset;
 
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
-use crate::provider::http_client::HttpClient;
 use crate::provider::remote_entity_storage::RemoteEntityStorageError;
 
 pub struct JsonLdResolver {
@@ -167,9 +167,9 @@ mod test {
     use wiremock::matchers::{headers, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    use crate::proto::http_client::MockHttpClient;
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::provider::caching_loader::json_ld_context::{JsonLdCachingLoader, JsonLdResolver};
-    use crate::provider::http_client::MockHttpClient;
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
     use crate::provider::remote_entity_storage::{
         MockRemoteEntityStorage, RemoteEntity, RemoteEntityType,
     };

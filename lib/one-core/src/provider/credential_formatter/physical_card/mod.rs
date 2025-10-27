@@ -15,6 +15,7 @@ use crate::config::core_config::{
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -24,7 +25,6 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::{
     CredentialFormatter, MetadataClaimSchema, StatusListType,
 };
-use crate::provider::http_client::HttpClient;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 

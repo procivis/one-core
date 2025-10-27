@@ -8,7 +8,9 @@ use super::validator::{
 };
 use crate::config::core_config::RevocationType;
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
+use crate::mapper::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::mapper::list_response_try_into;
+use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::model::blob::Blob;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -45,9 +47,7 @@ use crate::service::credential_schema::validator::validate_wallet_storage_type_s
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
-use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
-use crate::util::oidc::detect_format_with_crypto_suite;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use crate::validator::{
     throw_if_credential_state_eq, throw_if_org_not_matching_session,

@@ -3,13 +3,13 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use super::certificate_validator::CertificateValidator;
+use super::jwt::Jwt;
+use super::jwt::model::{JWTHeader, JWTPayload};
+use super::key_verification::KeyVerification;
 use crate::KeyProvider;
 use crate::model::did::{Did, KeyFilter, KeyRole};
-use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::{JWTHeader, JWTPayload};
-use crate::proto::key_verification::KeyVerification;
-use crate::provider::credential_formatter::model::TokenVerifier;
+use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -81,19 +81,15 @@ pub(crate) async fn validate_bearer_token(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<Jwt<BearerTokenPayload>, ServiceError> {
-    let token_signature_verification = Box::new(KeyVerification {
+    let token_signature_verification: VerificationFn = Box::new(KeyVerification {
         key_algorithm_provider,
         did_method_provider,
         key_role: KeyRole::Authentication,
         certificate_validator,
     });
 
-    let jwt: Jwt<BearerTokenPayload> = Jwt::build_from_token(
-        bearer_token,
-        Some(&(token_signature_verification as Box<dyn TokenVerifier>)),
-        None,
-    )
-    .await?;
+    let jwt: Jwt<BearerTokenPayload> =
+        Jwt::build_from_token(bearer_token, Some(&(token_signature_verification)), None).await?;
 
     // checking timestamp to prevent replay attack
     validate_expiration_time(&Some(jwt.payload.custom.timestamp), 60)

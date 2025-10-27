@@ -8,6 +8,8 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::http_client::{HttpClient, MockHttpClient};
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::{Keys, MinMax};
@@ -15,8 +17,6 @@ use crate::provider::did_method::model::AmountOfKeys;
 use crate::provider::did_method::web::{
     Params, WebDidMethod, did_value_to_url, fetch_did_web_document,
 };
-use crate::provider::http_client::reqwest_client::ReqwestClient;
-use crate::provider::http_client::{HttpClient, MockHttpClient};
 use crate::service::key::dto::{
     PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkRsaDataDTO,
 };

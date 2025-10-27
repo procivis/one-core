@@ -5,7 +5,7 @@ use super::super::dto::{
     CharacteristicUUID, ConnectionEvent, DeviceAddress, MacAddress, ServiceDescription, ServiceUUID,
 };
 use super::BlePeripheral;
-use crate::provider::bluetooth_low_energy::BleError;
+use crate::proto::bluetooth_low_energy::BleError;
 
 /// A wrapper around BlePeripheral that provides automatic cleanup functionality
 #[derive(Clone)]

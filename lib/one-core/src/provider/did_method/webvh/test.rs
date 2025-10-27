@@ -3,8 +3,8 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::*;
+use crate::proto::http_client::MockHttpClient;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::http_client::MockHttpClient;
 
 #[rstest]
 #[case("https://example.com/", "example.com")]

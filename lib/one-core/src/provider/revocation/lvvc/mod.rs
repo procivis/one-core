@@ -17,8 +17,10 @@ use uuid::fmt::Urn;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
+use crate::mapper::params::convert_params;
 use crate::model::credential::Credential;
 use crate::model::did::{KeyFilter, KeyRole};
+use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialStatus, IdentifierDetails, Issuer,
 };
@@ -27,7 +29,6 @@ use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
-use crate::provider::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -39,7 +40,6 @@ use crate::provider::revocation::model::{
     RevocationUpdate, VerifierCredentialData,
 };
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::util::params::convert_params;
 
 pub mod dto;
 pub(crate) mod holder_fetch;

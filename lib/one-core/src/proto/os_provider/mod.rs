@@ -1,6 +1,6 @@
 use std::env;
 
-use crate::provider::os_provider::dto::OSName;
+use self::dto::OSName;
 
 pub mod dto;
 

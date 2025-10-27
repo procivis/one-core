@@ -4,8 +4,8 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver, ResolverError};
-use crate::provider::http_client::HttpClient;
 
 pub struct StatusListResolver {
     pub client: Arc<dyn HttpClient>,

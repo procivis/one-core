@@ -9,11 +9,11 @@ use crate::model::credential::{
     Clearable, Credential, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::did::KeyRole;
+use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::did_method::error::DidMethodProviderError;
-use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{

@@ -33,11 +33,13 @@ use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
+use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
+use crate::proto::nfc::NfcError;
+use crate::proto::nfc::hce::NfcHce;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::nfc::NfcError;
-use crate::provider::nfc::hce::NfcHce;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
 };
@@ -50,8 +52,6 @@ use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::mapper::key_and_did_from_formatted_creds;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::util::ble_resource::{Abort, BleWaiter};
-use crate::util::mdoc::EmbeddedCbor;
 
 mod ble;
 pub(crate) mod ble_holder;

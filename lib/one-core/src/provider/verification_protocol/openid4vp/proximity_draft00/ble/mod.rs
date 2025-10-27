@@ -12,8 +12,8 @@ use uuid::Uuid;
 
 use super::dto::MessageSize;
 use super::peer_encryption::PeerEncryption;
-use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
+use crate::proto::bluetooth_low_energy::BleError;
+use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 pub mod dto;
 pub mod mappers;
 pub mod model;

@@ -4,7 +4,7 @@ use one_core::model::list_filter::{
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::proof_schema::GetProofSchemaQuery;
-use one_core::provider::bluetooth_low_energy::low_level::dto::DeviceInfo;
+use one_core::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use one_core::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, PresentationDefinitionFieldDTO,
     PresentationDefinitionRequestedCredentialResponseDTO,

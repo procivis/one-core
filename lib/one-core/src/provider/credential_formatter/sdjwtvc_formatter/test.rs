@@ -22,6 +22,9 @@ use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::vct::{
@@ -45,9 +48,6 @@ use crate::provider::did_method::key::KeyDidMethod;
 use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
 use crate::provider::did_method::resolver::DidCachingLoader;
 use crate::provider::did_method::{DidKeys, DidMethod};
-use crate::provider::http_client::{
-    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
-};
 use crate::provider::key_algorithm::eddsa::Eddsa;
 use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,

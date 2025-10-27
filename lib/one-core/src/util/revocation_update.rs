@@ -4,7 +4,7 @@ use one_dto_mapper::convert_inner;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::params::convert_params;
+use crate::mapper::params::convert_params;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{

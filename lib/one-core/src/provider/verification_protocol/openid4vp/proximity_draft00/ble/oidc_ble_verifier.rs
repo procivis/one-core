@@ -23,9 +23,10 @@ use super::{
 };
 use crate::config::core_config::TransportType;
 use crate::model::interaction::InteractionId;
-use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
-use crate::provider::bluetooth_low_energy::low_level::dto::{
+use crate::proto::bluetooth_low_energy::BleError;
+use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConflict};
+use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;
+use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
@@ -44,7 +45,6 @@ use crate::provider::verification_protocol::{
     VerificationProtocolError, deserialize_interaction_data,
 };
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::util::ble_resource::{Abort, BleWaiter, OnConflict};
 
 type ConnectionEventStream = Pin<Box<dyn Stream<Item = Vec<ConnectionEvent>> + Send>>;
 

@@ -14,6 +14,8 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
+pub(crate) mod x509;
+
 pub(crate) fn throw_if_credential_state_eq(
     credential: &Credential,
     state: CredentialStateEnum,
@@ -106,7 +108,7 @@ pub(crate) fn throw_if_endpoint_version_incompatible(
     Ok(())
 }
 
-pub fn validate_issuance_time(
+pub(crate) fn validate_issuance_time(
     issued_at: &Option<OffsetDateTime>,
     leeway: u64,
 ) -> Result<(), ServiceError> {

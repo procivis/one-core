@@ -252,17 +252,17 @@ mod tests {
     use crate::proto::certificate_validator::{
         CertificateValidationOptions, CertificateValidatorImpl,
     };
+    use crate::proto::clock::{Clock, DefaultClock, MockClock};
+    use crate::proto::http_client::reqwest_client::ReqwestClient;
     use crate::proto::jwt::Jwt;
     use crate::provider::caching_loader::android_attestation_crl::{
         AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
     };
     use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
-    use crate::provider::http_client::reqwest_client::ReqwestClient;
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-    use crate::util::clock::{Clock, DefaultClock, MockClock};
 
     static APPLE_ATTESTATION_CA: &str = "-----BEGIN CERTIFICATE-----
 MIICITCCAaegAwIBAgIQC/O+DvHN0uD7jG5yH2IXmDAKBggqhkjOPQQDAzBSMSYw

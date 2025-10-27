@@ -5,9 +5,9 @@ use uuid::Uuid;
 
 use crate::model::identifier::Identifier;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::http_client::MockHttpClient;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::remote_entity_storage::{MockRemoteEntityStorage, RemoteEntityType};

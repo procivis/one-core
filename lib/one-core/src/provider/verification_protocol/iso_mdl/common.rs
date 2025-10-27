@@ -17,11 +17,11 @@ use x25519_dalek::{EphemeralSecret, PublicKey};
 
 use super::device_engagement::DeviceEngagement;
 use crate::mapper::secret_slice;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
     Handover, SessionTranscript,
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::util::mdoc::EmbeddedCbor;
 
 #[derive(Debug, Clone)]
 pub(crate) enum Chunk {

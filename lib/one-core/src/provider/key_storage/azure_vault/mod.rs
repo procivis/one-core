@@ -23,7 +23,10 @@ use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PrivateKeyJwk, PublicKeyJwk};
-use crate::provider::http_client::HttpClient;
+use crate::proto::http_client::HttpClient;
+use crate::provider::key_algorithm::ecdsa::{
+    ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase,
+};
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, SignatureKeyHandle, SignaturePrivateKeyHandle,
     SignaturePublicKeyHandle,
@@ -37,7 +40,6 @@ use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::{
     Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
 };
-use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
 mod dto;
 mod mapper;

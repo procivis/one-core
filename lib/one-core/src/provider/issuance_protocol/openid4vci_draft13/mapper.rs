@@ -36,8 +36,8 @@ use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
     ImportCredentialSchemaRequestSchemaDTO,
 };
-use crate::provider::http_client;
-use crate::provider::http_client::HttpClient;
+use crate::proto::http_client;
+use crate::proto::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;

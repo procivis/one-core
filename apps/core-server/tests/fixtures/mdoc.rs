@@ -7,6 +7,8 @@ use indoc::indoc;
 use one_core::config::core_config::{AppConfig, DatatypeConfig, InputFormat, KeyAlgorithmType};
 use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::proto::certificate_validator::CertificateValidatorImpl;
+use one_core::proto::clock::DefaultClock;
+use one_core::proto::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
@@ -20,14 +22,12 @@ use one_core::provider::did_method::jwk::JWKDidMethod;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::provider::DidMethodProviderImpl;
 use one_core::provider::did_method::resolver::DidCachingLoader;
-use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
 use one_core::provider::remote_entity_storage::RemoteEntityType;
 use one_core::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use one_core::util::clock::DefaultClock;
 use rcgen::CertificateParams;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;

@@ -14,6 +14,7 @@ mod test;
 
 use crate::config::core_config::{FormatType, KeyAlgorithmType};
 use crate::mapper::oidc::map_to_openid4vp_format;
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_ld_classic::{
@@ -23,7 +24,6 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, Context, IdentifierDetails, Issuer, VerificationFn,
 };
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
-use crate::provider::http_client::HttpClient;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::ldp_vp::model::{
     CredentialEnvelope, LdPresentation, VerifiableCredential,

@@ -19,6 +19,7 @@ use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::model::revocation_list::RevocationListId;
+use crate::proto::nfc::NfcError;
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
@@ -28,7 +29,6 @@ use crate::provider::issuance_protocol::error::{
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
-use crate::provider::nfc::NfcError;
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::trust_management::error::TrustManagementError;

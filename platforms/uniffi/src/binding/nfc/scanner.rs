@@ -36,29 +36,29 @@ pub trait NfcScanner: Send + Sync {
 pub(crate) struct NfcScannerWrapper(pub Arc<dyn NfcScanner>);
 
 #[async_trait::async_trait]
-impl one_core::provider::nfc::scanner::NfcScanner for NfcScannerWrapper {
-    async fn is_supported(&self) -> Result<bool, one_core::provider::nfc::NfcError> {
+impl one_core::proto::nfc::scanner::NfcScanner for NfcScannerWrapper {
+    async fn is_supported(&self) -> Result<bool, one_core::proto::nfc::NfcError> {
         self.0.is_supported().await.map_err(Into::into)
     }
-    async fn is_enabled(&self) -> Result<bool, one_core::provider::nfc::NfcError> {
+    async fn is_enabled(&self) -> Result<bool, one_core::proto::nfc::NfcError> {
         self.0.is_enabled().await.map_err(Into::into)
     }
-    async fn scan(&self, message: Option<String>) -> Result<(), one_core::provider::nfc::NfcError> {
+    async fn scan(&self, message: Option<String>) -> Result<(), one_core::proto::nfc::NfcError> {
         self.0.scan(message).await.map_err(Into::into)
     }
-    async fn set_message(&self, message: String) -> Result<(), one_core::provider::nfc::NfcError> {
+    async fn set_message(&self, message: String) -> Result<(), one_core::proto::nfc::NfcError> {
         self.0.set_message(message).await.map_err(Into::into)
     }
     async fn cancel_scan(
         &self,
         error_message: Option<String>,
-    ) -> Result<(), one_core::provider::nfc::NfcError> {
+    ) -> Result<(), one_core::proto::nfc::NfcError> {
         self.0.cancel_scan(error_message).await.map_err(Into::into)
     }
     async fn transceive(
         &self,
         command_apdu: Vec<u8>,
-    ) -> Result<Vec<u8>, one_core::provider::nfc::NfcError> {
+    ) -> Result<Vec<u8>, one_core::proto::nfc::NfcError> {
         self.0.transceive(command_apdu).await.map_err(Into::into)
     }
 }

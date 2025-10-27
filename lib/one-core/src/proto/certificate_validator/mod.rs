@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
+use crate::proto::clock::Clock;
 use crate::provider::caching_loader::android_attestation_crl::AndroidAttestationCrlCache;
 use crate::provider::caching_loader::x509_crl::X509CrlCache;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::error::ServiceError;
-use crate::util::clock::Clock;
 
 pub mod parse;
 mod revocation;

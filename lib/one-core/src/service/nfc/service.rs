@@ -3,10 +3,10 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use super::NfcService;
 use super::dto::NfcScanRequestDTO;
 use crate::config::core_config::VerificationEngagement;
-use crate::provider::nfc::NfcError;
-use crate::provider::nfc::apdu::Response;
-use crate::provider::nfc::command::KnownCommand;
-use crate::provider::nfc::scanner::NfcScanner;
+use crate::proto::nfc::NfcError;
+use crate::proto::nfc::apdu::Response;
+use crate::proto::nfc::command::KnownCommand;
+use crate::proto::nfc::scanner::NfcScanner;
 use crate::service::error::{ServiceError, ValidationError};
 
 impl NfcService {

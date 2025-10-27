@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
 use one_crypto::signer::ecdsa::ECDSASigner;
@@ -11,7 +11,7 @@ use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk};
+use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
@@ -19,7 +19,6 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::model::{Features, GeneratedKey, KeyAlgorithmCapabilities};
 use crate::provider::key_algorithm::{KeyAlgorithm, parse_multibase_with_tag};
-use crate::provider::key_utils::{ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase};
 
 pub struct Ecdsa;
 
@@ -244,4 +243,39 @@ impl PrivateKeyAgreementHandle for EcdsaPrivateKeyHandle {
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         ECDSASigner::shared_secret_p256(&self.private_key, remote_jwk)
     }
+}
+
+pub(crate) fn ecdsa_public_key_as_jwk(
+    public_key: &[u8],
+    r#use: Option<JwkUse>,
+) -> Result<PublicKeyJwk, KeyHandleError> {
+    let (x, y) =
+        ECDSASigner::get_public_key_coordinates(public_key).map_err(KeyHandleError::Signer)?;
+
+    let alg = match r#use {
+        Some(JwkUse::Encryption) => Some("ECDH-ES".to_string()),
+        Some(JwkUse::Signature) => Some("ES256".to_string()),
+        _ => None,
+    };
+
+    Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        alg,
+        r#use,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: Base64UrlSafeNoPadding::encode_to_string(x)
+            .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+        y: Some(
+            Base64UrlSafeNoPadding::encode_to_string(y)
+                .map_err(|e| KeyHandleError::EncodingJwk(e.to_string()))?,
+        ),
+    }))
+}
+
+pub(crate) fn ecdsa_public_key_as_multibase(public_key: &[u8]) -> Result<String, KeyHandleError> {
+    let codec = &[0x80, 0x24];
+    let key = ECDSASigner::parse_public_key(public_key, true)
+        .map_err(|e| KeyHandleError::EncodingMultibase(e.to_string()))?;
+    let data = [codec, key.as_slice()].concat();
+    Ok(format!("z{}", bs58::encode(data).into_string()))
 }

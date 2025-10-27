@@ -14,11 +14,11 @@ use super::{
     ParsedCertificate, x509_extension,
 };
 use crate::config::core_config::KeyAlgorithmType;
+use crate::mapper::x509::{authority_key_identifier, subject_key_identifier};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
-use crate::util::x509::{authority_key_identifier, subject_key_identifier};
 
 const LEEWAY: Duration = Duration::seconds(60);
 

@@ -14,6 +14,7 @@ use super::model::{AmountOfKeys, DidCapabilities, DidDocument, Feature, Operatio
 use super::{DidCreated, DidKeys, DidMethod, DidUpdate};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::Key;
+use crate::proto::http_client::HttpClient;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::did_method::webvh::common::{
@@ -21,7 +22,6 @@ use crate::provider::did_method::webvh::common::{
 };
 use crate::provider::did_method::webvh::deserialize::DidLogEntry;
 use crate::provider::did_method::webvh::mapper::url_to_did;
-use crate::provider::http_client::HttpClient;
 use crate::provider::key_storage::provider::KeyProvider;
 
 mod common;

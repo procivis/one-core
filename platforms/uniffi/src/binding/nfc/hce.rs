@@ -39,30 +39,30 @@ pub trait NfcHce: Send + Sync {
 pub(crate) struct NfcHceWrapper(pub Arc<dyn NfcHce>);
 
 #[async_trait::async_trait]
-impl one_core::provider::nfc::hce::NfcHce for NfcHceWrapper {
-    async fn is_supported(&self) -> Result<bool, one_core::provider::nfc::NfcError> {
+impl one_core::proto::nfc::hce::NfcHce for NfcHceWrapper {
+    async fn is_supported(&self) -> Result<bool, one_core::proto::nfc::NfcError> {
         self.0.is_supported().await.map_err(Into::into)
     }
-    async fn is_enabled(&self) -> Result<bool, one_core::provider::nfc::NfcError> {
+    async fn is_enabled(&self) -> Result<bool, one_core::proto::nfc::NfcError> {
         self.0.is_enabled().await.map_err(Into::into)
     }
     async fn start_hosting(
         &self,
-        handler: Arc<dyn one_core::provider::nfc::hce::NfcHceHandler>,
+        handler: Arc<dyn one_core::proto::nfc::hce::NfcHceHandler>,
         message: Option<String>,
-    ) -> Result<(), one_core::provider::nfc::NfcError> {
+    ) -> Result<(), one_core::proto::nfc::NfcError> {
         self.0
             .start_hosting(Arc::new(handler), message)
             .await
             .map_err(Into::into)
     }
-    async fn stop_hosting(&self, success: bool) -> Result<(), one_core::provider::nfc::NfcError> {
+    async fn stop_hosting(&self, success: bool) -> Result<(), one_core::proto::nfc::NfcError> {
         self.0.stop_hosting(success).await.map_err(Into::into)
     }
 }
 
 #[async_trait::async_trait]
-impl NfcHceHandler for Arc<dyn one_core::provider::nfc::hce::NfcHceHandler> {
+impl NfcHceHandler for Arc<dyn one_core::proto::nfc::hce::NfcHceHandler> {
     fn handle_command(&self, apdu: Vec<u8>) -> Vec<u8> {
         self.as_ref().handle_command(apdu)
     }

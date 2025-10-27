@@ -5,7 +5,7 @@ use serde_with::skip_serializing_none;
 
 use super::session_transcript::SessionTranscript;
 use crate::proto::cose::CoseSign1;
-use crate::util::mdoc::{
+use crate::provider::credential_formatter::mdoc_formatter::util::{
     DataElementIdentifier, DataElementValue, EmbeddedCbor, IssuerSigned, Namespace,
 };
 

@@ -1,5 +1,5 @@
-use one_core::provider::bluetooth_low_energy::BleError;
-use one_core::provider::bluetooth_low_energy::low_level::dto::{
+use one_core::proto::bluetooth_low_energy::BleError;
+use one_core::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicUUID, ConnectionEvent, DeviceAddress, MacAddress, ServiceDescription, ServiceUUID,
 };
 use one_dto_mapper::convert_inner_of_inner;
@@ -7,7 +7,7 @@ use one_dto_mapper::convert_inner_of_inner;
 use super::BlePeripheralWrapper;
 
 #[async_trait::async_trait]
-impl one_core::provider::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral
+impl one_core::proto::bluetooth_low_energy::low_level::ble_peripheral::BlePeripheral
     for BlePeripheralWrapper
 {
     async fn is_adapter_enabled(&self) -> Result<bool, BleError> {

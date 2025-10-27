@@ -34,7 +34,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::mqtt_client::MqttClient;
+use crate::proto::mqtt_client::MqttClient;
 use crate::provider::presentation_formatter::model::{FormatPresentationCtx, FormattedPresentation,CredentialToPresent};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{Handover, SessionTranscript};
@@ -61,7 +61,7 @@ use crate::repository::proof_repository::ProofRepository;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::ble_resource::BleWaiter;
+use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::key_verification::KeyVerification;
 
 mod async_verifier_flow;

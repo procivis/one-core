@@ -9,10 +9,10 @@ use url::Url;
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
-use crate::provider::http_client::HttpClient;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,

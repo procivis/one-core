@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize, Serializer, de, ser};
 use sha2::{Digest, Sha256};
 
 use crate::model::key::PublicKeyJwk;
-use crate::util::mdoc::Bstr;
+use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// OpenID4VP Final Handover
 /// <https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#appendix-B.2.6.1>

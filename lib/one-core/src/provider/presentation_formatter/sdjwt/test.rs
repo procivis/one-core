@@ -6,10 +6,10 @@ use time::Duration;
 
 use super::SdjwtPresentationFormatter;
 use crate::config::core_config::{KeyAlgorithmType, VerificationProtocolType};
+use crate::proto::http_client::MockHttpClient;
 use crate::provider::credential_formatter::model::{
     IdentifierDetails, MockTokenVerifier, PublicKeySource,
 };
-use crate::provider::http_client::MockHttpClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;

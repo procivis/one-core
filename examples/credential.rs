@@ -1,13 +1,13 @@
 use std::sync::Arc;
 
 use one_core::model::key::Key;
+use one_core::proto::http_client::reqwest_client::ReqwestClient;
 use one_core::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, Issuer, PublishedClaim,
 };
 use one_core::provider::credential_formatter::nest_claims;
 use one_core::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use one_core::provider::did_method::DidKeys;
-use one_core::provider::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::OneDevCore;
 use one_dev_services::model::{CredentialFormat, KeyAlgorithmType, StorageType};
 use one_dev_services::service::error::CredentialServiceError;

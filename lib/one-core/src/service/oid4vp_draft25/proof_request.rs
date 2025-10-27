@@ -1,6 +1,7 @@
 use dcql::DcqlQuery;
 use url::Url;
 
+use crate::mapper::oidc::determine_response_mode_openid4vp_draft;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -9,7 +10,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
 use crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition;
-use crate::util::oidc::determine_response_mode_openid4vp_draft;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn generate_authorization_request_params_draft25(

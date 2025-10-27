@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 use super::{
     CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
 };
-use crate::provider::http_client::HttpClient;
+use crate::proto::http_client::HttpClient;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityStorage, RemoteEntityType};
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 

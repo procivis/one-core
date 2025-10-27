@@ -46,6 +46,7 @@ use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, KeyAlgorithmType, RevocationType,
 };
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
+use crate::mapper::params::convert_params;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::claim::ClaimRelations;
@@ -65,6 +66,7 @@ use crate::model::revocation_list::{
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
+use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
@@ -74,7 +76,6 @@ use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::http_client::HttpClient;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
     OpenID4VCIFinal1CredentialOfferDTO,
@@ -95,7 +96,6 @@ use crate::service::oid4vci_final1_0::dto::{
 };
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-use crate::util::params::convert_params;
 use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 use crate::validator::validate_issuance_time;

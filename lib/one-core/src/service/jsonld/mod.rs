@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
+use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{JsonLdCachingLoader, JsonLdResolver};
-use crate::provider::http_client::HttpClient;
 
 pub mod service;
 

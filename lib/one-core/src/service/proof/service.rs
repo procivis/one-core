@@ -29,6 +29,7 @@ use crate::config::validator::protocol::{
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
+use crate::mapper::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -50,8 +51,9 @@ use crate::model::proof::{
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
+use crate::proto::nfc::static_handover_handler::NfcStaticHandoverHandler;
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::nfc::static_handover_handler::NfcStaticHandoverHandler;
+use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
 use crate::provider::verification_protocol::dto::{
     PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO,
     PresentationDefinitionVersion, ShareResponse,
@@ -76,9 +78,7 @@ use crate::service::proof::validator::{
     validate_format_and_exchange_protocol_compatibility, validate_scan_to_verify_compatibility,
 };
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::util::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
-use crate::util::mdoc::EmbeddedCbor;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };

@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use super::common::EDeviceKey;
 use super::nfc::{BLE_RECORD_TYPE, BLECarrierConfigurationRecord, DEVICE_ENGAGMENT_RECORD_TYPE};
+use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::nfc::NFCHandover;
-use crate::util::mdoc::{Bstr, EmbeddedCbor};
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct DeviceEngagement {

@@ -242,7 +242,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::provider::nfc::hce::MockNfcHce;
+    use crate::proto::nfc::hce::MockNfcHce;
 
     #[test]
     fn test_capability_container_content() {

@@ -11,6 +11,7 @@ use time::OffsetDateTime;
 use url::Url;
 
 use crate::mapper::opt_secret_string;
+use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{CodeTypeEnum, LayoutProperties, WalletStorageTypeEnum};
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
@@ -18,7 +19,6 @@ use crate::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCRedirectUriParams,
     default_enable_credential_preview, default_issuance_url_scheme,
 };
-use crate::util::params::deserialize_encryption_key;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

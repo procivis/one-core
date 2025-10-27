@@ -8,13 +8,9 @@ use tokio::task::JoinHandle;
 use tracing::warn;
 use uuid::Uuid;
 
-use crate::provider::bluetooth_low_energy::BleError;
-use crate::provider::bluetooth_low_energy::low_level::ble_central::{
-    BleCentral, TrackingBleCentral,
-};
-use crate::provider::bluetooth_low_energy::low_level::ble_peripheral::{
-    BlePeripheral, TrackingBlePeripheral,
-};
+use super::BleError;
+use super::low_level::ble_central::{BleCentral, TrackingBleCentral};
+use super::low_level::ble_peripheral::{BlePeripheral, TrackingBlePeripheral};
 
 /// Represents flow that requires exclusive access to BLE
 struct Action {
@@ -54,6 +50,7 @@ impl Action {
 }
 
 /// Represents action that should be taken when another flow is using BLE
+#[expect(dead_code)]
 pub enum OnConflict {
     /// Do not abort active task
     DoNothing,
@@ -63,6 +60,7 @@ pub enum OnConflict {
     ReplaceIfSameFlow,
 }
 
+#[expect(dead_code)]
 pub enum Abort {
     Always,
     Flow(Uuid),
@@ -105,6 +103,7 @@ impl<T, E> ScheduleResult<T, E> {
     }
 }
 
+#[expect(dead_code)]
 pub struct BleStatus {
     pub central: bool,
     pub peripheral: bool,

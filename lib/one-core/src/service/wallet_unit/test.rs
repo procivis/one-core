@@ -18,8 +18,11 @@ use crate::model::wallet_unit::WalletUnitStatus;
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation,
 };
+use crate::proto::clock::DefaultClock;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
+use crate::proto::os_provider::MockOSInfoProvider;
+use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::credential_formatter::common::SignatureProvider;
@@ -29,8 +32,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::StorageGeneratedKey;
 use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
-use crate::provider::os_provider::MockOSInfoProvider;
-use crate::provider::os_provider::dto::OSName;
 use crate::provider::wallet_provider_client::MockWalletProviderClient;
 use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -46,7 +47,6 @@ use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
     HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO, WalletProviderDTO,
 };
-use crate::util::clock::DefaultClock;
 
 const BASE_URL: &str = "https://localhost";
 

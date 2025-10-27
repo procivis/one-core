@@ -24,6 +24,13 @@ use time::macros::format_description;
 use time::{Date, Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use self::util::{
+    Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
+    EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
+    MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
+    extract_algorithm_from_header, extract_certificate_from_x5chain_header,
+    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
+};
 use super::nest_claims;
 use crate::config::core_config::{
     DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
@@ -55,13 +62,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
-use crate::util::mdoc::{
-    Bstr, DataElementValue, DateTime, DeviceKey, DeviceKeyInfo, DigestAlgorithm, DigestIDs,
-    EmbeddedCbor, IssuerSigned, IssuerSignedItem, MobileSecurityObject,
-    MobileSecurityObjectVersion, Namespace, Namespaces, ValidityInfo, ValueDigests,
-    extract_algorithm_from_header, extract_certificate_from_x5chain_header,
-    try_build_algorithm_header, try_extract_holder_public_key, try_extract_mobile_security_object,
-};
+
+pub(crate) mod util;
 
 #[cfg(test)]
 mod test;

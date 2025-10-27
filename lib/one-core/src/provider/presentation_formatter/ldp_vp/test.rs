@@ -10,11 +10,11 @@ use similar_asserts::assert_eq;
 
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::proto::http_client::HttpClient;
+use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::http_client::HttpClient;
-use crate::provider::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
