@@ -138,7 +138,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -372,7 +372,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -544,7 +544,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -724,7 +724,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -924,7 +924,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1034,7 +1034,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1375,7 +1375,7 @@ async fn test_handle_invitation_mdoc() {
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1388,9 +1388,6 @@ async fn test_handle_invitation_mdoc() {
                 "jwks_uri": format!("{credential_issuer}/jwks"),
                 "response_types_supported": [
                     "token"
-                ],
-                "subject_types_supported": [
-                    "public"
                 ],
                 "token_endpoint": token_endpoint
             }
@@ -1505,7 +1502,7 @@ async fn test_handle_invitation_mdoc_with_duplicate_schema_name() {
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1713,7 +1710,7 @@ async fn test_handle_invitation_mdoc_with_duplicate_schema_id() {
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -1841,7 +1838,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_t
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -2027,7 +2024,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -2266,7 +2263,7 @@ async fn test_handle_invitation_external_sd_jwt_vc() {
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -2563,7 +2560,7 @@ async fn test_handle_invitation_authorization_code_authorization_server() {
         .await;
 
     Mock::given(method(Method::GET))
-        .and(path("/.well-known/openid-configuration"))
+        .and(path("/.well-known/oauth-authorization-server"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
                 "issuer": issuer_server_uri,
@@ -2639,7 +2636,7 @@ async fn test_handle_invitation_failure_authorization_code_authorization_server_
         .await;
 
     Mock::given(method(Method::GET))
-        .and(path("/.well-known/openid-configuration"))
+        .and(path("/.well-known/oauth-authorization-server"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
                 "issuer": issuer_server_uri,
@@ -2748,31 +2745,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
 
     // Mock OIDC configuration endpoint
     let token_endpoint = format!("{credential_issuer}/token");
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/.well-known/openid-configuration/ssi/openid4vci/final-1.0/{credential_schema_id}"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "authorization_endpoint": format!("{credential_issuer}/authorize"),
-                "grant_types_supported": [
-                    "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-                ],
-                "id_token_signing_alg_values_supported": [],
-                "issuer": credential_issuer,
-                "jwks_uri": format!("{credential_issuer}/jwks"),
-                "response_types_supported": [
-                    "token"
-                ],
-                "subject_types_supported": [
-                    "public"
-                ],
-                "token_endpoint": token_endpoint
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
 
     // Mock OAuth authorization server metadata endpoint
     Mock::given(method(Method::GET))

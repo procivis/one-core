@@ -18,7 +18,7 @@ async fn test_get_issuer_configuration_draft13() {
     let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!(
-        "{base_url}/ssi/openid4vci/draft-13/{}/.well-known/openid-configuration",
+        "{base_url}/ssi/openid4vci/draft-13/{}/.well-known/oauth-authorization-server",
         credential_schema.id
     );
     let resp = utils::client().get(url).send().await.unwrap();
@@ -59,7 +59,7 @@ async fn test_get_issuer_configuration_final1_0() {
     let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!(
-        "{base_url}/.well-known/openid-configuration/ssi/openid4vci/final-1.0/{}",
+        "{base_url}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{}",
         credential_schema.id
     );
 

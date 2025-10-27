@@ -51,7 +51,7 @@ async fn test_oauth_authorization_server_metadata() {
         context.config.app.core_base_url
     );
 
-    assert_eq!(issuer, resp["issuer"]);
+    assert_eq!(format!("{issuer}/{}", credential_schema.id), resp["issuer"]);
     assert_eq!(
         format!("{issuer}/{}/token", credential_schema.id),
         resp["token_endpoint"]
@@ -59,12 +59,12 @@ async fn test_oauth_authorization_server_metadata() {
 
     // Check response types supported
     let response_types = resp["response_types_supported"].as_array().unwrap();
-    assert_eq!(response_types.len(), 1);
+    assert_eq!(response_types.len(), 2);
     assert_eq!(response_types[0], "code");
 
     // Check grant types supported
     let grant_types = resp["grant_types_supported"].as_array().unwrap();
-    assert_eq!(grant_types.len(), 1);
+    assert_eq!(grant_types.len(), 2);
     assert_eq!(
         grant_types[0],
         "urn:ietf:params:oauth:grant-type:pre-authorized_code"
@@ -138,7 +138,7 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
         context.config.app.core_base_url
     );
 
-    assert_eq!(issuer, resp["issuer"]);
+    assert_eq!(format!("{issuer}/{}", credential_schema.id), resp["issuer"]);
     assert_eq!(
         format!("{issuer}/{}/token", credential_schema.id),
         resp["token_endpoint"]
@@ -146,12 +146,12 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
 
     // Check response types supported
     let response_types = resp["response_types_supported"].as_array().unwrap();
-    assert_eq!(response_types.len(), 1);
+    assert_eq!(response_types.len(), 2);
     assert_eq!(response_types[0], "code");
 
     // Check grant types supported
     let grant_types = resp["grant_types_supported"].as_array().unwrap();
-    assert_eq!(grant_types.len(), 1);
+    assert_eq!(grant_types.len(), 2);
     assert_eq!(
         grant_types[0],
         "urn:ietf:params:oauth:grant-type:pre-authorized_code"

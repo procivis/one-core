@@ -7,6 +7,7 @@ use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use tokio_util::either::Either;
+use url::Url;
 use uuid::Uuid;
 
 use super::OID4VCIDraft13Service;
@@ -38,23 +39,23 @@ use crate::provider::issuance_protocol::error::{
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OpenID4VCICredentialOfferDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIDraft13Params, OpenID4VCIIssuerInteractionDataDTO,
+    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OAuthAuthorizationServerMetadata,
+    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
+    OpenID4VCIDraft13Params, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINotificationEvent,
     OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
-    create_credential_offer, create_issuer_metadata_response, create_service_discovery_response,
-    get_credential_schema_base_url, oidc_issuer_create_token, parse_access_token,
-    parse_refresh_token,
+    create_credential_offer, create_issuer_metadata_response, get_credential_schema_base_url,
+    oidc_issuer_create_token, parse_access_token, parse_refresh_token,
 };
 use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO;
 use crate::service::oid4vci_draft13::mapper::interaction_data_to_dto;
 use crate::service::oid4vci_draft13::validator::{
     throw_if_access_token_invalid, throw_if_credential_request_invalid,
@@ -65,6 +66,87 @@ use crate::util::revocation_update::{generate_credential_additional_data, proces
 use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIDraft13Service {
+    pub async fn oauth_authorization_server(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
+        validate_config_entity_presence(&self.config)?;
+        let issuer = self
+            .protocol_base_url
+            .as_ref()
+            .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
+
+        let Some(credential_schema) = self
+            .credential_schema_repository
+            .get_credential_schema(
+                credential_schema_id,
+                &CredentialSchemaRelations {
+                    ..Default::default()
+                },
+            )
+            .await?
+        else {
+            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
+        };
+
+        let token_endpoint_auth_methods_supported = match credential_schema.wallet_storage_type {
+            Some(WalletStorageTypeEnum::EudiCompliant) => {
+                vec!["attest_jwt_client_auth".to_string()]
+            }
+            _ => vec![],
+        };
+
+        // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
+        // If token_endpoint_auth_methods_supported includes attest_jwt_client_auth, we MUST include these fields
+        let (
+            client_attestation_signing_alg_values_supported,
+            client_attestation_pop_signing_alg_values_supported,
+        ) = if token_endpoint_auth_methods_supported.contains(&"attest_jwt_client_auth".to_string())
+        {
+            (
+                Some(vec!["ES256".to_string()]),
+                Some(vec!["ES256".to_string()]),
+            )
+        } else {
+            (None, None)
+        };
+
+        Ok(OAuthAuthorizationServerMetadata {
+            issuer: format!("{issuer}/{credential_schema_id}")
+                .parse()
+                .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
+            authorization_endpoint: Some(
+                Url::parse(&format!("{issuer}/{credential_schema_id}/authorize")).map_err(
+                    |_| {
+                        IssuanceProtocolError::InvalidRequest(
+                            "Invalid authorization url".to_string(),
+                        )
+                    },
+                )?,
+            ),
+            token_endpoint: Some(
+                format!("{issuer}/{credential_schema_id}/token")
+                    .parse()
+                    .map_err(|e| {
+                        ServiceError::MappingError(format!("Invalid token endpoint URL: {e}"))
+                    })?,
+            ),
+            jwks_uri: Some(format!("{issuer}/{credential_schema_id}/jwks")),
+            pushed_authorization_request_endpoint: None,
+            code_challenge_methods_supported: vec![],
+            response_types_supported: vec!["code".to_string(), "token".to_string()],
+            grant_types_supported: vec![
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
+                "refresh_token".to_string(),
+            ],
+            token_endpoint_auth_methods_supported,
+            challenge_endpoint: None,
+            client_attestation_signing_alg_values_supported,
+            client_attestation_pop_signing_alg_values_supported,
+        }
+        .into())
+    }
+
     pub async fn get_issuer_metadata(
         &self,
         credential_schema_id: &CredentialSchemaId,
@@ -131,38 +213,6 @@ impl OID4VCIDraft13Service {
             credential_signing_alg_values_supported,
         )
         .map_err(Into::into)
-    }
-
-    pub async fn service_discovery(
-        &self,
-        credential_schema_id: &CredentialSchemaId,
-    ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
-        let protocol_base_url =
-            self.protocol_base_url
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Host URL not specified".to_string(),
-                ))?;
-
-        let schema = self
-            .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-        let Some(schema) = schema else {
-            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
-        };
-
-        let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
-        Ok(create_service_discovery_response(&schema_base_url)?)
     }
 
     pub async fn get_credential_offer(

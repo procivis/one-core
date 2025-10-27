@@ -264,6 +264,7 @@ mod tests {
                     ),
                     token_endpoint: None,
                     pushed_authorization_request_endpoint: None,
+                    jwks_uri: None,
                     code_challenge_methods_supported: vec![],
                     response_types_supported: vec![],
                     grant_types_supported: vec![],
@@ -332,6 +333,7 @@ mod tests {
                     ),
                     token_endpoint: None,
                     pushed_authorization_request_endpoint: None,
+                    jwks_uri: None,
                     code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
                     response_types_supported: vec![],
                     grant_types_supported: vec![],
@@ -400,6 +402,7 @@ mod tests {
                     pushed_authorization_request_endpoint: Some(
                         Url::parse(&format!("{issuer}/par")).unwrap(),
                     ),
+                    jwks_uri: None,
                     code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
                     response_types_supported: vec![],
                     grant_types_supported: vec![],
@@ -485,6 +488,7 @@ mod tests {
                     pushed_authorization_request_endpoint: Some(
                         Url::parse(&format!("{issuer}/par")).unwrap(),
                     ),
+                    jwks_uri: None,
                     code_challenge_methods_supported: vec![OAuthCodeChallengeMethod::S256],
                     response_types_supported: vec![],
                     grant_types_supported: vec![],

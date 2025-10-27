@@ -25,6 +25,7 @@ pub struct OAuthAuthorizationServerMetadataResponseDTO {
     pub issuer: String,
     pub authorization_endpoint: Option<String>,
     pub token_endpoint: Option<String>,
+    pub jwks_uri: Option<String>,
     pub pushed_authorization_request_endpoint: Option<String>,
     #[serde(default)]
     pub code_challenge_methods_supported: Vec<String>,
@@ -56,6 +57,7 @@ impl From<OAuthAuthorizationServerMetadata> for OAuthAuthorizationServerMetadata
                     OAuthCodeChallengeMethod::S256 => "S256".to_string(),
                 })
                 .collect(),
+            jwks_uri: value.jwks_uri,
             response_types_supported: value.response_types_supported,
             grant_types_supported: value.grant_types_supported,
             token_endpoint_auth_methods_supported: value.token_endpoint_auth_methods_supported,

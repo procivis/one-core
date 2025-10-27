@@ -131,7 +131,7 @@ async fn test_continue_issuance_endpoint() {
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {
@@ -379,7 +379,7 @@ async fn test_continue_issuance_endpoint_failed_invalid_authorization_server() {
 
     Mock::given(method(Method::GET))
         .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!(
             {

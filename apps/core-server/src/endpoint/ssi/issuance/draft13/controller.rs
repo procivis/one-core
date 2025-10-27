@@ -11,13 +11,14 @@ use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
     OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCICredentialResponseRestDTO, OpenID4VCIDiscoveryResponseRestDTO,
-    OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
+    OpenID4VCICredentialResponseRestDTO, OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum,
     OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO,
     OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::endpoint::ssi::issuance::draft13::dto::OpenID4VCINotificationRequestRestDTO;
+use crate::endpoint::ssi::issuance::draft13::dto::{
+    OAuthAuthorizationServerMetadataRestDTO, OpenID4VCINotificationRequestRestDTO,
+};
 use crate::router::AppState;
 
 #[utoipa::path(
@@ -52,55 +53,6 @@ pub(crate) async fn oid4vci_draft13_get_issuer_metadata(
         Ok(value) => (
             StatusCode::OK,
             Json(OpenID4VCIIssuerMetadataResponseRestDTO::from(value)),
-        )
-            .into_response(),
-        Err(ServiceError::ConfigValidationError(error)) => {
-            tracing::error!("Config validation error: {error}");
-            StatusCode::NOT_FOUND.into_response()
-        }
-        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
-            tracing::error!("Missing credential schema");
-            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
-        }
-        Err(e) => {
-            tracing::error!("Error: {:?}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
-    }
-}
-
-#[utoipa::path(
-    get,
-    path = "/ssi/openid4vci/draft-13/{id}/.well-known/openid-configuration",
-    params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
-    ),
-    responses(
-        (status = 200, description = "OK", body = OpenID4VCIDiscoveryResponseRestDTO),
-        (status = 404, description = "Credential schema not found"),
-        (status = 500, description = "Server error"),
-    ),
-    tag = "openid4vci-draft13",
-    summary = "OID4VC - Service discovery",
-    description = indoc::formatdoc! {"
-        This endpoint handles low-level mechanisms in interactions between agents.
-        Deep understanding of the involved protocols is recommended.
-    "},
-)]
-pub(crate) async fn oid4vci_draft13_service_discovery(
-    state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
-) -> Response {
-    let result = state
-        .core
-        .oid4vci_draft13_service
-        .service_discovery(&id)
-        .await;
-
-    match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(OpenID4VCIDiscoveryResponseRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
@@ -168,6 +120,58 @@ pub(crate) async fn oid4vci_draft13_get_credential_offer(
         Err(ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))) => {
             tracing::error!("Missing credential");
             StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/openid4vci/draft-13/{id}/.well-known/oauth-authorization-server",
+    params(
+        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+    ),
+    responses(
+        (status = 200, description = "OK", body = OAuthAuthorizationServerMetadataRestDTO),
+        (status = 404, description = "Credential schema not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "openid4vci-draft13",
+    summary = "OID4VC - OAuth authorization server",
+    description = indoc::formatdoc! {"
+        This endpoint handles low-level mechanisms in interactions between agents.
+        Deep understanding of the involved protocols is recommended.
+    "},
+)]
+pub(crate) async fn oid4vci_draft13_oauth_authorization_server(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result: Result<
+        one_core::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO,
+        ServiceError,
+    > = state
+        .core
+        .oid4vci_draft13_service
+        .oauth_authorization_server(&id)
+        .await;
+
+    match result {
+        Ok(value) => (
+            StatusCode::OK,
+            Json(OAuthAuthorizationServerMetadataRestDTO::from(value)),
+        )
+            .into_response(),
+        Err(ServiceError::ConfigValidationError(error)) => {
+            tracing::error!("Config validation error: {error}");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::CredentialSchema(_))) => {
+            tracing::error!("Missing credential schema");
+            (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

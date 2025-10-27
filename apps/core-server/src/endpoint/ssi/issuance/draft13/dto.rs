@@ -6,13 +6,15 @@ use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
+    OpenID4VCICredentialValueDetails, OpenID4VCIGrants,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCINotificationEvent,
     OpenID4VCINotificationRequestDTO, OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCIProofRequestDTO,
     OpenID4VCITokenResponseDTO,
 };
-use one_core::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
+use one_core::service::oid4vci_draft13::dto::{
+    OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
+};
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use secrecy::SecretString;
@@ -89,17 +91,33 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
     pub name: String,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCIDiscoveryResponseDTO)]
-pub(crate) struct OpenID4VCIDiscoveryResponseRestDTO {
+#[from(OAuthAuthorizationServerMetadataResponseDTO)]
+pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     pub issuer: String,
+    #[from(with_fn = convert_inner)]
     pub authorization_endpoint: Option<String>,
-    pub token_endpoint: String,
+    #[from(with_fn = convert_inner)]
+    pub token_endpoint: Option<String>,
+    #[from(with_fn = convert_inner)]
     pub jwks_uri: Option<String>,
+    #[from(with_fn = convert_inner)]
+    pub pushed_authorization_request_endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub code_challenge_methods_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub response_types_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub grant_types_supported: Vec<String>,
-    pub subject_types_supported: Vec<String>,
-    pub id_token_signing_alg_values_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub token_endpoint_auth_methods_supported: Vec<String>,
+    #[from(with_fn = convert_inner)]
+    pub challenge_endpoint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 #[options_not_nullable]

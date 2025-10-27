@@ -9,9 +9,8 @@ use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
     OpenID4VCICredentialRequestProofs, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants, OpenID4VCIIssuerMetadataClaimDisplay,
-    OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    OpenID4VCICredentialValueDetails, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
+    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataLogoDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
@@ -166,6 +165,8 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     #[from(with_fn = convert_inner)]
     pub token_endpoint: Option<String>,
     #[from(with_fn = convert_inner)]
+    pub jwks_uri: Option<String>,
+    #[from(with_fn = convert_inner)]
     pub pushed_authorization_request_endpoint: Option<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub code_challenge_methods_supported: Vec<String>,
@@ -181,19 +182,6 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(OpenID4VCIDiscoveryResponseDTO)]
-pub(crate) struct OpenID4VCIDiscoveryResponseRestDTO {
-    pub issuer: String,
-    pub authorization_endpoint: Option<String>,
-    pub token_endpoint: String,
-    pub jwks_uri: Option<String>,
-    pub response_types_supported: Vec<String>,
-    pub grant_types_supported: Vec<String>,
-    pub subject_types_supported: Vec<String>,
-    pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
 #[options_not_nullable]

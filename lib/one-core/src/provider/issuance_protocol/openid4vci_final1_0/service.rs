@@ -9,8 +9,8 @@ use uuid::Uuid;
 
 use super::mapper::{credentials_supported_mdoc, map_cryptographic_binding_methods_supported};
 use super::model::{
-    ExtendedSubjectDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
+    ExtendedSubjectDTO, OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
     Timestamp,
@@ -326,24 +326,6 @@ fn sdjwt_configuration(
         credential_signing_alg_values_supported: Some(credential_signing_alg_values_supported),
         ..Default::default()
     }
-}
-
-pub(crate) fn create_service_discovery_response(
-    schema_base_url: &str,
-) -> Result<OpenID4VCIDiscoveryResponseDTO, OpenID4VCIError> {
-    Ok(OpenID4VCIDiscoveryResponseDTO {
-        issuer: schema_base_url.to_owned(),
-        authorization_endpoint: Some(format!("{schema_base_url}/authorize")),
-        token_endpoint: format!("{schema_base_url}/token"),
-        jwks_uri: Some(format!("{schema_base_url}/jwks")),
-        response_types_supported: vec!["token".to_string()],
-        grant_types_supported: vec![
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
-            "refresh_token".to_string(),
-        ],
-        subject_types_supported: vec!["public".to_string()],
-        id_token_signing_alg_values_supported: vec![],
-    })
 }
 
 pub(crate) fn get_protocol_base_url(base_url: &str) -> String {

@@ -1419,7 +1419,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         let token_endpoint = format!("{credential_issuer}/token");
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -1445,7 +1445,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     } else {
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
             )))
             .respond_with(ResponseTemplate::new(404))
             .expect(1)
@@ -1579,7 +1579,7 @@ async fn inner_continue_issuance_test(
         let token_endpoint = format!("{credential_issuer}/token");
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
             )))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
@@ -1605,7 +1605,7 @@ async fn inner_continue_issuance_test(
     } else {
         Mock::given(method(Method::GET))
             .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-configuration"
+                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
             )))
             .respond_with(ResponseTemplate::new(404))
             .expect(1)

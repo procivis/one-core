@@ -59,7 +59,7 @@ pub(crate) struct OAuthAuthorizationServerMetadata {
     pub authorization_endpoint: Option<Url>,
     pub token_endpoint: Option<Url>,
     pub pushed_authorization_request_endpoint: Option<Url>,
-
+    pub jwks_uri: Option<String>,
     #[serde(default)]
     pub code_challenge_methods_supported: Vec<OAuthCodeChallengeMethod>,
     #[serde(default)]
@@ -384,22 +384,6 @@ pub struct OpenID4VCINotificationRequestDTO {
     pub notification_id: String,
     pub event: OpenID4VCINotificationEvent,
     pub event_description: Option<String>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub struct OpenID4VCIDiscoveryResponseDTO {
-    pub issuer: String,
-    pub authorization_endpoint: Option<String>,
-    pub token_endpoint: String,
-    pub jwks_uri: Option<String>,
-    #[serde(default)]
-    pub response_types_supported: Vec<String>,
-    #[serde(default)]
-    pub grant_types_supported: Vec<String>,
-    #[serde(default)]
-    pub subject_types_supported: Vec<String>,
-    #[serde(default)]
-    pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
 #[skip_serializing_none]

@@ -6,6 +6,7 @@ use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
 use tokio_util::either::Either;
+use url::Url;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -49,17 +50,15 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::map_proof_t
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OAuthAuthorizationServerMetadata,
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestProofs,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO,
-    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params, OpenID4VCIIssuerInteractionDataDTO,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent,
-    OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    Timestamp,
+    OpenID4VCICredentialValueDetails, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
+    OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
-    create_credential_offer, create_issuer_metadata_response, create_service_discovery_response,
-    get_credential_schema_base_url, oidc_issuer_create_token, parse_access_token,
-    parse_refresh_token,
+    create_credential_offer, create_issuer_metadata_response, oidc_issuer_create_token,
+    parse_access_token, parse_refresh_token,
 };
 use crate::provider::revocation::model::{CredentialRevocationState, Operation};
 use crate::service::credential::dto::WalletUnitAttestationDTO;
@@ -151,38 +150,6 @@ impl OID4VCIFinal1_0Service {
         .map_err(Into::into)
     }
 
-    pub async fn service_discovery(
-        &self,
-        credential_schema_id: &CredentialSchemaId,
-    ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
-        let protocol_base_url =
-            self.protocol_base_url
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Host URL not specified".to_string(),
-                ))?;
-
-        let schema = self
-            .credential_schema_repository
-            .get_credential_schema(
-                credential_schema_id,
-                &CredentialSchemaRelations {
-                    claim_schemas: Some(ClaimSchemaRelations::default()),
-                    ..Default::default()
-                },
-            )
-            .await?;
-
-        let Some(schema) = schema else {
-            return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
-        };
-
-        let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
-        Ok(create_service_discovery_response(&schema_base_url)?)
-    }
-
     pub async fn oauth_authorization_server(
         &self,
         credential_schema_id: &CredentialSchemaId,
@@ -229,10 +196,18 @@ impl OID4VCIFinal1_0Service {
         };
 
         Ok(OAuthAuthorizationServerMetadata {
-            issuer: issuer
+            issuer: format!("{issuer}/{credential_schema_id}")
                 .parse()
                 .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
-            authorization_endpoint: None,
+            authorization_endpoint: Some(
+                Url::parse(&format!("{issuer}/{credential_schema_id}/authorize")).map_err(
+                    |_| {
+                        IssuanceProtocolError::InvalidRequest(
+                            "Invalid authorization url".to_string(),
+                        )
+                    },
+                )?,
+            ),
             token_endpoint: Some(
                 format!("{issuer}/{credential_schema_id}/token")
                     .parse()
@@ -240,11 +215,13 @@ impl OID4VCIFinal1_0Service {
                         ServiceError::MappingError(format!("Invalid token endpoint URL: {e}"))
                     })?,
             ),
+            jwks_uri: Some(format!("{issuer}/{credential_schema_id}/jwks")),
             pushed_authorization_request_endpoint: None,
             code_challenge_methods_supported: vec![],
-            response_types_supported: vec!["code".to_string()],
+            response_types_supported: vec!["code".to_string(), "token".to_string()],
             grant_types_supported: vec![
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),
+                "refresh_token".to_string(),
             ],
             token_endpoint_auth_methods_supported,
             challenge_endpoint: None,

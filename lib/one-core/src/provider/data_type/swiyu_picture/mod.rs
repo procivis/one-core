@@ -55,7 +55,7 @@ impl DataType for SwiyuPictureDataType {
     ) -> Result<ExtractionResult, DataTypeError> {
         match value {
             serde_json::Value::String(value) if self.valid_swiyu_picture(value) => Ok(
-                ExtractionResult::Value(format!("data:image/jpeg;base64,{}", value)),
+                ExtractionResult::Value(format!("data:image/jpeg;base64,{value}")),
             ),
             _ => Ok(ExtractionResult::NotApplicable),
         }

@@ -366,8 +366,8 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(ssi::issuance::draft13::controller::oid4vci_draft13_get_issuer_metadata),
             )
             .route(
-                "/ssi/openid4vci/draft-13/{id}/.well-known/openid-configuration",
-                get(ssi::issuance::draft13::controller::oid4vci_draft13_service_discovery),
+                "/ssi/openid4vci/draft-13/{id}/.well-known/oauth-authorization-server",
+                get(ssi::issuance::draft13::controller::oid4vci_draft13_oauth_authorization_server),
             )
             .route(
                 "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}",
@@ -388,10 +388,6 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             .route(
                 "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_issuer_metadata),
-            )
-            .route(
-                "/.well-known/openid-configuration/ssi/openid4vci/final-1.0/{id}",
-                get(ssi::issuance::final1_0::controller::oid4vci_final1_0_service_discovery),
             )
             .route(
                 "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{id}",
@@ -421,8 +417,8 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_get_issuer_metadata),
             )
             .route(
-                "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-configuration",
-                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_service_discovery),
+                "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/oauth-authorization-server",
+                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_oauth_authorization_server),
             )
             .route(
                 "/ssi/openid4vci/draft-13-swiyu/{credential_schema_id}/offer/{credential_id}",

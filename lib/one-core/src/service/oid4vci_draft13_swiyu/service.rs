@@ -2,14 +2,22 @@ use shared_types::{CredentialId, CredentialSchemaId};
 
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
-    OpenID4VCITokenResponseDTO,
+    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::service::error::ServiceError;
+use crate::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO;
 use crate::service::oid4vci_draft13_swiyu::OID4VCIDraft13SwiyuService;
 use crate::service::oid4vci_draft13_swiyu::dto::OpenID4VCISwiyuCredentialResponseDTO;
 
 impl OID4VCIDraft13SwiyuService {
+    pub async fn oauth_authorization_server(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
+        self.inner
+            .oauth_authorization_server(credential_schema_id)
+            .await
+    }
     pub async fn get_issuer_metadata(
         &self,
         credential_schema_id: &CredentialSchemaId,
@@ -45,13 +53,6 @@ impl OID4VCIDraft13SwiyuService {
             });
 
         Ok(metadata)
-    }
-
-    pub async fn service_discovery(
-        &self,
-        credential_schema_id: &CredentialSchemaId,
-    ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
-        self.inner.service_discovery(credential_schema_id).await
     }
 
     pub async fn get_credential_offer(

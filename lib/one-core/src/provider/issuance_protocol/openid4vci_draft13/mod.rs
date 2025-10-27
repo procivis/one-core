@@ -76,11 +76,12 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     parse_credential_issuer_params,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
-    ExtendedSubjectDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIDraft13Params,
-    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
+    ExtendedSubjectDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
+    OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDraft13Params, OpenID4VCIGrants,
+    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO, OpenID4VCIProofRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
 };
@@ -2032,7 +2033,7 @@ async fn get_discovery_and_issuer_metadata(
     };
 
     let token_endpoint_future = async {
-        let url = append_url_path(".well-known/openid-configuration")?;
+        let url = append_url_path(".well-known/oauth-authorization-server")?;
         let response = client
             .get(&url)
             .send()
@@ -2043,17 +2044,22 @@ async fn get_discovery_and_issuer_metadata(
         if response.status.0 == 404 {
             // Fallback for https://datatracker.ietf.org/doc/html/rfc8414#section-3,
             // since there is no specification where to obtain the token endpoint
-            // if the issuer is not providing .well-known/openid-configuration
+            // if the issuer is not providing .well-known/oauth-authorization-server
             Ok(format!("{credential_issuer_endpoint}/token"))
         } else {
-            let oidc_discovery: OpenID4VCIDiscoveryResponseDTO = response
+            let oidc_discovery: OAuthAuthorizationServerMetadata = response
                 .error_for_status()
                 .context("status error")
                 .map_err(IssuanceProtocolError::Transport)?
                 .json()
                 .context("parsing error")
                 .map_err(IssuanceProtocolError::Transport)?;
-            Ok(oidc_discovery.token_endpoint)
+            Ok(oidc_discovery
+                .token_endpoint
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing token endpoint".to_string(),
+                ))?
+                .to_string())
         }
     };
 

@@ -2,6 +2,7 @@
 //! https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
 
 use std::collections::HashMap;
+use std::future;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -29,8 +30,8 @@ use super::openid4vci_final1_0::mapper::{
     get_credential_offer_url, parse_credential_issuer_params,
 };
 use super::openid4vci_final1_0::model::{
-    ChallengeResponseDTO, HolderInteractionData, OpenID4VCIAuthorizationCodeGrant,
-    OpenID4VCICredentialRequestDTO, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIFinal1Params,
+    ChallengeResponseDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
+    OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialRequestDTO, OpenID4VCIFinal1Params,
     OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
@@ -1858,7 +1859,6 @@ async fn get_discovery_and_issuer_metadata(
             .context("parsing error")
             .map_err(IssuanceProtocolError::Transport)
     }
-
     let prepend_well_known_path = |well_known_path_segment: &str| -> String {
         let origin = {
             let mut url = credential_issuer_endpoint.clone();
@@ -1872,74 +1872,74 @@ async fn get_discovery_and_issuer_metadata(
         format!("{origin}.well-known/{well_known_path_segment}{path}")
     };
 
-    let oauth_authorization_server_metadata_future = async {
-        let oauth_authorization_server_metadata_endpoint =
-            prepend_well_known_path("oauth-authorization-server");
+    let oauth_authorization_server_endpoint = prepend_well_known_path("oauth-authorization-server");
+    let issuer_metadata_endpoint = prepend_well_known_path("openid-credential-issuer");
+    let token_fallback_endpoint = format!("{credential_issuer_endpoint}/token");
 
-        let response: Result<OAuthAuthorizationServerMetadataResponseDTO, IssuanceProtocolError> =
-            client
-                .get(&oauth_authorization_server_metadata_endpoint)
-                .send()
-                .await
-                .context("send error")
-                .map_err(IssuanceProtocolError::Transport)
-                .and_then(|response| {
-                    response
-                        .error_for_status()
-                        .context("status error")
-                        .map_err(IssuanceProtocolError::Transport)
-                        .and_then(|response| {
-                            response
-                                .json()
-                                .context("parsing error")
-                                .map_err(IssuanceProtocolError::Transport)
-                        })
-                });
+    let (token_endpoint, oauth_metadata_response) = {
+        let oauth_metadata_response = client
+            .get(&oauth_authorization_server_endpoint)
+            .send()
+            .await
+            .context("send error")
+            .map_err(IssuanceProtocolError::Transport);
 
-        match response {
-            Ok(response) => Ok(Some(response)),
-            Err(error) => {
-                tracing::warn!("Failed to fetch OAuth authorization server metadata: {error}");
-                Ok(None)
+        match oauth_metadata_response {
+            Err(e) => {
+                tracing::warn!("Failed to fetch oauth authorization server: {e}");
+                (token_fallback_endpoint, None)
+            }
+            Ok(resp) if resp.status.0 == 404 => (token_fallback_endpoint, None),
+            Ok(resp) => {
+                let parsed = resp
+                    .error_for_status()
+                    .context("status error")
+                    .map_err(IssuanceProtocolError::Transport)
+                    .and_then(|ok| {
+                        ok.json()
+                            .context("parsing error")
+                            .map_err(IssuanceProtocolError::Transport)
+                    });
+
+                match parsed {
+                    Ok(doc @ OAuthAuthorizationServerMetadata { .. }) => {
+                        let token = match doc.token_endpoint.clone() {
+                            Some(t) => t.to_string(),
+                            None => {
+                                tracing::warn!(
+                                    "Oauth authorization server missing token endpoint, using fallback"
+                                );
+                                token_fallback_endpoint
+                            }
+                        };
+                        let dto: OAuthAuthorizationServerMetadataResponseDTO = doc.into();
+                        (token, Some(dto))
+                    }
+                    Err(e) => {
+                        tracing::warn!("Failed to parse Oauth authorization server: {e}");
+                        (token_fallback_endpoint, None)
+                    }
+                }
             }
         }
     };
 
-    let token_endpoint_future = async {
-        let openid_configuration_endpoint = prepend_well_known_path("openid-configuration");
+    let token_endpoint_future =
+        future::ready::<Result<String, IssuanceProtocolError>>(Ok(token_endpoint.clone()));
+    let oauth_authorization_server_metadata_future = future::ready::<
+        Result<Option<OAuthAuthorizationServerMetadataResponseDTO>, IssuanceProtocolError>,
+    >(Ok(oauth_metadata_response.clone()));
 
-        let response = client
-            .get(&openid_configuration_endpoint)
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?;
+    let issuer_metadata_future =
+        fetch::<OpenID4VCIIssuerMetadataResponseDTO>(client, issuer_metadata_endpoint);
 
-        if response.status.0 == 404 {
-            // Fallback for https://datatracker.ietf.org/doc/html/rfc8414#section-3,
-            // since there is no specification where to obtain the token endpoint
-            // if the issuer is not providing .well-known/openid-configuration
-            Ok(format!("{credential_issuer_endpoint}/token"))
-        } else {
-            let oidc_discovery: OpenID4VCIDiscoveryResponseDTO = response
-                .error_for_status()
-                .context("status error")
-                .map_err(IssuanceProtocolError::Transport)?
-                .json()
-                .context("parsing error")
-                .map_err(IssuanceProtocolError::Transport)?;
-            Ok(oidc_discovery.token_endpoint)
-        }
-    };
-
-    let issuer_metadata_endpoint = prepend_well_known_path("openid-credential-issuer");
-
-    let issuer_metadata = fetch(client, issuer_metadata_endpoint);
-    tokio::try_join!(
+    let (token_endpoint, issuer_metadata, oauth_metadata_opt) = tokio::try_join!(
         token_endpoint_future,
-        issuer_metadata,
+        issuer_metadata_future,
         oauth_authorization_server_metadata_future
-    )
+    )?;
+
+    Ok((token_endpoint, issuer_metadata, oauth_metadata_opt))
 }
 
 async fn create_and_store_interaction(

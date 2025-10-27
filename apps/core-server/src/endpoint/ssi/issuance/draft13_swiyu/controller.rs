@@ -10,11 +10,12 @@ use shared_types::{CredentialId, CredentialSchemaId};
 
 use super::dto::{
     OpenID4VCICredentialOfferRestDTO, OpenID4VCICredentialRequestRestDTO,
-    OpenID4VCIDiscoveryResponseRestDTO, OpenID4VCIErrorResponseRestDTO,
-    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCISwiyuCredentialResponseRestDTO,
-    OpenID4VCITokenRequestRestDTO, OpenID4VCITokenResponseRestDTO,
+    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCISwiyuCredentialResponseRestDTO, OpenID4VCITokenRequestRestDTO,
+    OpenID4VCITokenResponseRestDTO,
 };
 use crate::dto::error::ErrorResponseRestDTO;
+use crate::endpoint::ssi::issuance::draft13::dto::OAuthAuthorizationServerMetadataRestDTO;
 use crate::extractor::QsOrForm;
 use crate::router::AppState;
 
@@ -69,36 +70,39 @@ pub(crate) async fn oid4vci_draft13_swiyu_get_issuer_metadata(
 
 #[utoipa::path(
     get,
-    path = "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-configuration",
+    path = "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/oauth-authorization-server",
     params(
         ("id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VCIDiscoveryResponseRestDTO),
+        (status = 200, description = "OK", body = OAuthAuthorizationServerMetadataRestDTO),
         (status = 404, description = "Credential schema not found"),
         (status = 500, description = "Server error"),
     ),
     tag = "openid4vci-draft13-swiyu",
-    summary = "OID4VC - Service discovery",
+    summary = "OID4VC - OAuth authorization server",
     description = indoc::formatdoc! {"
         This endpoint handles low-level mechanisms in interactions between agents.
         Deep understanding of the involved protocols is recommended.
     "},
 )]
-pub(crate) async fn oid4vci_draft13_swiyu_service_discovery(
+pub(crate) async fn oid4vci_draft13_swiyu_oauth_authorization_server(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
 ) -> Response {
-    let result = state
+    let result: Result<
+        one_core::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO,
+        ServiceError,
+    > = state
         .core
         .oid4vci_draft13_swiyu_service
-        .service_discovery(&id)
+        .oauth_authorization_server(&id)
         .await;
 
     match result {
         Ok(value) => (
             StatusCode::OK,
-            Json(OpenID4VCIDiscoveryResponseRestDTO::from(value)),
+            Json(OAuthAuthorizationServerMetadataRestDTO::from(value)),
         )
             .into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
