@@ -131,7 +131,7 @@ pub(crate) async fn get_trust_entity_details(
         ("bearer" = [])
     ),
     summary = "List trust entities",
-    description = "Returns a list of trust entities in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of trust entities in an organization.",
 )]
 #[require_permissions(Permission::TrustEntityList)]
 pub(crate) async fn get_trust_entities(

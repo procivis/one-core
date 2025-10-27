@@ -81,7 +81,7 @@ pub(crate) async fn get_credential_schema(
         ("bearer" = [])
     ),
     summary = "List credential schemas",
-    description = "Returns a list of credential schemas in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of credential schemas in an organization.",
 )]
 #[require_permissions(Permission::CredentialSchemaList)]
 pub(crate) async fn get_credential_schema_list(

@@ -148,7 +148,7 @@ pub(crate) async fn delete_identifier(
         ("bearer" = [])
     ),
     summary = "List identifiers",
-    description = "Returns a list of identifiers within an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of identifiers within an organization.",
 )]
 #[require_permissions(Permission::IdentifierList)]
 pub(crate) async fn get_identifier_list(

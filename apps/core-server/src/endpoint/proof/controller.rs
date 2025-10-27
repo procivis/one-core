@@ -142,7 +142,7 @@ pub(crate) async fn delete_proof(
         ("bearer" = [])
     ),
     summary = "List proof requests",
-    description = "Returns a list of proof requests in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of proof requests in an organization.",
 )]
 #[require_permissions(Permission::ProofList)]
 pub(crate) async fn get_proofs(

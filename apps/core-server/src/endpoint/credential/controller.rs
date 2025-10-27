@@ -91,7 +91,7 @@ pub(crate) async fn get_credential(
         ("bearer" = [])
     ),
     summary = "List credentials",
-    description = "Returns a list of credentials within an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of credentials within an organization.",
 )]
 #[require_permissions(Permission::CredentialList)]
 pub(crate) async fn get_credential_list(

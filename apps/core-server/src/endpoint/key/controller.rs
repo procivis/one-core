@@ -98,7 +98,7 @@ pub(crate) async fn post_key(
         ("bearer" = [])
     ),
     summary = "List keys",
-    description = "Returns a list of keys created in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of keys created in an organization.",
 )]
 #[require_permissions(Permission::KeyList)]
 pub(crate) async fn get_key_list(

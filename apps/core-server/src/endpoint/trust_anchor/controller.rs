@@ -82,7 +82,7 @@ pub(crate) async fn get_trust_anchor(
         ("bearer" = [])
     ),
     summary = "List trust anchors",
-    description = "Returns a list of trust anchors in an organization. See the [filtering](/reference/api/filtering) guide for handling list endpoints.",
+    description = "Returns a list of trust anchors in an organization.",
 )]
 #[require_permissions(Permission::TrustAnchorList)]
 pub(crate) async fn get_trust_anchors(
