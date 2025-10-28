@@ -30,8 +30,9 @@ walletProvider:
               ]
             enforceProductionBuild: false
           lifetime:
-            expirationTime: 86400 # 24*60*60 seconds
+            expirationTime: 2678400 # 31 days
             minimumRefreshTime: 60
+          revocationMethod: TOKENSTATUSLIST
           required: false
         appVersion:
           minimum: "v1.0.0"

@@ -72,6 +72,7 @@ pub(super) struct WalletUnitAttestationParams {
     pub android: Option<AndroidBundle>,
     pub ios: Option<IOSBundle>,
     pub lifetime: Lifetime,
+    pub revocation_method: Option<String>,
     #[serde(default)]
     pub integrity_check: IntegrityCheck,
     // Information for wallet whether it enforce having a wallet unit attestation when starting app

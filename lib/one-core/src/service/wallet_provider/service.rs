@@ -7,6 +7,21 @@ use shared_types::{EntityId, IdentifierId, OrganisationId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+use super::WalletProviderService;
+use super::app_integrity::android::validate_attestation_android;
+use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
+use super::dto::{
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, NoncePayload,
+    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO, WalletProviderParams,
+    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
+    WalletUnitAttestationMetadataDTO,
+};
+use super::error::WalletProviderError;
+use super::mapper::{
+    map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
+};
+use super::validator::{validate_org_wallet_provider, validate_revocation_method};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
 use crate::mapper::list_response_into;
@@ -33,23 +48,6 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::{
     EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
 };
-use crate::service::wallet_provider::WalletProviderService;
-use crate::service::wallet_provider::app_integrity::android::validate_attestation_android;
-use crate::service::wallet_provider::app_integrity::ios::{
-    validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig,
-};
-use crate::service::wallet_provider::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, NoncePayload,
-    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO, WalletProviderParams,
-    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
-    WalletUnitAttestationMetadataDTO,
-};
-use crate::service::wallet_provider::error::WalletProviderError;
-use crate::service::wallet_provider::mapper::{
-    map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
-};
-use crate::service::wallet_provider::validator::validate_org_wallet_provider;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
     validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
@@ -682,6 +680,9 @@ impl WalletProviderService {
                 key: wallet_provider.to_string(),
                 source,
             })?;
+
+        validate_revocation_method(self.config.as_ref(), &wallet_provider_config_params)?;
+
         Ok((wallet_provider_config, wallet_provider_config_params))
     }
 
