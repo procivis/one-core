@@ -1,4 +1,4 @@
-use one_core::model::credential_schema::{CredentialSchemaType, WalletStorageTypeEnum};
+use one_core::model::credential_schema::WalletStorageTypeEnum;
 use one_core::repository::error::DataLayerError;
 use similar_asserts::assert_eq;
 
@@ -53,10 +53,6 @@ async fn test_create_credential_schema_success() {
     assert_eq!(
         credential_schema.schema_id,
         format!("{}/ssi/schema/v1/{id}", context.config.app.core_base_url)
-    );
-    assert_eq!(
-        credential_schema.schema_type,
-        CredentialSchemaType::ProcivisOneSchema2024
     );
 }
 

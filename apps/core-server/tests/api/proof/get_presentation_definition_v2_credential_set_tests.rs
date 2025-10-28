@@ -1,6 +1,6 @@
 use dcql::{ClaimQuery, CredentialQuery, CredentialSet, DcqlQuery};
 use one_core::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaType};
+use one_core::model::credential_schema::CredentialSchema;
 use one_core::model::identifier::Identifier;
 use one_core::model::organisation::Organisation;
 use serde_json::json;
@@ -293,7 +293,6 @@ async fn simple_schema(
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
                 format: Some("SD_JWT_VC".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )

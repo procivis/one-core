@@ -13,12 +13,11 @@ use uuid::Uuid;
 use super::OID4VCIDraft13Service;
 use super::dto::OpenID4VCICredentialResponseDTO;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{self, IssuanceProtocolType};
+use crate::config::core_config::{self, FormatType, IssuanceProtocolType};
 use crate::mapper::exchange::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
     get_exchange_param_token_expires_in,
 };
-use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::mapper::{
     IdentifierRole, get_or_create_did_and_identifier, get_or_create_key_identifier,
 };
@@ -26,9 +25,7 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::credential_schema::{
-    CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
@@ -182,7 +179,6 @@ impl OID4VCIDraft13Service {
             .get_fields(&schema.format)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
             .r#type;
-        let oidc_format = map_to_openid4vp_format(&format_type).map(|s| s.to_string())?;
 
         let formatter = self
             .formatter_provider
@@ -202,7 +198,7 @@ impl OID4VCIDraft13Service {
 
         create_issuer_metadata_response(
             &base_url,
-            &oidc_format,
+            &format_type,
             &schema,
             &self.config,
             &self.did_method_provider.supported_method_names(),
@@ -748,8 +744,14 @@ impl OID4VCIDraft13Service {
                     .await?;
             }
 
+            let credential_format_type = self
+                .config
+                .format
+                .get_fields(credential_schema.format.as_str())?
+                .r#type;
+
             // we add refresh token for mdoc
-            if credential_schema.schema_type == CredentialSchemaType::Mdoc {
+            if credential_format_type == FormatType::Mdoc {
                 response.refresh_token = Some(generate_new_token());
                 response.refresh_token_expires_in =
                     Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));

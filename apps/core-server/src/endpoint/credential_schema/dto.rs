@@ -47,64 +47,12 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     /// format. This is the semantic identifier for the credential type, not
     /// the database ID of this schema record.
     pub schema_id: String,
-    /// System-assigned schema type for credential validation. Automatically
-    /// set based on the credential format.
-    pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
-    pub external_schema: bool,
 }
-
-/// Part of the `credentialSchema` property.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, From, Into)]
-#[from(one_core::service::credential::dto::CredentialSchemaType)]
-#[into(one_core::service::credential::dto::CredentialSchemaType)]
-pub(crate) enum CredentialSchemaType {
-    ProcivisOneSchema2024,
-    FallbackSchema2024,
-    #[serde(rename = "mdoc")]
-    Mdoc,
-    SdJwtVc,
-    #[serde(untagged)]
-    Other(String),
-}
-
-impl From<String> for CredentialSchemaType {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
-            "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
-            "SdJwtVc" => CredentialSchemaType::SdJwtVc,
-            "mdoc" => CredentialSchemaType::Mdoc,
-            _ => Self::Other(value),
-        }
-    }
-}
-
-impl utoipa::PartialSchema for CredentialSchemaType {
-    fn schema() -> utoipa::openapi::RefOr<utoipa::openapi::schema::Schema> {
-        let known = utoipa::openapi::ObjectBuilder::new()
-            .schema_type(utoipa::openapi::schema::SchemaType::Type(
-                utoipa::openapi::Type::String,
-            ))
-            .enum_values(Some([
-                "ProcivisOneSchema2024",
-                "FallbackSchema2024",
-                "SdJwtVc",
-                "mdoc",
-            ]));
-
-        utoipa::openapi::schema::OneOfBuilder::new()
-            .item(known)
-            .item(utoipa::schema!(String))
-            .into()
-    }
-}
-
-impl utoipa::ToSchema for CredentialSchemaType {}
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -132,16 +80,12 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     /// format. This is the semantic identifier for the credential type, not
     /// the database ID of this schema record.
     pub schema_id: String,
-    /// System-assigned schema type for credential validation. Automatically
-    /// set based on the credential format.
-    pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
-    pub external_schema: bool,
 }
 
 #[options_not_nullable]
@@ -482,8 +426,6 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub schema_id: String,
     #[try_into(infallible)]
     pub imported_source_url: String,
-    #[try_into(infallible)]
-    pub schema_type: CredentialSchemaType,
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
@@ -493,8 +435,6 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
-    #[try_into(infallible)]
-    pub external_schema: bool,
 }
 
 #[options_not_nullable]

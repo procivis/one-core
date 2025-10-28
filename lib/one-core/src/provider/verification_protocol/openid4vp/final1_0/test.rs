@@ -12,7 +12,7 @@ use super::OpenID4VPFinal1_0;
 use super::model::{Params, PresentationVerifierParams};
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -132,7 +132,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
 
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
-                    external_schema: false,
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -143,7 +142,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "test_schema_id".to_string(),
-                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     imported_source_url: "test_imported_src_url".to_string(),
                     allow_suspension: false,
                     claim_schemas: None,

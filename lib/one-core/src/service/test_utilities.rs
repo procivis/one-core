@@ -15,8 +15,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -324,7 +323,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            external_schema: false,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "format".to_string(),
@@ -345,7 +343,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             organisation: Some(dummy_organisation(None)),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -496,7 +493,6 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-        external_schema: false,
         imported_source_url: "CORE_URL".to_string(),
         format: "format".to_string(),
         revocation_method: "format".to_string(),
@@ -504,7 +500,6 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
     }

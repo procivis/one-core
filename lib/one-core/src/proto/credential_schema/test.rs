@@ -8,8 +8,8 @@ use uuid::Uuid;
 use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, GetCredentialSchemaList,
-    LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList, LayoutType,
+    WalletStorageTypeEnum,
 };
 use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
@@ -106,11 +106,9 @@ fn test_parse_import_credential_schema_success() {
             }],
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             schema_id: "http://example.com/schema".to_string(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             layout_type: Some(LayoutType::Card),
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
-            external_schema: false,
             allow_suspension: Some(true),
         },
     };
@@ -194,11 +192,9 @@ fn test_parse_import_with_nested_claims_success() {
             }],
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             schema_id: "http://example.com/schema".to_string(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             layout_type: Some(LayoutType::Card),
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
-            external_schema: false,
             allow_suspension: Some(true),
         },
     };
@@ -240,10 +236,8 @@ async fn test_importer_import_credential_schema_success() {
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
-        external_schema: false,
     };
     let credential_schema_id = credential_schema.id;
 
@@ -299,10 +293,8 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
-        external_schema: false,
     };
 
     let existing_schema_clone = existing_schema.clone();
@@ -365,10 +357,8 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
-        external_schema: false,
     };
 
     let existing_schema_clone = existing_schema.clone();

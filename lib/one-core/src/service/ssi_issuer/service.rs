@@ -25,6 +25,8 @@ use crate::service::ssi_issuer::mapper::{
     get_url_with_fragment,
 };
 
+pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
+
 impl SSIIssuerService {
     pub async fn get_json_ld_context(
         &self,
@@ -129,6 +131,13 @@ impl SSIIssuerService {
             return Err(EntityNotFoundError::CredentialSchema(credential_schema_id).into());
         };
 
+        let config = self.config.format.get_fields(&credential_schema.format)?;
+        if ![FormatType::JsonLdBbsPlus, FormatType::JsonLdClassic].contains(&config.r#type) {
+            return Err(ServiceError::ValidationError(
+                "Invalid credential format".to_string(),
+            ));
+        }
+
         let claim_schemas =
             credential_schema
                 .claim_schemas
@@ -147,13 +156,12 @@ impl SSIIssuerService {
         );
 
         let schema_name = credential_schema.name.to_case(Case::Pascal);
-        let schema_type = credential_schema.schema_type.to_string();
 
         let mut entities = HashMap::from([
             (
-                schema_type.to_owned(),
+                W3C_SCHEMA_TYPE.to_owned(),
                 JsonLDEntityDTO::Inline(JsonLDInlineEntityDTO {
-                    id: get_url_with_fragment(&base_url, &schema_type)?,
+                    id: get_url_with_fragment(&base_url, W3C_SCHEMA_TYPE)?,
                     r#type: None,
                     context: Some(JsonLDContextDTO {
                         version: None,

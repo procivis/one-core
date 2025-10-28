@@ -10,7 +10,6 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
-use crate::service::credential::dto::CredentialSchemaType;
 use crate::service::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaListItemResponseDTO,
 };
@@ -147,7 +146,6 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
 }

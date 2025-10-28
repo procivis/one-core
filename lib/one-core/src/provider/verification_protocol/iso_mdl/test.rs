@@ -14,9 +14,7 @@ use crate::config::core_config::VerificationEngagement;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
@@ -149,7 +147,6 @@ async fn test_presentation_reject_ok() {
                     id: Uuid::new_v4().into(),
                     created_date: OffsetDateTime::now_utc(),
                     imported_source_url: "CORE_URL".to_string(),
-                    external_schema: false,
                     last_modified: OffsetDateTime::now_utc(),
                     deleted_at: None,
                     name: "".to_string(),
@@ -159,7 +156,6 @@ async fn test_presentation_reject_ok() {
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id,
-                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     claim_schemas: None,
                     organisation: None,
                     allow_suspension: true,
@@ -354,9 +350,7 @@ async fn test_get_presentation_definition_ok() {
         format: "ISO_MDL".to_string(),
         revocation_method: "NONE".to_string(),
         layout_type: LayoutType::Card,
-        external_schema: false,
         schema_id: schema_id.clone(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         organisation: Some(dummy_organisation(Some(organisation_id))),
         layout_properties: None,
         claim_schemas: Some(claim_schemas.values().cloned().collect()),

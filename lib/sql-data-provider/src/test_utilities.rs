@@ -18,7 +18,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::blob::BlobType;
-use crate::entity::credential_schema::{CredentialSchemaType, LayoutType, WalletStorageType};
+use crate::entity::credential_schema::{LayoutType, WalletStorageType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::interaction::InteractionType;
@@ -120,7 +120,6 @@ pub async fn insert_credential_schema_to_database(
         id: Set(new_id.to_owned()),
         imported_source_url: Set("CORE_URL".to_string()),
         created_date: Set(get_dummy_date()),
-        external_schema: Set(false),
         last_modified: Set(get_dummy_date()),
         format: Set(format.to_owned()),
         name: Set(name.to_owned()),
@@ -130,7 +129,6 @@ pub async fn insert_credential_schema_to_database(
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
-        schema_type: Set(CredentialSchemaType::ProcivisOneSchema2024),
         schema_id: Set(new_id.to_string()),
         allow_suspension: Set(true),
     }

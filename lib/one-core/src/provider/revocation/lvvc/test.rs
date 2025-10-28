@@ -11,7 +11,7 @@ use wiremock::matchers::{header_regex, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
@@ -96,7 +96,6 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
-            external_schema: false,
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
@@ -106,7 +105,6 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "schema_id".to_string(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             imported_source_url: "URL".to_string(),
             allow_suspension: true,
             claim_schemas: None,

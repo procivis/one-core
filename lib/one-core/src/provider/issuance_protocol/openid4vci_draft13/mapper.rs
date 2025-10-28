@@ -324,120 +324,6 @@ pub(crate) fn get_parent_claim_paths(path: &str) -> Vec<&str> {
         .collect::<Vec<&str>>()
 }
 
-pub(crate) fn map_to_import_claim_schema(
-    now: OffsetDateTime,
-    claim: CredentialClaimSchemaDTO,
-) -> ImportCredentialSchemaClaimSchemaDTO {
-    ImportCredentialSchemaClaimSchemaDTO {
-        id: Uuid::new_v4(),
-        created_date: now,
-        last_modified: now,
-        key: claim.key,
-        datatype: claim.datatype,
-        required: claim.required,
-        array: Some(claim.array),
-        claims: claim
-            .claims
-            .into_iter()
-            .map(|c| map_to_import_claim_schema(now, c))
-            .collect(),
-    }
-}
-
-pub(crate) fn map_to_import_credential_schema_request(
-    now: OffsetDateTime,
-    schema_id: String,
-    imported_source_url: String,
-    organisation: Organisation,
-    credential_schema: CredentialSchemaDetailResponseDTO,
-) -> Result<ImportCredentialSchemaRequestDTO, ValidationError> {
-    Ok(ImportCredentialSchemaRequestDTO {
-        organisation,
-        schema: ImportCredentialSchemaRequestSchemaDTO {
-            id: Uuid::new_v4(),
-            created_date: now,
-            last_modified: now,
-            name: credential_schema.name,
-            format: credential_schema.format,
-            revocation_method: credential_schema.revocation_method,
-            organisation_id: Uuid::from(credential_schema.organisation_id),
-            claims: credential_schema
-                .claims
-                .into_iter()
-                .map(|cs| map_to_import_claim_schema(now, cs))
-                .collect(),
-            external_schema: false,
-            schema_type: credential_schema.schema_type.into(),
-            wallet_storage_type: credential_schema.wallet_storage_type,
-            layout_type: credential_schema.layout_type,
-            layout_properties: credential_schema
-                .layout_properties
-                .map(map_layout_properties_to_import_credential_schema_request)
-                .transpose()?,
-            schema_id,
-            imported_source_url,
-            allow_suspension: Some(false),
-        },
-    })
-}
-
-fn map_layout_properties_to_import_credential_schema_request(
-    layout_properties: CredentialSchemaLayoutPropertiesRequestDTO,
-) -> Result<ImportCredentialSchemaLayoutPropertiesDTO, ValidationError> {
-    Ok(ImportCredentialSchemaLayoutPropertiesDTO {
-        background: layout_properties
-            .background
-            .map(map_layout_properties_background)
-            .transpose()?,
-        logo: layout_properties
-            .logo
-            .map(map_layout_properties_logo)
-            .transpose()?,
-        primary_attribute: layout_properties.primary_attribute,
-        secondary_attribute: layout_properties.secondary_attribute,
-        picture_attribute: layout_properties.picture_attribute,
-        code: layout_properties.code.map(map_layout_code),
-    })
-}
-
-fn map_layout_properties_background(
-    bg: CredentialSchemaBackgroundPropertiesRequestDTO,
-) -> Result<
-    crate::proto::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO,
-    ValidationError,
-> {
-    Ok(
-        crate::proto::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO {
-            color: bg.color,
-            image: bg.image.map(TryInto::try_into).transpose()?,
-        },
-    )
-}
-
-fn map_layout_properties_logo(
-    logo: CredentialSchemaLogoPropertiesRequestDTO,
-) -> Result<
-    crate::proto::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO,
-    ValidationError,
-> {
-    Ok(
-        crate::proto::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO {
-            font_color: logo.font_color,
-            background_color: logo.background_color,
-            image: logo.image.map(TryInto::try_into).transpose()?,
-        },
-    )
-}
-
-fn map_layout_code(
-    code: CredentialSchemaCodePropertiesRequestDTO,
-) -> CredentialSchemaCodePropertiesDTO {
-    CredentialSchemaCodePropertiesDTO {
-        attribute: code.attribute,
-        r#type: code.r#type.into(),
-    }
-}
-
 fn parse_schema_element(
     key: &str,
     item: &OpenID4VCICredentialSubjectItem,
@@ -556,16 +442,14 @@ pub(crate) async fn fetch_procivis_schema(
 pub(crate) fn from_create_request(
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    schema_type: String,
 ) -> Result<CredentialSchema, IssuanceProtocolError> {
-    from_create_request_with_id(Uuid::new_v4().into(), request, organisation, schema_type)
+    from_create_request_with_id(Uuid::new_v4().into(), request, organisation)
 }
 
 fn from_create_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    schema_type: String,
 ) -> Result<CredentialSchema, IssuanceProtocolError> {
     if request.claims.is_empty() {
         return Err(IssuanceProtocolError::Failed(
@@ -586,7 +470,6 @@ fn from_create_request_with_id(
         format: request.format,
         wallet_storage_type: request.wallet_storage_type,
         revocation_method: request.revocation_method,
-        external_schema: request.external_schema,
         claim_schemas: Some(
             claim_schemas
                 .into_iter()
@@ -604,7 +487,6 @@ fn from_create_request_with_id(
         ),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
-        schema_type: schema_type.into(),
         imported_source_url: request.imported_source_url,
         schema_id: request.schema_id,
         organisation: Some(organisation),
@@ -1215,4 +1097,116 @@ pub(crate) fn parse_credential_issuer_params(
             ConfigParsingError::GeneralParsingError("Credential issuer params missing".to_string()),
         ))?
         .map_err(|e| ConfigError::Parsing(ConfigParsingError::GeneralParsingError(e.to_string())))
+}
+
+pub(crate) fn map_to_import_credential_schema_request(
+    now: OffsetDateTime,
+    schema_id: String,
+    imported_source_url: String,
+    organisation: Organisation,
+    credential_schema: CredentialSchemaDetailResponseDTO,
+) -> Result<ImportCredentialSchemaRequestDTO, ValidationError> {
+    Ok(ImportCredentialSchemaRequestDTO {
+        organisation,
+        schema: ImportCredentialSchemaRequestSchemaDTO {
+            id: Uuid::new_v4(),
+            created_date: now,
+            last_modified: now,
+            name: credential_schema.name,
+            format: credential_schema.format,
+            revocation_method: credential_schema.revocation_method,
+            organisation_id: Uuid::from(credential_schema.organisation_id),
+            claims: credential_schema
+                .claims
+                .into_iter()
+                .map(|cs| map_to_import_claim_schema(now, cs))
+                .collect(),
+            wallet_storage_type: credential_schema.wallet_storage_type,
+            layout_type: credential_schema.layout_type,
+            layout_properties: credential_schema
+                .layout_properties
+                .map(map_layout_properties_to_import_credential_schema_request)
+                .transpose()?,
+            schema_id,
+            imported_source_url,
+            allow_suspension: Some(false),
+        },
+    })
+}
+
+pub(crate) fn map_to_import_claim_schema(
+    now: OffsetDateTime,
+    claim: CredentialClaimSchemaDTO,
+) -> ImportCredentialSchemaClaimSchemaDTO {
+    ImportCredentialSchemaClaimSchemaDTO {
+        id: Uuid::new_v4(),
+        created_date: now,
+        last_modified: now,
+        key: claim.key,
+        datatype: claim.datatype,
+        required: claim.required,
+        array: Some(claim.array),
+        claims: claim
+            .claims
+            .into_iter()
+            .map(|c| map_to_import_claim_schema(now, c))
+            .collect(),
+    }
+}
+
+fn map_layout_properties_to_import_credential_schema_request(
+    layout_properties: CredentialSchemaLayoutPropertiesRequestDTO,
+) -> Result<ImportCredentialSchemaLayoutPropertiesDTO, ValidationError> {
+    Ok(ImportCredentialSchemaLayoutPropertiesDTO {
+        background: layout_properties
+            .background
+            .map(map_layout_properties_background)
+            .transpose()?,
+        logo: layout_properties
+            .logo
+            .map(map_layout_properties_logo)
+            .transpose()?,
+        primary_attribute: layout_properties.primary_attribute,
+        secondary_attribute: layout_properties.secondary_attribute,
+        picture_attribute: layout_properties.picture_attribute,
+        code: layout_properties.code.map(map_layout_code),
+    })
+}
+
+fn map_layout_properties_background(
+    bg: CredentialSchemaBackgroundPropertiesRequestDTO,
+) -> Result<
+    crate::proto::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO,
+    ValidationError,
+> {
+    Ok(
+        crate::proto::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO {
+            color: bg.color,
+            image: bg.image.map(TryInto::try_into).transpose()?,
+        },
+    )
+}
+
+fn map_layout_properties_logo(
+    logo: CredentialSchemaLogoPropertiesRequestDTO,
+) -> Result<
+    crate::proto::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO,
+    ValidationError,
+> {
+    Ok(
+        crate::proto::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO {
+            font_color: logo.font_color,
+            background_color: logo.background_color,
+            image: logo.image.map(TryInto::try_into).transpose()?,
+        },
+    )
+}
+
+fn map_layout_code(
+    code: CredentialSchemaCodePropertiesRequestDTO,
+) -> CredentialSchemaCodePropertiesDTO {
+    CredentialSchemaCodePropertiesDTO {
+        attribute: code.attribute,
+        r#type: code.r#type.into(),
+    }
 }

@@ -19,8 +19,7 @@ use crate::model::credential::{
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -199,7 +198,6 @@ fn generic_credential() -> Credential {
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
-            external_schema: false,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
@@ -214,7 +212,6 @@ fn generic_credential() -> Credential {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -279,13 +276,11 @@ fn generic_credential_list_entity() -> Credential {
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
-            external_schema: false,
             revocation_method: "NONE".to_string(),
             claim_schemas: None,
             organisation: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -3350,7 +3345,6 @@ fn generate_credential_schema_with_claim_schemas(
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: now,
-        external_schema: false,
         last_modified: now,
         name: "nested".to_string(),
         format: "".to_string(),
@@ -3358,7 +3352,6 @@ fn generate_credential_schema_with_claim_schemas(
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "".to_string(),
         claim_schemas: Some(claim_schemas),
         organisation: None,
@@ -3936,7 +3929,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
             last_modified: now,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
@@ -3951,7 +3943,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -4503,7 +4494,6 @@ async fn test_get_credential_success_array_index_sorting() {
             deleted_at: None,
             created_date: now,
             last_modified: now,
-            external_schema: false,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
@@ -4520,7 +4510,6 @@ async fn test_get_credential_success_array_index_sorting() {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -4823,7 +4812,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             last_modified: now,
             name: "schema".to_string(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             format: "MDOC".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
@@ -4838,7 +4826,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -5043,7 +5030,6 @@ async fn test_get_credential_success_array_single_element() {
             last_modified: now,
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
-            external_schema: false,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
@@ -5059,7 +5045,6 @@ async fn test_get_credential_success_array_single_element() {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),
@@ -5171,12 +5156,10 @@ async fn test_create_credential_array(
         name: "str array".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
-        external_schema: false,
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         claim_schemas: Some(
             claim_schemas
                 .iter()

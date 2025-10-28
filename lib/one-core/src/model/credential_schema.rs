@@ -31,41 +31,12 @@ pub struct CredentialSchema {
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
-    pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     pub allow_suspension: bool,
-    pub external_schema: bool,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub organisation: Option<Organisation>,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Display)]
-pub enum CredentialSchemaType {
-    #[strum(serialize = "ProcivisOneSchema2024")]
-    ProcivisOneSchema2024,
-    #[strum(serialize = "FallbackSchema2024")]
-    FallbackSchema2024,
-    #[strum(serialize = "mdoc")]
-    Mdoc,
-    #[strum(serialize = "SdJwtVc")]
-    SdJwtVc,
-    #[strum(serialize = "{0}")]
-    #[serde(untagged)]
-    Other(String),
-}
-
-impl From<String> for CredentialSchemaType {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
-            "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
-            "SdJwtVc" => CredentialSchemaType::SdJwtVc,
-            "mdoc" => CredentialSchemaType::Mdoc,
-            _ => Self::Other(value),
-        }
-    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

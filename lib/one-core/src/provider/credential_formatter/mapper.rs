@@ -24,6 +24,8 @@ use crate::service::credential::dto::{
 };
 use crate::service::error::ServiceError;
 
+pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn credential_data_from_credential_detail_response(
     credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
@@ -81,7 +83,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
 
     let credential_schema = CredentialSchema {
         id: schema.schema_id,
-        r#type: schema.schema_type.to_string(),
+        r#type: W3C_SCHEMA_TYPE.to_string(),
         metadata: layout_metadata,
     };
 

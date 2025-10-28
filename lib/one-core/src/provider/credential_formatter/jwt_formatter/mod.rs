@@ -25,7 +25,7 @@ use crate::config::core_config::{
     RevocationType, VerificationProtocolType,
 };
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::StatusListType;
 use crate::proto::jwt::Jwt;
@@ -347,10 +347,8 @@ impl CredentialFormatter for JWTFormatter {
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            external_schema: false,
             claim_schemas: Some(claim_schemas),
             organisation: None,
         };

@@ -72,12 +72,10 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             imported_source_url: Set(value.imported_source_url),
             format: Set(value.format),
             revocation_method: Set(value.revocation_method),
-            external_schema: Set(value.external_schema),
             organisation_id: Set(organisation_id),
             wallet_storage_type: Set(convert_inner(value.wallet_storage_type)),
             layout_type: Set(value.layout_type.into()),
             layout_properties: Set(convert_inner(value.layout_properties)),
-            schema_type: Set(value.schema_type.into()),
             schema_id: Set(value.schema_id),
             allow_suspension: Set(value.allow_suspension),
         })
@@ -131,7 +129,6 @@ pub(super) fn credential_schema_from_models(
         created_date: credential_schema.created_date,
         last_modified: credential_schema.last_modified,
         name: credential_schema.name,
-        external_schema: credential_schema.external_schema,
         wallet_storage_type: convert_inner(credential_schema.wallet_storage_type),
         format: credential_schema.format,
         revocation_method: credential_schema.revocation_method,
@@ -143,7 +140,6 @@ pub(super) fn credential_schema_from_models(
         } else {
             convert_inner(credential_schema.layout_properties)
         },
-        schema_type: credential_schema.schema_type.into(),
         imported_source_url: credential_schema.imported_source_url,
         schema_id: credential_schema.schema_id,
         allow_suspension: credential_schema.allow_suspension,

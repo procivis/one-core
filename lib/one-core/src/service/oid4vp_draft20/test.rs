@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::OID4VPDraft20Service;
 use crate::config::core_config::CoreConfig;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -194,7 +194,6 @@ async fn test_presentation_definition_success() {
                                 deleted_at: None,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
-                                external_schema: false,
                                 name: "Credential1".to_owned(),
                                 format: "JWT".to_owned(),
                                 revocation_method: "NONE".to_owned(),
@@ -203,7 +202,6 @@ async fn test_presentation_definition_success() {
                                 organisation: None,
                                 layout_type: LayoutType::Card,
                                 layout_properties: None,
-                                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                                 schema_id: "CredentialSchemaId".to_owned(),
                                 allow_suspension: true,
                             }),

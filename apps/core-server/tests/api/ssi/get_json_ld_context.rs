@@ -2,6 +2,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 
 #[tokio::test]
 async fn test_get_json_ld_context_success() {
@@ -12,7 +13,15 @@ async fn test_get_json_ld_context_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test schema", &organisation, "NONE", Default::default())
+        .create(
+            "test schema",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("JSON_LD_CLASSIC".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN
@@ -77,7 +86,15 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_claims("test schema", &organisation, "NONE", Default::default())
+        .create_with_nested_claims(
+            "test schema",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("JSON_LD_CLASSIC".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN
@@ -135,7 +152,15 @@ async fn test_get_json_ld_context_special_chars_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_special_chars("test schema", &organisation, "NONE", Default::default())
+        .create_special_chars(
+            "test schema",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("JSON_LD_CLASSIC".to_string()),
+                ..Default::default()
+            },
+        )
         .await;
 
     // WHEN
@@ -158,4 +183,34 @@ async fn test_get_json_ld_context_special_chars_success() {
         resp["@context"]["first name#"]["@id"],
         format!("{core_base_url}/ssi/context/v1/{credential_schema_id}#first%20name%23",)
     );
+}
+
+#[tokio::test]
+async fn test_get_json_ld_context_credential_invalid_format() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test schema",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                format: Some("MDOC".to_string()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .get_json_ld_context(credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
 }

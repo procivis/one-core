@@ -3,7 +3,7 @@ use shared_types::{BlobId, CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
 
 use crate::entity::credential;
-use crate::entity::credential_schema::{CredentialSchemaType, LayoutProperties, WalletStorageType};
+use crate::entity::credential_schema::{LayoutProperties, WalletStorageType};
 use crate::entity::identifier::{IdentifierState, IdentifierType};
 
 #[derive(FromQueryResult)]
@@ -32,9 +32,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
     pub credential_schema_schema_id: String,
     pub credential_schema_imported_source_url: String,
-    pub credential_schema_schema_type: CredentialSchemaType,
     pub credential_schema_allow_suspension: bool,
-    pub credential_schema_external_schema: bool,
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
 
     pub issuer_identifier_id: Option<IdentifierId>,

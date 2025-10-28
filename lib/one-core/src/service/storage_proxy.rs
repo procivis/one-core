@@ -10,7 +10,7 @@ use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaQuery,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
 };
 use crate::model::did::Did;
 use crate::model::identifier::{
@@ -62,7 +62,6 @@ pub(crate) trait StorageProxy: Send + Sync {
     async fn get_schema(
         &self,
         schema_id: &str,
-        schema_type: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<CredentialSchema>>;
 
@@ -187,13 +186,11 @@ impl StorageProxy for StorageProxyImpl {
     async fn get_schema(
         &self,
         schema_id: &str,
-        schema_type: &str,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<CredentialSchema>> {
         self.credential_schemas
             .get_by_schema_id_and_organisation(
                 schema_id,
-                CredentialSchemaType::from(schema_type.to_string()),
                 organisation_id,
                 &CredentialSchemaRelations {
                     claim_schemas: Some(Default::default()),

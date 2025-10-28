@@ -14,7 +14,7 @@ use crate::model::identifier::Identifier;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::model::{PublishedClaim, PublishedClaimValue};
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, CredentialRole, CredentialSchemaType, CredentialStateEnum,
+    CredentialDetailResponseDTO, CredentialRole, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
     DetailCredentialSchemaResponseDTO,
 };
@@ -42,10 +42,8 @@ fn generate_credential_detail_response(
             name: "".to_string(),
             format: "".to_string(),
             revocation_method: "".to_string(),
-            external_schema: false,
             organisation_id: Uuid::new_v4().into(),
             wallet_storage_type: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             layout_type: None,
             schema_id: "".to_string(),
             layout_properties: None,
@@ -147,10 +145,8 @@ fn generate_credential_matching_detail(
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
             schema_id: detail.schema.schema_id,
-            schema_type: detail.schema.schema_type.into(),
             imported_source_url: detail.schema.imported_source_url,
             allow_suspension: detail.schema.allow_suspension,
-            external_schema: detail.schema.external_schema,
             claim_schemas: None,
             organisation: None,
         }),

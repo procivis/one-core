@@ -18,7 +18,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::OpenID4VP20HTTP;
 use super::model::OpenID4Vp20Params;
 use crate::config::core_config::{CoreConfig, FormatType, KeyAlgorithmType};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -348,7 +348,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
                 claim_schemas: None,
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
-                    external_schema: false,
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
@@ -359,7 +358,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "test_schema_id".to_string(),
-                    schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                     imported_source_url: "test_imported_src_url".to_string(),
                     allow_suspension: false,
                     claim_schemas: None,

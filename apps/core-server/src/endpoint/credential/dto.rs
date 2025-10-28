@@ -19,8 +19,7 @@ use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::credential_schema::dto::{
     CredentialClaimSchemaResponseRestDTO, CredentialSchemaLayoutPropertiesRestDTO,
-    CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO, CredentialSchemaType,
-    WalletStorageTypeRestEnum,
+    CredentialSchemaLayoutType, CredentialSchemaListItemResponseRestDTO, WalletStorageTypeRestEnum,
 };
 use crate::endpoint::identifier::dto::GetIdentifierListItemResponseRestDTO;
 use crate::serialize::{front_time, front_time_option};
@@ -181,7 +180,6 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
     /// Part of the `credentialSchema` property.
     pub schema_id: String,
-    pub schema_type: CredentialSchemaType,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[from(with_fn = convert_inner)]

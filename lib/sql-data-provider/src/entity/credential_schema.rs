@@ -21,121 +21,15 @@ pub struct Model {
     pub format: String,
     pub revocation_method: String,
     pub wallet_storage_type: Option<WalletStorageType>,
-    pub external_schema: bool,
     pub organisation_id: OrganisationId,
     #[sea_orm(column_type = "Text")]
     pub layout_type: LayoutType,
     #[sea_orm(column_type = "Json")]
     pub layout_properties: Option<LayoutProperties>,
-    pub schema_type: CredentialSchemaType,
     pub schema_id: String,
     pub imported_source_url: String,
     #[serde(deserialize_with = "bool_from_int")]
     pub allow_suspension: bool,
-}
-
-#[derive(Debug, Clone, EnumIter, From, Into, PartialEq, Eq, Deserialize)]
-#[from(model::credential_schema::CredentialSchemaType)]
-#[into(model::credential_schema::CredentialSchemaType)]
-pub enum CredentialSchemaType {
-    ProcivisOneSchema2024,
-    FallbackSchema2024,
-    Mdoc,
-    SdJwtVc,
-    Other(String),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CredentialSchemaTypeEnum;
-
-impl sea_orm::sea_query::Iden for CredentialSchemaTypeEnum {
-    #[allow(clippy::unwrap_used)]
-    fn unquoted(&self, s: &mut dyn std::fmt::Write) {
-        write!(s, "CredentialSchemaType").unwrap();
-    }
-}
-
-impl sea_orm::ActiveEnum for CredentialSchemaType {
-    type Value = String;
-    type ValueVec = Vec<String>;
-
-    fn name() -> sea_orm::sea_query::DynIden {
-        sea_orm::sea_query::SeaRc::new(CredentialSchemaTypeEnum) as _
-    }
-
-    fn to_value(&self) -> Self::Value {
-        match self {
-            Self::ProcivisOneSchema2024 => "ProcivisOneSchema2024",
-            Self::FallbackSchema2024 => "FallbackSchema2024",
-            Self::SdJwtVc => "SdJwtVc",
-            Self::Mdoc => "mdoc",
-            Self::Other(val) => val,
-        }
-        .to_owned()
-    }
-
-    fn try_from_value(v: &Self::Value) -> std::result::Result<Self, sea_orm::DbErr> {
-        match v.as_ref() {
-            "ProcivisOneSchema2024" => Ok(Self::ProcivisOneSchema2024),
-            "FallbackSchema2024" => Ok(Self::FallbackSchema2024),
-            "SdJwtVc" => Ok(Self::SdJwtVc),
-            "mdoc" => Ok(Self::Mdoc),
-            val => Ok(Self::Other(val.to_owned())),
-        }
-    }
-
-    fn db_type() -> sea_orm::ColumnDef {
-        sea_orm::prelude::ColumnTypeTrait::def(sea_orm::ColumnType::string(Some(1)))
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl Into<sea_orm::sea_query::Value> for CredentialSchemaType {
-    fn into(self) -> sea_orm::sea_query::Value {
-        <Self as sea_orm::ActiveEnum>::to_value(&self).into()
-    }
-}
-
-impl sea_orm::TryGetable for CredentialSchemaType {
-    fn try_get_by<I: sea_orm::ColIdx>(
-        res: &sea_orm::QueryResult,
-        idx: I,
-    ) -> std::result::Result<Self, sea_orm::TryGetError> {
-        let value =
-            <<Self as sea_orm::ActiveEnum>::Value as sea_orm::TryGetable>::try_get_by(res, idx)?;
-        <Self as sea_orm::ActiveEnum>::try_from_value(&value).map_err(sea_orm::TryGetError::DbErr)
-    }
-}
-
-impl sea_orm::sea_query::ValueType for CredentialSchemaType {
-    fn try_from(
-        v: sea_orm::sea_query::Value,
-    ) -> std::result::Result<Self, sea_orm::sea_query::ValueTypeErr> {
-        let value =
-            <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::try_from(v)?;
-        <Self as sea_orm::ActiveEnum>::try_from_value(&value)
-            .map_err(|_| sea_orm::sea_query::ValueTypeErr)
-    }
-
-    fn type_name() -> String {
-        <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::type_name()
-    }
-
-    fn array_type() -> sea_orm::sea_query::ArrayType {
-        <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::ValueType>::array_type()
-    }
-
-    fn column_type() -> sea_orm::sea_query::ColumnType {
-        <Self as sea_orm::ActiveEnum>::db_type()
-            .get_column_type()
-            .to_owned()
-    }
-}
-
-impl sea_orm::sea_query::Nullable for CredentialSchemaType {
-    fn null() -> sea_orm::sea_query::Value {
-        <<Self as sea_orm::ActiveEnum>::Value as sea_orm::sea_query::Nullable>::null()
-    }
 }
 
 #[derive(

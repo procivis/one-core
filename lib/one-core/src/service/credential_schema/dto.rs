@@ -15,7 +15,6 @@ use crate::model::credential_schema::{
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
-use crate::service::credential::dto::CredentialSchemaType;
 
 pub type CredentialSchemaLogo = BoundedB64Image<{ 500 * KB }>;
 #[allow(clippy::identity_op)]
@@ -38,13 +37,10 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
-    #[serde(default)]
-    pub external_schema: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -58,13 +54,11 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    pub external_schema: bool,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
@@ -260,12 +254,9 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub organisation_id: Uuid,
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    #[serde(default)]
-    pub external_schema: bool,
     #[into(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
-    pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     #[into(with_fn = convert_inner)]
     pub layout_type: Option<LayoutType>,

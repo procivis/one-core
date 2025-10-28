@@ -19,7 +19,7 @@ use url::Url;
 use uuid::Uuid;
 
 use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
-use super::{IssuanceProtocol, IssuanceProtocolError, StorageAccess};
+use super::{BasicSchemaData, IssuanceProtocol, IssuanceProtocolError, StorageAccess};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, IssuanceProtocolType, RevocationType,
 };
@@ -34,8 +34,8 @@ use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType,
-    UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
+    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
@@ -230,10 +230,11 @@ impl OpenID4VCI13 {
         &self,
         credential_id: &CredentialId,
         latest_state: &CredentialStateEnum,
-        credential_schema: &CredentialSchema,
+        format: &str,
+        format_type: FormatType,
     ) -> Result<(), IssuanceProtocolError> {
-        match (latest_state, &credential_schema.schema_type) {
-            (CredentialStateEnum::Accepted, CredentialSchemaType::Mdoc) => {
+        match (latest_state, format_type) {
+            (CredentialStateEnum::Accepted, FormatType::Mdoc) => {
                 let mdoc_validity_credential = self
                     .validity_credential_repository
                     .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
@@ -246,13 +247,13 @@ impl OpenID4VCI13 {
                     })?;
 
                 let can_be_updated_at = mdoc_validity_credential.created_date
-                    + self.mso_minimum_refresh_time(&credential_schema.format)?;
+                    + self.mso_minimum_refresh_time(format)?;
 
                 if can_be_updated_at > OffsetDateTime::now_utc() {
                     return Err(IssuanceProtocolError::RefreshTooSoon);
                 }
             }
-            (CredentialStateEnum::Suspended, CredentialSchemaType::Mdoc) => {
+            (CredentialStateEnum::Suspended, FormatType::Mdoc) => {
                 return Err(IssuanceProtocolError::Suspended);
             }
             (CredentialStateEnum::Offered, _) => {}
@@ -877,8 +878,7 @@ impl OpenID4VCI13 {
 
         let body = OpenID4VCICredentialRequestDTO {
             format: oid4vc_format.to_owned(),
-            vct: (schema.schema_type == CredentialSchemaType::SdJwtVc)
-                .then_some(schema.schema_id.to_owned()),
+            vct: (format_type == FormatType::SdJwtVc).then_some(schema.schema_id.to_owned()),
             doctype,
             proof: OpenID4VCIProofRequestDTO {
                 proof_type: "jwt".to_string(),
@@ -1276,9 +1276,20 @@ impl IssuanceProtocol for OpenID4VCI13 {
             ))?
             .clone();
         let credential_state = credential.state;
+        let credential_format_type = self
+            .config
+            .format
+            .get_fields(&credential_schema.format)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .r#type;
 
-        self.validate_credential_issuable(credential_id, &credential_state, &credential_schema)
-            .await?;
+        self.validate_credential_issuable(
+            credential_id,
+            &credential_state,
+            &credential_schema.format,
+            credential_format_type,
+        )
+        .await?;
 
         let format = credential_schema.format.to_owned();
 
@@ -1397,8 +1408,15 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        match (credential_schema.schema_type, credential_state) {
-            (CredentialSchemaType::Mdoc, CredentialStateEnum::Accepted) => {
+        let format_type = self
+            .config
+            .format
+            .get_fields(&format)
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+            .r#type;
+
+        match (format_type, credential_state) {
+            (FormatType::Mdoc, CredentialStateEnum::Accepted) => {
                 self.validity_credential_repository
                     .insert(
                         Mdoc {
@@ -1412,7 +1430,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                     .await
                     .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
             }
-            (CredentialSchemaType::Mdoc, CredentialStateEnum::Offered) => {
+            (FormatType::Mdoc, CredentialStateEnum::Offered) => {
                 let credential_blob_id = self.upsert_credential_blob(&credential, &token).await?;
 
                 self.credential_repository
@@ -1527,6 +1545,7 @@ impl OpenID4VCI13 {
             &*self.client,
             storage_access,
             &*self.handle_invitation_operations,
+            self.config.as_ref(),
         )
         .await
     }
@@ -1707,6 +1726,7 @@ async fn handle_credential_invitation(
             storage_access,
             handle_invitation_operations,
             None,
+            config,
         )
         .await?;
 
@@ -1733,6 +1753,7 @@ async fn handle_continue_issuance(
     client: &dyn HttpClient,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
+    config: &CoreConfig,
 ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
     let credential_issuer_endpoint: Url =
         continue_issuance_dto
@@ -1789,6 +1810,7 @@ async fn handle_continue_issuance(
             storage_access,
             handle_invitation_operations,
             Some(continue_issuance_dto),
+            config,
         )
         .await?;
 
@@ -1819,6 +1841,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     continue_issuance: Option<ContinueIssuanceDTO>,
+    config: &CoreConfig,
 ) -> Result<
     (
         InteractionId,
@@ -1853,8 +1876,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         )));
     }
 
-    let schema_data =
-        handle_invitation_operations.find_schema_data(credential_config, configuration_id)?;
+    let schema_id = resolve_schema_id(credential_config).unwrap_or(configuration_id.clone());
 
     let holder_data = HolderInteractionData {
         issuer_url: issuer_metadata.credential_issuer.clone(),
@@ -1884,12 +1906,17 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
 
     let credential_id: CredentialId = Uuid::new_v4().into();
     let (claims, credential_schema) = match storage_access
-        .get_schema(&schema_data.id, &schema_data.r#type, organisation.id)
+        .get_schema(&schema_id, organisation.id)
         .await
         .map_err(IssuanceProtocolError::StorageAccessError)?
     {
         Some(credential_schema) => {
-            if credential_schema.schema_type.to_string() != schema_data.r#type {
+            let format_type = config
+                .format
+                .get_fields(&credential_schema.format)
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                .r#type;
+            if !has_matching_format(credential_config, format_type) {
                 return Err(IssuanceProtocolError::IncorrectCredentialSchemaType);
             }
             let claims_with_values = build_claim_keys(credential_config, credential_subject)
@@ -1897,22 +1924,14 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
                     extract_offered_claims(&credential_schema, credential_id, &claim_keys)
                 });
 
-            let claims = match claims_with_values {
-                Ok(claims_with_values) => claims_with_values,
-                Err(e) => {
-                    if credential_schema.external_schema {
-                        tracing::warn!(%e, "failed to parse offered claims for external schema");
-                        // For external (predefined) schemas we accept failure.
-                        // The claim schemas could be not specified in the offer and metadata
-                        // The offered credential will have no claims, but we will receive them
-                        // when the offer is accepted.
-                        vec![]
-                    } else {
-                        // for procivis schemas this should not happen
-                        return Err(e);
-                    }
-                }
-            };
+            let claims = claims_with_values.unwrap_or_else(|e| {
+                tracing::warn!(%e, "failed to parse offered claims for external schema");
+                // For external (predefined) schemas we accept failure.
+                // The claim schemas could be not specified in the offer and metadata
+                // The offered credential will have no claims, but we will receive them
+                // when the offer is accepted.
+                vec![]
+            });
 
             (claims, credential_schema)
         }
@@ -1921,7 +1940,10 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
 
             let BuildCredentialSchemaResponse { claims, schema } = handle_invitation_operations
                 .create_new_schema(
-                    schema_data,
+                    BasicSchemaData {
+                        id: schema_id,
+                        offer_id: configuration_id.clone(),
+                    },
                     &claim_keys,
                     &credential_id,
                     credential_config,
@@ -1948,6 +1970,33 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         vec![credential],
         credential_config.wallet_storage_type,
     ))
+}
+fn has_matching_format(
+    credential_config: &OpenID4VCICredentialConfigurationData,
+    format_type: FormatType,
+) -> bool {
+    match credential_config.format.as_str() {
+        "jwt_vc_json" | "jwt_vp_json" => format_type == FormatType::Jwt,
+        "vc+sd-jwt" | "dc+sd-jwt" | "vc sd-jwt" => {
+            [FormatType::SdJwt, FormatType::SdJwtVc].contains(&format_type)
+        }
+        "ldp_vc" => [FormatType::JsonLdClassic, FormatType::JsonLdBbsPlus].contains(&format_type),
+        "ldp_vp" => format_type == FormatType::JsonLdClassic,
+        "mso_mdoc" => format_type == FormatType::Mdoc,
+        _ => false,
+    }
+}
+
+fn resolve_schema_id(credential_config: &OpenID4VCICredentialConfigurationData) -> Option<String> {
+    match credential_config.format.as_str() {
+        "mso_mdoc" => credential_config.doctype.clone(),
+        // external sd-jwt vc
+        "vc+sd-jwt" | "dc+sd-jwt" => {
+            // We use the vc+sd-jwt format identifier for both SD-JWT-VC and SD-JWT credential formats.
+            credential_config.vct.clone()
+        }
+        _ => None,
+    }
 }
 
 async fn resolve_credential_offer(

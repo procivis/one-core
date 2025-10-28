@@ -241,6 +241,10 @@ pub(crate) async fn get_json_ld_context(
             tracing::error!("Missing credential schema");
             (StatusCode::NOT_FOUND, "Missing credential schema").into_response()
         }
+        Err(ServiceError::ValidationError(e)) => {
+            tracing::error!("Validation error: {e}");
+            StatusCode::BAD_REQUEST.into_response()
+        }
         Err(e) => {
             tracing::error!("Error: {:?}", e);
             StatusCode::INTERNAL_SERVER_ERROR.into_response()

@@ -4,7 +4,7 @@ use core_server::endpoint::proof::dto::PresentationDefinitionFieldRestDTO;
 use dcql::{ClaimQuery, ClaimQueryId, ClaimValue, CredentialQuery, DcqlQuery, PathSegment};
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType};
+use one_core::model::credential_schema::CredentialSchemaClaim;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
@@ -32,7 +32,6 @@ async fn test_get_presentation_definition_dcql_simple() {
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -898,7 +897,6 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
                 format: Some("JWT".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -990,7 +988,6 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
                 format: Some("JWT".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -1633,7 +1630,6 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -1773,7 +1769,6 @@ async fn test_get_presentation_definition_dcql_multiple() {
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -1914,7 +1909,6 @@ async fn test_get_presentation_definition_dcql_no_claims() {
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
                 format: Some("SD_JWT_VC".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -1987,7 +1981,6 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id1.to_string()),
                 format: Some("JSON_LD_CLASSIC".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )
@@ -2004,7 +1997,6 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id2.to_string()),
                 format: Some("JSON_LD_BBSPLUS".to_owned()),
-                schema_type: Some(CredentialSchemaType::SdJwtVc),
                 ..Default::default()
             },
         )

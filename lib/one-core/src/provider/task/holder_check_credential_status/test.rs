@@ -13,8 +13,7 @@ use crate::model::credential::{
     Credential, CredentialRole, CredentialStateEnum, GetCredentialList, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -307,7 +306,6 @@ fn generic_credential() -> Credential {
         schema: Some(CredentialSchema {
             id: Uuid::new_v4().into(),
             deleted_at: None,
-            external_schema: false,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             last_modified: now,
@@ -322,7 +320,6 @@ fn generic_credential() -> Credential {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),

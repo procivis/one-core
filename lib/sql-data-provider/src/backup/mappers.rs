@@ -1,8 +1,6 @@
 use one_core::model::claim::Claim;
 use one_core::model::credential::Credential;
-use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-};
+use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
@@ -59,7 +57,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 created_date: value.credential_schema_created_date,
                 last_modified: value.credential_schema_last_modified,
                 imported_source_url: value.credential_schema_imported_source_url,
-                external_schema: value.credential_schema_external_schema,
                 name: value.credential_schema_name,
                 format: value.credential_schema_format,
                 wallet_storage_type: convert_inner(value.credential_schema_wallet_storage_type),
@@ -77,7 +74,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 // todo: this should be fixed in another ticket
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: value.credential_schema_allow_suspension,
             }),

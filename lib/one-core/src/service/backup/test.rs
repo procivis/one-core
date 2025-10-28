@@ -12,8 +12,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
@@ -87,7 +86,6 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 last_modified: OffsetDateTime::now_utc(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 name: "name".into(),
-                external_schema: false,
                 format: "format".into(),
                 revocation_method: "revocation_method".into(),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -105,7 +103,6 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 organisation: Some(dummy_organisation(None)),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             }),

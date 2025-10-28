@@ -89,8 +89,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
-    credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+    credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
 ) -> Result<HashMap<String, Arc<dyn IssuanceProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
 
@@ -146,8 +146,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     vct_type_metadata_cache.clone(),
                     client.clone(),
-                    credential_schema_parser.clone(),
                     credential_schema_importer.clone(),
+                    credential_schema_import_parser.clone(),
                 );
 
                 Arc::new(OpenID4VCI13::new(
@@ -180,8 +180,8 @@ pub(crate) fn issuance_protocol_providers_from_config(
                 let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     vct_type_metadata_cache.clone(),
                     client.clone(),
-                    credential_schema_parser.clone(),
                     credential_schema_importer.clone(),
+                    credential_schema_import_parser.clone(),
                 );
 
                 Arc::new(OpenID4VCI13Swiyu::new(
@@ -228,9 +228,7 @@ fn validate_url_scheme_unique(
 #[derive(Debug)]
 pub(crate) struct BasicSchemaData {
     pub id: String,
-    pub r#type: String,
     pub offer_id: String,
-    pub external_schema: bool,
 }
 
 pub(crate) struct BuildCredentialSchemaResponse {

@@ -298,16 +298,8 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_schema_imported_source_url",
         )
         .column_as(
-            credential_schema::Column::SchemaType,
-            "credential_schema_schema_type",
-        )
-        .column_as(
             credential_schema::Column::AllowSuspension,
             "credential_schema_allow_suspension",
-        )
-        .column_as(
-            credential_schema::Column::ExternalSchema,
-            "credential_schema_external_schema",
         )
         .join(
             JoinType::LeftJoin,

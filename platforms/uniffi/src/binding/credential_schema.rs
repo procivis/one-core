@@ -216,7 +216,6 @@ pub struct CredentialSchemaDetailBindingDTO {
     #[from(with_fn = convert_inner)]
     pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
     pub schema_id: String,
-    pub schema_type: CredentialSchemaTypeBindingEnum,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
@@ -234,7 +233,6 @@ pub struct CredentialSchemaBindingDTO {
     pub revocation_method: String,
     pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
     pub schema_id: String,
-    pub schema_type: CredentialSchemaTypeBindingEnum,
     pub layout_type: Option<LayoutTypeBindingEnum>,
     pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
@@ -423,16 +421,12 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub schema_id: String,
     #[try_into(infallible)]
     pub imported_source_url: String,
-    #[try_into(infallible)]
-    pub schema_type: CredentialSchemaTypeBindingEnum,
     #[try_into(infallible, with_fn = convert_inner)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub allow_suspension: Option<bool>,
-    #[try_into(infallible)]
-    pub external_schema: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

@@ -1147,10 +1147,6 @@ async fn test_parse_credential() {
         schema.schema_id,
         "https://core.dev.procivis-one.com/ssi/schema/v1/30994889-2dc6-4a82-ac41-74ec5cc187ba"
     );
-    assert_eq!(
-        schema.schema_type,
-        crate::model::credential_schema::CredentialSchemaType::ProcivisOneSchema2024
-    );
 
     // Verify disclosed claims exist
     let name_claim = claims.iter().find(|c| c.path == "Name");

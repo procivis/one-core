@@ -3,8 +3,8 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
-    CredentialSchemaType, GetCredentialSchemaQuery, LayoutProperties, LayoutType,
-    UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
+    GetCredentialSchemaQuery, LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
+    WalletStorageTypeEnum,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
@@ -120,7 +120,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
             format: "JWT".to_string(),
-            external_schema: false,
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 new_claim_schemas
@@ -142,7 +141,6 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             organisation: Some(organisation.clone()),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: credential_schema_id.to_string(),
             allow_suspension: true,
         },
@@ -196,7 +194,6 @@ async fn test_create_credential_schema_success() {
             last_modified: get_dummy_date(),
             deleted_at: None,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -205,7 +202,6 @@ async fn test_create_credential_schema_success() {
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         })
@@ -501,10 +497,8 @@ async fn test_delete_credential_schema_not_found() {
             layout_type: LayoutType::Document,
             layout_properties: None,
             schema_id: "Test_schema_id".to_string(),
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            external_schema: false,
             claim_schemas: None,
             organisation: None,
         })
@@ -573,7 +567,6 @@ async fn test_get_by_schema_id_and_organisation() {
     let res = repository
         .get_by_schema_id_and_organisation(
             &credential_schema.schema_id,
-            credential_schema.schema_type.clone(),
             credential_schema.organisation.as_ref().unwrap().id,
             &CredentialSchemaRelations {
                 claim_schemas: Some(Default::default()),

@@ -5,9 +5,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{
-    CredentialSchemaType, DetailCredentialSchemaResponseDTO, WalletUnitAttestationDTO,
-};
+use super::dto::{DetailCredentialSchemaResponseDTO, WalletUnitAttestationDTO};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
@@ -482,18 +480,6 @@ pub(super) fn credential_revocation_state_to_model_state(
     }
 }
 
-impl From<String> for CredentialSchemaType {
-    fn from(value: String) -> Self {
-        match value.as_str() {
-            "ProcivisOneSchema2024" => CredentialSchemaType::ProcivisOneSchema2024,
-            "FallbackSchema2024" => CredentialSchemaType::FallbackSchema2024,
-            "SdJwtVc" => CredentialSchemaType::SdJwtVc,
-            "mdoc" => CredentialSchemaType::Mdoc,
-            _ => Self::Other(value),
-        }
-    }
-}
-
 impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
     type Error = ServiceError;
 
@@ -512,12 +498,10 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             last_modified: value.last_modified,
             imported_source_url: value.imported_source_url,
             name: value.name,
-            external_schema: value.external_schema,
             format: value.format,
             revocation_method: value.revocation_method,
             wallet_storage_type: value.wallet_storage_type,
             organisation_id,
-            schema_type: value.schema_type.into(),
             schema_id: value.schema_id,
             layout_type: value.layout_type.into(),
             layout_properties: value.layout_properties.map(Into::into),

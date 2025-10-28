@@ -8,8 +8,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::provider::verification_protocol::dto::{CredentialGroup, CredentialGroupItem};
@@ -477,7 +476,6 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "revocation method".to_string(),
@@ -495,7 +493,6 @@ fn dummy_credential() -> Credential {
             }]),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,

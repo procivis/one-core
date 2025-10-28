@@ -10,9 +10,9 @@ use one_core::provider::verification_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO,
 };
 use one_core::service::credential::dto::{
-    CredentialDetailResponseDTO, CredentialListItemResponseDTO, CredentialSchemaType,
-    DetailCredentialClaimResponseDTO, DetailCredentialClaimValueResponseDTO,
-    DetailCredentialSchemaResponseDTO, MdocMsoValidityResponseDTO,
+    CredentialDetailResponseDTO, CredentialListItemResponseDTO, DetailCredentialClaimResponseDTO,
+    DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
+    MdocMsoValidityResponseDTO,
 };
 use one_core::service::credential_schema::dto::{
     CredentialSchemaListItemResponseDTO, ImportCredentialSchemaClaimSchemaDTO,
@@ -49,8 +49,7 @@ use crate::binding::credential::{
     CredentialListItemBindingDTO, MdocMsoValidityResponseBindingDTO,
 };
 use crate::binding::credential_schema::{
-    CredentialSchemaBindingDTO, CredentialSchemaTypeBindingEnum,
-    ImportCredentialSchemaClaimSchemaBindingDTO,
+    CredentialSchemaBindingDTO, ImportCredentialSchemaClaimSchemaBindingDTO,
 };
 use crate::binding::did::{DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use crate::binding::history::{
@@ -181,7 +180,6 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             revocation_method: value.revocation_method,
             wallet_storage_type: convert_inner(value.wallet_storage_type),
             schema_id: value.schema_id,
-            schema_type: value.schema_type.into(),
             imported_source_url: value.imported_source_url,
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
@@ -347,53 +345,8 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             revocation_method: value.revocation_method,
             wallet_storage_type: convert_inner(value.wallet_storage_type),
             schema_id: value.schema_id,
-            schema_type: value.schema_type.into(),
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
-        }
-    }
-}
-
-impl From<CredentialSchemaType> for CredentialSchemaTypeBindingEnum {
-    fn from(value: CredentialSchemaType) -> Self {
-        match value {
-            CredentialSchemaType::ProcivisOneSchema2024 => Self::ProcivisOneSchema2024 {},
-            CredentialSchemaType::FallbackSchema2024 => Self::FallbackSchema2024 {},
-            CredentialSchemaType::SdJwtVc => Self::SdJwtVc {},
-            CredentialSchemaType::Mdoc => Self::Mdoc {},
-            CredentialSchemaType::Other(value) => Self::Other { value },
-        }
-    }
-}
-
-impl From<CredentialSchemaTypeBindingEnum> for CredentialSchemaType {
-    fn from(value: CredentialSchemaTypeBindingEnum) -> Self {
-        match value {
-            CredentialSchemaTypeBindingEnum::ProcivisOneSchema2024 { .. } => {
-                CredentialSchemaType::ProcivisOneSchema2024
-            }
-            CredentialSchemaTypeBindingEnum::FallbackSchema2024 { .. } => {
-                CredentialSchemaType::FallbackSchema2024
-            }
-            CredentialSchemaTypeBindingEnum::SdJwtVc {} => CredentialSchemaType::SdJwtVc,
-            CredentialSchemaTypeBindingEnum::Mdoc { .. } => CredentialSchemaType::Mdoc,
-            CredentialSchemaTypeBindingEnum::Other { value } => CredentialSchemaType::Other(value),
-        }
-    }
-}
-
-impl From<CredentialSchemaTypeBindingEnum>
-    for one_core::model::credential_schema::CredentialSchemaType
-{
-    fn from(value: CredentialSchemaTypeBindingEnum) -> Self {
-        match value {
-            CredentialSchemaTypeBindingEnum::ProcivisOneSchema2024 { .. } => {
-                Self::ProcivisOneSchema2024
-            }
-            CredentialSchemaTypeBindingEnum::FallbackSchema2024 { .. } => Self::FallbackSchema2024,
-            CredentialSchemaTypeBindingEnum::SdJwtVc {} => Self::SdJwtVc,
-            CredentialSchemaTypeBindingEnum::Mdoc { .. } => Self::Mdoc,
-            CredentialSchemaTypeBindingEnum::Other { value } => Self::Other(value),
         }
     }
 }

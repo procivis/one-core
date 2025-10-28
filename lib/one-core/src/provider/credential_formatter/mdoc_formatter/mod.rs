@@ -41,7 +41,7 @@ use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64, encode_cbor_base64}
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType};
+use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
@@ -478,10 +478,8 @@ impl CredentialFormatter for MdocFormatter {
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
             schema_id: doctype,
-            schema_type: CredentialSchemaType::Mdoc,
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            external_schema: true,
             organisation: None,
             claim_schemas: Some(claim_schemas),
         };
@@ -583,7 +581,7 @@ async fn extract_credentials_internal(
         status: vec![],
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
-            r#type: CredentialSchemaType::Mdoc.to_string(),
+            r#type: "mdoc".to_string(),
             metadata,
         }),
     })

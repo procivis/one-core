@@ -643,7 +643,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     assert_eq!(
         CredentialSchema {
             id: "doctype".to_owned(),
-            r#type: CredentialSchemaType::Mdoc.to_string(),
+            r#type: "mdoc".to_owned(),
             metadata: None,
         },
         credential.credential_schema.unwrap()

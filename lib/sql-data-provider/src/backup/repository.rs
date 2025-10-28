@@ -211,10 +211,6 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::ImportedSourceUrl,
                 "credential_schema_imported_source_url",
             )
-            .column_as(
-                credential_schema::Column::ExternalSchema,
-                "credential_schema_external_schema",
-            )
             .column_as(credential_schema::Column::Name, "credential_schema_name")
             .column_as(
                 credential_schema::Column::Format,

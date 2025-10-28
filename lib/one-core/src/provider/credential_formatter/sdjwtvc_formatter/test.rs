@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchemaClaim, CredentialSchemaType, LayoutType};
+use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType};
 use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::key::Key;
@@ -642,10 +642,8 @@ async fn test_extract_credentials_swiyu() {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        schema_type: CredentialSchemaType::SdJwtVc,
         imported_source_url: "".to_string(),
         allow_suspension: false,
-        external_schema: false,
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),

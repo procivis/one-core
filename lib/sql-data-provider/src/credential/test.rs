@@ -9,8 +9,8 @@ use one_core::model::credential::{
     CredentialStateEnum, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
+    WalletStorageTypeEnum,
 };
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -107,7 +107,6 @@ async fn setup_empty() -> TestSetup {
         format: "JWT".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         revocation_method: "NONE".to_string(),
-        external_schema: false,
         claim_schemas: Some(
             new_claim_schemas
                 .into_iter()
@@ -128,7 +127,6 @@ async fn setup_empty() -> TestSetup {
         organisation: Some(dummy_organisation(Some(organisation_id))),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
     };

@@ -23,8 +23,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -54,9 +53,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
-use crate::provider::issuance_protocol::{
-    BasicSchemaData, BuildCredentialSchemaResponse, IssuanceProtocol,
-};
+use crate::provider::issuance_protocol::{BuildCredentialSchemaResponse, IssuanceProtocol};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -289,7 +286,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -300,7 +296,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             }]),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
@@ -1496,25 +1491,13 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     storage_proxy
         .expect_get_schema()
         .times(1)
-        .returning(|_, _, _| Ok(None));
+        .returning(|_, _| Ok(None));
     storage_proxy
         .expect_create_credential()
         .times(1)
         .returning(|c| Ok(c.id));
 
     let mut operations = MockHandleInvitationOperations::default();
-    let credential_clone = credential.clone();
-    operations
-        .expect_find_schema_data()
-        .once()
-        .returning(move |_, _| {
-            Ok(BasicSchemaData {
-                id: credential_schema_id.to_string(),
-                r#type: "SD_JWT_VC".to_string(),
-                external_schema: false,
-                offer_id: credential_clone.id.to_string(),
-            })
-        });
     operations
         .expect_create_new_schema()
         .once()
@@ -1654,21 +1637,9 @@ async fn inner_continue_issuance_test(
     storage_proxy
         .expect_get_schema()
         .times(1)
-        .returning(|_, _, _| Ok(None));
+        .returning(|_, _| Ok(None));
 
     let mut operations = MockHandleInvitationOperations::default();
-    let credential_clone = credential.clone();
-    operations
-        .expect_find_schema_data()
-        .once()
-        .returning(move |_, _| {
-            Ok(BasicSchemaData {
-                id: credential_schema_id.to_string(),
-                r#type: "SD_JWT_VC".to_string(),
-                external_schema: false,
-                offer_id: credential_clone.id.to_string(),
-            })
-        });
     operations
         .expect_create_new_schema()
         .once()
@@ -1741,8 +1712,6 @@ fn generic_schema() -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        external_schema: false,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
@@ -1859,9 +1828,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         wallet_storage_type: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        external_schema: false,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {
@@ -1979,8 +1946,6 @@ fn generic_schema_object_hell() -> CredentialSchema {
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
-        external_schema: false,
         claim_schemas: Some(vec![
             CredentialSchemaClaim {
                 schema: ClaimSchema {

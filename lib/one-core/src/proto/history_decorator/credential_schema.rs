@@ -5,8 +5,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaList,
-    GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, GetCredentialSchemaQuery,
+    UpdateCredentialSchemaRequest,
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::Organisation;
@@ -96,12 +96,11 @@ impl CredentialSchemaRepository for CredentialSchemaHistoryDecorator {
     async fn get_by_schema_id_and_organisation(
         &self,
         schema_id: &str,
-        schema_type: CredentialSchemaType,
         organisation_id: OrganisationId,
         relations: &CredentialSchemaRelations,
     ) -> Result<Option<CredentialSchema>, DataLayerError> {
         self.inner
-            .get_by_schema_id_and_organisation(schema_id, schema_type, organisation_id, relations)
+            .get_by_schema_id_and_organisation(schema_id, organisation_id, relations)
             .await
     }
 }

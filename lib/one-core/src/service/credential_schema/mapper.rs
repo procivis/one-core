@@ -7,10 +7,9 @@ use super::dto::{
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
     CredentialSchemaFilterValue, CredentialSchemaLogoPropertiesRequestDTO,
 };
-use crate::config::core_config::FormatType;
 use crate::mapper::credential_schema_claim::from_jwt_request_claim_schema;
 use crate::mapper::{NESTED_CLAIM_MARKER, remove_first_nesting_layer};
-use crate::model::credential_schema::{CredentialSchema, CredentialSchemaType};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::Organisation;
@@ -47,12 +46,10 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             format: value.format,
             imported_source_url: value.imported_source_url,
             revocation_method: value.revocation_method,
-            external_schema: value.external_schema,
             organisation_id,
             claims: claim_schemas,
             wallet_storage_type: value.wallet_storage_type,
             schema_id: value.schema_id,
-            schema_type: value.schema_type.into(),
             layout_type: Some(value.layout_type),
             layout_properties: value.layout_properties.map(|item| item.into()),
             allow_suspension: value.allow_suspension,
@@ -92,8 +89,6 @@ pub(super) fn from_create_request_with_id(
     id: CredentialSchemaId,
     request: CreateCredentialSchemaRequestDTO,
     organisation: Organisation,
-    format_type: &FormatType,
-    schema_type: Option<CredentialSchemaType>,
     schema_id: String,
     imported_source_url: String,
 ) -> Result<CredentialSchema, ServiceError> {
@@ -107,12 +102,6 @@ pub(super) fn from_create_request_with_id(
 
     let claim_schemas = unnest_claim_schemas(request.claims);
 
-    let schema_type = schema_type.unwrap_or(match format_type {
-        FormatType::Mdoc => CredentialSchemaType::Mdoc,
-        FormatType::SdJwtVc => CredentialSchemaType::SdJwtVc,
-        _ => CredentialSchemaType::ProcivisOneSchema2024,
-    });
-
     Ok(CredentialSchema {
         id,
         deleted_at: None,
@@ -121,7 +110,6 @@ pub(super) fn from_create_request_with_id(
         name: request.name,
         format: request.format,
         wallet_storage_type: request.wallet_storage_type,
-        external_schema: request.external_schema,
         revocation_method: request.revocation_method,
         claim_schemas: Some(
             claim_schemas
@@ -141,7 +129,6 @@ pub(super) fn from_create_request_with_id(
         organisation: Some(organisation),
         layout_type: request.layout_type,
         layout_properties: request.layout_properties.map(Into::into),
-        schema_type,
         imported_source_url,
         schema_id,
         allow_suspension: request.allow_suspension.unwrap_or_default(),

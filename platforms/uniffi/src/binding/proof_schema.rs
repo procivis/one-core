@@ -14,8 +14,8 @@ use shared_types::ProofSchemaId;
 use super::OneCoreBinding;
 use super::common::SortDirection;
 use super::credential_schema::{
-    CredentialSchemaBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO,
-    CredentialSchemaTypeBindingEnum, LayoutTypeBindingEnum, WalletStorageTypeBindingEnum,
+    CredentialSchemaBindingDTO, CredentialSchemaLayoutPropertiesBindingDTO, LayoutTypeBindingEnum,
+    WalletStorageTypeBindingEnum,
 };
 use super::mapper::optional_time;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
@@ -211,8 +211,6 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub schema_id: String,
     #[try_into(infallible)]
     pub imported_source_url: String,
-    #[try_into(infallible)]
-    pub schema_type: CredentialSchemaTypeBindingEnum,
     #[try_into(with_fn = convert_inner, infallible)]
     pub layout_type: Option<LayoutTypeBindingEnum>,
     #[try_into(with_fn = try_convert_inner)]

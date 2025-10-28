@@ -1,5 +1,4 @@
 use one_core::model::credential::CredentialStateEnum;
-use one_core::model::credential_schema::CredentialSchemaType;
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
 use similar_asserts::assert_eq;
@@ -96,7 +95,6 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             "NONE",
             TestingCreateSchemaParams {
                 format: Some("MDOC".to_string()),
-                schema_type: Some(CredentialSchemaType::Mdoc),
                 ..Default::default()
             },
         )
@@ -171,7 +169,6 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             "NONE",
             TestingCreateSchemaParams {
                 format: Some("MDOC".to_string()),
-                schema_type: Some(CredentialSchemaType::Mdoc),
                 ..Default::default()
             },
         )

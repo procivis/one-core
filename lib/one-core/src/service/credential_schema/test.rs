@@ -16,8 +16,8 @@ use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
+    LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -101,7 +101,6 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "testName".to_string(),
         format: "".to_string(),
         revocation_method: "".to_string(),
-        external_schema: false,
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -117,7 +116,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
     }
@@ -341,13 +339,7 @@ async fn test_create_credential_schema_success() {
         repository
             .expect_create_credential_schema()
             .times(1)
-            .returning(move |request| {
-                assert_eq!(
-                    CredentialSchemaType::ProcivisOneSchema2024,
-                    request.schema_type
-                );
-                Ok(schema_id)
-            });
+            .returning(move |_| Ok(schema_id));
         let clone = response.clone();
         repository
             .expect_get_credential_schema_list()
@@ -453,7 +445,6 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             .times(1)
             .returning(move |request| {
                 assert_eq!(custom_schema_id, request.schema_id);
-                assert_eq!(CredentialSchemaType::Mdoc, request.schema_type);
                 Ok(schema_id.to_owned())
             });
         let clone = response.clone();
@@ -581,10 +572,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
     repository
         .expect_create_credential_schema()
         .times(1)
-        .returning(move |request| {
-            assert_eq!(CredentialSchemaType::SdJwtVc, request.schema_type);
-            Ok(Uuid::new_v4().into())
-        });
+        .returning(move |_| Ok(Uuid::new_v4().into()));
 
     repository
         .expect_get_credential_schema_list()
@@ -2909,7 +2897,6 @@ async fn test_import_credential_schema_success() {
                 last_modified: now,
                 name: "external schema".to_string(),
                 format: "JWT".to_string(),
-                external_schema: false,
                 revocation_method: "NONE".to_string(),
                 organisation_id: Uuid::new_v4(),
                 claims: vec![ImportCredentialSchemaClaimSchemaDTO {
@@ -2924,7 +2911,6 @@ async fn test_import_credential_schema_success() {
                 }],
                 wallet_storage_type: None,
                 schema_id: "http://127.0.0.1/ssi/schema/some_schmea".to_string(),
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: Some(true),
@@ -3132,10 +3118,8 @@ async fn test_credential_schema_ops_session_org_mismatch() {
                 revocation_method: "".to_string(),
                 organisation_id: Uuid::new_v4(),
                 claims: vec![],
-                external_schema: false,
                 wallet_storage_type: None,
                 schema_id: "".to_string(),
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 imported_source_url: "".to_string(),
                 layout_type: None,
                 layout_properties: None,

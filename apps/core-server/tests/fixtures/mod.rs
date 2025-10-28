@@ -16,8 +16,8 @@ use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutProperties, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutProperties,
+    LayoutType, WalletStorageTypeEnum,
 };
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
@@ -390,7 +390,6 @@ pub struct TestingCredentialSchemaParams {
     pub revocation_method: Option<String>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
-    pub schema_type: Option<CredentialSchemaType>,
     pub schema_id: Option<String>,
 }
 
@@ -436,12 +435,8 @@ pub async fn create_credential_schema(
         claim_schemas: Some(claim_schemas),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
-        schema_type: params
-            .schema_type
-            .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
         schema_id: params.schema_id.unwrap_or(id.to_string()),
         allow_suspension: true,
-        external_schema: false,
     };
 
     data_layer
@@ -490,12 +485,10 @@ pub async fn create_credential_schema_with_claims(
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
         format: "JWT".to_string(),
-        external_schema: false,
         revocation_method: revocation_method.to_owned(),
         claim_schemas: Some(claim_schemas),
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: id.to_string(),
         allow_suspension: true,
     };

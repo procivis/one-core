@@ -867,9 +867,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::model::credential_schema::{
-        CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
-    };
+    use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
 
     #[test]
     fn test_extracted_credential_to_model_mdoc() {
@@ -928,13 +926,11 @@ mod tests {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "CredentialSchema".to_string(),
                 format: "MDOC".to_string(),
-                external_schema: false,
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Software),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "pavel.3310.simple".to_string(),
-                schema_type: CredentialSchemaType::Mdoc,
                 claim_schemas: Some(claim_schemas.clone()),
                 organisation: None,
                 imported_source_url: "CORE_URL".to_string(),

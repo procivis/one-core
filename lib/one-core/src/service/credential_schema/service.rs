@@ -87,19 +87,11 @@ impl CredentialSchemaService {
             );
         }
 
-        let format_type = &self.config.format.get_fields(&request.format)?.r#type;
         let id = CredentialSchemaId::from(Uuid::new_v4());
         let schema_id = formatter.credential_schema_id(id, &request, core_base_url)?;
         let imported_source_url = format!("{core_base_url}/ssi/schema/v1/{id}");
-        let mut credential_schema = from_create_request_with_id(
-            id,
-            request,
-            organisation,
-            format_type,
-            None,
-            schema_id,
-            imported_source_url,
-        )?;
+        let mut credential_schema =
+            from_create_request_with_id(id, request, organisation, schema_id, imported_source_url)?;
 
         let metadata_claims = formatter
             .get_metadata_claims()

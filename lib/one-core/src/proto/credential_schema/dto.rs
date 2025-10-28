@@ -5,9 +5,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model;
-use crate::model::credential_schema::{
-    CodeTypeEnum, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CodeTypeEnum, LayoutType, WalletStorageTypeEnum};
 use crate::model::organisation::Organisation;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
 
@@ -34,11 +32,8 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    #[serde(default)]
-    pub external_schema: bool,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
-    pub schema_type: CredentialSchemaType,
     pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,

@@ -13,8 +13,8 @@ use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    GetCredentialSchemaList, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
+    LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -383,7 +383,6 @@ async fn test_create_proof_schema_success() {
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".to_string(),
-                external_schema: false,
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -393,7 +392,6 @@ async fn test_create_proof_schema_success() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -498,7 +496,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".to_string(),
-                external_schema: false,
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -508,7 +505,6 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -645,7 +641,6 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
-                external_schema: false,
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: None,
@@ -656,7 +651,6 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -670,7 +664,6 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 imported_source_url: "CORE_URL".to_string(),
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
-                external_schema: false,
                 wallet_storage_type: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schem_2.clone(),
@@ -679,7 +672,6 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -823,7 +815,6 @@ async fn test_create_proof_schema_array_object_fail() {
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                external_schema: false,
                 name: "credential-schema".to_string(),
                 format: "SD_JWT".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -849,7 +840,6 @@ async fn test_create_proof_schema_array_object_fail() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -985,7 +975,6 @@ async fn test_create_proof_schema_array_success() {
                 created_date: OffsetDateTime::now_utc(),
                 imported_source_url: "CORE_URL".to_string(),
                 last_modified: OffsetDateTime::now_utc(),
-                external_schema: false,
                 name: "credential-schema".to_string(),
                 format: "SD_JWT".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -1011,7 +1000,6 @@ async fn test_create_proof_schema_array_success() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -1150,7 +1138,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 deleted_at: None,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                external_schema: false,
                 name: "credential-schema".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -1170,7 +1157,6 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };
@@ -1343,14 +1329,13 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, org, relations| {
             schema_id == "iso-org-test123"
-                && *schema_type == CredentialSchemaType::ProcivisOneSchema2024
                 && org == &organisation_id
                 && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(|_, _, _, _| Ok(None));
+        .returning(|_, _, _| Ok(None));
     credential_schema_repository
         .expect_create_credential_schema()
         .once()
@@ -1394,7 +1379,6 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -1542,14 +1526,13 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::new();
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, org, relations| {
             schema_id == "iso-org-test123"
-                && *schema_type == CredentialSchemaType::ProcivisOneSchema2024
                 && org == &organisation_id
                 && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(|_, _, _, _| {
+        .returning(|_, _, _| {
             Ok(Some(CredentialSchema {
                 deleted_at: Some(get_dummy_date()),
                 ..dummy_credential_schema()
@@ -1598,7 +1581,6 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -1749,14 +1731,13 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
 
     credential_schema_repository
         .expect_get_by_schema_id_and_organisation()
-        .withf(move |schema_id, schema_type, org, relations| {
+        .withf(move |schema_id, org, relations| {
             schema_id == "iso-org-test123"
-                && *schema_type == CredentialSchemaType::Mdoc
                 && org == &organisation_id
                 && relations.claim_schemas.is_some()
         })
         .once()
-        .returning(move |_, _, _, _| {
+        .returning(move |_, _, _| {
             Ok(Some(CredentialSchema {
                 id: existing_schema_id,
                 deleted_at: None,
@@ -1764,14 +1745,12 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 imported_source_url: "CORE_URL".to_string(),
                 last_modified: get_dummy_date(),
                 name: "test-credential-schema".to_string(),
-                external_schema: false,
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
@@ -1825,7 +1804,6 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -1934,7 +1912,6 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -2007,7 +1984,6 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -2074,7 +2050,6 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 revocation_method: "NONE".to_string(),
                 wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
                 schema_id: "iso-org-test123".to_string(),
-                schema_type: CredentialSchemaType::Mdoc.into(),
                 layout_type: None,
                 layout_properties: None,
             },
@@ -2361,7 +2336,6 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
         created_date: now,
         last_modified: now,
         name: "".to_string(),
-        external_schema: false,
         format: "".to_string(),
         imported_source_url: "CORE_URL".to_string(),
         revocation_method: "".to_string(),
@@ -2369,7 +2343,6 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         claim_schemas: Some(claims),
         organisation: None,
         allow_suspension: true,
@@ -2614,7 +2587,6 @@ async fn test_create_proof_schema_verify_nested_generic(
                 imported_source_url: "CORE_URL".to_string(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                external_schema: false,
                 name: "credential-schema".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
@@ -2631,7 +2603,6 @@ async fn test_create_proof_schema_verify_nested_generic(
                 organisation: None,
                 layout_type: LayoutType::Card,
                 layout_properties: None,
-                schema_type: CredentialSchemaType::ProcivisOneSchema2024,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
             };

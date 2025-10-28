@@ -161,6 +161,7 @@ mod m20251001_103610_adds_wua_column_to_credential;
 mod m20251014_101039_adds_interaction_type;
 mod m20251015_091929_drop_interaction_host;
 mod m20251017_074815_fix_undefined_interaction_type;
+mod m20251023_073646_drop_credential_schema_type_and_external_columns;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -324,6 +325,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251014_101039_adds_interaction_type::Migration),
             Box::new(m20251015_091929_drop_interaction_host::Migration),
             Box::new(m20251017_074815_fix_undefined_interaction_type::Migration),
+            Box::new(m20251023_073646_drop_credential_schema_type_and_external_columns::Migration),
         ]
     }
 }

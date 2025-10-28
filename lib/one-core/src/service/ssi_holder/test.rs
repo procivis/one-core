@@ -20,9 +20,7 @@ use crate::config::core_config::TransportType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchemaClaim, CredentialSchemaType, LayoutType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -1284,7 +1282,7 @@ async fn test_accept_credential() {
                 credential_schema: Some(
                     crate::provider::credential_formatter::model::CredentialSchema {
                         id: "SchemaId".to_string(),
-                        r#type: CredentialSchemaType::Mdoc.to_string(),
+                        r#type: "Mdoc".to_string(),
                         metadata: None,
                     },
                 ),
@@ -1452,7 +1450,7 @@ async fn test_accept_credential_with_did() {
                 credential_schema: Some(
                     crate::provider::credential_formatter::model::CredentialSchema {
                         id: "SchemaId".to_string(),
-                        r#type: CredentialSchemaType::Mdoc.to_string(),
+                        r#type: "Mdoc".to_string(),
                         metadata: None,
                     },
                 ),
@@ -1857,7 +1855,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
-            external_schema: false,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
@@ -1877,7 +1874,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             deleted_at: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
         }),

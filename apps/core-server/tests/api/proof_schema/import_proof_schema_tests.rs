@@ -55,7 +55,6 @@ async fn test_import_proof_schema_ok() {
               "organisationId": source_organisation.id,
               "revocationMethod": original_credential_schema.revocation_method,
               "schemaId": original_credential_schema.schema_id,
-              "schemaType": original_credential_schema.schema_type,
               "walletStorageType": original_credential_schema.wallet_storage_type,
               "allowSuspension": original_credential_schema.allow_suspension,
               "claims": claim_schemas.iter().map(|schema| json!({
@@ -105,7 +104,6 @@ async fn test_import_proof_schema_ok() {
                     "revocationMethod": original_credential_schema.format,
                     "walletStorageType": original_credential_schema.wallet_storage_type,
                     "schemaId": original_credential_schema.schema_id,
-                    "schemaType": original_credential_schema.schema_type,
                 }
             }
         ]
@@ -193,7 +191,6 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
                     "revocationMethod": credential_schema.format,
                     "walletStorageType": credential_schema.wallet_storage_type,
                     "schemaId": credential_schema.schema_id,
-                    "schemaType": credential_schema.schema_type,
                 }
             }
         ]
@@ -263,7 +260,6 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
                     "revocationMethod": original_credential_schema.format,
                     "walletStorageType": original_credential_schema.wallet_storage_type,
                     "schemaId": original_credential_schema.schema_id,
-                    "schemaType": original_credential_schema.schema_type,
                 }
             }
         ]
@@ -398,7 +394,6 @@ async fn test_import_proof_schema_nested_array() {
                     "revocationMethod": original_credential_schema.format,
                     "walletStorageType": original_credential_schema.wallet_storage_type,
                     "schemaId": original_credential_schema.schema_id,
-                    "schemaType": original_credential_schema.schema_type,
                 }
             }
         ]

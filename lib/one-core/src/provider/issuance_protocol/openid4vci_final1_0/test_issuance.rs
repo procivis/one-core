@@ -17,8 +17,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
@@ -284,7 +283,6 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
         key: Some(key),
         schema: Some(CredentialSchema {
             format: format.to_string(),
-            schema_type: CredentialSchemaType::Mdoc,
             ..dummy_credential().schema.unwrap()
         }),
         ..dummy_credential()
@@ -767,6 +765,26 @@ fn dummy_config() -> CoreConfig {
         },
     );
 
+    config.format.insert(
+        "MDOC".to_string(),
+        Fields {
+            r#type: FormatType::Mdoc,
+            display: "display".into(),
+            order: None,
+            enabled: None,
+            capabilities: None,
+            params: Some(Params {
+                public: Some(json!({
+                    "msoExpectedUpdateIn": Duration::days(3).whole_seconds(),
+                    "msoMinimumRefreshTime": Duration::days(3).whole_seconds(),
+                    "msoExpiresIn": 10,
+                    "leeway": 5,
+                })),
+                private: None,
+            }),
+        },
+    );
+
     config
 }
 
@@ -812,7 +830,6 @@ fn dummy_credential() -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
@@ -830,7 +847,6 @@ fn dummy_credential() -> Credential {
             }]),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,

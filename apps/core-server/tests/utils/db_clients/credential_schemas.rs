@@ -3,8 +3,8 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
-    CredentialSchemaRelations, CredentialSchemaType, GetCredentialSchemaQuery, LayoutProperties,
-    LayoutType, LogoProperties, WalletStorageTypeEnum,
+    CredentialSchemaRelations, GetCredentialSchemaQuery, LayoutProperties, LayoutType,
+    LogoProperties, WalletStorageTypeEnum,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -21,11 +21,9 @@ pub struct TestingCreateSchemaParams {
     pub schema_id: Option<String>,
     pub format: Option<String>,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
-    pub schema_type: Option<CredentialSchemaType>,
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    pub external_schema: bool,
     pub deleted_at: Option<OffsetDateTime>,
 }
 
@@ -92,7 +90,6 @@ impl CredentialSchemasDB {
             deleted_at: params.deleted_at,
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
-            external_schema: params.external_schema,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
@@ -113,9 +110,6 @@ impl CredentialSchemasDB {
                     r#type: CodeTypeEnum::Barcode,
                 }),
             }),
-            schema_type: params
-                .schema_type
-                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
         };
@@ -168,7 +162,6 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            external_schema: params.external_schema,
             wallet_storage_type: Some(
                 params
                     .wallet_storage_type
@@ -181,9 +174,6 @@ impl CredentialSchemasDB {
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: params
-                .schema_type
-                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: id.to_string(),
             allow_suspension: true,
         };
@@ -288,13 +278,9 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
-            external_schema: params.external_schema,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: params
-                .schema_type
-                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: params.schema_id.unwrap_or("doctype".to_string()),
             allow_suspension: true,
         };
@@ -400,12 +386,8 @@ impl CredentialSchemasDB {
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
-            external_schema: params.external_schema,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: params
-                .schema_type
-                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
         };
@@ -524,12 +506,8 @@ impl CredentialSchemasDB {
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
-            external_schema: params.external_schema,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: params
-                .schema_type
-                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
         };
@@ -752,12 +730,8 @@ impl CredentialSchemasDB {
             format: params.format.unwrap_or("JWT".to_string()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
-            external_schema: params.external_schema,
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: params
-                .schema_type
-                .unwrap_or(CredentialSchemaType::ProcivisOneSchema2024),
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
         };
@@ -801,12 +775,10 @@ impl CredentialSchemasDB {
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: "JWT".to_string(),
-            external_schema: false,
             revocation_method: "NONE".to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: new_id.to_string(),
             allow_suspension: true,
         };
@@ -849,11 +821,6 @@ impl CredentialSchemasDB {
             )
             .collect();
 
-        let schema_type = match format {
-            "SD_JWT_VC" => CredentialSchemaType::SdJwtVc,
-            "MDOC" => CredentialSchemaType::Mdoc,
-            _ => CredentialSchemaType::ProcivisOneSchema2024,
-        };
         let credential_schema = CredentialSchema {
             id: id.to_owned().into(),
             imported_source_url: "CORE_URL".to_string(),
@@ -865,7 +832,6 @@ impl CredentialSchemasDB {
             deleted_at: None,
             format: format.to_string(),
             revocation_method: revocation_method.to_owned(),
-            external_schema: false,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: Some(LayoutProperties {
@@ -880,7 +846,6 @@ impl CredentialSchemasDB {
                 code: None,
             }),
             schema_id: schema_id.to_owned(),
-            schema_type,
             allow_suspension: true,
         };
 

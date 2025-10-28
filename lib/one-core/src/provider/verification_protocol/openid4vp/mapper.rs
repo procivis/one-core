@@ -27,9 +27,7 @@ use crate::mapper::{
 };
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::did::Did;
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
@@ -309,9 +307,9 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
 ) -> Result<OpenID4VPPresentationDefinitionInputDescriptor, VerificationProtocolError> {
     let (id, schema_fields, intent_to_retain) = match presentation_format_type {
         FormatType::Mdoc => (credential_schema.schema_id, vec![], Some(true)),
-        _ => {
-            let path = match credential_schema.schema_type {
-                CredentialSchemaType::SdJwtVc => ["$.vct".to_string()],
+        format_type => {
+            let path = match format_type {
+                FormatType::SdJwtVc => ["$.vct".to_string()],
                 _ => ["$.credentialSchema.id".to_string()],
             }
             .to_vec();
@@ -753,7 +751,6 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         created_date: schema.created_date,
         last_modified: schema.last_modified,
         name: schema.name,
-        external_schema: schema.external_schema,
         format: schema.format,
         revocation_method: schema.revocation_method,
         wallet_storage_type: convert_inner(schema.wallet_storage_type),
@@ -761,7 +758,6 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         layout_properties: convert_inner(schema.layout_properties),
         imported_source_url: schema.imported_source_url,
         schema_id: schema.schema_id,
-        schema_type: schema.schema_type,
         claim_schemas: convert_inner_of_inner(schema.claim_schemas),
         organisation: organisation.into(),
         allow_suspension: schema.allow_suspension,

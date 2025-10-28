@@ -634,8 +634,8 @@ impl OneCore {
             certificate_validator.clone(),
             client.clone(),
             blob_storage_provider.clone(),
-            credential_schema_import_parser,
             credential_schema_importer_proto,
+            credential_schema_import_parser,
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 

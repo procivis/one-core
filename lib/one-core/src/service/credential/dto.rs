@@ -5,10 +5,9 @@ use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
     OrganisationId,
 };
-use strum::{AsRefStr, Display};
+use strum::AsRefStr;
 use time::OffsetDateTime;
 
-use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{
     CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
@@ -106,32 +105,12 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
-    #[serde(default)]
-    pub external_schema: bool,
     pub wallet_storage_type: Option<WalletStorageTypeEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
-    pub schema_type: CredentialSchemaType,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, From, Into, Display)]
-#[from(model::credential_schema::CredentialSchemaType)]
-#[into(model::credential_schema::CredentialSchemaType)]
-pub enum CredentialSchemaType {
-    #[strum(serialize = "ProcivisOneSchema2024")]
-    ProcivisOneSchema2024,
-    #[strum(serialize = "FallbackSchema2024")]
-    FallbackSchema2024,
-    #[strum(serialize = "mdoc")]
-    Mdoc,
-    #[strum(serialize = "SdJwtVc")]
-    SdJwtVc,
-    #[strum(serialize = "{0}")]
-    #[serde(untagged)]
-    Other(String),
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

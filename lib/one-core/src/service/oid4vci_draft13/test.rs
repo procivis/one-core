@@ -17,8 +17,8 @@ use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, CredentialSchemaType,
-    LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
+    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -121,7 +121,6 @@ fn generic_credential_schema() -> CredentialSchema {
         name: "SchemaName".to_string(),
         wallet_storage_type: Some(WalletStorageTypeEnum::Software),
         format: "JWT".to_string(),
-        external_schema: false,
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             required: true,
@@ -138,7 +137,6 @@ fn generic_credential_schema() -> CredentialSchema {
         organisation: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
-        schema_type: CredentialSchemaType::ProcivisOneSchema2024,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
     }
@@ -1999,7 +1997,6 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
 
     let mut schema = generic_credential_schema();
     schema.format = "MDOC".to_string();
-    schema.schema_type = CredentialSchemaType::Mdoc;
 
     credential_schema_repository
         .expect_get_credential_schema()

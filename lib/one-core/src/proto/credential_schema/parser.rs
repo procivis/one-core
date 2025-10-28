@@ -78,11 +78,9 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 formatter.as_ref(),
             )?,
             schema_id: self.parse_schema_id(dto.schema.schema_id, formatter.as_ref())?,
-            schema_type: dto.schema.schema_type,
             imported_source_url: dto.schema.imported_source_url,
             allow_suspension: self
                 .parse_allow_suspension(dto.schema.allow_suspension, revocation_method.as_ref())?,
-            external_schema: dto.schema.external_schema,
             claim_schemas: Some(claim_schemas),
             organisation: Some(dto.organisation),
         })

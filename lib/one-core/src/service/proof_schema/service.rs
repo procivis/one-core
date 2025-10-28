@@ -316,7 +316,6 @@ impl ProofSchemaService {
                             .credential_schema_repository
                             .get_by_schema_id_and_organisation(
                                 &request_input_schema.credential_schema.schema_id,
-                                request_input_schema.credential_schema.schema_type.to_owned().into(),
                                 organisation.id,
                                 &CredentialSchemaRelations {
                                     claim_schemas: Some(Default::default()),

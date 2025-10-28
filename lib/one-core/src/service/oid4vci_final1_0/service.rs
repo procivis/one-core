@@ -33,7 +33,7 @@ use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, CredentialSchemaType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
 };
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
@@ -837,8 +837,14 @@ impl OID4VCIFinal1_0Service {
             }
         }
 
+        let credential_format_type = self
+            .config
+            .format
+            .get_fields(&credential_schema.format)?
+            .r#type;
+
         // we add refresh token for mdoc
-        if credential_schema.schema_type == CredentialSchemaType::Mdoc {
+        if credential_format_type == FormatType::Mdoc {
             response.refresh_token = Some(generate_new_token());
             response.refresh_token_expires_in =
                 Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));

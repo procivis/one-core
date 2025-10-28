@@ -20,8 +20,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaType, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -278,7 +277,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
             wallet_storage_type: Some(WalletStorageTypeEnum::Software),
-            external_schema: false,
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -289,7 +287,6 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             }]),
             layout_type: LayoutType::Card,
             layout_properties: None,
-            schema_type: CredentialSchemaType::ProcivisOneSchema2024,
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
@@ -628,7 +625,7 @@ async fn test_holder_accept_credential_success() {
     storage_access
         .expect_get_schema()
         .once()
-        .returning(move |_, _, _| Ok(Some(schema.clone())));
+        .returning(move |_, _| Ok(Some(schema.clone())));
 
     storage_access
         .expect_get_did_by_value()
@@ -819,7 +816,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     storage_access
         .expect_get_schema()
         .once()
-        .returning(move |_, _, _| Ok(Some(schema.clone())));
+        .returning(move |_, _| Ok(Some(schema.clone())));
 
     storage_access
         .expect_get_key_by_raw_key_and_type()

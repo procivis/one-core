@@ -20,11 +20,9 @@ use super::model::{
     Timestamp,
 };
 use super::validator::throw_if_credential_state_not_eq;
-use crate::config::core_config::CoreConfig;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaType, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchema, WalletStorageTypeEnum};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
@@ -37,7 +35,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
 
 pub(crate) fn create_issuer_metadata_response(
     schema_base_url: &str,
-    oidc_format: &str,
+    format_type: &FormatType,
     schema: &CredentialSchema,
     config: &CoreConfig,
     supported_did_methods: &[String],
@@ -45,7 +43,7 @@ pub(crate) fn create_issuer_metadata_response(
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
     let credential_configurations_supported = credential_configurations_supported(
-        oidc_format,
+        format_type,
         schema,
         config,
         supported_did_methods,
@@ -73,7 +71,7 @@ pub(crate) fn create_issuer_metadata_response(
 }
 
 fn credential_configurations_supported(
-    oidc_format: &str,
+    format_type: &FormatType,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
     supported_did_methods: &[String],
@@ -89,51 +87,42 @@ fn credential_configurations_supported(
 
     Ok(IndexMap::from([(
         schema_id.clone(),
-        match oidc_format {
-            "ldp_vc" => jsonld_configuration(
+        match format_type {
+            FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => jsonld_configuration(
                 wallet_storage_type,
-                oidc_format,
+                "ldp_vc",
                 claims,
                 credential_schema,
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
             ),
-            "jwt_vc_json" => jwt_configuration(
+            FormatType::Jwt => jwt_configuration(
                 wallet_storage_type,
-                oidc_format,
+                "jwt_vc_json",
                 claims,
                 credential_schema,
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,
             ),
-            "vc+sd-jwt" => sdjwt_configuration(
+            FormatType::SdJwt | FormatType::SdJwtVc => sdjwt_configuration(
                 wallet_storage_type,
-                oidc_format,
+                "vc+sd-jwt",
                 claims,
                 credential_schema,
-                (credential_schema.schema_type == CredentialSchemaType::SdJwtVc)
-                    .then_some(schema_id),
+                (*format_type == FormatType::SdJwtVc).then_some(schema_id),
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,
             ),
-            "mso_mdoc" => credentials_supported_mdoc(
+            FormatType::Mdoc => credentials_supported_mdoc(
                 credential_schema.clone(),
                 config,
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
             )
             .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,
-            _ => jwt_configuration(
-                wallet_storage_type,
-                oidc_format,
-                claims,
-                credential_schema,
-                cryptographic_binding_methods_supported,
-                proof_types_supported,
-                credential_signing_alg_values_supported,
-            ),
+            FormatType::PhysicalCard => Err(OpenID4VCIError::UnsupportedCredentialFormat)?,
         },
     )]))
 }
