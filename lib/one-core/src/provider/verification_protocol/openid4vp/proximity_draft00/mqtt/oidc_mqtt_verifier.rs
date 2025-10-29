@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use dcql::DcqlQuery;
 use futures::future::BoxFuture;
 use shared_types::ProofId;
 use time::{Duration, OffsetDateTime};
@@ -10,14 +11,14 @@ use tokio::sync::Mutex;
 use tracing::Instrument;
 use url::Url;
 
-use super::model::{MQTTOpenID4VPInteractionDataVerifier, MQTTOpenId4VpResponse};
+use super::model::MQTTOpenID4VPInteractionDataVerifier;
 use crate::config::core_config::TransportType;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
     HolderSubmission, ProximityVerifierTransport,
 };
@@ -161,7 +162,6 @@ pub(crate) struct MqttVerifierContext {
 #[async_trait]
 impl ProximityVerifierTransport for MqttVerifierTransport {
     type Context = MqttVerifierContext;
-    type PresentationSubmission = MQTTOpenId4VpResponse;
 
     fn transport_type(&self) -> TransportType {
         TransportType::Mqtt
@@ -207,7 +207,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
     async fn receive_presentation(
         &mut self,
         context: &mut Self::Context,
-    ) -> Result<HolderSubmission<Self::PresentationSubmission>, VerificationProtocolError> {
+    ) -> Result<HolderSubmission<DcqlSubmission>, VerificationProtocolError> {
         let response = select! {
             biased;
             _ = wallet_reject(&mut *self.reject, &context.shared_key) => {
@@ -227,12 +227,12 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
         &self,
         context: Self::Context,
         nonce: String,
-        presentation_definition: OpenID4VPPresentationDefinition,
-        request: OpenID4VP20AuthorizationRequest,
-        presentation_submission: Self::PresentationSubmission,
+        dcql_query: DcqlQuery,
+        request: AuthorizationRequest,
+        presentation_submission: DcqlSubmission,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
-            presentation_definition,
+            dcql_query,
             presentation_submission,
             nonce,
             client_id: request.client_id,

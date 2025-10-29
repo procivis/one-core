@@ -1,3 +1,4 @@
+use dcql::DcqlQuery;
 use futures::FutureExt;
 use mockall::predicate::eq;
 use serde_json::json;
@@ -19,10 +20,8 @@ use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPPresentationDefinition,
-};
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::request_as_signed_jwt;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
@@ -138,7 +137,7 @@ fn test_encryption_verifier_to_holder() {
 
 #[tokio::test]
 async fn test_handle_invitation_success() {
-    let client_id =
+    let verifier_did =
         DidValue::from_str("did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y").unwrap();
     let mut mock_storage_access = MockStorageProxy::default();
     mock_storage_access
@@ -175,10 +174,11 @@ async fn test_handle_invitation_success() {
                 }),
             ))
         });
+    let interaction_id = Uuid::new_v4();
     mock_storage_access
         .expect_create_interaction()
         .once()
-        .returning(|_| Ok(Uuid::new_v4()));
+        .returning(move |_| Ok(interaction_id));
     mock_storage_access
         .expect_update_interaction()
         .once()
@@ -195,7 +195,7 @@ async fn test_handle_invitation_success() {
     did_method_provider
         .expect_resolve()
         .withf({
-            let verifier_did = client_id.clone();
+            let verifier_did = verifier_did.clone();
             move |did| did == &verifier_did
         })
         .returning(|did| {
@@ -228,25 +228,21 @@ async fn test_handle_invitation_success() {
     let (verifier_key, verifier_public_key) = generate_verifier_key();
     let holder_identity_request = Arc::new(Mutex::new(None));
     let handle = holder_identity_request.clone();
-    let request = OpenID4VP20AuthorizationRequest {
-        client_id: client_id.to_string(),
+    let request = AuthorizationRequest {
+        client_id: format!("decentralized_identifier:{verifier_did}"),
         nonce: Some("nonce".to_string()),
-        presentation_definition: Some(OpenID4VPPresentationDefinition {
-            id: Default::default(),
-            input_descriptors: vec![],
+        dcql_query: Some(DcqlQuery {
+            credentials: vec![],
+            credential_sets: None,
         }),
         response_type: None,
         response_mode: None,
-        client_id_scheme: Some(ClientIdScheme::Did),
         client_metadata: None,
         response_uri: None,
         state: None,
-        client_metadata_uri: None,
-        presentation_definition_uri: None,
         redirect_uri: None,
     };
-    let signed = request
-        .as_signed_jwt(&client_id, Box::new(auth_fn))
+    let signed = request_as_signed_jwt(request, &verifier_did, Box::new(auth_fn))
         .await
         .unwrap();
     let mut identify_topic = MockMqttTopic::default();
@@ -310,7 +306,7 @@ async fn test_handle_invitation_success() {
         .once()
         .return_const(Box::new(key_algorithm_provider));
     verifier.expect_verify().once().return_const(Ok(()));
-    handle_invitation_with_transport(
+    let response = handle_invitation_with_transport(
         valid,
         dummy_organisation(None),
         &mock_storage_access,
@@ -319,6 +315,8 @@ async fn test_handle_invitation_success() {
     )
     .await
     .expect("handle invitation failed");
+
+    assert_eq!(response.interaction_id, interaction_id);
 }
 
 #[tokio::test]
@@ -369,7 +367,7 @@ async fn test_presentation_reject_success() {
             sender_key: holder_session_keys.sender_key,
             nonce: holder_session_keys.nonce,
         },
-        presentation_definition: None,
+        dcql_query: None,
         identity_request_nonce: "identity_request_nonce".to_string(),
         topic_id,
     };

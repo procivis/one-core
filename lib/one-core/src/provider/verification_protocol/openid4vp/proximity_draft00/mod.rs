@@ -1,8 +1,8 @@
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
+use dcql::DcqlQuery;
 use futures::FutureExt;
 use futures::future::BoxFuture;
 use key_agreement_key::KeyAgreementKey;
@@ -14,55 +14,58 @@ use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
-use super::model::{
-    OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
-    default_presentation_url_scheme,
+use super::dcql::get_presentation_definition_v2;
+use super::final1_0::dcql::create_dcql_query;
+use super::mapper::format_to_type;
+use super::mdoc::mdoc_presentation_context;
+use super::model::{DcqlSubmission, default_presentation_url_scheme};
+use super::proximity_draft00::async_verifier_flow::{AsyncVerifierFlowParams, verifier_flow};
+use super::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
+use super::proximity_draft00::ble::oidc_ble_verifier::{
+    retract_proof_ble, schedule_ble_verifier_flow,
 };
+use super::proximity_draft00::holder_flow::{
+    HolderCommonVPInteractionData, ProximityHolderTransport, handle_invitation_with_transport,
+    submit_proof_with_transport,
+};
+use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId, InteractionType};
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
+use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
+use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::key_verification::KeyVerification;
+use crate::proto::mqtt_client::MqttClient;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, DetailCredential, HolderBindingCtx
+    AuthenticationFn, DetailCredential, HolderBindingCtx,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::proto::mqtt_client::MqttClient;
-use crate::provider::presentation_formatter::model::{FormatPresentationCtx, FormattedPresentation,CredentialToPresent};
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::iso_18013_7::OID4VPDraftHandover;
-use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{Handover, SessionTranscript};
+use crate::provider::presentation_formatter::model::{CredentialToPresent, FormatPresentationCtx};
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Handover;
+use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::verification_protocol::dto::{InvitationResponseDTO, PresentationDefinitionResponseDTO, PresentationDefinitionV2ResponseDTO, FormattedCredentialPresentation, ShareResponse, UpdateResponse, VerificationProtocolCapabilities, PresentationDefinitionVersion};
-use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::iso_mdl::common::to_cbor;
-use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
-use crate::provider::verification_protocol::openid4vp::get_presentation_definition_with_local_credentials;
-use crate::provider::verification_protocol::openid4vp::mapper::{create_open_id_for_vp_presentation_definition, create_presentation_submission, explode_validity_credentials, key_and_did_from_formatted_creds, map_presented_credentials_to_presentation_format_type};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{verifier_flow, AsyncVerifierFlowParams};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_holder::BleHolderTransport;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::oidc_ble_verifier::{retract_proof_ble, schedule_ble_verifier_flow};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
-    handle_invitation_with_transport, submit_proof_with_transport, HolderCommonVPInteractionData,
-    ProximityHolderTransport,
+use crate::provider::verification_protocol::dto::{
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
+    PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, PresentationReference,
+    ShareResponse, UpdateResponse, VerificationProtocolCapabilities,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::MqttHolderTransport;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::mapper::proof_from_handle_invitation;
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::proto::certificate_validator::CertificateValidator;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
-use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
-use crate::proto::key_verification::KeyVerification;
 
 mod async_verifier_flow;
 pub mod ble;
@@ -306,23 +309,17 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
             VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
         })?;
-        let credential_presentations = explode_validity_credentials(credential_presentations);
 
         let interaction_data = interaction_data_from_proof(proof)?;
-        let (key, jwk_key_id, holder_did) =
-            key_and_did_from_formatted_creds(&credential_presentations)?;
 
         let params = CreatePresentationParams {
             credential_presentations,
-            holder_did: &holder_did,
-            key: &key,
-            jwk_key_id,
             presentation_formatter_provider: &*self.presentation_formatter_provider,
             key_algorithm_provider: self.key_algorithm_provider.clone(),
             key_provider: &*self.key_provider,
             config: self.config.clone(),
             // Will be filled in later using holder transport
-            presentation_definition: None,
+            dcql_query: None,
             client_id: "",
             identity_request_nonce: None,
             nonce: "",
@@ -348,30 +345,11 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
     }
     async fn holder_get_presentation_definition(
         &self,
-        proof: &Proof,
-        context: serde_json::Value,
-        storage_access: &StorageAccess,
+        _proof: &Proof,
+        _context: serde_json::Value,
+        _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
-        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
-
-        let interaction_data = self.parse_interaction_data(context, transport)?;
-        let presentation_definition =
-            interaction_data
-                .presentation_definition
-                .ok_or(VerificationProtocolError::Failed(
-                    "Presentation definition not found".to_string(),
-                ))?;
-
-        get_presentation_definition_with_local_credentials(
-            presentation_definition,
-            proof,
-            None,
-            storage_access,
-            &self.config,
-        )
-        .await
+        Err(VerificationProtocolError::OperationNotSupported)
     }
 
     fn holder_get_holder_binding_context(
@@ -395,7 +373,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         &self,
         proof: &Proof,
         format_to_type_mapper: FormatMapper,
-        type_to_descriptor: TypeToDescriptorMapper,
+        _type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse<Value>, VerificationProtocolError> {
@@ -409,11 +387,9 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         let interaction_id = Uuid::new_v4();
         let key_agreement = KeyAgreementKey::new_random();
 
-        let (presentation_definition, verifier_did, auth_fn_ble, auth_fn_mqtt) =
+        let (dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
             prepare_proof_share(ProofShareParams {
-                interaction_id,
                 proof,
-                type_to_descriptor,
                 format_to_type_mapper,
                 key_id,
                 formatter_provider: &*self.credential_formatter_provider,
@@ -424,7 +400,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
 
         let params = AsyncVerifierFlowParams {
             proof_id: proof.id,
-            presentation_definition,
+            dcql_query,
             did: verifier_did.did,
             interaction_id,
             proof_repository: self.proof_repository.clone(),
@@ -597,17 +573,35 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             supported_transports: vec![TransportType::Ble, TransportType::Mqtt],
             did_methods,
             verifier_identifier_types: vec![IdentifierType::Did],
-            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
+            supported_presentation_definition: vec![PresentationDefinitionVersion::V2],
         }
     }
 
     async fn holder_get_presentation_definition_v2(
         &self,
-        _proof: &Proof,
-        _context: Value,
-        _storage_access: &StorageAccess,
+        proof: &Proof,
+        context: Value,
+        storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
-        Err(VerificationProtocolError::OperationNotSupported)
+        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
+            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
+        })?;
+
+        let interaction_data = self.parse_interaction_data(context, transport)?;
+        let dcql_query = interaction_data
+            .dcql_query
+            .ok_or(VerificationProtocolError::Failed(
+                "Presentation definition not found".to_string(),
+            ))?;
+
+        get_presentation_definition_v2(
+            dcql_query,
+            proof,
+            storage_access,
+            &*self.credential_formatter_provider,
+            &self.config,
+        )
+        .await
     }
 }
 
@@ -711,10 +705,7 @@ pub(super) async fn create_interaction_and_proof(
 
 pub(super) struct CreatePresentationParams<'a> {
     credential_presentations: Vec<FormattedCredentialPresentation>,
-    presentation_definition: Option<&'a OpenID4VPPresentationDefinition>,
-    holder_did: &'a Did,
-    key: &'a Key,
-    jwk_key_id: Option<String>,
+    dcql_query: Option<&'a DcqlQuery>,
 
     client_id: &'a str,
     identity_request_nonce: Option<&'a str>,
@@ -729,98 +720,78 @@ pub(super) struct CreatePresentationParams<'a> {
 
 pub(super) async fn create_presentation(
     params: CreatePresentationParams<'_>,
-) -> Result<(String, PresentationSubmissionMappingDTO), VerificationProtocolError> {
-    let format = map_presented_credentials_to_presentation_format_type(
-        &params.credential_presentations,
-        &params.config,
-    )?;
+) -> Result<DcqlSubmission, VerificationProtocolError> {
+    let mut vp_token = HashMap::new();
 
-    let presentation_formatter = params
-        .presentation_formatter_provider
-        .get_presentation_formatter(&format.to_string())
-        .ok_or(VerificationProtocolError::Failed(
-            "Formatter not found".to_string(),
-        ))?;
+    // For DCQL each credential gets a presentation individually
+    for credential_presentation in &params.credential_presentations {
+        let credential_format = format_to_type(credential_presentation, &params.config)?;
+        let presentation_format = match credential_format {
+            // W3C SD-JWT will be enveloped using JWT presentation formatter
+            FormatType::SdJwt => FormatType::Jwt,
+            FormatType::SdJwtVc => FormatType::SdJwtVc,
+            FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
+            FormatType::Mdoc => FormatType::Mdoc,
+            FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+        };
 
-    let auth_fn = params
-        .key_provider
-        .get_signature_provider(params.key, params.jwk_key_id, params.key_algorithm_provider)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let presentation_formatter = params
+            .presentation_formatter_provider
+            .get_presentation_formatter(&presentation_format.to_string())
+            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
 
-    let presentation_definition_id = params
-        .presentation_definition
-        .ok_or(VerificationProtocolError::Failed(
-            "Missing presentation definition".into(),
-        ))?
-        .id
-        .to_owned();
-
-    let mut ctx = FormatPresentationCtx {
-        nonce: Some(params.nonce.to_string()),
-        ..Default::default()
-    };
-
-    if format == FormatType::Mdoc {
-        let mdoc_generated_nonce = params.identity_request_nonce.ok_or_else(|| {
-            VerificationProtocolError::Failed(
-                "Cannot format MDOC - missing identity request nonce".to_string(),
+        let auth_fn = params
+            .key_provider
+            .get_signature_provider(
+                &credential_presentation.key,
+                credential_presentation.jwk_key_id.to_owned(),
+                params.key_algorithm_provider.clone(),
             )
-        })?;
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-        ctx.mdoc_session_transcript = Some(
-            to_cbor(&SessionTranscript {
-                handover: Some(Handover::Iso18013_7AnnexB(
-                    OID4VPDraftHandover::compute(
-                        params.client_id,
-                        params.client_id,
-                        params.nonce,
-                        mdoc_generated_nonce,
-                    )
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
-                )),
-                device_engagement_bytes: None,
-                e_reader_key_bytes: None,
-            })
-            .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?,
-        );
-    }
-
-    let credentials = params
-        .credential_presentations
-        .iter()
-        .map(|presented_credential| {
-            let credential_format =
-                FormatType::from_str(&presented_credential.credential_schema.format)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-            Ok(CredentialToPresent {
-                raw_credential: presented_credential.presentation.to_owned(),
+        let mut credentials = vec![CredentialToPresent {
+            raw_credential: credential_presentation.presentation.to_owned(),
+            credential_format,
+        }];
+        if let Some(validity_credential) = credential_presentation
+            .validity_credential_presentation
+            .to_owned()
+        {
+            credentials.push(CredentialToPresent {
+                raw_credential: validity_credential,
                 credential_format,
             })
-        })
-        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
+        }
+        let formatted_presentation = presentation_formatter
+            .format_presentation(
+                credentials,
+                auth_fn,
+                &credential_presentation.holder_did.did,
+                format_presentation_context(&params, presentation_format)?,
+            )
+            .await
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        let PresentationReference::Dcql {
+            credential_query_id,
+        } = credential_presentation.reference.to_owned()
+        else {
+            return Err(VerificationProtocolError::Failed(
+                "Incompatible presentation reference".to_string(),
+            ));
+        };
+        vp_token
+            .entry(credential_query_id)
+            .and_modify(|presentations: &mut Vec<String>| {
+                presentations.push(formatted_presentation.vp_token.to_owned())
+            })
+            .or_insert(vec![formatted_presentation.vp_token]);
+    }
 
-    let FormattedPresentation {
-        vp_token,
-        oidc_format,
-    } = presentation_formatter
-        .format_presentation(credentials, auth_fn, &params.holder_did.did, ctx)
-        .await
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-    let presentation_submission = create_presentation_submission(
-        presentation_definition_id,
-        params.credential_presentations,
-        &oidc_format,
-        &params.config,
-    )?;
-
-    Ok((vp_token, presentation_submission))
+    Ok(DcqlSubmission { vp_token })
 }
 
 pub(super) struct ProofShareParams<'a> {
-    interaction_id: InteractionId,
     proof: &'a Proof,
-    type_to_descriptor: TypeToDescriptorMapper,
     format_to_type_mapper: FormatMapper,
     key_id: KeyId,
 
@@ -831,15 +802,7 @@ pub(super) struct ProofShareParams<'a> {
 
 pub(super) async fn prepare_proof_share(
     params: ProofShareParams<'_>,
-) -> Result<
-    (
-        OpenID4VPPresentationDefinition,
-        Did,
-        AuthenticationFn,
-        AuthenticationFn,
-    ),
-    VerificationProtocolError,
-> {
+) -> Result<(DcqlQuery, Did, AuthenticationFn, AuthenticationFn), VerificationProtocolError> {
     let proof_schema = params
         .proof
         .schema
@@ -848,11 +811,9 @@ pub(super) async fn prepare_proof_share(
             "missing proof schema".to_string(),
         ))?;
 
-    let presentation_definition = create_open_id_for_vp_presentation_definition(
-        params.interaction_id,
+    let dcql_query = create_dcql_query(
         proof_schema,
-        params.type_to_descriptor,
-        params.format_to_type_mapper,
+        &params.format_to_type_mapper,
         params.formatter_provider,
     )?;
 
@@ -899,9 +860,27 @@ pub(super) async fn prepare_proof_share(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok((
-        presentation_definition,
-        verifier_did.clone(),
+        dcql_query,
+        verifier_did.to_owned(),
         auth_fn_ble,
         auth_fn_mqtt,
     ))
+}
+
+fn format_presentation_context(
+    params: &CreatePresentationParams<'_>,
+    presentation_format: FormatType,
+) -> Result<FormatPresentationCtx, VerificationProtocolError> {
+    let ctx = if presentation_format == FormatType::Mdoc {
+        mdoc_presentation_context(Handover::OID4VPFinal1_0(
+            OID4VPFinal1_0Handover::compute(params.client_id, params.client_id, params.nonce, None)
+                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+        ))?
+    } else {
+        FormatPresentationCtx {
+            nonce: Some(params.nonce.to_owned()),
+            ..Default::default()
+        }
+    };
+    Ok(ctx)
 }

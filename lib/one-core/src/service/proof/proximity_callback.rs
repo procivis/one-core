@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::Context;
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -28,8 +26,8 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::credential_from_proved;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, PexSubmission,
-    SubmissionRequestData, VpSubmissionData,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, SubmissionRequestData,
+    VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
@@ -93,14 +91,9 @@ impl ProofService {
                     .presentation_submission
                     .context("BLE interaction missing presentation_submission")?;
 
-                let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
-
                 let request_data = SubmissionRequestData {
-                    submission_data: VpSubmissionData::Pex(PexSubmission {
-                        presentation_submission: response.presentation_submission,
-                        vp_token: response.vp_token,
-                    }),
-                    state,
+                    submission_data: VpSubmissionData::Dcql(response),
+                    state: Uuid::new_v4(),
                     mdoc_generated_nonce: interaction_data.identity_request_nonce,
                     encryption_key: None,
                 };
@@ -113,15 +106,11 @@ impl ProofService {
                     )
                     .context("MQTT interaction data deserialization")?;
 
-                let response = interaction_data.presentation_submission;
-                let state = Uuid::from_str(&response.presentation_submission.definition_id)?;
-
                 let request_data = SubmissionRequestData {
-                    submission_data: VpSubmissionData::Pex(PexSubmission {
-                        presentation_submission: response.presentation_submission,
-                        vp_token: response.vp_token,
-                    }),
-                    state,
+                    submission_data: VpSubmissionData::Dcql(
+                        interaction_data.presentation_submission,
+                    ),
+                    state: Uuid::new_v4(),
                     mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
                     encryption_key: None,
                 };

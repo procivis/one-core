@@ -4,11 +4,10 @@ use std::sync::Arc;
 
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use serde::{Deserialize, Deserializer, Serialize};
-use shared_types::{DidValue, ProofId};
+use shared_types::ProofId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::draft20::model::OpenID4VP20AuthorizationRequest;
 use super::model::{
     LdpVcAlgs, OpenID4VCVerifierAttestationPayload, OpenID4VPAlgs, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
@@ -39,12 +38,9 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialClaim, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
@@ -552,39 +548,6 @@ pub(crate) fn extracted_credential_to_model(
         holder_details,
         mdoc_mso,
     })
-}
-
-impl OpenID4VP20AuthorizationRequest {
-    pub async fn as_signed_jwt(
-        &self,
-        did: &DidValue,
-        auth_fn: AuthenticationFn,
-    ) -> Result<String, ServiceError> {
-        let unsigned_jwt = Jwt {
-            header: JWTHeader {
-                algorithm: auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
-                    "No JOSE alg specified".to_string(),
-                ))?,
-                key_id: auth_fn.get_key_id(),
-                r#type: Some("oauth-authz-req+jwt".to_string()),
-                jwk: None,
-                jwt: None,
-                x5c: None,
-            },
-            payload: JWTPayload {
-                issued_at: None,
-                expires_at: Some(OffsetDateTime::now_utc().add(Duration::hours(1))),
-                invalid_before: None,
-                issuer: Some(did.to_string()),
-                subject: None,
-                audience: None,
-                jwt_id: None,
-                proof_of_possession_key: None,
-                custom: self.clone(),
-            },
-        };
-        Ok(unsigned_jwt.tokenize(Some(&*auth_fn)).await?)
-    }
 }
 
 pub(crate) fn map_presented_credentials_to_presentation_format_type(

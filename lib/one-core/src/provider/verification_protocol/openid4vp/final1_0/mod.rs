@@ -63,7 +63,7 @@ use crate::service::oid4vp_final1_0::proof_request::{
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
-mod dcql;
+pub(super) mod dcql;
 pub mod mappers;
 pub mod model;
 #[cfg(test)]

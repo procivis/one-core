@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use async_trait::async_trait;
 use dto::OpenID4VPMqttQueryParams;
-use model::{MQTTOpenID4VPInteractionDataHolder, MQTTOpenId4VpResponse, MQTTSessionKeys};
+use model::{MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys};
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
 use serde_json::Value;
@@ -15,8 +15,8 @@ use super::key_agreement_key::KeyAgreementKey;
 use crate::config::core_config::TransportType;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
     HolderCommonVPInteractionData, ProximityHolderTransport,
@@ -154,7 +154,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
 
     fn interaction_data_from_authz_request(
         &self,
-        authz_request: OpenID4VP20AuthorizationRequest,
+        authz_request: AuthorizationRequest,
         context: Self::Context,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let (host, port) = extract_host_and_port(&context.broker_url)?;
@@ -168,7 +168,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
                     "missing nonce".to_string(),
                 ))?,
             session_keys: context.session_keys,
-            presentation_definition: authz_request.presentation_definition,
+            dcql_query: authz_request.dcql_query,
             identity_request_nonce: context.identity_request_nonce,
             topic_id: context.topic_id,
         };
@@ -186,7 +186,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
 
         Ok(HolderCommonVPInteractionData {
             client_id: interaction_data.client_id,
-            presentation_definition: interaction_data.presentation_definition,
+            dcql_query: interaction_data.dcql_query,
             nonce: interaction_data.nonce,
             identity_request_nonce: Some(interaction_data.identity_request_nonce),
         })
@@ -194,18 +194,12 @@ impl ProximityHolderTransport for MqttHolderTransport {
 
     async fn submit_presentation(
         &self,
-        vp_token: String,
-        presentation_submission: PresentationSubmissionMappingDTO,
+        presentation: DcqlSubmission,
         interaction_data: Value,
     ) -> Result<(), VerificationProtocolError> {
         let interaction_data: MQTTOpenID4VPInteractionDataHolder =
             serde_json::from_value(interaction_data)
                 .map_err(VerificationProtocolError::JsonError)?;
-
-        let response = MQTTOpenId4VpResponse {
-            vp_token,
-            presentation_submission,
-        };
 
         let encryption = PeerEncryption::new(
             interaction_data.session_keys.sender_key,
@@ -214,7 +208,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         );
 
         let encrypted = encryption
-            .encrypt(&response)
+            .encrypt(&presentation)
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         let presentation_submission_topic = self

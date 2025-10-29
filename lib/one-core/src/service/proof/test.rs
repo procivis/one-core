@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use assert2::let_assert;
+use dcql::DcqlQuery;
 use mockall::Sequence;
 use mockall::predicate::*;
 use rstest::rstest;
@@ -73,10 +74,7 @@ use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ShareResponse, VerificationProtocolCapabilities,
 };
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPPresentationDefinition,
-};
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
@@ -4203,9 +4201,9 @@ async fn test_retract_proof_with_bluetooth_ok() {
                 client_id: "did:example:123".to_string(),
                 nonce: "nonce".to_string(),
                 task_id: Uuid::new_v4(),
-                presentation_definition: OpenID4VPPresentationDefinition {
-                    id: interaction_id.to_string(),
-                    input_descriptors: vec![],
+                dcql_query: DcqlQuery {
+                    credentials: vec![],
+                    credential_sets: None,
                 },
                 peer: BLEPeer::new(
                     DeviceInfo::new(device_address.to_owned(), 123),
@@ -4213,22 +4211,19 @@ async fn test_retract_proof_with_bluetooth_ok() {
                     SecretSlice::from(vec![1; 32]),
                     [2; 12],
                 ),
-                openid_request: OpenID4VP20AuthorizationRequest {
+                openid_request: AuthorizationRequest {
                     client_id: "did:example:123".to_string(),
                     response_uri: None,
                     response_mode: None,
                     response_type: None,
-                    client_id_scheme: Some(ClientIdScheme::Did),
                     client_metadata: None,
                     state: None,
                     nonce: Some("nonce".to_string()),
-                    presentation_definition: Some(OpenID4VPPresentationDefinition {
-                        id: interaction_id.to_string(),
-                        input_descriptors: vec![],
-                    }),
-                    client_metadata_uri: None,
-                    presentation_definition_uri: None,
                     redirect_uri: None,
+                    dcql_query: Some(DcqlQuery {
+                        credentials: vec![],
+                        credential_sets: None,
+                    }),
                 },
                 presentation_submission: None,
                 identity_request_nonce: None,

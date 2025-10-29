@@ -312,7 +312,8 @@ impl MsoMdocPresentationFormatter {
             .unwrap_or(client_id.as_str());
 
         let handover = match &context.verification_protocol_type {
-            VerificationProtocolType::OpenId4VpFinal1_0 => Handover::OID4VPFinal1_0(
+            VerificationProtocolType::OpenId4VpFinal1_0
+            | VerificationProtocolType::OpenId4VpProximityDraft00 => Handover::OID4VPFinal1_0(
                 OID4VPFinal1_0Handover::compute(
                     &client_id,
                     response_uri,

@@ -21,12 +21,10 @@ use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConfl
 use crate::proto::bluetooth_low_energy::low_level::ble_central::{BleCentral, TrackingBleCentral};
 use crate::proto::bluetooth_low_energy::low_level::dto::{CharacteristicWriteType, DeviceInfo};
 use crate::provider::verification_protocol::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::PresentationSubmissionMappingDTO;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::{
-    BleOpenId4VpResponse, OpenID4VPBleData,
-};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::OpenID4VPBleData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
@@ -191,7 +189,7 @@ impl ProximityHolderTransport for BleHolderTransport {
 
     fn interaction_data_from_authz_request(
         &self,
-        authz_request: OpenID4VP20AuthorizationRequest,
+        authz_request: AuthorizationRequest,
         context: Self::Context,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let identity_request_nonce = Some(hex::encode(context.identity_request_nonce));
@@ -205,10 +203,8 @@ impl ProximityHolderTransport for BleHolderTransport {
                 ))?,
             task_id: context.task_id,
             peer: context.ble_peer,
-            presentation_definition: authz_request.presentation_definition.clone().ok_or(
-                VerificationProtocolError::InvalidRequest(
-                    "presentation_definition missing".to_string(),
-                ),
+            dcql_query: authz_request.dcql_query.clone().ok_or(
+                VerificationProtocolError::InvalidRequest("dcql_query missing".to_string()),
             )?,
             openid_request: authz_request,
             identity_request_nonce,
@@ -227,7 +223,7 @@ impl ProximityHolderTransport for BleHolderTransport {
 
         Ok(HolderCommonVPInteractionData {
             client_id: interaction_data.client_id,
-            presentation_definition: interaction_data.openid_request.presentation_definition,
+            dcql_query: interaction_data.openid_request.dcql_query,
             nonce: interaction_data.nonce,
             identity_request_nonce: interaction_data.identity_request_nonce,
         })
@@ -235,8 +231,7 @@ impl ProximityHolderTransport for BleHolderTransport {
 
     async fn submit_presentation(
         &self,
-        vp_token: String,
-        presentation_submission: PresentationSubmissionMappingDTO,
+        presentation: DcqlSubmission,
         interaction_data: Value,
     ) -> Result<(), VerificationProtocolError> {
         let interaction: BLEOpenID4VPInteractionData = serde_json::from_value(interaction_data)
@@ -253,13 +248,8 @@ impl ProximityHolderTransport for BleHolderTransport {
                                 Err(VerificationProtocolError::Failed("Verifier disconnected".into()))
                             },
                             result = async {
-                                let response = BleOpenId4VpResponse {
-                                    vp_token,
-                                    presentation_submission,
-                                };
-
                                 let enc_payload = interaction.peer
-                                    .encrypt(&response)
+                                    .encrypt(&presentation)
                                     .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 
                                 let chunks =

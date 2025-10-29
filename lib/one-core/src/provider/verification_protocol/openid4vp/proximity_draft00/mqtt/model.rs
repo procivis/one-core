@@ -1,14 +1,13 @@
+use dcql::DcqlQuery;
 use secrecy::SecretSlice;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::mapper::secret_slice;
-use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
-};
+use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct MQTTSessionKeys {
+pub(crate) struct MQTTSessionKeys {
     pub public_key: [u8; 32],
     #[serde(with = "secret_slice")]
     pub receiver_key: SecretSlice<u8>,
@@ -19,28 +18,22 @@ pub struct MQTTSessionKeys {
 
 /// Interaction data used for OpenID4VP (MQTT) on holder side
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MQTTOpenID4VPInteractionDataHolder {
+pub(crate) struct MQTTOpenID4VPInteractionDataHolder {
     pub broker_url: String,
     pub broker_port: u16,
     pub client_id: String,
     pub nonce: String,
     pub identity_request_nonce: String,
     pub session_keys: MQTTSessionKeys,
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+    pub dcql_query: Option<DcqlQuery>,
     pub topic_id: Uuid,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MQTTOpenId4VpResponse {
-    pub vp_token: String,
-    pub presentation_submission: PresentationSubmissionMappingDTO,
 }
 
 /// Interaction data used for OpenID4VP (MQTT) on verifier side
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MQTTOpenID4VPInteractionDataVerifier {
-    pub presentation_definition: OpenID4VPPresentationDefinition,
-    pub presentation_submission: MQTTOpenId4VpResponse,
+pub(crate) struct MQTTOpenID4VPInteractionDataVerifier {
+    pub dcql_query: DcqlQuery,
+    pub presentation_submission: DcqlSubmission,
     pub nonce: String,
     pub identity_request_nonce: String,
     pub client_id: String,
@@ -48,6 +41,8 @@ pub struct MQTTOpenID4VPInteractionDataVerifier {
 
 #[cfg(test)]
 mod tests {
+
+    use std::collections::HashMap;
 
     use super::*;
     use crate::provider::verification_protocol::openid4vp::model::OpenID4VPVerifierInteractionContent;
@@ -60,17 +55,12 @@ mod tests {
         let data = MQTTOpenID4VPInteractionDataVerifier {
             nonce: "nonce".to_string(),
             identity_request_nonce: "identity_request_nonce".to_string(),
-            presentation_submission: MQTTOpenId4VpResponse {
-                vp_token: "vp_token".to_string(),
-                presentation_submission: PresentationSubmissionMappingDTO {
-                    id: "id".to_string(),
-                    definition_id: "definition_id".to_string(),
-                    descriptor_map: vec![],
-                },
+            presentation_submission: DcqlSubmission {
+                vp_token: HashMap::from([("id".to_string(), vec!["token".to_string()])]),
             },
-            presentation_definition: OpenID4VPPresentationDefinition {
-                id: Uuid::new_v4().to_string(),
-                input_descriptors: vec![],
+            dcql_query: DcqlQuery {
+                credentials: vec![],
+                credential_sets: None,
             },
             client_id: "client_id".to_string(),
         };

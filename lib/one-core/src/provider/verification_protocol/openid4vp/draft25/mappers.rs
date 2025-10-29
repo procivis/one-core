@@ -167,7 +167,7 @@ fn format_params_for_redirect_uri(
     })
 }
 
-pub(crate) fn encode_client_id_with_scheme(
+pub(super) fn encode_client_id_with_scheme(
     client_id: String,
     client_id_scheme: ClientIdScheme,
 ) -> String {

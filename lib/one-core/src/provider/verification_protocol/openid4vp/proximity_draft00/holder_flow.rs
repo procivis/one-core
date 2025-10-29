@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use dcql::DcqlQuery;
 use shared_types::DidValue;
 use url::Url;
 
@@ -10,10 +11,9 @@ use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::{IdentifierDetails, VerificationFn};
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPPresentationDefinition, PresentationSubmissionMappingDTO,
-};
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::decode_client_id_with_scheme;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::{ClientIdScheme, DcqlSubmission};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::{
     CreatePresentationParams, create_interaction_and_proof, create_presentation,
 };
@@ -36,7 +36,7 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
 
     fn interaction_data_from_authz_request(
         &self,
-        authz_request: OpenID4VP20AuthorizationRequest,
+        authz_request: AuthorizationRequest,
         context: Self::Context,
     ) -> Result<Vec<u8>, VerificationProtocolError>;
 
@@ -47,8 +47,7 @@ pub(crate) trait ProximityHolderTransport: Send + Sync {
 
     async fn submit_presentation(
         &self,
-        vp_token: String,
-        presentation_submission: PresentationSubmissionMappingDTO,
+        presenatition: DcqlSubmission,
         interaction_data: serde_json::Value,
     ) -> Result<(), VerificationProtocolError>;
 
@@ -77,7 +76,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
 
     let mut context = transport.setup(url).await?;
     let authz_request_token = transport.receive_authz_request_token(&mut context).await?;
-    let presentation_request = Jwt::<OpenID4VP20AuthorizationRequest>::build_from_token(
+    let presentation_request = Jwt::<AuthorizationRequest>::build_from_token(
         &authz_request_token,
         Some(&verification_fn),
         None,
@@ -85,13 +84,18 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     .await
     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    let did_value = DidValue::from_did_url(presentation_request.payload.custom.client_id.as_str())
-        .map_err(|_| {
-            VerificationProtocolError::InvalidRequest(format!(
-                "invalid client_id: {}",
-                presentation_request.payload.custom.client_id
-            ))
-        })?;
+    let (did_value, ClientIdScheme::Did) =
+        decode_client_id_with_scheme(&presentation_request.payload.custom.client_id)?
+    else {
+        return Err(VerificationProtocolError::InvalidRequest(format!(
+            "invalid client_id: {}",
+            presentation_request.payload.custom.client_id
+        )));
+    };
+    let did_value = DidValue::from_did_url(&did_value).map_err(|_| {
+        VerificationProtocolError::InvalidRequest(format!("invalid client_id did: {did_value}"))
+    })?;
+
     let (verifier_identifier, ..) = storage_access
         .get_or_create_identifier(
             &Some(organisation.clone()),
@@ -131,7 +135,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
 
 pub(crate) struct HolderCommonVPInteractionData {
     pub client_id: String,
-    pub presentation_definition: Option<OpenID4VPPresentationDefinition>,
+    pub dcql_query: Option<DcqlQuery>,
     pub nonce: String,
     pub identity_request_nonce: Option<String>,
 }
@@ -146,11 +150,11 @@ pub(crate) async fn submit_proof_with_transport<T: Send + Sync + 'static>(
     params.client_id = &parsed_interaction_data.client_id;
     params.identity_request_nonce = parsed_interaction_data.identity_request_nonce.as_deref();
     params.nonce = &parsed_interaction_data.nonce;
-    params.presentation_definition = parsed_interaction_data.presentation_definition.as_ref();
+    params.dcql_query = parsed_interaction_data.dcql_query.as_ref();
 
-    let (vp_token, presentation_submission) = create_presentation(params).await?;
+    let presentation = create_presentation(params).await?;
     transport
-        .submit_presentation(vp_token, presentation_submission, interaction_data)
+        .submit_presentation(presentation, interaction_data)
         .await?;
     Ok(UpdateResponse { update_proof: None })
 }

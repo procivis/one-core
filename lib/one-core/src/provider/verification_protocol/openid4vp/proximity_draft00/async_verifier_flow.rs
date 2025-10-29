@@ -1,9 +1,12 @@
+use std::ops::Add;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use dcql::DcqlQuery;
 use futures::future::{BoxFuture, Shared};
 use one_crypto::utilities;
 use shared_types::{DidValue, ProofId};
+use time::{Duration, OffsetDateTime};
 use tokio::select;
 use tokio_util::sync::CancellationToken;
 
@@ -11,12 +14,13 @@ use crate::config::core_config::TransportType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::{InteractionId, UpdateInteractionRequest};
 use crate::model::proof::{ProofStateEnum, UpdateProofRequest};
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VPPresentationDefinition,
-};
+use crate::provider::verification_protocol::openid4vp::final1_0::mappers::encode_client_id_with_scheme;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::{ClientIdScheme, DcqlSubmission};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::key_agreement_key::KeyAgreementKey;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -25,7 +29,6 @@ use crate::service::error::ErrorCode::BR_0000;
 #[async_trait]
 pub(super) trait ProximityVerifierTransport: Send + Sync {
     type Context;
-    type PresentationSubmission;
 
     fn transport_type(&self) -> TransportType;
 
@@ -43,15 +46,15 @@ pub(super) trait ProximityVerifierTransport: Send + Sync {
     async fn receive_presentation(
         &mut self,
         context: &mut Self::Context,
-    ) -> Result<HolderSubmission<Self::PresentationSubmission>, VerificationProtocolError>;
+    ) -> Result<HolderSubmission<DcqlSubmission>, VerificationProtocolError>;
 
     fn interaction_data_from_submission(
         &self,
         context: Self::Context,
         nonce: String,
-        presentation_definition: OpenID4VPPresentationDefinition,
-        request: OpenID4VP20AuthorizationRequest,
-        presentation_submission: Self::PresentationSubmission,
+        dcql_query: DcqlQuery,
+        request: AuthorizationRequest,
+        presentation_submission: DcqlSubmission,
     ) -> Result<Vec<u8>, VerificationProtocolError>;
 
     async fn clean_up(&self);
@@ -65,7 +68,7 @@ pub(crate) enum HolderSubmission<T> {
 #[derive(Clone)]
 pub(crate) struct AsyncVerifierFlowParams {
     pub proof_id: ProofId,
-    pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub dcql_query: DcqlQuery,
     pub did: DidValue,
     pub interaction_id: InteractionId,
     pub proof_repository: Arc<dyn ProofRepository>,
@@ -128,10 +131,10 @@ pub(crate) async fn verifier_flow(
     }
 }
 
-async fn verifier_flow_internal<C, S>(
+async fn verifier_flow_internal<C>(
     params: AsyncVerifierFlowParams,
     auth_fn: AuthenticationFn,
-    transport: &mut dyn ProximityVerifierTransport<Context = C, PresentationSubmission = S>,
+    transport: &mut dyn ProximityVerifierTransport<Context = C>,
 ) -> Result<FlowState, VerificationProtocolError> {
     let transport_type = transport.transport_type();
     let mut context = select! {
@@ -158,18 +161,14 @@ async fn verifier_flow_internal<C, S>(
         })?;
 
     let nonce = utilities::generate_alphanumeric(32);
-    let request = OpenID4VP20AuthorizationRequest {
+    let request = AuthorizationRequest {
         nonce: Some(nonce.to_owned()),
-        presentation_definition: Some(params.presentation_definition.clone()),
-        client_id: params.did.to_string(),
-        client_id_scheme: Some(ClientIdScheme::Did),
+        client_id: encode_client_id_with_scheme(params.did.to_string(), ClientIdScheme::Did),
+        dcql_query: Some(params.dcql_query.clone()),
         ..Default::default()
     };
-    let signed_request = request
-        .clone()
-        .as_signed_jwt(&params.did, auth_fn)
-        .await
-        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+    let signed_request = request_as_signed_jwt(request.clone(), &params.did, auth_fn).await?;
+
     transport
         .send_presentation_request(&context, signed_request)
         .await?;
@@ -191,7 +190,7 @@ async fn verifier_flow_internal<C, S>(
     let interaction_data = transport.interaction_data_from_submission(
         context,
         nonce,
-        params.presentation_definition,
+        params.dcql_query,
         request,
         presentation_submission,
     )?;
@@ -245,4 +244,38 @@ async fn set_proof_state(
         return Err(VerificationProtocolError::Failed(error.to_string()));
     }
     Ok(())
+}
+
+pub(super) async fn request_as_signed_jwt(
+    params: AuthorizationRequest,
+    did: &DidValue,
+    auth_fn: AuthenticationFn,
+) -> Result<String, VerificationProtocolError> {
+    let unsigned_jwt = Jwt {
+        header: JWTHeader {
+            algorithm: auth_fn.jose_alg().ok_or(VerificationProtocolError::Failed(
+                "No JOSE alg specified".to_string(),
+            ))?,
+            key_id: auth_fn.get_key_id(),
+            r#type: Some("oauth-authz-req+jwt".to_string()),
+            jwk: None,
+            jwt: None,
+            x5c: None,
+        },
+        payload: JWTPayload {
+            issued_at: None,
+            expires_at: Some(OffsetDateTime::now_utc().add(Duration::hours(1))),
+            invalid_before: None,
+            issuer: Some(did.to_string()),
+            subject: None,
+            audience: None,
+            jwt_id: None,
+            proof_of_possession_key: None,
+            custom: params,
+        },
+    };
+    unsigned_jwt
+        .tokenize(Some(&*auth_fn))
+        .await
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }

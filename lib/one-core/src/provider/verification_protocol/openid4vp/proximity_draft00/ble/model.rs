@@ -1,10 +1,10 @@
+use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::BLEPeer;
-use super::dto::BleOpenId4VpResponse;
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 
 /// Interaction data used for OpenID4VP over BLE
 /// used on both holder and verifier side
@@ -15,9 +15,9 @@ pub(crate) struct BLEOpenID4VPInteractionData {
     pub task_id: Uuid,
     pub peer: BLEPeer,
     pub identity_request_nonce: Option<String>,
-    pub openid_request: OpenID4VP20AuthorizationRequest,
-    pub presentation_submission: Option<BleOpenId4VpResponse>,
-    pub presentation_definition: OpenID4VPPresentationDefinition,
+    pub openid_request: AuthorizationRequest,
+    pub presentation_submission: Option<DcqlSubmission>,
+    pub dcql_query: DcqlQuery,
 }
 
 #[cfg(test)]
@@ -47,24 +47,21 @@ mod tests {
                 ),
             },
             identity_request_nonce: None,
-            openid_request: OpenID4VP20AuthorizationRequest {
+            openid_request: AuthorizationRequest {
                 client_id: "client_id".to_string(),
-                client_id_scheme: None,
                 state: None,
                 nonce: None,
                 response_type: None,
                 response_mode: None,
                 response_uri: None,
                 client_metadata: None,
-                client_metadata_uri: None,
-                presentation_definition: None,
-                presentation_definition_uri: None,
                 redirect_uri: None,
+                dcql_query: None,
             },
             presentation_submission: None,
-            presentation_definition: OpenID4VPPresentationDefinition {
-                id: Uuid::new_v4().to_string(),
-                input_descriptors: vec![],
+            dcql_query: DcqlQuery {
+                credentials: vec![],
+                credential_sets: None,
             },
         };
 

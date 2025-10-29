@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use anyhow::{Context, anyhow};
 use async_trait::async_trait;
+use dcql::DcqlQuery;
 use futures::future::BoxFuture;
 use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
@@ -15,7 +16,6 @@ use tracing::{info, warn};
 use url::Url;
 use uuid::Uuid;
 
-use super::dto::BleOpenId4VpResponse;
 use super::{
     BLEParse, BLEPeer, CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, IdentityRequest,
     OIDC_BLE_FLOW, PRESENTATION_REQUEST_UUID, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID,
@@ -30,8 +30,8 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicPermissions, CharacteristicProperties, ConnectionEvent,
     CreateCharacteristicOptions, DeviceInfo, ServiceDescription,
 };
-use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
     HolderSubmission, ProximityVerifierTransport,
@@ -62,7 +62,6 @@ pub(crate) struct BleVerifierContext {
 #[async_trait]
 impl ProximityVerifierTransport for BleVerifierTransport {
     type Context = BleVerifierContext;
-    type PresentationSubmission = BleOpenId4VpResponse;
 
     fn transport_type(&self) -> TransportType {
         TransportType::Ble
@@ -99,7 +98,7 @@ impl ProximityVerifierTransport for BleVerifierTransport {
     async fn receive_presentation(
         &mut self,
         context: &mut Self::Context,
-    ) -> Result<HolderSubmission<Self::PresentationSubmission>, VerificationProtocolError> {
+    ) -> Result<HolderSubmission<DcqlSubmission>, VerificationProtocolError> {
         let mut event_stream = context.connection_event_stream.lock().await;
         select! {
             biased;
@@ -112,9 +111,9 @@ impl ProximityVerifierTransport for BleVerifierTransport {
         &self,
         context: Self::Context,
         nonce: String,
-        presentation_definition: OpenID4VPPresentationDefinition,
-        request: OpenID4VP20AuthorizationRequest,
-        presentation_submission: Self::PresentationSubmission,
+        dcql_query: DcqlQuery,
+        request: AuthorizationRequest,
+        presentation_submission: DcqlSubmission,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let interaction_data = BLEOpenID4VPInteractionData {
             client_id: request.client_id.to_owned(),
@@ -123,7 +122,7 @@ impl ProximityVerifierTransport for BleVerifierTransport {
             peer: context.peer,
             openid_request: request,
             identity_request_nonce: Some(hex::encode(context.identity_request.nonce)),
-            presentation_definition,
+            dcql_query,
             presentation_submission: Some(presentation_submission),
         };
         serde_json::to_vec(&interaction_data).map_err(|err| {
@@ -539,7 +538,7 @@ async fn request_write_report(
 pub(crate) async fn read_presentation_submission(
     connected_wallet: &BLEPeer,
     ble_peripheral: &TrackingBlePeripheral,
-) -> Result<BleOpenId4VpResponse, VerificationProtocolError> {
+) -> Result<DcqlSubmission, VerificationProtocolError> {
     let request_size: MessageSize = read(
         CONTENT_SIZE_UUID,
         &connected_wallet.device_info,
