@@ -31,6 +31,7 @@ use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::repository::validity_credential_repository::ValidityCredentialRepository;
 use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
+use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use organisation::OrganisationProvider;
 use proof::ProofProvider;
@@ -50,6 +51,7 @@ use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
 use crate::transaction_context::TransactionManagerImpl;
 use crate::wallet_unit_attestation::WalletUnitAttestationProvider;
+use crate::wallet_unit_attested_key::WalletUnitAttestedKeyProvider;
 
 mod common;
 mod entity;
@@ -110,6 +112,8 @@ pub struct DataLayer {
     blob_repository: Arc<dyn BlobRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
+    #[allow(unused)]
+    wallet_unit_attested_key_repository: Arc<dyn WalletUnitAttestedKeyRepository>,
 }
 
 impl DataLayer {
@@ -225,9 +229,16 @@ impl DataLayer {
 
         let blob_repository = Arc::new(BlobProvider::new(transaction_manager.clone()));
 
+        let wallet_unit_attested_key_repository = Arc::new(WalletUnitAttestedKeyProvider {
+            db: transaction_manager.clone(),
+            revocation_list_repository: revocation_list_repository.clone(),
+        });
+
         let wallet_unit_repository = Arc::new(WalletUnitProvider {
             db: transaction_manager.clone(),
+            tx_manager: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
+            wallet_unit_attested_key_repository: wallet_unit_attested_key_repository.clone(),
         });
 
         let wallet_unit_attestation_repository = Arc::new(WalletUnitAttestationProvider {
@@ -261,6 +272,7 @@ impl DataLayer {
             blob_repository,
             wallet_unit_repository,
             wallet_unit_attestation_repository,
+            wallet_unit_attested_key_repository,
         }
     }
 }
@@ -361,3 +373,4 @@ mod blob;
 pub mod test_utilities;
 mod transaction_context;
 mod wallet_unit_attestation;
+mod wallet_unit_attested_key;

@@ -538,8 +538,8 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 post(ssi::wallet_provider::controller::activate_wallet_unit),
             )
             .route(
-                "/ssi/wallet-unit/v1/{id}/refresh",
-                post(ssi::wallet_provider::controller::refresh_wallet_unit)
+                "/ssi/wallet-unit/v1/{id}/issue-attestation",
+                post(ssi::wallet_provider::controller::issue_wallet_unit_attestation)
             )
             .route(
                 "/ssi/wallet-provider/v1/{walletProvider}",

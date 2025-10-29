@@ -9,7 +9,10 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, ParsedKey};
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
-use crate::service::wallet_provider::dto::RegisterWalletUnitRequestDTO;
+use crate::service::wallet_provider::dto::{
+    EudiWalletGeneralInfo, EudiWalletInfo, EudiWalletInfoConfig, RegisterWalletUnitRequestDTO,
+    WscdInfo,
+};
 use crate::service::wallet_provider::error::WalletProviderError;
 
 pub(crate) fn wallet_unit_from_request(
@@ -37,6 +40,7 @@ pub(crate) fn wallet_unit_from_request(
         authentication_key_jwk: public_key.cloned(),
         nonce,
         organisation: Some(organisation),
+        attested_keys: None,
     })
 }
 
@@ -65,5 +69,20 @@ pub(crate) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
     match error {
         DataLayerError::AlreadyExists => WalletProviderError::WalletUnitAlreadyExists.into(),
         e => e.into(),
+    }
+}
+
+impl From<EudiWalletInfoConfig> for EudiWalletInfo {
+    fn from(value: EudiWalletInfoConfig) -> Self {
+        Self {
+            general_info: EudiWalletGeneralInfo {
+                wallet_provider_name: value.provider_name,
+                wallet_solution_id: value.solution_id,
+                wallet_solution_version: value.solution_version,
+            },
+            wscd_info: WscdInfo {
+                wscd_type: value.wscd_type,
+            },
+        }
     }
 }

@@ -78,9 +78,18 @@ impl HttpClient {
     }
 
     pub async fn post(&self, url: &str, body: impl Into<Option<Value>>) -> Response {
+        self.post_custom_bearer_auth(url, &self.token, body).await
+    }
+
+    pub async fn post_custom_bearer_auth(
+        &self,
+        url: &str,
+        token: &str,
+        body: impl Into<Option<Value>>,
+    ) -> Response {
         let url = format!("{}{url}", self.base_url);
 
-        let mut builder = http_client().post(url).bearer_auth(&self.token);
+        let mut builder = http_client().post(url).bearer_auth(token);
 
         if let Some(body) = body.into() {
             builder = builder.json(&body);

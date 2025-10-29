@@ -23,3 +23,4 @@ pub mod trust_entity;
 pub mod validity_credential;
 pub mod wallet_unit;
 pub mod wallet_unit_attestation;
+pub mod wallet_unit_attested_key;

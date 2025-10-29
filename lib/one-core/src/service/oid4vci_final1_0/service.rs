@@ -39,7 +39,6 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
-use crate::model::wallet_unit::WalletUnitClaims;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::BlobStorageType;
@@ -67,6 +66,7 @@ use crate::service::error::{
 };
 use crate::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO;
 use crate::service::ssi_validator::validate_issuance_protocol_type;
+use crate::service::wallet_provider::dto::WalletAppAttestationClaims;
 use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use crate::validator::throw_if_credential_state_not_eq;
 
@@ -890,7 +890,7 @@ impl OID4VCIFinal1_0Service {
         )?;
 
         let wallet_unit_attestation =
-            Jwt::<WalletUnitClaims>::decompose_token(wallet_unit_attestation_token)?;
+            Jwt::<WalletAppAttestationClaims>::decompose_token(wallet_unit_attestation_token)?;
         let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)?;
 
         // Validate timestamps for both tokens

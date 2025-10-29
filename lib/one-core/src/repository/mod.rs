@@ -22,6 +22,7 @@ pub mod trust_anchor_repository;
 pub mod trust_entity_repository;
 pub mod validity_credential_repository;
 pub mod wallet_unit_attestation_repository;
+pub mod wallet_unit_attested_key_repository;
 pub mod wallet_unit_repository;
 
 use std::sync::Arc;

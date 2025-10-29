@@ -4,6 +4,7 @@ use shared_types::WalletUnitId;
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
+use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -52,6 +53,41 @@ pub struct RefreshWalletUnitRequestDTO {
 }
 
 #[derive(Clone, Debug)]
+pub struct IssueWalletUnitAttestationRequestDTO {
+    pub waa: Vec<IssueWaaRequestDTO>,
+    pub wua: Vec<IssueWuaRequestDTO>,
+}
+
+#[derive(Clone, Debug)]
+pub struct IssueWaaRequestDTO {
+    pub proof: String,
+}
+
+#[derive(Clone, Debug)]
+pub struct IssueWuaRequestDTO {
+    pub proof: String,
+    pub security_level: KeyStorageSecurityLevel,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum KeyStorageSecurityLevel {
+    #[serde(rename = "iso_18045_high")]
+    High,
+    #[serde(rename = "iso_18045_moderate")]
+    Moderate,
+    #[serde(rename = "iso_18045_enhanced-basic")]
+    EnhancedBasic,
+    #[serde(rename = "iso_18045_basic")]
+    Basic,
+}
+
+#[derive(Clone, Debug)]
+pub struct IssueWalletUnitAttestationResponseDTO {
+    pub waa: Vec<String>,
+    pub wua: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
 pub struct RefreshWalletUnitResponseDTO {
     pub id: WalletUnitId,
     pub attestation: String,
@@ -60,26 +96,56 @@ pub struct RefreshWalletUnitResponseDTO {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WalletProviderParams {
+    pub wallet_name: String,
+    pub wallet_link: String,
+    // Information for wallet whether it enforces having a wallet unit attestation when starting app
+    pub wallet_registration: WalletRegistrationRequirement,
+    pub wallet_app_attestation: WalletAppAttestationParams,
     pub wallet_unit_attestation: WalletUnitAttestationParams,
     pub app_version: Option<AppVersionDTO>,
+    pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(super) enum WalletRegistrationRequirement {
+    Mandatory,
+    Optional,
+    Disabled,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct WalletAppAttestationParams {
+    pub expiration_time: u64,
+    #[serde(default)]
+    pub integrity_check: IntegrityCheck,
 }
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct WalletUnitAttestationParams {
-    pub wallet_name: String,
-    pub wallet_link: String,
-    pub android: Option<AndroidBundle>,
-    pub ios: Option<IOSBundle>,
-    pub lifetime: Lifetime,
+    pub expiration_time: u64,
     pub revocation_method: Option<String>,
-    #[serde(default)]
-    pub integrity_check: IntegrityCheck,
-    // Information for wallet whether it enforce having a wallet unit attestation when starting app
-    pub required: bool,
-    // Information for wallet if wallet unit attestation is enabled as a functionality
-    #[serde(default = "default_enabled")]
-    pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct EudiWalletInfoConfig {
+    pub provider_name: String,
+    pub solution_id: String,
+    pub solution_version: String,
+    pub wscd_type: WscdType,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum WscdType {
+    Remote,
+    LocalExternal,
+    LocalInternal,
+    LocalNative,
+    Hybrid,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -124,6 +190,8 @@ where
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct IntegrityCheck {
+    pub android: Option<AndroidBundle>,
+    pub ios: Option<IOSBundle>,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
     #[allow(unused)]
@@ -134,6 +202,8 @@ pub(super) struct IntegrityCheck {
 impl Default for IntegrityCheck {
     fn default() -> Self {
         Self {
+            android: None,
+            ios: None,
             enabled: true,
             timeout: 300,
         }
@@ -146,13 +216,6 @@ fn default_enabled() -> bool {
 
 fn default_attestation_timeout() -> usize {
     300
-}
-
-#[derive(Clone, Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub(super) struct Lifetime {
-    pub expiration_time: i64,
-    pub minimum_refresh_time: i64,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -200,4 +263,36 @@ pub struct WalletUnitAttestationMetadataDTO {
 #[derive(Clone, Debug, Deserialize)]
 pub(super) struct NoncePayload {
     pub nonce: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct WalletAppAttestationClaims {
+    pub wallet_name: Option<String>,
+    pub wallet_link: Option<String>,
+    pub eudi_wallet_info: Option<EudiWalletInfo>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct WalletUnitAttestationClaims {
+    pub key_storage: Vec<KeyStorageSecurityLevel>,
+    pub attested_keys: Vec<PublicKeyJwk>,
+    pub eudi_wallet_info: Option<EudiWalletInfo>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct EudiWalletInfo {
+    pub general_info: EudiWalletGeneralInfo,
+    pub wscd_info: WscdInfo,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct EudiWalletGeneralInfo {
+    pub wallet_provider_name: String,
+    pub wallet_solution_id: String,
+    pub wallet_solution_version: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub struct WscdInfo {
+    pub wscd_type: WscdType,
 }

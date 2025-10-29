@@ -7,6 +7,7 @@ use one_core::model::wallet_unit::{
     GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs,
     WalletUnitRelations, WalletUnitStatus,
 };
+use one_core::model::wallet_unit_attested_key::WalletUnitAttestedKey;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use shared_types::WalletUnitId;
 use time::{Duration, OffsetDateTime};
@@ -24,6 +25,7 @@ pub struct TestWalletUnit {
     pub public_key: Option<PublicKeyJwk>,
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<Option<OffsetDateTime>>,
+    pub attested_keys: Option<Vec<WalletUnitAttestedKey>>,
 }
 
 impl WalletUnitsDB {
@@ -53,6 +55,7 @@ impl WalletUnitsDB {
                 .unwrap_or(Some(six_hours_ago)),
             nonce: test_wallet_unit.nonce,
             organisation: Some(organisation),
+            attested_keys: test_wallet_unit.attested_keys,
         };
 
         self.repository

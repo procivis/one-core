@@ -10,6 +10,9 @@ use crate::config;
 use crate::model::key::PublicKeyJwk;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
+};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct WalletUnit {
@@ -27,6 +30,7 @@ pub struct WalletUnit {
 
     // Relations:
     pub organisation: Option<Organisation>,
+    pub attested_keys: Option<Vec<WalletUnitAttestedKey>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, Display)]
@@ -59,6 +63,7 @@ pub enum WalletProviderType {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct WalletUnitRelations {
     pub organisation: Option<OrganisationRelations>,
+    pub attested_keys: Option<WalletUnitAttestedKeyRelations>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -94,10 +99,5 @@ pub struct UpdateWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<OffsetDateTime>,
     pub authentication_key_jwk: Option<PublicKeyJwk>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Default, Serialize, Deserialize)]
-pub struct WalletUnitClaims {
-    pub wallet_name: Option<String>,
-    pub wallet_link: Option<String>,
+    pub attested_keys: Option<Vec<WalletUnitAttestedKey>>,
 }

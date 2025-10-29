@@ -59,6 +59,7 @@ pub struct Jwt<Payload> {
     pub payload: JWTPayload<Payload>,
 }
 
+#[derive(Debug, Clone)]
 pub enum JwtPublicKeyInfo {
     Jwk(PublicKeyJwkDTO),
     X5c(Vec<String>),

@@ -11,10 +11,52 @@ use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
 use crate::endpoint::wallet_unit::dto::WalletUnitOsRestEnum;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(dto::RefreshWalletUnitRequestDTO)]
+#[into(dto::IssueWalletUnitAttestationRequestDTO)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct RefreshWalletUnitRequestRestDTO {
+pub(crate) struct IssueWalletUnitAttestationRequestRestDTO {
+    #[into(with_fn = convert_inner)]
+    #[serde(default)]
+    pub waa: Vec<IssueWaaRequestRestDTO>,
+    #[into(with_fn = convert_inner)]
+    #[serde(default)]
+    pub wua: Vec<IssueWuaRequestRestDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(dto::IssueWaaRequestDTO)]
+pub struct IssueWaaRequestRestDTO {
     pub proof: String,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(dto::IssueWuaRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct IssueWuaRequestRestDTO {
+    pub proof: String,
+    pub security_level: KeyStorageSecurityLevelRestEnum,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(dto::KeyStorageSecurityLevel)]
+pub enum KeyStorageSecurityLevelRestEnum {
+    #[serde(rename = "iso_18045_high")]
+    High,
+    #[serde(rename = "iso_18045_moderate")]
+    Moderate,
+    #[serde(rename = "iso_18045_enhanced-basic")]
+    EnhancedBasic,
+    #[serde(rename = "iso_18045_basic")]
+    Basic,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(dto::IssueWalletUnitAttestationResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub waa: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub wua: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

@@ -47,7 +47,9 @@ async fn setup(n: usize) -> TestSetup {
     TestSetup {
         provider: WalletUnitProvider {
             db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            tx_manager: data_layer.transaction_manager,
             organisation_repository: data_layer.organisation_repository,
+            wallet_unit_attested_key_repository: data_layer.wallet_unit_attested_key_repository,
         },
         organisation_id,
         wallet_unit_ids,
@@ -116,6 +118,7 @@ fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
             wallet_provider: None,
             wallet_provider_issuer: None,
         }),
+        attested_keys: None,
     }
 }
 
@@ -632,6 +635,7 @@ async fn test_update_wallet_unit_status_success() {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
         authentication_key_jwk: None,
+        attested_keys: None,
     };
 
     let result = provider
@@ -679,6 +683,7 @@ async fn test_update_wallet_unit_nonexistent() {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
         authentication_key_jwk: None,
+        attested_keys: None,
     };
 
     let result = provider
@@ -743,6 +748,7 @@ async fn test_update_wallet_unit_status_changes() {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
         authentication_key_jwk: None,
+        attested_keys: None,
     };
 
     let result = provider
@@ -763,6 +769,7 @@ async fn test_update_wallet_unit_status_changes() {
         status: Some(WalletUnitStatus::Active),
         last_issuance: None,
         authentication_key_jwk: None,
+        attested_keys: None,
     };
 
     let result = provider
@@ -800,6 +807,7 @@ async fn test_update_wallet_unit_public_key_changes() {
         status: None,
         last_issuance: None,
         authentication_key_jwk: Some(new_jwk.clone()),
+        attested_keys: None,
     };
 
     let result = provider
@@ -838,6 +846,7 @@ async fn test_update_and_list_wallet_units() {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
         authentication_key_jwk: None,
+        attested_keys: None,
     };
 
     provider
@@ -1231,6 +1240,7 @@ async fn test_sort_by_last_modified_after_updates() {
         status: Some(WalletUnitStatus::Revoked),
         last_issuance: None,
         authentication_key_jwk: None,
+        attested_keys: None,
     };
     provider
         .update_wallet_unit(&wallet_unit_id1, update_request)

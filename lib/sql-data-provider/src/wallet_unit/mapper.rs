@@ -36,6 +36,7 @@ impl TryFrom<wallet_unit::Model> for WalletUnit {
             name: value.name,
             organisation: None,
             nonce: value.nonce,
+            attested_keys: None,
         })
     }
 }

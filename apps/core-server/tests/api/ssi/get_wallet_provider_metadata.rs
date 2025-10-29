@@ -41,9 +41,8 @@ async fn test_wallet_provider_metadata_success_all_fields() {
         PROCIVIS_ONE:
           params:
             public:
-              walletUnitAttestation:
-                required: false
-                enabled: false
+              walletRegistration: DISABLED
+              walletAppAttestation:
                 integrityCheck:
                   enabled: false
               appVersion:

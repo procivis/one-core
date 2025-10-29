@@ -20,6 +20,7 @@ mod trust_anchor_id;
 mod trust_entity_id;
 mod trust_entity_key;
 mod wallet_unit_attestation_id;
+mod wallet_unit_attested_key_id;
 mod wallet_unit_id;
 
 pub use blob_id::BlobId;
@@ -43,4 +44,5 @@ pub use trust_anchor_id::TrustAnchorId;
 pub use trust_entity_id::TrustEntityId;
 pub use trust_entity_key::TrustEntityKey;
 pub use wallet_unit_attestation_id::WalletUnitAttestationId;
+pub use wallet_unit_attested_key_id::WalletUnitAttestedKeyId;
 pub use wallet_unit_id::WalletUnitId;

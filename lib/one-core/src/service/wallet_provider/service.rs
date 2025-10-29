@@ -3,28 +3,33 @@ use std::ops::Add;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::utilities::generate_alphanumeric;
+use one_dto_mapper::convert_inner;
 use shared_types::{EntityId, IdentifierId, OrganisationId, WalletUnitId};
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use uuid::Uuid;
 
 use super::WalletProviderService;
 use super::app_integrity::android::validate_attestation_android;
 use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
 use super::dto::{
-    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, NoncePayload,
-    RefreshWalletUnitRequestDTO, RefreshWalletUnitResponseDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO, WalletProviderParams,
-    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO,
+    GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
+    IssueWalletUnitAttestationResponseDTO, KeyStorageSecurityLevel, NoncePayload,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletAppAttestationClaims,
+    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
+    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO, WalletUnitAttestationClaims,
     WalletUnitAttestationMetadataDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
     map_already_exists_error, public_key_from_wallet_unit, wallet_unit_from_request,
 };
-use super::validator::{validate_org_wallet_provider, validate_revocation_method};
+use super::validator::{
+    validate_org_wallet_provider, validate_proof_payload, validate_revocation_method,
+};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
 use crate::mapper::list_response_into;
+use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
 use crate::model::history::{
@@ -34,8 +39,11 @@ use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{
-    UpdateWalletUnitRequest, WalletUnit, WalletUnitClaims, WalletUnitListQuery, WalletUnitOs,
-    WalletUnitRelations, WalletUnitStatus,
+    UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
+    WalletUnitStatus,
+};
+use crate::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
 };
 use crate::proto::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -50,10 +58,10 @@ use crate::service::error::{
 };
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-    validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
 
-const WUA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
+const WAA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
+const WUA_JWT_TYPE: &str = "keyattestation+jwt";
 const LEEWAY: u64 = 60;
 
 impl WalletProviderService {
@@ -72,6 +80,7 @@ impl WalletProviderService {
                 id,
                 &WalletUnitRelations {
                     organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
                 },
             )
             .await?
@@ -119,10 +128,7 @@ impl WalletProviderService {
         };
         let issuer = validate_org_wallet_provider(&organisation, &request.wallet_provider)?;
 
-        if !config_params
-            .wallet_unit_attestation
-            .integrity_check
-            .enabled
+        if !config_params.wallet_app_attestation.integrity_check.enabled
             && request.proof.is_none()
             && request.public_key.is_none()
         {
@@ -131,10 +137,7 @@ impl WalletProviderService {
             return Err(WalletProviderError::AppIntegrityCheckNotRequired.into());
         }
 
-        if config_params
-            .wallet_unit_attestation
-            .integrity_check
-            .enabled
+        if config_params.wallet_app_attestation.integrity_check.enabled
             && request.os != WalletUnitOs::Web
         {
             if request.public_key.is_some() || request.proof.is_some() {
@@ -154,17 +157,12 @@ impl WalletProviderService {
                 .clone()
                 .ok_or(WalletProviderError::MissingPublicKey)?
                 .into();
-            let public_key = self
-                .parse_jwk(&proof.header.algorithm, &public_key_jwk)
-                .await?;
+            let public_key = self.parse_jwk(&proof.header.algorithm, &public_key_jwk)?;
             self.verify_attestation_proof(
                 &proof,
                 &public_key,
                 request.os,
-                config_params
-                    .wallet_unit_attestation
-                    .integrity_check
-                    .enabled,
+                config_params.wallet_app_attestation.integrity_check.enabled,
                 LEEWAY,
                 None,
             )
@@ -302,20 +300,17 @@ impl WalletProviderService {
         &self,
         issuer: IdentifierId,
         config_params: &WalletProviderParams,
-        public_key_jwk: PublicKeyJwk,
+        holder_binding_jwk: PublicKeyJwk,
         wallet_provider: &str,
     ) -> Result<(String, String), ServiceError> {
-        let now = self.clock.now_utc();
-        let (key_handle, auth_fn) = self.get_key_handle(issuer).await?;
-        let issuer_jwk = key_handle.public_key_as_jwk()?;
+        let (public_key_info, auth_fn) = self.get_key_info(issuer).await?;
 
-        let attestation = self.create_attestation(
-            now,
+        let attestation = self.create_waa(
             wallet_provider,
             config_params,
-            public_key_jwk,
+            holder_binding_jwk,
             &auth_fn,
-            issuer_jwk,
+            public_key_info,
         )?;
         let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
         let attestation_hash = SHA256
@@ -337,6 +332,7 @@ impl WalletProviderService {
                 &wallet_unit_id,
                 &WalletUnitRelations {
                     organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
                 },
             )
             .await?
@@ -365,12 +361,7 @@ impl WalletProviderService {
             validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         if wallet_unit.last_modified
-            + Duration::seconds(
-                config_params
-                    .wallet_unit_attestation
-                    .integrity_check
-                    .timeout as i64,
-            )
+            + Duration::seconds(config_params.wallet_app_attestation.integrity_check.timeout as i64)
             < self.clock.now_utc()
         {
             let error = WalletProviderError::InvalidWalletUnitAttestationNonce;
@@ -416,10 +407,7 @@ impl WalletProviderService {
             &attestation_key_proof,
             &attested_public_key,
             wallet_unit.os,
-            config_params
-                .wallet_unit_attestation
-                .integrity_check
-                .enabled,
+            config_params.wallet_app_attestation.integrity_check.enabled,
             LEEWAY,
             Some(wallet_unit_nonce),
         )
@@ -475,6 +463,7 @@ impl WalletProviderService {
                     status: Some(WalletUnitStatus::Active),
                     last_issuance: Some(self.clock.now_utc()),
                     authentication_key_jwk: Some(jwk),
+                    attested_keys: None,
                 },
             )
             .await?;
@@ -508,11 +497,14 @@ impl WalletProviderService {
                         .ok_or(WalletProviderError::AppIntegrityValidationError(
                             "Missing attestation".to_string(),
                         ))?;
-                let bundle = config_params.wallet_unit_attestation.ios.as_ref().ok_or(
-                    WalletProviderError::AppIntegrityValidationError(
+                let bundle = config_params
+                    .wallet_app_attestation
+                    .integrity_check
+                    .ios
+                    .as_ref()
+                    .ok_or(WalletProviderError::AppIntegrityValidationError(
                         "Missing iOS app integrity config".to_string(),
-                    ),
-                )?;
+                    ))?;
                 validate_attestation_ios(
                     attestation,
                     wallet_unit_nonce,
@@ -528,7 +520,8 @@ impl WalletProviderService {
                     ));
                 }
                 let bundle = config_params
-                    .wallet_unit_attestation
+                    .wallet_app_attestation
+                    .integrity_check
                     .android
                     .as_ref()
                     .ok_or(WalletProviderError::AppIntegrityValidationError(
@@ -560,6 +553,7 @@ impl WalletProviderService {
                     status: Some(WalletUnitStatus::Error),
                     last_issuance: None,
                     authentication_key_jwk: None,
+                    attested_keys: None,
                 },
             )
             .await?;
@@ -581,17 +575,19 @@ impl WalletProviderService {
         Ok(())
     }
 
-    pub async fn refresh_wallet_unit(
+    pub async fn issue_attestation(
         &self,
         wallet_unit_id: WalletUnitId,
-        request: RefreshWalletUnitRequestDTO,
-    ) -> Result<RefreshWalletUnitResponseDTO, ServiceError> {
+        bearer_token: &str,
+        request: IssueWalletUnitAttestationRequestDTO,
+    ) -> Result<IssueWalletUnitAttestationResponseDTO, ServiceError> {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(
                 &wallet_unit_id,
                 &WalletUnitRelations {
                     organisation: Some(OrganisationRelations::default()),
+                    attested_keys: Some(WalletUnitAttestedKeyRelations::default()),
                 },
             )
             .await?
@@ -613,52 +609,114 @@ impl WalletProviderService {
             validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
-        let proof = Jwt::<NoncePayload>::decompose_token(&request.proof)?;
-        self.verify_device_signing_proof(&proof, &key, LEEWAY, None)
+        let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)?;
+        self.verify_device_signing_proof(&bearer_token, &key, LEEWAY, None)
             .await?;
 
         let now = self.clock.now_utc();
-        if let Some(last_issuance) = wallet_unit.last_issuance
-            && last_issuance.add(Duration::seconds(
-                config_params
-                    .wallet_unit_attestation
-                    .lifetime
-                    .minimum_refresh_time,
-            )) > now
-        {
-            return Err(WalletProviderError::RefreshTimeNotReached.into());
+        let (public_key_info, auth_fn) = self.get_key_info(issuer_identifier).await?;
+        let mut app_attestations = vec![];
+        for waa_request in request.waa {
+            let holder_jwk = self.verify_pop(&waa_request.proof, LEEWAY).await?;
+            let attestation = self.create_waa(
+                &wallet_unit.wallet_provider_name,
+                &config_params,
+                holder_jwk,
+                &auth_fn,
+                public_key_info.clone(),
+            )?;
+            let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
+            app_attestations.push(signed_attestation);
+        }
+        let mut attested_keys =
+            wallet_unit
+                .attested_keys
+                .ok_or(ServiceError::MappingError(format!(
+                    "Missing attested keys on wallet unit `{}`",
+                    wallet_unit.id
+                )))?;
+        let mut key_attestations = vec![];
+        let wua_expiration_date =
+            now + Duration::seconds(config_params.wallet_unit_attestation.expiration_time as i64);
+        for wua_request in request.wua {
+            let holder_jwk = self.verify_pop(&wua_request.proof, LEEWAY).await?;
+            if let Some(attested_key) = attested_keys
+                .iter_mut()
+                .find(|attested_key| attested_key.public_key_jwk == holder_jwk)
+            {
+                attested_key.last_modified = now;
+                attested_key.expiration_date = wua_expiration_date
+            } else {
+                // TODO ONE-7650: Correctly handle token status list
+                attested_keys.push(WalletUnitAttestedKey {
+                    id: Uuid::new_v4().into(),
+                    wallet_unit_id,
+                    created_date: now,
+                    last_modified: now,
+                    expiration_date: wua_expiration_date,
+                    public_key_jwk: holder_jwk.clone(),
+                    revocation_list_index: None,
+                    revocation_list: None,
+                })
+            }
+            let attestation = self.create_wua(
+                &wallet_unit.wallet_provider_name,
+                &config_params,
+                holder_jwk,
+                wua_request.security_level,
+                &auth_fn,
+                public_key_info.clone(),
+            )?;
+            let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
+            let attestation_hash =
+                SHA256
+                    .hash_base64(signed_attestation.as_bytes())
+                    .map_err(|e| {
+                        ServiceError::Other(format!("Could not hash wallet unit attestation: {e}"))
+                    })?;
+            self.create_wallet_unit_history(
+                &wallet_unit_id,
+                wallet_unit.name.clone(),
+                HistoryAction::Issued,
+                Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+                organisation.id,
+            )
+            .await;
+            key_attestations.push(signed_attestation);
         }
 
-        let (signed_attestation, attestation_hash) = self
-            .sign_attestation(
-                issuer_identifier,
-                &config_params,
-                key.public_key_as_jwk()?,
-                &wallet_unit.wallet_provider_name,
-            )
-            .await?;
-        self.wallet_unit_repository
-            .update_wallet_unit(
+        if !app_attestations.is_empty() {
+            self.create_wallet_unit_history(
                 &wallet_unit_id,
-                UpdateWalletUnitRequest {
-                    last_issuance: Some(now),
-                    ..Default::default()
-                },
+                wallet_unit.name.clone(),
+                HistoryAction::Updated,
+                None,
+                organisation.id,
             )
-            .await?;
+            .await
+        }
+        let attested_keys = if app_attestations.is_empty() {
+            None
+        } else {
+            Some(attested_keys)
+        };
+        // DB update is only necessary if we either issued app or key attestation
+        if !app_attestations.is_empty() || attested_keys.is_some() {
+            self.wallet_unit_repository
+                .update_wallet_unit(
+                    &wallet_unit_id,
+                    UpdateWalletUnitRequest {
+                        last_issuance: Some(now),
+                        attested_keys,
+                        ..Default::default()
+                    },
+                )
+                .await?;
+        }
 
-        self.create_wallet_unit_history(
-            &wallet_unit_id,
-            wallet_unit.name,
-            HistoryAction::Updated,
-            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
-            organisation.id,
-        )
-        .await;
-
-        Ok(RefreshWalletUnitResponseDTO {
-            id: wallet_unit.id,
-            attestation: signed_attestation,
+        Ok(IssueWalletUnitAttestationResponseDTO {
+            waa: app_attestations,
+            wua: key_attestations,
         })
     }
 
@@ -684,35 +742,30 @@ impl WalletProviderService {
         Ok((wallet_provider_config, wallet_provider_config_params))
     }
 
-    fn create_attestation(
+    fn create_waa(
         &self,
-        now: OffsetDateTime,
         wallet_provider_name: &str,
         config_params: &WalletProviderParams,
-        proof_jwk: PublicKeyJwk,
+        holder_binding_jwk: PublicKeyJwk,
         auth_fn: &AuthenticationFn,
-        issuer_jwk: PublicKeyJwk,
-    ) -> Result<Jwt<WalletUnitClaims>, ServiceError> {
+        public_key_info: JwtPublicKeyInfo,
+    ) -> Result<Jwt<WalletAppAttestationClaims>, ServiceError> {
+        let now = self.clock.now_utc();
         let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
             "No JOSE alg specified".to_string(),
         ))?;
         let key_id = auth_fn.get_key_id();
 
         Ok(Jwt::new(
-            WUA_JWT_TYPE.to_string(),
+            WAA_JWT_TYPE.to_string(),
             jose_alg,
             key_id,
-            Some(JwtPublicKeyInfo::Jwk(issuer_jwk.into())),
+            Some(public_key_info),
             JWTPayload {
                 issued_at: Some(now),
-                expires_at: Some(
-                    now.add(Duration::seconds(
-                        config_params
-                            .wallet_unit_attestation
-                            .lifetime
-                            .expiration_time,
-                    )),
-                ),
+                expires_at: Some(now.add(Duration::seconds(
+                    config_params.wallet_app_attestation.expiration_time as i64,
+                ))),
                 invalid_before: Some(now),
                 issuer: self.base_url.clone(),
                 subject: self
@@ -724,21 +777,69 @@ impl WalletProviderService {
                 proof_of_possession_key: Some(ProofOfPossessionKey {
                     key_id: None,
                     jwk: ProofOfPossessionJwk::Jwk {
-                        jwk: proof_jwk.into(),
+                        jwk: holder_binding_jwk.into(),
                     },
                 }),
-                custom: WalletUnitClaims {
-                    wallet_name: Some(config_params.wallet_unit_attestation.wallet_name.clone()),
-                    wallet_link: Some(config_params.wallet_unit_attestation.wallet_link.clone()),
+                custom: WalletAppAttestationClaims {
+                    wallet_name: Some(config_params.wallet_name.clone()),
+                    wallet_link: Some(config_params.wallet_link.clone()),
+                    eudi_wallet_info: convert_inner(config_params.eudi_wallet_info.clone()),
                 },
             },
         ))
     }
 
-    async fn get_key_handle(
+    fn create_wua(
+        &self,
+        wallet_provider_name: &str,
+        config_params: &WalletProviderParams,
+        holder_binding_jwk: PublicKeyJwk,
+        key_storage_security_level: KeyStorageSecurityLevel,
+        auth_fn: &AuthenticationFn,
+        public_key_info: JwtPublicKeyInfo,
+    ) -> Result<Jwt<WalletUnitAttestationClaims>, ServiceError> {
+        let now = self.clock.now_utc();
+        let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
+            "No JOSE alg specified".to_string(),
+        ))?;
+        let key_id = auth_fn.get_key_id();
+
+        Ok(Jwt::new(
+            WUA_JWT_TYPE.to_string(),
+            jose_alg,
+            key_id,
+            Some(public_key_info),
+            JWTPayload {
+                issued_at: Some(now),
+                expires_at: Some(now.add(Duration::seconds(
+                    config_params.wallet_unit_attestation.expiration_time as i64,
+                ))),
+                invalid_before: Some(now),
+                issuer: config_params
+                    .eudi_wallet_info
+                    .as_ref()
+                    .map(|info| info.provider_name.clone())
+                    .or_else(|| self.base_url.clone()),
+                subject: self
+                    .base_url
+                    .clone()
+                    .map(|base_url| format!("{base_url}/{wallet_provider_name}")),
+                audience: None,
+                jwt_id: None,
+                proof_of_possession_key: None,
+                custom: WalletUnitAttestationClaims {
+                    key_storage: vec![key_storage_security_level],
+                    attested_keys: vec![holder_binding_jwk],
+                    eudi_wallet_info: convert_inner(config_params.eudi_wallet_info.clone()),
+                },
+            },
+        ))
+    }
+
+    async fn get_key_info(
         &self,
         issuer_identifier_id: IdentifierId,
-    ) -> Result<(KeyHandle, AuthenticationFn), ServiceError> {
+    ) -> Result<(JwtPublicKeyInfo, AuthenticationFn), ServiceError> {
         let issuer_identifier = self
             .identifier_repository
             .get(
@@ -800,20 +901,44 @@ impl WalletProviderService {
             self.key_algorithm_provider.clone(),
         )?;
 
-        let key_handle = self
-            .key_provider
-            .get_key_storage(&issuer_key.storage_type)
-            .ok_or(ServiceError::MappingError(format!(
-                "Key storage not found: {}",
-                issuer_key.storage_type
-            )))?
-            .key_handle(issuer_key)
-            .map_err(|e| ServiceError::MappingError(format!("Failed to get key handle: {e}")))?;
-
-        Ok((key_handle, auth_fn))
+        let public_key_info = match issuer_identifier.r#type {
+            IdentifierType::Key | IdentifierType::Did => {
+                let key_handle = self
+                    .key_provider
+                    .get_key_storage(&issuer_key.storage_type)
+                    .ok_or(ServiceError::MappingError(format!(
+                        "Key storage not found: {}",
+                        issuer_key.storage_type
+                    )))?
+                    .key_handle(issuer_key)
+                    .map_err(|e| {
+                        ServiceError::MappingError(format!("Failed to get key handle: {e}"))
+                    })?;
+                JwtPublicKeyInfo::Jwk(key_handle.public_key_as_jwk()?.into())
+            }
+            IdentifierType::Certificate => {
+                let cert = issuer_identifier
+                    .certificates
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError(format!(
+                        "Missing certificates on certificate identifier {}",
+                        issuer_identifier.id
+                    )))?
+                    .iter()
+                    .find(|cert| cert.key.as_ref().is_some_and(|k| k.id == issuer_key.id))
+                    .ok_or(ServiceError::MappingError(
+                        "Cert with matching key not found".to_string(),
+                    ))?;
+                let x5c = pem_chain_into_x5c(&cert.chain).map_err(|e| {
+                    ServiceError::MappingError(format!("Failed to create x5c: {e}"))
+                })?;
+                JwtPublicKeyInfo::X5c(x5c)
+            }
+        };
+        Ok((public_key_info, auth_fn))
     }
 
-    async fn parse_jwk(
+    fn parse_jwk(
         &self,
         key_algorithm: &str,
         jwk: &PublicKeyJwk,
@@ -850,7 +975,7 @@ impl WalletProviderService {
         public_key
             .verify(&msg, &signature)
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
-        self.validate_proof_payload(&proof, leeway, nonce)
+        validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
     pub(super) async fn verify_device_signing_proof(
@@ -863,46 +988,25 @@ impl WalletProviderService {
         public_key
             .verify(proof.unverified_jwt.as_bytes(), &proof.signature)
             .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
-        self.validate_proof_payload(&proof, leeway, nonce)
+        validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
-    fn validate_proof_payload(
-        &self,
-        proof: &&DecomposedToken<NoncePayload>,
-        leeway: u64,
-        nonce: Option<&str>,
-    ) -> Result<(), ServiceError> {
-        validate_issuance_time(&proof.payload.issued_at, leeway)?;
-
-        if proof.payload.invalid_before.is_none() {
-            return Err(WalletProviderError::CouldNotVerifyProof("Missing nbf".to_string()).into());
-        }
-        validate_not_before_time(&proof.payload.invalid_before, leeway)?;
-
-        if proof.payload.expires_at.is_none() {
-            return Err(WalletProviderError::CouldNotVerifyProof("Missing ext".to_string()).into());
-        }
-        validate_expiration_time(&proof.payload.expires_at, leeway)?;
-
-        let Some(audience) = proof.payload.audience.as_ref() else {
-            return Err(WalletProviderError::CouldNotVerifyProof("Missing aud".to_string()).into());
-        };
-        if let Some(expected_audience) = self.base_url.as_deref() {
-            validate_audience(audience, expected_audience)?;
-        }
-        if let Some(nonce) = nonce
-            && proof
-                .payload
-                .custom
-                .nonce
-                .as_ref()
-                .is_none_or(|client_nonce| client_nonce != nonce)
-        {
-            return Err(
-                WalletProviderError::CouldNotVerifyProof("Invalid nonce".to_string()).into(),
-            );
-        }
-        Ok(())
+    pub async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicKeyJwk, ServiceError> {
+        let pop_token = Jwt::<NoncePayload>::decompose_token(pop)?;
+        let jwk = pop_token
+            .header
+            .jwk
+            .clone()
+            .ok_or(WalletProviderError::CouldNotVerifyProof(
+                "Missing jwk".to_string(),
+            ))?
+            .into();
+        let key_handle = self.parse_jwk(&pop_token.header.algorithm, &jwk)?;
+        key_handle
+            .verify(pop_token.unverified_jwt.as_bytes(), &pop_token.signature)
+            .map_err(|e| WalletProviderError::CouldNotVerifyProof(e.to_string()))?;
+        validate_proof_payload(&pop_token, leeway, self.base_url.as_deref(), None)?;
+        Ok(jwk)
     }
 
     pub async fn revoke_wallet_unit(&self, id: &WalletUnitId) -> Result<(), ServiceError> {
@@ -912,6 +1016,7 @@ impl WalletProviderService {
                 id,
                 &WalletUnitRelations {
                     organisation: Some(OrganisationRelations::default()),
+                    ..Default::default()
                 },
             )
             .await?
@@ -973,14 +1078,16 @@ impl WalletProviderService {
         wallet_provider: String,
     ) -> Result<WalletProviderMetadataResponseDTO, ServiceError> {
         let (_, params) = self.get_wallet_provider_config_params(&wallet_provider)?;
+        let (enabled, required) = match params.wallet_registration {
+            WalletRegistrationRequirement::Mandatory => (true, true),
+            WalletRegistrationRequirement::Optional => (true, false),
+            WalletRegistrationRequirement::Disabled => (false, false),
+        };
         Ok(WalletProviderMetadataResponseDTO {
             wallet_unit_attestation: WalletUnitAttestationMetadataDTO {
-                app_integrity_check_required: params
-                    .wallet_unit_attestation
-                    .integrity_check
-                    .enabled,
-                enabled: params.wallet_unit_attestation.enabled,
-                required: params.wallet_unit_attestation.required,
+                app_integrity_check_required: params.wallet_app_attestation.integrity_check.enabled,
+                enabled,
+                required,
             },
             name: wallet_provider,
             app_version: params.app_version,

@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use anyhow::anyhow;
 use autometrics::autometrics;
+use futures::future::join_all;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
     StatusListType,
@@ -107,6 +108,28 @@ impl RevocationListRepository for RevocationListProvider {
                 Ok(Some(revocation_list))
             }
         }
+    }
+
+    async fn get_revocation_lists(
+        &self,
+        ids: &[RevocationListId],
+        relations: &RevocationListRelations,
+    ) -> Result<Vec<RevocationList>, DataLayerError> {
+        let ids: Vec<_> = ids.iter().map(|id| id.to_string()).collect();
+        let models = revocation_list::Entity::find()
+            .filter(revocation_list::Column::Id.is_in(ids))
+            .all(&self.db.tx())
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        join_all(
+            models
+                .into_iter()
+                .map(|model| self.entity_model_to_repository_model(model, relations)),
+        )
+        .await
+        .into_iter()
+        .collect::<Result<Vec<RevocationList>, DataLayerError>>()
     }
 
     async fn get_revocation_by_issuer_identifier_id(

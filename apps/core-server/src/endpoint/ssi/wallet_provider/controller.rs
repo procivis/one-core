@@ -1,12 +1,15 @@
 use axum::Json;
 use axum::extract::{Path, State};
+use axum_extra::TypedHeader;
 use axum_extra::extract::WithRejection;
+use headers::Authorization;
+use headers::authorization::Bearer;
 use shared_types::WalletUnitId;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
 use crate::endpoint::ssi::wallet_provider::dto::{
-    RefreshWalletUnitRequestRestDTO, RefreshWalletUnitResponseRestDTO,
+    IssueWalletUnitAttestationRequestRestDTO, IssueWalletUnitAttestationResponseRestDTO,
     RegisterWalletUnitRequestRestDTO, RegisterWalletUnitResponseRestDTO,
     WalletProviderMetadataResponseRestDTO, WalletUnitActivationRequestRestDTO,
     WalletUnitActivationResponseRestDTO,
@@ -36,7 +39,7 @@ pub(crate) async fn register_wallet_unit(
         .wallet_provider_service
         .register_wallet_unit(request.into())
         .await;
-    OkOrErrorResponse::from_result(result, state, "register wallet unit")
+    OkOrErrorResponse::from_result(result, state, "registering wallet unit")
 }
 
 #[utoipa::path(
@@ -66,37 +69,41 @@ pub(crate) async fn activate_wallet_unit(
         .wallet_provider_service
         .activate_wallet_unit(id, request.into())
         .await;
-    OkOrErrorResponse::from_result(result, state, "activate wallet unit")
+    OkOrErrorResponse::from_result(result, state, "activating wallet unit")
 }
 
 #[utoipa::path(
     post,
-    path = "/ssi/wallet-unit/v1/{id}/refresh",
+    path = "/ssi/wallet-unit/v1/{id}/issue-attestation",
     params(
         ("id" = WalletUnitId, Path, description = "Wallet unit id")
     ),
-    request_body = RefreshWalletUnitRequestRestDTO,
-    responses(OkOrErrorResponse<RefreshWalletUnitResponseRestDTO>),
+    request_body = IssueWalletUnitAttestationRequestRestDTO,
+    responses(OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO>),
+    security(
+        ("wallet-unit" = [])
+    ),
     tag = "ssi",
-    summary = "Refreshes wallet unit attestation.",
+    summary = "Issues wallet attestations.",
     description = indoc::formatdoc! {"
-        Refreshes wallet unit attestation.
+        Issue wallet app and wallet unit attestations.
     "},
 )]
-pub(crate) async fn refresh_wallet_unit(
+pub(crate) async fn issue_wallet_unit_attestation(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<WalletUnitId>, ErrorResponseRestDTO>,
+    TypedHeader(bearer): TypedHeader<Authorization<Bearer>>,
     WithRejection(Json(request), _): WithRejection<
-        Json<RefreshWalletUnitRequestRestDTO>,
+        Json<IssueWalletUnitAttestationRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<RefreshWalletUnitResponseRestDTO> {
+) -> OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO> {
     let result = state
         .core
         .wallet_provider_service
-        .refresh_wallet_unit(id, request.into())
+        .issue_attestation(id, bearer.token(), request.into())
         .await;
-    OkOrErrorResponse::from_result(result, state, "register wallet unit")
+    OkOrErrorResponse::from_result(result, state, "issuing wallet attestation")
 }
 
 #[utoipa::path(
@@ -121,5 +128,5 @@ pub(crate) async fn get_wallet_provider_metadata(
         .wallet_provider_service
         .get_wallet_provider_metadata(wallet_provider)
         .await;
-    OkOrErrorResponse::from_result(result, state, "get wallet provider metadata")
+    OkOrErrorResponse::from_result(result, state, "getting wallet provider metadata")
 }

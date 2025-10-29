@@ -84,6 +84,16 @@ pub(crate) fn gen_openapi_documentation(
                         .build(),
                 ),
             );
+            components.add_security_scheme(
+                "wallet-unit",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .description(Some("Wallet unit proof of authentication key possession."))
+                        .build(),
+                ),
+            );
         }
     }
 

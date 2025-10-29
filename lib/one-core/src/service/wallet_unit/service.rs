@@ -9,7 +9,7 @@ use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::wallet_unit::{WalletUnitClaims, WalletUnitOs, WalletUnitStatus};
+use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::{
     UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
 };
@@ -28,7 +28,7 @@ use crate::service::error::{
 };
 use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO,
+    RegisterWalletUnitResponseDTO, WalletAppAttestationClaims,
 };
 use crate::service::wallet_unit::WalletUnitService;
 use crate::service::wallet_unit::dto::{
@@ -112,7 +112,7 @@ impl WalletUnitService {
             };
 
         let key_id = result.key.id;
-        let attestation_token: DecomposedToken<WalletUnitClaims> =
+        let attestation_token: DecomposedToken<WalletAppAttestationClaims> =
             Jwt::decompose_token(&result.attestation)?;
         let now = self.clock.now_utc();
         let wallet_unit_attestation = WalletUnitAttestation {

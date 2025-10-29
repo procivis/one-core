@@ -19,8 +19,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{
-    WalletProviderType, WalletUnit, WalletUnitClaims, WalletUnitListQuery, WalletUnitOs,
-    WalletUnitStatus,
+    WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitStatus,
 };
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::clock::DefaultClock;
@@ -32,7 +31,7 @@ use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::KeyHandle;
-use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
 use crate::repository::history_repository::MockHistoryRepository;
@@ -43,7 +42,7 @@ use crate::service::error::{ServiceError, ValidationError};
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_provider::dto::{
-    RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitRequestDTO, WalletAppAttestationClaims,
 };
 
 const BASE_URL: &str = "https://localhost";
@@ -75,27 +74,27 @@ fn wallet_provider_config(
         capabilities: None,
         params: Some(Params {
             public: Some(json!({
-                "walletUnitAttestation": {
-                    "walletName": "Procivis One Dev Wallet",
-                    "walletLink": "https://procivis.ch",
-                    "android": {
-                        "bundleId": "com.procivis...",
-                        "signingCertificateFingerprints": ["test"],
-                        "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
-                    },
-                    "ios": {
-                        "bundleId": "com.procivis...",
-                        "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."],
-                        "enforceProductionBuild": true
-                    },
-                    "lifetime": {
-                      "expirationTime": 60,
-                      "minimumRefreshTime": 60
-                    },
+                "walletName": "Procivis One Dev Wallet",
+                "walletLink": "https://procivis.ch",
+                "walletRegistration": "MANDATORY",
+                "walletAppAttestation": {
+                    "expirationTime": 60,
                     "integrityCheck": {
-                        "enabled": integrity_check_enabled
+                        "enabled": integrity_check_enabled,
+                        "android": {
+                            "bundleId": "com.procivis...",
+                            "signingCertificateFingerprints": ["test"],
+                            "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."]
+                        },
+                        "ios": {
+                            "bundleId": "com.procivis...",
+                            "trustedAttestationCAs": ["-----BEGIN CERTIFICATE-----..."],
+                            "enforceProductionBuild": true
+                        }
                     },
-                    "required": true,
+                },
+                "walletUnitAttestation": {
+                    "expirationTime": 60
                 },
                 "appVersion": {
                     "minimum": "v1.50.0",
@@ -235,7 +234,7 @@ async fn test_register_wallet_unit() {
     assert!(result.nonce.is_none());
 
     let attestation_jwt =
-        Jwt::<WalletUnitClaims>::decompose_token(&result.attestation.unwrap()).unwrap();
+        Jwt::<WalletAppAttestationClaims>::decompose_token(&result.attestation.unwrap()).unwrap();
 
     assert!(attestation_jwt.header.jwk.is_some());
 }
@@ -352,152 +351,6 @@ async fn test_register_wallet_unit_integrity_check() {
 }
 
 #[tokio::test]
-async fn test_refresh_wallet_unit_success() {
-    // given
-    let mut config = CoreConfig::default();
-    let issuer_identifier_id: IdentifierId = Uuid::new_v4().into();
-    let procivis_one_provider = "PROCIVIS_ONE";
-    config.wallet_provider.insert(
-        procivis_one_provider.to_string(),
-        wallet_provider_config(false),
-    );
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_parse_jwk()
-        .once()
-        .return_once(|jwk| {
-            let algorithm = Ecdsa;
-            let public_key = algorithm.parse_jwk(jwk).unwrap();
-            Ok(ParsedKey {
-                algorithm_type: algorithm.algorithm_type(),
-                key: public_key,
-            })
-        });
-
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .return_once(|_| Some(Arc::new(Ecdsa)));
-    // issuer key to sign attestation
-    let (issuer_private, issuer_public) = ECDSASigner::generate_key_pair();
-    let issuer_public_clone = issuer_public.clone();
-
-    let mut identifier_repository = MockIdentifierRepository::new();
-    identifier_repository
-        .expect_get()
-        .return_once(move |id, _| {
-            Ok(Some(Identifier {
-                id,
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                name: "issuer".to_string(),
-                r#type: IdentifierType::Key,
-                is_remote: false,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                organisation: None,
-                did: None,
-                key: Some(Key {
-                    id: Uuid::new_v4().into(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    public_key: issuer_public_clone,
-                    name: "".to_string(),
-                    key_reference: None,
-                    storage_type: "TEST".to_string(),
-                    key_type: "ECDSA".to_string(),
-                    organisation: None,
-                }),
-                certificates: None,
-            }))
-        });
-
-    let issuer_key_handle = Ecdsa
-        .reconstruct_key(&issuer_public, Some(issuer_private.clone()), None)
-        .unwrap();
-
-    let mut key_storage = MockKeyStorage::new();
-    key_storage
-        .expect_key_handle()
-        .returning(move |_| Ok(issuer_key_handle.clone()));
-
-    let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
-    key_storages.insert("TEST".to_string(), Arc::new(key_storage));
-
-    let key_provider = KeyProviderImpl::new(key_storages);
-
-    let mut history_repository = MockHistoryRepository::new();
-    history_repository
-        .expect_create_history()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
-
-    // wallet unit keypair (used by the app to prove possession)
-    let (proof, holder_key_handle) = create_proof().await;
-
-    let now = OffsetDateTime::now_utc();
-    let wallet_unit_id = Uuid::new_v4().into();
-
-    let mut wallet_unit_repository = MockWalletUnitRepository::new();
-    wallet_unit_repository
-        .expect_get_wallet_unit()
-        .return_once({
-            move |id, _| {
-                Ok(Some(WalletUnit {
-                    id: *id,
-                    name: "PROCIVIS_ONE-ANDROID-123".to_string(),
-                    created_date: get_dummy_date(),
-                    last_modified: get_dummy_date(),
-                    os: WalletUnitOs::Android,
-                    status: WalletUnitStatus::Active,
-                    wallet_provider_name: "PROCIVIS_ONE".to_string(),
-                    wallet_provider_type: WalletProviderType::ProcivisOne,
-                    authentication_key_jwk: Some(holder_key_handle.public_key_as_jwk().unwrap()),
-                    // ensure refresh window has passed
-                    last_issuance: Some(now.sub(Duration::minutes(120))),
-                    nonce: None,
-                    organisation: Some(Organisation {
-                        id: Uuid::new_v4().into(),
-                        name: "test org".to_string(),
-                        created_date: get_dummy_date(),
-                        last_modified: get_dummy_date(),
-                        deactivated_at: None,
-                        wallet_provider: Some(procivis_one_provider.to_string()),
-                        wallet_provider_issuer: Some(issuer_identifier_id),
-                    }),
-                }))
-            }
-        });
-    wallet_unit_repository
-        .expect_update_wallet_unit()
-        .return_once(|_, u| {
-            assert!(u.last_issuance.is_some());
-            Ok(())
-        });
-
-    let ssi_wallet_provider_service = WalletProviderService {
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
-        wallet_unit_repository: Arc::new(wallet_unit_repository),
-        identifier_repository: Arc::new(identifier_repository),
-        history_repository: Arc::new(history_repository),
-        key_provider: Arc::new(key_provider),
-        config: Arc::new(config),
-        ..mock_wallet_provider_service()
-    };
-
-    // build refresh request with a valid proof signed by wallet unit key
-    let request = RefreshWalletUnitRequestDTO { proof };
-
-    // when
-    let result = ssi_wallet_provider_service
-        .refresh_wallet_unit(wallet_unit_id, request)
-        .await;
-
-    // then
-    assert!(result.is_ok(), "Failed: {result:?}");
-}
-
-#[tokio::test]
 async fn provider_wallet_unit_ops_session_org_mismatch() {
     // given
     let service = WalletProviderService {
@@ -541,6 +394,7 @@ async fn provider_get_wallet_unit_session_org_mismatch() {
         last_issuance: None,
         nonce: None,
         organisation: Some(dummy_organisation(None)),
+        attested_keys: None,
     };
     let mut wallet_unit_repository = MockWalletUnitRepository::new();
     wallet_unit_repository

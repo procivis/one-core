@@ -5,7 +5,6 @@ use time::OffsetDateTime;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::wallet_unit::WalletUnitClaims;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -14,6 +13,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
+use crate::service::wallet_provider::dto::WalletAppAttestationClaims;
 use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
@@ -93,7 +93,7 @@ pub(crate) fn validate_pop_audience(
 
 pub(crate) fn verify_pop_signature(
     pop_token: &DecomposedToken<()>,
-    wallet_unit_attestation: &DecomposedToken<WalletUnitClaims>,
+    wallet_unit_attestation: &DecomposedToken<WalletAppAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let (_, alg) = key_algorithm_provider
@@ -130,7 +130,7 @@ pub(crate) fn verify_pop_signature(
 }
 
 pub(crate) fn verify_wua_signature(
-    wallet_unit_attestation: &DecomposedToken<WalletUnitClaims>,
+    wallet_unit_attestation: &DecomposedToken<WalletAppAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let wua_issuer_key =
@@ -170,7 +170,7 @@ pub(crate) fn verify_wua_signature(
 }
 
 pub(crate) fn extract_wallet_metadata(
-    wallet_unit_attestation: &DecomposedToken<WalletUnitClaims>,
+    wallet_unit_attestation: &DecomposedToken<WalletAppAttestationClaims>,
 ) -> Result<(String, String), ServiceError> {
     let name = wallet_unit_attestation
         .payload

@@ -1,4 +1,5 @@
 use one_core::model::key::PublicKeyJwk;
+use one_core::service::wallet_provider::dto::KeyStorageSecurityLevel;
 use serde_json::json;
 use shared_types::WalletUnitId;
 
@@ -53,14 +54,37 @@ impl WalletProviderApi {
             .await
     }
 
-    pub async fn refresh_wallet(&self, wallet_unit_id: WalletUnitId, proof: String) -> Response {
-        let body = json!( {
-            "proof": proof
-        });
+    pub async fn issue_attestation(
+        &self,
+        wallet_unit_id: WalletUnitId,
+        bearer: &str,
+        waa_proofs: Vec<String>,
+        wua_proofs: Vec<(String, KeyStorageSecurityLevel)>,
+    ) -> Response {
+        let mut properties = serde_json::Map::new();
+        if !waa_proofs.is_empty() {
+            properties.insert(
+                "waa".to_string(),
+                waa_proofs
+                    .into_iter()
+                    .map(|proof| json!({"proof": proof}))
+                    .collect(),
+            );
+        }
+        if !wua_proofs.is_empty() {
+            properties.insert(
+                "wua".to_string(),
+                wua_proofs
+                    .into_iter()
+                    .map(|(proof, security_level)| json!({"proof": proof, "securityLevel": security_level}))
+                    .collect(),
+            );
+        }
         self.client
-            .post(
-                &format!("/ssi/wallet-unit/v1/{wallet_unit_id}/refresh"),
-                body,
+            .post_custom_bearer_auth(
+                &format!("/ssi/wallet-unit/v1/{wallet_unit_id}/issue-attestation"),
+                bearer,
+                serde_json::Value::Object(properties),
             )
             .await
     }

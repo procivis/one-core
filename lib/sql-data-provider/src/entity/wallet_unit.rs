@@ -37,12 +37,20 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Organisation,
+    #[sea_orm(has_many = "super::wallet_unit_attested_key::Entity")]
+    WalletUnitAttestedKey,
 }
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Related<super::organisation::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organisation.def()
+    }
+}
+
+impl Related<super::wallet_unit_attested_key::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::WalletUnitAttestedKey.def()
     }
 }
 

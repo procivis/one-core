@@ -1,7 +1,8 @@
-use one_core::model::wallet_unit::{WalletUnitClaims, WalletUnitListQuery, WalletUnitStatus};
+use one_core::model::wallet_unit::{WalletUnitListQuery, WalletUnitStatus};
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use one_core::service::wallet_provider::dto::WalletAppAttestationClaims;
 use similar_asserts::assert_eq;
 
 use crate::fixtures::wallet_provider::{
@@ -17,7 +18,7 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
         PROCIVIS_ONE:
             params:
               public:
-                walletUnitAttestation:
+                walletAppAttestation:
                     integrityCheck:
                         enabled: false
     "}
@@ -51,8 +52,9 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
 
     assert!(resp_json["id"].as_str().is_some());
 
-    let attestation =
-        Jwt::<WalletUnitClaims>::decompose_token(resp_json["attestation"].as_str().unwrap());
+    let attestation = Jwt::<WalletAppAttestationClaims>::decompose_token(
+        resp_json["attestation"].as_str().unwrap(),
+    );
     let Ok(attestation_jwt) = attestation else {
         panic!("attestation is not a valid JWT");
     };
@@ -119,7 +121,7 @@ async fn test_register_wallet_unit_fail_integrity_check_disabled_no_proof_and_pu
         PROCIVIS_ONE:
             params:
               public:
-                walletUnitAttestation:
+                walletAppAttestation:
                     integrityCheck:
                         enabled: false
     "}
