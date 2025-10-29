@@ -1,5 +1,3 @@
-use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -7,9 +5,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::api_wallet_unit_tests::create_wallet_unit_attestation;
-use crate::utils::api_clients::wallet_units::TestHolderRegisterRequest;
+use crate::utils::api_clients::holder_wallet_unit::TestHolderRegisterRequest;
 use crate::utils::context::TestContext;
+use crate::utils::field_match::FieldHelpers;
 
 #[tokio::test]
 async fn holder_register_wallet_unit_successfully() {
@@ -18,53 +16,51 @@ async fn holder_register_wallet_unit_successfully() {
 
     let mock_server = MockServer::builder().start().await;
 
-    let holder_key_pair = Ecdsa.generate_key().unwrap();
-    let attestation = create_wallet_unit_attestation(
-        holder_key_pair.key.public_key_as_jwk().unwrap(),
-        mock_server.uri(),
-    )
-    .await;
-    Mock::given(method(Method::POST))
-        .and(path("/ssi/wallet-unit/v1"))
+    Mock::given(method(Method::GET))
+        .and(path("/ssi/wallet-provider/v1/PROCIVIS_ONE"))
         .respond_with(ResponseTemplate::new(200).set_body_json(json!({
-            "id": Uuid::new_v4(),
-            "attestation": attestation,
+          "name": "PROCIVIS_ONE",
+          "walletUnitAttestation": {
+            "appIntegrityCheckRequired": false,
+            "enabled": true,
+            "required": true
+          }
         })))
         .expect(1)
         .mount(&mock_server)
         .await;
 
-    let wallet_unit_attestations = context
-        .db
-        .wallet_unit_attestations
-        .get_by_organisation(&org.id)
+    Mock::given(method(Method::POST))
+        .and(path("/ssi/wallet-unit/v1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "id": Uuid::new_v4(),
+        })))
+        .expect(1)
+        .mount(&mock_server)
         .await;
-    assert!(wallet_unit_attestations.is_none());
 
     // when
     let resp = context
         .api
-        .wallet_units
+        .holder_wallet_units
         .holder_register(TestHolderRegisterRequest {
             organization_id: Some(org.id),
-            wallet_provider_url: Some(mock_server.uri()),
+            wallet_provider_url: Some(format!(
+                "{}/ssi/wallet-provider/v1/PROCIVIS_ONE",
+                mock_server.uri()
+            )),
             key_type: Some("ECDSA".to_string()),
             ..Default::default()
         })
         .await;
 
     // then
-    assert_eq!(resp.status(), 200);
-    let wallet_unit_attestations = context
-        .db
-        .wallet_unit_attestations
-        .get_by_organisation(&org.id)
-        .await;
-    assert!(wallet_unit_attestations.is_some());
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
     let history = context
         .db
         .histories
-        .get_by_entity_id(&wallet_unit_attestations.unwrap().id.into())
+        .get_by_entity_id(&resp["id"].parse())
         .await;
     assert!(!history.values.is_empty());
 }

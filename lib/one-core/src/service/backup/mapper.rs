@@ -20,12 +20,10 @@ pub(super) fn unexportable_entities_to_response_dto(
         dids: convert_inner(entities.dids),
         identifiers: convert_inner(entities.identifiers),
         history: convert_inner(entities.histories),
-        wallet_unit_attestation: convert_inner(entities.wallet_unit_attestations),
         total_credentials: entities.total_credentials,
         total_keys: entities.total_keys,
         total_dids: entities.total_dids,
         total_identifiers: entities.total_identifiers,
         total_histories: entities.total_histories,
-        total_wallet_unit_attestations: entities.total_wallet_unit_attestations,
     })
 }

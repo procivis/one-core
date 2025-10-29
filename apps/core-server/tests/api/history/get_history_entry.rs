@@ -46,13 +46,11 @@ async fn test_get_history_entry_with_unexportable_metadata() {
                         dids: vec![],
                         identifiers: vec![],
                         history: vec![],
-                        wallet_unit_attestation: vec![],
                         total_credentials: 3,
                         total_keys: 1,
                         total_dids: 2,
                         total_identifiers: 0,
                         total_histories: 1,
-                        total_wallet_unit_attestations: 0,
                     },
                 )),
                 ..Default::default()

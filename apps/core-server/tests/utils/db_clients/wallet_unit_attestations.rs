@@ -2,32 +2,28 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use one_core::model::key::Key;
-use one_core::model::organisation::Organisation;
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use one_core::model::wallet_unit_attestation::{
     WalletUnitAttestation, WalletUnitAttestationRelations,
 };
 use one_core::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
-use shared_types::{OrganisationId, WalletUnitAttestationId, WalletUnitId};
+use shared_types::{HolderWalletUnitId, WalletUnitAttestationId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
+#[allow(unused)]
 pub struct WalletUnitAttestationsDB {
+    #[allow(unused)]
     repository: Arc<dyn WalletUnitAttestationRepository>,
 }
 
+#[allow(unused)]
 #[derive(Default)]
 pub struct TestWalletUnitAttestation {
     pub id: Option<WalletUnitAttestationId>,
     pub expiration_date: Option<OffsetDateTime>,
-    pub status: Option<WalletUnitStatus>,
     pub attestation: Option<String>,
-    pub wallet_unit_id: Option<WalletUnitId>,
-    pub wallet_provider_url: Option<String>,
-
-    // Relations:
-    pub organisation: Option<Organisation>,
-    pub key: Option<Key>,
+    pub revocation_list_url: Option<String>,
+    pub revocation_list_index: Option<u64>,
 }
 
 impl WalletUnitAttestationsDB {
@@ -35,22 +31,26 @@ impl WalletUnitAttestationsDB {
         Self { repository }
     }
 
-    pub async fn get_by_organisation(
+    #[allow(unused)]
+    pub async fn get_by_wallet_unit(
         &self,
-        organisation_id: &OrganisationId,
-    ) -> Option<WalletUnitAttestation> {
+        holder_wallet_unit_id: &HolderWalletUnitId,
+    ) -> Vec<WalletUnitAttestation> {
         self.repository
-            .get_wallet_unit_attestation_by_organisation(
-                organisation_id,
+            .get_wallet_unit_attestations_by_holder_wallet_unit(
+                holder_wallet_unit_id,
                 &WalletUnitAttestationRelations::default(),
             )
             .await
             .unwrap()
     }
 
+    #[allow(unused)]
     pub async fn create(
         &self,
         test_wallet_unit_attestation: TestWalletUnitAttestation,
+        holder_wallet_unit_id: HolderWalletUnitId,
+        attested_key: Key,
     ) -> WalletUnitAttestation {
         let now = OffsetDateTime::now_utc();
         let attestation = WalletUnitAttestation {
@@ -62,22 +62,13 @@ impl WalletUnitAttestationsDB {
             expiration_date: test_wallet_unit_attestation
                 .expiration_date
                 .unwrap_or(now.add(Duration::minutes(180))),
-            status: test_wallet_unit_attestation
-                .status
-                .unwrap_or(WalletUnitStatus::Active),
             attestation: test_wallet_unit_attestation
                 .attestation
                 .unwrap_or("some_invalid_attestation".to_string()),
-            wallet_unit_id: test_wallet_unit_attestation
-                .wallet_unit_id
-                .unwrap_or(Uuid::new_v4().into()),
-            wallet_provider_url: test_wallet_unit_attestation
-                .wallet_provider_url
-                .unwrap_or("http://localhost:8080".to_string()),
-            wallet_provider_type: WalletProviderType::ProcivisOne,
-            wallet_provider_name: "PROCIVIS_ONE".to_string(),
-            organisation: test_wallet_unit_attestation.organisation,
-            key: test_wallet_unit_attestation.key,
+            holder_wallet_unit_id,
+            revocation_list_url: test_wallet_unit_attestation.revocation_list_url,
+            revocation_list_index: test_wallet_unit_attestation.revocation_list_index,
+            attested_key: Some(attested_key),
         };
         self.repository
             .create_wallet_unit_attestation(attestation.clone())

@@ -1,0 +1,214 @@
+use sea_orm::DatabaseBackend;
+use sea_orm_migration::prelude::*;
+
+use crate::datatype::ColumnDefExt;
+use crate::m20240110_000001_initial::{Key, Organisation};
+
+#[derive(DeriveMigrationName)]
+pub struct Migration;
+
+#[async_trait::async_trait]
+impl MigrationTrait for Migration {
+    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+        if manager.get_database_backend() == DatabaseBackend::Postgres {
+            return Ok(());
+        }
+        manager
+            .create_table(
+                Table::create()
+                    .table(HolderWalletUnit::Table)
+                    .if_not_exists()
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::OrganisationId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::AuthenticationKeyId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::CreatedDate)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::LastModified)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::WalletProviderName)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::WalletProviderType)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::WalletProviderUrl)
+                            .string()
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(HolderWalletUnit::ProviderWalletUnitId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(ColumnDef::new(HolderWalletUnit::Status).string().not_null())
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-HolderWalletUnit-Organisation")
+                            .from_tbl(HolderWalletUnit::Table)
+                            .from_col(HolderWalletUnit::OrganisationId)
+                            .to_tbl(Organisation::Table)
+                            .to_col(Organisation::Id),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-HolderWalletUnitAuthKey-Key")
+                            .from_tbl(HolderWalletUnit::Table)
+                            .from_col(HolderWalletUnit::AuthenticationKeyId)
+                            .to_tbl(Key::Table)
+                            .to_col(Key::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+
+        manager
+            .drop_table(Table::drop().table(WalletUnitAttestation::Table).to_owned())
+            .await?;
+
+        manager
+            .create_table(
+                Table::create()
+                    .table(WalletUnitAttestation::Table)
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::Id)
+                            .char_len(36)
+                            .not_null()
+                            .primary_key(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::CreatedDate)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::LastModified)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::ExpirationDate)
+                            .datetime_millisecond_precision(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::Attestation)
+                            .large_blob(manager)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::HolderWalletUnitId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::AttestedKeyId)
+                            .char_len(36)
+                            .not_null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::RevocationListUrl)
+                            .string()
+                            .null(),
+                    )
+                    .col(
+                        ColumnDef::new(WalletUnitAttestation::RevocationListIndex)
+                            .integer()
+                            .unsigned()
+                            .null(),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-WalletUnitAttestation-KeyId")
+                            .from_tbl(WalletUnitAttestation::Table)
+                            .from_col(WalletUnitAttestation::AttestedKeyId)
+                            .to_tbl(Key::Table)
+                            .to_col(Key::Id),
+                    )
+                    .foreign_key(
+                        ForeignKey::create()
+                            .name("fk-WalletUnitAttestation-HolderWalletUnit")
+                            .from_tbl(WalletUnitAttestation::Table)
+                            .from_col(WalletUnitAttestation::HolderWalletUnitId)
+                            .to_tbl(HolderWalletUnit::Table)
+                            .to_col(HolderWalletUnit::Id),
+                    )
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("index-WalletUnitAttestation-AttestedKey-Unique")
+                    .unique()
+                    .table(WalletUnitAttestation::Table)
+                    .col(WalletUnitAttestation::AttestedKeyId)
+                    .to_owned(),
+            )
+            .await?;
+        manager
+            .create_index(
+                Index::create()
+                    .name("index-HolderWalletUnit-AuthenticationKey-Unique")
+                    .unique()
+                    .table(HolderWalletUnit::Table)
+                    .col(HolderWalletUnit::AuthenticationKeyId)
+                    .to_owned(),
+            )
+            .await?;
+        Ok(())
+    }
+}
+
+#[derive(DeriveIden)]
+enum HolderWalletUnit {
+    Table,
+    Id,
+    OrganisationId,
+    AuthenticationKeyId,
+    CreatedDate,
+    LastModified,
+    ProviderWalletUnitId,
+    WalletProviderUrl,
+    WalletProviderType,
+    WalletProviderName,
+    Status,
+}
+
+#[derive(Iden)]
+#[allow(clippy::enum_variant_names)]
+pub enum WalletUnitAttestation {
+    Table,
+    Id,
+    CreatedDate,
+    LastModified,
+    ExpirationDate,
+    Attestation,
+    RevocationListUrl,
+    RevocationListIndex,
+    AttestedKeyId,
+    HolderWalletUnitId,
+}

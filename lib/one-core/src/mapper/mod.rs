@@ -56,6 +56,7 @@ pub(crate) mod oidc;
 pub(crate) mod openid4vp;
 pub(crate) mod params;
 pub(crate) mod timestamp;
+pub(crate) mod wallet_unit_attestation;
 pub(crate) mod x509;
 
 pub const NESTED_CLAIM_MARKER: char = '/';

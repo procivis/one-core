@@ -1,5 +1,6 @@
 use one_core::model::wallet_unit::SortableWalletUnitColumn;
 use one_core::service::wallet_provider::dto;
+use one_core::service::wallet_unit::dto::{WalletProviderType, WalletUnitOs, WalletUnitStatus};
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
@@ -10,9 +11,6 @@ use utoipa::{IntoParams, ToSchema};
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
 use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
-use crate::endpoint::wallet_unit::dto::{
-    WalletProviderTypeRestEnum, WalletUnitOsRestEnum, WalletUnitStatusRestEnum,
-};
 use crate::serialize::{front_time, front_time_option};
 pub(crate) type ListWalletUnitsQuery =
     ListQueryParamsRest<WalletUnitFilterQueryParamsRestDTO, SortableWalletUnitColumnRest>;
@@ -50,6 +48,35 @@ pub(crate) struct WalletUnitResponseRestDTO {
     pub wallet_provider_name: String,
     #[from(with_fn = convert_inner)]
     pub authentication_key_jwk: Option<PublicKeyJwkRestDTO>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(WalletUnitOs)]
+#[into(WalletUnitOs)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum WalletUnitOsRestEnum {
+    Ios,
+    Android,
+    Web,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(WalletUnitStatus)]
+#[into(WalletUnitStatus)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum WalletUnitStatusRestEnum {
+    Active,
+    Revoked,
+    Pending,
+    Error,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, From, Into)]
+#[from(WalletProviderType)]
+#[into(WalletProviderType)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum WalletProviderTypeRestEnum {
+    ProcivisOne,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]

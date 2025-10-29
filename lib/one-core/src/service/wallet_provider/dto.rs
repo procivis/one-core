@@ -31,11 +31,6 @@ pub struct ActivateWalletUnitRequestDTO {
 }
 
 #[derive(Clone, Debug)]
-pub struct ActivateWalletUnitResponseDTO {
-    pub attestation: String,
-}
-
-#[derive(Clone, Debug)]
 pub struct WalletUnitActivationRequestDTO {
     pub attestation: Vec<String>,
     pub attestation_key_proof: String,
@@ -85,12 +80,6 @@ pub enum KeyStorageSecurityLevel {
 pub struct IssueWalletUnitAttestationResponseDTO {
     pub waa: Vec<String>,
     pub wua: Vec<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct RefreshWalletUnitResponseDTO {
-    pub id: WalletUnitId,
-    pub attestation: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -8,6 +8,7 @@ pub mod credential;
 pub mod credential_schema;
 pub mod did;
 pub mod history;
+pub mod holder_wallet_unit;
 pub mod identifier;
 pub mod interaction;
 pub mod key;

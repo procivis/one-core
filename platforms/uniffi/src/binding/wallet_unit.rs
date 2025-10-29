@@ -1,14 +1,13 @@
-use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
+use one_core::model::wallet_unit::WalletProviderType;
 use one_core::service::wallet_unit::dto::{
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, WalletProviderDTO,
+    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO, WalletProviderDTO,
 };
 use one_dto_mapper::{From, Into, TryInto};
 
 use crate::ServiceError;
 use crate::binding::OneCoreBinding;
 use crate::error::BindingError;
-use crate::utils::{TimestampFormat, into_id};
+use crate::utils::into_id;
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -16,49 +15,12 @@ impl OneCoreBinding {
     pub async fn holder_register_wallet_unit(
         &self,
         request: HolderRegisterWalletUnitRequestBindingDTO,
-    ) -> Result<HolderRegisterWalletUnitResponseBindingDTO, BindingError> {
+    ) -> Result<String, BindingError> {
         let core = self.use_core().await?;
         let result = request.try_into();
         let response = core.wallet_unit_service.holder_register(result?).await?;
-        Ok(response.into())
+        Ok(response.to_string())
     }
-
-    #[uniffi::method]
-    pub async fn holder_refresh_wallet_unit(
-        &self,
-        request: HolderRefreshWalletUnitRequestBindingDTO,
-    ) -> Result<(), BindingError> {
-        let request = request.try_into()?;
-
-        let core = self.use_core().await?;
-        core.wallet_unit_service.holder_refresh(request).await?;
-        Ok(())
-    }
-
-    #[uniffi::method]
-    pub async fn holder_get_wallet_unit_attestation(
-        &self,
-        organisation_id: String,
-    ) -> Result<HolderAttestationWalletUnitResponseBindingDTO, BindingError> {
-        let organisation_id = into_id(&organisation_id)?;
-
-        let core = self.use_core().await?;
-        let response = core
-            .wallet_unit_service
-            .holder_attestation(organisation_id)
-            .await?;
-        Ok(response.into())
-    }
-}
-
-#[derive(Clone, Debug, uniffi::Enum, Into, From)]
-#[into(WalletUnitStatus)]
-#[from(WalletUnitStatus)]
-pub enum WalletUnitStatusBindingEnum {
-    Pending,
-    Active,
-    Revoked,
-    Error,
 }
 
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]
@@ -79,15 +41,6 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     key_type: String,
 }
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(HolderRegisterWalletUnitResponseDTO)]
-pub struct HolderRegisterWalletUnitResponseBindingDTO {
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub key_id: String,
-}
-
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T=HolderRefreshWalletUnitRequestDTO, Error=ServiceError)]
 pub struct HolderRefreshWalletUnitRequestBindingDTO {
@@ -97,31 +50,9 @@ pub struct HolderRefreshWalletUnitRequestBindingDTO {
     pub app_integrity_check_required: bool,
 }
 
-#[derive(Clone, Debug, From, uniffi::Record)]
-#[from(HolderWalletUnitAttestationResponseDTO)]
-pub struct HolderAttestationWalletUnitResponseBindingDTO {
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub created_date: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub last_modified: String,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub id: String,
-    #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
-    pub expiration_date: String,
-    pub status: WalletUnitStatusBindingEnum,
-    pub attestation: String,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub wallet_unit_id: String,
-    pub wallet_provider_url: String,
-    pub wallet_provider_type: WalletProviderTypeBindingEnum,
-    pub wallet_provider_name: String,
-}
-
 #[derive(Clone, Debug, Into, uniffi::Record)]
 #[into(WalletProviderDTO)]
 struct WalletProviderBindingDTO {
     url: String,
     r#type: WalletProviderTypeBindingEnum,
-    name: String,
-    pub app_integrity_check_required: bool,
 }

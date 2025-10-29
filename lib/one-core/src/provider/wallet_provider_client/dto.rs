@@ -1,7 +1,9 @@
-use crate::service::wallet_provider::dto::RefreshWalletUnitResponseDTO;
+use dto::IssueWalletUnitAttestationResponseDTO;
+
+use crate::service::wallet_provider::dto;
 
 #[derive(Clone, Debug)]
-pub enum RefreshWalletUnitResponse {
-    Active(RefreshWalletUnitResponseDTO),
+pub enum IssueWalletAttestationResponse {
+    Active(IssueWalletUnitAttestationResponseDTO),
     Revoked,
 }

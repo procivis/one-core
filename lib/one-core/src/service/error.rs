@@ -36,7 +36,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
 use crate::service::wallet_provider::error::WalletProviderError;
-use crate::service::wallet_unit::error::WalletUnitAttestationError;
+use crate::service::wallet_unit::error::HolderWalletUnitError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -134,7 +134,7 @@ pub enum ServiceError {
     WalletProviderError(#[from] WalletProviderError),
 
     #[error("Wallet unit error: `{0}`")]
-    WalletUnitAttestationError(#[from] WalletUnitAttestationError),
+    WalletUnitAttestationError(#[from] HolderWalletUnitError),
 
     #[error("NFC error: `{0}`")]
     NfcError(#[from] NfcError),
@@ -701,6 +701,9 @@ pub enum ValidationError {
 
     #[error("Engagement provided for non ISO mDL flow")]
     EngagementProvidedForNonISOmDLFlow,
+
+    #[error("Invalid wallet provider url: {0}")]
+    InvalidWalletProviderUrl(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1431,6 +1434,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Verification protocol is incompatible with this endpoint version")]
     BR_0292,
+
+    #[strum(message = "Invalid wallet provider Url")]
+    BR_0295,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1687,6 +1693,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,
             Self::InvalidProofEngagement => ErrorCode::BR_0078,
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
+            Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
         }
     }
 }
@@ -1842,13 +1849,13 @@ impl ErrorCodeMixin for WalletProviderError {
     }
 }
 
-impl ErrorCodeMixin for WalletUnitAttestationError {
+impl ErrorCodeMixin for HolderWalletUnitError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            WalletUnitAttestationError::WalletUnitRevoked => ErrorCode::BR_0261,
-            WalletUnitAttestationError::WalletProviderClientFailure(_) => ErrorCode::BR_0264,
-            WalletUnitAttestationError::AppIntegrityCheckRequired => ErrorCode::BR_0280,
-            WalletUnitAttestationError::AppIntegrityCheckNotRequired => ErrorCode::BR_0281,
+            HolderWalletUnitError::WalletUnitRevoked => ErrorCode::BR_0261,
+            HolderWalletUnitError::WalletProviderClientFailure(_) => ErrorCode::BR_0264,
+            HolderWalletUnitError::AppIntegrityCheckRequired => ErrorCode::BR_0280,
+            HolderWalletUnitError::AppIntegrityCheckNotRequired => ErrorCode::BR_0281,
         }
     }
 }

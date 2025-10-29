@@ -387,8 +387,17 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("wallet_unit")
                        .description(Some(indoc::formatdoc! {"
                 Manage wallet units and attestations issued by the system.
-
-                Wallets use the `holder-` endpoints to manage attestations.
+            "}))
+                       .extensions(Some(
+                           Extensions::builder()
+                               .add("x-displayName", "Holder Wallet units")
+                               .build(),
+                       ))
+                       .build(),
+                   Tag::builder()
+                       .name("holder_wallet_unit")
+                       .description(Some(indoc::formatdoc! {"
+                Manage holder wallet units and attestations received by the wallet provider.
             "}))
                        .extensions(Some(
                            Extensions::builder()

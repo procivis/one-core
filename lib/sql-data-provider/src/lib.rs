@@ -19,6 +19,7 @@ use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::did_repository::DidRepository;
 use one_core::repository::history_repository::HistoryRepository;
+use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use one_core::repository::identifier_repository::IdentifierRepository;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
@@ -46,6 +47,7 @@ use crate::blob::BlobProvider;
 use crate::credential::CredentialProvider;
 use crate::credential_schema::CredentialSchemaProvider;
 use crate::history::HistoryProvider;
+use crate::holder_wallet_unit::HolderWalletUnitProvider;
 use crate::key::KeyProvider;
 use crate::remote_entity_cache::RemoteEntityCacheProvider;
 use crate::revocation_list::RevocationListProvider;
@@ -111,6 +113,7 @@ pub struct DataLayer {
     trust_entity_repository: Arc<dyn TrustEntityRepository>,
     blob_repository: Arc<dyn BlobRepository>,
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
+    holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     #[allow(unused)]
     wallet_unit_attested_key_repository: Arc<dyn WalletUnitAttestedKeyRepository>,
@@ -244,7 +247,14 @@ impl DataLayer {
         let wallet_unit_attestation_repository = Arc::new(WalletUnitAttestationProvider {
             db: transaction_manager.clone(),
             key_repository: key_repository.clone(),
+        });
+
+        let holder_wallet_unit_repository = Arc::new(HolderWalletUnitProvider {
+            db: transaction_manager.clone(),
+            tx_manager: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
+            key_repository: key_repository.clone(),
+            wallet_unit_attestation_repository: wallet_unit_attestation_repository.clone(),
         });
 
         Self {
@@ -271,6 +281,7 @@ impl DataLayer {
             certificate_repository,
             blob_repository,
             wallet_unit_repository,
+            holder_wallet_unit_repository,
             wallet_unit_attestation_repository,
             wallet_unit_attested_key_repository,
         }
@@ -352,6 +363,10 @@ impl DataRepository for DataLayer {
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
         self.transaction_manager.clone()
     }
+
+    fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository> {
+        self.holder_wallet_unit_repository.clone()
+    }
 }
 
 /// Connects to the database and runs the pending migrations (until we externalize them)
@@ -369,6 +384,7 @@ pub async fn db_conn(
 }
 
 mod blob;
+mod holder_wallet_unit;
 #[cfg(any(test, feature = "test_utils"))]
 pub mod test_utilities;
 mod transaction_context;

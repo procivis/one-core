@@ -1,41 +1,35 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::{OrganisationId, WalletUnitId};
+use shared_types::{HolderWalletUnitId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
+use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
+use crate::model::holder_wallet_unit::HolderWalletUnit;
+use crate::model::key::{Key, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
-use crate::model::wallet_unit_attestation::{
-    UpdateWalletUnitAttestationRequest, WalletUnitAttestation, WalletUnitAttestationRelations,
-};
-use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
+use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::repository::error::DataLayerError;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::wallet_provider::dto::{
-    ActivateWalletUnitRequestDTO, RefreshWalletUnitRequestDTO, RegisterWalletUnitRequestDTO,
-    RegisterWalletUnitResponseDTO, WalletAppAttestationClaims,
+    ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 use crate::service::wallet_unit::WalletUnitService;
-use crate::service::wallet_unit::dto::{
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderRegisterWalletUnitResponseDTO, HolderWalletUnitAttestationResponseDTO, NoncePayload,
-};
-use crate::service::wallet_unit::error::WalletUnitAttestationError;
+use crate::service::wallet_unit::dto::{HolderRegisterWalletUnitRequestDTO, NoncePayload};
+use crate::service::wallet_unit::error::HolderWalletUnitError;
 use crate::service::wallet_unit::mapper::key_from_generated_key;
 use crate::validator::throw_if_org_not_matching_session;
 
@@ -43,7 +37,7 @@ impl WalletUnitService {
     pub async fn holder_register(
         &self,
         request: HolderRegisterWalletUnitRequestDTO,
-    ) -> Result<HolderRegisterWalletUnitResponseDTO, ServiceError> {
+    ) -> Result<HolderWalletUnitId, ServiceError> {
         throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
         let organisation = self
             .organisation_repository
@@ -90,52 +84,62 @@ impl WalletUnitService {
             )));
         }
 
-        let result =
-            if request.wallet_provider.app_integrity_check_required && os != WalletUnitOs::Web {
-                self.register_with_integrity_check(
-                    &request,
-                    key_storage_id,
-                    key_type,
-                    os,
-                    organisation.clone(),
-                )
-                .await?
-            } else {
-                self.register_without_integrity_check(
-                    &request,
-                    key_storage_id,
-                    key_type,
-                    os,
-                    organisation.clone(),
-                )
-                .await?
-            };
+        let wallet_provider_url = Url::from_str(&request.wallet_provider.url)
+            .map_err(|err| ValidationError::InvalidWalletProviderUrl(format!("{err}")))?
+            .origin()
+            .ascii_serialization();
+        let metadata = self
+            .wallet_provider_client
+            .get_wallet_provider_metadata(&request.wallet_provider.url)
+            .await
+            .map_err(HolderWalletUnitError::from)?;
+        let provider_info = WalletProviderInfo {
+            name: metadata.name.clone(),
+            url: wallet_provider_url.clone(),
+        };
 
-        let key_id = result.key.id;
-        let attestation_token: DecomposedToken<WalletAppAttestationClaims> =
-            Jwt::decompose_token(&result.attestation)?;
+        let result = if metadata
+            .wallet_unit_attestation
+            .app_integrity_check_required
+            && os != WalletUnitOs::Web
+        {
+            self.register_with_integrity_check(
+                &provider_info,
+                key_storage_id,
+                key_type,
+                os,
+                organisation.clone(),
+            )
+            .await?
+        } else {
+            self.register_without_integrity_check(
+                &provider_info,
+                key_storage_id,
+                key_type,
+                os,
+                organisation.clone(),
+            )
+            .await?
+        };
+
         let now = self.clock.now_utc();
-        let wallet_unit_attestation = WalletUnitAttestation {
+        let wallet_unit = HolderWalletUnit {
             id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
-            expiration_date: attestation_token
-                .payload
-                .expires_at
-                .ok_or(ServiceError::MappingError("expires_at is None".to_string()))?,
             status: WalletUnitStatus::Active,
-            attestation: result.attestation,
-            wallet_unit_id: result.wallet_unit_id,
-            wallet_provider_url: request.wallet_provider.url,
+            wallet_provider_url,
             wallet_provider_type: request.wallet_provider.r#type.clone(),
-            wallet_provider_name: request.wallet_provider.name,
+            wallet_provider_name: metadata.name,
             organisation: Some(organisation.clone()),
-            key: Some(result.key),
+            authentication_key: Some(result.key),
+            provider_wallet_unit_id: result.wallet_unit_id,
+            wallet_unit_attestations: None,
         };
 
-        let wallet_unit_attestation_id = self
-            .wallet_unit_attestation_repository
-            .create_wallet_unit_attestation(wallet_unit_attestation)
+        let holder_wallet_unit_id = self
+            .holder_wallet_unit_repository
+            .create_holder_wallet_unit(wallet_unit)
             .await?;
 
         let wallet_unit_name = format!(
@@ -152,22 +156,19 @@ impl WalletUnitService {
                 action: HistoryAction::Created,
                 name: wallet_unit_name,
                 target: None,
-                entity_id: Some(wallet_unit_attestation_id.into()),
+                entity_id: Some(holder_wallet_unit_id.into()),
                 entity_type: HistoryEntityType::WalletUnitAttestation,
                 metadata: None,
                 organisation_id: Some(organisation.id),
                 user: self.session_provider.session().user(),
             })
             .await?;
-        Ok(HolderRegisterWalletUnitResponseDTO {
-            id: result.wallet_unit_id,
-            key_id,
-        })
+        Ok(holder_wallet_unit_id)
     }
 
     async fn register_without_integrity_check(
         &self,
-        request: &HolderRegisterWalletUnitRequestDTO,
+        provider_info: &WalletProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: WalletUnitOs,
@@ -194,53 +195,46 @@ impl WalletUnitService {
         let signed_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
-                &request.wallet_provider.name,
+                &provider_info.name,
                 auth_fn,
-                &request.wallet_provider.url,
+                &provider_info.url,
                 None,
             )
             .await?;
 
         let register_request = RegisterWalletUnitRequestDTO {
-            wallet_provider: request.wallet_provider.name.clone(),
+            wallet_provider: provider_info.name.clone(),
             os,
             public_key: Some(key_handle.public_key_as_jwk()?.into()),
             proof: Some(signed_proof),
         };
 
-        let register_response = self.register(&request, register_request).await?;
-
-        let Some(attestation) = register_response.attestation else {
-            // integrity check was not expected, but is required
-            return Err(WalletUnitAttestationError::AppIntegrityCheckRequired.into());
-        };
-
+        let register_response = self.register(&provider_info.url, register_request).await?;
         Ok(Registration {
             wallet_unit_id: register_response.id,
             key,
-            attestation,
         })
     }
 
     async fn register_with_integrity_check(
         &self,
-        request: &HolderRegisterWalletUnitRequestDTO,
+        provider_info: &WalletProviderInfo,
         key_storage_id: &str,
         key_type: KeyAlgorithmType,
         os: WalletUnitOs,
         organisation: Organisation,
     ) -> Result<Registration, ServiceError> {
         let register_request = RegisterWalletUnitRequestDTO {
-            wallet_provider: request.wallet_provider.name.clone(),
+            wallet_provider: provider_info.name.clone(),
             os,
             public_key: None,
             proof: None,
         };
-        let register_response = self.register(&request, register_request).await?;
+        let register_response = self.register(&provider_info.url, register_request).await?;
 
         let Some(nonce) = register_response.nonce else {
             // integrity check was expected, but is not required
-            return Err(WalletUnitAttestationError::AppIntegrityCheckNotRequired.into());
+            return Err(HolderWalletUnitError::AppIntegrityCheckNotRequired.into());
         };
 
         let key_storage = self
@@ -274,9 +268,9 @@ impl WalletUnitService {
         let attestation_key_proof = self
             .create_signed_key_possession_proof(
                 self.clock.now_utc(),
-                &request.wallet_provider.name,
+                &provider_info.name,
                 auth_fn,
-                &request.wallet_provider.url,
+                &provider_info.url,
                 Some(nonce.clone()),
             )
             .await?;
@@ -300,8 +294,8 @@ impl WalletUnitService {
                     self.clock.now_utc(),
                     auth_fn,
                     key_handle.public_key_as_jwk()?,
-                    &request.wallet_provider.name,
-                    &request.wallet_provider.url,
+                    &provider_info.name,
+                    &provider_info.url,
                     nonce,
                 )
                 .await?;
@@ -316,20 +310,14 @@ impl WalletUnitService {
             device_signing_key_proof: device_sig_pop,
         };
 
-        let activation_response = self
-            .wallet_provider_client
-            .activate(
-                &request.wallet_provider.url,
-                register_response.id,
-                activate_request,
-            )
+        self.wallet_provider_client
+            .activate(&provider_info.url, register_response.id, activate_request)
             .await
-            .map_err(WalletUnitAttestationError::from)?;
+            .map_err(HolderWalletUnitError::from)?;
 
         Ok(Registration {
             wallet_unit_id: register_response.id,
             key: device_sig_key.unwrap_or(attestation_key),
-            attestation: activation_response.attestation,
         })
     }
 
@@ -350,19 +338,19 @@ impl WalletUnitService {
 
     async fn register(
         &self,
-        request: &&HolderRegisterWalletUnitRequestDTO,
+        url: &str,
         register_request: RegisterWalletUnitRequestDTO,
-    ) -> Result<RegisterWalletUnitResponseDTO, WalletUnitAttestationError> {
+    ) -> Result<RegisterWalletUnitResponseDTO, HolderWalletUnitError> {
         self.wallet_provider_client
-            .register(&request.wallet_provider.url, register_request)
+            .register(url, register_request)
             .await
             .map_err(|err| match err {
-                WalletProviderClientError::Transport(_) => WalletUnitAttestationError::from(err),
+                WalletProviderClientError::Transport(_) => HolderWalletUnitError::from(err),
                 WalletProviderClientError::IntegrityCheckRequired => {
-                    WalletUnitAttestationError::AppIntegrityCheckRequired
+                    HolderWalletUnitError::AppIntegrityCheckRequired
                 }
                 WalletProviderClientError::IntegrityCheckNotRequired => {
-                    WalletUnitAttestationError::AppIntegrityCheckNotRequired
+                    HolderWalletUnitError::AppIntegrityCheckNotRequired
                 }
             })
     }
@@ -378,165 +366,6 @@ impl WalletUnitService {
                 err => ServiceError::from(err),
             })?;
         Ok(())
-    }
-
-    pub async fn holder_refresh(
-        &self,
-        request: HolderRefreshWalletUnitRequestDTO,
-    ) -> Result<(), ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
-        let wallet_unit_attestation: WalletUnitAttestation = self
-            .wallet_unit_attestation_repository
-            .get_wallet_unit_attestation_by_organisation(
-                &request.organisation_id,
-                &WalletUnitAttestationRelations {
-                    key: Some(KeyRelations::default()),
-                    organisation: Some(OrganisationRelations::default()),
-                },
-            )
-            .await?
-            .ok_or(EntityNotFoundError::WalletUnitAttestationByOrganisation(
-                request.organisation_id,
-            ))?;
-
-        let Some(organisation) = wallet_unit_attestation.organisation else {
-            return Err(ServiceError::MappingError(
-                "organisation is None".to_string(),
-            ));
-        };
-
-        let Some(key) = wallet_unit_attestation.key.as_ref() else {
-            return Err(ServiceError::MappingError("key is None".to_string()));
-        };
-
-        if wallet_unit_attestation.status != WalletUnitStatus::Active {
-            return Err(WalletUnitAttestationError::WalletUnitRevoked.into());
-        }
-
-        let os = WalletUnitOs::from(self.os_info_provider.get_os_name().await);
-
-        let auth_fn = if request.app_integrity_check_required && os != WalletUnitOs::Web {
-            self.key_provider.get_attestation_signature_provider(
-                key,
-                None,
-                self.key_algorithm_provider.clone(),
-            )?
-        } else {
-            self.key_provider.get_signature_provider(
-                key,
-                None,
-                self.key_algorithm_provider.clone(),
-            )?
-        };
-
-        let now = self.clock.now_utc();
-        let signed_proof = self
-            .create_signed_key_possession_proof(
-                now,
-                &wallet_unit_attestation.wallet_provider_name,
-                auth_fn,
-                &wallet_unit_attestation.wallet_provider_url,
-                None,
-            )
-            .await?;
-
-        let refresh_response = self
-            .wallet_provider_client
-            .refresh(
-                &wallet_unit_attestation.wallet_provider_url,
-                wallet_unit_attestation.wallet_unit_id,
-                RefreshWalletUnitRequestDTO {
-                    proof: signed_proof,
-                },
-            )
-            .await
-            .map_err(WalletUnitAttestationError::from)?;
-
-        let wallet_unit_name = format!(
-            "{}-{}-{}",
-            wallet_unit_attestation.wallet_provider_type,
-            self.os_info_provider.get_os_name().await,
-            now.unix_timestamp()
-        );
-
-        match refresh_response {
-            RefreshWalletUnitResponse::Active(refresh_response) => {
-                let attestation_token: DecomposedToken<()> =
-                    Jwt::decompose_token(&refresh_response.attestation)?;
-
-                self.wallet_unit_attestation_repository
-                    .update_wallet_attestation(
-                        &wallet_unit_attestation.id,
-                        UpdateWalletUnitAttestationRequest {
-                            expiration_date: Some(attestation_token.payload.expires_at.ok_or(
-                                ServiceError::MappingError("expires_at is None".to_string()),
-                            )?),
-                            attestation: Some(refresh_response.attestation),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
-
-                self.history_repository
-                    .create_history(History {
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        action: HistoryAction::Updated,
-                        name: wallet_unit_name,
-                        target: None,
-                        entity_id: Some(wallet_unit_attestation.id.into()),
-                        entity_type: HistoryEntityType::WalletUnitAttestation,
-                        metadata: None,
-                        organisation_id: Some(organisation.id),
-                        user: self.session_provider.session().user(),
-                    })
-                    .await?;
-                Ok(())
-            }
-            RefreshWalletUnitResponse::Revoked => {
-                self.wallet_unit_attestation_repository
-                    .update_wallet_attestation(
-                        &wallet_unit_attestation.id,
-                        UpdateWalletUnitAttestationRequest {
-                            status: Some(WalletUnitStatus::Revoked),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
-                self.history_repository
-                    .create_history(History {
-                        id: Uuid::new_v4().into(),
-                        created_date: now,
-                        action: HistoryAction::Revoked,
-                        name: wallet_unit_name,
-                        target: None,
-                        entity_id: Some(wallet_unit_attestation.id.into()),
-                        entity_type: HistoryEntityType::WalletUnitAttestation,
-                        metadata: None,
-                        organisation_id: Some(organisation.id),
-                        user: self.session_provider.session().user(),
-                    })
-                    .await?;
-                Err(WalletUnitAttestationError::WalletUnitRevoked.into())
-            }
-        }
-    }
-
-    pub async fn holder_attestation(
-        &self,
-        organisation_id: OrganisationId,
-    ) -> Result<HolderWalletUnitAttestationResponseDTO, ServiceError> {
-        let attestation = self
-            .wallet_unit_attestation_repository
-            .get_wallet_unit_attestation_by_organisation(
-                &organisation_id,
-                &WalletUnitAttestationRelations::default(),
-            )
-            .await?;
-
-        attestation
-            .map(Into::into)
-            .ok_or(EntityNotFoundError::WalletUnitAttestationByOrganisation(organisation_id).into())
     }
 
     async fn create_signed_key_possession_proof(
@@ -611,8 +440,12 @@ impl WalletUnitService {
     }
 }
 
+struct WalletProviderInfo {
+    name: String,
+    url: String,
+}
+
 struct Registration {
     wallet_unit_id: WalletUnitId,
     key: Key,
-    attestation: String,
 }

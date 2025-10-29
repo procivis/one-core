@@ -4,16 +4,21 @@ pub mod http_client;
 
 use shared_types::WalletUnitId;
 
-use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
+use crate::provider::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::service::wallet_provider::dto::{
-    ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
-    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitRequestDTO, IssueWalletUnitAttestationRequestDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait WalletProviderClient: Send + Sync {
+    async fn get_wallet_provider_metadata(
+        &self,
+        wallet_provider_metadata_url: &str,
+    ) -> Result<WalletProviderMetadataResponseDTO, WalletProviderClientError>;
+
     async fn register(
         &self,
         wallet_provider_url: &str,
@@ -25,12 +30,12 @@ pub trait WalletProviderClient: Send + Sync {
         wallet_provider_url: &str,
         wallet_unit_id: WalletUnitId,
         request: ActivateWalletUnitRequestDTO,
-    ) -> Result<ActivateWalletUnitResponseDTO, WalletProviderClientError>;
+    ) -> Result<(), WalletProviderClientError>;
 
-    async fn refresh(
+    async fn issue_attestation(
         &self,
         wallet_provider_url: &str,
         wallet_unit_id: WalletUnitId,
-        request: RefreshWalletUnitRequestDTO,
-    ) -> Result<RefreshWalletUnitResponse, WalletProviderClientError>;
+        request: IssueWalletUnitAttestationRequestDTO,
+    ) -> Result<IssueWalletAttestationResponse, WalletProviderClientError>;
 }

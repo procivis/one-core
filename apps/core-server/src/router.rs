@@ -23,8 +23,8 @@ use crate::authentication::{Authentication, authentication};
 use crate::dto::response::ErrorResponse;
 use crate::endpoint::{
     cache, certificate, config, credential, credential_schema, did, did_resolver, history,
-    identifier, interaction, jsonld, key, misc, organisation, proof, proof_schema, ssi, task,
-    trust_anchor, trust_entity, vc_api, wallet_provider, wallet_unit,
+    holder_wallet_unit, identifier, interaction, jsonld, key, misc, organisation, proof,
+    proof_schema, ssi, task, trust_anchor, trust_entity, vc_api, wallet_provider,
 };
 use crate::middleware::get_http_request_context;
 use crate::openapi::gen_openapi_documentation;
@@ -320,16 +320,8 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(jsonld::controller::resolve_jsonld_context),
             )
             .route(
-                "/api/wallet-unit/v1/holder-register",
-                post(wallet_unit::controller::wallet_unit_holder_register),
-            )
-            .route(
-                "/api/wallet-unit/v1/holder-refresh",
-                post(wallet_unit::controller::wallet_unit_holder_refresh),
-            )
-            .route(
-                "/api/wallet-unit/v1/holder-attestation",
-                get(wallet_unit::controller::wallet_unit_holder_attestation),
+                "/api/holder-wallet-unit/v1",
+                post(holder_wallet_unit::controller::wallet_unit_holder_register),
             )
             .layer(
                 TraceLayer::new_for_http()

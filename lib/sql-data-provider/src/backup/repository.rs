@@ -24,8 +24,8 @@ use crate::backup::helpers::{
 use crate::backup::models::UnexportableCredentialModel;
 use crate::entity::{
     certificate, claim, claim_schema, credential, credential_schema,
-    credential_schema_claim_schema, did, history, identifier, key, key_did, organisation,
-    wallet_unit_attestation,
+    credential_schema_claim_schema, did, history, holder_wallet_unit, identifier, key, key_did,
+    organisation, wallet_unit_attestation,
 };
 use crate::mapper::to_data_layer_error;
 use crate::transaction_context::{TransactionProvider, TransactionWrapper};
@@ -374,8 +374,6 @@ impl BackupRepository for BackupProvider {
             )
             .all(&db);
 
-        let select_wallet_unit_attestations = wallet_unit_attestation::Entity::find().all(&db);
-
         let (
             total_keys,
             keys,
@@ -387,8 +385,6 @@ impl BackupRepository for BackupProvider {
             identifiers,
             total_histories,
             histories,
-            total_wallet_unit_attestations,
-            wallet_unit_attestations,
         ) = tokio::try_join!(
             key::Entity::find()
                 .filter(key::Column::DeletedAt.is_null())
@@ -407,9 +403,7 @@ impl BackupRepository for BackupProvider {
                 .count(&db),
             select_identifiers,
             history::Entity::find().count(&db),
-            select_history,
-            wallet_unit_attestation::Entity::find().count(&db),
-            select_wallet_unit_attestations,
+            select_history
         )
         .map_err(to_data_layer_error)?;
 
@@ -419,13 +413,11 @@ impl BackupRepository for BackupProvider {
             dids: convert_inner(dids),
             identifiers: convert_inner(identifiers),
             histories: try_convert_inner(histories)?,
-            wallet_unit_attestations: convert_inner(wallet_unit_attestations),
             total_credentials,
             total_keys,
             total_dids,
             total_identifiers,
             total_histories,
-            total_wallet_unit_attestations,
         })
     }
 
@@ -497,6 +489,7 @@ impl BackupRepository for BackupProvider {
                 self.identifiers_with_non_exportable_keys()
             ),
             delete_wallet_unit_attestations(&db),
+            delete_holder_wallet_units(&db),
             delete_history_related_to_wallet_unit_attestations(&db),
         )
         .map_err(to_data_layer_error)?;
@@ -547,6 +540,11 @@ async fn delete_wallet_unit_attestations(db: &TransactionWrapper) -> Result<(), 
     wallet_unit_attestation::Entity::delete_many()
         .exec(db)
         .await?;
+    Ok(())
+}
+
+async fn delete_holder_wallet_units(db: &TransactionWrapper) -> Result<(), sea_orm::DbErr> {
+    holder_wallet_unit::Entity::delete_many().exec(db).await?;
     Ok(())
 }
 

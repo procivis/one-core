@@ -6,8 +6,9 @@ use one_core::model::wallet_unit_attested_key::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::entity::wallet_unit_attested_key;
@@ -33,12 +34,14 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
         &self,
         request: WalletUnitAttestedKey,
     ) -> Result<(), DataLayerError> {
-        wallet_unit_attested_key::Entity::update(wallet_unit_attested_key::ActiveModel::try_from(
-            request,
-        )?)
-        .exec(&self.db.tx())
-        .await
-        .map_err(to_update_data_layer_error)?;
+        let id = request.id;
+        let mut model = wallet_unit_attested_key::ActiveModel::try_from(request)?;
+        model.id = Unchanged(id);
+        model.last_modified = Set(OffsetDateTime::now_utc());
+        wallet_unit_attested_key::Entity::update(model)
+            .exec(&self.db.tx())
+            .await
+            .map_err(to_update_data_layer_error)?;
         Ok(())
     }
 

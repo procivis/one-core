@@ -5,21 +5,40 @@ use url::Url;
 
 use crate::proto::http_client::Error;
 use crate::provider::wallet_provider_client::WalletProviderClient;
-use crate::provider::wallet_provider_client::dto::RefreshWalletUnitResponse;
+use crate::provider::wallet_provider_client::dto::IssueWalletAttestationResponse;
 use crate::provider::wallet_provider_client::error::WalletProviderClientError;
 use crate::provider::wallet_provider_client::http_client::HTTPWalletProviderClient;
 use crate::provider::wallet_provider_client::http_client::dto::{
-    ActivateWalletUnitRequestRestDTO, ActivateWalletUnitResponseRestDTO,
-    RefreshWalletUnitRequestRestDTO, RefreshWalletUnitResponseRestDTO,
-    RegisterWalletUnitRequestRestDTO, RegisterWalletUnitResponseRestDTO,
+    ActivateWalletUnitRequestRestDTO, IssueWalletUnitAttestationRequestRestDTO,
+    IssueWalletUnitAttestationResponseRestDTO, RegisterWalletUnitRequestRestDTO,
+    RegisterWalletUnitResponseRestDTO, WalletProviderMetadataResponseRestDTO,
 };
 use crate::service::wallet_provider::dto::{
-    ActivateWalletUnitRequestDTO, ActivateWalletUnitResponseDTO, RefreshWalletUnitRequestDTO,
-    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
+    ActivateWalletUnitRequestDTO, IssueWalletUnitAttestationRequestDTO,
+    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletProviderMetadataResponseDTO,
 };
 
 #[async_trait::async_trait]
 impl WalletProviderClient for HTTPWalletProviderClient {
+    async fn get_wallet_provider_metadata(
+        &self,
+        wallet_provider_metadata_url: &str,
+    ) -> Result<WalletProviderMetadataResponseDTO, WalletProviderClientError> {
+        self.http_client
+            .get(wallet_provider_metadata_url)
+            .send()
+            .await
+            .context("send error")
+            .map_err(WalletProviderClientError::Transport)?
+            .error_for_status()
+            .context("status error")
+            .map_err(WalletProviderClientError::Transport)?
+            .json::<WalletProviderMetadataResponseRestDTO>()
+            .context("parsing error")
+            .map_err(WalletProviderClientError::Transport)
+            .map(Into::into)
+    }
+
     async fn register(
         &self,
         wallet_provider_url: &str,
@@ -70,7 +89,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         wallet_provider_url: &str,
         wallet_unit_id: WalletUnitId,
         request: ActivateWalletUnitRequestDTO,
-    ) -> Result<ActivateWalletUnitResponseDTO, WalletProviderClientError> {
+    ) -> Result<(), WalletProviderClientError> {
         let url = Url::parse(
             format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/activate").as_str(),
         )
@@ -88,21 +107,19 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             .map_err(WalletProviderClientError::Transport)?
             .error_for_status()
             .context("status error")
-            .map_err(WalletProviderClientError::Transport)?
-            .json::<ActivateWalletUnitResponseRestDTO>()
-            .context("parsing error")
-            .map_err(WalletProviderClientError::Transport)
-            .map(|r| r.into())
+            .map_err(WalletProviderClientError::Transport)?;
+        Ok(())
     }
 
-    async fn refresh(
+    async fn issue_attestation(
         &self,
         wallet_provider_url: &str,
         wallet_unit_id: WalletUnitId,
-        request: RefreshWalletUnitRequestDTO,
-    ) -> Result<RefreshWalletUnitResponse, WalletProviderClientError> {
+        request: IssueWalletUnitAttestationRequestDTO,
+    ) -> Result<IssueWalletAttestationResponse, WalletProviderClientError> {
         let url = Url::parse(
-            format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/refresh").as_str(),
+            format!("{wallet_provider_url}/ssi/wallet-unit/v1/{wallet_unit_id}/issue-attestation")
+                .as_str(),
         )
         .context("url error")
         .map_err(WalletProviderClientError::Transport)?;
@@ -110,7 +127,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         let result = self
             .http_client
             .post(url.as_str())
-            .json(RefreshWalletUnitRequestRestDTO::from(request))
+            .json(IssueWalletUnitAttestationRequestRestDTO::from(request))
             .context("json error")
             .map_err(WalletProviderClientError::Transport)?
             .send()
@@ -127,7 +144,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
                     "Error missing code"
                 )))?;
             if *cause == json!("BR_0261".to_string()) {
-                return Ok(RefreshWalletUnitResponse::Revoked);
+                return Ok(IssueWalletAttestationResponse::Revoked);
             }
         }
 
@@ -135,9 +152,9 @@ impl WalletProviderClient for HTTPWalletProviderClient {
             .error_for_status()
             .context("status error")
             .map_err(WalletProviderClientError::Transport)?
-            .json::<RefreshWalletUnitResponseRestDTO>()
+            .json::<IssueWalletUnitAttestationResponseRestDTO>()
             .context("parsing error")
             .map_err(WalletProviderClientError::Transport)
-            .map(|r| RefreshWalletUnitResponse::Active(r.into()))
+            .map(|r| IssueWalletAttestationResponse::Active(r.into()))
     }
 }

@@ -17,8 +17,6 @@ use crate::model::credential_schema::{
 };
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
-use crate::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
-use crate::model::wallet_unit_attestation::WalletUnitAttestation;
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -128,26 +126,11 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             organisation_id: None,
             user: None,
         }],
-        wallet_unit_attestations: vec![WalletUnitAttestation {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            expiration_date: get_dummy_date(),
-            status: WalletUnitStatus::Active,
-            attestation: "".to_string(),
-            wallet_unit_id: Uuid::new_v4().into(),
-            wallet_provider_url: "https://test.test".to_string(),
-            wallet_provider_type: WalletProviderType::ProcivisOne,
-            wallet_provider_name: "test".to_string(),
-            organisation: None,
-            key: None,
-        }],
         total_credentials: 5,
         total_keys: 5,
         total_dids: 5,
         total_identifiers: 5,
         total_histories: 1,
-        total_wallet_unit_attestations: 1,
     }
 }
 

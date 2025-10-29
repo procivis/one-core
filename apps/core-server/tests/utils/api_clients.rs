@@ -26,6 +26,7 @@ use self::trust_entity::TrustEntitiesApi;
 use self::wallet_units::WalletUnitsApi;
 use super::field_match::FieldHelpers;
 use crate::utils::api_clients::cache::CacheApi;
+use crate::utils::api_clients::holder_wallet_unit::HolderWalletUnitsApi;
 use crate::utils::api_clients::wallet_provider::WalletProviderApi;
 
 mod cache;
@@ -50,6 +51,7 @@ pub mod trust_anchors;
 pub mod trust_entity;
 pub mod wallet_units;
 
+pub mod holder_wallet_unit;
 pub mod wallet_provider;
 
 pub fn http_client() -> &'static reqwest::Client {
@@ -203,6 +205,7 @@ pub struct Client {
     pub certificates: CertificatesApi,
     pub wallet_provider: WalletProviderApi,
     pub wallet_units: WalletUnitsApi,
+    pub holder_wallet_units: HolderWalletUnitsApi,
 }
 
 impl Client {
@@ -231,7 +234,8 @@ impl Client {
             identifiers: IdentifiersApi::new(client.clone()),
             certificates: CertificatesApi::new(client.clone()),
             wallet_provider: WalletProviderApi::new(client.clone()),
-            wallet_units: WalletUnitsApi::new(client),
+            wallet_units: WalletUnitsApi::new(client.clone()),
+            holder_wallet_units: HolderWalletUnitsApi::new(client),
         }
     }
 }

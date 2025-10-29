@@ -65,7 +65,6 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
@@ -986,24 +985,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .unwrap_or(&vec![])
             .contains(&"attest_jwt_client_auth".to_string())
         {
+            // TODO ONE-7695: This the _WUA_ not the WAA, so this is entirely wrong now and needs to be reworked
             let wallet_unit_attestation = self
                 .wallet_unit_attestation_repository
-                .get_wallet_unit_attestation_by_organisation(
-                    &organisation.id,
-                    &WalletUnitAttestationRelations {
-                        key: Some(KeyRelations::default()),
-                        ..Default::default()
-                    },
-                )
+                .get_wallet_unit_attestation_by_key_id(&key.id)
                 .await
                 .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-            let wua_key = wallet_unit_attestation
-                .as_ref()
-                .and_then(|wua| wua.key.clone())
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing Wallet Unit key".to_string(),
-                ))?;
 
             // Fetch challenge if challenge_endpoint is present
             let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
@@ -1015,7 +1002,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             let signed_proof = create_wallet_unit_attestation_pop(
                 &*self.key_provider,
                 self.key_algorithm_provider.clone(),
-                &wua_key,
+                key,
                 &interaction_data.issuer_url,
                 challenge,
             )

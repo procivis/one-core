@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 
 use crate::deserialize::one_or_many;
 use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
-use crate::endpoint::wallet_unit::dto::WalletUnitOsRestEnum;
+use crate::endpoint::wallet_provider::dto::WalletUnitOsRestEnum;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::IssueWalletUnitAttestationRequestDTO)]
@@ -57,14 +57,6 @@ pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
     pub waa: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub wua: Vec<String>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(dto::RefreshWalletUnitResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct RefreshWalletUnitResponseRestDTO {
-    pub id: WalletUnitId,
-    pub attestation: String,
 }
 
 #[options_not_nullable]

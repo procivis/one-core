@@ -9,9 +9,7 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use time::{Duration, OffsetDateTime};
 
 pub mod get_wallet_unit_tests;
-mod holder_attestation;
-mod holder_refresh_wallet_unit;
-mod holder_register_wallet_unit;
+pub mod holder_register_wallet_unit;
 pub mod list_wallet_unit_tests;
 
 async fn create_wallet_unit_attestation(wallet_key: PublicKeyJwk, base_url: String) -> String {
