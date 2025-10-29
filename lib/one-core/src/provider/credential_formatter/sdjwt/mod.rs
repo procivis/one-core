@@ -177,7 +177,7 @@ pub(crate) async fn format_credential<T: Serialize>(
         payload,
     );
 
-    let mut token = jwt.tokenize(Some(auth_fn)).await?;
+    let mut token = jwt.tokenize(Some(&*auth_fn)).await?;
     append_disclosures(&mut token, disclosures);
     Ok(token)
 }
@@ -285,7 +285,7 @@ async fn append_key_binding_token(
         None,
         payload,
     )
-    .tokenize(Some(holder_binding_fn))
+    .tokenize(Some(&*holder_binding_fn))
     .await
     .map_err(|err| {
         FormatterError::CouldNotFormat(format!("failed to tokenize key binding token: {err}"))

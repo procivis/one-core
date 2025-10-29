@@ -47,9 +47,9 @@ pub(super) async fn generate_nonce(
     let jwt = Jwt::new("JWT".to_string(), "HS256".to_string(), None, None, payload);
 
     Ok(jwt
-        .tokenize(Some(Box::new(HS256Signer {
+        .tokenize(Some(&HS256Signer {
             signing_key: params.signing_key,
-        })))
+        }))
         .await?)
 }
 

@@ -199,7 +199,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         },
         payload,
     }
-    .tokenize(Some(Box::new(signer)))
+    .tokenize(Some(&signer))
     .await
     .unwrap();
 

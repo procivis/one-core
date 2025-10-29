@@ -116,7 +116,7 @@ impl CredentialFormatter for JWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(auth_fn)).await
+        jwt.tokenize(Some(&*auth_fn)).await
     }
 
     async fn format_status_list(

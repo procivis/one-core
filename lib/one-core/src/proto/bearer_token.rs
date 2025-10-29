@@ -68,7 +68,7 @@ pub(crate) async fn prepare_bearer_token(
         },
         payload,
     }
-    .tokenize(Some(signer))
+    .tokenize(Some(&*signer))
     .await?;
 
     Ok(bearer_token)

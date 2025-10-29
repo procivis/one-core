@@ -79,7 +79,7 @@ impl JWTFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), jose_alg, None, None, payload);
 
-        jwt.tokenize(Some(auth_fn)).await
+        jwt.tokenize(Some(&*auth_fn)).await
     }
 
     pub(super) async fn format_token_status_list(
@@ -161,6 +161,6 @@ impl JWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(auth_fn)).await
+        jwt.tokenize(Some(&*auth_fn)).await
     }
 }

@@ -100,7 +100,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
 
         let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, None, payload);
 
-        let vp_token = jwt.tokenize(Some(holder_binding_fn)).await?;
+        let vp_token = jwt.tokenize(Some(&*holder_binding_fn)).await?;
         Ok(FormattedPresentation {
             vp_token,
             oidc_format: "jwt_vp_json".to_string(),

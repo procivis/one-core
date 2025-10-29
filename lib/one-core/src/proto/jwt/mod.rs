@@ -17,7 +17,7 @@ use self::model::{DecomposedToken, JWTHeader, JWTPayload};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, CredentialClaim, PublicKeySource, TokenVerifier, VerificationFn,
+    CredentialClaim, PublicKeySource, SignatureProvider, TokenVerifier, VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::key::dto::PublicKeyJwkDTO;
@@ -244,7 +244,7 @@ impl<Payload: Serialize> Jwt<Payload> {
     // todo: this probably needs to be a "sign" function on an UnsignedJwt type
     pub async fn tokenize(
         &self,
-        auth_fn: Option<AuthenticationFn>,
+        auth_fn: Option<&dyn SignatureProvider>,
     ) -> Result<String, FormatterError> {
         let jwt_header_json = serde_json::to_string(&self.header)
             .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;

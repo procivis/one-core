@@ -154,7 +154,7 @@ impl OpenID4VCIProofJWTFormatter {
             payload,
         );
 
-        jwt.tokenize(Some(auth_fn)).await
+        jwt.tokenize(Some(&*auth_fn)).await
     }
 }
 

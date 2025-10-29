@@ -583,7 +583,7 @@ impl OpenID4VP20AuthorizationRequest {
                 custom: self.clone(),
             },
         };
-        Ok(unsigned_jwt.tokenize(Some(auth_fn)).await?)
+        Ok(unsigned_jwt.tokenize(Some(&*auth_fn)).await?)
     }
 }
 
@@ -871,7 +871,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509_san_dns<T
     };
 
     request_jwt
-        .tokenize(Some(auth_fn))
+        .tokenize(Some(&*auth_fn))
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }
@@ -955,7 +955,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             ..Default::default()
         },
     }
-    .tokenize(Some(auth_fn))
+    .tokenize(Some(&*auth_fn))
     .await
     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
@@ -986,7 +986,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
     };
 
     request_jwt
-        .tokenize(Some(auth_fn))
+        .tokenize(Some(&*auth_fn))
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }
@@ -1050,7 +1050,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
     };
 
     request_jwt
-        .tokenize(Some(auth_fn))
+        .tokenize(Some(&*auth_fn))
         .await
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }

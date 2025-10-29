@@ -317,7 +317,7 @@ impl WalletProviderService {
             &auth_fn,
             issuer_jwk,
         )?;
-        let signed_attestation = attestation.tokenize(Some(auth_fn)).await?;
+        let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
         let attestation_hash = SHA256
             .hash_base64(signed_attestation.as_bytes())
             .map_err(|e| {

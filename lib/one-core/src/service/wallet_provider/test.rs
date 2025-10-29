@@ -601,7 +601,7 @@ async fn create_proof() -> (String, KeyHandle) {
         private_key: holder_private,
         key_id: "".to_string(),
     };
-    let proof = proof.tokenize(Some(Box::new(signer))).await.unwrap();
+    let proof = proof.tokenize(Some(&signer)).await.unwrap();
 
     (proof, holder_key_handle)
 }

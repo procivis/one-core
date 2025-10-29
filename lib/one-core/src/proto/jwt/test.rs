@@ -106,7 +106,7 @@ async fn test_tokenize() {
         vec![1u8, 2, 3]
     });
 
-    let token = json.tokenize(Some(Box::new(auth_fn))).await.unwrap();
+    let token = json.tokenize(Some(&auth_fn)).await.unwrap();
 
     assert_eq!(token, reference_token);
 }

@@ -570,7 +570,7 @@ impl WalletUnitService {
             },
         );
 
-        let signed_proof = proof.tokenize(Some(auth_fn)).await?;
+        let signed_proof = proof.tokenize(Some(&*auth_fn)).await?;
         Ok(signed_proof)
     }
 
@@ -606,7 +606,7 @@ impl WalletUnitService {
             },
         );
 
-        let signed_proof = proof.tokenize(Some(auth_fn)).await?;
+        let signed_proof = proof.tokenize(Some(&*auth_fn)).await?;
         Ok(signed_proof)
     }
 }

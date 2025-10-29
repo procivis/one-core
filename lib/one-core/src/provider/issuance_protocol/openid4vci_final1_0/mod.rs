@@ -2311,12 +2311,12 @@ async fn create_wallet_unit_attestation_pop(
     // We first attempt to sign with the attestation auth fn
     // If that fails, we fall back to the auth fn
     // To be fixed in https://procivis.atlassian.net/browse/ONE-7501
-    let signed_proof = proof.tokenize(Some(attestation_auth_fn)).await;
+    let signed_proof = proof.tokenize(Some(&*attestation_auth_fn)).await;
 
     match signed_proof {
         Ok(signed_proof) => Ok(signed_proof),
         Err(_) => proof
-            .tokenize(Some(auth_fn))
+            .tokenize(Some(&*auth_fn))
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string())),
     }

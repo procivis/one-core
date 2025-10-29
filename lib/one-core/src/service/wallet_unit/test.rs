@@ -450,7 +450,7 @@ async fn make_attestation_jwt(exp: OffsetDateTime) -> String {
         private_key: issuer_private,
         key_id: "".to_string(),
     };
-    jwt.tokenize(Some(Box::new(signer))).await.unwrap()
+    jwt.tokenize(Some(&signer)).await.unwrap()
 }
 
 struct TestEcdsaSigner {
