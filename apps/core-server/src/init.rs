@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -749,10 +750,15 @@ pub fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuar
             return None;
         }
 
+        let release_name = {
+            let version = build_info::APP_VERSION.unwrap_or(build_info::SHORT_COMMIT);
+            option_env!("CARGO_PKG_NAME").map(|name| Cow::Owned(format!("{}@{}", name, version)))
+        };
+
         let guard = sentry::init((
             dsn.to_owned(),
             sentry::ClientOptions {
-                release: sentry::release_name!(),
+                release: release_name,
                 environment: Some(environment.to_owned().into()),
                 max_breadcrumbs: 50,
                 traces_sample_rate: 0.01,
