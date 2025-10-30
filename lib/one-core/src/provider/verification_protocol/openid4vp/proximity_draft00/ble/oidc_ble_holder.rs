@@ -317,7 +317,47 @@ impl ProximityHolderTransport for BleHolderTransport {
             .and_then(std::convert::identity)
     }
 
-    async fn reject_proof(&self, _: Value) -> Result<(), VerificationProtocolError> {
+    async fn reject_proof(&self, interaction_data: Value) -> Result<(), VerificationProtocolError> {
+        let interaction: BLEOpenID4VPInteractionData = serde_json::from_value(interaction_data)
+            .map_err(VerificationProtocolError::JsonError)?;
+
+        self.ble
+            .schedule_continuation(
+                interaction.task_id,
+                {
+                    |_, central, _| async move {
+                        select! {
+                            biased;
+
+                            _ = verifier_disconnect_event(&central, interaction.peer.device_info.address.clone()) => {
+                                Err(VerificationProtocolError::Failed("Verifier disconnected".into()))
+                            },
+                            result = async {
+                                let payload_len = 0_u16.to_be_bytes();
+                                send(
+                                    CONTENT_SIZE_UUID,
+                                    &payload_len,
+                                    &interaction.peer,
+                                    &central,
+                                    CharacteristicWriteType::WithResponse,
+                                )
+                                .await
+                            } => result
+                        }
+                    }
+                },
+                move |_, _| async move {},
+                false,
+            )
+            .await
+            .value_or(VerificationProtocolError::Failed(
+                "ble is busy with other flow".into(),
+            ))
+            .await
+            .and_then(|(_, join_result)| {
+                join_result.ok_or(VerificationProtocolError::Failed("task aborted".into()))
+            })??;
+
         self.ble.abort(Abort::Flow(*OIDC_BLE_FLOW)).await;
         Ok(())
     }

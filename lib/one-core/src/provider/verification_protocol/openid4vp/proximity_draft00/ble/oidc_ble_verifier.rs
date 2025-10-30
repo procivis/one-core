@@ -103,7 +103,12 @@ impl ProximityVerifierTransport for BleVerifierTransport {
         select! {
             biased;
             _ = wallet_disconnect_event(&mut event_stream, &context.peer.device_info.address) => Err(VerificationProtocolError::Failed("wallet disconnected".into())),
-            submission = read_presentation_submission(&context.peer, &self.peripheral) => Ok(HolderSubmission::Presentation(submission?)),
+            submission = read_presentation_submission(&context.peer, &self.peripheral) => Ok(
+                if let Some(submission) = submission? {
+                    HolderSubmission::Presentation(submission)
+                } else {
+                    HolderSubmission::Rejection
+                })
         }
     }
 
@@ -407,7 +412,7 @@ async fn wait_for_wallet_identify_request(
     Ok((device_info, identity_request))
 }
 
-pub(crate) fn read(
+fn read(
     id: &str,
     device_info: &DeviceInfo,
     ble_peripheral: TrackingBlePeripheral,
@@ -454,7 +459,7 @@ async fn write_presentation_request(
     write_chunks_with_report(chunks, peer, ble_peripheral).await
 }
 
-pub(crate) async fn send(
+async fn send(
     id: &str,
     data: &[u8],
     wallet: &BLEPeer,
@@ -535,10 +540,10 @@ async fn request_write_report(
 }
 
 #[tracing::instrument(level = "debug", skip(ble_peripheral), err(Debug))]
-pub(crate) async fn read_presentation_submission(
+async fn read_presentation_submission(
     connected_wallet: &BLEPeer,
     ble_peripheral: &TrackingBlePeripheral,
-) -> Result<DcqlSubmission, VerificationProtocolError> {
+) -> Result<Option<DcqlSubmission>, VerificationProtocolError> {
     let request_size: MessageSize = read(
         CONTENT_SIZE_UUID,
         &connected_wallet.device_info,
@@ -547,6 +552,11 @@ pub(crate) async fn read_presentation_submission(
     .parse()
     .map_err(VerificationProtocolError::Transport)
     .await?;
+
+    if request_size == 0 {
+        // proof rejection by holder
+        return Ok(None);
+    }
 
     let mut received_chunks: Vec<Chunk> = vec![];
     let message_stream = read(
@@ -622,11 +632,13 @@ pub(crate) async fn read_presentation_submission(
         .flat_map(|c| c.payload)
         .collect();
 
-    connected_wallet
-        .decrypt(&presentation_request)
-        .map_err(|e| {
-            VerificationProtocolError::Transport(anyhow!(
-                "Failed to decrypt presentation request: {e}"
-            ))
-        })
+    Ok(Some(
+        connected_wallet
+            .decrypt(&presentation_request)
+            .map_err(|e| {
+                VerificationProtocolError::Transport(anyhow!(
+                    "Failed to decrypt presentation request: {e}"
+                ))
+            })?,
+    ))
 }
