@@ -91,7 +91,7 @@ pub struct DataLayer {
     // Used for tests for now
     #[allow(unused)]
     db: DatabaseConnection,
-    transaction_manager: Arc<dyn TransactionManager>,
+    transaction_manager: TransactionManagerImpl,
     organisation_repository: Arc<dyn OrganisationRepository>,
     did_repository: Arc<dyn DidRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
@@ -121,7 +121,7 @@ pub struct DataLayer {
 
 impl DataLayer {
     pub fn build(db: DbConn, exportable_storages: Vec<String>) -> Self {
-        let transaction_manager = Arc::new(TransactionManagerImpl::new(db.clone()));
+        let transaction_manager = TransactionManagerImpl::new(db.clone());
         let history_repository = Arc::new(HistoryProvider {
             db: transaction_manager.clone(),
         });
@@ -160,9 +160,9 @@ impl DataLayer {
         });
 
         let did_repository = Arc::new(DidProvider {
+            db: transaction_manager.clone(),
             key_repository: key_repository.clone(),
             organisation_repository: organisation_repository.clone(),
-            db: transaction_manager.clone(),
         });
 
         let certificate_repository = Arc::new(CertificateProvider {
@@ -223,14 +223,17 @@ impl DataLayer {
             key_repository: key_repository.clone(),
         });
 
-        let lvvc_repository =
-            Arc::new(ValidityCredentialProvider::new(transaction_manager.clone()));
+        let lvvc_repository = Arc::new(ValidityCredentialProvider {
+            db: transaction_manager.clone(),
+        });
         let backup_repository = Arc::new(BackupProvider::new(
             transaction_manager.clone(),
             exportable_storages,
         ));
 
-        let blob_repository = Arc::new(BlobProvider::new(transaction_manager.clone()));
+        let blob_repository = Arc::new(BlobProvider {
+            db: transaction_manager.clone(),
+        });
 
         let wallet_unit_attested_key_repository = Arc::new(WalletUnitAttestedKeyProvider {
             db: transaction_manager.clone(),
@@ -239,7 +242,6 @@ impl DataLayer {
 
         let wallet_unit_repository = Arc::new(WalletUnitProvider {
             db: transaction_manager.clone(),
-            tx_manager: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
             wallet_unit_attested_key_repository: wallet_unit_attested_key_repository.clone(),
         });
@@ -251,7 +253,6 @@ impl DataLayer {
 
         let holder_wallet_unit_repository = Arc::new(HolderWalletUnitProvider {
             db: transaction_manager.clone(),
-            tx_manager: transaction_manager.clone(),
             organisation_repository: organisation_repository.clone(),
             key_repository: key_repository.clone(),
             wallet_unit_attestation_repository: wallet_unit_attestation_repository.clone(),
@@ -361,7 +362,7 @@ impl DataRepository for DataLayer {
     }
 
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {
-        self.transaction_manager.clone()
+        Arc::new(self.transaction_manager.clone())
     }
 
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository> {

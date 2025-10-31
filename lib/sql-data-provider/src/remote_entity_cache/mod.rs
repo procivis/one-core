@@ -1,12 +1,10 @@
-use std::sync::Arc;
-
-use crate::transaction_context::TransactionProvider;
+use crate::transaction_context::TransactionManagerImpl;
 
 pub mod mapper;
 pub mod repository;
 
 pub(crate) struct RemoteEntityCacheProvider {
-    pub db: Arc<dyn TransactionProvider>,
+    pub db: TransactionManagerImpl,
 }
 
 #[cfg(test)]

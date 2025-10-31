@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
@@ -22,7 +20,7 @@ async fn setup() -> TestSetup {
 
     TestSetup {
         repository: Box::new(ClaimSchemaProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
         }),
         db,
     }

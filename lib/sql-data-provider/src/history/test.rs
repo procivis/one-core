@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
@@ -37,7 +35,7 @@ async fn setup_empty() -> TestSetup {
 
     TestSetup {
         provider: HistoryProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
         },
         organisation: dummy_organisation(Some(organisation_id)),
         db,

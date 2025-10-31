@@ -1,17 +1,9 @@
-use std::sync::Arc;
-
-use crate::transaction_context::TransactionProvider;
+use crate::transaction_context::TransactionManagerImpl;
 
 pub mod mapper;
 pub mod repository;
 pub(crate) struct BlobProvider {
-    db: Arc<dyn TransactionProvider>,
-}
-
-impl BlobProvider {
-    pub fn new(db: Arc<dyn TransactionProvider>) -> Self {
-        Self { db }
-    }
+    pub db: TransactionManagerImpl,
 }
 
 #[cfg(test)]

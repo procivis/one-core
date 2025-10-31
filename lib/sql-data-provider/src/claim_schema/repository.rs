@@ -23,7 +23,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
         let models: Vec<claim_schema::ActiveModel> = convert_inner(claim_schemas);
 
         claim_schema::Entity::insert_many(models)
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -45,7 +45,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
         let claim_schema_ids = claim_schema_to_index.keys().map(ToString::to_string);
         let models = claim_schema::Entity::find()
             .filter(claim_schema::Column::Id.is_in(claim_schema_ids))
-            .all(&self.db.tx())
+            .all(&self.db)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
 

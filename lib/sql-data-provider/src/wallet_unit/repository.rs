@@ -4,6 +4,7 @@ use one_core::model::wallet_unit::{
     GetWalletUnitList, UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery,
     WalletUnitRelations,
 };
+use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use one_dto_mapper::try_convert_inner;
@@ -26,11 +27,11 @@ impl WalletUnitRepository for WalletUnitProvider {
     ) -> Result<WalletUnitId, DataLayerError> {
         let attested_keys = request.attested_keys.clone();
         let mut wallet_unit_id = None;
-        self.tx_manager
+        self.db
             .transaction(
                 async {
                     let wallet_unit = wallet_unit::ActiveModel::try_from(request)?
-                        .insert(&self.db.tx())
+                        .insert(&self.db)
                         .await
                         .map_err(to_data_layer_error)?;
                     if let Some(attested_keys) = attested_keys {
@@ -58,7 +59,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         relations: &WalletUnitRelations,
     ) -> Result<Option<WalletUnit>, DataLayerError> {
         let Some(wallet_unit) = wallet_unit::Entity::find_by_id(id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
         else {
@@ -105,14 +106,11 @@ impl WalletUnitRepository for WalletUnitProvider {
                 .order_by_desc(wallet_unit::Column::Id);
         }
 
-        let wallet_units = query
-            .all(&self.db.tx())
-            .await
-            .map_err(to_data_layer_error)?;
+        let wallet_units = query.all(&self.db).await.map_err(to_data_layer_error)?;
 
         let total_items = wallet_unit::Entity::find()
             .with_list_query(&query_params)
-            .count(&self.db.tx())
+            .count(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -158,11 +156,11 @@ impl WalletUnitRepository for WalletUnitProvider {
             ..Default::default()
         };
 
-        self.tx_manager
+        self.db
             .transaction(
                 async {
                     update_model
-                        .update(&self.db.tx())
+                        .update(&self.db)
                         .await
                         .map_err(to_update_data_layer_error)?;
 
@@ -197,7 +195,7 @@ impl WalletUnitRepository for WalletUnitProvider {
 
     async fn delete_wallet_unit(&self, id: &WalletUnitId) -> Result<(), DataLayerError> {
         wallet_unit::Entity::delete_by_id(id)
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())

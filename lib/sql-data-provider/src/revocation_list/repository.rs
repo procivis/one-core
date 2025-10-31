@@ -81,7 +81,7 @@ impl RevocationListRepository for RevocationListProvider {
             format: Set(request.format.into()),
             r#type: Set(request.r#type.to_string()),
         }
-        .insert(&self.db.tx())
+        .insert(&self.db)
         .await
         .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -94,7 +94,7 @@ impl RevocationListRepository for RevocationListProvider {
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError> {
         let revocation_list = revocation_list::Entity::find_by_id(id.to_string())
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -118,7 +118,7 @@ impl RevocationListRepository for RevocationListProvider {
         let ids: Vec<_> = ids.iter().map(|id| id.to_string()).collect();
         let models = revocation_list::Entity::find()
             .filter(revocation_list::Column::Id.is_in(ids))
-            .all(&self.db.tx())
+            .all(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -148,7 +148,7 @@ impl RevocationListRepository for RevocationListProvider {
                     .and(revocation_list::Column::Purpose.eq(purpose_as_db_type.into_value()))
                     .and(revocation_list::Column::Type.eq(status_list_type.to_string())),
             )
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -177,7 +177,7 @@ impl RevocationListRepository for RevocationListProvider {
         };
 
         update_model
-            .update(&self.db.tx())
+            .update(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

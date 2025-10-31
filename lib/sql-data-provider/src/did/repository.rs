@@ -43,7 +43,7 @@ impl DidProvider {
         if let Some(key_relations) = &relations.keys {
             let key_dids = key_did::Entity::find()
                 .filter(key_did::Column::DidId.eq(model.id))
-                .all(&self.db.tx())
+                .all(&self.db)
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -90,7 +90,7 @@ impl DidRepository for DidProvider {
     ) -> Result<Option<Did>, DataLayerError> {
         let did = did::Entity::find_by_id(id)
             .filter(did::Column::DeletedAt.is_null())
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -120,7 +120,7 @@ impl DidRepository for DidProvider {
         }
 
         let did = query
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -138,14 +138,14 @@ impl DidRepository for DidProvider {
             .order_by_desc(did::Column::CreatedDate)
             .order_by_desc(did::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db.tx()).await
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 
     async fn create_did(&self, request: Did) -> Result<DidId, DataLayerError> {
         let keys = request.keys.to_owned();
 
         let did = did::ActiveModel::try_from(request)?
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -160,7 +160,7 @@ impl DidRepository for DidProvider {
                     })
                     .collect::<Vec<_>>(),
             )
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(to_data_layer_error)?;
         }
@@ -182,7 +182,7 @@ impl DidRepository for DidProvider {
             ..Default::default()
         };
 
-        did.update(&self.db.tx())
+        did.update(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

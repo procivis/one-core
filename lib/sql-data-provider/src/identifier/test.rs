@@ -76,7 +76,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
 
     TestSetup {
         provider: IdentifierProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             organisation_repository: Arc::new(repositories.organisation_repository),
             did_repository: Arc::new(MockDidRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),

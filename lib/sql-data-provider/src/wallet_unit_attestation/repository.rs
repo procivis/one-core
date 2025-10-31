@@ -21,7 +21,7 @@ impl WalletUnitAttestationRepository for WalletUnitAttestationProvider {
         request: WalletUnitAttestation,
     ) -> Result<WalletUnitAttestationId, DataLayerError> {
         let wallet_unit_attestation = wallet_unit_attestation::ActiveModel::try_from(request)?
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -38,7 +38,7 @@ impl WalletUnitAttestationRepository for WalletUnitAttestationProvider {
                     .eq(key_id)
                     .into_condition(),
             )
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
             .map(Into::into))
@@ -56,7 +56,7 @@ impl WalletUnitAttestationRepository for WalletUnitAttestationProvider {
                         .eq(holder_wallet_unit_id)
                         .into_condition(),
                 )
-                .all(&self.db.tx())
+                .all(&self.db)
                 .await
                 .map_err(to_data_layer_error)?;
 
@@ -115,7 +115,7 @@ impl WalletUnitAttestationRepository for WalletUnitAttestationProvider {
         };
 
         update_model
-            .update(&self.db.tx())
+            .update(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use futures::StreamExt;
 use one_core::repository::backup_repository::BackupRepository;
 use sea_orm::ActiveValue::NotSet;
@@ -247,7 +245,7 @@ async fn setup_empty() -> TestSetup {
     TestSetup {
         db: db.clone(),
         provider: BackupProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             exportable_storages: vec!["INTERNAL".into()],
         },
         organisation_id,

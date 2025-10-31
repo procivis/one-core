@@ -57,7 +57,7 @@ async fn setup_empty(
 
     TestSetup {
         repository: Box::from(ProofSchemaProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             claim_schema_repository,
             organisation_repository,
             credential_schema_repository,

@@ -7,7 +7,7 @@ use serde::de::{Deserialize, Deserializer, Error, Unexpected};
 use serde_json::Value;
 
 use crate::mapper::to_data_layer_error;
-use crate::transaction_context::TransactionWrapper;
+use crate::transaction_context::TransactionManagerImpl;
 
 pub(super) fn calculate_pages_count(total_items_count: u64, page_size: u64) -> u64 {
     if page_size == 0 {
@@ -52,10 +52,10 @@ pub(crate) async fn list_query_with_base_model<
 >(
     query: Select<E>,
     query_params: ListQuery<SortableColumn, FV, Include>,
-    db: &'db TransactionWrapper,
+    db: &'db TransactionManagerImpl,
 ) -> Result<GetListResponse<ListItem>, DataLayerError>
 where
-    Select<E>: PaginatorTrait<'db, TransactionWrapper>,
+    Select<E>: PaginatorTrait<'db, TransactionManagerImpl>,
 {
     let limit = query_params
         .pagination

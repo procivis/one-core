@@ -35,7 +35,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
 
     TestSetup {
         provider: InteractionProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             organisation_repository: Arc::from(repositories.organisation_repository),
         },
         db,

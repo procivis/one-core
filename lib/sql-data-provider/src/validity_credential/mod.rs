@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use crate::transaction_context::TransactionProvider;
+use crate::transaction_context::TransactionManagerImpl;
 
 mod mapper;
 mod repository;
@@ -9,11 +7,5 @@ mod repository;
 mod test;
 
 pub struct ValidityCredentialProvider {
-    db_conn: Arc<dyn TransactionProvider>,
-}
-
-impl ValidityCredentialProvider {
-    pub fn new(db_conn: Arc<dyn TransactionProvider>) -> Self {
-        Self { db_conn }
-    }
+    pub db: TransactionManagerImpl,
 }

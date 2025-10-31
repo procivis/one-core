@@ -1,5 +1,7 @@
 use autometrics::autometrics;
+use futures::FutureExt;
 use one_core::model::trust_anchor::TrustAnchor;
+use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
@@ -8,7 +10,7 @@ use sea_orm::prelude::Expr;
 use sea_orm::sea_query::{Alias, Func};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
-    QuerySelect, TransactionTrait,
+    QuerySelect,
 };
 use shared_types::TrustAnchorId;
 
@@ -16,7 +18,7 @@ use super::TrustAnchorProvider;
 use crate::common::calculate_pages_count;
 use crate::entity::{trust_anchor, trust_entity};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::to_data_layer_error;
+use crate::mapper::{to_data_layer_error, unpack_data_layer_error};
 use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 
 #[autometrics]
@@ -24,17 +26,14 @@ use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 impl TrustAnchorRepository for TrustAnchorProvider {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError> {
         let anchor: trust_anchor::ActiveModel = anchor.into();
-        let result = anchor
-            .insert(&self.db.tx())
-            .await
-            .map_err(to_data_layer_error)?;
+        let result = anchor.insert(&self.db).await.map_err(to_data_layer_error)?;
 
         Ok(result.id)
     }
 
     async fn get(&self, id: TrustAnchorId) -> Result<Option<TrustAnchor>, DataLayerError> {
         let trust_anchor = trust_anchor::Entity::find_by_id(id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -64,12 +63,11 @@ impl TrustAnchorRepository for TrustAnchorProvider {
             .order_by_desc(trust_anchor::Column::CreatedDate)
             .order_by_desc(trust_anchor::Column::Id);
 
-        let tx = self.db.tx();
         let (items_count, trust_anchors) = tokio::join!(
-            query.to_owned().count(&tx),
+            query.to_owned().count(&self.db),
             query
                 .into_model::<TrustAnchorsListItemEntityModel>()
-                .all(&tx)
+                .all(&self.db),
         );
 
         let items_count = items_count.map_err(to_data_layer_error)?;
@@ -83,21 +81,25 @@ impl TrustAnchorRepository for TrustAnchorProvider {
     }
 
     async fn delete(&self, id: TrustAnchorId) -> Result<(), DataLayerError> {
-        let tx = self.db.tx().begin().await.map_err(to_data_layer_error)?;
+        self.db
+            .transaction(
+                async {
+                    trust_entity::Entity::delete_many()
+                        .filter(trust_entity::Column::TrustAnchorId.eq(id))
+                        .exec(&self.db)
+                        .await
+                        .map_err(to_data_layer_error)?;
 
-        trust_entity::Entity::delete_many()
-            .filter(trust_entity::Column::TrustAnchorId.eq(id))
-            .exec(&tx)
-            .await
-            .map_err(to_data_layer_error)?;
-
-        trust_anchor::Entity::delete_by_id(id)
-            .exec(&tx)
-            .await
-            .map_err(to_data_layer_error)?;
-
-        tx.commit().await.map_err(to_data_layer_error)?;
-
+                    trust_anchor::Entity::delete_by_id(id)
+                        .exec(&self.db)
+                        .await
+                        .map_err(to_data_layer_error)?;
+                    Ok(())
+                }
+                .boxed(),
+            )
+            .await?
+            .map_err(unpack_data_layer_error)?;
         Ok(())
     }
 }

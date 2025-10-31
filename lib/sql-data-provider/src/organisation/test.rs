@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_core::model::common::SortDirection;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::{
@@ -26,7 +24,7 @@ async fn setup() -> TestSetup {
     let db = data_layer.db;
     TestSetup {
         repository: Box::new(OrganisationProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
         }),
         db,
     }

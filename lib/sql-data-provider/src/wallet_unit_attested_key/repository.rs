@@ -23,10 +23,7 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
         request: WalletUnitAttestedKey,
     ) -> Result<WalletUnitAttestedKeyId, DataLayerError> {
         let model: wallet_unit_attested_key::ActiveModel = request.try_into()?;
-        let result = model
-            .insert(&self.db.tx())
-            .await
-            .map_err(to_data_layer_error)?;
+        let result = model.insert(&self.db).await.map_err(to_data_layer_error)?;
         Ok(result.id)
     }
 
@@ -39,7 +36,7 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
         model.id = Unchanged(id);
         model.last_modified = Set(OffsetDateTime::now_utc());
         wallet_unit_attested_key::Entity::update(model)
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
@@ -51,7 +48,7 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
         relations: &WalletUnitAttestedKeyRelations,
     ) -> Result<Option<WalletUnitAttestedKey>, DataLayerError> {
         let model = wallet_unit_attested_key::Entity::find_by_id(id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -83,7 +80,7 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
     ) -> Result<Vec<WalletUnitAttestedKey>, DataLayerError> {
         let models = wallet_unit_attested_key::Entity::find()
             .filter(wallet_unit_attested_key::Column::WalletUnitId.eq(id))
-            .all(&self.db.tx())
+            .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
         let revocation_lists = if let Some(revocation_list_relation) = &relations.revocation_list {

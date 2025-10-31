@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::time::Duration;
 
 use one_core::model::credential::CredentialStateEnum;
@@ -20,8 +19,9 @@ use crate::{db_conn, test_utilities};
 #[tokio::test]
 async fn test_insert_lvvc() {
     let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
-    let provider =
-        ValidityCredentialProvider::new(Arc::new(TransactionManagerImpl::new(db_conn.clone())));
+    let provider = ValidityCredentialProvider {
+        db: TransactionManagerImpl::new(db_conn.clone()),
+    };
 
     let credential_id = create_and_store_credential(&db_conn).await;
 
@@ -48,8 +48,9 @@ async fn test_insert_lvvc() {
 #[tokio::test]
 async fn test_get_latest_lvvc_by_credential_id() {
     let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
-    let provider =
-        ValidityCredentialProvider::new(Arc::new(TransactionManagerImpl::new(db_conn.clone())));
+    let provider = ValidityCredentialProvider {
+        db: TransactionManagerImpl::new(db_conn.clone()),
+    };
 
     let credential_id = create_and_store_credential(&db_conn).await;
     let lvvcs = create_lvvcs_for(credential_id, &db_conn).await;
@@ -71,8 +72,9 @@ async fn test_get_latest_lvvc_by_credential_id() {
 #[tokio::test]
 async fn test_get_all_lvvc_by_credential_id() {
     let db_conn = db_conn("sqlite::memory:", true).await.unwrap();
-    let provider =
-        ValidityCredentialProvider::new(Arc::new(TransactionManagerImpl::new(db_conn.clone())));
+    let provider = ValidityCredentialProvider {
+        db: TransactionManagerImpl::new(db_conn.clone()),
+    };
 
     let credential_id = create_and_store_credential(&db_conn).await;
 

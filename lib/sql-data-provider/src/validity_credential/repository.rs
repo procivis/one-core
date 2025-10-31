@@ -14,7 +14,7 @@ impl ValidityCredentialRepository for ValidityCredentialProvider {
     async fn insert(&self, credential: ValidityCredential) -> Result<(), DataLayerError> {
         validity_credential::Model::from(credential)
             .into_active_model()
-            .insert(&self.db_conn.tx())
+            .insert(&self.db)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
 
@@ -35,7 +35,7 @@ impl ValidityCredentialRepository for ValidityCredentialProvider {
                     .and(validity_credential::Column::Type.eq(credential_type)),
             )
             .order_by_desc(validity_credential::Column::CreatedDate)
-            .one(&self.db_conn.tx())
+            .one(&self.db)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
 
@@ -55,7 +55,7 @@ impl ValidityCredentialRepository for ValidityCredentialProvider {
                     .eq(credential_id)
                     .and(validity_credential::Column::Type.eq(credential_type)),
             )
-            .all(&self.db_conn.tx())
+            .all(&self.db)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
 
@@ -78,7 +78,7 @@ impl ValidityCredentialRepository for ValidityCredentialProvider {
                     .eq(credential_id)
                     .and(validity_credential::Column::Type.eq(credential_type)),
             )
-            .exec(&self.db_conn.tx())
+            .exec(&self.db)
             .await
             .map_err(|err| DataLayerError::Db(err.into()))?;
 

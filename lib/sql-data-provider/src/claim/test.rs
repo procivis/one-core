@@ -102,7 +102,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
 
     TestSetup {
         repository: Box::new(ClaimProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             claim_schema_repository,
         }),
         db,

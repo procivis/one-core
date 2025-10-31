@@ -1,4 +1,3 @@
-use std::fmt::{Debug, Display};
 use std::pin::Pin;
 use std::sync::Arc;
 
@@ -8,131 +7,18 @@ use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::service::error::ServiceError;
 use sea_orm::{
-    AccessMode, ConnectionTrait, DatabaseTransaction, DbBackend, DbErr, ExecResult, IsolationLevel,
-    QueryResult, Statement, TransactionError, TransactionTrait,
+    ConnectionTrait, DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement,
+    TransactionTrait,
 };
 
 use crate::DbConn;
 use crate::mapper::{map_access_mode, map_isolation_level};
 
-pub trait TransactionProvider: Send + Sync {
-    fn tx(&self) -> TransactionWrapper;
-}
-
 tokio::task_local! {
     static TX_CONTEXT: Arc<DatabaseTransaction>;
 }
 
-#[derive(Debug)]
-pub enum TransactionWrapper {
-    Managed(Arc<DatabaseTransaction>),
-    AutoCommit(DbConn),
-}
-
-#[async_trait::async_trait]
-impl ConnectionTrait for TransactionWrapper {
-    fn get_database_backend(&self) -> DbBackend {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.get_database_backend(),
-            TransactionWrapper::AutoCommit(conn) => conn.get_database_backend(),
-        }
-    }
-
-    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.execute(stmt).await,
-            TransactionWrapper::AutoCommit(conn) => conn.execute(stmt).await,
-        }
-    }
-
-    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.execute_unprepared(sql).await,
-            TransactionWrapper::AutoCommit(conn) => conn.execute_unprepared(sql).await,
-        }
-    }
-
-    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.query_one(stmt).await,
-            TransactionWrapper::AutoCommit(conn) => conn.query_one(stmt).await,
-        }
-    }
-
-    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.query_all(stmt).await,
-            TransactionWrapper::AutoCommit(conn) => conn.query_all(stmt).await,
-        }
-    }
-}
-
-#[async_trait::async_trait]
-impl TransactionTrait for TransactionWrapper {
-    async fn begin(&self) -> Result<DatabaseTransaction, DbErr> {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.begin().await,
-            TransactionWrapper::AutoCommit(conn) => conn.begin().await,
-        }
-    }
-
-    async fn begin_with_config(
-        &self,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<DatabaseTransaction, DbErr> {
-        match &self {
-            TransactionWrapper::Managed(tx) => {
-                tx.begin_with_config(isolation_level, access_mode).await
-            }
-            TransactionWrapper::AutoCommit(conn) => {
-                conn.begin_with_config(isolation_level, access_mode).await
-            }
-        }
-    }
-
-    async fn transaction<F, T, E>(&self, callback: F) -> Result<T, TransactionError<E>>
-    where
-        F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
-            + Send,
-        T: Send,
-        E: Display + Debug + Send,
-    {
-        match &self {
-            TransactionWrapper::Managed(tx) => tx.transaction(callback).await,
-            TransactionWrapper::AutoCommit(conn) => conn.transaction(callback).await,
-        }
-    }
-
-    async fn transaction_with_config<F, T, E>(
-        &self,
-        callback: F,
-        isolation_level: Option<IsolationLevel>,
-        access_mode: Option<AccessMode>,
-    ) -> Result<T, TransactionError<E>>
-    where
-        F: for<'c> FnOnce(
-                &'c DatabaseTransaction,
-            ) -> Pin<Box<dyn Future<Output = Result<T, E>> + Send + 'c>>
-            + Send,
-        T: Send,
-        E: Display + Debug + Send,
-    {
-        match &self {
-            TransactionWrapper::Managed(tx) => {
-                tx.transaction_with_config(callback, isolation_level, access_mode)
-                    .await
-            }
-            TransactionWrapper::AutoCommit(conn) => {
-                conn.transaction_with_config(callback, isolation_level, access_mode)
-                    .await
-            }
-        }
-    }
-}
-
+#[derive(Clone)]
 pub struct TransactionManagerImpl {
     db: DbConn,
 }
@@ -143,12 +29,41 @@ impl TransactionManagerImpl {
     }
 }
 
-impl TransactionProvider for TransactionManagerImpl {
-    fn tx(&self) -> TransactionWrapper {
+#[async_trait::async_trait]
+impl ConnectionTrait for TransactionManagerImpl {
+    fn get_database_backend(&self) -> DbBackend {
+        self.db.get_database_backend()
+    }
+
+    async fn execute(&self, stmt: Statement) -> Result<ExecResult, DbErr> {
         if let Ok(tx) = TX_CONTEXT.try_with(|v| v.clone()) {
-            TransactionWrapper::Managed(tx)
+            tx.execute(stmt).await
         } else {
-            TransactionWrapper::AutoCommit(self.db.clone())
+            self.db.execute(stmt).await
+        }
+    }
+
+    async fn execute_unprepared(&self, sql: &str) -> Result<ExecResult, DbErr> {
+        if let Ok(tx) = TX_CONTEXT.try_with(|v| v.clone()) {
+            tx.execute_unprepared(sql).await
+        } else {
+            self.db.execute_unprepared(sql).await
+        }
+    }
+
+    async fn query_one(&self, stmt: Statement) -> Result<Option<QueryResult>, DbErr> {
+        if let Ok(tx) = TX_CONTEXT.try_with(|v| v.clone()) {
+            tx.query_one(stmt).await
+        } else {
+            self.db.query_one(stmt).await
+        }
+    }
+
+    async fn query_all(&self, stmt: Statement) -> Result<Vec<QueryResult>, DbErr> {
+        if let Ok(tx) = TX_CONTEXT.try_with(|v| v.clone()) {
+            tx.query_all(stmt).await
+        } else {
+            self.db.query_all(stmt).await
         }
     }
 }

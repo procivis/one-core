@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_core::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use one_core::repository::blob_repository::BlobRepository;
 use sea_orm::{DatabaseConnection, EntityTrait};
@@ -24,7 +22,7 @@ async fn setup() -> TestSetup {
     TestSetup {
         db: db.clone(),
         provider: BlobProvider {
-            db: Arc::new(TransactionManagerImpl::new(db)),
+            db: TransactionManagerImpl::new(db),
         },
     }
 }

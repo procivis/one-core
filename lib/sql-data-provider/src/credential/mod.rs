@@ -8,14 +8,14 @@ use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 
-use crate::transaction_context::TransactionProvider;
+use crate::transaction_context::TransactionManagerImpl;
 
 mod entity_model;
 pub mod mapper;
 pub mod repository;
 
 pub(crate) struct CredentialProvider {
-    pub db: Arc<dyn TransactionProvider>,
+    pub db: TransactionManagerImpl,
     pub credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     pub claim_repository: Arc<dyn ClaimRepository>,
     pub identifier_repository: Arc<dyn IdentifierRepository>,

@@ -42,7 +42,7 @@ async fn setup() -> TestSetup {
 
     TestSetup {
         provider: CertificateProvider {
-            db: Arc::new(TransactionManagerImpl::new(db)),
+            db: TransactionManagerImpl::new(db),
             key_repository: Arc::new(MockKeyRepository::default()),
             organisation_repository: Arc::new(MockOrganisationRepository::default()),
         },

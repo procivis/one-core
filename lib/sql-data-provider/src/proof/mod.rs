@@ -8,14 +8,14 @@ use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::key_repository::KeyRepository;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 
-use crate::transaction_context::TransactionProvider;
+use crate::transaction_context::TransactionManagerImpl;
 
 mod mapper;
 mod model;
 pub mod repository;
 
 pub(crate) struct ProofProvider {
-    pub db: Arc<dyn TransactionProvider>,
+    pub db: TransactionManagerImpl,
     pub proof_schema_repository: Arc<dyn ProofSchemaRepository>,
     pub claim_repository: Arc<dyn ClaimRepository>,
     pub identifier_repository: Arc<dyn IdentifierRepository>,

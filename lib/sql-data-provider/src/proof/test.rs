@@ -172,7 +172,7 @@ async fn setup(
 
     TestSetup {
         repository: Box::new(ProofProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             proof_schema_repository,
             claim_repository,
             credential_repository,

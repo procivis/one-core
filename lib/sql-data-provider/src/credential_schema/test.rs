@@ -54,7 +54,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
                 .expect("organisation not found"),
         ),
         repository: Box::new(CredentialSchemaProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
             claim_schema_repository: Arc::from(repositories.claim_schema_repository),
             organisation_repository: Arc::from(repositories.organisation_repository),
         }),

@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::vec;
 
 use one_core::model::remote_entity_cache::{
@@ -27,7 +26,7 @@ async fn setup() -> TestSetup {
 
     TestSetup {
         provider: RemoteEntityCacheProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
         },
         db,
     }

@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use one_core::model::key::PublicKeyJwk;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
@@ -46,8 +44,7 @@ async fn setup(n: usize) -> TestSetup {
 
     TestSetup {
         provider: WalletUnitProvider {
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
-            tx_manager: data_layer.transaction_manager,
+            db: TransactionManagerImpl::new(db.clone()),
             organisation_repository: data_layer.organisation_repository,
             wallet_unit_attested_key_repository: data_layer.wallet_unit_attested_key_repository,
         },

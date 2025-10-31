@@ -3,6 +3,7 @@ use futures::FutureExt;
 use one_core::model::holder_wallet_unit::{
     HolderWalletUnit, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
 };
+use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, Unchanged};
@@ -20,7 +21,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         request: HolderWalletUnit,
     ) -> Result<HolderWalletUnitId, DataLayerError> {
         let model = holder_wallet_unit::ActiveModel::try_from(request)?
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -33,7 +34,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
         relations: &HolderWalletUnitRelations,
     ) -> Result<Option<HolderWalletUnit>, DataLayerError> {
         let model = holder_wallet_unit::Entity::find_by_id(id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
         let Some(model) = model else { return Ok(None) };
@@ -96,7 +97,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
                 ..Default::default()
             };
             update_model
-                .update(&self.db.tx())
+                .update(&self.db)
                 .await
                 .map_err(to_update_data_layer_error)?;
 
@@ -124,7 +125,7 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
             Ok(())
         }
         .boxed();
-        self.tx_manager
+        self.db
             .transaction(action)
             .await?
             .map_err(unpack_data_layer_error)

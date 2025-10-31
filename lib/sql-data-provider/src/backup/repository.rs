@@ -1,5 +1,4 @@
 use std::path::Path;
-use std::sync::Arc;
 
 use anyhow::Context;
 use autometrics::autometrics;
@@ -28,10 +27,10 @@ use crate::entity::{
     organisation, wallet_unit_attestation,
 };
 use crate::mapper::to_data_layer_error;
-use crate::transaction_context::{TransactionProvider, TransactionWrapper};
+use crate::transaction_context::TransactionManagerImpl;
 
 impl BackupProvider {
-    pub fn new(db: Arc<dyn TransactionProvider>, exportable_storages: Vec<String>) -> Self {
+    pub fn new(db: TransactionManagerImpl, exportable_storages: Vec<String>) -> Self {
         Self {
             db,
             exportable_storages,
@@ -131,7 +130,6 @@ impl BackupRepository for BackupProvider {
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
     async fn copy_db_to(&self, path: &Path) -> Result<Metadata, DataLayerError> {
         self.db
-            .tx()
             .execute(Statement {
                 sql: "VACUUM INTO ?;".into(),
                 values: Values(vec![path.to_string_lossy().into()]).into(),
@@ -167,7 +165,7 @@ impl BackupRepository for BackupProvider {
     ) -> Result<UnexportableEntities, DataLayerError> {
         let db = match path {
             Some(path) => open_sqlite_on_path(path).await?,
-            None => self.db.tx(),
+            None => self.db.clone(),
         };
 
         let select_keys = key::Entity::find()
@@ -521,7 +519,7 @@ impl BackupRepository for BackupProvider {
 }
 
 fn update_identifiers_matching_subquery(
-    db: &TransactionWrapper,
+    db: &TransactionManagerImpl,
     now: OffsetDateTime,
     subquery: SelectStatement,
 ) -> impl Future<Output = Result<UpdateResult, sea_orm::DbErr>> {
@@ -536,20 +534,22 @@ fn update_identifiers_matching_subquery(
         .exec(db)
 }
 
-async fn delete_wallet_unit_attestations(db: &TransactionWrapper) -> Result<(), sea_orm::DbErr> {
+async fn delete_wallet_unit_attestations(
+    db: &TransactionManagerImpl,
+) -> Result<(), sea_orm::DbErr> {
     wallet_unit_attestation::Entity::delete_many()
         .exec(db)
         .await?;
     Ok(())
 }
 
-async fn delete_holder_wallet_units(db: &TransactionWrapper) -> Result<(), sea_orm::DbErr> {
+async fn delete_holder_wallet_units(db: &TransactionManagerImpl) -> Result<(), sea_orm::DbErr> {
     holder_wallet_unit::Entity::delete_many().exec(db).await?;
     Ok(())
 }
 
 async fn delete_history_related_to_wallet_unit_attestations(
-    db: &TransactionWrapper,
+    db: &TransactionManagerImpl,
 ) -> Result<(), sea_orm::DbErr> {
     history::Entity::delete_many()
         .filter(history::Column::EntityType.eq(history::HistoryEntityType::WalletUnitAttestation))

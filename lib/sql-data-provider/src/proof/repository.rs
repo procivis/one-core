@@ -34,7 +34,7 @@ impl ProofRepository for ProofProvider {
     async fn create_proof(&self, request: Proof) -> Result<ProofId, DataLayerError> {
         let proof: proof::ActiveModel = request.clone().try_into()?;
         proof
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(|e| match e.sql_err() {
                 Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
@@ -50,7 +50,7 @@ impl ProofRepository for ProofProvider {
         relations: &ProofRelations,
     ) -> Result<Option<Proof>, DataLayerError> {
         let proof_model = crate::entity::proof::Entity::find_by_id(proof_id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|error| {
                 tracing::error!(%error, %proof_id, "Error while fetching proof");
@@ -73,7 +73,7 @@ impl ProofRepository for ProofProvider {
     ) -> Result<Option<Proof>, DataLayerError> {
         let proof_model = crate::entity::proof::Entity::find()
             .filter(proof::Column::InteractionId.eq(interaction_id.to_string()))
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| {
                 tracing::error!(
@@ -104,10 +104,9 @@ impl ProofRepository for ProofProvider {
 
         let query = get_proof_list_query(&query_params);
 
-        let tx = self.db.tx();
         let (items_count, proofs) = tokio::join!(
-            query.to_owned().count(&tx),
-            query.into_model::<ProofListItemModel>().all(&tx)
+            query.to_owned().count(&self.db),
+            query.into_model::<ProofListItemModel>().all(&self.db)
         );
 
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
@@ -119,7 +118,7 @@ impl ProofRepository for ProofProvider {
     async fn delete_proof_claims(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
         proof_claim::Entity::delete_many()
             .filter(proof_claim::Column::ProofId.eq(proof_id))
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -137,7 +136,7 @@ impl ProofRepository for ProofProvider {
             .collect();
 
         proof_claim::Entity::insert_many(proof_claim_models)
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -218,7 +217,7 @@ impl ProofRepository for ProofProvider {
         };
 
         update_model
-            .update(&self.db.tx())
+            .update(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 
@@ -227,7 +226,7 @@ impl ProofRepository for ProofProvider {
 
     async fn delete_proof(&self, proof_id: &ProofId) -> Result<(), DataLayerError> {
         proof::Entity::delete_by_id(proof_id)
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
@@ -340,7 +339,7 @@ impl ProofProvider {
         if let Some(claim_relations) = &relations.claims {
             let proof_claims = crate::entity::proof_claim::Entity::find()
                 .filter(proof_claim::Column::ProofId.eq(proof_model.id))
-                .all(&self.db.tx())
+                .all(&self.db)
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 

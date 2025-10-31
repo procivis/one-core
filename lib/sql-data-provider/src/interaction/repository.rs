@@ -23,7 +23,7 @@ impl InteractionRepository for InteractionProvider {
         request: Interaction,
     ) -> Result<InteractionId, DataLayerError> {
         let interaction = interaction::ActiveModel::try_from(request)?
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
         Ok(Uuid::from_str(&interaction.id)?)
@@ -37,7 +37,7 @@ impl InteractionRepository for InteractionProvider {
         let mut model: interaction::ActiveModel = request.into();
         model.id = Unchanged(id.to_string());
         model
-            .update(&self.db.tx())
+            .update(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
@@ -49,7 +49,7 @@ impl InteractionRepository for InteractionProvider {
         relations: &InteractionRelations,
     ) -> Result<Option<Interaction>, DataLayerError> {
         let interaction = interaction::Entity::find_by_id(id.to_string())
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -84,7 +84,7 @@ impl InteractionRepository for InteractionProvider {
     ) -> Result<Option<Interaction>, DataLayerError> {
         let interaction = interaction::Entity::find()
             .filter(interaction::Column::NonceId.eq(shared_types::NonceId::from(nonce_id)))
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
@@ -95,7 +95,7 @@ impl InteractionRepository for InteractionProvider {
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {
         interaction::Entity::delete_by_id(id.to_string())
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())

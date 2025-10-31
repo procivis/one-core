@@ -60,7 +60,7 @@ async fn setup_empty(repositories: Repositories) -> TestSetup {
         provider: DidProvider {
             key_repository: Arc::new(repositories.key_repository),
             organisation_repository: Arc::new(repositories.organisation_repository),
-            db: Arc::new(TransactionManagerImpl::new(db.clone())),
+            db: TransactionManagerImpl::new(db.clone()),
         },
         organisation: dummy_organisation(Some(organisation_id)),
         key: Key {

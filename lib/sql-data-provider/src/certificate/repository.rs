@@ -39,7 +39,7 @@ impl CertificateProvider {
 
         if let Some(organisation_relations) = &relations.organisation {
             let identifier = identifier::Entity::find_by_id(model.identifier_id)
-                .one(&self.db.tx())
+                .one(&self.db)
                 .await
                 .map_err(to_data_layer_error)?
                 .ok_or(DataLayerError::MissingRequiredRelation {
@@ -69,7 +69,7 @@ impl CertificateProvider {
 impl CertificateRepository for CertificateProvider {
     async fn create(&self, request: Certificate) -> Result<CertificateId, DataLayerError> {
         let identifier = certificate::ActiveModel::from(request)
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -82,7 +82,7 @@ impl CertificateRepository for CertificateProvider {
         relations: &CertificateRelations,
     ) -> Result<Option<Certificate>, DataLayerError> {
         let certificate = certificate::Entity::find_by_id(id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -101,7 +101,7 @@ impl CertificateRepository for CertificateProvider {
             .order_by_desc(certificate::Column::CreatedDate)
             .order_by_desc(certificate::Column::Id);
 
-        list_query_with_base_model(query, query_params, &self.db.tx()).await
+        list_query_with_base_model(query, query_params, &self.db).await
     }
 
     async fn update(
@@ -121,7 +121,7 @@ impl CertificateRepository for CertificateProvider {
         };
 
         update_model
-            .update(&self.db.tx())
+            .update(&self.db)
             .await
             .map_err(to_update_data_layer_error)?;
 

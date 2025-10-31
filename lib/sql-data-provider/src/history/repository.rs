@@ -29,7 +29,7 @@ impl HistoryRepository for HistoryProvider {
         }
 
         let history = history::ActiveModel::try_from(request)?
-            .insert(&self.db.tx())
+            .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
@@ -39,7 +39,7 @@ impl HistoryRepository for HistoryProvider {
     async fn delete_history_by_entity_id(&self, entity_id: EntityId) -> Result<(), DataLayerError> {
         history::Entity::delete_many()
             .filter(history::Column::EntityId.eq(entity_id))
-            .exec(&self.db.tx())
+            .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
@@ -59,8 +59,8 @@ impl HistoryRepository for HistoryProvider {
             .pagination
             .map(|pagination| pagination.page_size as u64);
 
-        let tx = self.db.tx();
-        let (items_count, history_list) = tokio::join!(query.to_owned().count(&tx), query.all(&tx));
+        let (items_count, history_list) =
+            tokio::join!(query.to_owned().count(&self.db), query.all(&self.db));
 
         let items_count = items_count.map_err(|e| DataLayerError::Db(e.into()))?;
         let history_list = history_list.map_err(|e| DataLayerError::Db(e.into()))?;
@@ -74,7 +74,7 @@ impl HistoryRepository for HistoryProvider {
         history_id: HistoryId,
     ) -> Result<Option<History>, DataLayerError> {
         history::Entity::find_by_id(history_id)
-            .one(&self.db.tx())
+            .one(&self.db)
             .await
             .map_err(to_data_layer_error)?
             .map(TryInto::try_into)
