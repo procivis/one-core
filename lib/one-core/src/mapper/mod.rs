@@ -51,6 +51,7 @@ use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceErr
 
 pub(crate) mod credential_schema_claim;
 pub(crate) mod exchange;
+mod holder_wallet_unit;
 pub(crate) mod identifier;
 pub(crate) mod oidc;
 pub(crate) mod openid4vp;

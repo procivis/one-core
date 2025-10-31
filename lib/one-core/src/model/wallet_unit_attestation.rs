@@ -12,7 +12,7 @@ pub struct WalletUnitAttestation {
     pub attestation: String,
     pub holder_wallet_unit_id: HolderWalletUnitId, // not a relation because of reverse relation exists
     pub revocation_list_url: Option<String>,
-    pub revocation_list_index: Option<u64>,
+    pub revocation_list_index: Option<i64>,
 
     // Relations:
     pub attested_key: Option<Key>,

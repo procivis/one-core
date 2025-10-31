@@ -1,7 +1,8 @@
 use shared_types::HolderWalletUnitId;
 
 use crate::model::holder_wallet_unit::{
-    HolderWalletUnit, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
+    CreateHolderWalletUnitRequest, HolderWalletUnit, HolderWalletUnitRelations,
+    UpdateHolderWalletUnitRequest,
 };
 use crate::repository::error::DataLayerError;
 
@@ -10,7 +11,7 @@ use crate::repository::error::DataLayerError;
 pub trait HolderWalletUnitRepository: Send + Sync {
     async fn create_holder_wallet_unit(
         &self,
-        request: HolderWalletUnit,
+        request: CreateHolderWalletUnitRequest,
     ) -> Result<HolderWalletUnitId, DataLayerError>;
 
     async fn get_holder_wallet_unit(

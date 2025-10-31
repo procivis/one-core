@@ -32,6 +32,18 @@ pub struct HolderWalletUnitRelations {
     pub authentication_key: Option<KeyRelations>,
 }
 
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CreateHolderWalletUnitRequest {
+    pub id: HolderWalletUnitId,
+    pub wallet_provider_type: WalletProviderType,
+    pub wallet_provider_name: String,
+    pub wallet_provider_url: String,
+    pub provider_wallet_unit_id: WalletUnitId,
+    pub status: WalletUnitStatus,
+    pub organisation: Organisation,
+    pub authentication_key: Key,
+}
+
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateHolderWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,

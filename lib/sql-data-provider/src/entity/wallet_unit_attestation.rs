@@ -23,7 +23,7 @@ pub struct Model {
     #[sea_orm(column_type = "Blob")]
     pub attestation: Vec<u8>,
     pub revocation_list_url: Option<String>,
-    pub revocation_list_index: Option<u64>,
+    pub revocation_list_index: Option<i64>,
     pub holder_wallet_unit_id: HolderWalletUnitId,
     pub attested_key_id: KeyId,
 }

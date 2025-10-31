@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use futures::FutureExt;
 use one_core::model::holder_wallet_unit::{
-    HolderWalletUnit, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
+    CreateHolderWalletUnitRequest, HolderWalletUnit, HolderWalletUnitRelations,
+    UpdateHolderWalletUnitRequest,
 };
 use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
@@ -18,9 +19,9 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error, unpack_data
 impl HolderWalletUnitRepository for HolderWalletUnitProvider {
     async fn create_holder_wallet_unit(
         &self,
-        request: HolderWalletUnit,
+        request: CreateHolderWalletUnitRequest,
     ) -> Result<HolderWalletUnitId, DataLayerError> {
-        let model = holder_wallet_unit::ActiveModel::try_from(request)?
+        let model = holder_wallet_unit::ActiveModel::from(request)
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;

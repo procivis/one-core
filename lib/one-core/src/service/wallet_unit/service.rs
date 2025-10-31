@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
+use crate::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnitRelations};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
@@ -124,33 +124,28 @@ impl WalletUnitService {
             .await?
         };
 
-        let now = self.clock.now_utc();
-        let wallet_unit = HolderWalletUnit {
+        let wallet_unit_request = CreateHolderWalletUnitRequest {
             id: Uuid::new_v4().into(),
-            created_date: now,
-            last_modified: now,
             status: WalletUnitStatus::Active,
             wallet_provider_url,
             wallet_provider_type: request.wallet_provider.r#type.clone(),
             wallet_provider_name: metadata.name,
-            organisation: Some(organisation.clone()),
-            authentication_key: Some(result.key),
+            organisation: organisation.clone(),
+            authentication_key: result.key,
             provider_wallet_unit_id: result.wallet_unit_id,
-            wallet_unit_attestations: None,
         };
-
         let holder_wallet_unit_id = self
             .holder_wallet_unit_repository
-            .create_holder_wallet_unit(wallet_unit)
+            .create_holder_wallet_unit(wallet_unit_request)
             .await?;
 
+        let now = self.clock.now_utc();
         let wallet_unit_name = format!(
             "{}-{}-{}",
             request.wallet_provider.r#type,
             os,
             now.unix_timestamp()
         );
-
         self.history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),

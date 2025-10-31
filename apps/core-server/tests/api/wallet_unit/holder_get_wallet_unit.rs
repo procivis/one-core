@@ -37,7 +37,6 @@ async fn test_get_wallet_unit_holder_details_successfully() {
             org,
             key.clone(),
             TestHolderWalletUnit {
-                last_modified: Some(now),
                 status: Some(WalletUnitStatus::Active),
                 wallet_provider_type: Some(WalletProviderType::ProcivisOne),
                 wallet_provider_name: Some("PROCIVIS_ONE".to_string()),

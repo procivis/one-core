@@ -8,7 +8,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::config::core_config::CoreConfig;
-use crate::model::holder_wallet_unit::HolderWalletUnit;
+use crate::model::holder_wallet_unit::CreateHolderWalletUnitRequest;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::WalletUnitStatus;
 use crate::proto::clock::DefaultClock;
@@ -159,7 +159,7 @@ async fn holder_register_success() {
     att_repo
         .expect_create_holder_wallet_unit()
         .once()
-        .return_once(move |att: HolderWalletUnit| {
+        .return_once(move |att: CreateHolderWalletUnitRequest| {
             check!(att.status == WalletUnitStatus::Active);
             check!(att.provider_wallet_unit_id == wallet_unit_id);
             Ok(att.id)

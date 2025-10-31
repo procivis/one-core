@@ -23,7 +23,7 @@ pub struct TestWalletUnitAttestation {
     pub expiration_date: Option<OffsetDateTime>,
     pub attestation: Option<String>,
     pub revocation_list_url: Option<String>,
-    pub revocation_list_index: Option<u64>,
+    pub revocation_list_index: Option<i64>,
 }
 
 impl WalletUnitAttestationsDB {
