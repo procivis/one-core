@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use secrecy::SecretString;
@@ -278,10 +279,12 @@ async fn test_backup_flow() {
 
     assert_eq!(unexportable.history_id, history_id);
 
-    let metadata = service
-        .unpack_backup(SecretString::from("foo"), zip_path, db_path)
-        .await
-        .unwrap();
+    let metadata = BackupService::unpack_backup(
+        SecretString::from("foo"),
+        PathBuf::from(zip_path),
+        PathBuf::from(db_path),
+    )
+    .unwrap();
 
     assert_eq!(metadata.db_version, "10");
     assert_eq!(std::io::read_to_string(db).unwrap(), "content");

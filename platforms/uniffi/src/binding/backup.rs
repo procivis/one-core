@@ -1,5 +1,6 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
+use one_core::service::backup::BackupService;
 use one_core::service::backup::dto::{
     BackupCreateResponseDTO, MetadataDTO, UnexportableEntitiesResponseDTO,
 };
@@ -82,15 +83,12 @@ impl OneCoreBinding {
         }
 
         let metadata: MetadataBindingDTO = {
-            let core = self.use_core().await?;
-            core.backup_service
-                .unpack_backup(
-                    SecretString::from(password),
-                    input_path,
-                    self.backup_db_path.clone(),
-                )
-                .await?
-                .into()
+            BackupService::unpack_backup(
+                SecretString::from(password),
+                PathBuf::from(input_path),
+                PathBuf::from(self.backup_db_path.clone()),
+            )?
+            .into()
         };
 
         self.initialize(self.backup_db_path.clone()).await?;

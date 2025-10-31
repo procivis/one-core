@@ -1,5 +1,5 @@
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use futures::{FutureExt, TryFutureExt};
@@ -89,11 +89,10 @@ impl BackupService {
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
-    pub async fn unpack_backup(
-        &self,
+    pub fn unpack_backup(
         password: SecretString,
-        input_path: String,
-        output_path: String,
+        input_path: PathBuf,
+        output_path: PathBuf,
     ) -> Result<MetadataDTO, ServiceError> {
         let output_dir = dir_path_from_file_path(&output_path)?;
 
