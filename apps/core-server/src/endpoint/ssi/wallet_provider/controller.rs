@@ -7,12 +7,11 @@ use headers::authorization::Bearer;
 use shared_types::WalletUnitId;
 
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::OkOrErrorResponse;
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::ssi::wallet_provider::dto::{
     IssueWalletUnitAttestationRequestRestDTO, IssueWalletUnitAttestationResponseRestDTO,
     RegisterWalletUnitRequestRestDTO, RegisterWalletUnitResponseRestDTO,
     WalletProviderMetadataResponseRestDTO, WalletUnitActivationRequestRestDTO,
-    WalletUnitActivationResponseRestDTO,
 };
 use crate::router::AppState;
 
@@ -20,11 +19,11 @@ use crate::router::AppState;
     post,
     path = "/ssi/wallet-unit/v1",
     request_body = RegisterWalletUnitRequestRestDTO,
-    responses(OkOrErrorResponse<RegisterWalletUnitResponseRestDTO>),
+    responses(CreatedOrErrorResponse<RegisterWalletUnitResponseRestDTO>),
     tag = "ssi",
-    summary = "Register wallet unit and generate attestation.",
+    summary = "Register wallet unit.",
     description = indoc::formatdoc! {"
-        Register new wallet unit. Generates attestation based on parameters.
+        Register new wallet unit.
     "},
 )]
 pub(crate) async fn register_wallet_unit(
@@ -33,13 +32,13 @@ pub(crate) async fn register_wallet_unit(
         Json<RegisterWalletUnitRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<RegisterWalletUnitResponseRestDTO> {
+) -> CreatedOrErrorResponse<RegisterWalletUnitResponseRestDTO> {
     let result = state
         .core
         .wallet_provider_service
         .register_wallet_unit(request.into())
         .await;
-    OkOrErrorResponse::from_result(result, state, "registering wallet unit")
+    CreatedOrErrorResponse::from_result(result, state, "registering wallet unit")
 }
 
 #[utoipa::path(
@@ -49,7 +48,7 @@ pub(crate) async fn register_wallet_unit(
         ("id" = WalletUnitId, Path, description = "Wallet unit id")
     ),
     request_body = WalletUnitActivationRequestRestDTO,
-    responses(OkOrErrorResponse<WalletUnitActivationResponseRestDTO>),
+    responses(EmptyOrErrorResponse),
     tag = "ssi",
     summary = "Activates wallet unit.",
     description = indoc::formatdoc! {"
@@ -63,13 +62,13 @@ pub(crate) async fn activate_wallet_unit(
         Json<WalletUnitActivationRequestRestDTO>,
         ErrorResponseRestDTO,
     >,
-) -> OkOrErrorResponse<WalletUnitActivationResponseRestDTO> {
+) -> EmptyOrErrorResponse {
     let result = state
         .core
         .wallet_provider_service
         .activate_wallet_unit(id, request.into())
         .await;
-    OkOrErrorResponse::from_result(result, state, "activating wallet unit")
+    EmptyOrErrorResponse::from_result(result, state, "activating wallet unit")
 }
 
 #[utoipa::path(

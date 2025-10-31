@@ -16,8 +16,7 @@ use super::dto::{
     IssueWalletUnitAttestationResponseDTO, KeyStorageSecurityLevel, NoncePayload,
     RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletAppAttestationClaims,
     WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
-    WalletUnitActivationRequestDTO, WalletUnitActivationResponseDTO, WalletUnitAttestationClaims,
-    WalletUnitAttestationMetadataDTO,
+    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
@@ -126,7 +125,7 @@ impl WalletProviderService {
         else {
             return Err(WalletProviderError::WalletProviderNotAssociatedWithOrganisation.into());
         };
-        let issuer = validate_org_wallet_provider(&organisation, &request.wallet_provider)?;
+        validate_org_wallet_provider(&organisation, &request.wallet_provider)?;
 
         if !config_params.wallet_app_attestation.integrity_check.enabled
             && request.proof.is_none()
@@ -143,7 +142,7 @@ impl WalletProviderService {
             if request.public_key.is_some() || request.proof.is_some() {
                 return Err(WalletProviderError::AppIntegrityCheckRequired.into());
             }
-            self.create_integrity_check_nonce(request, organisation, config)
+            self.create_wallet_unit_with_nonce(request, organisation, config.r#type)
                 .await
         } else {
             let proof = Jwt::<NoncePayload>::decompose_token(
@@ -158,32 +157,23 @@ impl WalletProviderService {
                 .ok_or(WalletProviderError::MissingPublicKey)?
                 .into();
             let public_key = self.parse_jwk(&proof.header.algorithm, &public_key_jwk)?;
-            self.verify_attestation_proof(
-                &proof,
-                &public_key,
-                request.os,
-                config_params.wallet_app_attestation.integrity_check.enabled,
-                LEEWAY,
-                None,
-            )
-            .await?;
-            self.create_wallet_unit_with_attestation(
+            self.verify_device_signing_proof(&proof, &public_key, LEEWAY, None)
+                .await?;
+            self.create_wallet_unit_with_auth_key(
                 request,
-                issuer,
                 organisation,
-                config,
-                config_params,
+                config.r#type,
                 public_key_jwk,
             )
             .await
         }
     }
 
-    async fn create_integrity_check_nonce(
+    async fn create_wallet_unit_with_nonce(
         &self,
         request: RegisterWalletUnitRequestDTO,
         organisation: Organisation,
-        config: &Fields<WalletProviderType>,
+        wallet_provider_type: WalletProviderType,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let nonce = generate_alphanumeric(44).to_owned();
@@ -191,7 +181,7 @@ impl WalletProviderService {
         let wallet_unit = wallet_unit_from_request(
             request,
             organisation,
-            config,
+            wallet_provider_type,
             None,
             now,
             Some(nonce.clone()),
@@ -213,7 +203,6 @@ impl WalletProviderService {
 
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
-            attestation: None,
             nonce: Some(nonce),
         })
     }
@@ -246,35 +235,24 @@ impl WalletProviderService {
         };
     }
 
-    async fn create_wallet_unit_with_attestation(
+    async fn create_wallet_unit_with_auth_key(
         &self,
         request: RegisterWalletUnitRequestDTO,
-        issuer: IdentifierId,
         organisation: Organisation,
-        config: &Fields<WalletProviderType>,
-        config_params: WalletProviderParams,
+        wallet_provider_type: WalletProviderType,
         public_key_jwk: PublicKeyJwk,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
-        let wallet_provider = request.wallet_provider.clone();
         let organisation_id = organisation.id;
         let wallet_unit = wallet_unit_from_request(
             request,
             organisation,
-            config,
+            wallet_provider_type,
             Some(&public_key_jwk),
             now,
             None,
         )?;
         let wallet_unit_name = wallet_unit.name.clone();
-        let (signed_attestation, attestation_hash) = self
-            .sign_attestation(
-                issuer,
-                &config_params,
-                public_key_jwk,
-                wallet_provider.as_ref(),
-            )
-            .await?;
         let wallet_unit_id = self
             .wallet_unit_repository
             .create_wallet_unit(wallet_unit)
@@ -284,48 +262,22 @@ impl WalletProviderService {
             &wallet_unit_id,
             wallet_unit_name,
             HistoryAction::Created,
-            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+            None,
             organisation_id,
         )
         .await;
 
         Ok(RegisterWalletUnitResponseDTO {
             id: wallet_unit_id,
-            attestation: Some(signed_attestation),
             nonce: None,
         })
-    }
-
-    async fn sign_attestation(
-        &self,
-        issuer: IdentifierId,
-        config_params: &WalletProviderParams,
-        holder_binding_jwk: PublicKeyJwk,
-        wallet_provider: &str,
-    ) -> Result<(String, String), ServiceError> {
-        let (public_key_info, auth_fn) = self.get_key_info(issuer).await?;
-
-        let attestation = self.create_waa(
-            wallet_provider,
-            config_params,
-            holder_binding_jwk,
-            &auth_fn,
-            public_key_info,
-        )?;
-        let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
-        let attestation_hash = SHA256
-            .hash_base64(signed_attestation.as_bytes())
-            .map_err(|e| {
-                ServiceError::MappingError(format!("Could not hash wallet unit attestation: {e}"))
-            })?;
-        Ok((signed_attestation, attestation_hash))
     }
 
     pub async fn activate_wallet_unit(
         &self,
         wallet_unit_id: WalletUnitId,
         request: WalletUnitActivationRequestDTO,
-    ) -> Result<WalletUnitActivationResponseDTO, ServiceError> {
+    ) -> Result<(), ServiceError> {
         let wallet_unit = self
             .wallet_unit_repository
             .get_wallet_unit(
@@ -357,8 +309,8 @@ impl WalletProviderService {
         };
         let (_, config_params) =
             self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
-        let issuer_identifier =
-            validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
+
+        validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
         if wallet_unit.last_modified
             + Duration::seconds(config_params.wallet_app_attestation.integrity_check.timeout as i64)
@@ -447,15 +399,6 @@ impl WalletProviderService {
             attested_public_key.public_key_as_jwk()?
         };
 
-        let (signed_attestation, attestation_hash) = self
-            .sign_attestation(
-                issuer_identifier,
-                &config_params,
-                jwk.clone(),
-                &wallet_unit.wallet_provider_name,
-            )
-            .await?;
-
         self.wallet_unit_repository
             .update_wallet_unit(
                 &wallet_unit_id,
@@ -472,14 +415,11 @@ impl WalletProviderService {
             &wallet_unit_id,
             wallet_unit.name,
             HistoryAction::Activated,
-            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+            None,
             organisation.id,
         )
         .await;
-
-        Ok(WalletUnitActivationResponseDTO {
-            attestation: signed_attestation,
-        })
+        Ok(())
     }
 
     async fn validate_attestation(

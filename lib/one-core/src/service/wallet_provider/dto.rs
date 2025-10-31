@@ -19,7 +19,6 @@ pub struct RegisterWalletUnitRequestDTO {
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitResponseDTO {
     pub id: WalletUnitId,
-    pub attestation: Option<String>,
     pub nonce: Option<String>,
 }
 
@@ -35,11 +34,6 @@ pub struct WalletUnitActivationRequestDTO {
     pub attestation: Vec<String>,
     pub attestation_key_proof: String,
     pub device_signing_key_proof: Option<String>,
-}
-
-#[derive(Clone, Debug)]
-pub struct WalletUnitActivationResponseDTO {
-    pub attestation: String,
 }
 
 #[derive(Clone, Debug)]

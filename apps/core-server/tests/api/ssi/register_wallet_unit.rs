@@ -1,8 +1,6 @@
 use one_core::model::wallet_unit::{WalletUnitListQuery, WalletUnitStatus};
-use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
-use one_core::service::wallet_provider::dto::WalletAppAttestationClaims;
 use similar_asserts::assert_eq;
 
 use crate::fixtures::wallet_provider::{
@@ -47,30 +45,10 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
         .await;
 
     // then
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
     let resp_json = resp.json_value().await;
 
     assert!(resp_json["id"].as_str().is_some());
-
-    let attestation = Jwt::<WalletAppAttestationClaims>::decompose_token(
-        resp_json["attestation"].as_str().unwrap(),
-    );
-    let Ok(attestation_jwt) = attestation else {
-        panic!("attestation is not a valid JWT");
-    };
-    assert_eq!(
-        attestation_jwt.header.r#type.as_ref().unwrap(),
-        "oauth-client-attestation+jwt"
-    );
-    assert!(attestation_jwt.payload.proof_of_possession_key.is_some());
-    assert_eq!(
-        attestation_jwt.payload.custom.wallet_name.as_deref(),
-        Some("Procivis One Dev Wallet")
-    );
-    assert_eq!(
-        attestation_jwt.payload.custom.wallet_link.as_deref(),
-        Some("https://procivis.ch")
-    );
 
     let wallet_units = context
         .db
@@ -95,12 +73,10 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled() {
         .await;
 
     // then
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
     let resp_json = resp.json_value().await;
 
     assert!(resp_json["id"].as_str().is_some());
-    assert_eq!(resp_json.as_object().unwrap().get("attestation"), None);
-
     let wallet_units = context
         .db
         .wallet_units
@@ -169,20 +145,10 @@ async fn test_register_wallet_unit_successfully_integrity_check_enabled_web() {
         .await;
 
     // then
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
     let resp_json = resp.json_value().await;
 
     assert!(resp_json["id"].as_str().is_some());
-
-    let attestation = Jwt::<()>::decompose_token(resp_json["attestation"].as_str().unwrap());
-    let Ok(attestation_jwt) = attestation else {
-        panic!("attestation is not a valid JWT");
-    };
-    assert_eq!(
-        attestation_jwt.header.r#type.as_ref().unwrap(),
-        "oauth-client-attestation+jwt"
-    );
-    assert!(attestation_jwt.payload.proof_of_possession_key.is_some());
     let wallet_units = context
         .db
         .wallet_units
@@ -258,7 +224,7 @@ async fn test_register_wallet_unit_fail_on_duplicate_public_key() {
             Some(&proof),
         )
         .await;
-    assert_eq!(resp.status(), 200);
+    assert_eq!(resp.status(), 201);
 
     // duplicate registration
     let resp = context

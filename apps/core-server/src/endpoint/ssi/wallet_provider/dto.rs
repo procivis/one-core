@@ -77,7 +77,6 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletUnitId,
-    pub attestation: Option<String>,
     pub nonce: Option<String>,
 }
 
@@ -91,13 +90,6 @@ pub(crate) struct WalletUnitActivationRequestRestDTO {
     pub attestation: Vec<String>,
     pub attestation_key_proof: String,
     pub device_signing_key_proof: Option<String>,
-}
-
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(dto::WalletUnitActivationResponseDTO)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct WalletUnitActivationResponseRestDTO {
-    pub attestation: String,
 }
 
 #[options_not_nullable]

@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::Arc;
 
-use assert2::let_assert;
 use async_trait::async_trait;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
@@ -14,7 +13,6 @@ use uuid::Uuid;
 
 use crate::config;
 use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
-use crate::model::history::HistoryMetadata;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -41,9 +39,7 @@ use crate::repository::wallet_unit_repository::MockWalletUnitRepository;
 use crate::service::error::{ServiceError, ValidationError};
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 use crate::service::wallet_provider::WalletProviderService;
-use crate::service::wallet_provider::dto::{
-    RegisterWalletUnitRequestDTO, WalletAppAttestationClaims,
-};
+use crate::service::wallet_provider::dto::RegisterWalletUnitRequestDTO;
 
 const BASE_URL: &str = "https://localhost";
 
@@ -138,11 +134,6 @@ async fn test_register_wallet_unit() {
         .once()
         .return_once(|_| Some((KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa))));
 
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .return_once(|_| Some(Arc::new(Ecdsa)));
-
     let mut wallet_unit_repository = MockWalletUnitRepository::new();
     wallet_unit_repository
         .expect_create_wallet_unit()
@@ -197,12 +188,7 @@ async fn test_register_wallet_unit() {
     let mut history_repository = MockHistoryRepository::new();
     history_repository
         .expect_create_history()
-        .return_once(|entry| {
-            let_assert!(Some(metadata) = entry.metadata);
-            let_assert!(HistoryMetadata::WalletUnitJWT(attestation) = metadata);
-            assert!(!attestation.is_empty());
-            Ok(Uuid::new_v4().into())
-        });
+        .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let ssi_wallet_provider_service = WalletProviderService {
         organisation_repository: Arc::new(organisation_repository),
@@ -230,13 +216,7 @@ async fn test_register_wallet_unit() {
         .unwrap();
 
     // then
-    assert!(result.attestation.is_some());
     assert!(result.nonce.is_none());
-
-    let attestation_jwt =
-        Jwt::<WalletAppAttestationClaims>::decompose_token(&result.attestation.unwrap()).unwrap();
-
-    assert!(attestation_jwt.header.jwk.is_some());
 }
 
 #[tokio::test]
@@ -347,7 +327,6 @@ async fn test_register_wallet_unit_integrity_check() {
 
     // then
     assert!(result.nonce.is_some());
-    assert!(result.attestation.is_none());
 }
 
 #[tokio::test]

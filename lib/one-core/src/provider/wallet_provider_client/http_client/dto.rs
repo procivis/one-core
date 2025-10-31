@@ -25,7 +25,6 @@ pub(crate) struct RegisterWalletUnitRequestRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct RegisterWalletUnitResponseRestDTO {
     pub id: WalletUnitId,
-    pub attestation: Option<String>,
     pub nonce: Option<String>,
 }
 

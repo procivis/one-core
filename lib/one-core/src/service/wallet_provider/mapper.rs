@@ -1,7 +1,7 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::{Fields, WalletProviderType};
+use crate::config::core_config::WalletProviderType;
 use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
@@ -18,38 +18,35 @@ use crate::service::wallet_provider::error::WalletProviderError;
 pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,
     organisation: Organisation,
-    config: &Fields<WalletProviderType>,
+    wallet_provider_type: WalletProviderType,
     public_key: Option<&PublicKeyJwk>,
     now: OffsetDateTime,
     nonce: Option<String>,
 ) -> Result<WalletUnit, ServiceError> {
-    let (status, last_issuance) = match &nonce {
-        None => (WalletUnitStatus::Active, Some(now)),
-        Some(_) => (WalletUnitStatus::Pending, None),
+    let status = match &nonce {
+        None => WalletUnitStatus::Active,
+        Some(_) => WalletUnitStatus::Pending,
     };
     Ok(WalletUnit {
         id: Uuid::new_v4().into(),
-        name: wallet_unit_name(&request, config, now),
+        name: format!(
+            "{}-{}-{}",
+            wallet_provider_type,
+            request.os,
+            now.unix_timestamp()
+        ),
         created_date: now,
         last_modified: now,
-        last_issuance,
+        last_issuance: None,
         os: request.os,
         status,
         wallet_provider_name: request.wallet_provider,
-        wallet_provider_type: config.r#type.into(),
+        wallet_provider_type: wallet_provider_type.into(),
         authentication_key_jwk: public_key.cloned(),
         nonce,
         organisation: Some(organisation),
         attested_keys: None,
     })
-}
-
-fn wallet_unit_name(
-    request: &RegisterWalletUnitRequestDTO,
-    config: &Fields<WalletProviderType>,
-    now: OffsetDateTime,
-) -> String {
-    format!("{}-{}-{}", config.r#type, request.os, now.unix_timestamp())
 }
 
 pub(crate) fn public_key_from_wallet_unit(
