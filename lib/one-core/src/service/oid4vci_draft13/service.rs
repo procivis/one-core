@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use futures::FutureExt;
 use indexmap::IndexMap;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
@@ -24,11 +25,14 @@ use crate::mapper::{
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
+use crate::model::common::LockType;
+use crate::model::credential::{
+    Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
+};
 use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
+use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::issuance_protocol::error::{
@@ -374,6 +378,7 @@ impl OID4VCIDraft13Service {
                 &InteractionRelations {
                     organisation: Some(Default::default()),
                 },
+                None,
             )
             .await?
         else {
@@ -382,7 +387,7 @@ impl OID4VCIDraft13Service {
             );
         };
 
-        let mut interaction_data = interaction_data_to_dto(&interaction)?;
+        let interaction_data = interaction_data_to_dto(&interaction)?;
         throw_if_access_token_invalid(&interaction_data, access_token)?;
 
         let credentials = self
@@ -460,6 +465,47 @@ impl OID4VCIDraft13Service {
             ))
         }?;
 
+        let mut response = None;
+        self.transaction_manager
+            .transaction(
+                self.issue_tx(
+                    interaction_id,
+                    holder_identifier,
+                    holder_key_id,
+                    credential,
+                    &mut response,
+                )
+                .boxed(),
+            )
+            .await??;
+        response.ok_or(ServiceError::Other("Missing issuance result".to_string()))?
+    }
+
+    async fn issue_tx(
+        &self,
+        interaction_id: InteractionId,
+        holder_identifier: Identifier,
+        holder_key_id: String,
+        credential: &Credential,
+        response: &mut Option<Result<OpenID4VCICredentialResponseDTO, ServiceError>>,
+    ) -> Result<(), ServiceError> {
+        // Lock interaction, so that the issuance process is done only by one thread
+        let Some(interaction) = self
+            .interaction_repository
+            .get_interaction(
+                &interaction_id,
+                &InteractionRelations {
+                    organisation: Some(Default::default()),
+                },
+                Some(LockType::Update),
+            )
+            .await?
+        else {
+            return Err(
+                BusinessLogicError::MissingInteractionForAccessToken { interaction_id }.into(),
+            );
+        };
+        let mut interaction_data = interaction_data_to_dto(&interaction)?;
         self.credential_repository
             .update_credential(
                 credential.id,
@@ -499,12 +545,12 @@ impl OID4VCIDraft13Service {
                         .await?;
                 }
 
-                Ok(issued_credential.into())
+                *response = Some(Ok(issued_credential.into()));
             }
             Err(err @ IssuanceProtocolError::Suspended)
             | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
                 // propagate error to client but do _not_ put credential to Errored state¬
-                Err(err.into())
+                *response = Some(Err(err.into()));
             }
             Err(error) => {
                 self.credential_repository
@@ -516,9 +562,10 @@ impl OID4VCIDraft13Service {
                         },
                     )
                     .await?;
-                Err(error.into())
+                *response = Some(Err(error.into()));
             }
-        }
+        };
+        Ok(())
     }
 
     pub async fn handle_notification(
@@ -532,7 +579,7 @@ impl OID4VCIDraft13Service {
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
-            .get_interaction(&interaction_id, &InteractionRelations::default())
+            .get_interaction(&interaction_id, &InteractionRelations::default(), None)
             .await?
         else {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());

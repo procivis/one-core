@@ -1037,7 +1037,7 @@ async fn test_update_credential_success() {
     interaction_repository
         .expect_get_interaction()
         .once()
-        .returning(|id, _| {
+        .returning(|id, _, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
@@ -1155,7 +1155,7 @@ async fn test_update_credential_success_no_claims() {
     interaction_repository
         .expect_get_interaction()
         .once()
-        .returning(|id, _| {
+        .returning(|id, _, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),

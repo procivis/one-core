@@ -233,6 +233,7 @@ impl SSIHolderService {
                 &InteractionRelations {
                     organisation: Some(Default::default()),
                 },
+                None,
             )
             .await?
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
@@ -820,6 +821,7 @@ impl SSIHolderService {
                 &InteractionRelations {
                     organisation: Some(Default::default()),
                 },
+                None,
             )
             .await?
             .ok_or(EntityNotFoundError::Interaction(interaction_id))?;

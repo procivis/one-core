@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::config::core_config::IssuanceProtocolType;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OID4VCI_DRAFT13_SWIYU_VERSION;
@@ -42,6 +43,7 @@ impl OID4VCIDraft13SwiyuService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         let protocol_base_url = core_base_url
             .as_ref()
@@ -63,6 +65,7 @@ impl OID4VCIDraft13SwiyuService {
                 formatter_provider,
                 revocation_method_provider,
                 certificate_validator,
+                transaction_manager,
             ),
         }
     }

@@ -42,7 +42,7 @@ impl InteractionsDB {
 
     pub async fn get(&self, id: impl Into<InteractionId>) -> Option<Interaction> {
         self.repository
-            .get_interaction(&id.into(), &Default::default())
+            .get_interaction(&id.into(), &Default::default(), None)
             .await
             .unwrap()
     }

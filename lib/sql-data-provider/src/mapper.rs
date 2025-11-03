@@ -1,4 +1,4 @@
-use one_core::model::common::SortDirection;
+use one_core::model::common::{LockType, SortDirection};
 use one_core::proto::transaction_manager;
 use one_core::repository::error::DataLayerError;
 use one_core::service::error::ServiceError;
@@ -39,6 +39,13 @@ pub(crate) fn map_access_mode(level: transaction_manager::AccessMode) -> AccessM
     match level {
         transaction_manager::AccessMode::ReadOnly => AccessMode::ReadOnly,
         transaction_manager::AccessMode::ReadWrite => AccessMode::ReadWrite,
+    }
+}
+
+pub(crate) fn map_lock_type(level: LockType) -> sea_orm::sea_query::LockType {
+    match level {
+        LockType::Update => sea_orm::sea_query::LockType::Update,
+        LockType::Share => sea_orm::sea_query::LockType::Share,
     }
 }
 

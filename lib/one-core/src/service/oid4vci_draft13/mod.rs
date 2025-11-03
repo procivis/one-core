@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::config::core_config::IssuanceProtocolType;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::get_protocol_base_url;
@@ -38,6 +39,7 @@ pub struct OID4VCIDraft13Service {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    transaction_manager: Arc<dyn TransactionManager>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -57,6 +59,7 @@ impl OID4VCIDraft13Service {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -75,6 +78,7 @@ impl OID4VCIDraft13Service {
             formatter_provider,
             revocation_method_provider,
             certificate_validator,
+            transaction_manager,
         }
     }
 
@@ -94,6 +98,7 @@ impl OID4VCIDraft13Service {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
             protocol_base_url,
@@ -111,6 +116,7 @@ impl OID4VCIDraft13Service {
             formatter_provider,
             revocation_method_provider,
             certificate_validator,
+            transaction_manager,
         }
     }
 }

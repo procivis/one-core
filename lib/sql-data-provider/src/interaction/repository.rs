@@ -1,19 +1,20 @@
 use std::str::FromStr;
 
 use autometrics::autometrics;
+use one_core::model::common::LockType;
 use one_core::model::interaction::{
     Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::ActiveValue::Unchanged;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
 use uuid::Uuid;
 
 use super::InteractionProvider;
 use crate::entity::interaction;
 use crate::interaction::mapper::interaction_from_models;
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -47,8 +48,14 @@ impl InteractionRepository for InteractionProvider {
         &self,
         id: &InteractionId,
         relations: &InteractionRelations,
+        lock: Option<LockType>,
     ) -> Result<Option<Interaction>, DataLayerError> {
-        let interaction = interaction::Entity::find_by_id(id.to_string())
+        let select = interaction::Entity::find_by_id(id.to_string());
+        let select = match lock {
+            None => select,
+            Some(lock) => select.lock(map_lock_type(lock)),
+        };
+        let interaction = select
             .one(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

@@ -138,7 +138,7 @@ impl CredentialProvider {
                     let interaction_id = Uuid::from_str(interaction_id)?;
                     Some(
                         self.interaction_repository
-                            .get_interaction(&interaction_id, interaction_relations)
+                            .get_interaction(&interaction_id, interaction_relations, None)
                             .await?
                             .ok_or(DataLayerError::MissingRequiredRelation {
                                 relation: "credential-interaction",

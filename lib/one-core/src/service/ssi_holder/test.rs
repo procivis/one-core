@@ -1630,7 +1630,7 @@ async fn test_continue_issuance() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_get_interaction()
-        .return_once(move |_, _| {
+        .return_once(move |_, _, _| {
             Ok(Some(Interaction {
                 id: Default::default(),
                 created_date: get_dummy_date(),

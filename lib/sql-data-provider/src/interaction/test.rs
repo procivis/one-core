@@ -115,7 +115,11 @@ async fn test_get_interaction() {
 
     let result = setup
         .provider
-        .get_interaction(&setup.interaction_id, &InteractionRelations::default())
+        .get_interaction(
+            &setup.interaction_id,
+            &InteractionRelations::default(),
+            None,
+        )
         .await
         .unwrap();
 

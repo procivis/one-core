@@ -25,6 +25,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
@@ -90,6 +91,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.certificate_validator),
         Arc::new(mocks.blob_storage_provider),
+        Arc::new(NoTransactionManager),
     )
 }
 
@@ -816,8 +818,8 @@ async fn test_create_credential_success() {
         let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
         interaction_repository
             .expect_get_interaction()
-            .once()
-            .return_once(move |_, _| {
+            .times(2)
+            .returning(move |_, _, _| {
                 Ok(Some(dummy_interaction(
                     Some(interaction_id),
                     true,
@@ -832,7 +834,7 @@ async fn test_create_credential_success() {
 
         interaction_repository
             .expect_update_interaction()
-            .once()
+            .times(2)
             .withf(move |id, _| *id == interaction_id)
             .returning(|_, _| Ok(()));
 
@@ -1019,12 +1021,13 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .once()
             .return_once(move |_, _| Ok(vec![clone]));
 
+        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
         interaction_repository
             .expect_get_interaction()
-            .once()
-            .return_once(|_, _| {
+            .times(2)
+            .returning(move |_, _, _| {
                 Ok(Some(dummy_interaction(
-                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    Some(interaction_id),
                     true,
                     None,
                     None,
@@ -1034,6 +1037,11 @@ async fn test_create_credential_success_sd_jwt_vc() {
         interaction_repository
             .expect_get_interaction_by_nonce_id()
             .return_once(|_| Ok(None));
+        interaction_repository
+            .expect_update_interaction()
+            .times(1)
+            .withf(move |id, _| *id == interaction_id)
+            .returning(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1223,8 +1231,8 @@ async fn test_create_credential_success_mdoc() {
 
         interaction_repository
             .expect_get_interaction()
-            .once()
-            .return_once(|_, _| {
+            .times(2)
+            .returning(|_, _, _| {
                 Ok(Some(dummy_interaction(
                     Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
                     true,
@@ -1236,6 +1244,9 @@ async fn test_create_credential_success_mdoc() {
         interaction_repository
             .expect_get_interaction_by_nonce_id()
             .return_once(|_| Ok(None));
+        interaction_repository
+            .expect_update_interaction()
+            .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1491,7 +1502,7 @@ async fn test_create_credential_pre_authorized_code_not_used() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(None, false, None, None, None))));
+            .return_once(|_, _, _| Ok(Some(dummy_interaction(None, false, None, None, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1543,7 +1554,7 @@ async fn test_create_credential_interaction_data_invalid() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
+            .return_once(|_, _, _| Ok(Some(dummy_interaction(None, true, None, None, None))));
     }
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
@@ -1595,7 +1606,7 @@ async fn test_create_credential_access_token_expired() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(Some(dummy_interaction(
                     None,
                     true,
@@ -1668,12 +1679,13 @@ async fn test_create_credential_issuer_failed() {
             .once()
             .return_once(move |_, _| Ok(vec![clone]));
 
+        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
         interaction_repository
             .expect_get_interaction()
-            .once()
-            .return_once(|_, _| {
+            .times(2)
+            .returning(move |_, _, _| {
                 Ok(Some(dummy_interaction(
-                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    Some(interaction_id),
                     true,
                     None,
                     None,
@@ -1683,6 +1695,11 @@ async fn test_create_credential_issuer_failed() {
         interaction_repository
             .expect_get_interaction_by_nonce_id()
             .returning(|_| Ok(None));
+        interaction_repository
+            .expect_update_interaction()
+            .times(1)
+            .withf(move |id, _| *id == interaction_id)
+            .returning(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1868,7 +1885,7 @@ async fn test_create_credential_nonce_reused() {
         interaction_repository
             .expect_get_interaction()
             .once()
-            .return_once(|_, _| {
+            .return_once(|_, _, _| {
                 Ok(Some(dummy_interaction(
                     Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
                     true,

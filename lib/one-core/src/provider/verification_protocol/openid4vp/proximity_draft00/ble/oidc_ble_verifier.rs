@@ -197,7 +197,7 @@ pub(crate) async fn schedule_ble_verifier_flow(
             move |_, peripheral| async move {
                 info!("cancelling proof sharing");
                 let Ok(interaction) = interaction_repository
-                    .get_interaction(&interaction_id, &Default::default())
+                    .get_interaction(&interaction_id, &Default::default(), None)
                     .await
                     .map_err(|err| VerificationProtocolError::Failed(err.to_string()))
                 else {

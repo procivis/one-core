@@ -797,6 +797,7 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
+                data_provider.get_tx_manager(),
             ),
             oid4vci_final1_0_service: OID4VCIFinal1_0Service::new(
                 providers.core_base_url.clone(),
@@ -815,6 +816,7 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
                 blob_storage_provider.clone(),
+                data_provider.get_tx_manager(),
             ),
             oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),
@@ -831,6 +833,7 @@ impl OneCore {
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
+                data_provider.get_tx_manager(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
                 credential_repository.clone(),

@@ -501,7 +501,7 @@ async fn test_get_proof_with_relations() {
     interaction_repository
         .expect_get_interaction()
         .times(1)
-        .returning(|id, _| {
+        .returning(|id, _, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),
@@ -780,7 +780,7 @@ async fn test_get_proof_by_interaction_id_success() {
     interaction_repository
         .expect_get_interaction()
         .times(1)
-        .returning(|id, _| {
+        .returning(|id, _, _| {
             Ok(Some(Interaction {
                 id: id.to_owned(),
                 created_date: get_dummy_date(),

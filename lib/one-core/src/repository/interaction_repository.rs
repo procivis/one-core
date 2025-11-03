@@ -1,6 +1,7 @@
 use uuid::Uuid;
 
 use super::error::DataLayerError;
+use crate::model::common::LockType;
 use crate::model::interaction::{
     Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
 };
@@ -19,10 +20,14 @@ pub trait InteractionRepository: Send + Sync {
         request: UpdateInteractionRequest,
     ) -> Result<(), DataLayerError>;
 
+    /// Loads an interaction from the database, including the specified relations.
+    /// If a lock type is specified, it will lock the given row. The lock only takes effect if
+    /// loaded **within a transaction**.
     async fn get_interaction(
         &self,
         id: &InteractionId,
         relations: &InteractionRelations,
+        lock: Option<LockType>,
     ) -> Result<Option<Interaction>, DataLayerError>;
 
     async fn get_interaction_by_nonce_id(

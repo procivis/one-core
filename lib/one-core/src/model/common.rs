@@ -42,3 +42,10 @@ pub struct GetListResponse<ResponseItem> {
 pub struct EntityShareResponseDTO {
     pub url: String,
 }
+
+pub enum LockType {
+    /// Exclusive lock
+    Update,
+    /// Shared lock
+    Share,
+}
