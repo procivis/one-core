@@ -4,8 +4,8 @@ use std::sync::Arc;
 use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::{
-    GetWalletUnitList, WalletProviderType, WalletUnit, WalletUnitListQuery, WalletUnitOs,
-    WalletUnitRelations, WalletUnitStatus,
+    GetWalletUnitList, UpdateWalletUnitRequest, WalletProviderType, WalletUnit,
+    WalletUnitListQuery, WalletUnitOs, WalletUnitRelations, WalletUnitStatus,
 };
 use one_core::model::wallet_unit_attested_key::WalletUnitAttestedKey;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
@@ -77,6 +77,17 @@ impl WalletUnitsDB {
     ) -> Option<WalletUnit> {
         self.repository
             .get_wallet_unit(&wallet_unit_id.into(), relations)
+            .await
+            .unwrap()
+    }
+
+    pub async fn update(
+        &self,
+        wallet_unit_id: impl Into<WalletUnitId>,
+        request: UpdateWalletUnitRequest,
+    ) -> () {
+        self.repository
+            .update_wallet_unit(&wallet_unit_id.into(), request)
             .await
             .unwrap()
     }

@@ -635,7 +635,7 @@ impl WalletProviderService {
             )
             .await
         }
-        let attested_keys = if app_attestations.is_empty() {
+        let attested_keys = if key_attestations.is_empty() {
             None
         } else {
             Some(attested_keys)
