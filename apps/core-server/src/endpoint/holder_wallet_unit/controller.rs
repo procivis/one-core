@@ -27,7 +27,7 @@ use crate::router::AppState;
         Register wallet unit with the given wallet provider.
     "},
 )]
-#[require_permissions(Permission::WalletAttestationCreate)]
+#[require_permissions(Permission::HolderWalletUnitRegister)]
 pub(crate) async fn wallet_unit_holder_register(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -60,7 +60,7 @@ pub(crate) async fn wallet_unit_holder_register(
     summary = "Get Wallet Unit details",
     description = "Fetch the wallet unit details.",
 )]
-#[require_permissions(Permission::WalletAttestationCreate)]
+#[require_permissions(Permission::HolderWalletUnitDetail)]
 pub(crate) async fn wallet_unit_holder_details(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
