@@ -13,9 +13,8 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::util::extract_bitstring_index;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
-    CredentialRevocationState, JsonLdContext, Operation, RevocationMethodCapabilities,
-    RevocationUpdate,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
+    Operation, RevocationMethodCapabilities,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 
@@ -37,8 +36,7 @@ impl RevocationMethod for StatusList2021 {
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
+    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "StatusList2021".to_string(),
         ))
@@ -48,8 +46,7 @@ impl RevocationMethod for StatusList2021 {
         &self,
         _credential: &Credential,
         _new_state: CredentialRevocationState,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<RevocationUpdate, RevocationError> {
+    ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "StatusList2021".to_string(),
         ))

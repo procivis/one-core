@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use shared_types::{CredentialId, IdentifierId};
+use shared_types::CredentialId;
 
 use super::error::DataLayerError;
 use crate::model::claim::ClaimId;
@@ -30,12 +30,6 @@ pub trait CredentialRepository: Send + Sync {
     async fn get_credentials_by_interaction_id(
         &self,
         interaction_id: &InteractionId,
-        relations: &CredentialRelations,
-    ) -> Result<Vec<Credential>, DataLayerError>;
-
-    async fn get_credentials_by_issuer_identifier_id(
-        &self,
-        issuer_identifier_id: IdentifierId,
         relations: &CredentialRelations,
     ) -> Result<Vec<Credential>, DataLayerError>;
 

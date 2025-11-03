@@ -4,8 +4,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierD
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialAdditionalData, CredentialDataByRole, CredentialRevocationState, JsonLdContext,
-    RevocationMethodCapabilities, RevocationUpdate,
+    CredentialDataByRole, CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities,
 };
 
 pub struct NoneRevocation {}
@@ -19,17 +18,15 @@ impl RevocationMethod for NoneRevocation {
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
-        Ok((None, vec![]))
+    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+        Ok(vec![])
     }
 
     async fn mark_credential_as(
         &self,
         _credential: &Credential,
         _new_state: CredentialRevocationState,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<RevocationUpdate, RevocationError> {
+    ) -> Result<(), RevocationError> {
         Err(RevocationError::ValidationError(
             "Credential cannot be revoked, reactivated or suspended".to_string(),
         ))

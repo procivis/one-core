@@ -151,26 +151,6 @@ impl CredentialProvider {
             None
         };
 
-        let revocation_list = if let Some(revocation_list_relations) = &relations.revocation_list {
-            match &credential.revocation_list_id {
-                None => None,
-                Some(revocation_list_id) => {
-                    let revocation_list_id = Uuid::from_str(revocation_list_id)?;
-                    Some(
-                        self.revocation_list_repository
-                            .get_revocation_list(&revocation_list_id, revocation_list_relations)
-                            .await?
-                            .ok_or(DataLayerError::MissingRequiredRelation {
-                                relation: "credential-revocation_list",
-                                id: revocation_list_id.to_string(),
-                            })?,
-                    )
-                }
-            }
-        } else {
-            None
-        };
-
         let key = if let Some(key_relations) = &relations.key {
             match &credential.key_id {
                 None => None,
@@ -216,7 +196,6 @@ impl CredentialProvider {
             holder_identifier,
             claims,
             schema,
-            revocation_list,
             interaction,
             key,
             issuer_certificate,
@@ -372,11 +351,6 @@ impl CredentialRepository for CredentialProvider {
             .as_ref()
             .map(|interaction| interaction.id);
 
-        let revocation_list_id = request
-            .revocation_list
-            .as_ref()
-            .map(|revocation_list| revocation_list.id);
-
         let key_id = request.key.as_ref().map(|key| key.id);
 
         if claims.iter().any(|claim| claim.credential_id != request.id) {
@@ -390,7 +364,6 @@ impl CredentialRepository for CredentialProvider {
             issuer_certificate_id,
             holder_identifier_id,
             interaction_id,
-            revocation_list_id,
             convert_inner(key_id),
             request.credential_blob_id,
             request.wallet_unit_attestation_blob_id,
@@ -455,21 +428,6 @@ impl CredentialRepository for CredentialProvider {
     ) -> Result<Vec<Credential>, DataLayerError> {
         let credentials = credential::Entity::find()
             .filter(credential::Column::InteractionId.eq(interaction_id.to_string()))
-            .all(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        self.credentials_to_repository(credentials, relations).await
-    }
-
-    async fn get_credentials_by_issuer_identifier_id(
-        &self,
-        issuer_identifier_id: IdentifierId,
-        relations: &CredentialRelations,
-    ) -> Result<Vec<Credential>, DataLayerError> {
-        let credentials = credential::Entity::find()
-            .filter(credential::Column::IssuerIdentifierId.eq(issuer_identifier_id))
-            .order_by_asc(credential::Column::CreatedDate)
             .all(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

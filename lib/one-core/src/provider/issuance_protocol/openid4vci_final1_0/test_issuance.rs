@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use mockall::predicate::{always, eq};
+use mockall::predicate::eq;
 use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::CredentialId;
@@ -23,9 +23,6 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
-use crate::model::revocation_list::{
-    RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
-};
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::http_client::MockHttpClient;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
@@ -44,12 +41,9 @@ use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
-use crate::service::test_utilities::{
-    dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
-};
+use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
 #[tokio::test]
 async fn test_issuer_submit_succeeds() {
@@ -110,10 +104,6 @@ async fn test_issuer_submit_succeeds() {
         });
 
     credential_repository
-        .expect_get_credentials_by_issuer_identifier_id()
-        .return_once(move |_, _| Ok(vec![credential]));
-
-    credential_repository
         .expect_update_credential()
         .once()
         .return_once(|_, _| Ok(()));
@@ -126,18 +116,15 @@ async fn test_issuer_submit_succeeds() {
     revocation_method
         .expect_add_issued_credential()
         .once()
-        .return_once(|_, _| {
-            Ok((
-                None,
-                vec![CredentialRevocationInfo {
-                    credential_status: CredentialStatus {
-                        id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
-                        r#type: "type".to_string(),
-                        status_purpose: Some("type".to_string()),
-                        additional_fields: HashMap::new(),
-                    },
-                }],
-            ))
+        .return_once(|_| {
+            Ok(vec![CredentialRevocationInfo {
+                credential_status: CredentialStatus {
+                    id: Some(Uuid::new_v4().urn().to_string().parse().unwrap()),
+                    r#type: "type".to_string(),
+                    status_purpose: Some("type".to_string()),
+                    additional_fields: HashMap::new(),
+                },
+            }])
         });
 
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
@@ -164,48 +151,6 @@ async fn test_issuer_submit_succeeds() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut revocation_list_repository = MockRevocationListRepository::default();
-    revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
-        .with(
-            always(),
-            eq(RevocationListPurpose::Revocation),
-            eq(StatusListType::BitstringStatusList),
-            always(),
-        )
-        .return_once(move |_, _, _, _| {
-            Ok(Some(RevocationList {
-                id: Default::default(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                credentials: vec![],
-                purpose: RevocationListPurpose::Revocation,
-                issuer_identifier: None,
-                format: StatusListCredentialFormat::Jwt,
-                r#type: StatusListType::BitstringStatusList,
-            }))
-        });
-    revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
-        .with(
-            always(),
-            eq(RevocationListPurpose::Suspension),
-            eq(StatusListType::BitstringStatusList),
-            always(),
-        )
-        .return_once(move |_, _, _, _| {
-            Ok(Some(RevocationList {
-                id: Default::default(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                credentials: vec![],
-                purpose: RevocationListPurpose::Suspension,
-                issuer_identifier: None,
-                format: StatusListCredentialFormat::Jwt,
-                r#type: StatusListType::BitstringStatusList,
-            }))
-        });
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().once().return_once(|_| Ok(()));
 
@@ -220,7 +165,6 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
-        Arc::new(revocation_list_repository),
         Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -315,10 +259,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         });
 
     credential_repository
-        .expect_get_credentials_by_issuer_identifier_id()
-        .return_once(move |_, _| Ok(vec![credential]));
-
-    credential_repository
         .expect_update_credential()
         .once()
         .return_once(|_, _| Ok(()));
@@ -348,48 +288,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
 
-    let mut revocation_list_repository = MockRevocationListRepository::default();
-    revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
-        .with(
-            always(),
-            eq(RevocationListPurpose::Revocation),
-            eq(StatusListType::BitstringStatusList),
-            always(),
-        )
-        .return_once(move |_, _, _, _| {
-            Ok(Some(RevocationList {
-                id: Default::default(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                credentials: vec![],
-                purpose: RevocationListPurpose::Revocation,
-                issuer_identifier: None,
-                format: StatusListCredentialFormat::Jwt,
-                r#type: StatusListType::BitstringStatusList,
-            }))
-        });
-    revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
-        .with(
-            always(),
-            eq(RevocationListPurpose::Suspension),
-            eq(StatusListType::BitstringStatusList),
-            always(),
-        )
-        .return_once(move |_, _, _, _| {
-            Ok(Some(RevocationList {
-                id: Default::default(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                credentials: vec![],
-                purpose: RevocationListPurpose::Suspension,
-                issuer_identifier: None,
-                format: StatusListCredentialFormat::Jwt,
-                r#type: StatusListType::BitstringStatusList,
-            }))
-        });
-
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     validity_credential_repository
         .expect_insert()
@@ -416,7 +314,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
-        Arc::new(revocation_list_repository),
         Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -477,10 +374,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             Ok(Some(credential))
         });
 
-    credential_repository
-        .expect_get_credentials_by_issuer_identifier_id()
-        .return_once(move |_, _| Ok(vec![credential]));
-
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
@@ -505,48 +398,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         .expect_get_signature_provider()
         .once()
         .returning(|_, _, _| Ok(Box::<MockSignatureProvider>::default()));
-
-    let mut revocation_list_repository = MockRevocationListRepository::default();
-    revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
-        .with(
-            always(),
-            eq(RevocationListPurpose::Revocation),
-            eq(StatusListType::BitstringStatusList),
-            always(),
-        )
-        .return_once(move |_, _, _, _| {
-            Ok(Some(RevocationList {
-                id: Default::default(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                credentials: vec![],
-                purpose: RevocationListPurpose::Revocation,
-                issuer_identifier: None,
-                format: StatusListCredentialFormat::Jwt,
-                r#type: StatusListType::BitstringStatusList,
-            }))
-        });
-    revocation_list_repository
-        .expect_get_revocation_by_issuer_identifier_id()
-        .with(
-            always(),
-            eq(RevocationListPurpose::Suspension),
-            eq(StatusListType::BitstringStatusList),
-            always(),
-        )
-        .return_once(move |_, _, _, _| {
-            Ok(Some(RevocationList {
-                id: Default::default(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                credentials: vec![],
-                purpose: RevocationListPurpose::Suspension,
-                issuer_identifier: None,
-                format: StatusListCredentialFormat::Jwt,
-                r#type: StatusListType::BitstringStatusList,
-            }))
-        });
 
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
 
@@ -600,7 +451,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
-        Arc::new(revocation_list_repository),
         Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -655,10 +505,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         .once()
         .return_once(move |_, _| Ok(Some(credential_copy)));
 
-    credential_repository
-        .expect_get_credentials_by_issuer_identifier_id()
-        .return_once(move |_, _| Ok(vec![credential]));
-
     let mut validity_credential_repository = MockValidityCredentialRepository::new();
     validity_credential_repository
         .expect_get_latest_by_credential_id()
@@ -699,7 +545,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
-        Arc::new(MockRevocationListRepository::new()),
         Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),
@@ -861,7 +706,6 @@ fn dummy_credential() -> Credential {
             interaction_type: InteractionType::Issuance,
         }),
         key: None,
-        revocation_list: None,
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,

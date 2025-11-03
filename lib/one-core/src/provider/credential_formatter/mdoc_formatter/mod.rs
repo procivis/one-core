@@ -517,7 +517,6 @@ impl CredentialFormatter for MdocFormatter {
             holder_identifier: Some(holder_identifier),
             schema: Some(credential_schema),
             interaction: None,
-            revocation_list: None,
             key: None,
             claims: Some(claims),
         })

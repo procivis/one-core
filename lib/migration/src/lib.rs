@@ -161,10 +161,10 @@ mod m20251001_103610_adds_wua_column_to_credential;
 mod m20251014_101039_adds_interaction_type;
 mod m20251015_091929_drop_interaction_host;
 mod m20251017_074815_fix_undefined_interaction_type;
-
 mod m20251023_073646_drop_credential_schema_type_and_external_columns;
 mod m20251027_101749_add_wallet_unit_attested_key;
 mod m20251029_144801_add_holder_wallet_unit;
+mod m20251030_110836_revocation_list_entry;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -331,6 +331,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251023_073646_drop_credential_schema_type_and_external_columns::Migration),
             Box::new(m20251027_101749_add_wallet_unit_attested_key::Migration),
             Box::new(m20251029_144801_add_holder_wallet_unit::Migration),
+            Box::new(m20251030_110836_revocation_list_entry::Migration),
         ]
     }
 }

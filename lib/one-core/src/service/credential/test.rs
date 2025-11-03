@@ -47,14 +47,13 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{
-    CredentialRevocationState, Operation, RevocationMethodCapabilities, RevocationUpdate,
+    CredentialRevocationState, Operation, RevocationMethodCapabilities,
 };
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::credential;
 use crate::service::credential::dto::{
@@ -76,7 +75,6 @@ struct Repositories {
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub identifier_repository: MockIdentifierRepository,
     pub interaction_repository: MockInteractionRepository,
-    pub revocation_list_repository: MockRevocationListRepository,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub protocol_provider: MockIssuanceProtocolProvider,
@@ -96,7 +94,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.credential_schema_repository),
         Arc::new(repositories.identifier_repository),
         Arc::new(repositories.interaction_repository),
-        Arc::new(repositories.revocation_list_repository),
         Arc::new(repositories.revocation_method_provider),
         Arc::new(repositories.formatter_provider),
         Arc::new(repositories.protocol_provider),
@@ -105,7 +102,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.config),
         Arc::new(repositories.lvvc_repository),
-        None,
         Arc::new(ReqwestClient::default()),
         Arc::new(repositories.certificate_validator),
         Arc::new(repositories.blob_storage_provider),
@@ -216,7 +212,6 @@ fn generic_credential() -> Credential {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,
@@ -285,7 +280,6 @@ fn generic_credential_list_entity() -> Credential {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,
@@ -3023,13 +3017,8 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Revoked), always())
-        .return_once(move |_, _, _| {
-            Ok(RevocationUpdate {
-                status_type: "NONE".to_string(),
-                data: vec![],
-            })
-        });
+        .with(always(), eq(CredentialRevocationState::Revoked))
+        .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
         .return_once(|| "NONE".to_string());
@@ -3077,13 +3066,8 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Revoked), always())
-        .return_once(move |_, _, _| {
-            Ok(RevocationUpdate {
-                status_type: "NONE".to_string(),
-                data: vec![],
-            })
-        });
+        .with(always(), eq(CredentialRevocationState::Revoked))
+        .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
         .return_once(|| "NONE".to_string());
@@ -3155,14 +3139,8 @@ async fn test_suspend_credential_success() {
             eq(CredentialRevocationState::Suspended {
                 suspend_end_date: Some(suspend_end_date),
             }),
-            always(),
         )
-        .return_once(move |_, _, _| {
-            Ok(RevocationUpdate {
-                status_type: "NONE".to_string(),
-                data: vec![],
-            })
-        });
+        .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
         .return_once(|| "NONE".to_string());
@@ -3268,13 +3246,8 @@ async fn test_reactivate_credential_success() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Valid), always())
-        .return_once(move |_, _, _| {
-            Ok(RevocationUpdate {
-                status_type: "NONE".to_string(),
-                data: vec![],
-            })
-        });
+        .with(always(), eq(CredentialRevocationState::Valid))
+        .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
         .return_once(|| "NONE".to_string());
@@ -3947,7 +3920,6 @@ async fn test_get_credential_success_array_complex_nested_all() {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,
@@ -4514,7 +4486,6 @@ async fn test_get_credential_success_array_index_sorting() {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,
@@ -4830,7 +4801,6 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,
@@ -5049,7 +5019,6 @@ async fn test_get_credential_success_array_single_element() {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,

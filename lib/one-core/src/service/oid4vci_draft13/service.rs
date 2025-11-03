@@ -59,7 +59,6 @@ use crate::service::oid4vci_draft13::validator::{
     validate_config_entity_presence,
 };
 use crate::service::ssi_validator::validate_issuance_protocol_type;
-use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use crate::validator::throw_if_credential_state_not_eq;
 
 impl OID4VCIDraft13Service {
@@ -596,41 +595,6 @@ impl OID4VCIDraft13Service {
                 schema.revocation_method.to_owned(),
             ))?;
 
-        // mark the credential as revoked (if supported and not done before)
-        if matches!(
-            credential.state,
-            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
-        ) && revocation_method
-            .get_capabilities()
-            .operations
-            .contains(&Operation::Revoke)
-        {
-            let update = revocation_method
-                .mark_credential_as(
-                    credential,
-                    CredentialRevocationState::Revoked,
-                    generate_credential_additional_data(
-                        credential,
-                        &*self.credential_repository,
-                        &*self.revocation_list_repository,
-                        &*revocation_method,
-                        &*self.formatter_provider,
-                        &*self.key_provider,
-                        &self.key_algorithm_provider,
-                        &self.base_url,
-                    )
-                    .await?,
-                )
-                .await?;
-
-            process_update(
-                update,
-                &*self.validity_credential_repository,
-                &*self.revocation_list_repository,
-            )
-            .await?;
-        }
-
         self.credential_repository
             .update_credential(
                 credential.id,
@@ -640,6 +604,20 @@ impl OID4VCIDraft13Service {
                 },
             )
             .await?;
+
+        // mark the credential as revoked (if supported and not done before)
+        if matches!(
+            credential.state,
+            CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
+        ) && revocation_method
+            .get_capabilities()
+            .operations
+            .contains(&Operation::Revoke)
+        {
+            revocation_method
+                .mark_credential_as(credential, CredentialRevocationState::Revoked)
+                .await?;
+        }
 
         Ok(())
     }

@@ -10,3 +10,6 @@ pub(crate) struct RevocationListProvider {
     pub db: TransactionManagerImpl,
     pub identifier_repository: Arc<dyn IdentifierRepository>,
 }
+
+#[cfg(test)]
+mod test;

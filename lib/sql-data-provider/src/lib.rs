@@ -207,7 +207,6 @@ impl DataLayer {
             claim_repository: claim_repository.clone(),
             identifier_repository: identifier_repository.clone(),
             interaction_repository: interaction_repository.clone(),
-            revocation_list_repository: revocation_list_repository.clone(),
             certificate_repository: certificate_repository.clone(),
             key_repository: key_repository.clone(),
         });

@@ -11,12 +11,6 @@ use crate::provider::credential_formatter::model::{CredentialStatus, DetailCrede
 
 pub type RevocationListId = Uuid;
 
-pub struct CredentialAdditionalData {
-    pub credentials_by_issuer_identifier: Vec<Credential>,
-    pub revocation_list_id: RevocationListId,
-    pub suspension_list_id: Option<RevocationListId>,
-}
-
 #[derive(Clone)]
 pub enum CredentialDataByRole {
     // issuer variant is missing because issuers should simply check the credential state
@@ -54,12 +48,6 @@ pub struct JsonLdContext {
 #[derive(Clone, Default, Serialize)]
 pub struct RevocationMethodCapabilities {
     pub operations: Vec<Operation>,
-}
-
-#[derive(Debug)]
-pub struct RevocationUpdate {
-    pub status_type: String,
-    pub data: Vec<u8>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]

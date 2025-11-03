@@ -47,7 +47,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum BlobStorage {
+pub enum BlobStorage {
     Table,
     Id,
     CreatedDate,

@@ -151,7 +151,6 @@ fn generate_credential_matching_detail(
             organisation: None,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: None,

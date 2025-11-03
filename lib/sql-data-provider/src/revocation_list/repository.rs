@@ -4,21 +4,21 @@ use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::future::join_all;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
-    StatusListType,
+    RevocationList, RevocationListCredentialEntry, RevocationListId, RevocationListPurpose,
+    RevocationListRelations, StatusListType,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{
-    ActiveEnum, ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged,
+    ActiveEnum, ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, QueryFilter,
+    QuerySelect, RelationTrait, Set, Unchanged,
 };
-use shared_types::IdentifierId;
+use shared_types::{CredentialId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity;
-use crate::entity::revocation_list;
-use crate::mapper::to_update_data_layer_error;
+use crate::entity::{credential, revocation_list, revocation_list_entry};
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::revocation_list::RevocationListProvider;
 
 impl RevocationListProvider {
@@ -83,7 +83,7 @@ impl RevocationListRepository for RevocationListProvider {
         }
         .insert(&self.db)
         .await
-        .map_err(|e| DataLayerError::Db(e.into()))?;
+        .map_err(to_data_layer_error)?;
 
         Ok(request.id)
     }
@@ -96,7 +96,7 @@ impl RevocationListRepository for RevocationListProvider {
         let revocation_list = revocation_list::Entity::find_by_id(id.to_string())
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+            .map_err(to_data_layer_error)?;
 
         match revocation_list {
             None => Ok(None),
@@ -120,7 +120,7 @@ impl RevocationListRepository for RevocationListProvider {
             .filter(revocation_list::Column::Id.is_in(ids))
             .all(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+            .map_err(to_data_layer_error)?;
 
         join_all(
             models
@@ -139,7 +139,7 @@ impl RevocationListRepository for RevocationListProvider {
         status_list_type: StatusListType,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError> {
-        let purpose_as_db_type = entity::revocation_list::RevocationListPurpose::from(purpose);
+        let purpose_as_db_type = revocation_list::RevocationListPurpose::from(purpose);
 
         let revocation_list = revocation_list::Entity::find()
             .filter(
@@ -150,7 +150,7 @@ impl RevocationListRepository for RevocationListProvider {
             )
             .one(&self.db)
             .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
+            .map_err(to_data_layer_error)?;
 
         match revocation_list {
             None => Ok(None),
@@ -182,5 +182,77 @@ impl RevocationListRepository for RevocationListProvider {
             .map_err(to_update_data_layer_error)?;
 
         Ok(())
+    }
+
+    async fn get_max_used_index(
+        &self,
+        id: &RevocationListId,
+    ) -> Result<Option<usize>, DataLayerError> {
+        let max: Option<Option<u32>> = revocation_list_entry::Entity::find()
+            .select_only()
+            .column_as(revocation_list_entry::Column::Index.max(), "index")
+            .filter(revocation_list_entry::Column::RevocationListId.eq(id.to_string()))
+            .into_tuple()
+            .one(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(max.flatten().map(|index| index as _))
+    }
+
+    async fn create_credential_entry(
+        &self,
+        list_id: RevocationListId,
+        credential_id: CredentialId,
+        index_on_status_list: usize,
+    ) -> Result<(), DataLayerError> {
+        revocation_list_entry::ActiveModel {
+            id: Set(Uuid::new_v4().to_string()),
+            created_date: Set(OffsetDateTime::now_utc()),
+            revocation_list_id: Set(list_id.to_string()),
+            index: Set(index_on_status_list as _),
+            credential_id: Set(Some(credential_id)),
+        }
+        .insert(&self.db)
+        .await
+        .map_err(to_data_layer_error)?;
+
+        Ok(())
+    }
+
+    async fn get_linked_credentials(
+        &self,
+        list_id: RevocationListId,
+    ) -> Result<Vec<RevocationListCredentialEntry>, DataLayerError> {
+        #[derive(FromQueryResult)]
+        struct Entry {
+            pub credential_id: CredentialId,
+            pub state: credential::CredentialState,
+            pub index: u32,
+        }
+
+        let entries = revocation_list_entry::Entity::find()
+            .select_only()
+            .column(revocation_list_entry::Column::Index)
+            .column(revocation_list_entry::Column::CredentialId)
+            .join(
+                sea_orm::JoinType::InnerJoin,
+                revocation_list_entry::Relation::Credential.def(),
+            )
+            .column(credential::Column::State)
+            .filter(revocation_list_entry::Column::RevocationListId.eq(list_id.to_string()))
+            .into_model::<Entry>()
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+
+        Ok(entries
+            .into_iter()
+            .map(|entry| RevocationListCredentialEntry {
+                credential_id: entry.credential_id,
+                state: entry.state.into(),
+                index: entry.index as _,
+            })
+            .collect())
     }
 }

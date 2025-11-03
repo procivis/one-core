@@ -858,7 +858,6 @@ pub(crate) fn create_credential(
         schema: Some(credential_schema),
         key: None,
         interaction: Some(interaction),
-        revocation_list: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
     }

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use shared_types::{CredentialId, IdentifierId};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -207,16 +207,6 @@ impl CredentialRepository for CredentialHistoryDecorator {
     ) -> Result<Vec<Credential>, DataLayerError> {
         self.inner
             .get_credentials_by_interaction_id(interaction_id, relations)
-            .await
-    }
-
-    async fn get_credentials_by_issuer_identifier_id(
-        &self,
-        issuer_identifier_id: IdentifierId,
-        relations: &CredentialRelations,
-    ) -> Result<Vec<Credential>, DataLayerError> {
-        self.inner
-            .get_credentials_by_issuer_identifier_id(issuer_identifier_id, relations)
             .await
     }
 

@@ -8,7 +8,7 @@ use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::proof::ProofStateEnum;
-use one_core::model::revocation_list::RevocationListPurpose;
+use one_core::model::revocation_list::{RevocationListPurpose, StatusListType};
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
@@ -77,6 +77,23 @@ async fn test_run_task_suspend_check_with_update() {
                 ..Default::default()
             },
         )
+        .await;
+
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            RevocationListPurpose::Suspension,
+            None,
+            Some(StatusListType::BitstringStatusList),
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, credential.id, 0)
         .await;
 
     // WHEN

@@ -22,6 +22,7 @@ pub mod proof_input_schema;
 pub mod proof_schema;
 pub mod remote_entity_cache;
 pub mod revocation_list;
+pub mod revocation_list_entry;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod validity_credential;

@@ -15,7 +15,6 @@ use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 pub mod dto;
@@ -31,7 +30,6 @@ pub struct CredentialService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
-    revocation_list_repository: Arc<dyn RevocationListRepository>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     protocol_provider: Arc<dyn IssuanceProtocolProvider>,
@@ -40,7 +38,6 @@ pub struct CredentialService {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     config: Arc<core_config::CoreConfig>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-    base_url: Option<String>,
     client: Arc<dyn HttpClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -54,7 +51,6 @@ impl CredentialService {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        revocation_list_repository: Arc<dyn RevocationListRepository>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
@@ -63,7 +59,6 @@ impl CredentialService {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         config: Arc<core_config::CoreConfig>,
         lvvc_repository: Arc<dyn ValidityCredentialRepository>,
-        base_url: Option<String>,
         client: Arc<dyn HttpClient>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -74,7 +69,6 @@ impl CredentialService {
             credential_schema_repository,
             identifier_repository,
             interaction_repository,
-            revocation_list_repository,
             revocation_method_provider,
             formatter_provider,
             protocol_provider,
@@ -83,7 +77,6 @@ impl CredentialService {
             key_algorithm_provider,
             config,
             validity_credential_repository: lvvc_repository,
-            base_url,
             client,
             certificate_validator,
             blob_storage_provider,

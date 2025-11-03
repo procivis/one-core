@@ -358,7 +358,6 @@ pub(super) fn from_create_request(
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,
-        revocation_list: None,
         key: Some(key),
         redirect_uri: request.redirect_uri,
         role: CredentialRole::Issuer,

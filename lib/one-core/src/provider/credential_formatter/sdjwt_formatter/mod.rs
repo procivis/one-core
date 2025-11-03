@@ -397,7 +397,6 @@ impl CredentialFormatter for SDJWTFormatter {
             holder_identifier,
             schema: Some(schema),
             interaction: None,
-            revocation_list: None,
             key: None,
         })
     }

@@ -45,7 +45,6 @@ impl CredentialsDB {
                     key: Some(Default::default()),
                     issuer_identifier: Some(Default::default()),
                     issuer_certificate: Some(Default::default()),
-                    ..Default::default()
                 },
             )
             .await
@@ -161,7 +160,6 @@ impl CredentialsDB {
             holder_identifier: params.holder_identifier,
             schema: Some(credential_schema.to_owned()),
             interaction: params.interaction,
-            revocation_list: None,
             key: params.key,
             profile: params.profile,
             credential_blob_id: params.credential_blob_id,

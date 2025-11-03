@@ -3,6 +3,7 @@ use std::str::FromStr;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
+use one_core::model::revocation_list::{RevocationListPurpose, StatusListType};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 
@@ -35,6 +36,24 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
             TestingCredentialParams::default(),
         )
         .await;
+
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            RevocationListPurpose::Suspension,
+            None,
+            Some(StatusListType::BitstringStatusList),
+        )
+        .await;
+
+    context
+        .db
+        .revocation_lists
+        .create_credential_entry(revocation_list.id, credential.id, 0)
+        .await;
+
     // WHEN
     let resp = context.api.credentials.reactivate(&credential.id).await;
 

@@ -79,7 +79,6 @@ async fn insert_credential_to_database(
         issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
         interaction_id: Set(None),
-        revocation_list_id: Set(None),
         key_id: Set(Some(key_id)),
         profile: Set(None),
         credential_blob_id: Set(None),

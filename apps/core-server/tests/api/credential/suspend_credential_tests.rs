@@ -4,7 +4,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::revocation_list::RevocationListPurpose;
+use one_core::model::revocation_list::{RevocationListPurpose, StatusListType};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -42,11 +42,23 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
             TestingCredentialParams::default(),
         )
         .await;
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            RevocationListPurpose::Suspension,
+            None,
+            Some(StatusListType::BitstringStatusList),
+        )
+        .await;
+
     context
         .db
         .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
+        .create_credential_entry(revocation_list.id, credential.id, 0)
         .await;
+
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
     let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
     // WHEN

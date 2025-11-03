@@ -1,8 +1,5 @@
 use std::sync::Arc;
 
-use time::OffsetDateTime;
-use uuid::Uuid;
-
 use super::VCAPIService;
 use super::dto::{
     CredentialIssueOptions, CredentialIssueRequest, CredentialIssueResponse,
@@ -11,10 +8,8 @@ use super::dto::{
 };
 use super::validation::{validate_verifiable_credential, validate_verifiable_presentation};
 use crate::config::core_config::VerificationProtocolType;
-use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::key::KeyRelations;
-use crate::model::revocation_list::{RevocationListPurpose, StatusListType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::json_ld_context::ContextCache;
@@ -25,13 +20,11 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::provider::revocation::bitstring_status_list;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::vc_api::model::LdCredential;
-use crate::util::revocation_update::get_or_create_revocation_list_id;
 
 impl VCAPIService {
     #[allow(clippy::too_many_arguments)]
@@ -69,10 +62,10 @@ impl VCAPIService {
     ) -> Result<CredentialIssueResponse, ServiceError> {
         let CredentialIssueOptions {
             credential_format,
-            revocation_method,
+            // revocation_method,
             ..
         } = create_request.options;
-        let mut vcdm = create_request.credential;
+        let vcdm = create_request.credential;
         validate_verifiable_credential(&vcdm, &self.jsonld_ctx_cache).await?;
 
         let issuer_did_value = vcdm
@@ -91,7 +84,7 @@ impl VCAPIService {
             )
             .await?
             .ok_or(ServiceError::Other("Issuer DID not found".to_string()))?;
-        let issuer_identifier = self
+        let _issuer_identifier = self
             .identifier_repository
             .get_from_did_id(issuer_did.id, &Default::default())
             .await?
@@ -136,6 +129,8 @@ impl VCAPIService {
                 MissingProviderError::Formatter(credential_format.to_string()),
             ))?;
 
+        /* TODO: revocation disabled during refactoring
+
         if revocation_method.is_some() {
             let credential_status = &mut vcdm.credential_status;
             let revocation_list_id = get_or_create_revocation_list_id(
@@ -158,7 +153,6 @@ impl VCAPIService {
                     schema: None,
                     key: None,
                     interaction: None,
-                    revocation_list: None,
                     credential_blob_id: None,
                     wallet_unit_attestation_blob_id: None,
                 }],
@@ -183,6 +177,8 @@ impl VCAPIService {
 
             credential_status.push(status);
         }
+
+        */
 
         let credential_data = CredentialData {
             holder_identifier: None, // For VC API verification, we don't have a full Identifier object

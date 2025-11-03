@@ -3,7 +3,6 @@ use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::identifier::Identifier;
 use one_core::model::interaction::InteractionId;
 use one_core::model::list_filter::ListFilterCondition;
-use one_core::model::revocation_list::RevocationListId;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
@@ -129,7 +128,6 @@ impl From<credential::Model> for Credential {
             holder_identifier: None,
             schema: None,
             interaction: None,
-            revocation_list: None,
             key: None,
             credential_blob_id: credential.credential_blob_id,
             wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
@@ -145,7 +143,6 @@ pub(super) fn request_to_active_model(
     issuer_certificate_id: Option<CertificateId>,
     holder_identifier_id: Option<IdentifierId>,
     interaction_id: Option<InteractionId>,
-    revocation_list_id: Option<RevocationListId>,
     key_id: Option<KeyId>,
     credential_blob_id: Option<BlobId>,
     wallet_unit_attestation_blob_id: Option<BlobId>,
@@ -163,7 +160,6 @@ pub(super) fn request_to_active_model(
         issuer_certificate_id: Set(issuer_certificate_id),
         holder_identifier_id: Set(holder_identifier_id),
         interaction_id: Set(interaction_id.map(|id| id.to_string())),
-        revocation_list_id: Set(revocation_list_id.map(|id| id.to_string())),
         key_id: Set(key_id),
         role: Set(request.role.to_owned().into()),
         state: Set(request.state.into()),
@@ -248,7 +244,6 @@ pub(super) fn credential_list_model_to_repository_model(
         holder_identifier: None,
         schema: Some(schema),
         interaction: None,
-        revocation_list: None,
         key: None,
         credential_blob_id: credential.credential_blob_id,
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,

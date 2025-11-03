@@ -32,9 +32,6 @@ use one_core::repository::interaction_repository::{
     InteractionRepository, MockInteractionRepository,
 };
 use one_core::repository::key_repository::{KeyRepository, MockKeyRepository};
-use one_core::repository::revocation_list_repository::{
-    MockRevocationListRepository, RevocationListRepository,
-};
 use one_core::service::credential::dto::GetCredentialQueryDTO;
 use one_dto_mapper::convert_inner;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
@@ -230,7 +227,6 @@ struct Repositories {
     pub claim_repository: Arc<dyn ClaimRepository>,
     pub identifier_repository: Arc<dyn IdentifierRepository>,
     pub interaction_repository: Arc<dyn InteractionRepository>,
-    pub revocation_list_repository: Arc<dyn RevocationListRepository>,
     pub certificate_repository: Arc<dyn CertificateRepository>,
     pub key_repository: Arc<dyn KeyRepository>,
 }
@@ -242,7 +238,6 @@ impl Default for Repositories {
             claim_repository: Arc::from(MockClaimRepository::default()),
             identifier_repository: Arc::from(MockIdentifierRepository::default()),
             interaction_repository: Arc::from(MockInteractionRepository::default()),
-            revocation_list_repository: Arc::new(MockRevocationListRepository::default()),
             certificate_repository: Arc::new(MockCertificateRepository::default()),
             key_repository: Arc::new(MockKeyRepository::default()),
         }
@@ -260,7 +255,6 @@ fn credential_repository(
         claim_repository: repositories.claim_repository,
         identifier_repository: repositories.identifier_repository,
         interaction_repository: repositories.interaction_repository,
-        revocation_list_repository: repositories.revocation_list_repository,
         certificate_repository: repositories.certificate_repository,
         key_repository: repositories.key_repository,
     }
@@ -349,7 +343,6 @@ async fn test_create_credential_success() {
             holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
-            revocation_list: None,
             key: None,
             profile: None,
             credential_blob_id: None,
@@ -400,7 +393,6 @@ async fn test_create_credential_empty_claims() {
             holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
-            revocation_list: None,
             key: None,
             profile: None,
             credential_blob_id: None,
@@ -465,7 +457,6 @@ async fn test_create_credential_already_exists() {
             holder_identifier: None,
             schema: Some(credential_schema),
             interaction: None,
-            revocation_list: None,
             key: None,
             profile: None,
             credential_blob_id: None,
@@ -539,7 +530,6 @@ async fn test_delete_credential_failed_not_found() {
             holder_identifier: None,
             schema: None,
             interaction: None,
-            revocation_list: None,
             key: None,
             profile: None,
             credential_blob_id: None,
@@ -980,7 +970,6 @@ async fn test_get_credential_success() {
                     organisation: Some(OrganisationRelations::default()),
                 }),
                 interaction: Some(InteractionRelations::default()),
-                revocation_list: None, // TODO: Add check for this
                 ..Default::default()
             },
         )

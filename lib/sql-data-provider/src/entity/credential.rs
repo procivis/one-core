@@ -35,7 +35,6 @@ pub struct Model {
     pub holder_identifier_id: Option<IdentifierId>,
 
     pub interaction_id: Option<String>,
-    pub revocation_list_id: Option<String>,
 
     pub suspend_end_date: Option<OffsetDateTime>,
 
@@ -101,14 +100,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Key,
-    #[sea_orm(
-        belongs_to = "super::revocation_list::Entity",
-        from = "Column::RevocationListId",
-        to = "super::revocation_list::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    RevocationList,
 }
 
 impl Related<super::claim::Entity> for Entity {
@@ -132,12 +123,6 @@ impl Related<super::interaction::Entity> for Entity {
 impl Related<super::key::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Key.def()
-    }
-}
-
-impl Related<super::revocation_list::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::RevocationList.def()
     }
 }
 

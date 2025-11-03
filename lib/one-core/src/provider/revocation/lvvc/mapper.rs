@@ -3,7 +3,8 @@ use std::collections::HashMap;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
-use super::dto::LvvcStatus;
+use super::dto::{Lvvc, LvvcStatus};
+use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::provider::credential_formatter::model::{
     CredentialClaim, PublishedClaim, PublishedClaimValue,
 };
@@ -12,7 +13,7 @@ use crate::provider::revocation::error::RevocationError;
 const SUSPEND_END_DATE_FORMAT: &[time::format_description::FormatItem<'static>] =
     time::macros::format_description!("[year]-[month]-[day]T[hour]:[minute]:[second]Z");
 
-pub fn status_from_lvvc_claims(
+pub(crate) fn status_from_lvvc_claims(
     lvvc_claims: &HashMap<String, CredentialClaim>,
 ) -> Result<LvvcStatus, RevocationError> {
     let status = lvvc_claims
@@ -86,6 +87,18 @@ fn suspend_end_date_claim(
         datatype: Some("DATE".to_owned()),
         array_item,
     })
+}
+
+impl From<Lvvc> for ValidityCredential {
+    fn from(value: Lvvc) -> Self {
+        Self {
+            id: value.id,
+            created_date: value.created_date,
+            credential: value.credential,
+            linked_credential_id: value.linked_credential_id,
+            r#type: ValidityCredentialType::Lvvc,
+        }
+    }
 }
 
 #[cfg(test)]

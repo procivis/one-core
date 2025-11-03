@@ -627,6 +627,7 @@ pub async fn initialize_core(
                             ),
                             formatter_provider.clone(),
                             certificate_validator.clone(),
+                            data_repository.get_revocation_list_repository(),
                             client.clone(),
                             Some(params),
                         )) as _
@@ -662,6 +663,7 @@ pub async fn initialize_core(
                                 ),
                                 formatter_provider.clone(),
                                 certificate_validator.clone(),
+                                data_repository.get_revocation_list_repository(),
                                 client.clone(),
                                 Some(params),
                             )

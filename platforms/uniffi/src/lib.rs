@@ -760,6 +760,7 @@ async fn initialize(
                                     ),
                                     formatter_provider.clone(),
                                     certificate_validator.clone(),
+                                    data_repository.get_revocation_list_repository(),
                                     client.clone(),
                                     None,
                                 )) as _
@@ -790,6 +791,7 @@ async fn initialize(
                                     ),
                                     formatter_provider.clone(),
                                     certificate_validator.clone(),
+                                    data_repository.get_revocation_list_repository(),
                                     client.clone(),
                                     None,
                                 )

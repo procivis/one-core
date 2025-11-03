@@ -48,7 +48,6 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
-use crate::util::revocation_update::{generate_credential_additional_data, process_update};
 use crate::validator::{
     throw_if_credential_state_eq, throw_if_org_not_matching_session,
     throw_if_org_relation_not_matching_session, throw_if_state_not_in,
@@ -699,29 +698,9 @@ impl CredentialService {
                 .into(),
             );
         }
-        let update = revocation_method
-            .mark_credential_as(
-                &credential,
-                revocation_state.to_owned(),
-                generate_credential_additional_data(
-                    &credential,
-                    &*self.credential_repository,
-                    &*self.revocation_list_repository,
-                    &*revocation_method,
-                    &*self.formatter_provider,
-                    &*self.key_provider,
-                    &self.key_algorithm_provider,
-                    &self.base_url,
-                )
-                .await?,
-            )
+        revocation_method
+            .mark_credential_as(&credential, revocation_state.to_owned())
             .await?;
-        process_update(
-            update,
-            &*self.validity_credential_repository,
-            &*self.revocation_list_repository,
-        )
-        .await?;
 
         let suspend_end_date =
             if let CredentialRevocationState::Suspended { suspend_end_date } = &revocation_state {

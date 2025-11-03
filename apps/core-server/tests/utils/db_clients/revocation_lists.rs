@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
-    StatusListType,
+    RevocationList, RevocationListId, RevocationListPurpose, RevocationListRelations,
+    StatusListCredentialFormat, StatusListType,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::IdentifierId;
+use shared_types::{CredentialId, IdentifierId};
 use sql_data_provider::test_utilities::get_dummy_date;
 
 pub struct RevocationListsDB {
@@ -58,6 +58,18 @@ impl RevocationListsDB {
                 status_list_type,
                 relations,
             )
+            .await
+            .unwrap()
+    }
+
+    pub async fn create_credential_entry(
+        &self,
+        list_id: RevocationListId,
+        credential_id: CredentialId,
+        index_on_status_list: usize,
+    ) {
+        self.repository
+            .create_credential_entry(list_id, credential_id, index_on_status_list)
             .await
             .unwrap()
     }

@@ -18,6 +18,7 @@ pub mod mapper;
 pub mod model;
 mod validation;
 
+#[expect(dead_code)]
 pub struct VCAPIService {
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,

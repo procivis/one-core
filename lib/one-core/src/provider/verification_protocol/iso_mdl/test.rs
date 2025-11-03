@@ -447,7 +447,6 @@ async fn test_get_presentation_definition_ok() {
                 holder_identifier: None,
                 key: None,
                 interaction: None,
-                revocation_list: None,
                 profile: None,
                 credential_blob_id: None,
                 wallet_unit_attestation_blob_id: None,

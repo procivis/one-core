@@ -13,6 +13,7 @@ use crate::provider::key_storage::error::KeyStorageProviderError;
 use crate::provider::remote_entity_storage::RemoteEntityStorageError;
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::token_status_list::util::TokenError;
+use crate::repository::error::DataLayerError;
 
 #[derive(Debug, Error)]
 pub enum RevocationError {
@@ -54,4 +55,6 @@ pub enum RevocationError {
     HttpClientError(#[from] http_client::Error),
     #[error("JSON error: `{0}`")]
     JsonError(#[from] serde_json::Error),
+    #[error("Data layer error: `{0}`")]
+    DataLayerError(#[from] DataLayerError),
 }

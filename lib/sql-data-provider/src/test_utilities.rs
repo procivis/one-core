@@ -6,6 +6,7 @@ use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
 use one_core::model::organisation::Organisation;
+use one_core::model::revocation_list::RevocationListId;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
@@ -24,10 +25,12 @@ use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::interaction::InteractionType;
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
+use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
     identifier, interaction, key, key_did, organisation, proof, proof_claim,
-    proof_input_claim_schema, proof_input_schema, proof_schema,
+    proof_input_claim_schema, proof_input_schema, proof_schema, revocation_list,
+    revocation_list_entry,
 };
 use crate::{DataLayer, db_conn};
 
@@ -72,7 +75,6 @@ pub async fn insert_credential(
         issuer_certificate_id: Set(None),
         holder_identifier_id: Set(None),
         interaction_id: Set(None),
-        revocation_list_id: Set(None),
         key_id: Set(None),
         state: Set(state.into()),
         suspend_end_date: Set(suspend_end_date),
@@ -578,6 +580,54 @@ pub async fn insert_history(
     .await?;
 
     Ok(model.id)
+}
+
+pub async fn insert_revocation_list(
+    database: &DatabaseConnection,
+    purpose: RevocationListPurpose,
+    format: RevocationListFormat,
+    issuer_identifier_id: IdentifierId,
+    r#type: String,
+) -> Result<RevocationListId, DbErr> {
+    let id = Uuid::new_v4();
+    let now = OffsetDateTime::now_utc();
+
+    let _model = revocation_list::ActiveModel {
+        id: Set(id.into()),
+        created_date: Set(now),
+        last_modified: Set(now),
+        credentials: Set(vec![]),
+        purpose: Set(purpose),
+        format: Set(format),
+        r#type: Set(r#type),
+        issuer_identifier_id: Set(issuer_identifier_id),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(id)
+}
+
+pub async fn insert_revocation_list_entry(
+    database: &DatabaseConnection,
+    list_id: RevocationListId,
+    index: usize,
+    credential_id: Option<CredentialId>,
+) -> Result<Uuid, DbErr> {
+    let id = Uuid::new_v4();
+    let now = OffsetDateTime::now_utc();
+
+    let _model = revocation_list_entry::ActiveModel {
+        id: Set(id.into()),
+        created_date: Set(now),
+        revocation_list_id: Set(list_id.to_string()),
+        index: Set(index as _),
+        credential_id: Set(credential_id),
+    }
+    .insert(database)
+    .await?;
+
+    Ok(id)
 }
 
 pub fn assert_eq_unordered<T: Hash + Eq + Debug, K: Into<T>>(

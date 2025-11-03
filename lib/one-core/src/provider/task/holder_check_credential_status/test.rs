@@ -41,7 +41,6 @@ use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::revocation_list_repository::MockRevocationListRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::credential::CredentialService;
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
@@ -184,7 +183,6 @@ struct Repositories {
     pub credential_schema_repository: Arc<MockCredentialSchemaRepository>,
     pub identifier_repository: Arc<MockIdentifierRepository>,
     pub interaction_repository: Arc<MockInteractionRepository>,
-    pub revocation_list_repository: Arc<MockRevocationListRepository>,
     pub revocation_method_provider: Arc<MockRevocationMethodProvider>,
     pub formatter_provider: Arc<MockCredentialFormatterProvider>,
     pub protocol_provider: Arc<MockIssuanceProtocolProvider>,
@@ -204,7 +202,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         repositories.credential_schema_repository,
         repositories.identifier_repository,
         repositories.interaction_repository,
-        repositories.revocation_list_repository,
         repositories.revocation_method_provider,
         repositories.formatter_provider,
         repositories.protocol_provider,
@@ -213,7 +210,6 @@ fn setup_service(repositories: Repositories) -> CredentialService {
         repositories.key_algorithm_provider,
         repositories.config,
         repositories.lvvc_repository,
-        None,
         Arc::new(ReqwestClient::default()),
         repositories.certificate_validator,
         repositories.blob_storage_provider,
@@ -324,7 +320,6 @@ fn generic_credential() -> Credential {
             allow_suspension: true,
         }),
         interaction: None,
-        revocation_list: None,
         key: None,
         profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),

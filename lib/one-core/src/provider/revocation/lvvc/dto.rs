@@ -1,10 +1,11 @@
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
+use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(PartialEq, Debug, strum::Display)]
-pub enum LvvcStatus {
+pub(crate) enum LvvcStatus {
     #[strum(serialize = "ACCEPTED")]
     Accepted,
     #[strum(serialize = "REVOKED")]
@@ -23,9 +24,9 @@ pub struct IssuerResponseDTO {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Into)]
 #[into(crate::model::validity_credential::Lvvc)]
 #[serde(rename_all = "camelCase")]
-pub struct Lvvc {
+pub(crate) struct Lvvc {
     pub id: Uuid,
     pub created_date: OffsetDateTime,
     pub credential: Vec<u8>,
-    pub linked_credential_id: Uuid,
+    pub linked_credential_id: CredentialId,
 }

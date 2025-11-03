@@ -38,7 +38,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::service::storage_proxy::StorageAccess;
@@ -78,7 +77,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-    revocation_list_repository: Arc<dyn RevocationListRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
@@ -116,7 +114,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     client.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
-                    revocation_list_repository.clone(),
                     wallet_unit_attestation_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
@@ -154,7 +151,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     client.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
-                    revocation_list_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
@@ -188,7 +184,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     client.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
-                    revocation_list_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),

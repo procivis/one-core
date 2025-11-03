@@ -2,8 +2,8 @@ use crate::model::credential::Credential;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
-    CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities, RevocationUpdate,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
+    RevocationMethodCapabilities,
 };
 
 pub mod bitstring_status_list;
@@ -31,8 +31,7 @@ pub trait RevocationMethod: Send + Sync {
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-        additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError>;
+    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError>;
 
     /// Change a credential's status to valid, revoked, or suspended.
     ///
@@ -41,8 +40,7 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         credential: &Credential,
         new_state: CredentialRevocationState,
-        additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<RevocationUpdate, RevocationError>;
+    ) -> Result<(), RevocationError>;
 
     /// Checks the revocation status of a credential.
     async fn check_credential_revocation_status(

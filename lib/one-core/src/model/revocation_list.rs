@@ -1,8 +1,10 @@
 use serde::{Deserialize, Serialize};
+use shared_types::CredentialId;
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::credential::CredentialStateEnum;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 
 pub type RevocationListId = Uuid;
@@ -26,13 +28,13 @@ pub struct RevocationListRelations {
     pub issuer_identifier: Option<IdentifierRelations>,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display, Serialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize)]
 pub enum RevocationListPurpose {
     Revocation,
     Suspension,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Display, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize, Deserialize)]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StatusListCredentialFormat {
@@ -46,4 +48,11 @@ pub enum StatusListCredentialFormat {
 pub enum StatusListType {
     BitstringStatusList,
     TokenStatusList,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct RevocationListCredentialEntry {
+    pub credential_id: CredentialId,
+    pub state: CredentialStateEnum,
+    pub index: usize,
 }

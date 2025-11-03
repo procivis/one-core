@@ -1886,7 +1886,6 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             nonce_id: None,
             interaction_type: InteractionType::Verification,
         }),
-        revocation_list: None,
         key: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
         wallet_unit_attestation_blob_id: None,

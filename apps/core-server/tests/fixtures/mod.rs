@@ -703,7 +703,6 @@ pub async fn create_credential(
         holder_identifier: params.holder_identifier,
         schema: Some(credential_schema.to_owned()),
         interaction: params.interaction,
-        revocation_list: None,
         key: params.key,
         profile: None,
         credential_blob_id: params.credential_blob_id,

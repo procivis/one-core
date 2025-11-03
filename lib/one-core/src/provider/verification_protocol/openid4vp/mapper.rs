@@ -540,7 +540,6 @@ pub(crate) fn extracted_credential_to_model(
             key: None,
             role: CredentialRole::Verifier,
             interaction: None,
-            revocation_list: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
         },
@@ -696,7 +695,6 @@ pub(crate) async fn credential_from_proved(
             .schema
             .map(|schema| from_provider_schema(schema, organisation.to_owned())),
         interaction: None,
-        revocation_list: None,
         key: proved_credential.credential.key,
         suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
         profile: proved_credential.credential.profile,

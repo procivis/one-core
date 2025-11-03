@@ -43,10 +43,9 @@ use super::{
     serialize_interaction_data,
 };
 use crate::config::core_config::{
-    CoreConfig, DidType as ConfigDidType, FormatType, KeyAlgorithmType, RevocationType,
+    CoreConfig, DidType as ConfigDidType, FormatType, KeyAlgorithmType,
 };
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
-use crate::mapper::params::convert_params;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::claim::ClaimRelations;
@@ -61,9 +60,6 @@ use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState,
 use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::model::revocation_list::{
-    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
-};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -81,11 +77,8 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::model::CredentialAdditionalData;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::provider::revocation::{RevocationMethod, token_status_list};
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -95,7 +88,6 @@ use crate::service::oid4vci_final1_0::dto::{
 };
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
-use crate::util::revocation_update::{get_or_create_revocation_list_id, process_update};
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 use crate::validator::validate_issuance_time;
 
@@ -117,7 +109,6 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
-    revocation_list_repository: Arc<dyn RevocationListRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -137,7 +128,6 @@ impl OpenID4VCIFinal1_0 {
         client: Arc<dyn HttpClient>,
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-        revocation_list_repository: Arc<dyn RevocationListRepository>,
         wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -155,7 +145,6 @@ impl OpenID4VCIFinal1_0 {
             client,
             credential_repository,
             validity_credential_repository,
-            revocation_list_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
@@ -218,143 +207,6 @@ impl OpenID4VCIFinal1_0 {
             .get::<mdoc_formatter::Params>(format)
             .map(|p| p.mso_minimum_refresh_time)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
-    }
-
-    async fn prepare_issuer_revocation_data(
-        &self,
-        credential: &mut Credential,
-        credential_schema: &CredentialSchema,
-        revocation_method: &Arc<dyn RevocationMethod>,
-    ) -> Result<Option<CredentialAdditionalData>, IssuanceProtocolError> {
-        let revocation_type = self
-            .config
-            .revocation
-            .get_fields(&credential_schema.revocation_method)
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            .r#type;
-
-        match revocation_type {
-            RevocationType::None
-            | RevocationType::MdocMsoUpdateSuspension
-            | RevocationType::Lvvc => return Ok(None),
-            RevocationType::BitstringStatusList | RevocationType::TokenStatusList => {
-                // continue processing
-            }
-        };
-
-        let issuer_identifier =
-            credential
-                .issuer_identifier
-                .as_ref()
-                .cloned()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "issuer_identifier is None".to_string(),
-                ))?;
-
-        let credentials_by_issuer_identifier = self
-            .credential_repository
-            .get_credentials_by_issuer_identifier_id(
-                issuer_identifier.id,
-                &CredentialRelations::default(),
-            )
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        let credential_data = if revocation_type == RevocationType::BitstringStatusList {
-            let crate::provider::revocation::bitstring_status_list::Params { format } =
-                convert_params(
-                    revocation_method
-                        .get_params()
-                        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-                )
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-            let status_list_format = if format == StatusListCredentialFormat::JsonLdClassic
-                && credential_schema.format == "JSON_LD_BBSPLUS"
-            {
-                "JSON_LD_BBSPLUS".to_string()
-            } else {
-                format.to_string()
-            };
-
-            let formatter = self
-                .formatter_provider
-                .get_credential_formatter(&status_list_format)
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "formatter not found: {status_list_format}"
-                )))?;
-
-            Some(CredentialAdditionalData {
-                revocation_list_id: get_or_create_revocation_list_id(
-                    &credentials_by_issuer_identifier,
-                    issuer_identifier.clone(),
-                    RevocationListPurpose::Revocation,
-                    &*self.revocation_list_repository,
-                    &*self.key_provider,
-                    &self.key_algorithm_provider,
-                    &self.base_url,
-                    &*formatter,
-                    &StatusListType::BitstringStatusList,
-                    &format,
-                )
-                .await
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-                suspension_list_id: Some(
-                    get_or_create_revocation_list_id(
-                        &credentials_by_issuer_identifier,
-                        issuer_identifier,
-                        RevocationListPurpose::Suspension,
-                        &*self.revocation_list_repository,
-                        &*self.key_provider,
-                        &self.key_algorithm_provider,
-                        &self.base_url,
-                        &*formatter,
-                        &StatusListType::BitstringStatusList,
-                        &format,
-                    )
-                    .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-                ),
-                credentials_by_issuer_identifier,
-            })
-        } else if revocation_type == RevocationType::TokenStatusList {
-            let token_status_list::Params { format } = convert_params(
-                revocation_method
-                    .get_params()
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-            )
-            .unwrap_or_default();
-
-            let formatter = self
-                .formatter_provider
-                .get_credential_formatter(&format.to_string())
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "formatter not found: {format}"
-                )))?;
-
-            Some(CredentialAdditionalData {
-                revocation_list_id: get_or_create_revocation_list_id(
-                    &credentials_by_issuer_identifier,
-                    issuer_identifier,
-                    RevocationListPurpose::Revocation,
-                    &*self.revocation_list_repository,
-                    &*self.key_provider,
-                    &self.key_algorithm_provider,
-                    &self.base_url,
-                    &*formatter,
-                    &StatusListType::TokenStatusList,
-                    &format,
-                )
-                .await
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-                suspension_list_id: None,
-                credentials_by_issuer_identifier,
-            })
-        } else {
-            None
-        };
-
-        Ok(credential_data)
     }
 
     fn jwk_key_id_from_identifier(
@@ -1327,24 +1179,10 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 credential_schema.revocation_method
             )))?;
 
-        let credential_additional_data = self
-            .prepare_issuer_revocation_data(&mut credential, &credential_schema, &revocation_method)
-            .await?;
-
-        let (update, status) = revocation_method
-            .add_issued_credential(&credential, credential_additional_data)
+        let status = revocation_method
+            .add_issued_credential(&credential)
             .await
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        if let Some(update) = update {
-            process_update(
-                update,
-                &*self.validity_credential_repository,
-                &*self.revocation_list_repository,
-            )
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-        }
 
         let credential_status = status
             .into_iter()

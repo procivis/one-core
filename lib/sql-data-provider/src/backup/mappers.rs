@@ -78,7 +78,6 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 allow_suspension: value.credential_schema_allow_suspension,
             }),
             interaction: None,
-            revocation_list: None,
             key: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,

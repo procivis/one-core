@@ -49,7 +49,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum RevocationList {
+pub enum RevocationList {
     Table,
     IssuerIdentifierId,
 }

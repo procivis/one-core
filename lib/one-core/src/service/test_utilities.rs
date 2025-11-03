@@ -355,7 +355,6 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
         }),
-        revocation_list: None,
         key: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,

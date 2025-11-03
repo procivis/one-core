@@ -35,9 +35,8 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::dto::Lvvc;
 use crate::provider::revocation::model::{
-    CredentialAdditionalData, CredentialDataByRole, CredentialRevocationInfo,
-    CredentialRevocationState, JsonLdContext, Operation, RevocationMethodCapabilities,
-    RevocationUpdate, VerifierCredentialData,
+    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
+    Operation, RevocationMethodCapabilities, VerifierCredentialData,
 };
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
@@ -127,23 +126,18 @@ impl LvvcProvider {
         &self,
         credential: &Credential,
         status: LvvcStatus,
-    ) -> Result<RevocationUpdate, RevocationError> {
-        Ok(RevocationUpdate {
-            status_type: self.get_status_type(),
-            data: serde_json::to_vec(
-                &create_lvvc_with_status(
-                    credential,
-                    status,
-                    &self.core_base_url,
-                    self.params.credential_expiry,
-                    self.formatter(credential)?,
-                    self.key_provider.clone(),
-                    self.key_algorithm_provider.clone(),
-                    self.get_json_ld_context()?,
-                )
-                .await?,
-            )?,
-        })
+    ) -> Result<Lvvc, RevocationError> {
+        create_lvvc_with_status(
+            credential,
+            status,
+            &self.core_base_url,
+            self.params.credential_expiry,
+            self.formatter(credential)?,
+            self.key_provider.clone(),
+            self.key_algorithm_provider.clone(),
+            self.get_json_ld_context()?,
+        )
+        .await
     }
 
     async fn check_revocation_status_as_holder(
@@ -260,41 +254,37 @@ impl RevocationMethod for LvvcProvider {
     async fn add_issued_credential(
         &self,
         credential: &Credential,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
+    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
         let base_url = self.get_base_url()?;
 
-        Ok((
-            Some(
-                self.create_lvvc_with_status(credential, LvvcStatus::Accepted)
-                    .await?,
-            ),
-            vec![CredentialRevocationInfo {
-                credential_status: CredentialStatus {
-                    id: Some(
-                        format!("{base_url}/ssi/revocation/v1/lvvc/{}", credential.id)
-                            .parse()
-                            .map_err(|e| {
-                                RevocationError::ValidationError(format!(
-                                    "Failed to parse URL: `{e}`"
-                                ))
-                            })?,
-                    ),
-                    r#type: self.get_status_type(),
-                    status_purpose: None,
-                    additional_fields: HashMap::new(),
-                },
-            }],
-        ))
+        let id = format!("{base_url}/ssi/revocation/v1/lvvc/{}", credential.id)
+            .parse()
+            .map_err(|e| RevocationError::ValidationError(format!("Failed to parse URL: `{e}`")))?;
+
+        let lvvc = self
+            .create_lvvc_with_status(credential, LvvcStatus::Accepted)
+            .await?;
+
+        self.validity_credential_repository
+            .insert(lvvc.into())
+            .await?;
+
+        Ok(vec![CredentialRevocationInfo {
+            credential_status: CredentialStatus {
+                id: Some(id),
+                r#type: self.get_status_type(),
+                status_purpose: None,
+                additional_fields: HashMap::new(),
+            },
+        }])
     }
 
     async fn mark_credential_as(
         &self,
         credential: &Credential,
         new_state: CredentialRevocationState,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<RevocationUpdate, RevocationError> {
-        match new_state {
+    ) -> Result<(), RevocationError> {
+        let lvvc = match new_state {
             CredentialRevocationState::Revoked => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Revoked)
                     .await
@@ -307,7 +297,13 @@ impl RevocationMethod for LvvcProvider {
                 self.create_lvvc_with_status(credential, LvvcStatus::Suspended { suspend_end_date })
                     .await
             }
-        }
+        }?;
+
+        self.validity_credential_repository
+            .insert(lvvc.into())
+            .await?;
+
+        Ok(())
     }
 
     async fn check_credential_revocation_status(
@@ -362,7 +358,7 @@ impl RevocationMethod for LvvcProvider {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub async fn create_lvvc_with_status(
+pub(crate) async fn create_lvvc_with_status(
     credential: &Credential,
     status: LvvcStatus,
     core_base_url: &Option<String>,
@@ -460,7 +456,7 @@ pub async fn create_lvvc_with_status(
         id: lvvc_credential_id,
         created_date: OffsetDateTime::now_utc(),
         credential: formatted_credential.into_bytes(),
-        linked_credential_id: credential.id.into(),
+        linked_credential_id: credential.id,
     };
 
     Ok(lvvc_credential)

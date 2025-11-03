@@ -542,7 +542,6 @@ pub(crate) fn extracted_credential_to_model(
         schema: Some(credential_schema),
         redirect_uri: None,
         interaction: None,
-        revocation_list: None,
         key: None,
         role: CredentialRole::Verifier,
         credential_blob_id: None,

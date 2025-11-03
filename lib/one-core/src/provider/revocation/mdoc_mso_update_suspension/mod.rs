@@ -7,8 +7,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierD
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialAdditionalData, CredentialDataByRole, CredentialRevocationState, JsonLdContext,
-    RevocationMethodCapabilities, RevocationUpdate,
+    CredentialDataByRole, CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities,
 };
 
 pub struct MdocMsoUpdateSuspensionRevocation {}
@@ -22,21 +21,22 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     async fn add_issued_credential(
         &self,
         _credential: &Credential,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<(Option<RevocationUpdate>, Vec<CredentialRevocationInfo>), RevocationError> {
-        Ok((None, vec![]))
+    ) -> Result<Vec<CredentialRevocationInfo>, RevocationError> {
+        Ok(vec![])
     }
 
     async fn mark_credential_as(
         &self,
         _credential: &Credential,
-        _new_state: CredentialRevocationState,
-        _additional_data: Option<CredentialAdditionalData>,
-    ) -> Result<RevocationUpdate, RevocationError> {
-        Ok(RevocationUpdate {
-            status_type: self.get_status_type(),
-            data: vec![],
-        })
+        new_state: CredentialRevocationState,
+    ) -> Result<(), RevocationError> {
+        if new_state == CredentialRevocationState::Revoked {
+            return Err(RevocationError::OperationNotSupported(
+                "MDOC_MSO_UPDATE_SUSPENSION: revocation not supported".to_string(),
+            ));
+        }
+
+        Ok(())
     }
 
     async fn check_credential_revocation_status(

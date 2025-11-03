@@ -34,7 +34,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
 
@@ -76,7 +75,6 @@ impl OpenID4VCI13Swiyu {
         client: Arc<dyn HttpClient>,
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-        revocation_list_repository: Arc<dyn RevocationListRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -94,7 +92,6 @@ impl OpenID4VCI13Swiyu {
                 client,
                 credential_repository,
                 validity_credential_repository,
-                revocation_list_repository,
                 formatter_provider,
                 revocation_provider,
                 did_method_provider,
