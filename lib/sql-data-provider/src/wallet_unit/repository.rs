@@ -1,5 +1,6 @@
 use autometrics::autometrics;
 use futures::FutureExt;
+use futures::future::join_all;
 use one_core::model::wallet_unit::{
     GetWalletUnitList, UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery,
     WalletUnitRelations,
@@ -83,7 +84,7 @@ impl WalletUnitRepository for WalletUnitProvider {
         if let Some(attested_key_relations) = &relations.attested_keys {
             let attested_keys = self
                 .wallet_unit_attested_key_repository
-                .get_by_wallet_unit_id(wallet_unit.id, attested_key_relations)
+                .get_by_wallet_unit_id(&wallet_unit.id, attested_key_relations)
                 .await?;
             wallet_unit.attested_keys = Some(attested_keys);
         }
@@ -167,22 +168,13 @@ impl WalletUnitRepository for WalletUnitProvider {
                     if let Some(attested_keys) = request.attested_keys {
                         // Currently deletion is not supported. New entries are inserted, or updated if already
                         // existing.
-                        for key in attested_keys {
-                            let result = self
-                                .wallet_unit_attested_key_repository
-                                .create_attested_key(key.clone())
-                                .await;
-                            if let Err(err) = result {
-                                match err {
-                                    DataLayerError::AlreadyExists => {
-                                        self.wallet_unit_attested_key_repository
-                                            .update_attested_key(key)
-                                            .await?
-                                    }
-                                    err => return Err(err.into()),
-                                }
-                            }
-                        }
+                        join_all(attested_keys.into_iter().map(|key| {
+                            self.wallet_unit_attested_key_repository
+                                .upsert_attested_key(key.into())
+                        }))
+                        .await
+                        .into_iter()
+                        .collect::<Result<Vec<_>, _>>()?;
                     }
                     Ok(())
                 }

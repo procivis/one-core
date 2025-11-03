@@ -1,7 +1,10 @@
 use one_core::model::revocation_list::RevocationList;
-use one_core::model::wallet_unit_attested_key::WalletUnitAttestedKey;
+use one_core::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyUpsertRequest,
+};
 use one_core::repository::error::DataLayerError;
 use sea_orm::Set;
+use time::OffsetDateTime;
 
 use crate::entity::wallet_unit_attested_key::{ActiveModel, Model};
 
@@ -53,6 +56,25 @@ impl TryFrom<WalletUnitAttestedKey> for ActiveModel {
             id: Set(value.id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
+            expiration_date: Set(value.expiration_date),
+            public_key_jwk: Set(serde_json::to_string(&value.public_key_jwk)
+                .map_err(|_| DataLayerError::MappingError)?),
+            wallet_unit_id: Set(value.wallet_unit_id),
+            revocation_list_id: Set(value.revocation_list.map(|list| list.id)),
+            revocation_list_index: Set(value.revocation_list_index),
+        })
+    }
+}
+
+impl TryFrom<WalletUnitAttestedKeyUpsertRequest> for ActiveModel {
+    type Error = DataLayerError;
+
+    fn try_from(value: WalletUnitAttestedKeyUpsertRequest) -> Result<Self, DataLayerError> {
+        let now = OffsetDateTime::now_utc();
+        Ok(Self {
+            id: Set(value.id),
+            created_date: Set(now),
+            last_modified: Set(now),
             expiration_date: Set(value.expiration_date),
             public_key_jwk: Set(serde_json::to_string(&value.public_key_jwk)
                 .map_err(|_| DataLayerError::MappingError)?),

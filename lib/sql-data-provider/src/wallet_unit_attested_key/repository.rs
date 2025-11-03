@@ -2,14 +2,19 @@ use std::collections::HashSet;
 
 use async_trait::async_trait;
 use one_core::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyUpsertRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, Set, Unchanged};
+use sea_orm::sea_query::OnConflict;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QueryTrait, Set,
+    Unchanged,
+};
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+use wallet_unit_attested_key::Column;
 
 use crate::entity::wallet_unit_attested_key;
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -40,6 +45,31 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
             .await
             .map_err(to_update_data_layer_error)?;
         Ok(())
+    }
+
+    async fn upsert_attested_key(
+        &self,
+        request: WalletUnitAttestedKeyUpsertRequest,
+    ) -> Result<WalletUnitAttestedKeyId, DataLayerError> {
+        let id = request.id;
+        let model = wallet_unit_attested_key::ActiveModel::try_from(request)?;
+        let stmt = wallet_unit_attested_key::Entity::insert(model)
+            .on_conflict(
+                OnConflict::column(Column::Id)
+                    .update_column(Column::LastModified)
+                    .update_column(Column::ExpirationDate)
+                    .update_column(Column::PublicKeyJwk)
+                    .update_column(Column::RevocationListId)
+                    .update_column(Column::RevocationListIndex)
+                    .update_column(Column::WalletUnitId)
+                    .to_owned(),
+            )
+            .build(self.db.get_database_backend());
+        self.db
+            .execute(stmt)
+            .await
+            .map_err(to_update_data_layer_error)?;
+        Ok(id)
     }
 
     async fn get_attested_key(
@@ -75,7 +105,7 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
 
     async fn get_by_wallet_unit_id(
         &self,
-        id: WalletUnitId,
+        id: &WalletUnitId,
         relations: &WalletUnitAttestedKeyRelations,
     ) -> Result<Vec<WalletUnitAttestedKey>, DataLayerError> {
         let models = wallet_unit_attested_key::Entity::find()

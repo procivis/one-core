@@ -1,3 +1,4 @@
+use one_dto_mapper::From;
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
 
@@ -21,4 +22,17 @@ pub struct WalletUnitAttestedKey {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct WalletUnitAttestedKeyRelations {
     pub revocation_list: Option<RevocationListRelations>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, From)]
+#[from(WalletUnitAttestedKey)]
+pub struct WalletUnitAttestedKeyUpsertRequest {
+    pub id: WalletUnitAttestedKeyId,
+    pub wallet_unit_id: WalletUnitId,
+    pub expiration_date: OffsetDateTime,
+    pub public_key_jwk: PublicKeyJwk,
+    pub revocation_list_index: Option<i64>,
+
+    // Relations:
+    pub revocation_list: Option<RevocationList>,
 }

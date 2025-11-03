@@ -1,5 +1,7 @@
 mod mapper;
 mod repository;
+#[cfg(test)]
+mod test;
 
 use std::sync::Arc;
 

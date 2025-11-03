@@ -1,4 +1,3 @@
-use one_core::model::key::PublicKeyJwk;
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::model::organisation::Organisation;
@@ -7,18 +6,19 @@ use one_core::model::wallet_unit::{
     WalletUnitFilterValue, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
 };
-use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use one_core::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
+};
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
-use sea_orm::{ActiveModelTrait, Set};
 use shared_types::{OrganisationId, WalletUnitId};
 use similar_asserts::assert_eq;
+use time::Duration;
 use uuid::Uuid;
 
 use super::WalletUnitProvider;
-use crate::entity::wallet_unit::{self};
 use crate::test_utilities::{
-    get_dummy_date, insert_organisation_to_database, setup_test_data_layer_and_connection,
+    get_dummy_date, insert_organisation_to_database, insert_wallet_unit_to_database, random_jwk,
+    setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -53,45 +53,6 @@ async fn setup(n: usize) -> TestSetup {
     }
 }
 
-async fn insert_wallet_unit_to_database(
-    db: &sea_orm::DatabaseConnection,
-    organisation_id: OrganisationId,
-    name: String,
-) -> WalletUnitId {
-    let id: WalletUnitId = Uuid::new_v4().into();
-    let now = get_dummy_date();
-
-    wallet_unit::ActiveModel {
-        id: Set(id),
-        created_date: Set(now),
-        last_modified: Set(now),
-        last_issuance: Set(Some(now)),
-        name: Set(name),
-        os: Set(wallet_unit::WalletUnitOs::Android),
-        status: Set(wallet_unit::WalletUnitStatus::Active),
-        wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
-        wallet_provider_name: Set("Test Provider Name".to_string()),
-        // Generate unique public key to avoid constraint violations
-        authentication_key_jwk: Set(Some(random_jwk_string())),
-        nonce: Set(None),
-        organisation_id: Set(organisation_id),
-    }
-    .insert(db)
-    .await
-    .unwrap();
-
-    id
-}
-
-fn random_jwk_string() -> String {
-    serde_json::to_string(&random_jwk()).unwrap()
-}
-
-fn random_jwk() -> PublicKeyJwk {
-    let unique_suffix = Ecdsa.generate_key().unwrap();
-    unique_suffix.key.public_key_as_jwk().unwrap()
-}
-
 fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
     let now = get_dummy_date();
     WalletUnit {
@@ -116,6 +77,20 @@ fn dummy_wallet_unit(id: WalletUnitId, org: OrganisationId) -> WalletUnit {
             wallet_provider_issuer: None,
         }),
         attested_keys: None,
+    }
+}
+
+fn dummy_attested_key(wallet_unit_id: WalletUnitId) -> WalletUnitAttestedKey {
+    let now = get_dummy_date();
+    WalletUnitAttestedKey {
+        id: Uuid::new_v4().into(),
+        wallet_unit_id,
+        created_date: now,
+        last_modified: now,
+        expiration_date: now + Duration::days(30),
+        public_key_jwk: random_jwk(),
+        revocation_list_index: Some(now.unix_timestamp()), // "random" index
+        revocation_list: None,
     }
 }
 
@@ -876,6 +851,76 @@ async fn test_update_and_list_wallet_units() {
 
     // Verify the revoked one is not in the list
     assert!(!result.values.iter().any(|wu| wu.id == wallet_unit_ids[1]));
+}
+
+#[tokio::test]
+async fn test_update_wallet_unit_attested_key_changes() {
+    let test_setup = setup(0).await;
+    let provider = test_setup.provider;
+
+    let wallet_unit_id: WalletUnitId = Uuid::new_v4().into();
+    let mut wallet_unit = dummy_wallet_unit(wallet_unit_id, test_setup.organisation_id);
+    let attested_key1 = dummy_attested_key(wallet_unit_id);
+    wallet_unit.attested_keys = Some(vec![attested_key1.clone()]);
+    provider.create_wallet_unit(wallet_unit).await.unwrap();
+    let created_wallet_unit = provider
+        .get_wallet_unit(
+            &wallet_unit_id,
+            &WalletUnitRelations {
+                attested_keys: Some(WalletUnitAttestedKeyRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(created_wallet_unit.attested_keys.as_ref().unwrap().len(), 1);
+    assert_eq!(
+        created_wallet_unit.attested_keys.as_ref().unwrap()[0].id,
+        attested_key1.id
+    );
+
+    let attested_key2 = dummy_attested_key(wallet_unit_id);
+    let new_attested_keys = vec![attested_key1.clone(), attested_key2.clone()];
+    let update_request = UpdateWalletUnitRequest {
+        attested_keys: Some(new_attested_keys),
+        ..Default::default()
+    };
+
+    let result = provider
+        .update_wallet_unit(&wallet_unit_id, update_request)
+        .await;
+    assert!(result.is_ok());
+
+    // Verify public key was updated
+    let updated_wallet_unit = provider
+        .get_wallet_unit(
+            &wallet_unit_id,
+            &WalletUnitRelations {
+                attested_keys: Some(WalletUnitAttestedKeyRelations::default()),
+                ..Default::default()
+            },
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(updated_wallet_unit.attested_keys.as_ref().unwrap().len(), 2);
+    assert!(
+        updated_wallet_unit
+            .attested_keys
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|attested_key| attested_key.id == attested_key1.id)
+    );
+    assert!(
+        updated_wallet_unit
+            .attested_keys
+            .as_ref()
+            .unwrap()
+            .iter()
+            .any(|attested_key| attested_key.id == attested_key2.id)
+    );
 }
 
 // SORTING TESTS

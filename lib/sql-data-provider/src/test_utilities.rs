@@ -3,15 +3,18 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use one_core::model::credential::{Credential, CredentialStateEnum};
-use one_core::model::did::Did;
 use one_core::model::interaction::InteractionId;
+use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::Organisation;
 use one_core::model::revocation_list::RevocationListId;
+use one_core::model::wallet_unit::WalletProviderType;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
-    HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
+    HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use time::macros::datetime;
@@ -30,7 +33,7 @@ use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
     identifier, interaction, key, key_did, organisation, proof, proof_claim,
     proof_input_claim_schema, proof_input_schema, proof_schema, revocation_list,
-    revocation_list_entry,
+    revocation_list_entry, wallet_unit,
 };
 use crate::{DataLayer, db_conn};
 
@@ -653,21 +656,43 @@ pub fn dummy_organisation(id: Option<OrganisationId>) -> Organisation {
     }
 }
 
-#[allow(clippy::unwrap_used)]
-pub fn dummy_did() -> Did {
-    Did {
-        id: Uuid::new_v4().into(),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: "John".to_string(),
-        did: "did:example:123".parse().unwrap(),
-        did_type: one_core::model::did::DidType::Local,
-        did_method: "INTERNAL".to_string(),
-        keys: None,
-        organisation: Some(dummy_organisation(None)),
-        deactivated: false,
-        log: None,
+pub async fn insert_wallet_unit_to_database(
+    db: &DatabaseConnection,
+    organisation_id: OrganisationId,
+    name: String,
+) -> WalletUnitId {
+    let id: WalletUnitId = Uuid::new_v4().into();
+    let now = get_dummy_date();
+
+    wallet_unit::ActiveModel {
+        id: Set(id),
+        created_date: Set(now),
+        last_modified: Set(now),
+        last_issuance: Set(Some(now)),
+        name: Set(name),
+        os: Set(wallet_unit::WalletUnitOs::Android),
+        status: Set(wallet_unit::WalletUnitStatus::Active),
+        wallet_provider_type: Set(WalletProviderType::ProcivisOne.into()),
+        wallet_provider_name: Set("Test Provider Name".to_string()),
+        // Generate unique public key to avoid constraint violations
+        authentication_key_jwk: Set(Some(random_jwk_string())),
+        nonce: Set(None),
+        organisation_id: Set(organisation_id),
     }
+    .insert(db)
+    .await
+    .unwrap();
+
+    id
+}
+
+pub fn random_jwk_string() -> String {
+    serde_json::to_string(&random_jwk()).unwrap()
+}
+
+pub fn random_jwk() -> PublicKeyJwk {
+    let unique_suffix = Ecdsa.generate_key().unwrap();
+    unique_suffix.key.public_key_as_jwk().unwrap()
 }
 
 #[test]
