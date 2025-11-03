@@ -1,3 +1,4 @@
+use futures::future::join_all;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::interaction::InteractionType;
 use serde_json::json;
@@ -61,7 +62,12 @@ async fn test_oidc_issuer_create_token() {
     let resp = context
         .api
         .ssi
-        .create_token(credential_schema.id, Some(&pre_authorized_code), None)
+        .create_token(
+            credential_schema.id,
+            "draft-13",
+            Some(&pre_authorized_code),
+            None,
+        )
         .await;
 
     assert_eq!(200, resp.status());
@@ -73,6 +79,70 @@ async fn test_oidc_issuer_create_token() {
     assert!(resp.get("expires_in").is_some());
     assert!(resp.get("refresh_token").is_none());
     assert!(resp.get("refresh_token_expires_in").is_none());
+}
+
+#[tokio::test]
+async fn test_oidc_issuer_create_token_parallel_collision() {
+    // GIVEN
+    let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
+
+    let interaction_id = Uuid::new_v4();
+    let data = json!({
+        "pre_authorized_code_used": false,
+        "access_token_hash": [],
+    });
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test-schema",
+            &org,
+            "NONE",
+            TestingCreateSchemaParams::default(),
+        )
+        .await;
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            Some(interaction_id),
+            &serde_json::to_vec(&data).unwrap(),
+            &org,
+            InteractionType::Issuance,
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                ..TestingCredentialParams::default()
+            },
+        )
+        .await;
+
+    let pre_authorized_code = interaction_id.to_string();
+    let mut multiple_attempts = vec![];
+    for _ in 0..2 {
+        multiple_attempts.push(context.api.ssi.create_token(
+            credential_schema.id,
+            "final-1.0",
+            Some(&pre_authorized_code),
+            None,
+        ));
+    }
+    let results = join_all(multiple_attempts).await;
+    // one attempt must succeed
+    assert!(results.iter().any(|resp| resp.status() == 200));
+    // one attempt must fail
+    assert!(results.iter().any(|resp| resp.status() == 400));
 }
 
 #[tokio::test]
@@ -130,7 +200,12 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
     let resp = context
         .api
         .ssi
-        .create_token(credential_schema.id, Some(&pre_authorized_code), None)
+        .create_token(
+            credential_schema.id,
+            "draft-13",
+            Some(&pre_authorized_code),
+            None,
+        )
         .await;
 
     assert_eq!(200, resp.status());
@@ -204,7 +279,12 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
     let resp = context
         .api
         .ssi
-        .create_token(credential_schema.id, Some(&pre_authorized_code), None)
+        .create_token(
+            credential_schema.id,
+            "draft-13",
+            Some(&pre_authorized_code),
+            None,
+        )
         .await;
 
     assert_eq!(200, resp.status());

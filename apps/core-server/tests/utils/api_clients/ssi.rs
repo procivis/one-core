@@ -85,6 +85,25 @@ impl SSIApi {
         self.client.post(&url, body).await
     }
 
+    pub async fn issuer_create_credential_vci_final(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+        credential_configuration_id: &str,
+        jwt: &str,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!("/ssi/openid4vci/final-1.0/{credential_schema_id}/credential");
+
+        let body = json!({
+            "credential_configuration_id": credential_configuration_id,
+            "proofs": {
+                "jwt": [jwt]
+            },
+        });
+
+        self.client.post(&url, body).await
+    }
+
     pub async fn issuer_create_credential_mdoc(
         &self,
         credential_schema_id: impl Into<Uuid>,
@@ -184,6 +203,7 @@ impl SSIApi {
     pub async fn create_token(
         &self,
         id: CredentialSchemaId,
+        protocol: &str,
         pre_authorized_code: Option<&str>,
         refresh_token: Option<&str>,
     ) -> Response {
@@ -208,7 +228,7 @@ impl SSIApi {
             ],
         };
 
-        let url = format!("/ssi/openid4vci/draft-13/{id}/token");
+        let url = format!("/ssi/openid4vci/{protocol}/{id}/token");
 
         self.client.post_form(&url, &form_data).await
     }

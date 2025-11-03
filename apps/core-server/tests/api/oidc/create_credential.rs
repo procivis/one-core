@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::str::FromStr;
 
+use futures::future::join_all;
 use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
@@ -76,6 +77,105 @@ async fn test_post_issuer_credential_with_nonce() {
         ..Default::default()
     };
     test_post_issuer_credential_with(params, None).await;
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_with_collision() {
+    let params = PostCredentialTestParams {
+        use_kid_in_proof: true,
+        schema_id: Some("some-schema-id".to_string()),
+        ..Default::default()
+    };
+    let TestIssuerSetup {
+        interaction_id,
+        access_token,
+        organisation,
+        context,
+        key,
+        issuer_identifier,
+        ..
+    } = issuer_setup().await;
+
+    let PostCredentialTestParams {
+        revocation_method,
+        use_kid_in_proof,
+        schema_id,
+        credential_format,
+        ..
+    } = params;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &organisation,
+            revocation_method.unwrap_or("NONE"),
+            TestingCreateSchemaParams {
+                format: credential_format,
+                schema_id: schema_id.clone(),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let date_format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+    let interaction_data = json!({
+        "pre_authorized_code_used": true,
+        "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
+        "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+    });
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            Some(interaction_id),
+            &serde_json::to_vec(&interaction_data).unwrap(),
+            &organisation,
+            InteractionType::Issuance,
+        )
+        .await;
+
+    context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Offered,
+            &issuer_identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(interaction),
+                key: Some(key),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let value = context
+        .api
+        .ssi
+        .generate_nonce("OPENID4VCI_FINAL1")
+        .await
+        .json_value()
+        .await;
+    let nonce = value["c_nonce"].as_str().unwrap();
+    let jwt = proof_jwt(use_kid_in_proof, Some(nonce)).await;
+    let mut multiple_attempts = vec![];
+    for _ in 0..2 {
+        multiple_attempts.push(context.api.ssi.issuer_create_credential_vci_final(
+            credential_schema.id,
+            schema_id.as_ref().unwrap(),
+            &jwt,
+        ));
+    }
+    let results = join_all(multiple_attempts).await;
+    // one attempt must succeed
+    assert!(results.iter().any(|resp| resp.status() == 200));
+    // one attempt must fail
+    assert!(results.iter().any(|resp| resp.status() == 400));
 }
 
 #[tokio::test]
