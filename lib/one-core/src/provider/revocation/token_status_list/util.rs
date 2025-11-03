@@ -77,34 +77,31 @@ pub(crate) fn extract_state_from_token(
 }
 
 pub(super) fn generate_token(
-    input: Vec<CredentialRevocationState>,
+    input: Vec<(usize, CredentialRevocationState)>,
     bits: usize,
     preferred_token_size: usize,
 ) -> Result<String, TokenError> {
     let mut bitvec = BitVec::from_elem(preferred_token_size, false);
-    input
-        .into_iter()
-        .enumerate()
-        .try_for_each(|(index, state)| {
-            let most_significant_bit_index = get_most_significant_bit_index(index, bits);
-            match state {
-                CredentialRevocationState::Valid => {}
-                CredentialRevocationState::Revoked => {
-                    let revocation_bit_index = most_significant_bit_index + bits - 1;
-                    bitvec.set(revocation_bit_index, true)
-                }
-                CredentialRevocationState::Suspended { .. } => {
-                    if bits < PREFERRED_ENTRY_SIZE {
-                        return Err(TokenError::SuspensionRequiresAtLeastTwoBits);
-                    }
-
-                    let suspension_bit_index = most_significant_bit_index + bits - 2;
-                    bitvec.set(suspension_bit_index, true)
-                }
+    input.into_iter().try_for_each(|(index, state)| {
+        let most_significant_bit_index = get_most_significant_bit_index(index, bits);
+        match state {
+            CredentialRevocationState::Valid => {}
+            CredentialRevocationState::Revoked => {
+                let revocation_bit_index = most_significant_bit_index + bits - 1;
+                bitvec.set(revocation_bit_index, true)
             }
+            CredentialRevocationState::Suspended { .. } => {
+                if bits < PREFERRED_ENTRY_SIZE {
+                    return Err(TokenError::SuspensionRequiresAtLeastTwoBits);
+                }
 
-            Ok(())
-        })?;
+                let suspension_bit_index = most_significant_bit_index + bits - 2;
+                bitvec.set(suspension_bit_index, true)
+            }
+        }
+
+        Ok(())
+    })?;
 
     let mut encoder = ZlibEncoder::new(Vec::new(), Compression::best());
     encoder

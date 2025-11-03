@@ -493,21 +493,25 @@ pub(crate) async fn generate_token_from_credentials(
     credentials: &[RevocationListCredentialEntry],
     additionally_changed_credential: Option<TokenCredentialInfo>,
 ) -> Result<String, RevocationError> {
-    let states = credentials
+    let index_states = credentials
         .iter()
         .map(|entry| {
             if let Some(changed_credential) = additionally_changed_credential.as_ref()
                 && changed_credential.credential_id == entry.credential_id
             {
-                return Ok(changed_credential.value.clone());
+                return (entry.index, changed_credential.value.to_owned());
             }
 
-            Ok(credential_state_into_revocation_state(entry.state))
+            (
+                entry.index,
+                credential_state_into_revocation_state(entry.state),
+            )
         })
-        .collect::<Result<Vec<_>, RevocationError>>()?;
+        .collect::<Vec<_>>();
 
-    let preferred_token_size = calculate_preferred_token_size(states.len(), PREFERRED_ENTRY_SIZE);
-    util::generate_token(states, PREFERRED_ENTRY_SIZE, preferred_token_size)
+    let preferred_token_size =
+        calculate_preferred_token_size(index_states.len(), PREFERRED_ENTRY_SIZE);
+    util::generate_token(index_states, PREFERRED_ENTRY_SIZE, preferred_token_size)
         .map_err(RevocationError::from)
 }
 

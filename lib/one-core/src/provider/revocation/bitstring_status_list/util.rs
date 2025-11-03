@@ -56,10 +56,10 @@ pub fn extract_bitstring_index(
     Ok(bits[index])
 }
 
-pub(super) fn generate_bitstring(input: Vec<bool>) -> Result<String, BitstringError> {
+pub(super) fn generate_bitstring(input: Vec<(usize, bool)>) -> Result<String, BitstringError> {
     let size = calculate_bitstring_size(input.len());
     let mut bits = BitVec::from_elem(size, false);
-    input.into_iter().enumerate().for_each(|(index, state)| {
+    input.into_iter().for_each(|(index, state)| {
         if state {
             bits.set(index, true)
         }
@@ -95,7 +95,7 @@ mod test {
     #[test]
     fn test_generate_bitstring() {
         assert_eq!(
-            generate_bitstring(vec![false, true, false, false]).unwrap(),
+            generate_bitstring(vec![(0, false), (1, true), (2, false), (3, false)]).unwrap(),
             BITSTRING_ONE_REVOCATION
         );
     }

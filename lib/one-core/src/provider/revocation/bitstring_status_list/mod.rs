@@ -609,26 +609,29 @@ async fn generate_bitstring_from_credentials(
 ) -> Result<String, RevocationError> {
     let states = credentials
         .iter()
-        .map(|credential| {
+        .map(|entry| {
             if let Some(changed_credential) = additionally_changed_credential.as_ref()
-                && changed_credential.credential_id == credential.credential_id
+                && changed_credential.credential_id == entry.credential_id
             {
-                return Ok(changed_credential.value);
+                return (entry.index, changed_credential.value);
             }
 
-            Ok(match purpose {
-                RevocationListPurpose::Suspension => {
-                    credential.state == CredentialStateEnum::Suspended
-                }
-                RevocationListPurpose::Revocation => matches!(
-                    credential.state,
-                    CredentialStateEnum::Revoked
-                        | CredentialStateEnum::Rejected
-                        | CredentialStateEnum::Error // also mark failed credentials as revoked to prevent misuse
-                ),
-            })
+            (
+                entry.index,
+                match purpose {
+                    RevocationListPurpose::Suspension => {
+                        entry.state == CredentialStateEnum::Suspended
+                    }
+                    RevocationListPurpose::Revocation => matches!(
+                        entry.state,
+                        CredentialStateEnum::Revoked
+                            | CredentialStateEnum::Rejected
+                            | CredentialStateEnum::Error // also mark failed credentials as revoked to prevent misuse
+                    ),
+                },
+            )
         })
-        .collect::<Result<Vec<_>, RevocationError>>()?;
+        .collect::<Vec<_>>();
 
     util::generate_bitstring(states).map_err(RevocationError::from)
 }
