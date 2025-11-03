@@ -2,8 +2,8 @@ use one_crypto::CryptoProviderError;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
-    IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId, TrustEntityId,
-    TrustEntityKey, WalletUnitId,
+    HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId,
+    TrustEntityId, TrustEntityKey, WalletUnitId,
 };
 use strum::{EnumMessage, IntoStaticStr};
 use thiserror::Error;
@@ -204,6 +204,9 @@ pub enum EntityNotFoundError {
 
     #[error("Wallet unit attestation by organisation `{0}` not found")]
     WalletUnitAttestationByOrganisation(OrganisationId),
+
+    #[error("Holder wallet unit `{0}` not found")]
+    HolderWalletUnit(HolderWalletUnitId),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1437,6 +1440,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid wallet provider Url")]
     BR_0295,
+
+    #[strum(message = "Holder wallet unit not found")]
+    BR_0296,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1523,6 +1529,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::Certificate(_) => ErrorCode::BR_0223,
             Self::Interaction(_) => ErrorCode::BR_0257,
             Self::WalletUnit(_) => ErrorCode::BR_0259,
+            Self::HolderWalletUnit(_) => ErrorCode::BR_0296,
             Self::WalletUnitAttestationByOrganisation(_) => ErrorCode::BR_0262,
         }
     }

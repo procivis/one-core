@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::OrganisationId;
+use shared_types::{HolderWalletUnitId, OrganisationId};
 
 use crate::utils::api_clients::{HttpClient, Response};
 
@@ -18,6 +18,15 @@ pub struct TestHolderRegisterRequest {
 impl HolderWalletUnitsApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
+    }
+
+    pub async fn holder_get_wallet_unit_details(
+        &self,
+        wallet_unit_id: &HolderWalletUnitId,
+    ) -> Response {
+        self.client
+            .get(&format!("/api/holder-wallet-unit/v1/{}", wallet_unit_id))
+            .await
     }
 
     pub async fn holder_register(&self, request: TestHolderRegisterRequest) -> Response {

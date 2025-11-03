@@ -28,7 +28,7 @@ pub mod credential_schemas;
 pub mod credentials;
 pub mod dids;
 pub mod histories;
-mod holder_wallet_unit;
+pub mod holder_wallet_unit;
 pub mod identifiers;
 pub mod interactions;
 pub mod keys;

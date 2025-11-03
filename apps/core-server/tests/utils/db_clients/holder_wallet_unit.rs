@@ -2,10 +2,9 @@ use std::ops::Sub;
 use std::sync::Arc;
 
 use one_core::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
-use one_core::model::key::{Key, PublicKeyJwk};
+use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
-use one_core::model::wallet_unit_attested_key::WalletUnitAttestedKey;
 use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use shared_types::{HolderWalletUnitId, WalletUnitId};
 use time::{Duration, OffsetDateTime};
@@ -16,16 +15,10 @@ pub struct HolderWalletUnitsDB {
     repository: Arc<dyn HolderWalletUnitRepository>,
 }
 
-#[allow(unused)]
 #[derive(Default)]
 pub struct TestHolderWalletUnit {
-    pub name: Option<String>,
-    pub nonce: Option<String>,
     pub last_modified: Option<OffsetDateTime>,
-    pub public_key: Option<PublicKeyJwk>,
     pub status: Option<WalletUnitStatus>,
-    pub last_issuance: Option<Option<OffsetDateTime>>,
-    pub attested_keys: Option<Vec<WalletUnitAttestedKey>>,
     pub wallet_provider_type: Option<WalletProviderType>,
     pub wallet_provider_name: Option<String>,
     pub wallet_provider_url: Option<String>,
@@ -37,7 +30,6 @@ impl HolderWalletUnitsDB {
         Self { repository }
     }
 
-    #[allow(unused)]
     pub async fn create(
         &self,
         organisation: Organisation,

@@ -9,6 +9,7 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use time::{Duration, OffsetDateTime};
 
 pub mod get_wallet_unit_tests;
+pub mod holder_get_wallet_unit;
 pub mod holder_register_wallet_unit;
 pub mod list_wallet_unit_tests;
 

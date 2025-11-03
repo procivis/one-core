@@ -1,12 +1,15 @@
 use axum::Json;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use proc_macros::require_permissions;
+use shared_types::HolderWalletUnitId;
 
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::CreatedOrErrorResponse;
-use crate::endpoint::holder_wallet_unit::dto::HolderRegisterWalletUnitRequestRestDTO;
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::holder_wallet_unit::dto::{
+    HolderRegisterWalletUnitRequestRestDTO, HolderWalletUnitDetailRestDTO,
+};
 use crate::permissions::Permission;
 use crate::router::AppState;
 
@@ -41,4 +44,32 @@ pub(crate) async fn wallet_unit_holder_register(
     }
     .await;
     CreatedOrErrorResponse::from_result(result, state, "register wallet unit")
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/holder-wallet-unit/v1/{id}",
+    responses(OkOrErrorResponse<HolderWalletUnitDetailRestDTO>),
+    params(
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit id")
+    ),
+    tag = "holder_wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Get Wallet Unit details",
+    description = "Fetch the wallet unit details.",
+)]
+#[require_permissions(Permission::WalletAttestationCreate)]
+pub(crate) async fn wallet_unit_holder_details(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+) -> OkOrErrorResponse<HolderWalletUnitDetailRestDTO> {
+    let result = state
+        .core
+        .wallet_unit_service
+        .get_wallet_unit_details(id)
+        .await;
+
+    OkOrErrorResponse::from_result_fallible(result, state, "get holder wallet unit")
 }

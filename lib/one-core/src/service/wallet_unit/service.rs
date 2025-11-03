@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::holder_wallet_unit::HolderWalletUnit;
-use crate::model::key::{Key, PublicKeyJwk};
+use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
+use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::proto::jwt::model::JWTPayload;
@@ -28,7 +28,9 @@ use crate::service::wallet_provider::dto::{
     ActivateWalletUnitRequestDTO, RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO,
 };
 use crate::service::wallet_unit::WalletUnitService;
-use crate::service::wallet_unit::dto::{HolderRegisterWalletUnitRequestDTO, NoncePayload};
+use crate::service::wallet_unit::dto::{
+    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitResponseDTO, NoncePayload,
+};
 use crate::service::wallet_unit::error::HolderWalletUnitError;
 use crate::service::wallet_unit::mapper::key_from_generated_key;
 use crate::validator::throw_if_org_not_matching_session;
@@ -164,6 +166,25 @@ impl WalletUnitService {
             })
             .await?;
         Ok(holder_wallet_unit_id)
+    }
+
+    pub async fn get_wallet_unit_details(
+        &self,
+        id: HolderWalletUnitId,
+    ) -> Result<HolderWalletUnitResponseDTO, ServiceError> {
+        let result = self
+            .holder_wallet_unit_repository
+            .get_holder_wallet_unit(
+                &id,
+                &HolderWalletUnitRelations {
+                    authentication_key: Some(KeyRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::HolderWalletUnit(id))?;
+
+        result.try_into()
     }
 
     async fn register_without_integrity_check(
