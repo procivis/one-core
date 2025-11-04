@@ -358,7 +358,7 @@ pub struct MdocMsoValidityResponseBindingDTO {
     pub last_update: String,
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Enum)]
+#[derive(Clone, Debug, From, Into, Eq, PartialEq, uniffi::Enum)]
 #[from(CredentialStateEnum)]
 #[into(one_core::model::credential::CredentialStateEnum)]
 pub enum CredentialStateBindingEnum {

@@ -46,7 +46,8 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     let db = manager.get_connection();
 
     // Disable foreign keys for SQLite
-    db.execute_unprepared("PRAGMA foreign_keys = OFF;").await?;
+    db.execute_unprepared("PRAGMA defer_foreign_keys = ON;")
+        .await?;
 
     // Create new table with the additional column
     manager
@@ -268,7 +269,8 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         .await?;
 
     // Re-enable foreign keys for SQLite
-    db.execute_unprepared("PRAGMA foreign_keys = ON;").await?;
+    db.execute_unprepared("PRAGMA defer_foreign_keys = OFF;")
+        .await?;
 
     Ok(())
 }

@@ -202,7 +202,8 @@ async fn sqlite_migration_drop_revocation_list_key(
     let db = manager.get_connection();
 
     // Disable foreign keys for SQLite
-    db.execute_unprepared("PRAGMA foreign_keys = OFF;").await?;
+    db.execute_unprepared("PRAGMA defer_foreign_keys = ON;")
+        .await?;
 
     // Create new table with the `RevocationListId` column removed
     manager
@@ -415,7 +416,8 @@ async fn sqlite_migration_drop_revocation_list_key(
         .await?;
 
     // Re-enable foreign keys for SQLite
-    db.execute_unprepared("PRAGMA foreign_keys = ON;").await?;
+    db.execute_unprepared("PRAGMA defer_foreign_keys = OFF;")
+        .await?;
 
     Ok(())
 }
