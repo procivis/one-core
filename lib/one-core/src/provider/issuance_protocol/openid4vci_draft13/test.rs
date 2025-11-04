@@ -296,6 +296,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
+            requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
             id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
@@ -1808,6 +1809,7 @@ fn generic_schema() -> CredentialSchema {
         ]),
         organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
+        requires_app_attestation: false,
     }
 }
 
@@ -1925,6 +1927,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         ]),
         organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
+        requires_app_attestation: false,
     }
 }
 
@@ -2006,6 +2009,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         ]),
         organisation: Some(dummy_organisation(None)),
         allow_suspension: true,
+        requires_app_attestation: false,
     }
 }
 

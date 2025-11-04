@@ -78,6 +78,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             layout_properties: Set(convert_inner(value.layout_properties)),
             schema_id: Set(value.schema_id),
             allow_suspension: Set(value.allow_suspension),
+            requires_app_attestation: Set(value.requires_app_attestation),
         })
     }
 }
@@ -143,5 +144,6 @@ pub(super) fn credential_schema_from_models(
         imported_source_url: credential_schema.imported_source_url,
         schema_id: credential_schema.schema_id,
         allow_suspension: credential_schema.allow_suspension,
+        requires_app_attestation: credential_schema.requires_app_attestation,
     }
 }

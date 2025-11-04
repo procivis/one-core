@@ -437,6 +437,7 @@ pub async fn create_credential_schema(
         layout_properties: params.layout_properties,
         schema_id: params.schema_id.unwrap_or(id.to_string()),
         allow_suspension: true,
+        requires_app_attestation: false,
     };
 
     data_layer
@@ -491,6 +492,7 @@ pub async fn create_credential_schema_with_claims(
         layout_properties: None,
         schema_id: id.to_string(),
         allow_suspension: true,
+        requires_app_attestation: false,
     };
 
     data_layer

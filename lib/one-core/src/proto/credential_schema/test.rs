@@ -238,6 +238,7 @@ async fn test_importer_import_credential_schema_success() {
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
+        requires_app_attestation: false,
     };
     let credential_schema_id = credential_schema.id;
 
@@ -295,6 +296,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
+        requires_app_attestation: false,
     };
 
     let existing_schema_clone = existing_schema.clone();
@@ -359,6 +361,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
+        requires_app_attestation: false,
     };
 
     let existing_schema_clone = existing_schema.clone();

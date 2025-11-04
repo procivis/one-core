@@ -222,6 +222,10 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::AllowSuspension,
                 "credential_schema_allow_suspension",
             )
+            .column_as(
+                credential_schema::Column::RequiresAppAttestation,
+                "credential_schema_requires_app_attestation",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .column_as(organisation::Column::Name, "organisation_name")
             .column_as(
@@ -319,8 +323,7 @@ impl BackupRepository for BackupProvider {
                                 .column(credential_schema::Column::Id)
                                 .from(credential_schema::Entity)
                                 .and_where(
-                                    credential_schema::Column::WalletStorageType
-                                        .eq(credential_schema::WalletStorageType::EudiCompliant),
+                                    credential_schema::Column::RequiresAppAttestation.eq(true),
                                 )
                                 .to_owned(),
                         ),
@@ -450,8 +453,7 @@ impl BackupRepository for BackupProvider {
                                 .column(credential_schema::Column::Id)
                                 .from(credential_schema::Entity)
                                 .and_where(
-                                    credential_schema::Column::WalletStorageType
-                                        .eq(credential_schema::WalletStorageType::EudiCompliant),
+                                    credential_schema::Column::RequiresAppAttestation.eq(true),
                                 )
                                 .to_owned(),
                         ),

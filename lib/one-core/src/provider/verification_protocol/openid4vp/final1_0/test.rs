@@ -144,6 +144,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
                     schema_id: "test_schema_id".to_string(),
                     imported_source_url: "test_imported_src_url".to_string(),
                     allow_suspension: false,
+                    requires_app_attestation: false,
                     claim_schemas: None,
                     organisation: None,
                 }),

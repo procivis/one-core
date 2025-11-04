@@ -30,6 +30,8 @@ pub struct Model {
     pub imported_source_url: String,
     #[serde(deserialize_with = "bool_from_int")]
     pub allow_suspension: bool,
+    #[serde(deserialize_with = "bool_from_int")]
+    pub requires_app_attestation: bool,
 }
 
 #[derive(
@@ -46,8 +48,6 @@ pub enum WalletStorageType {
     Software,
     #[sea_orm(string_value = "REMOTE_SECURE_ELEMENT")]
     RemoteSecureElement,
-    #[sea_orm(string_value = "EUDI_COMPLIANT")]
-    EudiCompliant,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]

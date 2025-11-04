@@ -1,4 +1,3 @@
-use one_core::model::credential_schema::WalletStorageTypeEnum;
 use similar_asserts::assert_eq;
 
 use crate::utils::context::TestContext;
@@ -91,7 +90,7 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(WalletStorageTypeEnum::EudiCompliant),
+                requires_app_attestation: true,
                 ..Default::default()
             },
         )

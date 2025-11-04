@@ -725,6 +725,7 @@ fn test_schema_id() {
         layout_properties: None,
         schema_id: None,
         allow_suspension: None,
+        requires_app_attestation: false,
     };
 
     let id = CredentialSchemaId::from(Uuid::new_v4());

@@ -491,6 +491,7 @@ fn from_create_request_with_id(
         schema_id: request.schema_id,
         organisation: Some(organisation),
         allow_suspension: false,
+        requires_app_attestation: false,
     })
 }
 

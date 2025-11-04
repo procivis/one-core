@@ -24,6 +24,7 @@ pub struct TestingCreateSchemaParams {
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
+    pub requires_app_attestation: bool,
     pub deleted_at: Option<OffsetDateTime>,
 }
 
@@ -112,6 +113,7 @@ impl CredentialSchemasDB {
             }),
             schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
+            requires_app_attestation: false,
         };
 
         let id = self
@@ -176,6 +178,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: id.to_string(),
             allow_suspension: true,
+            requires_app_attestation: false,
         };
 
         let id = self
@@ -283,6 +286,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: params.schema_id.unwrap_or("doctype".to_string()),
             allow_suspension: true,
+            requires_app_attestation: false,
         };
 
         let id = self
@@ -390,6 +394,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
+            requires_app_attestation: false,
         };
 
         let id = self
@@ -510,6 +515,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
+            requires_app_attestation: false,
         };
 
         let id = self
@@ -734,6 +740,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
+            requires_app_attestation: params.requires_app_attestation,
         };
 
         let id = self
@@ -781,6 +788,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: new_id.to_string(),
             allow_suspension: true,
+            requires_app_attestation: false,
         };
 
         let id = self
@@ -847,6 +855,7 @@ impl CredentialSchemasDB {
             }),
             schema_id: schema_id.to_owned(),
             allow_suspension: true,
+            requires_app_attestation: false,
         };
 
         let id = self

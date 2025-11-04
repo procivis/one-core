@@ -980,7 +980,6 @@ impl OneCore {
                 client.clone(),
                 blob_storage_provider,
                 providers.session_provider.clone(),
-                Arc::new(OSInfoProviderImpl),
             ),
             wallet_provider_service: WalletProviderService::new(
                 organisation_repository.clone(),

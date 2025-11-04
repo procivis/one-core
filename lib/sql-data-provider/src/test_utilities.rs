@@ -137,6 +137,7 @@ pub async fn insert_credential_schema_to_database(
         layout_properties: Set(None),
         schema_id: Set(new_id.to_string()),
         allow_suspension: Set(true),
+        requires_app_attestation: Set(wallet_storage_type != WalletStorageType::Software),
     }
     .insert(database)
     .await?;

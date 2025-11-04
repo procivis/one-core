@@ -34,6 +34,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,
+    pub credential_schema_requires_app_attestation: bool,
 
     pub organisation_id: OrganisationId,
     pub organisation_name: String,

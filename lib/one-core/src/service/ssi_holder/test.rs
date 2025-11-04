@@ -27,8 +27,6 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
-use crate::proto::os_provider::MockOSInfoProvider;
-use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
@@ -1211,12 +1209,6 @@ async fn test_accept_credential() {
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
-    let mut os_info_provider = MockOSInfoProvider::new();
-    os_info_provider
-        .expect_get_os_name()
-        .once()
-        .returning(|| OSName::Web);
-
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -1321,7 +1313,6 @@ async fn test_accept_credential() {
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
-        os_info_provider: Arc::new(os_info_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1379,12 +1370,6 @@ async fn test_accept_credential_with_did() {
         .once()
         .returning(|_| Some(Arc::new(Ecdsa)));
 
-    let mut os_info_provider = MockOSInfoProvider::new();
-    os_info_provider
-        .expect_get_os_name()
-        .once()
-        .returning(|| OSName::Web);
-
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -1489,7 +1474,6 @@ async fn test_accept_credential_with_did() {
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
-        os_info_provider: Arc::new(os_info_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1803,7 +1787,6 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         config: Arc::new(generic_config().core),
         client,
         session_provider: Arc::new(NoSessionProvider),
-        os_info_provider: Arc::new(MockOSInfoProvider::new()),
     }
 }
 
@@ -1876,6 +1859,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
+            requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

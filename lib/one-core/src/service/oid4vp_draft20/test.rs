@@ -204,6 +204,7 @@ async fn test_presentation_definition_success() {
                                 layout_properties: None,
                                 schema_id: "CredentialSchemaId".to_owned(),
                                 allow_suspension: true,
+                                requires_app_attestation: false,
                             }),
                         }]),
                     }),

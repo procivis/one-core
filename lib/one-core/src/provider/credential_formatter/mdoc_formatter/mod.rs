@@ -480,6 +480,7 @@ impl CredentialFormatter for MdocFormatter {
             schema_id: doctype,
             imported_source_url: "".to_string(),
             allow_suspension: false,
+            requires_app_attestation: false,
             organisation: None,
             claim_schemas: Some(claim_schemas),
         };

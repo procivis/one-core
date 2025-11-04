@@ -41,6 +41,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -62,6 +63,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -119,6 +121,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,
     pub allow_suspension: Option<bool>,
+    pub requires_app_attestation: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, From)]

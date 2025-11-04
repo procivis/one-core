@@ -147,6 +147,7 @@ fn generate_credential_matching_detail(
             schema_id: detail.schema.schema_id,
             imported_source_url: detail.schema.imported_source_url,
             allow_suspension: detail.schema.allow_suspension,
+            requires_app_attestation: false,
             claim_schemas: None,
             organisation: None,
         }),

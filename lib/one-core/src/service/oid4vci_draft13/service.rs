@@ -85,11 +85,10 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let token_endpoint_auth_methods_supported = match credential_schema.wallet_storage_type {
-            Some(WalletStorageTypeEnum::EudiCompliant) => {
-                vec!["attest_jwt_client_auth".to_string()]
-            }
-            _ => vec![],
+        let token_endpoint_auth_methods_supported = if credential_schema.requires_app_attestation {
+            vec!["attest_jwt_client_auth".to_string()]
+        } else {
+            vec![]
         };
 
         // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1

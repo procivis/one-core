@@ -684,6 +684,7 @@ fn dummy_credential() -> Credential {
             schema_id: "CredentialSchemaId".to_owned(),
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
+            requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4(),

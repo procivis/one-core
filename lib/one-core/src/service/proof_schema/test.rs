@@ -394,6 +394,7 @@ async fn test_create_proof_schema_success() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {
@@ -507,6 +508,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {
@@ -653,6 +655,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             let schema_2 = CredentialSchema {
@@ -674,6 +677,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {
@@ -842,6 +846,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {
@@ -1002,6 +1007,7 @@ async fn test_create_proof_schema_array_success() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {
@@ -1159,6 +1165,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {
@@ -1765,6 +1772,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 }]),
                 organisation: None,
                 allow_suspension: true,
+                requires_app_attestation: false,
             }))
         });
 
@@ -2346,6 +2354,7 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
         claim_schemas: Some(claims),
         organisation: None,
         allow_suspension: true,
+        requires_app_attestation: false,
     }
 }
 
@@ -2605,6 +2614,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
+                requires_app_attestation: false,
             };
 
             Ok(GetListResponse {

@@ -722,6 +722,7 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         claim_schemas: convert_inner_of_inner(schema.claim_schemas),
         organisation: organisation.into(),
         allow_suspension: schema.allow_suspension,
+        requires_app_attestation: schema.requires_app_attestation,
     }
 }
 

@@ -33,6 +33,7 @@ pub struct CredentialSchema {
     pub schema_id: String,
     pub imported_source_url: String,
     pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -108,7 +109,6 @@ pub enum WalletStorageTypeEnum {
     Hardware,
     Software,
     RemoteSecureElement,
-    EudiCompliant,
 }
 
 #[skip_serializing_none]

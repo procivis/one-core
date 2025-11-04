@@ -315,7 +315,7 @@ async fn add_unexportable_credentials(
         "credential schema 2",
         "JWT",
         "NONE",
-        WalletStorageType::EudiCompliant,
+        WalletStorageType::Hardware,
     )
     .await
     .unwrap();

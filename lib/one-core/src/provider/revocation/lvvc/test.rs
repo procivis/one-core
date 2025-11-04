@@ -107,6 +107,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
             schema_id: "schema_id".to_string(),
             imported_source_url: "URL".to_string(),
             allow_suspension: true,
+            requires_app_attestation: false,
             claim_schemas: None,
             organisation: None,
         }),

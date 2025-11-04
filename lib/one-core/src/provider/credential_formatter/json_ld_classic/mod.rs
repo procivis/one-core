@@ -319,6 +319,7 @@ impl CredentialFormatter for JsonLdClassic {
             schema_id,
             imported_source_url: "".to_string(),
             allow_suspension: false,
+            requires_app_attestation: false,
             claim_schemas: Some(claim_schemas),
             organisation: None,
         };

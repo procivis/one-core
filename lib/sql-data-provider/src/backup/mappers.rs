@@ -76,6 +76,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: value.credential_schema_allow_suspension,
+                requires_app_attestation: value.credential_schema_requires_app_attestation,
             }),
             interaction: None,
             key: None,

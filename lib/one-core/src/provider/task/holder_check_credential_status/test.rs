@@ -318,6 +318,7 @@ fn generic_credential() -> Credential {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
+            requires_app_attestation: false,
         }),
         interaction: None,
         key: None,

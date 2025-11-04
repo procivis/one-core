@@ -33,7 +33,6 @@ use crate::model::interaction::{
 use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
-use crate::proto::os_provider::dto::OSName;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
@@ -901,21 +900,12 @@ impl SSIHolderService {
         wallet_storage_type: Option<&WalletStorageTypeEnum>,
         key_security: &[KeySecurity],
     ) -> Result<(), ServiceError> {
-        let os = self.os_info_provider.get_os_name().await;
         let wallet_storage_matches = match wallet_storage_type {
             Some(WalletStorageTypeEnum::Hardware) => key_security.contains(&KeySecurity::Hardware),
             Some(WalletStorageTypeEnum::Software) => key_security.contains(&KeySecurity::Software),
             Some(WalletStorageTypeEnum::RemoteSecureElement) => {
                 key_security.contains(&KeySecurity::RemoteSecureElement)
             }
-            Some(WalletStorageTypeEnum::EudiCompliant) => match os {
-                // We can not satisfy hardware / remote secure element security for web wallets, therefore we allow software
-                OSName::Web => true,
-                _ => {
-                    key_security.contains(&KeySecurity::Hardware)
-                        || key_security.contains(&KeySecurity::RemoteSecureElement)
-                }
-            },
             None => true,
         };
 

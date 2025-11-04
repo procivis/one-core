@@ -81,6 +81,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             imported_source_url: dto.schema.imported_source_url,
             allow_suspension: self
                 .parse_allow_suspension(dto.schema.allow_suspension, revocation_method.as_ref())?,
+            requires_app_attestation: false,
             claim_schemas: Some(claim_schemas),
             organisation: Some(dto.organisation),
         })

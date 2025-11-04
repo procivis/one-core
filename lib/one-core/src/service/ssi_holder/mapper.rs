@@ -23,6 +23,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             schema_id: value.schema_id,
             imported_source_url: value.imported_source_url,
             allow_suspension: value.allow_suspension,
+            requires_app_attestation: false,
         }
     }
 }

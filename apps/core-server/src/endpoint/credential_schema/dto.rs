@@ -195,10 +195,6 @@ pub(crate) enum WalletStorageTypeRestEnum {
     /// Requires the wallet to use remote secure element key storage
     /// (for example, an HSM in a data center).
     RemoteSecureElement,
-    /// Requires the wallet to meet EUDI compliance standards: must use
-    /// either hardware or remote secure element key storage and must
-    /// provide a valid wallet unit attestation.
-    EudiCompliant,
 }
 
 #[options_not_nullable]
@@ -264,6 +260,9 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub external_schema: bool,
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub requires_app_attestation: bool,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]

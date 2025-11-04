@@ -159,6 +159,7 @@ async fn test_presentation_reject_ok() {
                     claim_schemas: None,
                     organisation: None,
                     allow_suspension: true,
+                    requires_app_attestation: false,
                 }),
             }]),
             organisation: None,
@@ -357,6 +358,7 @@ async fn test_get_presentation_definition_ok() {
         wallet_storage_type: None,
         deleted_at: None,
         allow_suspension: true,
+        requires_app_attestation: false,
     };
 
     let claims = vec![

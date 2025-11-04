@@ -135,6 +135,7 @@ fn generic_credential_schema() -> CredentialSchema {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
+        requires_app_attestation: false,
     }
 }
 
@@ -2207,7 +2208,7 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.wallet_storage_type = Some(WalletStorageTypeEnum::EudiCompliant);
+    schema.requires_app_attestation = true;
 
     credential_schema_repository
         .expect_get_credential_schema()
@@ -2253,7 +2254,7 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.wallet_storage_type = Some(WalletStorageTypeEnum::EudiCompliant);
+    schema.requires_app_attestation = true;
 
     credential_schema_repository
         .expect_get_credential_schema()

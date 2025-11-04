@@ -32,9 +32,7 @@ use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{CredentialRelations, CredentialStateEnum, UpdateCredentialRequest};
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
@@ -172,11 +170,10 @@ impl OID4VCIFinal1_0Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let token_endpoint_auth_methods_supported = match credential_schema.wallet_storage_type {
-            Some(WalletStorageTypeEnum::EudiCompliant) => {
-                vec!["attest_jwt_client_auth".to_string()]
-            }
-            _ => vec![],
+        let token_endpoint_auth_methods_supported = if credential_schema.requires_app_attestation {
+            vec!["attest_jwt_client_auth".to_string()]
+        } else {
+            vec![]
         };
 
         // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
@@ -846,11 +843,8 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation_pop: Option<&str>,
         credential_schema: &CredentialSchema,
     ) -> Result<Option<WalletUnitAttestationDTO>, ServiceError> {
-        let client_attestation_required =
-            credential_schema.wallet_storage_type == Some(WalletStorageTypeEnum::EudiCompliant);
-
         // If the credential schema does not require client attestation, no tokens are expected
-        if !client_attestation_required {
+        if !credential_schema.requires_app_attestation {
             if oauth_client_attestation.is_some() || oauth_client_attestation_pop.is_some() {
                 return Err(ServiceError::OpenID4VCIError(
                     OpenID4VCIError::InvalidRequest,

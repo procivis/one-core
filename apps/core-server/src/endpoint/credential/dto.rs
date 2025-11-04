@@ -129,9 +129,7 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// during credential issuance. This field is only present if the wallet
     /// provided a valid attestation when the credential was issued. The
     /// attestation serves as proof that the wallet app instance is a
-    /// legitimate installation and may be required for credentials with
-    /// certain `walletStorageType` requirements (for example,
-    /// `EUDI_COMPLIANT`).
+    /// legitimate installation and may be required by some credential schemas.
     pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
 }
 

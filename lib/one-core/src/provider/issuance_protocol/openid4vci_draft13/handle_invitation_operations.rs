@@ -300,6 +300,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         schema_id: schema.id.clone(),
                         organisation: Some(organisation.clone()),
                         allow_suspension: false,
+                        requires_app_attestation: false,
                     };
 
                     let schema = self
