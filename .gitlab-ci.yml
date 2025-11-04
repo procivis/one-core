@@ -21,6 +21,7 @@ variables:
   CARGO_HOME: "/build-cache/cargo-home"
   CARGO_UNSTABLE_GC: "true"
   BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.90.0-0.1
+  RUST_CONTAINER_NAME: rust
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -67,18 +68,55 @@ stages:
   - export D_TRACK_PROJECT_VERSION=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
   - export DEPLOY_IMAGE_TAG=$APP_VERSION
 
+.setup_mariadb: &setup_mariadb
+  - >
+    docker run -d --name $DB_CONTAINER_NAME
+    -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+    -e MYSQL_DATABASE=$MYSQL_DATABASE
+    --tmpfs /var/lib/mysql
+    -p 3306:3306
+    mariadb:10.9
+  - |
+    for i in $(seq 1 15); do
+      STATUS=$(docker exec "$DB_CONTAINER_NAME" mysqladmin ping -p"$MYSQL_ROOT_PASSWORD" 2>/dev/null || true)
+      if [ "$STATUS" == "mysqld is alive" ]; then
+        echo "✅ MariaDB is up and running."
+        break
+      else
+        echo "⏳ Waiting for MariaDB to be ready... ($i)"
+        sleep 1
+      fi
+    done
+  - |
+    if [ "$STATUS" != "mysqld is alive" ]; then
+      echo "❌ Timed out waiting for MariaDB to start."
+      docker logs $DB_CONTAINER_NAME
+      exit 1
+    fi
+  - docker exec $DB_CONTAINER_NAME mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
+
+.setup_rust_container: &setup_rust_container
+  - docker run -d --name $RUST_CONTAINER_NAME $BUILD_IMAGE sleep infinity
+  - sleep 3
+  # Copy project files in (can't use volumes in dind)
+  - docker cp . $RUST_CONTAINER_NAME:/project
+
 before_script:
   - *app_settings
 
-
 .cargo_tests:
   stage: test
+  interruptible: true
+  image: docker:28.2.2-dind
   tags:
     - rust
   script:
-    - cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
-    - cargo llvm-cov report --cobertura --output-path cobertura.xml
-    - cargo llvm-cov report
+    - docker exec $RUST_CONTAINER_NAME cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+    - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report --cobertura --output-path cobertura.xml
+    - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report
+    # Copy files out
+    - docker cp $RUST_CONTAINER_NAME:/project/lcov.info .
+    - docker cp $RUST_CONTAINER_NAME:/project/cobertura.xml .
   coverage: '/^TOTAL\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(?:\d+\.\d+)%\s+\d+\s+\d+\s+(\d+\.\d+)%/'
   artifacts:
     expire_in: 1 day
@@ -104,25 +142,31 @@ before_script:
       pipeline_variables: true
 
 tests:mariadb:
-  interruptible: true
   extends:
     - .cargo_tests
   variables:
+    DB_CONTAINER_NAME: mariadb
     MYSQL_DATABASE: core_db
     MYSQL_ROOT_PASSWORD: root_password
-    ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@mariadb:3306/${MYSQL_DATABASE}"
-  services:
-    - alias: mariadb
-      name: mariadb:10.9
-      pull_policy: if-not-present
+    ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@${DB_CONTAINER_NAME}:3306/${MYSQL_DATABASE}"
   before_script:
-    - mysql --host=mariadb --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
+    - *setup_mariadb
+    - *setup_rust_container
+  after_script:
+    - docker stop $DB_CONTAINER_NAME
+    - docker rm $DB_CONTAINER_NAME
+    - docker stop $RUST_CONTAINER_NAME
+    - docker rm $RUST_CONTAINER_NAME
 
 tests:sqlite:
-  interruptible: true
   needs: []
   extends:
     - .cargo_tests
+  before_script:
+    - *setup_rust_container
+  after_script:
+    - docker stop $RUST_CONTAINER_NAME
+    - docker rm $RUST_CONTAINER_NAME
 
 linter:clippy:
   interruptible: true
