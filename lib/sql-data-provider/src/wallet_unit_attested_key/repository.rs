@@ -126,7 +126,7 @@ impl WalletUnitAttestedKeyProvider {
         model: &wallet_unit_attested_key::Model,
         relations: &RevocationListRelations,
     ) -> Result<Option<WalletUnitAttestedKeyRevocationInfo>, DataLayerError> {
-        let Some(revocation_list_entry_id) = model.revocation_list_entry_id else {
+        let Some(revocation_list_entry_id) = &model.revocation_list_entry_id else {
             return Ok(None);
         };
 

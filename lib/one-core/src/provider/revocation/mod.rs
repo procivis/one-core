@@ -9,6 +9,7 @@ use crate::provider::revocation::model::{
 pub mod bitstring_status_list;
 pub mod error;
 pub mod lvvc;
+mod mapper;
 pub mod mdoc_mso_update_suspension;
 pub mod model;
 pub mod none;

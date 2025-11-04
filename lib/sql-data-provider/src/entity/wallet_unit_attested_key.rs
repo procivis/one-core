@@ -6,7 +6,6 @@ use sea_orm::{
 };
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "wallet_unit_attested_key")]
@@ -18,7 +17,7 @@ pub struct Model {
     pub expiration_date: OffsetDateTime,
     pub public_key_jwk: String,
     pub wallet_unit_id: WalletUnitId,
-    pub revocation_list_entry_id: Option<Uuid>,
+    pub revocation_list_entry_id: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

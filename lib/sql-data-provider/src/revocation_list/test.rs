@@ -4,9 +4,10 @@ use std::vec;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListId, RevocationListPurpose, StatusListCredentialFormat,
-    StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
+    RevocationListId, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
+use one_core::model::wallet_unit::WalletUnitStatus;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use shared_types::CredentialId;
@@ -19,7 +20,8 @@ use crate::entity::revocation_list::RevocationListFormat;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
     insert_identifier, insert_organisation_to_database, insert_revocation_list,
-    insert_revocation_list_entry, setup_test_data_layer_and_connection,
+    insert_revocation_list_entry, insert_wallet_unit_attested_key_to_database,
+    insert_wallet_unit_to_database, setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -135,19 +137,6 @@ async fn test_get_revocation_list() {
 }
 
 #[tokio::test]
-async fn test_get_revocation_lists() {
-    let setup = setup_with_list().await;
-
-    let results = setup
-        .provider
-        .get_revocation_lists(&[setup.list_id], &Default::default())
-        .await
-        .unwrap();
-    assert_eq!(results.len(), 1);
-    assert_eq!(results[0].id, setup.list_id);
-}
-
-#[tokio::test]
 async fn test_get_revocation_by_issuer_identifier_id() {
     let setup = setup_with_list().await;
 
@@ -212,45 +201,69 @@ async fn test_create_credential_entry() {
 
     setup
         .provider
-        .create_credential_entry(setup.list_id, credential_id, 0)
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Credential(credential_id),
+            0,
+        )
         .await
         .unwrap();
 }
 
 #[tokio::test]
-async fn test_get_linked_credentials_empty_list() {
+async fn test_get_entries_empty_list() {
     let setup = setup_with_list().await;
 
-    let results = setup
-        .provider
-        .get_linked_credentials(setup.list_id)
-        .await
-        .unwrap();
+    let results = setup.provider.get_entries(setup.list_id).await.unwrap();
     assert_eq!(results.len(), 0);
 }
 
 #[tokio::test]
-async fn test_get_linked_credentials_non_empty() {
+async fn test_get_entries_non_empty() {
     let setup = setup_with_list().await;
 
-    insert_revocation_list_entry(&setup.db, setup.list_id, 0, None)
+    let organisation_id = setup.identifier.organisation.as_ref().unwrap().id;
+
+    let wallet_unit_id =
+        insert_wallet_unit_to_database(&setup.db, organisation_id, "wallet_unit".to_string()).await;
+    let revocation_list_entry_id = insert_revocation_list_entry(&setup.db, setup.list_id, 1, None)
         .await
         .unwrap();
+    let wallet_unit_attested_key_id = insert_wallet_unit_attested_key_to_database(
+        &setup.db,
+        wallet_unit_id,
+        Some(revocation_list_entry_id.to_string()),
+        get_dummy_date(),
+    )
+    .await;
 
     let credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
-    insert_revocation_list_entry(&setup.db, setup.list_id, 1, Some(credential_id))
+    insert_revocation_list_entry(&setup.db, setup.list_id, 2, Some(credential_id))
         .await
         .unwrap();
 
-    let results = setup
-        .provider
-        .get_linked_credentials(setup.list_id)
-        .await
-        .unwrap();
-    assert_eq!(results.len(), 1);
-    assert_eq!(results[0].credential_id, credential_id);
-    assert_eq!(results[0].index, 1);
-    assert_eq!(results[0].state, CredentialStateEnum::Created);
+    let results = setup.provider.get_entries(setup.list_id).await.unwrap();
+    assert_eq!(results.len(), 2);
+    assert_eq!(
+        results[0],
+        RevocationListEntry {
+            entity_info: RevocationListEntityInfo::WalletUnitAttestedKey(
+                wallet_unit_attested_key_id,
+                WalletUnitStatus::Active
+            ),
+            index: 1
+        }
+    );
+    assert_eq!(
+        results[1],
+        RevocationListEntry {
+            entity_info: RevocationListEntityInfo::Credential(
+                credential_id,
+                CredentialStateEnum::Created
+            ),
+            index: 2
+        }
+    );
 }
 
 async fn create_dummy_credential(

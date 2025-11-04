@@ -1,9 +1,9 @@
-use shared_types::{CredentialId, IdentifierId};
+use shared_types::IdentifierId;
 
 use super::error::DataLayerError;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListCredentialEntry, RevocationListId, RevocationListPurpose,
-    RevocationListRelations, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListId,
+    RevocationListPurpose, RevocationListRelations, StatusListType,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -13,17 +13,12 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         request: RevocationList,
     ) -> Result<RevocationListId, DataLayerError>;
+
     async fn get_revocation_list(
         &self,
         id: &RevocationListId,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
-
-    async fn get_revocation_lists(
-        &self,
-        ids: &[RevocationListId],
-        relations: &RevocationListRelations,
-    ) -> Result<Vec<RevocationList>, DataLayerError>;
 
     async fn get_revocation_by_issuer_identifier_id(
         &self,
@@ -44,15 +39,15 @@ pub trait RevocationListRepository: Send + Sync {
         id: &RevocationListId,
     ) -> Result<Option<usize>, DataLayerError>;
 
-    async fn create_credential_entry(
+    async fn create_entry(
         &self,
         list_id: RevocationListId,
-        credential_id: CredentialId,
+        entity_id: RevocationListEntityId,
         index_on_status_list: usize,
     ) -> Result<(), DataLayerError>;
 
-    async fn get_linked_credentials(
+    async fn get_entries(
         &self,
         list_id: RevocationListId,
-    ) -> Result<Vec<RevocationListCredentialEntry>, DataLayerError>;
+    ) -> Result<Vec<RevocationListEntry>, DataLayerError>;
 }

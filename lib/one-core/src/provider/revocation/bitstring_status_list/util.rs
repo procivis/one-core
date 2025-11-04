@@ -25,7 +25,7 @@ pub enum BitstringError {
 const MULTIBASE_PREFIX: char = 'u';
 const GZIP_PREFIX: &str = "H4s";
 
-pub fn extract_bitstring_index(
+pub(crate) fn extract_bitstring_index(
     compressed_list: String,
     index: usize,
 ) -> Result<bool, BitstringError> {

@@ -1,11 +1,12 @@
 use serde::{Deserialize, Serialize};
-use shared_types::CredentialId;
+use shared_types::{CredentialId, WalletUnitAttestedKeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential::CredentialStateEnum;
 use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::wallet_unit::WalletUnitStatus;
 
 pub type RevocationListId = Uuid;
 
@@ -51,8 +52,30 @@ pub enum StatusListType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct RevocationListCredentialEntry {
-    pub credential_id: CredentialId,
-    pub state: CredentialStateEnum,
+pub struct RevocationListEntry {
+    pub entity_info: RevocationListEntityInfo,
     pub index: usize,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RevocationListEntityId {
+    Credential(CredentialId),
+    WalletUnitAttestedKey(WalletUnitAttestedKeyId),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RevocationListEntityInfo {
+    Credential(CredentialId, CredentialStateEnum),
+    WalletUnitAttestedKey(WalletUnitAttestedKeyId, WalletUnitStatus),
+}
+
+impl From<RevocationListEntityInfo> for RevocationListEntityId {
+    fn from(value: RevocationListEntityInfo) -> Self {
+        match value {
+            RevocationListEntityInfo::Credential(id, _) => Self::Credential(id),
+            RevocationListEntityInfo::WalletUnitAttestedKey(id, _) => {
+                Self::WalletUnitAttestedKey(id)
+            }
+        }
+    }
 }

@@ -14,7 +14,8 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
-    HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId, WalletUnitId,
+    HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
+    WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use time::macros::datetime;
@@ -33,7 +34,7 @@ use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
     identifier, interaction, key, key_did, organisation, proof, proof_claim,
     proof_input_claim_schema, proof_input_schema, proof_schema, revocation_list,
-    revocation_list_entry, wallet_unit,
+    revocation_list_entry, wallet_unit, wallet_unit_attested_key,
 };
 use crate::{DataLayer, db_conn};
 
@@ -678,6 +679,29 @@ pub async fn insert_wallet_unit_to_database(
         authentication_key_jwk: Set(Some(random_jwk_string())),
         nonce: Set(None),
         organisation_id: Set(organisation_id),
+    }
+    .insert(db)
+    .await
+    .unwrap();
+
+    id
+}
+
+pub async fn insert_wallet_unit_attested_key_to_database(
+    db: &DatabaseConnection,
+    wallet_unit_id: WalletUnitId,
+    revocation_list_entry_id: Option<String>,
+    expiration_date: OffsetDateTime,
+) -> WalletUnitAttestedKeyId {
+    let id = Uuid::new_v4().into();
+    wallet_unit_attested_key::ActiveModel {
+        id: Set(id),
+        created_date: Set(get_dummy_date()),
+        last_modified: Set(get_dummy_date()),
+        expiration_date: Set(expiration_date),
+        public_key_jwk: Set(random_jwk_string()),
+        wallet_unit_id: Set(wallet_unit_id),
+        revocation_list_entry_id: Set(revocation_list_entry_id),
     }
     .insert(db)
     .await
