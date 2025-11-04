@@ -60,7 +60,7 @@ use crate::validator::{
 };
 
 const WAA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
-const WUA_JWT_TYPE: &str = "keyattestation+jwt";
+const WUA_JWT_TYPE: &str = "key-attestation+jwt";
 const LEEWAY: u64 = 60;
 
 impl WalletProviderService {

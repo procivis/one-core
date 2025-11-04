@@ -94,7 +94,7 @@ async fn test_issue_wallet_attestations_success() {
     };
     assert_eq!(
         wua_jwt.header.r#type.as_ref().unwrap(),
-        "keyattestation+jwt"
+        "key-attestation+jwt"
     );
     assert!(wua_jwt.payload.proof_of_possession_key.is_none());
     assert!(wua_jwt.payload.custom["attested_keys"].is_array());
@@ -264,7 +264,7 @@ async fn test_issue_wua_only_success() {
     };
     assert_eq!(
         wua_jwt.header.r#type.as_ref().unwrap(),
-        "keyattestation+jwt"
+        "key-attestation+jwt"
     );
     assert!(wua_jwt.payload.proof_of_possession_key.is_none());
     assert!(wua_jwt.payload.custom["attested_keys"].is_array());
