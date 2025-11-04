@@ -23,8 +23,6 @@ pub struct Model {
 pub enum Relation {
     #[sea_orm(has_many = "super::revocation_list_entry::Entity")]
     RevocationListEntry,
-    #[sea_orm(has_many = "super::wallet_unit_attested_key::Entity")]
-    WalletUnitAttestedKey,
     #[sea_orm(
         belongs_to = "super::identifier::Entity",
         from = "Column::IssuerIdentifierId",
@@ -38,12 +36,6 @@ pub enum Relation {
 impl Related<super::revocation_list_entry::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::RevocationListEntry.def()
-    }
-}
-
-impl Related<super::wallet_unit_attested_key::Entity> for Entity {
-    fn to() -> RelationDef {
-        Relation::WalletUnitAttestedKey.def()
     }
 }
 

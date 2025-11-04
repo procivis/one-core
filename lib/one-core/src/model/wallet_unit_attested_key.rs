@@ -13,15 +13,20 @@ pub struct WalletUnitAttestedKey {
     pub last_modified: OffsetDateTime,
     pub expiration_date: OffsetDateTime,
     pub public_key_jwk: PublicKeyJwk,
-    pub revocation_list_index: Option<i64>,
 
-    // Relations:
-    pub revocation_list: Option<RevocationList>,
+    // Relations
+    pub revocation: Option<WalletUnitAttestedKeyRevocationInfo>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct WalletUnitAttestedKeyRelations {
-    pub revocation_list: Option<RevocationListRelations>,
+    pub revocation: Option<RevocationListRelations>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WalletUnitAttestedKeyRevocationInfo {
+    pub revocation_list: RevocationList,
+    pub revocation_list_index: usize,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From)]
@@ -31,8 +36,4 @@ pub struct WalletUnitAttestedKeyUpsertRequest {
     pub wallet_unit_id: WalletUnitId,
     pub expiration_date: OffsetDateTime,
     pub public_key_jwk: PublicKeyJwk,
-    pub revocation_list_index: Option<i64>,
-
-    // Relations:
-    pub revocation_list: Option<RevocationList>,
 }

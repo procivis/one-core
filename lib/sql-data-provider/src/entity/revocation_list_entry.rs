@@ -32,6 +32,8 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     Credential,
+    #[sea_orm(has_one = "super::wallet_unit_attested_key::Entity")]
+    WalletUnitAttestedKey,
 }
 
 impl Related<super::revocation_list::Entity> for Entity {
@@ -43,6 +45,12 @@ impl Related<super::revocation_list::Entity> for Entity {
 impl Related<super::credential::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Credential.def()
+    }
+}
+
+impl Related<super::wallet_unit_attested_key::Entity> for Entity {
+    fn to() -> RelationDef {
+        Relation::WalletUnitAttestedKey.def()
     }
 }
 

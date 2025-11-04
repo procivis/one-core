@@ -115,7 +115,6 @@ pub struct DataLayer {
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
     wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
-    #[allow(unused)]
     wallet_unit_attested_key_repository: Arc<dyn WalletUnitAttestedKeyRepository>,
 }
 
@@ -358,6 +357,10 @@ impl DataRepository for DataLayer {
 
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository> {
         self.wallet_unit_attestation_repository.clone()
+    }
+
+    fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository> {
+        self.wallet_unit_attested_key_repository.clone()
     }
 
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager> {

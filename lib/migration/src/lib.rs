@@ -165,6 +165,7 @@ mod m20251023_073646_drop_credential_schema_type_and_external_columns;
 mod m20251027_101749_add_wallet_unit_attested_key;
 mod m20251029_144801_add_holder_wallet_unit;
 mod m20251030_110836_revocation_list_entry;
+mod m20251103_093028_attested_key_revocation;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -332,6 +333,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251027_101749_add_wallet_unit_attested_key::Migration),
             Box::new(m20251029_144801_add_holder_wallet_unit::Migration),
             Box::new(m20251030_110836_revocation_list_entry::Migration),
+            Box::new(m20251103_093028_attested_key_revocation::Migration),
         ]
     }
 }

@@ -319,8 +319,7 @@ async fn test_issue_waa_only_with_existing_attested_keys_success() {
                     last_modified: now,
                     expiration_date: now + Duration::days(30),
                     public_key_jwk: holder_public_jwk,
-                    revocation_list_index: None,
-                    revocation_list: None,
+                    revocation: None,
                 }]),
                 ..Default::default()
             },

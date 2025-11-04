@@ -152,7 +152,7 @@ pub enum WalletUnitNew {
 }
 
 #[derive(DeriveIden)]
-enum WalletUnitAttestedKey {
+pub enum WalletUnitAttestedKey {
     Table,
     Id,
     WalletUnitId,

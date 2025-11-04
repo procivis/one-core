@@ -25,8 +25,6 @@ async fn test_upsert_wallet_unit_attested_key_success() {
         wallet_unit_id: test_setup.wallet_unit_ids[0],
         expiration_date: OffsetDateTime::now_utc(),
         public_key_jwk: random_jwk(),
-        revocation_list_index: Some(17),
-        revocation_list: None,
     };
     provider.upsert_attested_key(request.clone()).await.unwrap();
 
@@ -38,11 +36,7 @@ async fn test_upsert_wallet_unit_attested_key_success() {
     assert_eq!(reloaded.wallet_unit_id, request.wallet_unit_id);
     assert_eq!(reloaded.expiration_date, request.expiration_date);
     assert_eq!(reloaded.public_key_jwk, request.public_key_jwk);
-    assert_eq!(reloaded.revocation_list, request.revocation_list);
-    assert_eq!(
-        reloaded.revocation_list_index,
-        request.revocation_list_index
-    );
+    assert_eq!(reloaded.revocation, None);
 }
 
 #[tokio::test]
@@ -59,8 +53,7 @@ async fn test_upsert_wallet_unit_attested_key_conflict_success() {
         last_modified: now,
         expiration_date: now,
         public_key_jwk: random_jwk(),
-        revocation_list_index: Some(17),
-        revocation_list: None,
+        revocation: None,
     };
     provider
         .create_attested_key(original_attested_key.clone())
@@ -72,8 +65,6 @@ async fn test_upsert_wallet_unit_attested_key_conflict_success() {
         wallet_unit_id: test_setup.wallet_unit_ids[1],
         expiration_date: OffsetDateTime::now_utc(),
         public_key_jwk: random_jwk(),
-        revocation_list_index: Some(42),
-        revocation_list: None,
     };
     provider.upsert_attested_key(request.clone()).await.unwrap();
 
@@ -86,11 +77,7 @@ async fn test_upsert_wallet_unit_attested_key_conflict_success() {
     assert_eq!(reloaded.wallet_unit_id, request.wallet_unit_id);
     assert_eq!(reloaded.expiration_date, request.expiration_date);
     assert_eq!(reloaded.public_key_jwk, request.public_key_jwk);
-    assert_eq!(reloaded.revocation_list, request.revocation_list);
-    assert_eq!(
-        reloaded.revocation_list_index,
-        request.revocation_list_index
-    );
+    assert_eq!(reloaded.revocation, None);
 }
 
 #[tokio::test]
@@ -107,8 +94,7 @@ async fn test_get_wallet_unit_attested_key_by_wallet_unit() {
         last_modified: now,
         expiration_date: now,
         public_key_jwk: random_jwk(),
-        revocation_list_index: Some(17),
-        revocation_list: None,
+        revocation: None,
     };
     provider
         .create_attested_key(attested_key.clone())

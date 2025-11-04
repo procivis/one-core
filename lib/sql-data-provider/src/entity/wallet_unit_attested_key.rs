@@ -8,9 +8,6 @@ use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity::wallet_unit_attested_key;
-use crate::entity::wallet_unit_attested_key::Relation::{RevocationList, WalletUnit};
-
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
 #[sea_orm(table_name = "wallet_unit_attested_key")]
 pub struct Model {
@@ -21,8 +18,7 @@ pub struct Model {
     pub expiration_date: OffsetDateTime,
     pub public_key_jwk: String,
     pub wallet_unit_id: WalletUnitId,
-    pub revocation_list_id: Option<Uuid>,
-    pub revocation_list_index: Option<i64>,
+    pub revocation_list_entry_id: Option<Uuid>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -36,24 +32,24 @@ pub enum Relation {
     )]
     WalletUnit,
     #[sea_orm(
-        belongs_to = "super::revocation_list::Entity",
-        from = "Column::RevocationListId",
-        to = "super::revocation_list::Column::Id",
+        belongs_to = "super::revocation_list_entry::Entity",
+        from = "Column::RevocationListEntryId",
+        to = "super::revocation_list_entry::Column::Id",
         on_update = "Restrict",
         on_delete = "Restrict"
     )]
-    RevocationList,
+    RevocationListEntry,
 }
 
 impl Related<super::wallet_unit::Entity> for Entity {
     fn to() -> RelationDef {
-        WalletUnit.def()
+        Relation::WalletUnit.def()
     }
 }
 
-impl Related<super::revocation_list::Entity> for Entity {
+impl Related<super::revocation_list_entry::Entity> for Entity {
     fn to() -> RelationDef {
-        RevocationList.def()
+        Relation::RevocationListEntry.def()
     }
 }
 

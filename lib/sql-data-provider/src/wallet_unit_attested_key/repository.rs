@@ -1,8 +1,8 @@
-use std::collections::HashSet;
-
 use async_trait::async_trait;
+use one_core::model::revocation_list::RevocationListRelations;
 use one_core::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyUpsertRequest,
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
+    WalletUnitAttestedKeyUpsertRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
@@ -14,12 +14,10 @@ use sea_orm::{
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
 use uuid::Uuid;
-use wallet_unit_attested_key::Column;
 
-use crate::entity::wallet_unit_attested_key;
+use crate::entity::{revocation_list_entry, wallet_unit_attested_key};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 use crate::wallet_unit_attested_key::WalletUnitAttestedKeyProvider;
-use crate::wallet_unit_attested_key::mapper::model_to_attested_key;
 
 #[async_trait]
 impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
@@ -55,13 +53,11 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
         let model = wallet_unit_attested_key::ActiveModel::try_from(request)?;
         let stmt = wallet_unit_attested_key::Entity::insert(model)
             .on_conflict(
-                OnConflict::column(Column::Id)
-                    .update_column(Column::LastModified)
-                    .update_column(Column::ExpirationDate)
-                    .update_column(Column::PublicKeyJwk)
-                    .update_column(Column::RevocationListId)
-                    .update_column(Column::RevocationListIndex)
-                    .update_column(Column::WalletUnitId)
+                OnConflict::column(wallet_unit_attested_key::Column::Id)
+                    .update_column(wallet_unit_attested_key::Column::LastModified)
+                    .update_column(wallet_unit_attested_key::Column::ExpirationDate)
+                    .update_column(wallet_unit_attested_key::Column::PublicKeyJwk)
+                    .update_column(wallet_unit_attested_key::Column::WalletUnitId)
                     .to_owned(),
             )
             .build(self.db.get_database_backend());
@@ -82,25 +78,10 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
             .await
             .map_err(to_data_layer_error)?;
 
-        let revocation_list_id = model.as_ref().and_then(|v| v.revocation_list_id);
-        let mut attested_key = model.map(WalletUnitAttestedKey::try_from).transpose()?;
-
-        if let Some(attested_key) = &mut attested_key
-            && let Some(revocation_list_relations) = &relations.revocation_list
-            && let Some(revocation_list_id) = revocation_list_id
-        {
-            attested_key.revocation_list = Some(
-                self.revocation_list_repository
-                    .get_revocation_list(&revocation_list_id, revocation_list_relations)
-                    .await?
-                    .ok_or(DataLayerError::MissingRequiredRelation {
-                        relation: "wallet_unit_attested_key-revocation_list",
-                        id: revocation_list_id.to_string(),
-                    })?,
-            );
-        }
-
-        Ok(attested_key)
+        Ok(match model {
+            Some(model) => Some(self.convert_model(model, relations).await?),
+            None => None,
+        })
     }
 
     async fn get_by_wallet_unit_id(
@@ -113,20 +94,68 @@ impl WalletUnitAttestedKeyRepository for WalletUnitAttestedKeyProvider {
             .all(&self.db)
             .await
             .map_err(to_data_layer_error)?;
-        let revocation_lists = if let Some(revocation_list_relation) = &relations.revocation_list {
-            // Use hashset to filter out duplicates
-            let set =
-                HashSet::<Uuid>::from_iter(models.iter().filter_map(|m| m.revocation_list_id));
-            let revocation_list_ids = Vec::from_iter(set);
-            self.revocation_list_repository
-                .get_revocation_lists(&revocation_list_ids, revocation_list_relation)
-                .await?
+
+        let mut results = vec![];
+        for model in models {
+            results.push(self.convert_model(model, relations).await?);
+        }
+        Ok(results)
+    }
+}
+
+impl WalletUnitAttestedKeyProvider {
+    async fn convert_model(
+        &self,
+        model: wallet_unit_attested_key::Model,
+        relations: &WalletUnitAttestedKeyRelations,
+    ) -> Result<WalletUnitAttestedKey, DataLayerError> {
+        let revocation = if let Some(revocation_relations) = &relations.revocation {
+            self.get_revocation(&model, revocation_relations).await?
         } else {
-            vec![]
+            None
         };
-        models
-            .into_iter()
-            .map(|model| model_to_attested_key(model, &revocation_lists))
-            .collect()
+
+        let mut result = WalletUnitAttestedKey::try_from(model)?;
+        result.revocation = revocation;
+
+        Ok(result)
+    }
+
+    async fn get_revocation(
+        &self,
+        model: &wallet_unit_attested_key::Model,
+        relations: &RevocationListRelations,
+    ) -> Result<Option<WalletUnitAttestedKeyRevocationInfo>, DataLayerError> {
+        let Some(revocation_list_entry_id) = model.revocation_list_entry_id else {
+            return Ok(None);
+        };
+
+        let revocation_list_entry =
+            revocation_list_entry::Entity::find_by_id(revocation_list_entry_id)
+                .one(&self.db)
+                .await
+                .map_err(to_data_layer_error)?
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "wallet_unit_attested_key-revocation_list_entry",
+                    id: revocation_list_entry_id.to_string(),
+                })?;
+
+        let revocation_list = self
+            .revocation_list_repository
+            .get_revocation_list(
+                &Uuid::parse_str(&revocation_list_entry.revocation_list_id)
+                    .map_err(|_| DataLayerError::MappingError)?,
+                relations,
+            )
+            .await?
+            .ok_or(DataLayerError::MissingRequiredRelation {
+                relation: "wallet_unit_attested_key-revocation_list",
+                id: revocation_list_entry.revocation_list_id.to_string(),
+            })?;
+
+        Ok(Some(WalletUnitAttestedKeyRevocationInfo {
+            revocation_list,
+            revocation_list_index: revocation_list_entry.index as _,
+        }))
     }
 }

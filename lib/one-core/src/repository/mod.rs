@@ -51,6 +51,7 @@ use trust_anchor_repository::TrustAnchorRepository;
 use trust_entity_repository::TrustEntityRepository;
 use validity_credential_repository::ValidityCredentialRepository;
 use wallet_unit_attestation_repository::WalletUnitAttestationRepository;
+use wallet_unit_attested_key_repository::WalletUnitAttestedKeyRepository;
 use wallet_unit_repository::WalletUnitRepository;
 
 use crate::proto::transaction_manager::TransactionManager;
@@ -80,6 +81,7 @@ pub trait DataRepository: Send + Sync {
 
     fn get_holder_wallet_unit_repository(&self) -> Arc<dyn HolderWalletUnitRepository>;
     fn get_wallet_unit_attestation_repository(&self) -> Arc<dyn WalletUnitAttestationRepository>;
+    fn get_wallet_unit_attested_key_repository(&self) -> Arc<dyn WalletUnitAttestedKeyRepository>;
 
     fn get_tx_manager(&self) -> Arc<dyn TransactionManager>;
 }

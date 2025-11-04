@@ -89,8 +89,7 @@ fn dummy_attested_key(wallet_unit_id: WalletUnitId) -> WalletUnitAttestedKey {
         last_modified: now,
         expiration_date: now + Duration::days(30),
         public_key_jwk: random_jwk(),
-        revocation_list_index: Some(now.unix_timestamp()), // "random" index
-        revocation_list: None,
+        revocation: None,
     }
 }
 

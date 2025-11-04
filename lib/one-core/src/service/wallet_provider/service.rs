@@ -595,8 +595,7 @@ impl WalletProviderService {
                     last_modified: now,
                     expiration_date: wua_expiration_date,
                     public_key_jwk: holder_jwk.clone(),
-                    revocation_list_index: None,
-                    revocation_list: None,
+                    revocation: None,
                 })
             }
             let attestation = self.create_wua(
