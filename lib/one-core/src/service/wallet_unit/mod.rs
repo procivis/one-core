@@ -4,6 +4,7 @@ use crate::config::core_config::CoreConfig;
 use crate::proto::clock::Clock;
 use crate::proto::os_provider::OSInfoProvider;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::wallet_provider_client::WalletProviderClient;
@@ -29,6 +30,7 @@ pub struct WalletUnitService {
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     wallet_provider_client: Arc<dyn WalletProviderClient>,
+    wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     os_info_provider: Arc<dyn OSInfoProvider>,
     clock: Arc<dyn Clock>,
     base_url: Option<String>,
@@ -46,6 +48,7 @@ impl WalletUnitService {
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         wallet_provider_client: Arc<dyn WalletProviderClient>,
+        wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
         os_info_provider: Arc<dyn OSInfoProvider>,
         clock: Arc<dyn Clock>,
         base_url: Option<String>,
@@ -54,6 +57,7 @@ impl WalletUnitService {
     ) -> Self {
         Self {
             wallet_provider_client,
+            wallet_unit_proto,
             key_provider,
             key_repository,
             key_algorithm_provider,

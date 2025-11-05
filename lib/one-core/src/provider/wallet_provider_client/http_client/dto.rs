@@ -55,6 +55,7 @@ pub struct IssueWaaRequestRestDTO {
 
 #[derive(Clone, Debug, Serialize, From)]
 #[from(dto::IssueWuaRequestDTO)]
+#[serde(rename_all = "camelCase")]
 pub struct IssueWuaRequestRestDTO {
     pub proof: String,
     pub security_level: KeyStorageSecurityLevel,

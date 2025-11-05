@@ -324,6 +324,10 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(holder_wallet_unit::controller::wallet_unit_holder_details),
             )
             .route(
+                "/api/holder-wallet-unit/v1/{id}/status",
+                post(holder_wallet_unit::controller::wallet_unit_holder_status),
+            )
+            .route(
                 "/api/holder-wallet-unit/v1",
                 post(holder_wallet_unit::controller::wallet_unit_holder_register),
             )

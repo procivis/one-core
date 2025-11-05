@@ -6,7 +6,7 @@ use shared_types::HolderWalletUnitId;
 
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::holder_wallet_unit::dto::{
     HolderRegisterWalletUnitRequestRestDTO, HolderWalletUnitDetailRestDTO,
 };
@@ -72,4 +72,32 @@ pub(crate) async fn wallet_unit_holder_details(
         .await;
 
     OkOrErrorResponse::from_result_fallible(result, state, "get holder wallet unit")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/holder-wallet-unit/v1/{id}/status",
+    responses(EmptyOrErrorResponse),
+    params(
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit id")
+    ),
+    tag = "holder_wallet_unit",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Refresh holder wallet unit",
+    description = indoc::formatdoc! {"Check the status of the holder wallet unit."},
+)]
+#[require_permissions(Permission::HolderWalletUnitDetail)]
+pub(crate) async fn wallet_unit_holder_status(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<HolderWalletUnitId>, ErrorResponseRestDTO>,
+) -> EmptyOrErrorResponse {
+    let result = state
+        .core
+        .wallet_unit_service
+        .holder_wallet_unit_status(id)
+        .await;
+
+    EmptyOrErrorResponse::from_result(result, state, "holder wallet unit status check")
 }

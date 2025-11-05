@@ -11,6 +11,7 @@ use time::{Duration, OffsetDateTime};
 pub mod get_wallet_unit_tests;
 pub mod holder_get_wallet_unit;
 pub mod holder_register_wallet_unit;
+pub mod holder_wallet_unit_status_tests;
 pub mod list_wallet_unit_tests;
 pub mod revoke_wallet_unit_tests;
 

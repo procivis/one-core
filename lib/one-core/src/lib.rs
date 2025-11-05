@@ -32,6 +32,7 @@ use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::scanner::NfcScanner;
 use crate::proto::os_provider::OSInfoProviderImpl;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
+use crate::proto::wallet_unit::HolderWalletUnitProtoImpl;
 use crate::provider::blob_storage_provider::{
     BlobStorageProviderImpl, blob_storage_providers_from_config,
 };
@@ -617,6 +618,12 @@ impl OneCore {
             data_provider.get_credential_schema_repository(),
         ));
 
+        let wallet_unit_proto = Arc::new(HolderWalletUnitProtoImpl::new(
+            key_provider.clone(),
+            Arc::new(HTTPWalletProviderClient::new(client.clone())),
+            revocation_method_provider.clone(),
+        ));
+
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
@@ -1020,6 +1027,7 @@ impl OneCore {
                 key_provider,
                 key_algorithm_provider,
                 Arc::new(HTTPWalletProviderClient::new(client)),
+                wallet_unit_proto,
                 Arc::new(OSInfoProviderImpl),
                 Arc::new(DefaultClock),
                 providers.core_base_url,

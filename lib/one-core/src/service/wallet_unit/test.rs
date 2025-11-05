@@ -15,6 +15,7 @@ use crate::proto::clock::DefaultClock;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::NoSessionProvider;
+use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::StorageGeneratedKey;
@@ -49,6 +50,7 @@ fn mock_wallet_unit_service() -> WalletUnitService {
         base_url: Some(BASE_URL.to_string()),
         config: Arc::new(CoreConfig::default()),
         session_provider: Arc::new(NoSessionProvider),
+        wallet_unit_proto: Arc::new(MockHolderWalletUnitProto::default()),
     }
 }
 
@@ -198,4 +200,189 @@ async fn holder_register_success() {
 
     // then
     assert!(result.is_ok(), "holder_register failed: {result:?}");
+}
+
+#[tokio::test]
+async fn holder_wallet_unit_status_check_still_valid() {
+    // given
+    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit()
+        .once()
+        .return_once(move |_, _| {
+            Ok(Some(crate::model::holder_wallet_unit::HolderWalletUnit {
+                id: wallet_unit_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                status: WalletUnitStatus::Active,
+                wallet_provider_type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+                wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                wallet_provider_url: "https://wallet.provider".to_string(),
+                provider_wallet_unit_id: Uuid::new_v4().into(),
+                organisation: None,
+                authentication_key: None,
+                wallet_unit_attestations: None,
+            }))
+        });
+
+    let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
+    wallet_unit_proto
+        .expect_is_holder_wallet_unit_revoked()
+        .once()
+        .return_once(|_| Ok(false)); // Returns false when inactive or attestations revoked
+
+    let service = WalletUnitService {
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        wallet_unit_proto: Arc::new(wallet_unit_proto),
+        ..mock_wallet_unit_service()
+    };
+
+    // when
+    let result = service.holder_wallet_unit_status(wallet_unit_id).await;
+
+    // then
+    assert!(
+        result.is_ok(),
+        "status check should succeed without marking as revoked"
+    );
+}
+
+#[tokio::test]
+async fn holder_wallet_unit_status_check_revocation() {
+    // given
+    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit()
+        .once()
+        .return_once(move |_, _| {
+            Ok(Some(crate::model::holder_wallet_unit::HolderWalletUnit {
+                id: wallet_unit_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                status: WalletUnitStatus::Active,
+                wallet_provider_type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+                wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                wallet_provider_url: "https://wallet.provider".to_string(),
+                provider_wallet_unit_id: Uuid::new_v4().into(),
+                organisation: Some(Organisation {
+                    id: Uuid::new_v4().into(),
+                    created_date: get_dummy_date(),
+                    last_modified: get_dummy_date(),
+                    name: "Test Org".to_string(),
+                    deactivated_at: None,
+                    wallet_provider: None,
+                    wallet_provider_issuer: None,
+                }),
+                authentication_key: None,
+                wallet_unit_attestations: None,
+            }))
+        });
+
+    let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
+    wallet_unit_proto
+        .expect_is_holder_wallet_unit_revoked()
+        .once()
+        .return_once(|_| Ok(true));
+
+    holder_wallet_unit_repository
+        .expect_update_holder_wallet_unit()
+        .once()
+        .return_once(move |id, request| {
+            check!(id == &wallet_unit_id);
+            check!(request.status == Some(WalletUnitStatus::Revoked));
+            Ok(())
+        });
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .once()
+        .return_once(|_| Ok(Uuid::new_v4().into()));
+
+    let service = WalletUnitService {
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        wallet_unit_proto: Arc::new(wallet_unit_proto),
+        history_repository: Arc::new(history_repository),
+        ..mock_wallet_unit_service()
+    };
+
+    // when
+    let result = service.holder_wallet_unit_status(wallet_unit_id).await;
+
+    // then
+    assert!(
+        result.is_ok(),
+        "status check should succeed and update status to revoked"
+    );
+}
+
+#[tokio::test]
+async fn holder_wallet_unit_status_check_not_found() {
+    // given
+    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit()
+        .once()
+        .return_once(|_, _| Ok(None));
+
+    let service = WalletUnitService {
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        ..mock_wallet_unit_service()
+    };
+
+    // when
+    let result = service.holder_wallet_unit_status(wallet_unit_id).await;
+
+    // then
+    assert!(result.is_err(), "should return error for not found");
+}
+
+#[tokio::test]
+async fn holder_wallet_unit_status_check_already_revoked() {
+    // given
+    let wallet_unit_id: shared_types::HolderWalletUnitId = Uuid::new_v4().into();
+
+    let mut holder_wallet_unit_repository = MockHolderWalletUnitRepository::new();
+    holder_wallet_unit_repository
+        .expect_get_holder_wallet_unit()
+        .once()
+        .return_once(move |_, _| {
+            Ok(Some(crate::model::holder_wallet_unit::HolderWalletUnit {
+                id: wallet_unit_id,
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                status: WalletUnitStatus::Revoked,
+                wallet_provider_type: crate::model::wallet_unit::WalletProviderType::ProcivisOne,
+                wallet_provider_name: "PROCIVIS_ONE".to_string(),
+                wallet_provider_url: "https://wallet.provider".to_string(),
+                provider_wallet_unit_id: Uuid::new_v4().into(),
+                organisation: None,
+                authentication_key: None,
+                wallet_unit_attestations: None,
+            }))
+        });
+
+    // wallet_unit_proto should NOT be called since wallet unit is already revoked
+    let wallet_unit_proto = MockHolderWalletUnitProto::new();
+
+    let service = WalletUnitService {
+        holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
+        wallet_unit_proto: Arc::new(wallet_unit_proto),
+        ..mock_wallet_unit_service()
+    };
+
+    // when
+    let result = service.holder_wallet_unit_status(wallet_unit_id).await;
+
+    // then
+    assert!(
+        result.is_ok(),
+        "status check should succeed without checking revocation"
+    );
 }

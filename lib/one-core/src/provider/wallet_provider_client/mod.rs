@@ -36,6 +36,7 @@ pub trait WalletProviderClient: Send + Sync {
         &self,
         wallet_provider_url: &str,
         wallet_unit_id: WalletUnitId,
+        bearer_token: &str,
         request: IssueWalletUnitAttestationRequestDTO,
     ) -> Result<IssueWalletAttestationResponse, WalletProviderClientError>;
 }

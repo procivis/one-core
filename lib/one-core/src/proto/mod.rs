@@ -14,3 +14,4 @@ pub(crate) mod oauth_client;
 pub(crate) mod os_provider;
 pub mod session_provider;
 pub mod transaction_manager;
+pub(crate) mod wallet_unit;

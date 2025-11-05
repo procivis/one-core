@@ -21,6 +21,18 @@ impl OneCoreBinding {
         let response = core.wallet_unit_service.holder_register(result?).await?;
         Ok(response.to_string())
     }
+
+    #[uniffi::method]
+    pub async fn holder_wallet_unit_status(&self, id: String) -> Result<(), BindingError> {
+        let core = self.use_core().await?;
+
+        let id = into_id(&id)?;
+
+        Ok(core
+            .wallet_unit_service
+            .holder_wallet_unit_status(id)
+            .await?)
+    }
 }
 
 #[derive(Clone, Debug, uniffi::Enum, Into, From)]

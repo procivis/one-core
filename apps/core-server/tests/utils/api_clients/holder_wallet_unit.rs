@@ -43,4 +43,13 @@ impl HolderWalletUnitsApi {
 
         self.client.post("/api/holder-wallet-unit/v1", body).await
     }
+
+    pub async fn holder_wallet_unit_status(&self, wallet_unit_id: &HolderWalletUnitId) -> Response {
+        self.client
+            .post(
+                &format!("/api/holder-wallet-unit/v1/{}/status", wallet_unit_id),
+                None,
+            )
+            .await
+    }
 }

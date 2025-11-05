@@ -8,10 +8,13 @@ use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType};
-use crate::model::holder_wallet_unit::{CreateHolderWalletUnitRequest, HolderWalletUnitRelations};
+use crate::model::holder_wallet_unit::{
+    CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
+};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
+use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
@@ -180,6 +183,62 @@ impl WalletUnitService {
             .ok_or(EntityNotFoundError::HolderWalletUnit(id))?;
 
         result.try_into()
+    }
+
+    pub async fn holder_wallet_unit_status(
+        &self,
+        id: HolderWalletUnitId,
+    ) -> Result<(), ServiceError> {
+        let holder_wallet_unit = self
+            .holder_wallet_unit_repository
+            .get_holder_wallet_unit(
+                &id,
+                &HolderWalletUnitRelations {
+                    authentication_key: Some(KeyRelations::default()),
+                    wallet_unit_attestations: Some(WalletUnitAttestationRelations::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::HolderWalletUnit(id))?;
+
+        if holder_wallet_unit.status != WalletUnitStatus::Active {
+            return Ok(());
+        }
+
+        let is_revoked = self
+            .wallet_unit_proto
+            .is_holder_wallet_unit_revoked(&holder_wallet_unit)
+            .await?;
+
+        if is_revoked {
+            self.holder_wallet_unit_repository
+                .update_holder_wallet_unit(
+                    &id,
+                    UpdateHolderWalletUnitRequest {
+                        status: Some(WalletUnitStatus::Revoked),
+                        ..Default::default()
+                    },
+                )
+                .await
+                .map_err(ServiceError::from)?;
+
+            self.history_repository
+                .create_history(History {
+                    id: Uuid::new_v4().into(),
+                    action: HistoryAction::Revoked,
+                    name: holder_wallet_unit.wallet_provider_name.clone(),
+                    target: None,
+                    entity_id: Some(id.into()),
+                    entity_type: HistoryEntityType::WalletUnitAttestation,
+                    metadata: None,
+                    organisation_id: holder_wallet_unit.organisation.map(|o| o.id),
+                    user: self.session_provider.session().user(),
+                    created_date: self.clock.now_utc(),
+                })
+                .await?;
+        }
+        Ok(())
     }
 
     async fn register_without_integrity_check(

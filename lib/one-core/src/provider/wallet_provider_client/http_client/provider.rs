@@ -115,6 +115,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         &self,
         wallet_provider_url: &str,
         wallet_unit_id: WalletUnitId,
+        bearer_token: &str,
         request: IssueWalletUnitAttestationRequestDTO,
     ) -> Result<IssueWalletAttestationResponse, WalletProviderClientError> {
         let url = Url::parse(
@@ -127,6 +128,7 @@ impl WalletProviderClient for HTTPWalletProviderClient {
         let result = self
             .http_client
             .post(url.as_str())
+            .bearer_auth(bearer_token)
             .json(IssueWalletUnitAttestationRequestRestDTO::from(request))
             .context("json error")
             .map_err(WalletProviderClientError::Transport)?
