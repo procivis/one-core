@@ -1446,6 +1446,9 @@ pub enum ErrorCode {
     #[strum(message = "Holder wallet unit not found")]
     BR_0296,
 
+    #[strum(message = "Insufficient security level")]
+    BR_0297,
+
     #[strum(message = "Proof schema: Mixed wallet storage types")]
     BR_0304,
 }
@@ -1858,6 +1861,7 @@ impl ErrorCodeMixin for WalletProviderError {
             Self::WalletProviderNotAssociatedWithOrganisation => ErrorCode::BR_0286,
             Self::WalletUnitMustBeActive => ErrorCode::BR_0081,
             Self::WalletUnitMustBePending => ErrorCode::BR_0168,
+            Self::InsufficientSecurityLevel => ErrorCode::BR_0297,
         }
     }
 }

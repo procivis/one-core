@@ -43,4 +43,6 @@ pub enum WalletProviderError {
     WalletUnitMustBeActive,
     #[error("Wallet unit must be pending")]
     WalletUnitMustBePending,
+    #[error("Insufficient security level")]
+    InsufficientSecurityLevel,
 }
