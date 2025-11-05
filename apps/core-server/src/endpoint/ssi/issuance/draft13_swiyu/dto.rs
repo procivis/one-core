@@ -5,7 +5,7 @@ use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIGrants,
+    OpenID4VCICredentialValueDetails, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIPreAuthorizedCodeGrant,
     OpenID4VCIProofRequestDTO, OpenID4VCITokenResponseDTO,
@@ -88,6 +88,19 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
 #[from(OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO)]
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO {
     pub name: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(OpenID4VCIDiscoveryResponseDTO)]
+pub(crate) struct OpenID4VCIDiscoveryResponseRestDTO {
+    pub issuer: String,
+    pub authorization_endpoint: Option<String>,
+    pub token_endpoint: String,
+    pub jwks_uri: Option<String>,
+    pub response_types_supported: Vec<String>,
+    pub grant_types_supported: Vec<String>,
+    pub subject_types_supported: Vec<String>,
+    pub id_token_signing_alg_values_supported: Vec<String>,
 }
 
 #[options_not_nullable]

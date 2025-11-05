@@ -538,6 +538,34 @@ async fn test_get_issuer_metadata_mdoc() {
 }
 
 #[tokio::test]
+async fn test_service_discovery() {
+    let mut repository = MockCredentialSchemaRepository::default();
+    let credential_repository = MockCredentialRepository::default();
+
+    let schema = generic_credential_schema();
+    let relations = CredentialSchemaRelations {
+        claim_schemas: Some(ClaimSchemaRelations::default()),
+        ..Default::default()
+    };
+    {
+        let clone = schema.clone();
+        repository
+            .expect_get_credential_schema()
+            .times(1)
+            .with(eq(schema.id.to_owned()), eq(relations))
+            .returning(move |_, _| Ok(Some(clone.clone())));
+    }
+    let service = setup_service(Mocks {
+        credential_schema_repository: repository,
+        credential_repository,
+        config: generic_config().core,
+        ..Default::default()
+    });
+    let result = service.service_discovery(&schema.id).await;
+    assert!(result.is_ok());
+}
+
+#[tokio::test]
 async fn test_create_token() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();

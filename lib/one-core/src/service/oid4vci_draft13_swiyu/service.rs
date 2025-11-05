@@ -2,7 +2,8 @@ use shared_types::{CredentialId, CredentialSchemaId};
 
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialSubjectItem,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
+    OpenID4VCIDiscoveryResponseDTO, OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO,
+    OpenID4VCITokenResponseDTO,
 };
 use crate::service::error::ServiceError;
 use crate::service::oid4vci_draft13::dto::OAuthAuthorizationServerMetadataResponseDTO;
@@ -53,6 +54,13 @@ impl OID4VCIDraft13SwiyuService {
             });
 
         Ok(metadata)
+    }
+
+    pub async fn service_discovery(
+        &self,
+        credential_schema_id: &CredentialSchemaId,
+    ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
+        self.inner.service_discovery(credential_schema_id).await
     }
 
     pub async fn get_credential_offer(

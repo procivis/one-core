@@ -413,6 +413,10 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_get_issuer_metadata),
             )
             .route(
+                "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/openid-configuration",
+                get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_service_discovery),
+            )
+            .route(
                 "/ssi/openid4vci/draft-13-swiyu/{id}/.well-known/oauth-authorization-server",
                 get(ssi::issuance::draft13_swiyu::controller::oid4vci_draft13_swiyu_oauth_authorization_server),
             )
