@@ -13,7 +13,6 @@ use sea_orm::{
 };
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::entity::{revocation_list_entry, wallet_unit_attested_key};
 use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
@@ -142,11 +141,7 @@ impl WalletUnitAttestedKeyProvider {
 
         let revocation_list = self
             .revocation_list_repository
-            .get_revocation_list(
-                &Uuid::parse_str(&revocation_list_entry.revocation_list_id)
-                    .map_err(|_| DataLayerError::MappingError)?,
-                relations,
-            )
+            .get_revocation_list(&revocation_list_entry.revocation_list_id, relations)
             .await?
             .ok_or(DataLayerError::MissingRequiredRelation {
                 relation: "wallet_unit_attested_key-revocation_list",

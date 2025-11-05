@@ -1,5 +1,5 @@
 use anyhow::Context;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, RevocationListId};
 use time::OffsetDateTime;
 
 use super::dto::RevocationListResponseDTO;
@@ -16,7 +16,6 @@ use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::service::revocation_list::RevocationListService;
-use crate::service::revocation_list::dto::RevocationListId;
 
 impl RevocationListService {
     pub async fn get_lvvc_by_credential_id(

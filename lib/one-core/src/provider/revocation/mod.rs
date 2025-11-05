@@ -57,15 +57,23 @@ pub trait RevocationMethod: Send + Sync {
 
     // wallet unit attestation functionality
 
+    /// Issuer: place issued attestation on a status-list
     async fn add_issued_attestation(
         &self,
         attestation: &WalletUnitAttestedKey,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
 
+    /// Issuer: construct status block to be included in a re-issued attestion JWT
     async fn get_attestation_revocation_info(
         &self,
         key_info: &WalletUnitAttestedKeyRevocationInfo,
     ) -> Result<CredentialRevocationInfo, RevocationError>;
+
+    /// Issuer: update precomputed revocation credential with latest changes considering input attestations
+    async fn update_attestation_entries(
+        &self,
+        keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+    ) -> Result<(), RevocationError>;
 
     /// Revocation method capabilities include the operations possible for each revocation
     /// method.

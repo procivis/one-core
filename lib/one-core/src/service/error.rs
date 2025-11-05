@@ -2,8 +2,8 @@ use one_crypto::CryptoProviderError;
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
-    HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId, TrustAnchorId,
-    TrustEntityId, TrustEntityKey, WalletUnitId,
+    HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    RevocationListId, TrustAnchorId, TrustEntityId, TrustEntityKey, WalletUnitId,
 };
 use strum::{EnumMessage, IntoStaticStr};
 use thiserror::Error;
@@ -18,7 +18,6 @@ use crate::model::credential_schema::WalletStorageTypeEnum;
 use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofRole, ProofStateEnum};
-use crate::model::revocation_list::RevocationListId;
 use crate::proto::nfc::NfcError;
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::provider::credential_formatter::error::FormatterError;

@@ -1,14 +1,11 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, WalletUnitAttestedKeyId};
+use shared_types::{CredentialId, RevocationListId, WalletUnitAttestedKeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::credential::CredentialStateEnum;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::wallet_unit::WalletUnitStatus;
-
-pub type RevocationListId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationList {

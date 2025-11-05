@@ -359,6 +359,15 @@ impl RevocationMethod for LvvcProvider {
         ))
     }
 
+    async fn update_attestation_entries(
+        &self,
+        _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+    ) -> Result<(), RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
+    }
+
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],

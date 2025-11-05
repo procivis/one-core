@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
+use shared_types::RevocationListId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -44,7 +45,7 @@ use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
-    Operation, RevocationListId, RevocationMethodCapabilities,
+    Operation, RevocationMethodCapabilities,
 };
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -373,6 +374,41 @@ impl RevocationMethod for TokenStatusList {
         })
     }
 
+    async fn update_attestation_entries(
+        &self,
+        keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+    ) -> Result<(), RevocationError> {
+        let lists: HashMap<RevocationListId, RevocationList> = HashMap::from_iter(
+            keys.into_iter()
+                .map(|key| (key.revocation_list.id, key.revocation_list)),
+        );
+
+        for list in lists.into_values() {
+            let entries = self.revocation_list_repository.get_entries(list.id).await?;
+
+            let encoded_list = generate_token_from_entries(entries, None).await?;
+
+            let list_credential = format_status_list_credential(
+                &list.id,
+                &list.issuer_identifier.ok_or(RevocationError::MappingError(
+                    "Missing issuer_identifier".to_string(),
+                ))?,
+                encoded_list,
+                &*self.key_provider,
+                &self.key_algorithm_provider,
+                &self.core_base_url,
+                &*self.get_formatter_for_issuance()?,
+            )
+            .await?;
+
+            self.revocation_list_repository
+                .update_credentials(&list.id, list_credential.into_bytes())
+                .await?;
+        }
+
+        Ok(())
+    }
+
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
@@ -427,7 +463,7 @@ impl TokenStatusList {
         } else {
             // Create a new list
 
-            let revocation_list_id = Uuid::new_v4();
+            let revocation_list_id = Uuid::new_v4().into();
             let list_credential = format_status_list_credential(
                 &revocation_list_id,
                 &issuer_identifier,

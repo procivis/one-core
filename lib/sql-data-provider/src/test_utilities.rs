@@ -6,7 +6,6 @@ use one_core::model::credential::{Credential, CredentialStateEnum};
 use one_core::model::interaction::InteractionId;
 use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::Organisation;
-use one_core::model::revocation_list::RevocationListId;
 use one_core::model::wallet_unit::WalletProviderType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -15,7 +14,7 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
     HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
-    WalletUnitAttestedKeyId, WalletUnitId,
+    RevocationListId, WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use time::macros::datetime;
@@ -594,11 +593,11 @@ pub async fn insert_revocation_list(
     issuer_identifier_id: IdentifierId,
     r#type: String,
 ) -> Result<RevocationListId, DbErr> {
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
 
     let _model = revocation_list::ActiveModel {
-        id: Set(id.into()),
+        id: Set(id),
         created_date: Set(now),
         last_modified: Set(now),
         credentials: Set(vec![]),
@@ -625,7 +624,7 @@ pub async fn insert_revocation_list_entry(
     let _model = revocation_list_entry::ActiveModel {
         id: Set(id.into()),
         created_date: Set(now),
-        revocation_list_id: Set(list_id.to_string()),
+        revocation_list_id: Set(list_id),
         index: Set(index as _),
         credential_id: Set(credential_id),
     }

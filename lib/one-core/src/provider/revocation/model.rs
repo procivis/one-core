@@ -3,13 +3,10 @@
 use serde::Serialize;
 use strum::Display;
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::credential::Credential;
 use crate::model::proof_schema::ProofInputSchema;
 use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
-
-pub type RevocationListId = Uuid;
 
 #[derive(Clone)]
 pub enum CredentialDataByRole {

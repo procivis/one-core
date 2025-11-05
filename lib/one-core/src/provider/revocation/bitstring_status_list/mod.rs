@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::CredentialId;
+use shared_types::{CredentialId, RevocationListId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -40,7 +40,7 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
-    Operation, RevocationListId, RevocationMethodCapabilities,
+    Operation, RevocationMethodCapabilities,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -332,6 +332,15 @@ impl RevocationMethod for BitstringStatusList {
         ))
     }
 
+    async fn update_attestation_entries(
+        &self,
+        _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+    ) -> Result<(), RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
+    }
+
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
@@ -474,7 +483,7 @@ impl BitstringStatusList {
         } else {
             // Create a new list
 
-            let revocation_list_id = Uuid::new_v4();
+            let revocation_list_id = Uuid::new_v4().into();
             let list_credential = format_status_list_credential(
                 &revocation_list_id,
                 issuer_identifier,

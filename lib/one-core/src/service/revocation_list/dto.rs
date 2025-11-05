@@ -1,8 +1,4 @@
-use uuid::Uuid;
-
 use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
-
-pub type RevocationListId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationListResponseDTO {

@@ -1,10 +1,8 @@
-use std::str::FromStr;
-
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListId, RevocationListPurpose, RevocationListRelations, StatusListType,
+    RevocationListPurpose, RevocationListRelations, StatusListType,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
@@ -12,7 +10,7 @@ use sea_orm::{
     ActiveEnum, ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, QueryFilter,
     QueryOrder, QuerySelect, RelationTrait, Set, Unchanged,
 };
-use shared_types::{CredentialId, IdentifierId, WalletUnitAttestedKeyId};
+use shared_types::{CredentialId, IdentifierId, RevocationListId, WalletUnitAttestedKeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -42,7 +40,7 @@ impl RevocationListProvider {
         };
 
         Ok(RevocationList {
-            id: Uuid::from_str(&revocation_list.id)?,
+            id: revocation_list.id,
             created_date: revocation_list.created_date,
             last_modified: revocation_list.last_modified,
             credentials: revocation_list.credentials,
@@ -73,7 +71,7 @@ impl RevocationListRepository for RevocationListProvider {
             .ok_or(DataLayerError::MappingError)?;
 
         revocation_list::ActiveModel {
-            id: Set(request.id.to_string()),
+            id: Set(request.id),
             created_date: Set(request.created_date),
             last_modified: Set(request.last_modified),
             credentials: Set(request.credentials),
@@ -94,7 +92,7 @@ impl RevocationListRepository for RevocationListProvider {
         id: &RevocationListId,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError> {
-        let revocation_list = revocation_list::Entity::find_by_id(id.to_string())
+        let revocation_list = revocation_list::Entity::find_by_id(id)
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
@@ -145,11 +143,11 @@ impl RevocationListRepository for RevocationListProvider {
 
     async fn update_credentials(
         &self,
-        revocation_list_id: &Uuid,
+        revocation_list_id: &RevocationListId,
         credentials: Vec<u8>,
     ) -> Result<(), DataLayerError> {
         let update_model = revocation_list::ActiveModel {
-            id: Unchanged(revocation_list_id.to_string()),
+            id: Unchanged(*revocation_list_id),
             last_modified: Set(OffsetDateTime::now_utc()),
             credentials: Set(credentials),
             ..Default::default()
@@ -170,7 +168,7 @@ impl RevocationListRepository for RevocationListProvider {
         let max: Option<Option<u32>> = revocation_list_entry::Entity::find()
             .select_only()
             .column_as(revocation_list_entry::Column::Index.max(), "index")
-            .filter(revocation_list_entry::Column::RevocationListId.eq(id.to_string()))
+            .filter(revocation_list_entry::Column::RevocationListId.eq(id))
             .into_tuple()
             .one(&self.db)
             .await
@@ -196,7 +194,7 @@ impl RevocationListRepository for RevocationListProvider {
         revocation_list_entry::ActiveModel {
             id: Set(entry_id.to_string()),
             created_date: Set(now),
-            revocation_list_id: Set(list_id.to_string()),
+            revocation_list_id: Set(list_id),
             index: Set(index_on_status_list as _),
             credential_id: Set(credential_id),
         }

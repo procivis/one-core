@@ -61,7 +61,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         .expect_get_revocation_by_issuer_identifier_id()
         .returning(|_, purpose, r#type, _| {
             Ok(Some(RevocationList {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 credentials: vec![],

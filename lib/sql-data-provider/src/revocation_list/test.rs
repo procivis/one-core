@@ -5,12 +5,12 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListId, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use one_core::model::wallet_unit::WalletUnitStatus;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, RevocationListId};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -105,7 +105,7 @@ async fn setup_with_list() -> TestSetupWithList {
 async fn test_create_revocation_list() {
     let setup = setup().await;
 
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let result = setup
         .provider
         .create_revocation_list(RevocationList {

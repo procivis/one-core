@@ -46,4 +46,9 @@ impl WalletUnitsApi {
         let url = format!("/api/wallet-unit/v1/{id}");
         self.client.get(&url).await
     }
+
+    pub async fn revoke(&self, id: &impl Display) -> Response {
+        let url = format!("/api/wallet-unit/v1/{id}/revoke");
+        self.client.post(&url, None).await
+    }
 }

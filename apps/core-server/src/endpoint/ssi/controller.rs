@@ -8,9 +8,9 @@ use headers::Authorization;
 use headers::authorization::Bearer;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId, TrustAnchorId,
+    CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
+    RevocationListId, TrustAnchorId,
 };
-use uuid::Uuid;
 
 use super::dto::{
     DidDocumentRestDTO, GetTrustAnchorResponseRestDTO, JsonLDContextResponseRestDTO,
@@ -91,7 +91,7 @@ pub(crate) async fn get_did_webvh_log(
     get,
     path = "/ssi/revocation/v1/list/{id}",
     params(
-        ("id" = Uuid, Path, description = "Revocation list id")
+        ("id" = RevocationListId, Path, description = "Revocation list id")
     ),
     responses(
         (status = 200, description = "OK", content(
@@ -122,7 +122,7 @@ pub(crate) async fn get_did_webvh_log(
 )]
 pub(crate) async fn get_revocation_list_by_id(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
+    WithRejection(Path(id), _): WithRejection<Path<RevocationListId>, ErrorResponseRestDTO>,
 ) -> Response {
     let result = state
         .core

@@ -1,6 +1,6 @@
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{CredentialId, DidId, IdentifierId};
+use shared_types::{CredentialId, DidId, IdentifierId, RevocationListId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -9,7 +9,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: String,
     pub created_date: OffsetDateTime,
-    pub revocation_list_id: String,
+    pub revocation_list_id: RevocationListId,
     pub index: u32,
     pub credential_id: Option<CredentialId>,
 }

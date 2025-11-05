@@ -1,13 +1,13 @@
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{DidId, IdentifierId};
+use shared_types::{DidId, IdentifierId, RevocationListId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "revocation_list")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: RevocationListId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     #[sea_orm(column_type = "Blob")]

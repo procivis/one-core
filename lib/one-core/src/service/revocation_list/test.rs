@@ -55,7 +55,7 @@ fn setup_service(repositories: Repositories) -> RevocationListService {
 async fn test_get_revocation_list() {
     let mut revocation_list_repository = MockRevocationListRepository::default();
 
-    let revocation_id = Uuid::new_v4();
+    let revocation_id = Uuid::new_v4().into();
     {
         let revocation = RevocationList {
             id: revocation_id,

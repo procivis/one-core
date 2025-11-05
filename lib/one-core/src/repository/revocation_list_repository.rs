@@ -1,9 +1,9 @@
-use shared_types::IdentifierId;
+use shared_types::{IdentifierId, RevocationListId};
 
 use super::error::DataLayerError;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListId,
-    RevocationListPurpose, RevocationListRelations, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
+    RevocationListRelations, StatusListType,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

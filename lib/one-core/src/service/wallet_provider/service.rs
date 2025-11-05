@@ -38,6 +38,7 @@ use crate::model::history::{
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::model::revocation_list::RevocationListRelations;
 use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
@@ -1053,7 +1054,22 @@ impl WalletProviderService {
                 id,
                 &WalletUnitRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    ..Default::default()
+                    attested_keys: Some(WalletUnitAttestedKeyRelations {
+                        revocation: Some(RevocationListRelations {
+                            issuer_identifier: Some(IdentifierRelations {
+                                did: Some(DidRelations {
+                                    keys: Some(KeyRelations::default()),
+                                    ..Default::default()
+                                }),
+                                key: Some(KeyRelations::default()),
+                                certificates: Some(CertificateRelations {
+                                    key: Some(KeyRelations::default()),
+                                    ..Default::default()
+                                }),
+                                ..Default::default()
+                            }),
+                        }),
+                    }),
                 },
             )
             .await?
@@ -1069,6 +1085,9 @@ impl WalletProviderService {
                 wallet_unit.id
             )));
         };
+
+        let (_, config_params) =
+            self.get_wallet_provider_config_params(&wallet_unit.wallet_provider_name)?;
 
         self.wallet_unit_repository
             .update_wallet_unit(
@@ -1087,6 +1106,33 @@ impl WalletProviderService {
             organisation.id,
         )
         .await;
+
+        let Some(revocation_method) = &config_params.wallet_unit_attestation.revocation_method
+        else {
+            return Ok(());
+        };
+
+        let keys = wallet_unit
+            .attested_keys
+            .ok_or(ServiceError::MappingError(format!(
+                "Missing attested_keys on wallet unit `{}`",
+                wallet_unit.id
+            )))?
+            .into_iter()
+            .filter_map(|key| key.revocation)
+            .collect::<Vec<_>>();
+
+        if !keys.is_empty() {
+            let revocation_method = self
+                .revocation_method_provider
+                .get_revocation_method(revocation_method)
+                .ok_or(MissingProviderError::RevocationMethod(
+                    revocation_method.to_owned(),
+                ))?;
+
+            revocation_method.update_attestation_entries(keys).await?;
+        }
+
         Ok(())
     }
 

@@ -77,7 +77,7 @@ pub(crate) async fn get_wallet_unit_details(
     params(
         ("id" = WalletUnitId, Path, description = "Wallet unit id")
     ),
-    responses(OkOrErrorResponse<WalletUnitResponseRestDTO>),
+    responses(EmptyOrErrorResponse),
     tag = "wallet_unit",
     security(
         ("bearer" = [])
@@ -104,7 +104,7 @@ pub(crate) async fn revoke_wallet_unit(
     params(
         ("id" = WalletUnitId, Path, description = "Wallet unit id")
     ),
-    responses(OkOrErrorResponse<WalletUnitResponseRestDTO>),
+    responses(EmptyOrErrorResponse),
     tag = "wallet_unit",
     security(
         ("bearer" = [])

@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListId, RevocationListPurpose,
-    RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListPurpose, RevocationListRelations,
+    StatusListCredentialFormat, StatusListType,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::{CredentialId, IdentifierId};
+use shared_types::{CredentialId, IdentifierId, RevocationListId};
 use sql_data_provider::test_utilities::get_dummy_date;
+use uuid::Uuid;
 
 pub struct RevocationListsDB {
     repository: Arc<dyn RevocationListRepository>,
@@ -26,7 +27,7 @@ impl RevocationListsDB {
         status_list_type: Option<StatusListType>,
     ) -> RevocationList {
         let revocation_list = RevocationList {
-            id: Default::default(),
+            id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             credentials: credentials.unwrap_or_default().to_owned(),

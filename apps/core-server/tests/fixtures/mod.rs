@@ -615,7 +615,7 @@ pub async fn create_revocation_list(
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
     let revocation_list = RevocationList {
-        id: Default::default(),
+        id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         credentials: credentials.unwrap_or_default().to_owned(),

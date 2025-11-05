@@ -12,6 +12,7 @@ pub mod get_wallet_unit_tests;
 pub mod holder_get_wallet_unit;
 pub mod holder_register_wallet_unit;
 pub mod list_wallet_unit_tests;
+pub mod revoke_wallet_unit_tests;
 
 async fn create_wallet_unit_attestation(wallet_key: PublicKeyJwk, base_url: String) -> String {
     let provider_key = Ecdsa.generate_key().unwrap();
