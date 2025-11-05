@@ -1,11 +1,13 @@
 use one_dto_mapper::{From, convert_inner};
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_with::skip_serializing_none;
 use shared_types::WalletUnitId;
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Clone, Debug)]
@@ -255,11 +257,13 @@ pub struct WalletAppAttestationClaims {
     pub eudi_wallet_info: Option<EudiWalletInfo>,
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WalletUnitAttestationClaims {
     pub key_storage: Vec<KeyStorageSecurityLevel>,
     pub attested_keys: Vec<PublicKeyJwk>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
+    pub status: Option<SdJwtVcStatus>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]

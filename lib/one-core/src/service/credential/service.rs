@@ -40,9 +40,7 @@ use crate::service::credential::dto::{
     DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, GetCredentialQueryDTO,
     SuspendCredentialRequestDTO,
 };
-use crate::service::credential::mapper::{
-    claims_from_create_request, credential_revocation_state_to_model_state, from_create_request,
-};
+use crate::service::credential::mapper::{claims_from_create_request, from_create_request};
 use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -712,9 +710,7 @@ impl CredentialService {
             .update_credential(
                 *credential_id,
                 UpdateCredentialRequest {
-                    state: Some(credential_revocation_state_to_model_state(
-                        revocation_state.to_owned(),
-                    )),
+                    state: Some(revocation_state.to_owned().into()),
                     suspend_end_date: Clearable::ForceSet(suspend_end_date),
                     ..Default::default()
                 },
@@ -971,13 +967,13 @@ impl CredentialService {
             };
         }
 
-        let detected_state =
-            credential_revocation_state_to_model_state(worst_revocation_state.to_owned());
-
-        let suspend_end_date = match worst_revocation_state {
-            CredentialRevocationState::Suspended { suspend_end_date } => suspend_end_date,
+        let suspend_end_date = match &worst_revocation_state {
+            CredentialRevocationState::Suspended { suspend_end_date } => {
+                suspend_end_date.to_owned()
+            }
             _ => None,
         };
+        let detected_state = worst_revocation_state.into();
 
         // update local credential state if change detected
         if current_state != detected_state {

@@ -1,5 +1,6 @@
 use std::ops::Add;
 
+use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::organisation::{Organisation, UpdateOrganisationRequest};
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
@@ -12,7 +13,7 @@ use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use time::{Duration, OffsetDateTime};
 
-use crate::fixtures::{TestingIdentifierParams, TestingKeyParams};
+use crate::fixtures::{TestingDidParams, TestingIdentifierParams, TestingKeyParams};
 use crate::utils::context::TestContext;
 
 pub(crate) async fn create_key_possession_proof(key: &GeneratedKey, aud: String) -> String {
@@ -75,15 +76,30 @@ pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(
             },
         )
         .await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(org.to_owned()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: issuer_key.to_owned(),
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
     let identifier = context
         .db
         .identifiers
         .create(
             org,
             TestingIdentifierParams {
-                r#type: Some(IdentifierType::Key),
+                r#type: Some(IdentifierType::Did),
                 state: Some(IdentifierState::Active),
-                key: Some(issuer_key),
+                did: Some(issuer_did),
                 is_remote: Some(false),
                 ..Default::default()
             },

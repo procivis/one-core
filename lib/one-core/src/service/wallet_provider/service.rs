@@ -1,4 +1,5 @@
 use std::ops::Add;
+use std::sync::Arc;
 
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
@@ -42,7 +43,7 @@ use crate::model::wallet_unit::{
     WalletUnitStatus,
 };
 use crate::model::wallet_unit_attested_key::{
-    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
 };
 use crate::proto::jwt::model::{
     DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
@@ -50,8 +51,11 @@ use crate::proto::jwt::model::{
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
+use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::revocation::RevocationMethod;
+use crate::provider::revocation::model::CredentialRevocationInfo;
 use crate::service::error::{
     EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
 };
@@ -527,7 +531,9 @@ impl WalletProviderService {
                 &wallet_unit_id,
                 &WalletUnitRelations {
                     organisation: Some(OrganisationRelations::default()),
-                    attested_keys: Some(WalletUnitAttestedKeyRelations::default()),
+                    attested_keys: Some(WalletUnitAttestedKeyRelations {
+                        revocation: Some(Default::default()),
+                    }),
                 },
             )
             .await?
@@ -548,6 +554,20 @@ impl WalletProviderService {
         let issuer_identifier =
             validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
+        let revocation_method = if let Some(revocation_method) =
+            &config_params.wallet_unit_attestation.revocation_method
+        {
+            Some(
+                self.revocation_method_provider
+                    .get_revocation_method(revocation_method)
+                    .ok_or(MissingProviderError::RevocationMethod(
+                        revocation_method.to_owned(),
+                    ))?,
+            )
+        } else {
+            None
+        };
+
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)?;
         self.verify_device_signing_proof(&bearer_token, &key, LEEWAY, None)
@@ -555,6 +575,7 @@ impl WalletProviderService {
 
         let now = self.clock.now_utc();
         let (public_key_info, auth_fn) = self.get_key_info(issuer_identifier).await?;
+
         let mut app_attestations = vec![];
         for waa_request in request.waa {
             let holder_jwk = self.verify_pop(&waa_request.proof, LEEWAY).await?;
@@ -568,27 +589,31 @@ impl WalletProviderService {
             let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
             app_attestations.push(signed_attestation);
         }
+
         let mut attested_keys =
             wallet_unit
                 .attested_keys
+                .to_owned()
                 .ok_or(ServiceError::MappingError(format!(
                     "Missing attested keys on wallet unit `{}`",
                     wallet_unit.id
                 )))?;
-        let mut key_attestations = vec![];
-        let wua_expiration_date =
-            now + Duration::seconds(config_params.wallet_unit_attestation.expiration_time as i64);
+
+        let mut key_attestation_inputs = vec![];
         for wua_request in request.wua {
+            let wua_expiration_date = now
+                + Duration::seconds(config_params.wallet_unit_attestation.expiration_time as i64);
+
             let holder_jwk = self.verify_pop(&wua_request.proof, LEEWAY).await?;
-            if let Some(attested_key) = attested_keys
+            let attested_key_input = if let Some(attested_key) = attested_keys
                 .iter_mut()
                 .find(|attested_key| attested_key.public_key_jwk == holder_jwk)
             {
                 attested_key.last_modified = now;
-                attested_key.expiration_date = wua_expiration_date
+                attested_key.expiration_date = wua_expiration_date;
+                AttestedKeyInput::Reused(attested_key.revocation.to_owned())
             } else {
-                // TODO ONE-7650: Correctly handle token status list
-                attested_keys.push(WalletUnitAttestedKey {
+                let key = WalletUnitAttestedKey {
                     id: Uuid::new_v4().into(),
                     wallet_unit_id,
                     created_date: now,
@@ -596,32 +621,16 @@ impl WalletProviderService {
                     expiration_date: wua_expiration_date,
                     public_key_jwk: holder_jwk.clone(),
                     revocation: None,
-                })
-            }
-            let attestation = self.create_wua(
-                &wallet_unit.wallet_provider_name,
-                &config_params,
+                };
+                attested_keys.push(key.to_owned());
+                AttestedKeyInput::NewlyCreated(key)
+            };
+
+            key_attestation_inputs.push(KeyAttestationInput {
                 holder_jwk,
-                wua_request.security_level,
-                &auth_fn,
-                public_key_info.clone(),
-            )?;
-            let signed_attestation = attestation.tokenize(Some(&*auth_fn)).await?;
-            let attestation_hash =
-                SHA256
-                    .hash_base64(signed_attestation.as_bytes())
-                    .map_err(|e| {
-                        ServiceError::Other(format!("Could not hash wallet unit attestation: {e}"))
-                    })?;
-            self.create_wallet_unit_history(
-                &wallet_unit_id,
-                wallet_unit.name.clone(),
-                HistoryAction::Issued,
-                Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
-                organisation.id,
-            )
-            .await;
-            key_attestations.push(signed_attestation);
+                security_level: wua_request.security_level,
+                key: attested_key_input,
+            });
         }
 
         if !app_attestations.is_empty() {
@@ -634,29 +643,101 @@ impl WalletProviderService {
             )
             .await
         }
-        let attested_keys = if key_attestations.is_empty() {
+
+        let updated_attested_keys = if key_attestation_inputs.is_empty() {
             None
         } else {
             Some(attested_keys)
         };
+
+        let mut key_attestations = vec![];
+
         // DB update is only necessary if we either issued app or key attestation
-        if !app_attestations.is_empty() || attested_keys.is_some() {
+        if !app_attestations.is_empty() || updated_attested_keys.is_some() {
             self.wallet_unit_repository
                 .update_wallet_unit(
                     &wallet_unit_id,
                     UpdateWalletUnitRequest {
                         last_issuance: Some(now),
-                        attested_keys,
+                        attested_keys: updated_attested_keys,
                         ..Default::default()
                     },
                 )
                 .await?;
+
+            for key_attestation_input in key_attestation_inputs {
+                key_attestations.push(
+                    self.issue_key_attestation(
+                        &wallet_unit,
+                        &config_params,
+                        &auth_fn,
+                        public_key_info.clone(),
+                        organisation,
+                        &revocation_method,
+                        key_attestation_input,
+                    )
+                    .await?,
+                );
+            }
         }
 
         Ok(IssueWalletUnitAttestationResponseDTO {
             waa: app_attestations,
             wua: key_attestations,
         })
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    async fn issue_key_attestation(
+        &self,
+        wallet_unit: &WalletUnit,
+        config_params: &WalletProviderParams,
+        auth_fn: &AuthenticationFn,
+        issuer_public_key_info: JwtPublicKeyInfo,
+        organisation: &Organisation,
+        revocation_method: &Option<Arc<dyn RevocationMethod>>,
+        input: KeyAttestationInput,
+    ) -> Result<String, ServiceError> {
+        let revocation_info = if let Some(revocation_method) = revocation_method {
+            match &input.key {
+                AttestedKeyInput::NewlyCreated(key) => {
+                    Some(revocation_method.add_issued_attestation(key).await?)
+                }
+                AttestedKeyInput::Reused(None) => None,
+                AttestedKeyInput::Reused(Some(info)) => Some(
+                    revocation_method
+                        .get_attestation_revocation_info(info)
+                        .await?,
+                ),
+            }
+        } else {
+            None
+        };
+
+        let attestation = self.create_wua(
+            &wallet_unit.wallet_provider_name,
+            config_params,
+            input.holder_jwk,
+            input.security_level,
+            auth_fn,
+            issuer_public_key_info,
+            revocation_info,
+        )?;
+        let signed_attestation = attestation.tokenize(Some(auth_fn.as_ref())).await?;
+        let attestation_hash = SHA256
+            .hash_base64(signed_attestation.as_bytes())
+            .map_err(|e| {
+                ServiceError::Other(format!("Could not hash wallet unit attestation: {e}"))
+            })?;
+        self.create_wallet_unit_history(
+            &wallet_unit.id,
+            wallet_unit.name.clone(),
+            HistoryAction::Issued,
+            Some(HistoryMetadata::WalletUnitJWT(attestation_hash)),
+            organisation.id,
+        )
+        .await;
+        Ok(signed_attestation)
     }
 
     fn get_wallet_provider_config_params(
@@ -687,7 +768,7 @@ impl WalletProviderService {
         config_params: &WalletProviderParams,
         holder_binding_jwk: PublicKeyJwk,
         auth_fn: &AuthenticationFn,
-        public_key_info: JwtPublicKeyInfo,
+        issuer_public_key_info: JwtPublicKeyInfo,
     ) -> Result<Jwt<WalletAppAttestationClaims>, ServiceError> {
         let now = self.clock.now_utc();
         let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
@@ -699,7 +780,7 @@ impl WalletProviderService {
             WAA_JWT_TYPE.to_string(),
             jose_alg,
             key_id,
-            Some(public_key_info),
+            Some(issuer_public_key_info),
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: Some(now.add(Duration::seconds(
@@ -728,6 +809,7 @@ impl WalletProviderService {
         ))
     }
 
+    #[expect(clippy::too_many_arguments)]
     fn create_wua(
         &self,
         wallet_provider_name: &str,
@@ -735,7 +817,8 @@ impl WalletProviderService {
         holder_binding_jwk: PublicKeyJwk,
         key_storage_security_level: KeyStorageSecurityLevel,
         auth_fn: &AuthenticationFn,
-        public_key_info: JwtPublicKeyInfo,
+        issuer_public_key_info: JwtPublicKeyInfo,
+        revocation_info: Option<CredentialRevocationInfo>,
     ) -> Result<Jwt<WalletUnitAttestationClaims>, ServiceError> {
         let now = self.clock.now_utc();
         let jose_alg = auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
@@ -743,11 +826,25 @@ impl WalletProviderService {
         ))?;
         let key_id = auth_fn.get_key_id();
 
+        let status = revocation_info
+            .and_then(|info| {
+                let obj: serde_json::Value = info
+                    .credential_status
+                    .additional_fields
+                    .into_iter()
+                    .collect();
+                serde_json::from_value(obj).ok()
+            })
+            .map(|status_list| SdJwtVcStatus {
+                status_list,
+                custom_claims: Default::default(),
+            });
+
         Ok(Jwt::new(
             WUA_JWT_TYPE.to_string(),
             jose_alg,
             key_id,
-            Some(public_key_info),
+            Some(issuer_public_key_info),
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: Some(now.add(Duration::seconds(
@@ -770,6 +867,7 @@ impl WalletProviderService {
                     key_storage: vec![key_storage_security_level],
                     attested_keys: vec![holder_binding_jwk],
                     eudi_wallet_info: convert_inner(config_params.eudi_wallet_info.clone()),
+                    status,
                 },
             },
         ))
@@ -1032,4 +1130,16 @@ impl WalletProviderService {
             app_version: params.app_version,
         })
     }
+}
+
+struct KeyAttestationInput {
+    holder_jwk: PublicKeyJwk,
+    security_level: KeyStorageSecurityLevel,
+    key: AttestedKeyInput,
+}
+
+#[expect(clippy::large_enum_variant)]
+enum AttestedKeyInput {
+    NewlyCreated(WalletUnitAttestedKey),
+    Reused(Option<WalletUnitAttestedKeyRevocationInfo>),
 }

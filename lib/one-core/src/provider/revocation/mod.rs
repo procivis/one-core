@@ -1,4 +1,7 @@
 use crate::model::credential::Credential;
+use crate::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
+};
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
@@ -51,6 +54,18 @@ pub trait RevocationMethod: Send + Sync {
         additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
     ) -> Result<CredentialRevocationState, RevocationError>;
+
+    // wallet unit attestation functionality
+
+    async fn add_issued_attestation(
+        &self,
+        attestation: &WalletUnitAttestedKey,
+    ) -> Result<CredentialRevocationInfo, RevocationError>;
+
+    async fn get_attestation_revocation_info(
+        &self,
+        key_info: &WalletUnitAttestedKeyRevocationInfo,
+    ) -> Result<CredentialRevocationInfo, RevocationError>;
 
     /// Revocation method capabilities include the operations possible for each revocation
     /// method.

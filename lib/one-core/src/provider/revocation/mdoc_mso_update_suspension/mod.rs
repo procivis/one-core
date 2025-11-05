@@ -3,6 +3,9 @@
 
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::credential::Credential;
+use crate::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
+};
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
@@ -48,6 +51,24 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     ) -> Result<CredentialRevocationState, RevocationError> {
         Err(RevocationError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),
+        ))
+    }
+
+    async fn add_issued_attestation(
+        &self,
+        _attestation: &WalletUnitAttestedKey,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
+    }
+
+    async fn get_attestation_revocation_info(
+        &self,
+        _key_info: &WalletUnitAttestedKeyRevocationInfo,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
         ))
     }
 

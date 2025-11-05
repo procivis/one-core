@@ -6,6 +6,7 @@ use crate::proto::clock::Clock;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
@@ -30,6 +31,7 @@ pub struct WalletProviderService {
     history_repository: Arc<dyn HistoryRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     clock: Arc<dyn Clock>,
     session_provider: Arc<dyn SessionProvider>,
@@ -46,6 +48,7 @@ impl WalletProviderService {
         history_repository: Arc<dyn HistoryRepository>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         clock: Arc<dyn Clock>,
         session_provider: Arc<dyn SessionProvider>,
@@ -59,6 +62,7 @@ impl WalletProviderService {
             history_repository,
             key_provider,
             key_algorithm_provider,
+            revocation_method_provider,
             certificate_validator,
             config,
             base_url,

@@ -20,6 +20,9 @@ use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::mapper::params::convert_params;
 use crate::model::credential::Credential;
 use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
+};
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialStatus, IdentifierDetails, Issuer,
@@ -336,6 +339,24 @@ impl RevocationMethod for LvvcProvider {
                 self.check_revocation_status_as_verifier(issuer_did, *data)
             }
         }
+    }
+
+    async fn add_issued_attestation(
+        &self,
+        _attestation: &WalletUnitAttestedKey,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
+    }
+
+    async fn get_attestation_revocation_info(
+        &self,
+        _key_info: &WalletUnitAttestedKeyRevocationInfo,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {

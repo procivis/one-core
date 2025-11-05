@@ -68,7 +68,7 @@ impl SettableClaims for SdJwtVc {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub struct SdJwtVcStatus {
     pub status_list: SdJwtVcStatusList,
     #[serde(flatten)]
@@ -76,7 +76,7 @@ pub struct SdJwtVcStatus {
 }
 
 #[serde_as]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct SdJwtVcStatusList {
     #[serde(rename = "idx", deserialize_with = "deserialize_string_or_number")]

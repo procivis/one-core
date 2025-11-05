@@ -664,6 +664,8 @@ pub async fn initialize_core(
                                 formatter_provider.clone(),
                                 certificate_validator.clone(),
                                 data_repository.get_revocation_list_repository(),
+                                data_repository.get_wallet_unit_repository(),
+                                data_repository.get_identifier_repository(),
                                 client.clone(),
                                 Some(params),
                             )

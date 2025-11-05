@@ -988,6 +988,7 @@ impl OneCore {
                 data_provider.get_history_repository(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
+                revocation_method_provider.clone(),
                 certificate_validator.clone(),
                 clock,
                 providers.session_provider.clone(),

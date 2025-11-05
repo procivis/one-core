@@ -17,7 +17,6 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::model::validity_credential::ValidityCredential;
 use crate::provider::credential_formatter::mdoc_formatter;
-use crate::provider::revocation::model::CredentialRevocationState;
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
@@ -467,16 +466,6 @@ fn insert_array_parent(
         return Ok(array_path.to_owned());
     }
     Ok(current_path)
-}
-
-pub(super) fn credential_revocation_state_to_model_state(
-    revocation_state: CredentialRevocationState,
-) -> CredentialStateEnum {
-    match revocation_state {
-        CredentialRevocationState::Revoked => CredentialStateEnum::Revoked,
-        CredentialRevocationState::Valid => CredentialStateEnum::Accepted,
-        CredentialRevocationState::Suspended { .. } => CredentialStateEnum::Suspended,
-    }
 }
 
 impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {

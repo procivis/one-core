@@ -32,6 +32,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
 use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
+use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -51,6 +52,7 @@ fn mock_wallet_provider_service() -> WalletProviderService {
         history_repository: Arc::new(MockHistoryRepository::default()),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
+        revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),
         certificate_validator: Arc::new(MockCertificateValidator::default()),
         clock: Arc::new(DefaultClock),
         base_url: Some(BASE_URL.to_string()),

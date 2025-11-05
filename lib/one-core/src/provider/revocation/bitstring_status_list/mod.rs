@@ -22,6 +22,9 @@ use crate::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use crate::model::wallet_unit::WalletUnitStatus;
+use crate::model::wallet_unit_attested_key::{
+    WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
+};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
@@ -309,6 +312,24 @@ impl RevocationMethod for BitstringStatusList {
         } else {
             Ok(CredentialRevocationState::Valid)
         }
+    }
+
+    async fn add_issued_attestation(
+        &self,
+        _attestation: &WalletUnitAttestedKey,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
+    }
+
+    async fn get_attestation_revocation_info(
+        &self,
+        _key_info: &WalletUnitAttestedKeyRevocationInfo,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Attestations not supported".to_string(),
+        ))
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
