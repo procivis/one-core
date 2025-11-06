@@ -550,6 +550,9 @@ pub enum ValidationError {
     #[error("Proof schema: Duplicit claim schema")]
     ProofSchemaDuplicitClaim,
 
+    #[error("Proof schema: Mixed wallet storage types")]
+    ProofSchemaMixedWalletStorageTypes,
+
     #[error("Invalid datatype `{datatype}` for value `{value}`: {source}")]
     InvalidDatatype {
         datatype: String,
@@ -1442,6 +1445,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Holder wallet unit not found")]
     BR_0296,
+
+    #[strum(message = "Proof schema: Mixed wallet storage types")]
+    BR_0304,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1700,6 +1706,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidProofEngagement => ErrorCode::BR_0078,
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
+            Self::ProofSchemaMixedWalletStorageTypes => ErrorCode::BR_0304,
         }
     }
 }

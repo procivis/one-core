@@ -463,6 +463,131 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
+async fn test_create_proof_schema_fail_mixed_wallet_storage_types() {
+    let organisation_id = Uuid::new_v4().into();
+    let mut organisation_repository = MockOrganisationRepository::default();
+    organisation_repository
+        .expect_get_organisation()
+        .times(1)
+        .with(eq(organisation_id), eq(OrganisationRelations::default()))
+        .returning(|id, _| Ok(Some(dummy_organisation(Some(*id)))));
+
+    let claim_schema_software_id = Uuid::new_v4().into();
+    let claim_schema_software = ClaimSchema {
+        id: claim_schema_software_id,
+        key: "key".to_string(),
+        data_type: "STRING".to_string(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        array: false,
+        metadata: false,
+    };
+
+    let claim_schema_hardware_id = Uuid::new_v4().into();
+    let claim_schema_hardware = ClaimSchema {
+        id: claim_schema_hardware_id,
+        ..claim_schema_software.clone()
+    };
+
+    let credential_schema_software_id: CredentialSchemaId = Uuid::new_v4().into();
+    let credential_schema_hardware_id: CredentialSchemaId = Uuid::new_v4().into();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
+    credential_schema_repository
+        .expect_get_credential_schema_list()
+        .once()
+        .returning(move |_, _| {
+            let schema_software = CredentialSchema {
+                id: credential_schema_software_id,
+                deleted_at: None,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                name: "software".to_string(),
+                imported_source_url: "CORE_URL".to_string(),
+                format: "JWT".to_string(),
+                revocation_method: "NONE".to_string(),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: claim_schema_software.clone(),
+                    required: false,
+                }]),
+                organisation: None,
+                layout_type: LayoutType::Card,
+                layout_properties: None,
+                schema_id: "software".to_owned(),
+                allow_suspension: true,
+                requires_app_attestation: false,
+            };
+
+            let schema_hardware = CredentialSchema {
+                id: credential_schema_hardware_id,
+                name: "hardware".to_string(),
+                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                schema_id: "hardware".to_owned(),
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: claim_schema_hardware.clone(),
+                    required: false,
+                }]),
+                ..schema_software.clone()
+            };
+
+            Ok(GetListResponse {
+                values: vec![schema_software, schema_hardware],
+                total_pages: 1,
+                total_items: 2,
+            })
+        });
+
+    let mut proof_schema_repository = MockProofSchemaRepository::default();
+    proof_schema_repository
+        .expect_get_proof_schema_list()
+        .once()
+        .returning(move |_| {
+            Ok(GetProofSchemaList {
+                values: vec![],
+                total_pages: 0,
+                total_items: 0,
+            })
+        });
+
+    let create_request = CreateProofSchemaRequestDTO {
+        name: "name".to_string(),
+        expire_duration: Some(0),
+        organisation_id,
+        proof_input_schemas: vec![
+            ProofInputSchemaRequestDTO {
+                claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                    id: claim_schema_software_id,
+                    required: true,
+                }],
+                credential_schema_id: credential_schema_software_id,
+                validity_constraint: None,
+            },
+            ProofInputSchemaRequestDTO {
+                claim_schemas: vec![CreateProofSchemaClaimRequestDTO {
+                    id: claim_schema_hardware_id,
+                    required: true,
+                }],
+                credential_schema_id: credential_schema_hardware_id,
+                validity_constraint: None,
+            },
+        ],
+    };
+
+    let service = setup_service(Repositories {
+        proof_schema_repository,
+        credential_schema_repository,
+        organisation_repository,
+        ..Default::default()
+    });
+
+    let result = service.create_proof_schema(create_request).await;
+    assert!(result.is_err_and(|e| matches!(
+        e,
+        ServiceError::Validation(ValidationError::ProofSchemaMixedWalletStorageTypes)
+    )));
+}
+
+#[tokio::test]
 async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
     let claim_schema_id = Uuid::new_v4().into();
     let claim_schema = ClaimSchema {

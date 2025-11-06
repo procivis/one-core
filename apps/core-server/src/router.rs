@@ -590,35 +590,31 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
         Router::new()
     };
 
-    let router = {
-        if config.insecure_vc_api_endpoints_enabled {
-            let interop_test_endpoints = Router::new()
-                .route(
-                    "/vc-api/credentials/issue",
-                    post(vc_api::controller::issue_credential),
-                )
-                .route(
-                    "/vc-api/credentials/verify",
-                    post(vc_api::controller::verify_credential),
-                )
-                .route(
-                    "/vc-api/presentations/verify",
-                    post(vc_api::controller::verify_presentation),
-                )
-                .route(
-                    "/vc-api/identifiers/{identifier}",
-                    get(vc_api::controller::resolve_identifier),
-                );
-
-            Router::new().merge(interop_test_endpoints)
-        } else {
-            Router::new()
-        }
+    let vcapi_endpoints = if config.insecure_vc_api_endpoints_enabled {
+        Router::new()
+            .route(
+                "/vc-api/credentials/issue",
+                post(vc_api::controller::issue_credential),
+            )
+            .route(
+                "/vc-api/credentials/verify",
+                post(vc_api::controller::verify_credential),
+            )
+            .route(
+                "/vc-api/presentations/verify",
+                post(vc_api::controller::verify_presentation),
+            )
+            .route(
+                "/vc-api/identifiers/{identifier}",
+                get(vc_api::controller::resolve_identifier),
+            )
+    } else {
+        Router::new()
     };
 
     let mut router = protected
         .merge(unprotected)
-        .merge(router)
+        .merge(vcapi_endpoints)
         .layer(middleware::from_fn(crate::middleware::sentry_layer))
         .layer(middleware::from_fn(crate::middleware::metrics_counter))
         .merge(openapi_endpoints)
