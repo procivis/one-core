@@ -167,6 +167,7 @@ mod m20251029_144801_add_holder_wallet_unit;
 mod m20251030_110836_revocation_list_entry;
 mod m20251103_093028_attested_key_revocation;
 mod m20251103_141414_add_credential_schema_requires_app_attestation_column;
+mod m20251105_103659_add_remote_entity_storage_indices;
 mod m20251105_121212_waa_and_wua_blobs;
 mod migrate_enum;
 
@@ -338,6 +339,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251103_093028_attested_key_revocation::Migration),
             Box::new(m20251103_141414_add_credential_schema_requires_app_attestation_column::Migration),
             Box::new(m20251105_121212_waa_and_wua_blobs::Migration),
+            Box::new(m20251105_103659_add_remote_entity_storage_indices::Migration),
         ]
     }
 }

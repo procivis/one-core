@@ -161,7 +161,7 @@ enum RemoteEntityCache {
 }
 
 #[derive(DeriveIden, Clone, Copy)]
-enum NewRemoteEntityCache {
+pub(crate) enum NewRemoteEntityCache {
     Table,
     Id,
     CreatedDate,
