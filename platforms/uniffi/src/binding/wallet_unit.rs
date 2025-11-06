@@ -1,7 +1,6 @@
 use one_core::model::wallet_unit::{WalletProviderType, WalletUnitStatus};
 use one_core::service::wallet_unit::dto::{
-    HolderRefreshWalletUnitRequestDTO, HolderRegisterWalletUnitRequestDTO,
-    HolderWalletUnitResponseDTO, WalletProviderDTO,
+    HolderRegisterWalletUnitRequestDTO, HolderWalletUnitResponseDTO, WalletProviderDTO,
 };
 use one_dto_mapper::{From, Into, TryInto};
 
@@ -67,15 +66,6 @@ pub struct HolderRegisterWalletUnitRequestBindingDTO {
     wallet_provider: WalletProviderBindingDTO,
     #[try_into(infallible)]
     key_type: String,
-}
-
-#[derive(Clone, Debug, TryInto, uniffi::Record)]
-#[try_into(T=HolderRefreshWalletUnitRequestDTO, Error=ServiceError)]
-pub struct HolderRefreshWalletUnitRequestBindingDTO {
-    #[try_into(with_fn = into_id)]
-    organisation_id: String,
-    #[try_into(infallible)]
-    pub app_integrity_check_required: bool,
 }
 
 #[derive(Clone, Debug, Into, uniffi::Record)]

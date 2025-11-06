@@ -7,24 +7,11 @@ pub use crate::model::wallet_unit::{
 };
 use crate::service::key::dto::KeyListItemResponseDTO;
 
-pub struct AttestationKeyRequestDTO {
-    pub organisation_id: OrganisationId,
-    pub name: String,
-    pub key_type: String,
-    pub nonce: Option<String>,
-}
-
 #[derive(Debug, Clone)]
 pub struct HolderRegisterWalletUnitRequestDTO {
     pub organisation_id: OrganisationId,
     pub key_type: String,
     pub wallet_provider: WalletProviderDTO,
-}
-
-#[derive(Debug, Clone)]
-pub struct HolderRefreshWalletUnitRequestDTO {
-    pub organisation_id: OrganisationId,
-    pub app_integrity_check_required: bool,
 }
 
 #[derive(Debug, Clone)]
