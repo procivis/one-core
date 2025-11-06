@@ -60,7 +60,7 @@ fn generate_credential_detail_response(
         holder: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         profile: None,
-        wallet_unit_attestation: None,
+        wallet_app_attestation: None,
     }
 }
 

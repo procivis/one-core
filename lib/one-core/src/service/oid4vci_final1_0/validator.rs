@@ -129,12 +129,12 @@ pub(crate) fn verify_pop_signature(
     Ok(())
 }
 
-pub(crate) fn verify_wua_signature(
-    wallet_unit_attestation: &DecomposedToken<WalletAppAttestationClaims>,
+pub(crate) fn verify_waa_signature(
+    wallet_app_attestation: &DecomposedToken<WalletAppAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
-    let wua_issuer_key =
-        wallet_unit_attestation
+    let waa_issuer_key =
+        wallet_app_attestation
             .header
             .jwk
             .as_ref()
@@ -143,26 +143,26 @@ pub(crate) fn verify_wua_signature(
             ))?;
 
     let (_, alg) = key_algorithm_provider
-        .key_algorithm_from_jose_alg(&wallet_unit_attestation.header.algorithm)
+        .key_algorithm_from_jose_alg(&wallet_app_attestation.header.algorithm)
         .ok_or(ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest,
         ))?;
 
-    let jwk = wua_issuer_key.clone().into();
+    let jwk = waa_issuer_key.clone().into();
 
-    let wua_issuer_key_handle = alg
+    let waa_issuer_key_handle = alg
         .parse_jwk(&jwk)
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
-    wua_issuer_key_handle
+    waa_issuer_key_handle
         .signature()
         .ok_or(ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest,
         ))?
         .public()
         .verify(
-            wallet_unit_attestation.unverified_jwt.as_bytes(),
-            &wallet_unit_attestation.signature,
+            wallet_app_attestation.unverified_jwt.as_bytes(),
+            &wallet_app_attestation.signature,
         )
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
@@ -170,9 +170,9 @@ pub(crate) fn verify_wua_signature(
 }
 
 pub(crate) fn extract_wallet_metadata(
-    wallet_unit_attestation: &DecomposedToken<WalletAppAttestationClaims>,
+    wallet_app_attestation: &DecomposedToken<WalletAppAttestationClaims>,
 ) -> Result<(String, String), ServiceError> {
-    let name = wallet_unit_attestation
+    let name = wallet_app_attestation
         .payload
         .custom
         .wallet_name
@@ -182,7 +182,7 @@ pub(crate) fn extract_wallet_metadata(
         ))?
         .clone();
 
-    let link = wallet_unit_attestation
+    let link = wallet_app_attestation
         .payload
         .custom
         .wallet_link

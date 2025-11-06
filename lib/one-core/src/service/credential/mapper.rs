@@ -5,7 +5,7 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{DetailCredentialSchemaResponseDTO, WalletUnitAttestationDTO};
+use super::dto::{DetailCredentialSchemaResponseDTO, WalletAppAttestationDTO};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
@@ -78,7 +78,7 @@ pub fn credential_detail_response_from_model(
         protocol: value.protocol,
         issuer_certificate,
         profile: value.profile,
-        wallet_unit_attestation: wallet_unit_attestation_blob
+        wallet_app_attestation: wallet_unit_attestation_blob
             .map(TryInto::try_into)
             .transpose()?,
     })
@@ -498,19 +498,19 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
     }
 }
 
-impl TryFrom<Blob> for WalletUnitAttestationDTO {
+impl TryFrom<Blob> for WalletAppAttestationDTO {
     type Error = ServiceError;
 
     fn try_from(value: Blob) -> Result<Self, Self::Error> {
-        if value.r#type != BlobType::WalletUnitAttestation {
+        if value.r#type != BlobType::WalletAppAttestation {
             return Err(ServiceError::MappingError(format!(
-                "Failed to parse parse wallet unit attestation blob of type: {:?}",
+                "Failed to parse parse wallet app attestation blob of type: {:?}",
                 value.r#type
             )));
         }
-        let wallet_unit_attestation = serde_json::from_slice(&value.value).map_err(|e| {
-            ServiceError::MappingError(format!("Failed to parse wallet unit attestation blob: {e}"))
+        let wallet_app_attestation = serde_json::from_slice(&value.value).map_err(|e| {
+            ServiceError::MappingError(format!("Failed to parse wallet app attestation blob: {e}"))
         })?;
-        Ok(wallet_unit_attestation)
+        Ok(wallet_app_attestation)
     }
 }

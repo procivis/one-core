@@ -33,5 +33,5 @@ pub struct UpdateBlobRequest {
 pub enum BlobType {
     Credential,
     Proof,
-    WalletUnitAttestation,
+    WalletAppAttestation,
 }

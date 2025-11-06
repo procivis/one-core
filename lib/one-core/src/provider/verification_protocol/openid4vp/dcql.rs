@@ -349,7 +349,7 @@ fn map_to_filtered_dto(
         holder: full_dto.holder,
         protocol: full_dto.protocol,
         profile: full_dto.profile,
-        wallet_unit_attestation: None,
+        wallet_app_attestation: None,
     }
 }
 
