@@ -2,13 +2,13 @@ use one_core::model::history::HistoryAction;
 use one_core::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnitRelations, WalletUnitStatus,
 };
+use one_core::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use one_core::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
 };
 use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
-use one_core::service::wallet_provider::dto::KeyStorageSecurityLevel;
 use serde_json::json;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};

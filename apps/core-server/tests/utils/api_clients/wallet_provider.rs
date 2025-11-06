@@ -1,5 +1,5 @@
 use one_core::model::key::PublicKeyJwk;
-use one_core::service::wallet_provider::dto::KeyStorageSecurityLevel;
+use one_core::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use serde_json::json;
 use shared_types::WalletUnitId;
 

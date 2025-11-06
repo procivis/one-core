@@ -20,8 +20,11 @@ use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, LayoutProperties,
     LogoProperties,
 };
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
-use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
+use crate::provider::issuance_protocol::model::{
+    OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
+};
 
 pub(crate) fn get_credential_offer_url(
     protocol_base_url: String,
@@ -175,11 +178,18 @@ pub(super) fn credentials_supported_mdoc(
 
 pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSupported); 1]>>(
     supported_jose_alg_ids: Vec<String>,
+    key_storage_security_level: Option<KeyStorageSecurityLevel>,
 ) -> R {
+    let key_attestations_required =
+        key_storage_security_level.map(|level| OpenIF4VCIKeyAttestationsRequired {
+            key_storage: vec![level],
+        });
+
     R::from([(
         "jwt".to_string(),
         OpenID4VCIProofTypeSupported {
             proof_signing_alg_values_supported: supported_jose_alg_ids,
+            key_attestations_required,
         },
     )])
 }

@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use shared_types::{HolderWalletUnitId, WalletUnitAttestationId};
 use time::OffsetDateTime;
 
@@ -27,4 +28,16 @@ pub struct WalletUnitAttestationRelations {
 pub struct UpdateWalletUnitAttestationRequest {
     pub expiration_date: Option<OffsetDateTime>,
     pub attestation: Option<String>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
+pub enum KeyStorageSecurityLevel {
+    #[serde(rename = "iso_18045_high")]
+    High,
+    #[serde(rename = "iso_18045_moderate")]
+    Moderate,
+    #[serde(rename = "iso_18045_enhanced-basic")]
+    EnhancedBasic,
+    #[serde(rename = "iso_18045_basic")]
+    Basic,
 }

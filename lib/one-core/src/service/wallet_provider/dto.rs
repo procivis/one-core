@@ -7,6 +7,7 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -58,18 +59,6 @@ pub struct IssueWaaRequestDTO {
 pub struct IssueWuaRequestDTO {
     pub proof: String,
     pub security_level: KeyStorageSecurityLevel,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub enum KeyStorageSecurityLevel {
-    #[serde(rename = "iso_18045_high")]
-    High,
-    #[serde(rename = "iso_18045_moderate")]
-    Moderate,
-    #[serde(rename = "iso_18045_enhanced-basic")]
-    EnhancedBasic,
-    #[serde(rename = "iso_18045_basic")]
-    Basic,
 }
 
 #[derive(Clone, Debug)]

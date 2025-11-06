@@ -1,3 +1,4 @@
+use one_core::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use one_core::service::wallet_provider::dto;
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
@@ -37,7 +38,7 @@ pub struct IssueWuaRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(dto::KeyStorageSecurityLevel)]
+#[into(KeyStorageSecurityLevel)]
 pub enum KeyStorageSecurityLevelRestEnum {
     #[serde(rename = "iso_18045_high")]
     High,

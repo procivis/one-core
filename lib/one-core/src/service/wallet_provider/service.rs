@@ -14,10 +14,10 @@ use super::app_integrity::android::validate_attestation_android;
 use super::app_integrity::ios::{validate_attestation_ios, webauthn_signed_jwt_to_msg_and_sig};
 use super::dto::{
     GetWalletUnitListResponseDTO, GetWalletUnitResponseDTO, IssueWalletUnitAttestationRequestDTO,
-    IssueWalletUnitAttestationResponseDTO, KeyStorageSecurityLevel, NoncePayload,
-    RegisterWalletUnitRequestDTO, RegisterWalletUnitResponseDTO, WalletAppAttestationClaims,
-    WalletProviderMetadataResponseDTO, WalletProviderParams, WalletRegistrationRequirement,
-    WalletUnitActivationRequestDTO, WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
+    IssueWalletUnitAttestationResponseDTO, NoncePayload, RegisterWalletUnitRequestDTO,
+    RegisterWalletUnitResponseDTO, WalletAppAttestationClaims, WalletProviderMetadataResponseDTO,
+    WalletProviderParams, WalletRegistrationRequirement, WalletUnitActivationRequestDTO,
+    WalletUnitAttestationClaims, WalletUnitAttestationMetadataDTO,
 };
 use super::error::WalletProviderError;
 use super::mapper::{
@@ -43,6 +43,7 @@ use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
 };
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
 };

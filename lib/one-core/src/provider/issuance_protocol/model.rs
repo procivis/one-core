@@ -13,6 +13,7 @@ use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -52,6 +53,12 @@ pub(crate) enum InvitationResponseEnum {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCIProofTypeSupported {
     pub proof_signing_alg_values_supported: Vec<String>,
+    pub key_attestations_required: Option<OpenIF4VCIKeyAttestationsRequired>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, Default)]
+pub struct OpenIF4VCIKeyAttestationsRequired {
+    pub key_storage: Vec<KeyStorageSecurityLevel>,
 }
 
 #[skip_serializing_none]

@@ -31,6 +31,7 @@ use crate::model::credential_schema::{
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::credential_schema::dto::{
     CredentialSchemaCodePropertiesDTO, ImportCredentialSchemaClaimSchemaDTO,
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
@@ -39,7 +40,9 @@ use crate::proto::credential_schema::dto::{
 use crate::proto::http_client;
 use crate::proto::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
-use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
+use crate::provider::issuance_protocol::model::{
+    OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
+};
 use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO, CredentialIssuerParams,
@@ -1066,11 +1069,18 @@ pub(super) fn credentials_supported_mdoc(
 
 pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSupported); 1]>>(
     supported_jose_alg_ids: Vec<String>,
+    key_storage_security_level: Option<KeyStorageSecurityLevel>,
 ) -> R {
+    let key_attestations_required =
+        key_storage_security_level.map(|level| OpenIF4VCIKeyAttestationsRequired {
+            key_storage: vec![level],
+        });
+
     R::from([(
         "jwt".to_string(),
         OpenID4VCIProofTypeSupported {
             proof_signing_alg_values_supported: supported_jose_alg_ids,
+            key_attestations_required,
         },
     )])
 }

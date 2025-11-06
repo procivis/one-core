@@ -140,6 +140,7 @@ impl OID4VCIFinal1_0Service {
             Some(map_proof_types_supported(
                 self.key_algorithm_provider
                     .supported_verification_jose_alg_ids(),
+                schema.wallet_storage_type.map(|x| x.into()),
             )),
             credential_signing_alg_values_supported,
             self.base_url.as_ref(),

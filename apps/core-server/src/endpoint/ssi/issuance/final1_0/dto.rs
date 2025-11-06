@@ -27,9 +27,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use utoipa::ToSchema;
 
-use crate::endpoint::credential_schema::dto::{
-    CredentialSchemaCodeTypeRestEnum, WalletStorageTypeRestEnum,
-};
+use crate::endpoint::credential_schema::dto::CredentialSchemaCodeTypeRestEnum;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -81,8 +79,6 @@ pub(crate) struct OpenID4VCICredentialMetadataResponseRestDTO {
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayRestDTO>>,
     #[from(with_fn = convert_inner_of_inner)]
     pub claims: Option<Vec<OpenID4VCICredentialMetadataClaimResponseRestDTO>>,
-    #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
 }
 
 #[options_not_nullable]
