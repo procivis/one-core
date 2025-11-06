@@ -1,6 +1,6 @@
 app:
   databaseUrl: "mysql://core:886eOqVMmlHsayu6Vyxw@localhost/core"
-  coreBaseUrl: "http://0.0.0.0:3000"
+  coreBaseUrl: "http://localhost:3000"
   serverIp: "0.0.0.0"
   serverPort: 3000
   traceJson: false
@@ -110,11 +110,13 @@ verificationProtocol:
   OPENID4VP_DRAFT20_SWIYU:
     params:
       public:
+        allowInsecureHttpTransport: true
         redirectUri:
           allowedSchemes: ["http", "https"]
   MDOC_OPENID4VP:
     params:
       public:
+        allowInsecureHttpTransport: true
         redirectUri:
           allowedSchemes: ["http", "https"]
   OPENID4VP_DRAFT25:
@@ -126,6 +128,12 @@ verificationProtocol:
         verifier:
           useDcql: true
   OPENID4VP_FINAL1:
+    params:
+      public:
+        allowInsecureHttpTransport: true
+        redirectUri:
+          allowedSchemes: ["http", "https"]
+  OPENID4VP_FINAL1_EUDI:
     params:
       public:
         allowInsecureHttpTransport: true

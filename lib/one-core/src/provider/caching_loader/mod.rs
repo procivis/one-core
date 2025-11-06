@@ -144,7 +144,13 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             }
         }?;
 
-        self.clean_old_entries_if_needed().await?;
+        if let Err(err) = self.clean_old_entries_if_needed().await {
+            tracing::warn!(
+                "Failed to clean old cache entries of type {}: {}",
+                self.remote_entity_type,
+                err
+            );
+        }
         Ok(result)
     }
 
@@ -230,7 +236,8 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                 expiry_date,
             } => {
                 let now = OffsetDateTime::now_utc();
-                self.storage
+                if let Err(err) = self
+                    .storage
                     .insert(RemoteEntity {
                         last_modified: now,
                         expiration_date: self.effective_expiry(expiry_date),
@@ -240,7 +247,12 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                         last_used: now,
                         media_type: media_type.clone(),
                     })
-                    .await?;
+                    .await
+                {
+                    tracing::warn!(
+                        "Failed to insert new remote entity cache with key {url} entry: {err}"
+                    );
+                }
 
                 Ok((content, media_type))
             }

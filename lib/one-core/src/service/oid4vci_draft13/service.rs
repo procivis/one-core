@@ -422,7 +422,10 @@ impl OID4VCIDraft13Service {
                 &interaction_data.nonce,
             )
             .await
-            .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
+            .map_err(|err| {
+                tracing::debug!("holder proof validation failed: {err}");
+                ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+            })?;
 
             match verified_proof {
                 Either::Left((holder_did_value, holder_key_id)) => {

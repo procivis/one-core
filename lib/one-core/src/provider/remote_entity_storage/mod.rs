@@ -13,6 +13,7 @@
 //! [cac]: https://docs.procivis.ch/api/caching
 
 use one_dto_mapper::From;
+use strum::Display;
 use thiserror::Error;
 use time::OffsetDateTime;
 
@@ -59,7 +60,7 @@ pub struct RemoteEntity {
     pub media_type: Option<String>,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, Eq, PartialEq)]
 pub enum RemoteEntityType {
     DidDocument,
     JsonLdContext,

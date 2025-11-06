@@ -411,7 +411,10 @@ impl OID4VCIFinal1_0Service {
             }),
         )
         .await
-        .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof))?;
+        .map_err(|err| {
+            tracing::debug!("holder proof validation failed: {err}");
+            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+        })?;
 
         let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
         let params: OpenID4VCIFinal1Params =
@@ -420,7 +423,7 @@ impl OID4VCIFinal1_0Service {
             return Err(ConfigValidationError::TypeNotFound(credential.protocol.to_owned()).into());
         };
         let nonce_id = validate_nonce(params, self.base_url.to_owned(), &nonce).map_err(|e| {
-            tracing::info!("Nonce validation failed: {e}");
+            tracing::debug!("Nonce validation failed: {e}");
             OpenID4VCIError::InvalidNonce
         })?;
 
