@@ -816,6 +816,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509_san_dns<T
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: Some(x5c),
         },
         payload: JWTPayload {
@@ -903,6 +904,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             r#type: Some("verifier-attestation+jwt".to_string()),
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload: JWTPayload {
@@ -932,6 +934,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: Some(attestation_jwt),
+            key_attestation: None,
             x5c: None,
         },
         payload: JWTPayload {
@@ -996,6 +999,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload: JWTPayload {
@@ -1027,6 +1031,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload: JWTPayload {

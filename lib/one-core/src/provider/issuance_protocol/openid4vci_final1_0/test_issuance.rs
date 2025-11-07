@@ -25,6 +25,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::http_client::MockHttpClient;
+use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
@@ -42,7 +43,6 @@ use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
 #[tokio::test]
@@ -165,7 +165,6 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
-        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
@@ -189,6 +188,7 @@ async fn test_issuer_submit_succeeds() {
             enable_credential_preview: true,
         },
         "OPENID4VCI_FINAL1".to_string(),
+        Arc::new(MockHolderWalletUnitProto::new()),
     );
 
     let result = provider
@@ -314,7 +314,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
-        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
@@ -338,6 +337,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
             enable_credential_preview: true,
         },
         "OPENID4VCI_FINAL1".to_string(),
+        Arc::new(MockHolderWalletUnitProto::new()),
     );
 
     service
@@ -451,7 +451,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
-        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
@@ -475,6 +474,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             enable_credential_preview: true,
         },
         "OPENID4VCI_FINAL1".to_string(),
+        Arc::new(MockHolderWalletUnitProto::new()),
     );
 
     service
@@ -545,7 +545,6 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockHttpClient::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
-        Arc::new(MockWalletUnitAttestationRepository::new()),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
@@ -569,6 +568,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             enable_credential_preview: true,
         },
         "OPENID4VCI_FINAL1".to_string(),
+        Arc::new(MockHolderWalletUnitProto::new()),
     );
 
     assert!(matches!(

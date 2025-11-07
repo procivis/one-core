@@ -14,7 +14,7 @@ use url::Url;
 use crate::OneCoreBinding;
 use crate::binding::credential_schema::WalletStorageTypeBindingEnum;
 use crate::error::BindingError;
-use crate::utils::into_id;
+use crate::utils::{into_id, into_id_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -50,21 +50,18 @@ impl OneCoreBinding {
     #[uniffi::method]
     pub async fn holder_accept_credential(
         &self,
-        interaction_id: String,
-        did_id: Option<String>,
-        identifier_id: Option<String>,
-        key_id: Option<String>,
-        tx_code: Option<String>,
+        request: HolderAcceptCredentialRequestBindingDTO,
     ) -> Result<String, BindingError> {
         let core = self.use_core().await?;
         Ok(core
             .ssi_holder_service
             .accept_credential(
-                into_id(interaction_id)?,
-                did_id.map(into_id).transpose()?,
-                identifier_id.map(into_id).transpose()?,
-                key_id.map(into_id).transpose()?,
-                tx_code,
+                into_id(request.interaction_id)?,
+                into_id_opt(request.did_id)?,
+                into_id_opt(request.identifier_id)?,
+                into_id_opt(request.key_id)?,
+                request.tx_code,
+                into_id_opt(request.holder_wallet_unit_id)?,
             )
             .await?
             .to_string())
@@ -233,4 +230,14 @@ pub struct InitiateIssuanceAuthorizationDetailBindingDTO {
 #[from(InitiateIssuanceResponseDTO)]
 pub struct InitiateIssuanceResponseBindingDTO {
     pub url: String,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct HolderAcceptCredentialRequestBindingDTO {
+    pub interaction_id: String,
+    pub did_id: Option<String>,
+    pub identifier_id: Option<String>,
+    pub key_id: Option<String>,
+    pub tx_code: Option<String>,
+    pub holder_wallet_unit_id: Option<String>,
 }

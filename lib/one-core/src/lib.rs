@@ -620,8 +620,10 @@ impl OneCore {
 
         let wallet_unit_proto = Arc::new(HolderWalletUnitProtoImpl::new(
             key_provider.clone(),
+            key_algorithm_provider.clone(),
             Arc::new(HTTPWalletProviderClient::new(client.clone())),
             revocation_method_provider.clone(),
+            data_provider.get_holder_wallet_unit_repository(),
         ));
 
         let issuance_protocols = issuance_protocol_providers_from_config(
@@ -630,7 +632,6 @@ impl OneCore {
             providers.core_base_url.clone(),
             credential_repository.clone(),
             data_provider.get_validity_credential_repository(),
-            data_provider.get_wallet_unit_attestation_repository(),
             credential_formatter_provider.clone(),
             vct_type_metadata_cache,
             key_provider.clone(),
@@ -642,6 +643,7 @@ impl OneCore {
             blob_storage_provider.clone(),
             credential_schema_importer_proto,
             credential_schema_import_parser,
+            wallet_unit_proto.clone(),
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 

@@ -73,6 +73,17 @@ impl<Payload> Jwt<Payload> {
         public_key_info: Option<JwtPublicKeyInfo>,
         payload: JWTPayload<Payload>,
     ) -> Jwt<Payload> {
+        Self::new_with_attestation(r#type, algorithm, key_id, public_key_info, None, payload)
+    }
+
+    pub fn new_with_attestation(
+        r#type: String,
+        algorithm: String,
+        key_id: Option<String>,
+        public_key_info: Option<JwtPublicKeyInfo>,
+        attestation_jwt: Option<String>,
+        payload: JWTPayload<Payload>,
+    ) -> Jwt<Payload> {
         let (jwk, x5c) = match public_key_info {
             None => (None, None),
             Some(JwtPublicKeyInfo::Jwk(jwk)) => (Some(jwk), None),
@@ -85,6 +96,7 @@ impl<Payload> Jwt<Payload> {
             key_id,
             jwk,
             jwt: None,
+            key_attestation: attestation_jwt,
             x5c,
         };
 

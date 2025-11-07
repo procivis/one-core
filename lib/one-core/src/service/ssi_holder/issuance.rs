@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{CredentialId, DidId, IdentifierId, KeyId};
+use shared_types::{CredentialId, DidId, HolderWalletUnitId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -67,6 +67,7 @@ impl SSIHolderService {
         identifier_id: Option<IdentifierId>,
         key_id: Option<KeyId>,
         tx_code: Option<String>,
+        holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<CredentialId, ServiceError> {
         let credentials = self
             .credential_repository
@@ -164,6 +165,7 @@ impl SSIHolderService {
                     selected_key,
                     holder_jwk_key_id,
                     tx_code,
+                    holder_wallet_unit_id,
                 )
                 .await;
         }
@@ -225,6 +227,7 @@ impl SSIHolderService {
         selected_key: &Key,
         holder_jwk_key_id: String,
         tx_code: Option<String>,
+        holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<CredentialId, ServiceError> {
         let interaction = self
             .interaction_repository
@@ -309,6 +312,7 @@ impl SSIHolderService {
                 Some(holder_jwk_key_id),
                 storage_proxy.as_ref(),
                 tx_code,
+                holder_wallet_unit_id,
             )
             .await?;
 
@@ -409,6 +413,7 @@ impl SSIHolderService {
                 Some(holder_jwk_key_id.to_string()),
                 storage_proxy.as_ref(),
                 tx_code,
+                None,
             )
             .await?;
 

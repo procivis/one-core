@@ -14,7 +14,9 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use shared_types::{BlobId, CertificateId, CredentialId, DidValue, IdentifierId};
+use shared_types::{
+    BlobId, CertificateId, CredentialId, DidValue, HolderWalletUnitId, IdentifierId,
+};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -61,9 +63,11 @@ use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionReq
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
+use crate::proto::wallet_unit::{HolderWalletUnitProto, IssueWalletAttestationRequest};
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
@@ -73,14 +77,14 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
-    OpenID4VCIFinal1CredentialOfferDTO,
+    OpenID4VCIFinal1CredentialOfferDTO, TokenRequestWalletAttestationRequest,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_final1_0::dto::{
@@ -108,7 +112,6 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     client: Arc<dyn HttpClient>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-    wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -120,6 +123,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     params: OpenID4VCIFinal1Params,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     config_id: String,
+    holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
 }
 
 impl OpenID4VCIFinal1_0 {
@@ -128,7 +132,6 @@ impl OpenID4VCIFinal1_0 {
         client: Arc<dyn HttpClient>,
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-        wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -139,6 +142,7 @@ impl OpenID4VCIFinal1_0 {
         config: Arc<CoreConfig>,
         params: OpenID4VCIFinal1Params,
         config_id: String,
+        holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     ) -> Self {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -148,7 +152,6 @@ impl OpenID4VCIFinal1_0 {
             formatter_provider,
             revocation_provider,
             did_method_provider,
-            wallet_unit_attestation_repository,
             key_algorithm_provider,
             key_provider,
             base_url,
@@ -157,6 +160,7 @@ impl OpenID4VCIFinal1_0 {
             params,
             blob_storage_provider,
             config_id,
+            holder_wallet_unit_proto,
         }
     }
 
@@ -232,8 +236,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_data: &HolderInteractionData,
         tx_code: Option<String>,
-        client_attestation: Option<&str>,
-        client_attestation_pop: Option<&str>,
+        wallet_attestation_request: Option<TokenRequestWalletAttestationRequest>,
     ) -> Result<OpenID4VCITokenResponseDTO, IssuanceProtocolError> {
         let token_endpoint =
             interaction_data
@@ -281,12 +284,16 @@ impl OpenID4VCIFinal1_0 {
             .context("Invalid token_endpoint request")
             .map_err(IssuanceProtocolError::Transport)?;
 
-        if let (Some(client_attestation), Some(client_attestation_pop)) =
-            (client_attestation, client_attestation_pop)
-        {
+        if let Some(wallet_attestation_request) = wallet_attestation_request {
             request = request
-                .header("OAuth-Client-Attestation", client_attestation)
-                .header("OAuth-Client-Attestation-PoP", client_attestation_pop);
+                .header(
+                    "OAuth-Client-Attestation",
+                    &wallet_attestation_request.wallet_attestation,
+                )
+                .header(
+                    "OAuth-Client-Attestation-PoP",
+                    &wallet_attestation_request.wallet_attestation_pop,
+                );
         }
 
         let response = request
@@ -655,6 +662,7 @@ impl OpenID4VCIFinal1_0 {
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
         access_token: &str,
+        key_attestation: Option<String>,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
         // Very basic support for JWK as crypto binding method for EUDI
         let jwk = match interaction_data
@@ -687,6 +695,7 @@ impl OpenID4VCIFinal1_0 {
             interaction_data.issuer_url.to_owned(),
             jwk,
             nonce,
+            key_attestation,
             auth_fn,
         )
         .await
@@ -819,6 +828,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         jwk_key_id: Option<String>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
+        holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
         let organisation =
             interaction
@@ -831,49 +841,155 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
-        let (wallet_attestation, wallet_attestation_pop) = if interaction_data
+        let wallet_attestation_required = interaction_data
             .token_endpoint_auth_methods_supported
             .as_ref()
             .unwrap_or(&vec![])
-            .contains(&"attest_jwt_client_auth".to_string())
-        {
-            // TODO ONE-7695: This the _WUA_ not the WAA, so this is entirely wrong now and needs to be reworked
-            let wallet_unit_attestation = self
-                .wallet_unit_attestation_repository
-                .get_wallet_unit_attestation_by_key_id(&key.id)
-                .await
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+            .contains(&"attest_jwt_client_auth".to_string());
 
-            // Fetch challenge if challenge_endpoint is present
-            let challenge = if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
-                Some(self.holder_fetch_challenge(challenge_endpoint).await?)
-            } else {
-                None
-            };
+        let issuer_accepted_levels =
+            interaction_data
+                .proof_types_supported
+                .as_ref()
+                .and_then(|proof_types_supported| {
+                    proof_types_supported
+                        .get("jwt")
+                        .and_then(|proof_type_supported| {
+                            proof_type_supported
+                                .key_attestations_required
+                                .as_ref()
+                                .map(|kar| kar.key_storage.clone())
+                        })
+                });
 
-            let signed_proof = create_wallet_unit_attestation_pop(
-                &*self.key_provider,
-                self.key_algorithm_provider.clone(),
-                key,
-                &interaction_data.issuer_url,
-                challenge,
-            )
-            .await?;
+        let key_storage_security_level = if let Some(accepted_levels) = &issuer_accepted_levels {
+            let key_security = self
+                .key_provider
+                .get_key_storage(&key.storage_type)
+                .ok_or_else(|| {
+                    IssuanceProtocolError::Failed(format!(
+                        "Key storage provider not found for type: {}",
+                        key.storage_type
+                    ))
+                })?
+                .get_capabilities()
+                .security;
 
-            (wallet_unit_attestation, Some(signed_proof))
+            Some(match_key_security_level(&key_security, accepted_levels)?)
         } else {
-            (None, None)
+            None
         };
 
+        let wallet_attestations_issuance_request =
+            match (wallet_attestation_required, &key_storage_security_level) {
+                (true, Some(key_storage_security_level)) => {
+                    Some(IssueWalletAttestationRequest::WuaAndWaa(
+                        key,
+                        key_storage_security_level.clone(),
+                    ))
+                }
+                (true, None) => Some(IssueWalletAttestationRequest::Waa),
+                (false, Some(key_storage_security_level)) => Some(
+                    IssueWalletAttestationRequest::Wua(key, key_storage_security_level.clone()),
+                ),
+                (false, None) => None,
+            };
+
+        let wallet_attestations_issuance_response = match wallet_attestations_issuance_request {
+            None => None,
+            Some(wallet_attestation_request) => {
+                let holder_wallet_unit_id = holder_wallet_unit_id.ok_or(
+                    IssuanceProtocolError::Failed("holder wallet unit id is required".to_string()),
+                )?;
+
+                let wallet_attestation = self
+                    .holder_wallet_unit_proto
+                    .issue_wallet_attestations(&holder_wallet_unit_id, wallet_attestation_request)
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+                Some(wallet_attestation)
+            }
+        };
+
+        let waa_and_proof = match (
+            wallet_attestation_required,
+            &wallet_attestations_issuance_response,
+        ) {
+            (true, Some(issuance_response)) => {
+                let waa = issuance_response
+                    .waa
+                    .first()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Wallet attestation is required".to_string(),
+                    ))?;
+
+                let challenge =
+                    if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
+                        Some(self.holder_fetch_challenge(challenge_endpoint).await?)
+                    } else {
+                        None
+                    };
+
+                // Get the wallet unit's authentication key for signing the PoP
+                // The PoP must be signed with the key that matches the cnf.jwk in the WAA
+                let wallet_unit_auth_key = self
+                    .holder_wallet_unit_proto
+                    .get_authentication_key(&holder_wallet_unit_id.ok_or(
+                        IssuanceProtocolError::Failed(
+                            "holder wallet unit id is required for WAA PoP".to_string(),
+                        ),
+                    )?)
+                    .await
+                    .map_err(|e| {
+                        IssuanceProtocolError::Failed(format!(
+                            "Failed to get authentication key: {e}"
+                        ))
+                    })?;
+
+                let signed_proof = create_wallet_unit_attestation_pop(
+                    &*self.key_provider,
+                    self.key_algorithm_provider.clone(),
+                    &wallet_unit_auth_key,
+                    &interaction_data.issuer_url,
+                    challenge,
+                )
+                .await?;
+
+                Ok(Some(TokenRequestWalletAttestationRequest {
+                    wallet_attestation: waa.to_owned(),
+                    wallet_attestation_pop: signed_proof,
+                }))
+            }
+            (true, None) => Err(IssuanceProtocolError::Failed(
+                "Wallet attestation is required".to_string(),
+            )),
+            (false, _) => Ok(None),
+        }?;
+
+        let key_attestations_required = key_storage_security_level.is_some();
+        let wua_proof = match (
+            key_attestations_required,
+            &wallet_attestations_issuance_response,
+        ) {
+            (true, Some(issuance_response)) => {
+                let wua = issuance_response
+                    .wua
+                    .first()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Key attestation is required".to_string(),
+                    ))?;
+
+                Ok(Some(wua.to_owned()))
+            }
+            (true, None) => Err(IssuanceProtocolError::Failed(
+                "Key attestation is required".to_string(),
+            )),
+            (false, _) => Ok(None),
+        }?;
+
         let token_response = self
-            .holder_fetch_token(
-                &interaction_data,
-                tx_code,
-                wallet_attestation
-                    .as_ref()
-                    .map(|wua| wua.attestation.as_str()),
-                wallet_attestation_pop.as_deref(),
-            )
+            .holder_fetch_token(&interaction_data, tx_code, waa_and_proof)
             .await?;
         let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 
@@ -929,6 +1045,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 Some(nonce),
                 auth_fn,
                 token_response.access_token.expose_secret(),
+                wua_proof,
             )
             .await?;
 
@@ -1361,6 +1478,36 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     }
 }
 
+fn match_key_security_level(
+    key_security: &[KeySecurity],
+    issuer_accepted_levels: &[KeyStorageSecurityLevel],
+) -> Result<KeyStorageSecurityLevel, IssuanceProtocolError> {
+    let key_levels: Vec<KeyStorageSecurityLevel> = key_security
+        .iter()
+        .map(|ks| {
+            let wallet_storage: WalletStorageTypeEnum = match ks {
+                KeySecurity::Hardware => WalletStorageTypeEnum::Hardware,
+                KeySecurity::Software => WalletStorageTypeEnum::Software,
+                KeySecurity::RemoteSecureElement => WalletStorageTypeEnum::RemoteSecureElement,
+            };
+            KeyStorageSecurityLevel::from(wallet_storage)
+        })
+        .collect();
+
+    let matching_levels: Vec<KeyStorageSecurityLevel> = issuer_accepted_levels
+        .iter()
+        .filter(|level| key_levels.contains(level))
+        .cloned()
+        .collect();
+
+    KeyStorageSecurityLevel::select_lowest(&matching_levels).ok_or_else(|| {
+        IssuanceProtocolError::Failed(format!(
+            "Key security level does not meet. Key supports: {:?}, Issuer requires one of: {:?}",
+            key_security, issuer_accepted_levels
+        ))
+    })
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn handle_credential_invitation(
     invitation_url: Url,
@@ -1602,6 +1749,7 @@ async fn prepare_issuance_interaction(
         cryptographic_binding_methods_supported: credential_config
             .cryptographic_binding_methods_supported
             .clone(),
+        proof_types_supported: credential_config.proof_types_supported.clone(),
         token_endpoint_auth_methods_supported,
         credential_metadata: credential_config.credential_metadata.clone(),
         credential_configuration_id: configuration_id.to_owned(),
@@ -1613,13 +1761,25 @@ async fn prepare_issuance_interaction(
 
     let interaction =
         create_and_store_interaction(storage_access, data, Some(organisation)).await?;
-    Ok((
-        interaction.id,
-        credential_config
-            .credential_metadata
-            .as_ref()
-            .and_then(|cm| cm.wallet_storage_type),
-    ))
+
+    // Extract wallet_storage_type based on proof_types_supported.key_attestations_required.key_storage
+    let wallet_storage_type = credential_config
+        .proof_types_supported
+        .as_ref()
+        .and_then(|proof_types| {
+            proof_types.get("jwt").and_then(|proof_type| {
+                proof_type
+                    .key_attestations_required
+                    .as_ref()
+                    .and_then(|kar| {
+                        use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
+                        KeyStorageSecurityLevel::select_lowest(&kar.key_storage)
+                    })
+            })
+        })
+        .map(WalletStorageTypeEnum::from);
+
+    Ok((interaction.id, wallet_storage_type))
 }
 
 async fn resolve_credential_offer(

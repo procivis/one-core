@@ -125,6 +125,8 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(default)]
+    pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+    #[serde(default)]
     pub token_endpoint_auth_methods_supported: Option<Vec<String>>,
     #[serde(default)]
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
@@ -701,4 +703,9 @@ pub struct ContinuationIssuanceDTO {
 pub struct ContinueIssuanceAuthorizationDetailDTO {
     pub r#type: String,
     pub credential_configuration_id: String,
+}
+
+pub(super) struct TokenRequestWalletAttestationRequest {
+    pub wallet_attestation: String,
+    pub wallet_attestation_pop: String,
 }

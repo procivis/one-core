@@ -260,6 +260,7 @@ pub(super) async fn request_as_signed_jwt(
             r#type: Some("oauth-authz-req+jwt".to_string()),
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload: JWTPayload {

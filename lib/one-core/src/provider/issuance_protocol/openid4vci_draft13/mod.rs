@@ -13,7 +13,9 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
-use shared_types::{BlobId, CertificateId, CredentialId, DidValue, IdentifierId};
+use shared_types::{
+    BlobId, CertificateId, CredentialId, DidValue, HolderWalletUnitId, IdentifierId,
+};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -833,6 +835,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         jwk_key_id: Option<String>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
+        _holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
         let credential = storage_access
             .get_credential_by_interaction_id(&interaction.id)

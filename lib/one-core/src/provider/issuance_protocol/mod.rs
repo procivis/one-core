@@ -7,7 +7,7 @@ use openid4vci_final1_0::OpenID4VCIFinal1_0;
 use serde::Serialize;
 use serde::de::Deserialize;
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, HolderWalletUnitId};
 use url::Url;
 
 use crate::config::ConfigValidationError;
@@ -22,6 +22,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -39,7 +40,6 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
-use crate::repository::wallet_unit_attestation_repository::WalletUnitAttestationRepository;
 use crate::service::storage_proxy::StorageAccess;
 
 pub mod dto;
@@ -77,7 +77,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
-    wallet_unit_attestation_repository: Arc<dyn WalletUnitAttestationRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     key_provider: Arc<dyn KeyProvider>,
@@ -89,6 +88,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
+    wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
 ) -> Result<HashMap<String, Arc<dyn IssuanceProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
 
@@ -114,7 +114,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     client.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
-                    wallet_unit_attestation_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
                     did_method_provider.clone(),
@@ -125,6 +124,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     config.clone(),
                     params,
                     name.to_owned(),
+                    wallet_unit_proto.clone(),
                 ))
             }
             IssuanceProtocolType::OpenId4VciDraft13 => {
@@ -259,6 +259,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
         jwk_key_id: Option<String>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
+        holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError>;
 
     /// Rejects a previously-accepted credential offer.

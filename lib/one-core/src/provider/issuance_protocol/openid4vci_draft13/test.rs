@@ -751,6 +751,7 @@ async fn test_holder_accept_credential_success() {
             None,
             &storage_access,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -962,6 +963,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             None,
             &storage_access,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -1165,6 +1167,7 @@ async fn test_holder_accept_expired_credential_fails() {
             &dummy_key(),
             None,
             &storage_access,
+            None,
             None,
         )
         .await;

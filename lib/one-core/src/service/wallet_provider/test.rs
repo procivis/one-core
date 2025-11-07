@@ -416,6 +416,7 @@ async fn create_proof() -> (String, KeyHandle) {
             r#type: None,
             jwk: Some(jwk.clone().into()),
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload: JWTPayload {

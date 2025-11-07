@@ -21,3 +21,15 @@ impl From<WalletStorageTypeEnum> for KeyStorageSecurityLevel {
         }
     }
 }
+
+impl From<KeyStorageSecurityLevel> for WalletStorageTypeEnum {
+    fn from(value: KeyStorageSecurityLevel) -> Self {
+        match value {
+            KeyStorageSecurityLevel::High => WalletStorageTypeEnum::RemoteSecureElement,
+            KeyStorageSecurityLevel::Moderate | KeyStorageSecurityLevel::EnhancedBasic => {
+                WalletStorageTypeEnum::Hardware
+            }
+            KeyStorageSecurityLevel::Basic => WalletStorageTypeEnum::Software,
+        }
+    }
+}

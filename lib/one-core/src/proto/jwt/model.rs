@@ -29,6 +29,10 @@ pub struct JWTHeader {
     #[serde(rename = "jwt", default)]
     pub jwt: Option<String>,
 
+    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-F.1
+    #[serde(rename = "key_attestation", default)]
+    pub key_attestation: Option<String>,
+
     // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.6
     #[serde(rename = "x5c", default)]
     pub x5c: Option<Vec<String>>,

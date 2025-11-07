@@ -123,6 +123,7 @@ impl OpenID4VCIProofJWTFormatter {
         issuer_url: String,
         jwk: Option<PublicKeyJwkDTO>,
         nonce: Option<String>,
+        key_attestation: Option<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         #[derive(Serialize)]
@@ -144,13 +145,14 @@ impl OpenID4VCIProofJWTFormatter {
         };
         let jwk = jwk.map(JwtPublicKeyInfo::Jwk);
 
-        let jwt = Jwt::new(
+        let jwt = Jwt::new_with_attestation(
             JWT_PROOF_TYPE.to_string(),
             auth_fn.jose_alg().ok_or(FormatterError::CouldNotFormat(
                 "Invalid key algorithm".to_string(),
             ))?,
             key_id,
             jwk,
+            key_attestation,
             payload,
         );
 
@@ -189,6 +191,7 @@ mod test {
             "https://example.com".to_string(),
             None,
             None,
+            None,
             auth_fn,
         )
         .await
@@ -208,6 +211,7 @@ mod test {
             "https://example.com".to_string(),
             Some(jwk.into()),
             Some("nonce".to_string()),
+            None,
             auth_fn,
         )
         .await

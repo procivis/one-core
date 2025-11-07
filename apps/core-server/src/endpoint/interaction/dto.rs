@@ -15,7 +15,9 @@ use one_core::service::ssi_holder::dto::{
 use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
+use shared_types::{
+    CredentialId, DidId, HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId,
+};
 use strum::Display;
 use url::Url;
 use utoipa::ToSchema;
@@ -138,6 +140,7 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
     /// will be used.
     pub key_id: Option<KeyId>,
     pub tx_code: Option<String>,
+    pub holder_wallet_unit_id: Option<HolderWalletUnitId>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]

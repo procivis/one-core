@@ -41,3 +41,17 @@ pub enum KeyStorageSecurityLevel {
     #[serde(rename = "iso_18045_basic")]
     Basic,
 }
+
+impl KeyStorageSecurityLevel {
+    pub fn select_lowest(levels: &[Self]) -> Option<Self> {
+        levels
+            .iter()
+            .min_by_key(|level| match level {
+                Self::High => 4,
+                Self::Moderate => 3,
+                Self::EnhancedBasic => 2,
+                Self::Basic => 1,
+            })
+            .cloned()
+    }
+}

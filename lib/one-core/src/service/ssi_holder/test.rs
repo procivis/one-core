@@ -1223,7 +1223,7 @@ async fn test_accept_credential() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1318,7 +1318,7 @@ async fn test_accept_credential() {
 
     let interaction_id = Uuid::new_v4();
     service
-        .accept_credential(interaction_id, None, Some(identifier_id), None, None)
+        .accept_credential(interaction_id, None, Some(identifier_id), None, None, None)
         .await
         .unwrap();
 }
@@ -1384,7 +1384,7 @@ async fn test_accept_credential_with_did() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _| {
+        .returning(|_, _, _, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1479,7 +1479,7 @@ async fn test_accept_credential_with_did() {
 
     let interaction_id = Uuid::new_v4();
     service
-        .accept_credential(interaction_id, Some(did_id), None, None, None)
+        .accept_credential(interaction_id, Some(did_id), None, None, None, None)
         .await
         .unwrap();
 }
@@ -1940,7 +1940,7 @@ async fn test_accept_credential_identifier_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None)
+        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None, None)
         .await;
     assert!(matches!(
         result,
@@ -2001,7 +2001,7 @@ async fn test_accept_credential_credential_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None)
+        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None, None)
         .await;
     assert!(matches!(
         result,

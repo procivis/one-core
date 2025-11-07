@@ -64,6 +64,7 @@ pub(crate) async fn prepare_bearer_token(
             r#type: None,
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload,

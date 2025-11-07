@@ -195,6 +195,7 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
             r#type: None,
             jwk: None,
             jwt: None,
+            key_attestation: None,
             x5c: None,
         },
         payload,

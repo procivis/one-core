@@ -27,6 +27,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
@@ -57,7 +58,6 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::repository::wallet_unit_attestation_repository::MockWalletUnitAttestationRepository;
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{
@@ -68,7 +68,6 @@ use crate::service::test_utilities::{
 struct TestInputs {
     pub credential_repository: MockCredentialRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
-    pub wallet_unit_attestation_repository: MockWalletUnitAttestationRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
@@ -84,7 +83,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(ReqwestClient::default()),
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),
-        Arc::new(inputs.wallet_unit_attestation_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.did_method_provider),
@@ -108,6 +106,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
             enable_credential_preview: true,
         }),
         "OPENID4VCI_FINAL1".to_string(),
+        Arc::new(MockHolderWalletUnitProto::new()),
     )
 }
 
@@ -538,6 +537,7 @@ async fn test_holder_accept_credential_success() {
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
         continue_issuance: None,
         credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         credential_metadata: None,
@@ -695,6 +695,7 @@ async fn test_holder_accept_credential_success() {
             None,
             &storage_access,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -741,6 +742,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
         continue_issuance: None,
         credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
         credential_metadata: None,
@@ -894,6 +896,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             None,
             &storage_access,
             None,
+            None,
         )
         .await
         .unwrap();
@@ -951,6 +954,7 @@ async fn test_holder_reject_credential() {
             refresh_token_expires_at: None,
             token_endpoint_auth_methods_supported: None,
             cryptographic_binding_methods_supported: None,
+            proof_types_supported: None,
             credential_signing_alg_values_supported: None,
             continue_issuance: None,
             credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),

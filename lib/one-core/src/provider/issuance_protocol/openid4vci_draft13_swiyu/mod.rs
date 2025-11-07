@@ -3,7 +3,7 @@ use std::sync::Arc;
 use secrecy::SecretSlice;
 use serde::Deserialize;
 use serde_json::Value;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, HolderWalletUnitId};
 use url::Url;
 
 use crate::config::core_config::DidType::WebVh;
@@ -141,6 +141,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
         jwk_key_id: Option<String>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
+        _holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
         self.inner
             .holder_accept_credential(
@@ -150,6 +151,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
                 jwk_key_id,
                 storage_access,
                 tx_code,
+                None,
             )
             .await
     }
