@@ -592,6 +592,7 @@ async fn test_create_token() {
         Some(schema.clone()),
     );
     let interaction_id = credential.interaction.as_ref().unwrap().id;
+    let interaction = credential.interaction.clone().unwrap();
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
@@ -601,6 +602,11 @@ async fn test_create_token() {
         .expect_update_credential()
         .once()
         .return_once(|_, _| Ok(()));
+
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .return_once(|_, _, _| Ok(Some(interaction)));
 
     interaction_repository
         .expect_update_interaction()
@@ -684,33 +690,38 @@ async fn test_create_token_empty_pre_authorized_code() {
 async fn test_create_token_pre_authorized_code_used() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
-    let interaction_repository = MockInteractionRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let schema = generic_credential_schema();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(
-                eq(schema.id.to_owned()),
-                eq(CredentialSchemaRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(clone.clone())));
 
-        let clone = schema.clone();
-        credential_repository
-            .expect_get_credentials_by_interaction_id()
-            .once()
-            .return_once(move |_, _| {
-                Ok(vec![dummy_credential(
-                    "OPENID4VCI_DRAFT13",
-                    CredentialStateEnum::Pending,
-                    true,
-                    Some(clone),
-                )])
-            });
-    }
+    let clone = schema.clone();
+    repository
+        .expect_get_credential_schema()
+        .times(1)
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .returning(move |_, _| Ok(Some(clone.clone())));
+
+    let clone = schema.clone();
+    let credential = dummy_credential(
+        "OPENID4VCI_DRAFT13",
+        CredentialStateEnum::Pending,
+        true,
+        Some(clone),
+    );
+    let interaction = credential.interaction.clone().unwrap();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![credential]));
+
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .return_once(|_, _, _| Ok(Some(interaction)));
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
@@ -741,33 +752,38 @@ async fn test_create_token_pre_authorized_code_used() {
 async fn test_create_token_wrong_credential_state() {
     let mut repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
-    let interaction_repository = MockInteractionRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let schema = generic_credential_schema();
-    {
-        let clone = schema.clone();
-        repository
-            .expect_get_credential_schema()
-            .times(1)
-            .with(
-                eq(schema.id.to_owned()),
-                eq(CredentialSchemaRelations::default()),
-            )
-            .returning(move |_, _| Ok(Some(clone.clone())));
 
-        let clone = schema.clone();
-        credential_repository
-            .expect_get_credentials_by_interaction_id()
-            .once()
-            .return_once(move |_, _| {
-                Ok(vec![dummy_credential(
-                    "OPENID4VCI_DRAFT13",
-                    CredentialStateEnum::Offered,
-                    false,
-                    Some(clone),
-                )])
-            });
-    }
+    let clone = schema.clone();
+    repository
+        .expect_get_credential_schema()
+        .times(1)
+        .with(
+            eq(schema.id.to_owned()),
+            eq(CredentialSchemaRelations::default()),
+        )
+        .returning(move |_, _| Ok(Some(clone.clone())));
+
+    let clone = schema.clone();
+    let credential = dummy_credential(
+        "OPENID4VCI_DRAFT13",
+        CredentialStateEnum::Offered,
+        false,
+        Some(clone),
+    );
+    let interaction = credential.interaction.clone().unwrap();
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(move |_, _| Ok(vec![credential]));
+
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .return_once(|_, _, _| Ok(Some(interaction)));
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
@@ -2038,6 +2054,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         Some(schema.clone()),
     );
     let interaction_id = credential.interaction.as_ref().unwrap().id;
+    let interaction = credential.interaction.clone().unwrap();
     credential_repository
         .expect_get_credentials_by_interaction_id()
         .once()
@@ -2048,6 +2065,10 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
         .once()
         .return_once(|_, _| Ok(()));
 
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .return_once(|_, _, _| Ok(Some(interaction)));
     interaction_repository
         .expect_update_interaction()
         .once()
@@ -2114,14 +2135,15 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
     let interaction_id: Uuid = "c62f4237-3c74-42f2-a5ff-c72489e025f7".parse().unwrap();
     let refresh_token = "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA";
     let refresh_token_expires_at = "2077-10-28T07:03:38.4404734Z";
+    let interaction = dummy_interaction(
+        Some(interaction_id),
+        false,
+        None,
+        Some(refresh_token),
+        Some(refresh_token_expires_at),
+    );
     let credential = Credential {
-        interaction: Some(dummy_interaction(
-            Some(interaction_id),
-            false,
-            None,
-            Some(refresh_token),
-            Some(refresh_token_expires_at),
-        )),
+        interaction: Some(interaction.clone()),
         ..dummy_credential(
             "OPENID4VCI_DRAFT13",
             CredentialStateEnum::Accepted,
@@ -2136,6 +2158,10 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
         .once()
         .return_once(move |_, _| Ok(vec![credential]));
 
+    interaction_repository
+        .expect_get_interaction()
+        .once()
+        .return_once(|_, _, _| Ok(Some(interaction)));
     interaction_repository
         .expect_update_interaction()
         .once()
@@ -2182,6 +2208,7 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
 async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
     let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
+    let mut interaction_repository = MockInteractionRepository::default();
 
     let schema = generic_credential_schema();
 
@@ -2201,14 +2228,15 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
     let refresh_token = "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA";
     // expired refresh token
     let refresh_token_expires_at = "2023-10-28T07:03:38.4404734Z";
+    let interaction = dummy_interaction(
+        Some(interaction_id),
+        false,
+        None,
+        Some(refresh_token),
+        Some(refresh_token_expires_at),
+    );
     let credential = Credential {
-        interaction: Some(dummy_interaction(
-            Some(interaction_id),
-            false,
-            None,
-            Some(refresh_token),
-            Some(refresh_token_expires_at),
-        )),
+        interaction: Some(interaction.clone()),
         ..dummy_credential(
             "OPENID4VCI_DRAFT13",
             CredentialStateEnum::Accepted,
@@ -2216,6 +2244,9 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             Some(schema.clone()),
         )
     };
+    interaction_repository
+        .expect_get_interaction()
+        .return_once(|_, _, _| Ok(Some(interaction)));
 
     credential_repository
         .expect_get_credentials_by_interaction_id()
@@ -2226,6 +2257,7 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
     let service = setup_service(Mocks {
         credential_schema_repository,
         credential_repository,
+        interaction_repository,
         config: generic_config().core,
         ..Default::default()
     });

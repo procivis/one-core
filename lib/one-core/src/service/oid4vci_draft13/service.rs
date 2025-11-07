@@ -738,15 +738,7 @@ impl OID4VCIDraft13Service {
 
         let credentials = self
             .credential_repository
-            .get_credentials_by_interaction_id(
-                &interaction_id,
-                &CredentialRelations {
-                    interaction: Some(InteractionRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                    }),
-                    ..Default::default()
-                },
-            )
+            .get_credentials_by_interaction_id(&interaction_id, &CredentialRelations::default())
             .await?;
 
         let credential = credentials
@@ -754,13 +746,6 @@ impl OID4VCIDraft13Service {
             .ok_or(BusinessLogicError::MissingCredentialsForInteraction { interaction_id })?;
 
         validate_issuance_protocol_type(self.protocol_type, &self.config, &credential.protocol)?;
-
-        let mut interaction = credential
-            .interaction
-            .clone()
-            .ok_or(ServiceError::MappingError(
-                "interaction is None".to_string(),
-            ))?;
 
         // both refresh and access token have the same structure
         let generate_new_token = || {
@@ -778,56 +763,77 @@ impl OID4VCIDraft13Service {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
 
-        let interaction_data = interaction_data_to_dto(&interaction)?;
+        let mut tx_result = None;
+        let tx = async {
+            // Lock the interaction to ensure exclusive access
+            let mut interaction = self
+                .interaction_repository
+                .get_interaction(
+                    &interaction_id,
+                    &InteractionRelations::default(),
+                    Some(LockType::Update),
+                )
+                .await?
+                .ok_or(ServiceError::MappingError(format!(
+                    "Interaction `{}` not found",
+                    interaction_id
+                )))?;
+            let interaction_data = interaction_data_to_dto(&interaction)?;
 
-        let mut response = oidc_issuer_create_token(
-            &interaction_data,
-            &convert_inner(credentials.to_owned()),
-            &interaction,
-            &request,
-            pre_authorization_expires_in,
-            access_token_expires_in,
-            refresh_token_expires_in,
-        )?;
+            let mut response = oidc_issuer_create_token(
+                &interaction_data,
+                &convert_inner(credentials.to_owned()),
+                &interaction,
+                &request,
+                pre_authorization_expires_in,
+                access_token_expires_in,
+                refresh_token_expires_in,
+            )?;
 
-        let now = OffsetDateTime::now_utc();
-        if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {
-            for credential in &credentials {
-                self.credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Offered),
-                            ..Default::default()
-                        },
-                    )
-                    .await?;
+            let now = OffsetDateTime::now_utc();
+            if let OpenID4VCITokenRequestDTO::PreAuthorizedCode { .. } = &request {
+                for credential in &credentials {
+                    self.credential_repository
+                        .update_credential(
+                            credential.id,
+                            UpdateCredentialRequest {
+                                state: Some(CredentialStateEnum::Offered),
+                                ..Default::default()
+                            },
+                        )
+                        .await?;
+                }
+
+                let credential_format_type = self
+                    .config
+                    .format
+                    .get_fields(credential_schema.format.as_str())?
+                    .r#type;
+
+                // we add refresh token for mdoc
+                if credential_format_type == FormatType::Mdoc {
+                    response.refresh_token = Some(generate_new_token());
+                    response.refresh_token_expires_in =
+                        Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
+                }
             }
 
-            let credential_format_type = self
-                .config
-                .format
-                .get_fields(credential_schema.format.as_str())?
-                .r#type;
+            let interaction_data: OpenID4VCIIssuerInteractionDataDTO = (&response).try_into()?;
+            let data = serde_json::to_vec(&interaction_data)
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+            interaction.data = Some(data);
 
-            // we add refresh token for mdoc
-            if credential_format_type == FormatType::Mdoc {
-                response.refresh_token = Some(generate_new_token());
-                response.refresh_token_expires_in =
-                    Some(Timestamp((now + refresh_token_expires_in).unix_timestamp()));
-            }
+            self.interaction_repository
+                .update_interaction(interaction.id, interaction.into())
+                .await?;
+            tx_result = Some(response);
+            Ok(())
         }
-
-        let interaction_data: OpenID4VCIIssuerInteractionDataDTO = (&response).try_into()?;
-        let data = serde_json::to_vec(&interaction_data)
-            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-        interaction.data = Some(data);
-
-        self.interaction_repository
-            .update_interaction(interaction.id, interaction.into())
-            .await?;
-
-        Ok(response)
+        .boxed();
+        self.transaction_manager.transaction(tx).await??;
+        tx_result.ok_or(ServiceError::Other(
+            "Missing token endpoint tx result".to_string(),
+        ))
     }
 }
 

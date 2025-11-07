@@ -5,7 +5,7 @@ use axum::{Form, Json};
 use axum_extra::extract::WithRejection;
 use axum_extra::typed_header::TypedHeader;
 use headers::authorization::Bearer;
-use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
+use one_core::provider::issuance_protocol::error::{IssuanceProtocolError, OpenIDIssuanceError};
 use one_core::service::error::{EntityNotFoundError, ServiceError};
 use shared_types::{CredentialId, CredentialSchemaId};
 
@@ -241,7 +241,8 @@ pub(crate) async fn oid4vci_final1_0_create_token(
             Json(OpenID4VCITokenResponseRestDTO::from(value)),
         )
             .into_response(),
-        Err(ServiceError::OpenID4VCIError(error)) => {
+        Err(ServiceError::OpenID4VCIError(error))
+        | Err(ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(error))) => {
             tracing::error!("OpenID4VCI token validation error: {:?}", error);
             (
                 StatusCode::BAD_REQUEST,
