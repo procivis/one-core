@@ -1,3 +1,4 @@
+use futures::future::join_all;
 use one_core::model::history::HistoryAction;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -37,6 +38,36 @@ async fn test_upsert_organisation_success_not_existing() {
         history.values.first().unwrap().action,
         HistoryAction::Created
     )
+}
+
+#[tokio::test]
+async fn test_upsert_organisation_success_not_existing_parallel_test() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let mut requests = vec![];
+    for i in 0..10 {
+        let name = format!("name-{}", i);
+        requests.push(async {
+            let org_id = Uuid::new_v4();
+            context
+                .api
+                .organisations
+                .upsert(
+                    &org_id,
+                    UpsertParams {
+                        name: Some(name),
+                        ..Default::default()
+                    },
+                )
+                .await
+        });
+    }
+    let responses = join_all(requests).await;
+
+    // THEN
+    assert!(responses.iter().all(|resp| resp.status() == 204));
 }
 
 #[tokio::test]
