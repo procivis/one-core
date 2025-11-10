@@ -462,7 +462,10 @@ impl OID4VCIFinal1_0Service {
                 Some(IsolationLevel::Serializable),
                 None,
             )
-            .await??;
+            .await
+            // A conflict in this transaction indicates that the nonce has already been used
+            .map_err(|_| OpenID4VCIError::InvalidNonce)?
+            .map_err(|_| OpenID4VCIError::InvalidNonce)?;
 
         let (holder_identifier, holder_key_id) = match verified_proof {
             Either::Left((holder_did_value, holder_key_id)) => {
