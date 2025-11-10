@@ -230,6 +230,19 @@ build_image:
     EXTRA_BUILD_ARGS: >-
       --build-arg BASE_IMAGE=$BUILD_IMAGE
 
+build_image_acr:latest:
+  stage: build
+  dependencies: []
+  before_script:
+    - *app_settings
+    - export IMAGE_TAG="latest"
+  extends:
+    - .release_docker_image:acr
+    - .only_main
+  variables:
+    EXTRA_BUILD_ARGS: >-
+      --build-arg BASE_IMAGE=$BUILD_IMAGE
+
 build_image_acr:
   stage: build
   dependencies: []
