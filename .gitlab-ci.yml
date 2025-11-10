@@ -240,6 +240,7 @@ build_image_acr:latest:
     - .release_docker_image:acr
     - .only_main
   variables:
+    APP_FLAVOR: procivis
     EXTRA_BUILD_ARGS: >-
       --build-arg BASE_IMAGE=$BUILD_IMAGE
 
