@@ -76,6 +76,7 @@ pub(super) struct WalletProviderParams {
     pub wallet_registration: WalletRegistrationRequirement,
     pub wallet_app_attestation: WalletAppAttestationParams,
     pub wallet_unit_attestation: WalletUnitAttestationParams,
+    pub device_auth_leeway: u64,
     pub app_version: Option<AppVersionDTO>,
     pub eudi_wallet_info: Option<EudiWalletInfoConfig>,
 }

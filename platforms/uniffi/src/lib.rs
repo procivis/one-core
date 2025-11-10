@@ -834,7 +834,7 @@ async fn initialize(
             };
 
             let certificate_validator_creator: CertificateValidatorCreator = {
-                Box::new(move |_config, providers| {
+                Box::new(move |config, providers| {
                     let key_algorithm_provider = providers.key_algorithm_provider.as_ref().ok_or(
                         OneCoreBuildError::MissingDependency("key algorithm provider".to_string()),
                     )?;
@@ -843,6 +843,7 @@ async fn initialize(
                         key_algorithm_provider.clone(),
                         x509_crl_cache,
                         Arc::new(DefaultClock),
+                        config.certificate_validation.leeway,
                         android_key_attestation_crl_cache,
                     )))
                 })

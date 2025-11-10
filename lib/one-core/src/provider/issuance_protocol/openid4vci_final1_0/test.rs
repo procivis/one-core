@@ -104,6 +104,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
             },
             nonce: None,
             enable_credential_preview: true,
+            oauth_attestation_leeway: 60,
         }),
         "OPENID4VCI_FINAL1".to_string(),
         Arc::new(MockHolderWalletUnitProto::new()),
@@ -477,6 +478,7 @@ async fn test_generate_share_credentials_offer_by_value() {
             },
             nonce: None,
             enable_credential_preview: true,
+            oauth_attestation_leeway: 60,
         }),
         ..Default::default()
     });
@@ -1080,6 +1082,7 @@ async fn test_holder_reject_credential() {
             },
             nonce: None,
             enable_credential_preview: true,
+            oauth_attestation_leeway: 60,
         }),
         ..Default::default()
     });
@@ -1492,5 +1495,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
         },
         nonce: None,
         enable_credential_preview: true,
+        oauth_attestation_leeway: 60,
     }
 }

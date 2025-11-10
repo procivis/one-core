@@ -120,6 +120,7 @@ rusty_fork_test! {
             walletProvider: {}
             credentialIssuer: {}
             verificationEngagement: {}
+            certificateValidation: {}
         "};
 
         let config3 = indoc::indoc! {"

@@ -21,6 +21,7 @@ use crate::provider::trust_management::simple_list::model::GetTrustAnchorRespons
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub enable_publishing: bool,
+    pub proof_of_possession_leeway: u64,
 }
 
 pub struct SimpleList {

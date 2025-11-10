@@ -103,6 +103,7 @@ STsfRXkSUfgzmbAsuDE=
             Duration::days(1),
         )),
         Arc::new(DefaultClock),
+        Duration::minutes(1),
         Arc::new(AndroidAttestationCrlCache::new(
             Arc::new(AndroidAttestationCrlResolver::new(http_client)),
             remote_entity_storage,
@@ -230,6 +231,7 @@ fn create_certificate_validator() -> CertificateValidatorImpl {
         key_algorithm_provider,
         crl_cache,
         Arc::new(DefaultClock),
+        Duration::minutes(1),
         android_key_attestation_crl_cache,
     )
 }

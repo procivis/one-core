@@ -61,6 +61,7 @@ pub struct CoreConfig {
     pub wallet_provider: WalletProviderConfig,
     pub credential_issuer: CredentialIssuerConfig,
     pub verification_engagement: VerificationEngagementConfig,
+    pub certificate_validation: CertificateValidationConfig,
 }
 
 impl CoreConfig {
@@ -744,6 +745,15 @@ impl VerificationEngagementFields {
 }
 
 pub type VerificationEngagementConfig = Dict<VerificationEngagement, VerificationEngagementFields>;
+
+#[serde_as]
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CertificateValidationConfig {
+    #[serde(default)]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: time::Duration,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]

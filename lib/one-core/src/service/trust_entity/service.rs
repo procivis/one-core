@@ -234,9 +234,16 @@ impl TrustEntityService {
     ) -> Result<TrustEntityId, ServiceError> {
         let did_value = request.did.clone();
 
-        self.validate_bearer_token(&did_value, bearer_token).await?;
-
         let trust_anchor = self.get_trust_anchor(request.trust_anchor_id, true).await?;
+
+        let trust_params: crate::provider::trust_management::simple_list::Params =
+            self.config.trust_management.get(&trust_anchor.r#type)?;
+        self.validate_bearer_token(
+            &did_value,
+            bearer_token,
+            trust_params.proof_of_possession_leeway,
+        )
+        .await?;
 
         if !trust_anchor.is_publisher {
             return Err(BusinessLogicError::TrustAnchorMustBePublish.into());
@@ -414,8 +421,6 @@ impl TrustEntityService {
         did_value: DidValue,
         bearer_token: &str,
     ) -> Result<GetTrustEntityResponseDTO, ServiceError> {
-        self.validate_bearer_token(&did_value, bearer_token).await?;
-
         let did = self
             .did_repository
             .get_did_by_value(
@@ -428,7 +433,7 @@ impl TrustEntityService {
             )
             .await?
             .ok_or(ServiceError::ValidationError("unknown did".to_string()))?;
-        let entity_key: TrustEntityKey = did_value.into();
+        let entity_key: TrustEntityKey = did_value.clone().into();
 
         let result = self
             .trust_entity_repository
@@ -437,6 +442,10 @@ impl TrustEntityService {
             .ok_or(ServiceError::EntityNotFound(
                 EntityNotFoundError::TrustEntityByEntityKey(entity_key),
             ))?;
+
+        let leeway = self.get_proof_of_possession_leeway(&result)?;
+        self.validate_bearer_token(&did_value, bearer_token, leeway)
+            .await?;
 
         get_detail_trust_entity_response(result, Some(did), None, None)
     }
@@ -520,8 +529,6 @@ impl TrustEntityService {
         request: UpdateTrustEntityFromDidRequestDTO,
         bearer_token: &str,
     ) -> Result<(), ServiceError> {
-        self.validate_bearer_token(&did_value, bearer_token).await?;
-
         // only allowed to withdraw/activate
         if matches!(
             request.action,
@@ -533,11 +540,13 @@ impl TrustEntityService {
             return Err(ValidationError::InvalidUpdateRequest.into());
         }
 
-        let did = self
+        let Some(did) = self
             .did_repository
             .get_did_by_value(&did_value, Some(None), &DidRelations::default())
             .await?
-            .ok_or(EntityNotFoundError::DidValue(did_value))?;
+        else {
+            return Err(EntityNotFoundError::DidValue(did_value).into());
+        };
 
         let Some(entity) = self
             .trust_entity_repository
@@ -546,6 +555,10 @@ impl TrustEntityService {
         else {
             return Err(BusinessLogicError::TrustEntityHasDuplicates.into());
         };
+
+        let leeway = self.get_proof_of_possession_leeway(&entity)?;
+        self.validate_bearer_token(&did_value, bearer_token, leeway)
+            .await?;
 
         self.update_trust_entity(entity.clone(), request).await?;
 
@@ -556,12 +569,14 @@ impl TrustEntityService {
         &self,
         did_value: &DidValue,
         bearer_token: &str,
+        leeway: u64,
     ) -> Result<(), ServiceError> {
         let jwt = validate_bearer_token(
             bearer_token,
             self.did_method_provider.clone(),
             self.key_algorithm_provider.clone(),
             self.certificate_validator.clone(),
+            leeway,
         )
         .await?;
 
@@ -881,6 +896,16 @@ impl TrustEntityService {
             batches.push(batch);
         }
         Ok((batches, batch_to_identifier_and_cert_map))
+    }
+
+    fn get_proof_of_possession_leeway(&self, entity: &TrustEntity) -> Result<u64, ServiceError> {
+        let anchor = entity
+            .trust_anchor
+            .as_ref()
+            .ok_or(MappingError("TrustEntity with no TrustAnchor".to_owned()))?;
+        let trust_params: crate::provider::trust_management::simple_list::Params =
+            self.config.trust_management.get(&anchor.r#type)?;
+        Ok(trust_params.proof_of_possession_leeway)
     }
 }
 

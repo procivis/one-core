@@ -67,7 +67,12 @@ mod validator {
             };
 
             let payload = &jwt.payload;
-            validate_token(&self.config.aud, &self.config.iss, payload)?;
+            validate_token(
+                &self.config.aud,
+                &self.config.iss,
+                payload,
+                self.config.leeway,
+            )?;
             let jwks = self.get_jwks().await;
             let matching_key = jwks.find_by_kid(kid);
             let Some(matching_key) = matching_key else {
@@ -110,6 +115,7 @@ mod validator {
         expected_aud: &str,
         expected_iss: &str,
         payload: &JWTPayload<V>,
+        leeway: u64,
     ) -> Result<(), StsError> {
         let Some(ref p_issuer) = payload.issuer else {
             return Err(StsError::MissingIssuer);
@@ -126,9 +132,9 @@ mod validator {
         let Some(expires_at) = payload.expires_at else {
             return Err(StsError::MissingExpirationDate);
         };
-        validate_expiration_time(&Some(expires_at), 0).map_err(|_| StsError::ExpiredToken)?;
+        validate_expiration_time(&Some(expires_at), leeway).map_err(|_| StsError::ExpiredToken)?;
 
-        validate_not_before_time(&payload.invalid_before, 0)
+        validate_not_before_time(&payload.invalid_before, leeway)
             .map_err(|_| StsError::NotBeforeToken)?;
         Ok(())
     }

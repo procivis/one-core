@@ -63,6 +63,8 @@ pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub minimum_refresh_time: time::Duration,
 
+    pub leeway: u64,
+
     /// custom JSON-LD context inside the issued LVVC (defaults to /ssi/context/v1/lvvc.json)
     pub json_ld_context_url: Option<String>,
 }

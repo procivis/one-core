@@ -196,6 +196,7 @@ mod test {
                 iss: "".to_string(),
                 jwks_uri: "".to_string(),
                 ttl_jwks: 0,
+                leeway: 0,
             },
         }
     }

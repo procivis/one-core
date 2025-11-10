@@ -94,6 +94,7 @@ fn wallet_provider_config(
                 "walletUnitAttestation": {
                     "expirationTime": 60
                 },
+                "deviceAuthLeeway": 60,
                 "appVersion": {
                     "minimum": "v1.50.0",
                 },

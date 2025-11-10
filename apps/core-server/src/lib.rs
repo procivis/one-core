@@ -90,4 +90,5 @@ pub struct StsTokenValidation {
     iss: String,
     jwks_uri: String,
     ttl_jwks: u64,
+    leeway: u64,
 }

@@ -3,6 +3,7 @@ pub struct OneCoreConfig {
     pub caching_config: CachingConfig,
     pub did_method_config: DidMethodConfig,
     pub formatter_config: FormatterConfig,
+    pub certificate_validator_config: CertificateValidatorConfig,
 }
 
 #[derive(Clone)]
@@ -29,6 +30,11 @@ pub struct DidMethodConfig {
 pub struct FormatterConfig {
     pub leeway: u64,
     pub embed_layout_properties: bool,
+}
+
+#[derive(Clone)]
+pub struct CertificateValidatorConfig {
+    pub leeway: time::Duration,
 }
 
 impl Default for OneCoreConfig {
@@ -58,6 +64,9 @@ impl Default for OneCoreConfig {
             formatter_config: FormatterConfig {
                 leeway: 60,
                 embed_layout_properties: false,
+            },
+            certificate_validator_config: CertificateValidatorConfig {
+                leeway: time::Duration::minutes(1),
             },
         }
     }

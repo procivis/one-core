@@ -163,6 +163,7 @@ fn create_provider(
         Params {
             credential_expiry: Default::default(),
             minimum_refresh_time: Default::default(),
+            leeway: Default::default(),
             json_ld_context_url: None,
         },
     )

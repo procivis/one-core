@@ -16,3 +16,4 @@ blobStorage: {}
 walletProvider: {}
 credentialIssuer: {}
 verificationEngagement: {}
+certificateValidation: {}

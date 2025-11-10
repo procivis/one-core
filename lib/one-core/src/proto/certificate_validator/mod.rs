@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use time::Duration;
+
 use crate::proto::clock::Clock;
 use crate::provider::caching_loader::android_attestation_crl::AndroidAttestationCrlCache;
 use crate::provider::caching_loader::x509_crl::X509CrlCache;
@@ -127,6 +129,7 @@ pub struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crl_cache: Arc<X509CrlCache>,
     clock: Arc<dyn Clock>,
+    clock_leeway: Duration,
     android_attestation_crl_cache: Arc<AndroidAttestationCrlCache>,
 }
 
@@ -135,12 +138,14 @@ impl CertificateValidatorImpl {
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         crl_cache: Arc<X509CrlCache>,
         clock: Arc<dyn Clock>,
+        clock_leeway: Duration,
         android_attestation_crl_cache: Arc<AndroidAttestationCrlCache>,
     ) -> Self {
         Self {
             key_algorithm_provider,
             crl_cache,
             clock,
+            clock_leeway,
             android_attestation_crl_cache,
         }
     }

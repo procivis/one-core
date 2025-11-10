@@ -40,6 +40,8 @@ pub(crate) struct OpenID4VCIFinal1Params {
 
     #[serde(default = "default_enable_credential_preview")]
     pub enable_credential_preview: bool,
+
+    pub oauth_attestation_leeway: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -48,6 +50,8 @@ pub(crate) struct OpenID4VCNonceParams {
     #[serde(deserialize_with = "deserialize_encryption_key")]
     pub signing_key: SecretSlice<u8>,
     pub expiration: Option<u64>,
+    #[serde(default)]
+    pub leeway: u64,
 }
 
 /// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>

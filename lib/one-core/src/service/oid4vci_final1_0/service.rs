@@ -15,9 +15,9 @@ use super::dto::{OpenID4VCICredentialResponseDTO, OpenID4VCICredentialResponseEn
 use super::mapper::interaction_data_to_dto;
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
-    extract_wallet_metadata, throw_if_access_token_invalid, throw_if_credential_request_invalid,
-    validate_config_entity_presence, validate_pop_audience, validate_timestamps,
-    verify_pop_signature, verify_waa_signature,
+    self, extract_wallet_metadata, throw_if_access_token_invalid,
+    throw_if_credential_request_invalid, validate_config_entity_presence, validate_pop_audience,
+    validate_timestamps, verify_pop_signature, verify_waa_signature,
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
@@ -746,7 +746,7 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        let params = validator::get_config_entity(&self.config)?;
 
         let credential_schema = self
             .credential_schema_repository
@@ -759,6 +759,7 @@ impl OID4VCIFinal1_0Service {
                 oauth_client_attestation,
                 oauth_client_attestation_pop,
                 &credential_schema,
+                params.oauth_attestation_leeway,
             )
             .await?;
 
@@ -921,6 +922,7 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
         credential_schema: &CredentialSchema,
+        leeway: u64,
     ) -> Result<Option<WalletAppAttestationDTO>, ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
         if !credential_schema.requires_app_attestation {
@@ -945,8 +947,8 @@ impl OID4VCIFinal1_0Service {
         let proof_of_key_possession = Jwt::<()>::decompose_token(proof_of_key_possesion_token)?;
 
         // Validate timestamps for both tokens
-        validate_timestamps(&wallet_app_attestation)?;
-        validate_timestamps(&proof_of_key_possession)?;
+        validate_timestamps(&wallet_app_attestation, leeway)?;
+        validate_timestamps(&proof_of_key_possession, leeway)?;
 
         // Validate proof of possession audience
         let expected_audience = self

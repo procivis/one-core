@@ -21,6 +21,7 @@ app:
     stsTokenValidation:
       aud: one-core
       ttlJwks: 600
+      leeway: 60
 keyStorage:
   AZURE_VAULT:
     display: "keyStorage.azureKeyVault"
@@ -91,3 +92,4 @@ walletProvider:
           solutionId: "PROCIVIS_ONE"
           solutionVersion: "1"
           wscdType: HYBRID
+        deviceAuthLeeway: 60

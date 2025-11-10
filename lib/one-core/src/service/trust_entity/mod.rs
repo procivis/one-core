@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -33,6 +34,7 @@ pub struct TrustEntityService {
     key_provider: Arc<dyn KeyProvider>,
     client: Arc<dyn HttpClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    config: Arc<core_config::CoreConfig>,
 }
 
 impl TrustEntityService {
@@ -49,6 +51,7 @@ impl TrustEntityService {
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
             trust_anchor_repository,
@@ -62,6 +65,7 @@ impl TrustEntityService {
             key_provider,
             certificate_validator,
             client,
+            config,
         }
     }
 }

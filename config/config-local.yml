@@ -52,6 +52,7 @@ walletProvider:
         walletUnitAttestation:
           expirationTime: 2678400 # 31 days
           revocationMethod: TOKENSTATUSLIST
+        deviceAuthLeeway: 60
         appVersion:
           minimum: "v1.50.0"
         eudiWalletInfo:
@@ -100,6 +101,7 @@ issuanceProtocol:
         nonce:
           signingKey: "93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e"
           expiration: 300
+          leeway: 0
 verificationProtocol:
   OPENID4VP_DRAFT20:
     params:
@@ -177,6 +179,7 @@ trustManagement:
     params:
       public:
         enablePublishing: true
+        proofOfPossessionLeeway: 60
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB

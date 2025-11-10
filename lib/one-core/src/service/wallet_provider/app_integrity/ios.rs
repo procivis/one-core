@@ -369,6 +369,7 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
             key_algorithm_provider,
             crl_cache,
             clock,
+            Duration::minutes(1),
             android_key_attestation_crl_cache,
         )
     }

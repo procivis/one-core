@@ -123,6 +123,7 @@ pub(crate) async fn format_mdoc_credential(
             key_algorithm_provider.clone(),
             crl_cache,
             Arc::new(DefaultClock),
+            Duration::minutes(1),
             android_key_attestation_crl_cache,
         )) as _,
         did_method_provider.clone(),
@@ -175,6 +176,7 @@ pub fn datatype_config() -> DatatypeConfig {
         walletProvider: {}
         credentialIssuer: {}
         verificationEngagement: {}
+        certificateValidation: {}
     "};
 
     AppConfig::<ServerConfig>::parse(vec![InputFormat::yaml_str(config)])

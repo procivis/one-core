@@ -111,6 +111,7 @@ async fn test_sts_authentication_success() {
                 iss: 'bff'
                 ttlJwks: 600
                 jwksUri: {url}
+                leeway: 0
     ",
     url = format!("{}/jwks.json", mock_server.uri())};
     let key = Eddsa.generate_key().unwrap();
@@ -354,6 +355,7 @@ async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicKey
                 iss: 'bff'
                 ttlJwks: 600
                 jwksUri: {url}
+                leeway: 0
     ",
     url = format!("{}/jwks.json", mock_server.uri())};
     let jwks = json!({

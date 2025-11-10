@@ -120,6 +120,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 type: 'OPENID4VCI_FINAL1'
                 params:
                     public:
+                        oauthAttestationLeeway: 60
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
                         refreshExpiresIn: 886400
@@ -131,6 +132,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                         nonce:
                             signingKey: '93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e'
                             expiration: 300
+                            leeway: 0
         verificationProtocol:
             OPENID4VP_DRAFT20:
                 display: 'display'
@@ -255,7 +257,16 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: 'display'
                 order: 20
         task: {}
-        trustManagement: {}
+        trustManagement:
+              SIMPLE_TRUST_LIST:
+                  display: 'trustManagement.simpleTrustList'
+                  type: 'SIMPLE_TRUST_LIST'
+                  order: 1
+                  enabled: true
+                  params:
+                      public:
+                          enablePublishing: true
+                          proofOfPossessionLeeway: 60
         cacheEntities: {}
         blobStorage: {}
         walletProvider: {}
@@ -265,6 +276,8 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: verificationEngagement.qrCode
                 order: 1
                 enabled: true
+        certificateValidation:
+            leeway: 60
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

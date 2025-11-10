@@ -74,8 +74,8 @@ pub(super) fn validate_nonce(
     else {
         return Err(FormatterError::CouldNotVerify("Invalid payload".to_string()).into());
     };
-    validate_issuance_time(&Some(issued_at), 0)?;
-    validate_expiration_time(&Some(expires_at), 0)?;
+    validate_issuance_time(&Some(issued_at), params.leeway)?;
+    validate_expiration_time(&Some(expires_at), params.leeway)?;
     if Some(&issuer) != base_url.as_ref() {
         return Err(
             FormatterError::CouldNotVerify(format!("Invalid nonce issuer: {issuer}")).into(),
@@ -157,6 +157,7 @@ mod test {
             .unwrap()
             .into(),
             expiration: Some(300),
+            leeway: 0,
         }
     }
 }

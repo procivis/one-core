@@ -67,7 +67,6 @@ use crate::validator::{
 
 const WAA_JWT_TYPE: &str = "oauth-client-attestation+jwt";
 const WUA_JWT_TYPE: &str = "key-attestation+jwt";
-const LEEWAY: u64 = 60;
 
 impl WalletProviderService {
     /// Returns details of a wallet unit
@@ -163,8 +162,13 @@ impl WalletProviderService {
                 .ok_or(WalletProviderError::MissingPublicKey)?
                 .into();
             let public_key = self.parse_jwk(&proof.header.algorithm, &public_key_jwk)?;
-            self.verify_device_signing_proof(&proof, &public_key, LEEWAY, None)
-                .await?;
+            self.verify_device_signing_proof(
+                &proof,
+                &public_key,
+                config_params.device_auth_leeway,
+                None,
+            )
+            .await?;
             self.create_wallet_unit_with_auth_key(
                 request,
                 organisation,
@@ -366,7 +370,7 @@ impl WalletProviderService {
             &attested_public_key,
             wallet_unit.os,
             config_params.wallet_app_attestation.integrity_check.enabled,
-            LEEWAY,
+            config_params.device_auth_leeway,
             Some(wallet_unit_nonce),
         )
         .await?;
@@ -396,7 +400,7 @@ impl WalletProviderService {
             self.verify_device_signing_proof(
                 &device_signing_key_proof,
                 &device_signing_key_handle,
-                LEEWAY,
+                config_params.device_auth_leeway,
                 Some(wallet_unit_nonce),
             )
             .await?;
@@ -572,15 +576,22 @@ impl WalletProviderService {
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)?;
-        self.verify_device_signing_proof(&bearer_token, &key, LEEWAY, None)
-            .await?;
+        self.verify_device_signing_proof(
+            &bearer_token,
+            &key,
+            config_params.device_auth_leeway,
+            None,
+        )
+        .await?;
 
         let now = self.clock.now_utc();
         let (public_key_info, auth_fn) = self.get_key_info(issuer_identifier).await?;
 
         let mut app_attestations = vec![];
         for waa_request in request.waa {
-            let holder_jwk = self.verify_pop(&waa_request.proof, LEEWAY).await?;
+            let holder_jwk = self
+                .verify_pop(&waa_request.proof, config_params.device_auth_leeway)
+                .await?;
             let attestation = self.create_waa(
                 &wallet_unit.wallet_provider_name,
                 &config_params,
@@ -606,7 +617,9 @@ impl WalletProviderService {
             let wua_expiration_date = now
                 + Duration::seconds(config_params.wallet_unit_attestation.expiration_time as i64);
 
-            let holder_jwk = self.verify_pop(&wua_request.proof, LEEWAY).await?;
+            let holder_jwk = self
+                .verify_pop(&wua_request.proof, config_params.device_auth_leeway)
+                .await?;
             let attested_key_input = if let Some(attested_key) = attested_keys
                 .iter_mut()
                 .find(|attested_key| attested_key.public_key_jwk == holder_jwk)

@@ -756,6 +756,7 @@ impl OneCore {
                 key_provider.clone(),
                 client.clone(),
                 certificate_validator.clone(),
+                config.clone(),
             ),
             backup_service: BackupService::new(
                 data_provider.get_backup_repository(),

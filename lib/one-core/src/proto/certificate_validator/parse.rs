@@ -20,8 +20,6 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
 
-const LEEWAY: Duration = Duration::seconds(60);
-
 #[async_trait::async_trait]
 impl CertificateValidator for CertificateValidatorImpl {
     async fn parse_pem_chain(
@@ -141,7 +139,7 @@ impl CertificateValidatorImpl {
             }
 
             if let Some(crl_mode) = validation.validity_check {
-                self.check_validity_with_leeway(current, LEEWAY)?;
+                self.check_validity_with_leeway(current, self.clock_leeway)?;
 
                 let revoked = self
                     .check_revocation(current, chain.peek().copied(), crl_mode)

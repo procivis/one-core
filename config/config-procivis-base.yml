@@ -114,6 +114,7 @@ issuanceProtocol:
     type: "OPENID4VCI_FINAL1"
     params:
       public:
+        oauthAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         urlScheme: openid-credential-offer-final1
@@ -274,6 +275,7 @@ revocation:
       private:
         credentialExpiry: 2592000 # 30 days
         minimumRefreshTime: 300
+        leeway: 60
   TOKENSTATUSLIST:
     display: "revocation.tokenList"
     order: 5
@@ -581,6 +583,7 @@ trustManagement:
     params:
       public:
         enablePublishing: true
+        proofOfPossessionLeeway: 60
 holderKeyStorage:
   SOFTWARE:
     display: "holderKeyStorage.software"
@@ -600,3 +603,5 @@ verificationEngagement:
     display: verificationEngagement.qrCode
     order: 1
     enabled: true
+certificateValidation:
+  leeway: 60

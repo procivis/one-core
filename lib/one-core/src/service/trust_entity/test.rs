@@ -31,7 +31,9 @@ use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
-use crate::service::test_utilities::{dummy_did, dummy_did_document, get_dummy_date};
+use crate::service::test_utilities::{
+    dummy_did, dummy_did_document, generic_config, get_dummy_date,
+};
 use crate::service::trust_entity::TrustEntityService;
 use crate::service::trust_entity::dto::{
     CreateTrustEntityFromDidPublisherRequestDTO, CreateTrustEntityRequestDTO,
@@ -65,6 +67,7 @@ fn setup_service(test_data: TestData) -> TrustEntityService {
         Arc::new(test_data.key_provider),
         Arc::new(test_data.client),
         Arc::new(test_data.certificate_validator),
+        Arc::new(generic_config().core),
     )
 }
 

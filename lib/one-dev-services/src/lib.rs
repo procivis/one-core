@@ -360,6 +360,7 @@ impl OneDevCore {
             key_algorithm_provider.clone(),
             x509_crl_cache,
             Arc::new(DefaultClock),
+            config.certificate_validator_config.leeway,
             android_attestation_crl_cache,
         ));
 

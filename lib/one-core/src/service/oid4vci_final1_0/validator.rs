@@ -8,7 +8,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
+    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier, OpenID4VCIFinal1Params,
     OpenID4VCIIssuerInteractionDataDTO,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -65,8 +65,8 @@ pub(crate) fn throw_if_access_token_invalid(
 
 pub(crate) fn validate_timestamps(
     token: &DecomposedToken<impl std::fmt::Debug>,
+    leeway: u64,
 ) -> Result<(), ServiceError> {
-    let leeway = 60;
     validate_issuance_time(&token.payload.issued_at, leeway)?;
     validate_not_before_time(&token.payload.invalid_before, leeway)?;
     validate_expiration_time(&token.payload.expires_at, leeway)?;
@@ -208,5 +208,27 @@ pub(super) fn validate_config_entity_presence(
         ))
     } else {
         Ok(())
+    }
+}
+
+pub(super) fn get_config_entity(
+    config: &CoreConfig,
+) -> Result<OpenID4VCIFinal1Params, ConfigValidationError> {
+    if let Some((key, fields)) = config
+        .issuance_protocol
+        .iter()
+        .find(|(_, v)| v.r#type == IssuanceProtocolType::OpenId4VciFinal1_0)
+    {
+        let params = fields
+            .deserialize::<OpenID4VCIFinal1Params>()
+            .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                key: key.to_owned(),
+                source,
+            })?;
+        Ok(params)
+    } else {
+        Err(ConfigValidationError::EntryNotFound(
+            "No exchange method with type OPENID4VCI_FINAL1".to_string(),
+        ))
     }
 }

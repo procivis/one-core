@@ -23,18 +23,6 @@ impl RevocationListService {
         id: &CredentialId,
         bearer_token: &str,
     ) -> Result<IssuerResponseDTO, ServiceError> {
-        let jwt = validate_bearer_token(
-            bearer_token,
-            self.did_method_provider.clone(),
-            self.key_algorithm_provider.clone(),
-            self.certificate_validator.clone(),
-        )
-        .await?;
-
-        let token_issuer = jwt.payload.issuer.ok_or(ServiceError::ValidationError(
-            "Missing token issuer".to_owned(),
-        ))?;
-
         // The service should search for the credential and check if it exists. If the credential does not exist throw 404 defined in error codes
         let credential = self
             .credential_repository
@@ -64,28 +52,6 @@ impl RevocationListService {
             .map_err(ServiceError::from)?
             .ok_or(EntityNotFoundError::Credential(*id))?;
 
-        // validate JWT token was signed with the holder binding DID
-        let holder_did = credential
-            .holder_identifier
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "holder_identifier is None".to_string(),
-            ))?
-            .did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
-
-        if holder_did.did
-            != token_issuer
-                .parse()
-                .context("did parsing error")
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?
-        {
-            return Err(ServiceError::MappingError(
-                "holder_did mismatch".to_string(),
-            ));
-        }
-
         // In the next step the latest LVVC credential should be obtained from the asked-for credential
         let latest_lvvc = self
             .lvvc_repository
@@ -101,6 +67,44 @@ impl RevocationListService {
             .schema
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
+
+        let revocation_method = schema.revocation_method.to_string();
+        let revocation_params: crate::provider::revocation::lvvc::Params =
+            self.config.revocation.get(&revocation_method)?;
+
+        let jwt = validate_bearer_token(
+            bearer_token,
+            self.did_method_provider.clone(),
+            self.key_algorithm_provider.clone(),
+            self.certificate_validator.clone(),
+            revocation_params.leeway,
+        )
+        .await?;
+
+        // validate JWT token was signed with the holder binding DID
+        let token_issuer = jwt.payload.issuer.ok_or(ServiceError::ValidationError(
+            "Missing token issuer".to_owned(),
+        ))?;
+        let holder_did = credential
+            .holder_identifier
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "holder_identifier is None".to_string(),
+            ))?
+            .did
+            .as_ref()
+            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+        if holder_did.did
+            != token_issuer
+                .parse()
+                .context("did parsing error")
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?
+        {
+            return Err(ServiceError::MappingError(
+                "holder_did mismatch".to_string(),
+            ));
+        }
+
         let format = schema.format.to_string();
         let formatter = self
             .formatter_provider
@@ -126,10 +130,6 @@ impl RevocationListService {
         }
 
         // If issuanceDate + minimumRefreshTime < now then a new VC of the LVVC credential needs to be created and saved in database.
-        let revocation_method = schema.revocation_method.to_string();
-        let revocation_params: crate::provider::revocation::lvvc::Params =
-            self.config.revocation.get(&revocation_method)?;
-
         let issuance_date = extracted_credential
             .valid_from
             .ok_or(ServiceError::MappingError("issued_at is None".to_string()))?;

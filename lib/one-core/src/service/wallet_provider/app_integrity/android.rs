@@ -325,6 +325,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
             key_algorithm_provider,
             crl_cache,
             Arc::new(clock),
+            Duration::minutes(1),
             android_key_attestation_crl_cache,
         );
         validate_attestation_android(
@@ -385,6 +386,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
             key_algorithm_provider,
             crl_cache,
             Arc::new(clock),
+            Duration::minutes(1),
             android_key_attestation_crl_cache,
         );
         let result = validate_attestation_android(
@@ -452,6 +454,7 @@ w1IdYIg2Wxg7yHcQZemFQg==
             key_algorithm_provider,
             crl_cache,
             Arc::new(clock),
+            Duration::minutes(1),
             android_key_attestation_crl_cache,
         );
         let result = validate_attestation_android(

@@ -81,6 +81,7 @@ pub(crate) async fn validate_bearer_token(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    leeway: u64,
 ) -> Result<Jwt<BearerTokenPayload>, ServiceError> {
     let token_signature_verification: VerificationFn = Box::new(KeyVerification {
         key_algorithm_provider,
@@ -93,7 +94,7 @@ pub(crate) async fn validate_bearer_token(
         Jwt::build_from_token(bearer_token, Some(&(token_signature_verification)), None).await?;
 
     // checking timestamp to prevent replay attack
-    validate_expiration_time(&Some(jwt.payload.custom.timestamp), 60)
+    validate_expiration_time(&Some(jwt.payload.custom.timestamp), leeway)
         .map_err(|_| ServiceError::ValidationError("Bearer token expired".to_owned()))?;
 
     Ok(jwt)
