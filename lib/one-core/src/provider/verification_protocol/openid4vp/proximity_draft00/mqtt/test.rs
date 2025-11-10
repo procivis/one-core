@@ -1,41 +1,39 @@
+use std::str::FromStr;
+use std::sync::{Arc, Mutex};
+
 use dcql::DcqlQuery;
 use futures::FutureExt;
 use mockall::predicate::eq;
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
-use std::str::FromStr;
-use std::sync::{Arc, Mutex};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use crate::mapper::RemoteIdentifierRelation;
+use super::model::{MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys};
+use super::oidc_mqtt_verifier::MqttVerifier;
+use super::{ConfigParams, MqttHolderTransport, generate_session_keys};
 use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
+use crate::mapper::RemoteIdentifierRelation;
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::request_as_signed_jwt;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
+    IdentityRequest, ProtocolVersion,
+};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
-    handle_invitation_with_transport, ProximityHolderTransport,
-};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
-    MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys,
-};
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::oidc_mqtt_verifier::MqttVerifier;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::{
-    generate_session_keys, ConfigParams, MqttHolderTransport,
+    ProximityHolderTransport, handle_invitation_with_transport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
@@ -125,6 +123,7 @@ fn test_encryption_verifier_to_holder() {
         IdentityRequest {
             key: holder_session_keys.public_key,
             nonce: holder_session_keys.nonce,
+            version: ProtocolVersion::V2,
         },
     );
 
@@ -249,7 +248,7 @@ async fn test_handle_invitation_success() {
     identify_topic
         .expect_send()
         .return_once(move |identity_request| {
-            let request = parse_identity_request(identity_request).unwrap();
+            let request = IdentityRequest::parse(identity_request).unwrap();
 
             let mut lock = handle.lock().unwrap();
             *lock = Some(request);
@@ -332,6 +331,7 @@ async fn test_presentation_reject_success() {
             IdentityRequest {
                 key: holder_session_keys.public_key,
                 nonce: holder_session_keys.nonce,
+                version: ProtocolVersion::V2,
             },
         );
 

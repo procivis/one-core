@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use anyhow::Context;
 use futures::FutureExt;
 use futures::future::BoxFuture;
@@ -29,8 +31,12 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDirectPostResponseDTO, OpenID4VPVerifierInteractionContent, SubmissionRequestData,
     VpSubmissionData,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::MQTTOpenID4VPInteractionDataVerifier;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::{
+    BLEOpenID4VPInteractionDataVerifier, BLEVerifierProtocolData,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
+    MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
+};
 use crate::provider::verification_protocol::openid4vp::service::oid4vp_verifier_process_submission;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{MissingProviderError, ServiceError};
@@ -84,17 +90,32 @@ impl ProofService {
 
             if proof.transport == TransportType::Ble.as_ref() {
                 let interaction_data =
-                    serde_json::from_slice::<BLEOpenID4VPInteractionData>(interaction_data)
+                    serde_json::from_slice::<BLEOpenID4VPInteractionDataVerifier>(interaction_data)
                         .context("BLE interaction data deserialization")?;
 
-                let response = interaction_data
-                    .presentation_submission
-                    .context("BLE interaction missing presentation_submission")?;
+                let (state, submission_data) = match interaction_data.protocol_data {
+                    BLEVerifierProtocolData::V1 {
+                        submission: Some(submission),
+                        ..
+                    } => (
+                        Uuid::from_str(&submission.presentation_submission.definition_id)?,
+                        VpSubmissionData::Pex(submission),
+                    ),
+                    BLEVerifierProtocolData::V2 {
+                        submission: Some(submission),
+                        ..
+                    } => (Uuid::new_v4(), VpSubmissionData::Dcql(submission)),
+                    _ => {
+                        return Err(anyhow::anyhow!(
+                            "BLE interaction missing presentation_submission"
+                        ));
+                    }
+                };
 
                 let request_data = SubmissionRequestData {
-                    submission_data: VpSubmissionData::Dcql(response),
-                    state: Uuid::new_v4(),
-                    mdoc_generated_nonce: interaction_data.identity_request_nonce,
+                    submission_data,
+                    state,
+                    mdoc_generated_nonce: interaction_data.mdoc_generated_nonce,
                     encryption_key: None,
                 };
 
@@ -106,12 +127,20 @@ impl ProofService {
                     )
                     .context("MQTT interaction data deserialization")?;
 
-                let request_data = SubmissionRequestData {
-                    submission_data: VpSubmissionData::Dcql(
-                        interaction_data.presentation_submission,
+                let (state, submission_data) = match interaction_data.protocol_data {
+                    MQTTVerifierProtocolData::V1 { submission, .. } => (
+                        Uuid::from_str(&submission.presentation_submission.definition_id)?,
+                        VpSubmissionData::Pex(submission),
                     ),
-                    state: Uuid::new_v4(),
-                    mdoc_generated_nonce: Some(interaction_data.identity_request_nonce),
+                    MQTTVerifierProtocolData::V2 { submission, .. } => {
+                        (Uuid::new_v4(), VpSubmissionData::Dcql(submission))
+                    }
+                };
+
+                let request_data = SubmissionRequestData {
+                    submission_data,
+                    state,
+                    mdoc_generated_nonce: interaction_data.mdoc_generated_nonce,
                     encryption_key: None,
                 };
 

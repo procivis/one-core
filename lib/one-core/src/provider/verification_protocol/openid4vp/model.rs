@@ -200,14 +200,14 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub encryption_key: Option<OpenID4VPClientMetadataJwkDTO>,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct OpenID4VPPresentationDefinition {
     pub id: String,
     pub input_descriptors: Vec<OpenID4VPPresentationDefinitionInputDescriptor>,
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct OpenID4VPPresentationDefinitionInputDescriptor {
     pub id: String,
     pub name: Option<String>,
@@ -217,7 +217,7 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct OpenID4VPPresentationDefinitionConstraint {
     pub fields: Vec<OpenID4VPPresentationDefinitionConstraintField>,
     #[serde(default, with = "time::serde::rfc3339::option")]
@@ -226,7 +226,7 @@ pub struct OpenID4VPPresentationDefinitionConstraint {
     pub limit_disclosure: Option<OpenID4VPPresentationDefinitionLimitDisclosurePreference>,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub enum OpenID4VPPresentationDefinitionLimitDisclosurePreference {
     Required,
@@ -234,7 +234,7 @@ pub enum OpenID4VPPresentationDefinitionLimitDisclosurePreference {
 }
 
 #[skip_serializing_none]
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub id: Option<ClaimSchemaId>,
     pub name: Option<String>,
@@ -246,7 +246,7 @@ pub struct OpenID4VPPresentationDefinitionConstraintField {
     pub intent_to_retain: Option<bool>,
 }
 
-#[derive(Clone, Deserialize, Serialize, Debug)]
+#[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
 pub struct OpenID4VPPresentationDefinitionConstraintFieldFilter {
     pub r#type: String,
     pub r#const: String,

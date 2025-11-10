@@ -76,7 +76,9 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::BLEPeer;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::{
+    BLEOpenID4VPInteractionDataVerifier, BLEVerifierProtocolData,
+};
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
 use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::claim_repository::MockClaimRepository;
@@ -4200,36 +4202,39 @@ async fn test_retract_proof_with_bluetooth_ok() {
         last_modified: OffsetDateTime::now_utc(),
         organisation: Some(dummy_organisation(None)),
         data: Some({
-            let data = BLEOpenID4VPInteractionData {
+            let data = BLEOpenID4VPInteractionDataVerifier {
                 client_id: "did:example:123".to_string(),
                 nonce: "nonce".to_string(),
                 task_id: Uuid::new_v4(),
-                dcql_query: DcqlQuery {
-                    credentials: vec![],
-                    credential_sets: None,
-                },
+
                 peer: BLEPeer::new(
                     DeviceInfo::new(device_address.to_owned(), 123),
                     SecretSlice::from(vec![0; 32]),
                     SecretSlice::from(vec![1; 32]),
                     [2; 12],
                 ),
-                openid_request: AuthorizationRequest {
-                    client_id: "did:example:123".to_string(),
-                    response_uri: None,
-                    response_mode: None,
-                    response_type: None,
-                    client_metadata: None,
-                    state: None,
-                    nonce: Some("nonce".to_string()),
-                    redirect_uri: None,
-                    dcql_query: Some(DcqlQuery {
+                mdoc_generated_nonce: None,
+                protocol_data: BLEVerifierProtocolData::V2 {
+                    request: AuthorizationRequest {
+                        client_id: "did:example:123".to_string(),
+                        response_uri: None,
+                        response_mode: None,
+                        response_type: None,
+                        client_metadata: None,
+                        state: None,
+                        nonce: Some("nonce".to_string()),
+                        redirect_uri: None,
+                        dcql_query: Some(DcqlQuery {
+                            credentials: vec![],
+                            credential_sets: None,
+                        }),
+                    },
+                    submission: None,
+                    dcql_query: DcqlQuery {
                         credentials: vec![],
                         credential_sets: None,
-                    }),
+                    },
                 },
-                presentation_submission: None,
-                identity_request_nonce: None,
             };
 
             serde_json::to_vec(&data).unwrap()

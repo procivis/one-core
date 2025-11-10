@@ -312,8 +312,7 @@ impl MsoMdocPresentationFormatter {
             .unwrap_or(client_id.as_str());
 
         let handover = match &context.verification_protocol_type {
-            VerificationProtocolType::OpenId4VpFinal1_0
-            | VerificationProtocolType::OpenId4VpProximityDraft00 => Handover::OID4VPFinal1_0(
+            VerificationProtocolType::OpenId4VpFinal1_0 => Handover::OID4VPFinal1_0(
                 OID4VPFinal1_0Handover::compute(
                     &client_id,
                     response_uri,
@@ -322,6 +321,20 @@ impl MsoMdocPresentationFormatter {
                 )
                 .map_err(|e| FormatterError::Failed(e.to_string()))?,
             ),
+            // proximity V2 (using dcql)
+            VerificationProtocolType::OpenId4VpProximityDraft00
+                if context.format_nonce.is_none() =>
+            {
+                Handover::OID4VPFinal1_0(
+                    OID4VPFinal1_0Handover::compute(
+                        &client_id,
+                        response_uri,
+                        &nonce,
+                        context.verifier_key.as_ref(),
+                    )
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
+                )
+            }
             _ => {
                 let mdoc_generated_nonce = context.format_nonce.as_ref().ok_or(
                     FormatterError::CouldNotExtractPresentation(

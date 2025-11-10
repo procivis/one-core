@@ -14,8 +14,8 @@ use super::dto::MessageSize;
 use super::peer_encryption::PeerEncryption;
 use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
+
 pub mod dto;
-pub mod mappers;
 pub mod model;
 pub mod oidc_ble_holder;
 pub mod oidc_ble_verifier;
@@ -35,23 +35,6 @@ pub static OIDC_BLE_FLOW: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 
 // https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#name-transfer-summary-report
 pub(crate) type TransferSummaryReport = Vec<u16>;
-
-// https://openid.bitbucket.io/connect/openid-4-verifiable-presentations-over-ble-1_0.html#section-5.3
-#[derive(Clone, Debug)]
-pub(crate) struct IdentityRequest {
-    pub key: [u8; 32],
-    pub nonce: [u8; 12],
-}
-
-impl IdentityRequest {
-    pub(crate) fn encode(self) -> Vec<u8> {
-        self.key
-            .iter()
-            .chain(&self.nonce)
-            .copied()
-            .collect::<Vec<u8>>()
-    }
-}
 
 #[async_trait::async_trait]
 pub(crate) trait BLEParse<T, Error> {

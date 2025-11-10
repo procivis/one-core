@@ -11,8 +11,8 @@ use url::Url;
 use uuid::Uuid;
 
 use super::{
-    BLEParse, BLEPeer, CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, IdentityRequest,
-    OIDC_BLE_FLOW, REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
+    BLEParse, BLEPeer, CONTENT_SIZE_UUID, DISCONNECT_UUID, IDENTITY_UUID, OIDC_BLE_FLOW,
+    REQUEST_SIZE_UUID, SERVICE_UUID, SUBMIT_VC_UUID, TRANSFER_SUMMARY_REPORT_UUID,
     TransferSummaryReport,
 };
 use crate::config::core_config::TransportType;
@@ -25,12 +25,12 @@ use crate::provider::verification_protocol::openid4vp::final1_0::model::Authoriz
 use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::dto::OpenID4VPBleData;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionData;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::model::BLEOpenID4VPInteractionDataHolder;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::{
     PRESENTATION_REQUEST_UUID, TRANSFER_SUMMARY_REQUEST_UUID,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
-    Chunk, ChunkExt, Chunks, MessageSize,
+    Chunk, ChunkExt, Chunks, IdentityRequest, MessageSize, ProtocolVersion,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
     HolderCommonVPInteractionData, ProximityHolderTransport,
@@ -193,7 +193,7 @@ impl ProximityHolderTransport for BleHolderTransport {
         context: Self::Context,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
         let identity_request_nonce = Some(hex::encode(context.identity_request_nonce));
-        serde_json::to_vec(&BLEOpenID4VPInteractionData {
+        serde_json::to_vec(&BLEOpenID4VPInteractionDataHolder {
             client_id: authz_request.client_id.to_owned(),
             nonce: authz_request
                 .nonce
@@ -217,7 +217,7 @@ impl ProximityHolderTransport for BleHolderTransport {
         &self,
         interaction_data: Value,
     ) -> Result<HolderCommonVPInteractionData, VerificationProtocolError> {
-        let interaction_data: BLEOpenID4VPInteractionData =
+        let interaction_data: BLEOpenID4VPInteractionDataHolder =
             serde_json::from_value(interaction_data)
                 .map_err(VerificationProtocolError::JsonError)?;
 
@@ -234,8 +234,9 @@ impl ProximityHolderTransport for BleHolderTransport {
         presentation: DcqlSubmission,
         interaction_data: Value,
     ) -> Result<(), VerificationProtocolError> {
-        let interaction: BLEOpenID4VPInteractionData = serde_json::from_value(interaction_data)
-            .map_err(VerificationProtocolError::JsonError)?;
+        let interaction: BLEOpenID4VPInteractionDataHolder =
+            serde_json::from_value(interaction_data)
+                .map_err(VerificationProtocolError::JsonError)?;
         self.ble
             .schedule_continuation(
                 interaction.task_id,
@@ -318,8 +319,9 @@ impl ProximityHolderTransport for BleHolderTransport {
     }
 
     async fn reject_proof(&self, interaction_data: Value) -> Result<(), VerificationProtocolError> {
-        let interaction: BLEOpenID4VPInteractionData = serde_json::from_value(interaction_data)
-            .map_err(VerificationProtocolError::JsonError)?;
+        let interaction: BLEOpenID4VPInteractionDataHolder =
+            serde_json::from_value(interaction_data)
+                .map_err(VerificationProtocolError::JsonError)?;
 
         self.ble
             .schedule_continuation(
@@ -493,6 +495,7 @@ fn session_key_and_identity_request(
         IdentityRequest {
             nonce,
             key: public_key,
+            version: ProtocolVersion::V2,
         },
         BLEPeer::new(verifier_device, sender_key, receiver_key, nonce),
     ))

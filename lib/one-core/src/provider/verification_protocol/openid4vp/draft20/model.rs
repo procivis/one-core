@@ -1,13 +1,22 @@
+use std::ops::Add;
+
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use shared_types::DidValue;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 
+use crate::proto::jwt::Jwt;
+use crate::proto::jwt::model::{JWTHeader, JWTPayload};
+use crate::provider::key_algorithm::error::KeyAlgorithmError;
+use crate::provider::verification_protocol::openid4vp::AuthenticationFn;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
     OpenID4VPClientMetadata, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
     default_presentation_url_scheme,
 };
+use crate::service::error::ServiceError;
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -90,4 +99,38 @@ pub struct OpenID4VP20AuthorizationRequest {
 
     #[serde(default)]
     pub redirect_uri: Option<String>,
+}
+
+impl OpenID4VP20AuthorizationRequest {
+    pub(crate) async fn as_signed_jwt(
+        &self,
+        did: &DidValue,
+        auth_fn: AuthenticationFn,
+    ) -> Result<String, ServiceError> {
+        let unsigned_jwt = Jwt {
+            header: JWTHeader {
+                algorithm: auth_fn.jose_alg().ok_or(KeyAlgorithmError::Failed(
+                    "No JOSE alg specified".to_string(),
+                ))?,
+                key_id: auth_fn.get_key_id(),
+                r#type: Some("oauth-authz-req+jwt".to_string()),
+                jwk: None,
+                jwt: None,
+                x5c: None,
+                key_attestation: None,
+            },
+            payload: JWTPayload {
+                issued_at: None,
+                expires_at: Some(OffsetDateTime::now_utc().add(Duration::hours(1))),
+                invalid_before: None,
+                issuer: Some(did.to_string()),
+                subject: None,
+                audience: None,
+                jwt_id: None,
+                proof_of_possession_key: None,
+                custom: self.clone(),
+            },
+        };
+        Ok(unsigned_jwt.tokenize(Some(&*auth_fn)).await?)
+    }
 }

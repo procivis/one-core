@@ -2,7 +2,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use dcql::DcqlQuery;
 use futures::future::BoxFuture;
 use shared_types::ProofId;
 use time::{Duration, OffsetDateTime};
@@ -11,24 +10,21 @@ use tokio::sync::Mutex;
 use tracing::Instrument;
 use url::Url;
 
-use super::model::MQTTOpenID4VPInteractionDataVerifier;
+use super::model::{MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData};
+use super::{ConfigParams, SubscriptionHandle, extract_host_and_port};
 use crate::config::core_config::TransportType;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::KeyAgreementKey;
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::async_verifier_flow::{
-    HolderSubmission, ProximityVerifierTransport,
+    HolderResponse, HolderSubmission, ProximityVerifierTransport, SubmissionData,
 };
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::mappers::parse_identity_request;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::{
-    ConfigParams, SubscriptionHandle,
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
+    IdentityRequest, ProtocolVersion, WithProtocolVersion,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::{KeyAgreementKey, mqtt};
 
 pub(crate) struct MqttVerifier {
     mqtt_client: Arc<dyn MqttClient>,
@@ -50,7 +46,7 @@ impl MqttVerifier {
         &self,
         topic: String,
     ) -> Result<Box<dyn MqttTopic>, VerificationProtocolError> {
-        let (host, port) = mqtt::extract_host_and_port(&self.params.broker_url)?;
+        let (host, port) = extract_host_and_port(&self.params.broker_url)?;
 
         self
             .mqtt_client
@@ -159,6 +155,12 @@ pub(crate) struct MqttVerifierContext {
     shared_key: PeerEncryption,
 }
 
+impl WithProtocolVersion for MqttVerifierContext {
+    fn protocol_version(&self) -> ProtocolVersion {
+        self.identity_request.version
+    }
+}
+
 #[async_trait]
 impl ProximityVerifierTransport for MqttVerifierTransport {
     type Context = MqttVerifierContext;
@@ -177,7 +179,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             .await
             .map_err(VerificationProtocolError::Transport)?;
         let identity_request =
-            parse_identity_request(identify_bytes).map_err(VerificationProtocolError::Transport)?;
+            IdentityRequest::parse(identify_bytes).map_err(VerificationProtocolError::Transport)?;
         let (encryption_key, decryption_key) = key_agreement
             .derive_session_secrets(identity_request.key, identity_request.nonce)
             .map_err(VerificationProtocolError::Transport)?;
@@ -207,38 +209,70 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
     async fn receive_presentation(
         &mut self,
         context: &mut Self::Context,
-    ) -> Result<HolderSubmission<DcqlSubmission>, VerificationProtocolError> {
+    ) -> Result<HolderResponse, VerificationProtocolError> {
         let response = select! {
             biased;
             _ = wallet_reject(&mut *self.reject, &context.shared_key) => {
-                return Ok(HolderSubmission::Rejection)
+                return Ok(HolderResponse::Rejection)
             }
             response = self.accept.recv() => response
         }
         .map_err(VerificationProtocolError::Transport)?;
-        let decrypted_presentation = context
-            .shared_key
-            .decrypt(&response)
-            .map_err(VerificationProtocolError::Transport)?;
-        Ok(HolderSubmission::Presentation(decrypted_presentation))
+
+        Ok(HolderResponse::Submission(
+            match context.identity_request.version {
+                ProtocolVersion::V1 => HolderSubmission::V1(
+                    context
+                        .shared_key
+                        .decrypt(&response)
+                        .map_err(VerificationProtocolError::Transport)?,
+                ),
+                ProtocolVersion::V2 => HolderSubmission::V2(
+                    context
+                        .shared_key
+                        .decrypt(&response)
+                        .map_err(VerificationProtocolError::Transport)?,
+                ),
+            },
+        ))
     }
 
     fn interaction_data_from_submission(
         &self,
         context: Self::Context,
         nonce: String,
-        dcql_query: DcqlQuery,
-        request: AuthorizationRequest,
-        presentation_submission: DcqlSubmission,
+        data: SubmissionData,
     ) -> Result<Vec<u8>, VerificationProtocolError> {
-        serde_json::to_vec(&MQTTOpenID4VPInteractionDataVerifier {
-            dcql_query,
-            presentation_submission,
-            nonce,
-            client_id: request.client_id,
-            identity_request_nonce: hex::encode(context.identity_request.nonce),
-        })
-        .map_err(|err| {
+        let interaction_data = match data {
+            SubmissionData::V1 {
+                request,
+                submission,
+                presentation_definition,
+            } => MQTTOpenID4VPInteractionDataVerifier {
+                nonce,
+                client_id: request.client_id,
+                mdoc_generated_nonce: Some(hex::encode(context.identity_request.nonce)),
+                protocol_data: MQTTVerifierProtocolData::V1 {
+                    submission,
+                    presentation_definition,
+                },
+            },
+            SubmissionData::V2 {
+                request,
+                submission,
+                dcql_query,
+            } => MQTTOpenID4VPInteractionDataVerifier {
+                nonce,
+                client_id: request.client_id,
+                mdoc_generated_nonce: None,
+                protocol_data: MQTTVerifierProtocolData::V2 {
+                    dcql_query,
+                    submission,
+                },
+            },
+        };
+
+        serde_json::to_vec(&interaction_data).map_err(|err| {
             VerificationProtocolError::Failed(format!(
                 "failed to serialize presentation_submission: {err}"
             ))

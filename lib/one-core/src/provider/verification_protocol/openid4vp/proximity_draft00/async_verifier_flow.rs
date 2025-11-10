@@ -18,9 +18,15 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VP20AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::encode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
-use crate::provider::verification_protocol::openid4vp::model::{ClientIdScheme, DcqlSubmission};
+use crate::provider::verification_protocol::openid4vp::model::{
+    ClientIdScheme, DcqlSubmission, OpenID4VPPresentationDefinition, PexSubmission,
+};
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
+    ProtocolVersion, WithProtocolVersion,
+};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::key_agreement_key::KeyAgreementKey;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -35,7 +41,9 @@ pub(super) trait ProximityVerifierTransport: Send + Sync {
     async fn wallet_connect(
         &mut self,
         key_agreement: &KeyAgreementKey,
-    ) -> Result<Self::Context, VerificationProtocolError>;
+    ) -> Result<Self::Context, VerificationProtocolError>
+    where
+        Self::Context: WithProtocolVersion;
 
     async fn send_presentation_request(
         &mut self,
@@ -46,29 +54,47 @@ pub(super) trait ProximityVerifierTransport: Send + Sync {
     async fn receive_presentation(
         &mut self,
         context: &mut Self::Context,
-    ) -> Result<HolderSubmission<DcqlSubmission>, VerificationProtocolError>;
+    ) -> Result<HolderResponse, VerificationProtocolError>;
 
     fn interaction_data_from_submission(
         &self,
         context: Self::Context,
         nonce: String,
-        dcql_query: DcqlQuery,
-        request: AuthorizationRequest,
-        presentation_submission: DcqlSubmission,
+        data: SubmissionData,
     ) -> Result<Vec<u8>, VerificationProtocolError>;
 
     async fn clean_up(&self);
 }
 
-pub(crate) enum HolderSubmission<T> {
-    Presentation(T),
+pub(super) enum HolderResponse {
+    Submission(HolderSubmission),
     Rejection,
 }
 
+pub(super) enum HolderSubmission {
+    V1(PexSubmission),
+    V2(DcqlSubmission),
+}
+
+#[expect(clippy::large_enum_variant)]
+pub(super) enum SubmissionData {
+    V1 {
+        request: OpenID4VP20AuthorizationRequest,
+        submission: PexSubmission,
+        presentation_definition: OpenID4VPPresentationDefinition,
+    },
+    V2 {
+        request: AuthorizationRequest,
+        submission: DcqlSubmission,
+        dcql_query: DcqlQuery,
+    },
+}
+
 #[derive(Clone)]
-pub(crate) struct AsyncVerifierFlowParams {
+pub(super) struct AsyncVerifierFlowParams {
     pub proof_id: ProofId,
     pub dcql_query: DcqlQuery,
+    pub presentation_definition: OpenID4VPPresentationDefinition,
     pub did: DidValue,
     pub interaction_id: InteractionId,
     pub proof_repository: Arc<dyn ProofRepository>,
@@ -83,11 +109,11 @@ enum FlowState {
     Rejected,
 }
 
-pub(crate) async fn verifier_flow(
+pub(super) async fn verifier_flow<C: WithProtocolVersion>(
     params: AsyncVerifierFlowParams,
     auth_fn: AuthenticationFn,
     on_submission_callback: Option<Shared<BoxFuture<'static, ()>>>,
-    mut transport: impl ProximityVerifierTransport,
+    mut transport: impl ProximityVerifierTransport<Context = C>,
 ) {
     let transport_type = transport.transport_type();
     let proof_id = params.proof_id;
@@ -131,7 +157,12 @@ pub(crate) async fn verifier_flow(
     }
 }
 
-async fn verifier_flow_internal<C>(
+enum Request {
+    V1(OpenID4VP20AuthorizationRequest),
+    V2(AuthorizationRequest),
+}
+
+async fn verifier_flow_internal<C: WithProtocolVersion>(
     params: AsyncVerifierFlowParams,
     auth_fn: AuthenticationFn,
     transport: &mut dyn ProximityVerifierTransport<Context = C>,
@@ -148,26 +179,35 @@ async fn verifier_flow_internal<C>(
     // we notify other transport that this was selected so they can cancel their work
     params.cancellation_token.cancel();
 
-    let update_proof_request = UpdateProofRequest {
-        transport: Some(transport_type.to_string()),
-        ..Default::default()
-    };
     params
         .proof_repository
-        .update_proof(&params.proof_id, update_proof_request, None)
+        .update_proof(
+            &params.proof_id,
+            UpdateProofRequest {
+                transport: Some(transport_type.to_string()),
+                ..Default::default()
+            },
+            None,
+        )
         .await
         .map_err(|err| {
             VerificationProtocolError::Failed(format!("Failed to update proof transport: {err}"))
         })?;
 
     let nonce = utilities::generate_alphanumeric(32);
-    let request = AuthorizationRequest {
-        nonce: Some(nonce.to_owned()),
-        client_id: encode_client_id_with_scheme(params.did.to_string(), ClientIdScheme::Did),
-        dcql_query: Some(params.dcql_query.clone()),
-        ..Default::default()
+
+    let (signed_request, request) = match context.protocol_version() {
+        ProtocolVersion::V1 => {
+            let (signed_request, request) =
+                get_request_v1(nonce.to_owned(), &params, auth_fn).await?;
+            (signed_request, Request::V1(request))
+        }
+        ProtocolVersion::V2 => {
+            let (signed_request, request) =
+                get_request_v2(nonce.to_owned(), &params, auth_fn).await?;
+            (signed_request, Request::V2(request))
+        }
     };
-    let signed_request = request_as_signed_jwt(request.clone(), &params.did, auth_fn).await?;
 
     transport
         .send_presentation_request(&context, signed_request)
@@ -181,19 +221,33 @@ async fn verifier_flow_internal<C>(
     )
     .await?;
 
-    let holder_submission = transport.receive_presentation(&mut context).await?;
-    let presentation_submission = match holder_submission {
-        HolderSubmission::Presentation(submission) => submission,
-        HolderSubmission::Rejection => return Ok(FlowState::Rejected),
+    let holder_response = transport.receive_presentation(&mut context).await?;
+    let holder_submission = match holder_response {
+        HolderResponse::Submission(submission) => submission,
+        HolderResponse::Rejection => return Ok(FlowState::Rejected),
     };
 
-    let interaction_data = transport.interaction_data_from_submission(
-        context,
-        nonce,
-        params.dcql_query,
-        request,
-        presentation_submission,
-    )?;
+    let submission_data = match (holder_submission, request) {
+        (HolderSubmission::V1(submission), Request::V1(request)) => SubmissionData::V1 {
+            request,
+            submission,
+            presentation_definition: params.presentation_definition,
+        },
+        (HolderSubmission::V2(submission), Request::V2(request)) => SubmissionData::V2 {
+            request,
+            submission,
+            dcql_query: params.dcql_query,
+        },
+        _ => {
+            return Err(VerificationProtocolError::Failed(
+                "Mismatch request/response".to_string(),
+            ));
+        }
+    };
+
+    let interaction_data =
+        transport.interaction_data_from_submission(context, nonce, submission_data)?;
+
     params
         .interaction_repository
         .update_interaction(
@@ -211,7 +265,42 @@ async fn verifier_flow_internal<C>(
     Ok(FlowState::Finished)
 }
 
-pub(crate) async fn set_proof_state_infallible(
+async fn get_request_v1(
+    nonce: String,
+    params: &AsyncVerifierFlowParams,
+    auth_fn: AuthenticationFn,
+) -> Result<(String, OpenID4VP20AuthorizationRequest), VerificationProtocolError> {
+    let request = OpenID4VP20AuthorizationRequest {
+        nonce: Some(nonce),
+        presentation_definition: Some(params.presentation_definition.clone()),
+        client_id: params.did.to_string(),
+        client_id_scheme: Some(ClientIdScheme::Did),
+        ..Default::default()
+    };
+    let signed_request = request
+        .clone()
+        .as_signed_jwt(&params.did, auth_fn)
+        .await
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+    Ok((signed_request, request))
+}
+
+async fn get_request_v2(
+    nonce: String,
+    params: &AsyncVerifierFlowParams,
+    auth_fn: AuthenticationFn,
+) -> Result<(String, AuthorizationRequest), VerificationProtocolError> {
+    let request = AuthorizationRequest {
+        nonce: Some(nonce),
+        client_id: encode_client_id_with_scheme(params.did.to_string(), ClientIdScheme::Did),
+        dcql_query: Some(params.dcql_query.clone()),
+        ..Default::default()
+    };
+    let signed_request = request_as_signed_jwt(request.clone(), &params.did, auth_fn).await?;
+    Ok((signed_request, request))
+}
+
+async fn set_proof_state_infallible(
     id: &ProofId,
     state: ProofStateEnum,
     error_metadata: Option<HistoryErrorMetadata>,

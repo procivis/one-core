@@ -17,11 +17,14 @@ use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
 use crate::provider::verification_protocol::openid4vp::model::DcqlSubmission;
-use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::IdentityRequest;
+use crate::provider::verification_protocol::openid4vp::proximity_draft00::dto::{
+    IdentityRequest, ProtocolVersion,
+};
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::holder_flow::{
     HolderCommonVPInteractionData, ProximityHolderTransport,
 };
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::peer_encryption::PeerEncryption;
+
 pub mod dto;
 pub mod model;
 pub(crate) mod oidc_mqtt_verifier;
@@ -100,6 +103,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
         let identity_request = IdentityRequest {
             key: session_keys.public_key.to_owned(),
             nonce: session_keys.nonce.to_owned(),
+            version: ProtocolVersion::V2,
         };
         let identity_request_nonce = hex::encode(identity_request.nonce);
 
