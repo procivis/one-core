@@ -114,6 +114,7 @@ async fn test_post_issuer_credential_with_collision() {
             TestingCreateSchemaParams {
                 format: credential_format,
                 schema_id: schema_id.clone(),
+                wallet_storage_type: None,
                 ..Default::default()
             },
         )

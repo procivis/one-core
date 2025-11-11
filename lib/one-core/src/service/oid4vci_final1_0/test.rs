@@ -26,6 +26,7 @@ use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::transaction_manager::NoTransactionManager;
+use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
@@ -70,6 +71,7 @@ struct Mocks {
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -92,6 +94,7 @@ fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
         Arc::new(mocks.certificate_validator),
         Arc::new(mocks.blob_storage_provider),
         Arc::new(NoTransactionManager),
+        Arc::new(mocks.holder_wallet_unit_proto),
     )
 }
 
@@ -807,7 +810,8 @@ async fn test_create_credential_success() {
     let mut identifier_repository = MockIdentifierRepository::default();
     let now = OffsetDateTime::now_utc();
 
-    let schema = generic_credential_schema();
+    let mut schema = generic_credential_schema();
+    schema.wallet_storage_type = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
@@ -1014,6 +1018,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
     let mut schema = generic_credential_schema();
     schema.format = "SD_JWT_VC".to_string();
+    schema.wallet_storage_type = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
@@ -1220,6 +1225,7 @@ async fn test_create_credential_success_mdoc() {
     let schema = CredentialSchema {
         format: "MDOC".to_string(),
         schema_id: "test.doctype".to_owned(),
+        wallet_storage_type: None,
         ..generic_credential_schema()
     };
     let credential = dummy_credential(
@@ -1671,7 +1677,8 @@ async fn test_create_credential_issuer_failed() {
     let mut identifier_repository = MockIdentifierRepository::default();
     let now = OffsetDateTime::now_utc();
 
-    let schema = generic_credential_schema();
+    let mut schema = generic_credential_schema();
+    schema.wallet_storage_type = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,

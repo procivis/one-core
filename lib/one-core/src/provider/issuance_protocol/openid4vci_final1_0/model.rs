@@ -42,6 +42,8 @@ pub(crate) struct OpenID4VCIFinal1Params {
     pub enable_credential_preview: bool,
 
     pub oauth_attestation_leeway: u64,
+
+    pub key_attestation_leeway: u64,
 }
 
 #[derive(Debug, Clone, Deserialize)]

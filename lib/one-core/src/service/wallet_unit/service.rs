@@ -18,6 +18,7 @@ use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
+use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::KeyStorage;
@@ -206,12 +207,12 @@ impl WalletUnitService {
             return Ok(());
         }
 
-        let is_revoked = self
+        let wallet_unit_status = self
             .wallet_unit_proto
-            .is_holder_wallet_unit_revoked(&holder_wallet_unit)
+            .check_wallet_unit_status(&holder_wallet_unit)
             .await?;
 
-        if is_revoked {
+        if wallet_unit_status == WalletUnitStatusCheckResponse::Revoked {
             self.holder_wallet_unit_repository
                 .update_holder_wallet_unit(
                     &id,

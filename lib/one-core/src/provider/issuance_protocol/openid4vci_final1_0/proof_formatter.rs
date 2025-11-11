@@ -27,7 +27,14 @@ impl OpenID4VCIProofJWTFormatter {
     pub async fn verify_proof(
         jwt: &str,
         verifier: Box<dyn TokenVerifier>,
-    ) -> Result<(Either<(DidValue, String), PublicKeyJwk>, Option<String>), FormatterError> {
+    ) -> Result<
+        (
+            Either<(DidValue, String), PublicKeyJwk>,
+            Option<String>,
+            Option<String>,
+        ),
+        FormatterError,
+    > {
         let DecomposedToken::<ProofOfPossession> {
             header,
             payload,
@@ -116,7 +123,7 @@ impl OpenID4VCIProofJWTFormatter {
                 Either::Right(jwk)
             }
         };
-        Ok((result, payload.custom.nonce))
+        Ok((result, payload.custom.nonce, header.key_attestation))
     }
 
     pub async fn format_proof(
@@ -197,9 +204,10 @@ mod test {
         .await
         .unwrap();
 
-        OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
+        let (_, _, key_attestation) = OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
             .await
             .unwrap();
+        assert_eq!(key_attestation, None);
     }
 
     #[tokio::test]
@@ -217,10 +225,12 @@ mod test {
         .await
         .unwrap();
 
-        let (_, nonce) = OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
-            .await
-            .unwrap();
+        let (_, nonce, key_attestation) =
+            OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
+                .await
+                .unwrap();
         assert_eq!(nonce, Some("nonce".to_string()));
+        assert_eq!(key_attestation, None);
     }
 
     #[track_caller]

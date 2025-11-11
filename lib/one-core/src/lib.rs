@@ -820,6 +820,7 @@ impl OneCore {
                 certificate_validator.clone(),
                 blob_storage_provider.clone(),
                 data_provider.get_tx_manager(),
+                wallet_unit_proto.clone(),
             ),
             oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),

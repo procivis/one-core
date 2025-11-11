@@ -121,6 +121,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         oauthAttestationLeeway: 60
+                        keyAttestationLeeway: 60
                         preAuthorizedCodeExpiresIn: 300
                         tokenExpiresIn: 86400
                         refreshExpiresIn: 886400

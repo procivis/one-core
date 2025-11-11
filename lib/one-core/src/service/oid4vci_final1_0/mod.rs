@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::transaction_manager::TransactionManager;
+use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -43,6 +44,7 @@ pub struct OID4VCIFinal1_0Service {
     base_url: Option<String>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     transaction_manager: Arc<dyn TransactionManager>,
+    holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -65,6 +67,7 @@ impl OID4VCIFinal1_0Service {
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         transaction_manager: Arc<dyn TransactionManager>,
+        holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
     ) -> Self {
         let protocol_base_url = core_base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
@@ -86,6 +89,7 @@ impl OID4VCIFinal1_0Service {
             base_url: core_base_url,
             blob_storage_provider,
             transaction_manager,
+            holder_wallet_unit_proto,
         }
     }
 }

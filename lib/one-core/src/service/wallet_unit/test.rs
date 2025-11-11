@@ -15,7 +15,7 @@ use crate::proto::clock::DefaultClock;
 use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::NoSessionProvider;
-use crate::proto::wallet_unit::MockHolderWalletUnitProto;
+use crate::proto::wallet_unit::{MockHolderWalletUnitProto, WalletUnitStatusCheckResponse};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::model::StorageGeneratedKey;
@@ -229,9 +229,9 @@ async fn holder_wallet_unit_status_check_still_valid() {
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
     wallet_unit_proto
-        .expect_is_holder_wallet_unit_revoked()
+        .expect_check_wallet_unit_status()
         .once()
-        .return_once(|_| Ok(false)); // Returns false when inactive or attestations revoked
+        .return_once(|_| Ok(WalletUnitStatusCheckResponse::Active));
 
     let service = WalletUnitService {
         holder_wallet_unit_repository: Arc::new(holder_wallet_unit_repository),
@@ -284,9 +284,9 @@ async fn holder_wallet_unit_status_check_revocation() {
 
     let mut wallet_unit_proto = MockHolderWalletUnitProto::new();
     wallet_unit_proto
-        .expect_is_holder_wallet_unit_revoked()
+        .expect_check_wallet_unit_status()
         .once()
-        .return_once(|_| Ok(true));
+        .return_once(|_| Ok(WalletUnitStatusCheckResponse::Revoked));
 
     holder_wallet_unit_repository
         .expect_update_holder_wallet_unit()

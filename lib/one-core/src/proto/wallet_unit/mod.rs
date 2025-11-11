@@ -2,13 +2,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use shared_types::{DidValue, HolderWalletUnitId};
+use shared_types::HolderWalletUnitId;
 use time::{Duration, OffsetDateTime};
-use url::Url;
 
 use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::wallet_unit_attestation::{KeyStorageSecurityLevel, WalletUnitAttestation};
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
@@ -33,6 +32,12 @@ pub enum IssueWalletAttestationRequest<'a> {
     WuaAndWaa(&'a Key, KeyStorageSecurityLevel),
 }
 
+#[derive(PartialEq)]
+pub enum WalletUnitStatusCheckResponse {
+    Revoked,
+    Active,
+}
+
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub trait HolderWalletUnitProto: Send + Sync {
@@ -42,10 +47,15 @@ pub trait HolderWalletUnitProto: Send + Sync {
         request: IssueWalletAttestationRequest<'a>,
     ) -> Result<IssueWalletUnitAttestationResponseDTO, ServiceError>;
 
-    async fn is_holder_wallet_unit_revoked(
+    async fn check_wallet_unit_status(
         &self,
         holder_wallet_unit: &HolderWalletUnit,
-    ) -> Result<bool, ServiceError>;
+    ) -> Result<WalletUnitStatusCheckResponse, ServiceError>;
+
+    async fn check_wallet_unit_attestation_status(
+        &self,
+        wua: &str,
+    ) -> Result<WalletUnitStatusCheckResponse, ServiceError>;
 
     async fn get_authentication_key(
         &self,
@@ -160,55 +170,54 @@ impl HolderWalletUnitProtoImpl {
 
         Ok(token)
     }
+}
 
+#[async_trait]
+impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
     async fn check_wallet_unit_attestation_status(
         &self,
-        wallet_unit_attestations: &WalletUnitAttestation,
-    ) -> Result<bool, ServiceError> {
-        const TOKENSTATUSLIST_STATUS_TYPE: &str = "TOKENSTATUSLIST";
+        wua: &str,
+    ) -> Result<WalletUnitStatusCheckResponse, ServiceError> {
+        const TOKENSTATUSLIST_ENTRY_TYPE: &str = "TokenStatusListEntry";
+        const URI_KEY: &str = "uri";
+        const INDEX_KEY: &str = "idx";
 
         let parsed_wallet_unit_attestation: Jwt<WalletUnitAttestationClaims> =
-            Jwt::build_from_token(&wallet_unit_attestations.attestation, None, None).await?;
+            Jwt::build_from_token(wua, None, None).await?;
 
-        let revocation_list_url: Url = wallet_unit_attestations
-            .revocation_list_url
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "Wallet unit attestation revocation list url not found".to_string(),
-            ))?
-            .parse()
-            .map_err(|e| {
-                ServiceError::MappingError(format!("Failed to parse revocation list url: {e}"))
-            })?;
+        let Some(status) = &parsed_wallet_unit_attestation.payload.custom.status else {
+            return Ok(WalletUnitStatusCheckResponse::Active);
+        };
+
+        let issuer_key = parsed_wallet_unit_attestation.header.jwk.as_ref().ok_or(
+            ServiceError::MappingError("Wallet unit attestation issuer key not found".to_string()),
+        )?;
+
+        let issuer_identifier = IdentifierDetails::Key(issuer_key.clone().into());
 
         let (revocation_provider, _) = self
             .revocation_method_provider
-            .get_revocation_method_by_status_type(TOKENSTATUSLIST_STATUS_TYPE)
+            .get_revocation_method_by_status_type(TOKENSTATUSLIST_ENTRY_TYPE)
             .ok_or(ServiceError::MappingError(
                 "Token status list revocation method not found".to_string(),
             ))?;
 
-        let issuer_identifier = {
-            let issuer: DidValue = parsed_wallet_unit_attestation
-                .payload
-                .issuer
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Wallet unit attestation issuer not found".to_string(),
-                ))?
-                .parse()
-                .map_err(|e| ServiceError::MappingError(format!("Failed to parse issuer: {e}")))?;
-
-            IdentifierDetails::Did(issuer)
-        };
-
         let revocation_status = revocation_provider
             .check_credential_revocation_status(
                 &CredentialStatus {
-                    id: Some(revocation_list_url),
-                    r#type: TOKENSTATUSLIST_STATUS_TYPE.to_string(),
+                    id: None,
+                    r#type: TOKENSTATUSLIST_ENTRY_TYPE.to_string(),
                     status_purpose: None,
-                    additional_fields: HashMap::new(),
+                    additional_fields: HashMap::from([
+                        (
+                            URI_KEY.to_string(),
+                            status.status_list.uri.clone().to_string().into(),
+                        ),
+                        (
+                            INDEX_KEY.to_string(),
+                            status.status_list.index.to_string().into(),
+                        ),
+                    ]),
                 },
                 &issuer_identifier,
                 None,
@@ -217,19 +226,16 @@ impl HolderWalletUnitProtoImpl {
             .await;
 
         match revocation_status {
-            Ok(CredentialRevocationState::Valid) => Ok(true),
-            Ok(_) => Ok(false),
+            Ok(CredentialRevocationState::Valid) => Ok(WalletUnitStatusCheckResponse::Active),
+            Ok(_) => Ok(WalletUnitStatusCheckResponse::Revoked),
             Err(e) => Err(ServiceError::Revocation(e)),
         }
     }
-}
 
-#[async_trait]
-impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
-    async fn is_holder_wallet_unit_revoked(
+    async fn check_wallet_unit_status(
         &self,
         holder_wallet_unit: &HolderWalletUnit,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<WalletUnitStatusCheckResponse, ServiceError> {
         let key =
             holder_wallet_unit
                 .authentication_key
@@ -238,11 +244,22 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                     "holder wallet unit authentication key not found".to_string(),
                 ))?;
 
+        if let Some(wallet_unit_attestations) = &holder_wallet_unit.wallet_unit_attestations {
+            for wua in wallet_unit_attestations {
+                if let WalletUnitStatusCheckResponse::Revoked = self
+                    .check_wallet_unit_attestation_status(&wua.attestation.clone())
+                    .await?
+                {
+                    return Ok(WalletUnitStatusCheckResponse::Revoked);
+                }
+            }
+        }
+
         let bearer_token = self
             .create_proof_of_key_possesion(&holder_wallet_unit.wallet_provider_url, key)
             .await?;
 
-        let IssueWalletAttestationResponse::Active(_) = self
+        let revocation_check_status = self
             .wallet_provider_client
             .issue_attestation(
                 &holder_wallet_unit.wallet_provider_url,
@@ -254,23 +271,12 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 },
             )
             .await
-            .map_err(HolderWalletUnitError::from)?
-        else {
-            return Ok(false);
-        };
+            .map_err(HolderWalletUnitError::from)?;
 
-        let Some(wallet_unit_attestations) = holder_wallet_unit.wallet_unit_attestations.as_ref()
-        else {
-            return Ok(false);
-        };
-
-        for wua in wallet_unit_attestations {
-            if !self.check_wallet_unit_attestation_status(wua).await? {
-                return Ok(false);
-            }
+        match revocation_check_status {
+            IssueWalletAttestationResponse::Active(_) => Ok(WalletUnitStatusCheckResponse::Active),
+            IssueWalletAttestationResponse::Revoked => Ok(WalletUnitStatusCheckResponse::Revoked),
         }
-
-        Ok(true)
     }
 
     async fn get_authentication_key(

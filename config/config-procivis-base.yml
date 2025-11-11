@@ -115,6 +115,7 @@ issuanceProtocol:
     params:
       public:
         oauthAttestationLeeway: 60
+        keyAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
         urlScheme: openid-credential-offer-final1

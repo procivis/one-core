@@ -17,7 +17,7 @@ use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
     throw_if_credential_request_invalid, validate_config_entity_presence, validate_pop_audience,
-    validate_timestamps, verify_pop_signature, verify_waa_signature,
+    validate_timestamps, verify_pop_signature, verify_waa_signature, verify_wua_waa_issuers_match,
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
@@ -44,6 +44,7 @@ use crate::model::organisation::OrganisationRelations;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
+use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
@@ -407,7 +408,7 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         };
 
-        let (verified_proof, nonce) = OpenID4VCIProofJWTFormatter::verify_proof(
+        let (verified_proof, nonce, key_attestation) = OpenID4VCIProofJWTFormatter::verify_proof(
             jwt,
             Box::new(KeyVerification {
                 key_algorithm_provider: self.key_algorithm_provider.clone(),
@@ -425,13 +426,16 @@ impl OID4VCIFinal1_0Service {
         let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
         let params: OpenID4VCIFinal1Params =
             self.config.issuance_protocol.get(&credential.protocol)?;
-        let Some(params) = params.nonce else {
+
+        let Some(nonce_params) = &params.nonce else {
             return Err(ConfigValidationError::TypeNotFound(credential.protocol.to_owned()).into());
         };
-        let nonce_id = validate_nonce(params, self.base_url.to_owned(), &nonce).map_err(|e| {
-            tracing::debug!("Nonce validation failed: {e}");
-            OpenID4VCIError::InvalidNonce
-        })?;
+
+        let nonce_id =
+            validate_nonce(nonce_params, self.base_url.to_owned(), &nonce).map_err(|e| {
+                tracing::debug!("Nonce validation failed: {e}");
+                OpenID4VCIError::InvalidNonce
+            })?;
 
         // _Serializable_ transaction to update nonce: If multiple threads try to write the same
         // nonce value to the same interaction, only one will succeed.
@@ -466,6 +470,109 @@ impl OID4VCIFinal1_0Service {
             // A conflict in this transaction indicates that the nonce has already been used
             .map_err(|_| OpenID4VCIError::InvalidNonce)?
             .map_err(|_| OpenID4VCIError::InvalidNonce)?;
+
+        // Key attestation is expected if wallet storage type is set
+        if let Some(wallet_storage_type) = schema.wallet_storage_type {
+            let Some(key_attestation_jwt) = key_attestation else {
+                tracing::debug!("expected key attestation but none provided");
+                return Err(ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::InvalidOrMissingProof,
+                ));
+            };
+
+            let attested_keys = validator::validate_key_attestation(
+                &key_attestation_jwt,
+                self.key_algorithm_provider.as_ref(),
+                wallet_storage_type.into(),
+                params.key_attestation_leeway,
+            )?;
+
+            let wallet_unit_attestation_status = self
+                .holder_wallet_unit_proto
+                .check_wallet_unit_attestation_status(&key_attestation_jwt)
+                .await?;
+
+            if wallet_unit_attestation_status == WalletUnitStatusCheckResponse::Revoked {
+                tracing::error!("wallet unit attestation is revoked");
+                return Err(ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::InvalidOrMissingProof,
+                ));
+            }
+
+            if schema.requires_app_attestation {
+                let Some(wallet_unit_attestation_blob_id) =
+                    &credential.wallet_unit_attestation_blob_id
+                else {
+                    tracing::debug!(
+                        "app attestation required but no wallet unit attestation blob ID found"
+                    );
+                    return Err(ServiceError::OpenID4VCIError(
+                        OpenID4VCIError::InvalidOrMissingProof,
+                    ));
+                };
+
+                let db_blob_storage = self
+                    .blob_storage_provider
+                    .get_blob_storage(BlobStorageType::Db)
+                    .await
+                    .ok_or_else(|| {
+                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
+                    })?;
+
+                let wallet_unit_attestation_blob = db_blob_storage
+                    .get(wallet_unit_attestation_blob_id)
+                    .await?
+                    .ok_or(ServiceError::MappingError(
+                        "wallet unit attestation blob is None".to_string(),
+                    ))?;
+
+                let waa_dto: WalletAppAttestationDTO =
+                    serde_json::from_slice(&wallet_unit_attestation_blob.value).map_err(|e| {
+                        ServiceError::MappingError(format!("Failed to deserialize WAA blob: {e}"))
+                    })?;
+
+                let waa = Jwt::<WalletAppAttestationClaims>::decompose_token(&waa_dto.attestation)?;
+
+                verify_wua_waa_issuers_match(&key_attestation_jwt, &waa)?;
+            }
+
+            let proof_signing_key = match &verified_proof {
+                Either::Left((holder_did_value, key_id)) => {
+                    let did_document = self
+                        .did_method_provider
+                        .resolve(holder_did_value)
+                        .await
+                        .map_err(|e| {
+                            tracing::debug!("failed to resolve DID for key attestation check: {e}");
+                            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+                        })?;
+
+                    did_document
+                        .find_verification_method(Some(key_id), Some(KeyRole::Authentication))
+                        .map(|vm| vm.public_key_jwk.clone())
+                        .ok_or_else(|| {
+                            tracing::debug!(
+                                "missing verification method for key attestation check: {key_id}"
+                            );
+                            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+                        })?
+                }
+                Either::Right(jwk) => jwk.clone(),
+            };
+
+            if !attested_keys.contains(&proof_signing_key) {
+                tracing::debug!("proof signing key is not in the attested_keys list");
+                return Err(ServiceError::OpenID4VCIError(
+                    OpenID4VCIError::InvalidOrMissingProof,
+                ));
+            }
+        } else if key_attestation.is_some() {
+            // Key attestation provided but not required
+            tracing::debug!("key attestation provided but not required");
+            return Err(ServiceError::OpenID4VCIError(
+                OpenID4VCIError::InvalidOrMissingProof,
+            ));
+        }
 
         let (holder_identifier, holder_key_id) = match verified_proof {
             Either::Left((holder_did_value, holder_key_id)) => {

@@ -82,11 +82,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(
-                params
-                    .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
-            ),
+            wallet_storage_type: params.wallet_storage_type,
             organisation: Some(organisation.clone()),
             deleted_at: params.deleted_at,
             format: params.format.unwrap_or("JWT".to_string()),

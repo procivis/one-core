@@ -54,7 +54,7 @@ pub(super) async fn generate_nonce(
 }
 
 pub(super) fn validate_nonce(
-    params: OpenID4VCNonceParams,
+    params: &OpenID4VCNonceParams,
     base_url: Option<String>,
     nonce: &str,
 ) -> Result<Uuid, ServiceError> {
@@ -146,7 +146,7 @@ mod test {
             .await
             .unwrap();
 
-        validate_nonce(params(), Some(base_url.to_string()), &nonce).unwrap();
+        validate_nonce(&params(), Some(base_url.to_string()), &nonce).unwrap();
     }
 
     fn params() -> OpenID4VCNonceParams {

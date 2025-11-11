@@ -5,6 +5,7 @@ use time::OffsetDateTime;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
+use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -13,7 +14,9 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
-use crate::service::wallet_provider::dto::WalletAppAttestationClaims;
+use crate::service::wallet_provider::dto::{
+    WalletAppAttestationClaims, WalletUnitAttestationClaims,
+};
 use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
 };
@@ -77,11 +80,12 @@ pub(crate) fn validate_pop_audience(
     pop_token: &DecomposedToken<()>,
     expected_audience: &str,
 ) -> Result<(), ServiceError> {
+    let empty_vec = vec![];
     if !pop_token
         .payload
         .audience
         .as_ref()
-        .unwrap_or(&vec![])
+        .unwrap_or(&empty_vec)
         .contains(&expected_audience.to_string())
     {
         return Err(ServiceError::OpenID4VCIError(
@@ -193,6 +197,92 @@ pub(crate) fn extract_wallet_metadata(
         .clone();
 
     Ok((name, link))
+}
+
+pub(crate) fn validate_key_attestation(
+    key_attestation_jwt: &str,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    expected_key_storage_security_level: KeyStorageSecurityLevel,
+    leeway: u64,
+) -> Result<Vec<crate::model::key::PublicKeyJwk>, ServiceError> {
+    let wua = crate::proto::jwt::Jwt::<WalletUnitAttestationClaims>::decompose_token(
+        key_attestation_jwt,
+    )?;
+
+    validate_timestamps(&wua, leeway)?;
+
+    if !wua
+        .payload
+        .custom
+        .key_storage
+        .contains(&expected_key_storage_security_level)
+    {
+        tracing::debug!(
+            "key attestation does not list expected key storage security level: {:?}",
+            expected_key_storage_security_level
+        );
+        return Err(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest,
+        ));
+    }
+
+    let wua_issuer_key = wua.header.jwk.as_ref().ok_or_else(|| {
+        tracing::debug!("key attestation issuer key not found");
+        ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+    })?;
+
+    let (_, alg) = key_algorithm_provider
+        .key_algorithm_from_jose_alg(&wua.header.algorithm)
+        .ok_or_else(|| {
+            tracing::debug!("key attestation algorithm not found");
+            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+        })?;
+
+    let jwk = wua_issuer_key.clone().into();
+    let wua_issuer_key_handle = alg.parse_jwk(&jwk).map_err(|_| {
+        tracing::debug!("failed to parse key attestation issuer key");
+        ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+    })?;
+
+    wua_issuer_key_handle
+        .signature()
+        .ok_or(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest,
+        ))?
+        .public()
+        .verify(wua.unverified_jwt.as_bytes(), &wua.signature)
+        .map_err(|_| {
+            tracing::debug!("failed to verify key attestation issuer key");
+            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+        })?;
+
+    Ok(wua.payload.custom.attested_keys.clone())
+}
+
+pub(crate) fn verify_wua_waa_issuers_match(
+    wua_jwt: &str,
+    waa: &DecomposedToken<WalletAppAttestationClaims>,
+) -> Result<(), ServiceError> {
+    let wua = crate::proto::jwt::Jwt::<WalletUnitAttestationClaims>::decompose_token(wua_jwt)?;
+
+    let waa_issuer_key = waa.header.jwk.as_ref().ok_or_else(|| {
+        tracing::debug!("WAA proof of possession key not found");
+        ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+    })?;
+
+    let wua_issuer_key = wua.header.jwk.as_ref().ok_or_else(|| {
+        tracing::debug!("WUA issuer key not found");
+        ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
+    })?;
+
+    if waa_issuer_key != wua_issuer_key {
+        tracing::debug!("WUA issuer key does not match expected issuer key");
+        return Err(ServiceError::OpenID4VCIError(
+            OpenID4VCIError::InvalidRequest,
+        ));
+    }
+
+    Ok(())
 }
 
 pub(super) fn validate_config_entity_presence(
