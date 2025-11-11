@@ -8,7 +8,7 @@ pub fn vc_permanent_resident_card() -> json_syntax::Value {
 }
 
 pub fn context_vc2_0() -> json_syntax::Value {
-    json_syntax::Value::from_str(include_str!("context_vc2_0.jsonld")).unwrap()
+    json_syntax::Value::from_str(include_str!("../../../../../util/context_vc2_0.jsonld")).unwrap()
 }
 
 pub fn context_citizenship() -> json_syntax::Value {

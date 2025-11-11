@@ -1955,6 +1955,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
 async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
     let issuer_did = context
         .db
         .dids
