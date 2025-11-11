@@ -530,12 +530,10 @@ async fn test_submit_proof_failed_credential_suspended() {
         ..Default::default()
     });
 
-    let vp_token = "vp_token";
-
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
             submission_data: VpSubmissionData::Pex(PexSubmission {
-                vp_token: vp_token.to_string(),
+                vp_token: vec!["vp_token".to_string()],
                 presentation_submission: PresentationSubmissionMappingDTO {
                     id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
                     definition_id: interaction_id.to_string(),
@@ -897,12 +895,10 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
         ..Default::default()
     });
 
-    let vp_token = "vp_token";
-
     let err = service
         .direct_post(OpenID4VPDirectPostRequestDTO {
             submission_data: VpSubmissionData::Pex(PexSubmission {
-                vp_token: vp_token.to_string(),
+                vp_token: vec!["vp_token".to_string()],
                 presentation_submission: PresentationSubmissionMappingDTO {
                     id: "25f5a42c-6850-49a0-b842-c7b2411021a5".to_string(),
                     definition_id: interaction_id.to_string(),

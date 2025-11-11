@@ -5,7 +5,7 @@ use dcql::DcqlQuery;
 use one_crypto::jwe::EncryptionAlgorithm;
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{ClaimSchemaId, KeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
@@ -59,9 +59,11 @@ pub struct DcqlSubmissionEudi {
     pub vp_token: HashMap<String, String>,
 }
 
+#[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PexSubmission {
-    pub vp_token: String,
+    #[serde_as(as = "OneOrMany<_>")]
+    pub vp_token: Vec<String>,
     pub presentation_submission: PresentationSubmissionMappingDTO,
 }
 
@@ -77,6 +79,11 @@ pub enum VpSubmissionData {
     DcqlEudi(DcqlSubmissionEudi),
     Pex(PexSubmission),
     EncryptedResponse(ResponseSubmission),
+}
+
+pub(crate) struct EncryptionInfo {
+    pub verifier_key: OpenID4VPClientMetadataJwkDTO,
+    pub alg: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
 }
 
 #[skip_serializing_none]

@@ -81,7 +81,7 @@ mod tests {
             mdoc_generated_nonce: None,
             protocol_data: MQTTVerifierProtocolData::V1 {
                 submission: PexSubmission {
-                    vp_token: "vp_token".to_string(),
+                    vp_token: vec!["vp_token".to_string()],
                     presentation_submission: PresentationSubmissionMappingDTO {
                         id: "id".to_string(),
                         definition_id: "definition_id".to_string(),

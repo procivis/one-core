@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -7,19 +7,14 @@ use mappers::create_openidvp20_authorization_request;
 use model::OpenID4Vp20Params;
 use one_crypto::utilities;
 use serde_json::Value;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use url::Url;
 use utils::{interaction_data_from_openid4vp_20_query, validate_interaction_data};
 use uuid::Uuid;
 
-use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::{
-    explode_validity_credentials, key_and_did_from_formatted_creds,
-    map_presented_credentials_to_presentation_format_type,
-};
-use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
+use super::mapper::{encrypted_params, key_and_did_from_formatted_creds, unencrypted_params};
 use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
+    CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType,
 };
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
@@ -31,9 +26,6 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::presentation_formatter::model::{
-    CredentialToPresent, FormatPresentationCtx, FormattedPresentation,
-};
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
@@ -44,16 +36,13 @@ use crate::provider::verification_protocol::mapper::{
     interaction_from_handle_invitation, proof_from_handle_invitation,
 };
 use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_presentation_definition, create_presentation_submission,
-    generate_client_metadata_draft,
+    create_open_id_for_vp_presentation_definition, generate_client_metadata_draft,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, JwePayload,
-    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPDirectPostResponseDTO,
-    OpenID4VPHolderInteractionData, OpenID4VPVerifierInteractionContent, PexSubmission,
-    PresentationSubmissionMappingDTO, VpSubmissionData,
+    ClientIdScheme, EncryptionInfo, OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
+    OpenID4VPVerifierInteractionContent,
 };
+use crate::provider::verification_protocol::openid4vp::presentation_exchange::pex_submission_data;
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
     get_client_id_scheme,
@@ -116,65 +105,6 @@ impl OpenID4VP20HTTP {
             params,
             config,
         }
-    }
-
-    async fn encryption_info_from_metadata(
-        &self,
-        interaction_data: &OpenID4VPHolderInteractionData,
-    ) -> Result<
-        Option<(
-            OpenID4VPClientMetadataJwkDTO,
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-        )>,
-        VerificationProtocolError,
-    > {
-        let Some(OpenID4VPClientMetadata::Draft(mut client_metadata)) =
-            interaction_data.client_metadata.clone()
-        else {
-            // metadata_uri (if any) has been resolved before, no need to check
-            return Ok(None);
-        };
-
-        if !matches!(
-            client_metadata.authorization_encrypted_response_alg,
-            Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
-        ) {
-            // Encrypted presentations not supported
-            return Ok(None);
-        }
-
-        let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
-            // Encrypted presentations not supported
-            None => return Ok(None),
-            Some(alg) => alg,
-        };
-
-        if client_metadata
-            .jwks
-            .as_ref()
-            .map(|jwks| jwks.keys.is_empty())
-            .unwrap_or(true)
-            && let Some(ref uri) = client_metadata.jwks_uri
-        {
-            let jwks = self
-                .client
-                .get(uri)
-                .send()
-                .await
-                .context("send error")
-                .map_err(VerificationProtocolError::Transport)?
-                .error_for_status()
-                .context("status error")
-                .map_err(VerificationProtocolError::Transport)?;
-
-            client_metadata.jwks = jwks
-                .json()
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-        }
-        let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
-            return Ok(None);
-        };
-        Ok(Some((verifier_key, encryption_alg)))
     }
 }
 
@@ -321,122 +251,44 @@ impl VerificationProtocol for OpenID4VP20HTTP {
                 "interaction is None".to_string(),
             ))?
             .to_owned();
-
-        let credential_presentations = explode_validity_credentials(credential_presentations);
         let interaction_data: OpenID4VPHolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
-
-        let format = map_presented_credentials_to_presentation_format_type(
-            &credential_presentations,
+        let holder_nonce = utilities::generate_alphanumeric(32);
+        let (submission_data, encryption_info) = pex_submission_data(
+            credential_presentations,
+            &interaction_data,
+            &holder_nonce,
+            &did,
+            &key,
+            jwk_key_id,
+            &*self.client,
             &self.config,
-        )?;
-
-        let presentation_formatter = self
-            .presentation_formatter_provider
-            .get_presentation_formatter(&format.to_string())
-            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(
-                &key.to_owned(),
-                jwk_key_id,
-                self.key_algorithm_provider.clone(),
-            )
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_definition_id = interaction_data
-            .presentation_definition
-            .as_ref()
-            .ok_or(VerificationProtocolError::Failed(
-                "presentation_definition is None".to_string(),
-            ))?
-            .id
-            .to_owned();
+            &*self.presentation_formatter_provider,
+            &*self.key_provider,
+            self.key_algorithm_provider.clone(),
+        )
+        .await?;
 
         let response_uri =
             interaction_data
                 .response_uri
-                .clone()
+                .as_ref()
                 .ok_or(VerificationProtocolError::Failed(
                     "response_uri is None".to_string(),
                 ))?;
-        let verifier_nonce =
-            interaction_data
-                .nonce
-                .clone()
-                .ok_or(VerificationProtocolError::Failed(
-                    "nonce is None".to_string(),
-                ))?;
 
-        let holder_nonce = utilities::generate_alphanumeric(32);
-        let ctx = if format == FormatType::Mdoc {
-            mdoc_presentation_context(mdoc_draft_handover(
-                &interaction_data.client_id,
-                &response_uri,
-                &verifier_nonce,
-                &holder_nonce,
-            )?)?
-        } else {
-            FormatPresentationCtx {
-                nonce: Some(verifier_nonce.clone()),
-                ..Default::default()
-            }
-        };
-
-        let credentials = credential_presentations
-            .iter()
-            .map(|presented_credential| {
-                let credential_format = self
-                    .config
-                    .format
-                    .get_fields(&presented_credential.credential_schema.format)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-                    .r#type;
-                Ok(CredentialToPresent {
-                    raw_credential: presented_credential.presentation.to_owned(),
-                    credential_format,
-                })
-            })
-            .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
-
-        let FormattedPresentation {
-            vp_token,
-            oidc_format,
-        } = presentation_formatter
-            .format_presentation(credentials, auth_fn, &did.did, ctx)
-            .await
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-        let presentation_submission = create_presentation_submission(
-            presentation_definition_id,
-            credential_presentations,
-            &oidc_format,
-            &self.config,
-        )?;
-
-        let encryption_info = self
-            .encryption_info_from_metadata(&interaction_data)
-            .await?;
-        if encryption_info.is_none() && format == FormatType::Mdoc {
-            return Err(VerificationProtocolError::Failed(
-                "MDOC presentation requires encryption but no verifier EC keys are available"
-                    .to_string(),
-            ));
-        }
-        let params = if let Some((verifier_key, alg)) = encryption_info {
+        let params = if let Some(EncryptionInfo { verifier_key, alg }) = encryption_info {
             encrypted_params(
-                interaction_data,
-                presentation_submission,
+                &interaction_data,
+                submission_data,
                 &holder_nonce,
-                vp_token,
                 verifier_key,
                 alg,
                 &*self.key_algorithm_provider,
             )
             .await?
         } else {
-            unencrypted_params(interaction_data, &presentation_submission, vp_token)?
+            unencrypted_params(&submission_data, interaction_data.state.clone())?
         };
 
         let response = self
@@ -618,70 +470,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
     }
-}
-
-fn unencrypted_params(
-    interaction_data: OpenID4VPHolderInteractionData,
-    presentation_submission: &PresentationSubmissionMappingDTO,
-    vp_token: String,
-) -> Result<HashMap<&'static str, String>, VerificationProtocolError> {
-    let mut params: HashMap<&str, String> = HashMap::new();
-    params.insert("vp_token", vp_token);
-    params.insert(
-        "presentation_submission",
-        serde_json::to_string(&presentation_submission)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
-    );
-
-    if let Some(state) = interaction_data.state {
-        params.insert("state", state);
-    }
-    Ok(params)
-}
-
-async fn encrypted_params(
-    interaction_data: OpenID4VPHolderInteractionData,
-    presentation_submission: PresentationSubmissionMappingDTO,
-    holder_nonce: &str,
-    vp_token: String,
-    verifier_key: OpenID4VPClientMetadataJwkDTO,
-    encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<HashMap<&'static str, String>, VerificationProtocolError> {
-    let aud = interaction_data
-        .response_uri
-        .ok_or(VerificationProtocolError::Failed(
-            "response_uri is None".to_string(),
-        ))?;
-    let verifier_nonce = interaction_data
-        .nonce
-        .ok_or(VerificationProtocolError::Failed(
-            "nonce is None".to_string(),
-        ))?;
-    let payload = JwePayload {
-        aud: Some(aud),
-        exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
-        submission_data: VpSubmissionData::Pex(PexSubmission {
-            vp_token,
-            presentation_submission,
-        }),
-        state: interaction_data.state,
-    };
-
-    let response = jwe_presentation::build_jwe(
-        payload,
-        verifier_key.jwk.into(),
-        verifier_key.key_id,
-        holder_nonce,
-        &verifier_nonce,
-        encryption_algorithm,
-        key_algorithm_provider,
-    )
-    .await
-    .map_err(|err| {
-        VerificationProtocolError::Failed(format!("Failed to build mdoc response jwe: {err}"))
-    })?;
-    Ok(HashMap::from_iter([("response", response)]))
 }
 
 #[allow(clippy::too_many_arguments)]

@@ -35,6 +35,7 @@ pub(crate) mod jwe_presentation;
 pub(crate) mod mapper;
 pub(crate) mod mdoc;
 pub mod model;
+mod presentation_exchange;
 pub mod proximity_draft00;
 pub mod service;
 pub mod validator;

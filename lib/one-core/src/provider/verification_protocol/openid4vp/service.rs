@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Context;
 use dcql::CredentialFormat;
 use shared_types::CredentialSchemaId;
 use time::{Duration, OffsetDateTime};
@@ -8,8 +9,9 @@ use time::{Duration, OffsetDateTime};
 use super::error::OpenID4VCError;
 use super::model::{
     AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPClientMetadataJwks, OpenID4VPDirectPostResponseDTO,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, EncryptionInfo,
+    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks,
+    OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, OpenID4VpPresentationFormat,
     PresentationSubmissionMappingDTO, ValidatedProofClaimDTO,
 };
@@ -22,6 +24,7 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
@@ -36,6 +39,8 @@ use crate::provider::presentation_formatter::model::{
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::provider::RevocationMethodProvider;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
+use crate::provider::verification_protocol::openid4vp::jwe_presentation::ec_key_from_metadata;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     extract_presentation_ctx_from_interaction_content, extracted_credential_to_model,
     vec_last_position_from_token_path,
@@ -110,6 +115,61 @@ pub(crate) fn oidc_verifier_presentation_definition(
     }
 
     Ok(presentation_definition)
+}
+
+pub(crate) async fn encryption_info_from_metadata(
+    client: &dyn HttpClient,
+    interaction_data: &OpenID4VPHolderInteractionData,
+) -> Result<Option<EncryptionInfo>, VerificationProtocolError> {
+    let Some(OpenID4VPClientMetadata::Draft(mut client_metadata)) =
+        interaction_data.client_metadata.clone()
+    else {
+        // metadata_uri (if any) has been resolved before, no need to check
+        return Ok(None);
+    };
+
+    if !matches!(
+        client_metadata.authorization_encrypted_response_alg,
+        Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs)
+    ) {
+        // Encrypted presentations not supported
+        return Ok(None);
+    }
+
+    let encryption_alg = match client_metadata.authorization_encrypted_response_enc.clone() {
+        // Encrypted presentations not supported
+        None => return Ok(None),
+        Some(alg) => alg,
+    };
+
+    if client_metadata
+        .jwks
+        .as_ref()
+        .map(|jwks| jwks.keys.is_empty())
+        .unwrap_or(true)
+        && let Some(ref uri) = client_metadata.jwks_uri
+    {
+        let jwks = client
+            .get(uri)
+            .send()
+            .await
+            .context("send error")
+            .map_err(VerificationProtocolError::Transport)?
+            .error_for_status()
+            .context("status error")
+            .map_err(VerificationProtocolError::Transport)?;
+
+        client_metadata.jwks = jwks
+            .json()
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    }
+    let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
+        return Ok(None);
+    };
+    Ok(Some(EncryptionInfo {
+        verifier_key,
+        alg: encryption_alg,
+    }))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -445,11 +505,13 @@ async fn process_proof_submission_presentation_exchange(
         ));
     }
 
-    let presentation_strings: Vec<String> = if vp_token.starts_with('[') {
-        serde_json::from_str(&vp_token)
-            .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?
+    let presentation_strings: Vec<String> = if vp_token.len() == 1
+        && let Some(token) = vp_token.first()
+        && token.starts_with('[')
+    {
+        serde_json::from_str(token).map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?
     } else {
-        vec![vp_token]
+        vp_token
     };
 
     // collect expected credentials
@@ -568,16 +630,6 @@ async fn process_proof_submission_presentation_exchange(
         .await?;
 
         let path_nested = presentation_submitted.path_nested.as_ref();
-        if path_nested.is_none()
-            && (presentation_submission.descriptor_map.len() > 1
-                && presentation_submitted.format != "ldp_vp"
-                && presentation_submitted.format != "jwt_vp_json")
-        {
-            return Err(OpenID4VCError::ValidationError(
-                "Path nested missing".to_string(),
-            ));
-        }
-
         if let Some(path_nested) = path_nested
             && !input_descriptor
                 .format

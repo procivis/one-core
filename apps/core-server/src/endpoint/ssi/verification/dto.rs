@@ -16,7 +16,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
-use serde_with::serde_as;
+use serde_with::{OneOrMany, serde_as};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -52,16 +52,17 @@ pub(crate) enum VpSubmissionDataRestDTO {
     EncryptedResponse(ResponseSubmissionRestDTO),
 }
 
-#[serde_with::serde_as]
+#[serde_as]
 #[derive(Debug, Deserialize, Clone, Into, ToSchema)]
 #[into(PexSubmission)]
 pub(crate) struct PexSubmissionRestDTO {
-    pub vp_token: String,
+    #[serde_as(as = "OneOrMany<_>")]
+    pub vp_token: Vec<String>,
     #[serde_as(as = "JsonString")]
     pub presentation_submission: PresentationSubmissionMappingRestDTO,
 }
 
-#[serde_with::serde_as]
+#[serde_as]
 #[derive(Debug, Deserialize, Clone, ToSchema, Into)]
 #[into(DcqlSubmission)]
 pub(crate) struct DcqlSubmissionRestDTO {

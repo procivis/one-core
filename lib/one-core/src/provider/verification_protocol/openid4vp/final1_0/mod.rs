@@ -14,7 +14,7 @@ use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
 use uuid::Uuid;
 
 use super::jwe_presentation::{self, ec_key_from_metadata};
-use super::mapper::format_to_type;
+use super::mapper::{format_to_type, unencrypted_params};
 use super::mdoc::mdoc_presentation_context;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
@@ -432,7 +432,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             )
             .await?
         } else {
-            unencrypted_params(interaction_data, &submission_data)?
+            unencrypted_params(&submission_data, interaction_data.state.clone())?
         };
 
         let response = self
@@ -681,41 +681,6 @@ fn format_presentation_context(
         }
     };
     Ok(ctx)
-}
-
-fn unencrypted_params(
-    interaction_data: OpenID4VPHolderInteractionData,
-    submission_data: &VpSubmissionData,
-) -> Result<HashMap<String, String>, VerificationProtocolError> {
-    let mut result = serde_json::to_value(submission_data).map_err(|err| {
-        VerificationProtocolError::Failed(format!(
-            "Failed to serialize presentation submission params: {err}"
-        ))
-    })?;
-    if let Some(state) = interaction_data.state {
-        result["state"] = Value::String(state);
-    }
-    let params = result
-        .as_object()
-        .ok_or(VerificationProtocolError::Failed(format!(
-            "unsupported submission data: {result}"
-        )))?
-        .into_iter()
-        .map(|(k, v)| {
-            let value = if let Some(string) = v.as_str() {
-                string.to_string()
-            } else {
-                serde_json::to_string(v).map_err(|err| {
-                    VerificationProtocolError::Failed(format!(
-                        "failed to serialize submission data: {err}"
-                    ))
-                })?
-            };
-            Ok((k.clone(), value))
-        })
-        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
-    let map = HashMap::from_iter(params);
-    Ok(map)
 }
 
 async fn encrypted_params(

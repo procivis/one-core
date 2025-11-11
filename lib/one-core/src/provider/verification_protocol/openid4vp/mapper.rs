@@ -4,20 +4,23 @@ use std::sync::Arc;
 
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
 use shared_types::ProofId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::model::{
-    LdpVcAlgs, OpenID4VCVerifierAttestationPayload, OpenID4VPAlgs, OpenID4VPPresentationDefinition,
+    AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, LdpVcAlgs,
+    OpenID4VCVerifierAttestationPayload, OpenID4VPAlgs, OpenID4VPClientMetadataJwkDTO,
+    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
     OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
     OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVcSdJwtAlgs,
-    OpenID4VPVerifierInteractionContent, ProvedCredential,
+    OpenID4VPVerifierInteractionContent, ProvedCredential, VpSubmissionData,
 };
-use super::{JWTSigner, get_jwt_signer};
-use crate::config::core_config::{ConfigExt, CoreConfig, FormatType, VerificationProtocolType};
+use super::{JWTSigner, get_jwt_signer, jwe_presentation};
+use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{
@@ -48,7 +51,7 @@ use crate::provider::verification_protocol::dto::{
     CredentialGroup, FormattedCredentialPresentation,
     PresentationDefinitionRequestGroupResponseDTO,
     PresentationDefinitionRequestedCredentialResponseDTO, PresentationDefinitionResponseDTO,
-    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum, PresentationReference,
+    PresentationDefinitionRuleDTO, PresentationDefinitionRuleTypeEnum,
 };
 use crate::provider::verification_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
@@ -56,9 +59,7 @@ use crate::provider::verification_protocol::mapper::{
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
-    NestedPresentationSubmissionDescriptorDTO, OpenID4VPClientMetadata,
-    OpenID4VPDraftClientMetadata, OpenID4VpPresentationFormat, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO,
+    OpenID4VPClientMetadata, OpenID4VPDraftClientMetadata, OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata_draft;
 use crate::provider::verification_protocol::openid4vp::{
@@ -384,53 +385,57 @@ fn format_path(
     }
 }
 
-pub(crate) fn create_presentation_submission(
-    presentation_definition_id: String,
-    credential_presentations: Vec<FormattedCredentialPresentation>,
-    format: &str,
-    config: &CoreConfig,
-) -> Result<PresentationSubmissionMappingDTO, VerificationProtocolError> {
-    let path_nested_supported = format == "jwt_vp_json" || format == "ldp_vp";
-    Ok(PresentationSubmissionMappingDTO {
-        id: Uuid::new_v4().to_string(),
-        definition_id: presentation_definition_id,
-        descriptor_map: credential_presentations
-            .into_iter()
-            .enumerate()
-            .map(|(index, presented_credential)| {
-                let PresentationReference::PresentationExchange(reference) =
-                    presented_credential.reference
-                else {
-                    return Err(VerificationProtocolError::Failed(
-                        "Unsupported presentation reference".to_string(),
-                    ));
-                };
-                let format_config = config
-                    .format
-                    .get_if_enabled(&presented_credential.credential_schema.format)
-                    .map_err(|err| {
-                        VerificationProtocolError::Failed(format!("format not found: {err}"))
-                    })?;
-                Ok(PresentationSubmissionDescriptorDTO {
-                    id: reference.id,
-                    format: format.to_owned(),
-                    path: "$".to_string(),
-                    path_nested: if path_nested_supported {
-                        Some(NestedPresentationSubmissionDescriptorDTO {
-                            format: map_to_openid4vp_format(&format_config.r#type)
-                                .map_err(|error| {
-                                    VerificationProtocolError::Failed(error.to_string())
-                                })?
-                                .to_string(),
-                            path: format!("$.vp.verifiableCredential[{index}]"),
-                        })
-                    } else {
-                        None
-                    },
-                })
-            })
-            .collect::<Result<_, _>>()?,
-    })
+pub(crate) fn cred_to_presentation_format_type(credential_format_type: FormatType) -> FormatType {
+    match credential_format_type {
+        FormatType::Jwt | FormatType::PhysicalCard | FormatType::SdJwt => FormatType::Jwt,
+        FormatType::SdJwtVc => FormatType::SdJwtVc,
+        FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
+        FormatType::Mdoc => FormatType::Mdoc,
+    }
+}
+
+pub(crate) async fn encrypted_params(
+    interaction_data: &OpenID4VPHolderInteractionData,
+    submission_data: VpSubmissionData,
+    holder_nonce: &str,
+    verifier_key: OpenID4VPClientMetadataJwkDTO,
+    encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<HashMap<String, String>, VerificationProtocolError> {
+    let aud = interaction_data
+        .response_uri
+        .clone()
+        .ok_or(VerificationProtocolError::Failed(
+            "response_uri is None".to_string(),
+        ))?;
+    let verifier_nonce =
+        interaction_data
+            .nonce
+            .clone()
+            .ok_or(VerificationProtocolError::Failed(
+                "nonce is None".to_string(),
+            ))?;
+    let payload = JwePayload {
+        aud: Some(aud),
+        exp: Some(OffsetDateTime::now_utc() + Duration::minutes(10)),
+        submission_data,
+        state: interaction_data.state.clone(),
+    };
+
+    let response = jwe_presentation::build_jwe(
+        payload,
+        verifier_key.jwk.into(),
+        verifier_key.key_id,
+        holder_nonce,
+        &verifier_nonce,
+        encryption_algorithm,
+        key_algorithm_provider,
+    )
+    .await
+    .map_err(|err| {
+        VerificationProtocolError::Failed(format!("Failed to build response jwe: {err}"))
+    })?;
+    Ok(HashMap::from_iter([("response".to_owned(), response)]))
 }
 
 pub(crate) fn deserialize_with_serde_json<'de, D, T>(deserializer: D) -> Result<T, D::Error>
@@ -550,84 +555,49 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-pub(crate) fn map_presented_credentials_to_presentation_format_type(
-    presented: &[FormattedCredentialPresentation],
-    config: &CoreConfig,
-) -> Result<FormatType, VerificationProtocolError> {
-    // MDOC credential(s) are sent as a MDOC presentation, using the MDOC formatter
-    if presented.len() == 1 && matches_format_types(presented, &[FormatType::Mdoc], config) {
-        return Ok(FormatType::Mdoc);
-    }
-
-    // The SD-JWT VC presentations can contain only one credential
-    if presented.len() == 1 && matches_format_types(presented, &[FormatType::SdJwtVc], config) {
-        return Ok(FormatType::SdJwtVc);
-    }
-
-    if matches_format_types(
-        presented,
-        &[FormatType::JsonLdClassic, FormatType::JsonLdBbsPlus],
-        config,
-    ) {
-        return Ok(FormatType::JsonLdClassic);
-    }
-
-    // Fallback, handle all other formats via enveloped JWT
-    Ok(FormatType::Jwt)
-}
-
-fn matches_format_types(
-    presented: &[FormattedCredentialPresentation],
-    types: &[FormatType],
-    config: &CoreConfig,
-) -> bool {
-    presented.iter().all(|cred| {
-        format_to_type(cred, config).is_ok_and(|format_type| types.contains(&format_type))
-    })
-}
-
 pub(crate) fn format_to_type(
     presented_credential: &FormattedCredentialPresentation,
     config: &CoreConfig,
 ) -> Result<FormatType, VerificationProtocolError> {
-    Ok(config
+    config
         .format
-        .get_fields(&presented_credential.credential_schema.format)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .r#type)
+        .get_type(&presented_credential.credential_schema.format)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }
 
-/// Expands the list of credentials to have the validity credential be their own independent entry
-/// in the list. This is done to preserve legacy behaviour that heavily depends on the length of the
-/// list.
-pub(crate) fn explode_validity_credentials(
-    credential_presentations: Vec<FormattedCredentialPresentation>,
-) -> Vec<FormattedCredentialPresentation> {
-    credential_presentations
+pub(crate) fn unencrypted_params(
+    submission_data: &VpSubmissionData,
+    state: Option<String>,
+) -> Result<HashMap<String, String>, VerificationProtocolError> {
+    let mut result = serde_json::to_value(submission_data).map_err(|err| {
+        VerificationProtocolError::Failed(format!(
+            "Failed to serialize presentation submission params: {err}"
+        ))
+    })?;
+    if let Some(state) = state {
+        result["state"] = Value::String(state);
+    }
+    let params = result
+        .as_object()
+        .ok_or(VerificationProtocolError::Failed(format!(
+            "unsupported submission data: {result}"
+        )))?
         .into_iter()
-        .flat_map(|cred| {
-            if let Some(validity_cred) = cred.validity_credential_presentation {
-                let validity_credential_presentation = FormattedCredentialPresentation {
-                    presentation: validity_cred,
-                    validity_credential_presentation: None,
-                    credential_schema: cred.credential_schema.clone(),
-                    reference: cred.reference.clone(),
-                    holder_did: cred.holder_did.clone(),
-                    key: cred.key.clone(),
-                    jwk_key_id: cred.jwk_key_id.clone(),
-                };
-                vec![
-                    FormattedCredentialPresentation {
-                        validity_credential_presentation: None,
-                        ..cred
-                    },
-                    validity_credential_presentation,
-                ]
+        .map(|(k, v)| {
+            let value = if let Some(string) = v.as_str() {
+                string.to_string()
             } else {
-                vec![cred]
-            }
+                serde_json::to_string(v).map_err(|err| {
+                    VerificationProtocolError::Failed(format!(
+                        "failed to serialize submission data: {err}"
+                    ))
+                })?
+            };
+            Ok((k.clone(), value))
         })
-        .collect()
+        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
+    let map = HashMap::from_iter(params);
+    Ok(map)
 }
 
 #[allow(clippy::too_many_arguments)]

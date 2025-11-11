@@ -829,6 +829,10 @@ where
             })
     }
 
+    pub fn get_type(&self, key: &str) -> Result<T, ConfigValidationError> {
+        self.get_fields(key).map(|fields| fields.r#type.clone())
+    }
+
     pub fn get_by_type<U>(&self, r#type: T) -> Result<U, ConfigValidationError>
     where
         U: DeserializeOwned,
