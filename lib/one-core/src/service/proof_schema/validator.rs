@@ -9,7 +9,7 @@ use super::dto::{
     CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
     ProofInputSchemaRequestDTO,
 };
-use crate::config::core_config::{ConfigExt, CoreConfig, FormatType};
+use crate::config::core_config::{ConfigExt, CoreConfig};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
@@ -55,25 +55,27 @@ pub fn throw_if_validity_constraint_missing_for_lvvc(
     Ok(())
 }
 
-pub fn throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(
+pub fn throw_if_invalid_credential_combination(
     schemas: &[CredentialSchema],
-    config: &CoreConfig,
-) -> Result<(), ValidationError> {
-    let mut contains_physical_card = false;
+    formatter_provider: &dyn CredentialFormatterProvider,
+) -> Result<(), ServiceError> {
+    if schemas.len() > 1 {
+        for schema in schemas {
+            let formatter = formatter_provider
+                .get_credential_formatter(&schema.format.to_string())
+                .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
 
-    for schema in schemas {
-        let format = config
-            .format
-            .get_if_enabled(schema.format.as_str())
-            .map_err(|_| ValidationError::InvalidFormatter(schema.format.to_owned()))?;
-        if format.r#type == FormatType::PhysicalCard {
-            contains_physical_card = true;
-            break;
+            if !formatter
+                .get_capabilities()
+                .features
+                .contains(&Features::SupportsCombinedPresentation)
+            {
+                return Err(ValidationError::ProofSchemaInvalidCredentialCombination {
+                    credential_format: schema.format.to_string(),
+                }
+                .into());
+            }
         }
-    }
-
-    if contains_physical_card && schemas.len() > 1 {
-        return Err(ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof);
     }
 
     Ok(())

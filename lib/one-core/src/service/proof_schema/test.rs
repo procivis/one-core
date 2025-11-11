@@ -744,7 +744,16 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
         metadata: false,
     };
 
-    let formatter_provider = MockCredentialFormatterProvider::default();
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .returning(generic_formatter_capabilities);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(move |_| Some(Arc::new(formatter)));
 
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
@@ -861,7 +870,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
     let result = service.create_proof_schema(create_request).await;
     assert!(result.is_err_and(|e| matches!(
         e,
-        ServiceError::Validation(ValidationError::OnlyOnePhysicalCardSchemaAllowedPerProof)
+        ServiceError::Validation(ValidationError::ProofSchemaInvalidCredentialCombination { .. })
     )));
 }
 

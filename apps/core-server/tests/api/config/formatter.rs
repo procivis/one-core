@@ -69,28 +69,41 @@ async fn test_expected_format_features() {
             "SELECTIVE_DISCLOSURE",
             "REQUIRES_SCHEMA_ID",
             "SUPPORTS_CREDENTIAL_DESIGN",
-            "REQUIRES_PRESENTATION_ENCRYPTION"
+            "REQUIRES_PRESENTATION_ENCRYPTION",
+            "SUPPORTS_COMBINED_PRESENTATION"
         ])
     );
     assert_eq!(
         resp["format"]["SD_JWT"]["capabilities"]["features"],
-        json!(["SELECTIVE_DISCLOSURE", "SUPPORTS_CREDENTIAL_DESIGN"])
+        json!([
+            "SELECTIVE_DISCLOSURE",
+            "SUPPORTS_CREDENTIAL_DESIGN",
+            "SUPPORTS_COMBINED_PRESENTATION"
+        ])
     );
     assert_eq!(
         resp["format"]["SD_JWT_VC"]["capabilities"]["features"],
         json!([
             "SELECTIVE_DISCLOSURE",
             "REQUIRES_SCHEMA_ID_FOR_EXTERNAL",
-            "SUPPORTS_CREDENTIAL_DESIGN"
+            "SUPPORTS_CREDENTIAL_DESIGN",
+            "SUPPORTS_COMBINED_PRESENTATION"
         ])
     );
     assert_eq!(
         resp["format"]["JSON_LD_CLASSIC"]["capabilities"]["features"],
-        json!(["SUPPORTS_CREDENTIAL_DESIGN"])
+        json!([
+            "SUPPORTS_CREDENTIAL_DESIGN",
+            "SUPPORTS_COMBINED_PRESENTATION"
+        ])
     );
     assert_eq!(
         resp["format"]["JSON_LD_BBSPLUS"]["capabilities"]["features"],
-        json!(["SUPPORTS_CREDENTIAL_DESIGN", "SELECTIVE_DISCLOSURE"])
+        json!([
+            "SUPPORTS_CREDENTIAL_DESIGN",
+            "SELECTIVE_DISCLOSURE",
+            "SUPPORTS_COMBINED_PRESENTATION"
+        ])
     );
     assert_eq!(
         resp["format"]["PHYSICAL_CARD"]["capabilities"]["features"],
@@ -98,7 +111,10 @@ async fn test_expected_format_features() {
     );
     assert_eq!(
         resp["format"]["JWT"]["capabilities"]["features"],
-        json!(["SUPPORTS_CREDENTIAL_DESIGN"])
+        json!([
+            "SUPPORTS_CREDENTIAL_DESIGN",
+            "SUPPORTS_COMBINED_PRESENTATION"
+        ])
     );
 }
 

@@ -294,6 +294,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             features: vec![
                 Features::SupportsCredentialDesign,
                 Features::SelectiveDisclosure,
+                Features::SupportsCombinedPresentation,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],

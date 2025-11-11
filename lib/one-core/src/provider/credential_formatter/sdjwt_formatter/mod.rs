@@ -212,6 +212,7 @@ impl CredentialFormatter for SDJWTFormatter {
             features: vec![
                 Features::SelectiveDisclosure,
                 Features::SupportsCredentialDesign,
+                Features::SupportsCombinedPresentation,
             ],
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],

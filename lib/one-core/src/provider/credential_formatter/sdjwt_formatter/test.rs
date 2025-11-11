@@ -987,7 +987,8 @@ fn test_get_capabilities() {
     assert_eq!(
         vec![
             Features::SelectiveDisclosure,
-            Features::SupportsCredentialDesign
+            Features::SupportsCredentialDesign,
+            Features::SupportsCombinedPresentation
         ],
         sd_formatter.get_capabilities().features
     );

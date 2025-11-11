@@ -41,8 +41,7 @@ use crate::service::error::{
 };
 use crate::service::proof_schema::mapper::convert_proof_schema_to_response;
 use crate::service::proof_schema::validator::{
-    throw_if_proof_schema_contains_physical_card_schema_with_other_schemas,
-    throw_if_validity_constraint_missing_for_lvvc,
+    throw_if_invalid_credential_combination, throw_if_validity_constraint_missing_for_lvvc,
 };
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
@@ -194,10 +193,8 @@ impl ProofSchemaService {
             )?;
         }
 
-        throw_if_proof_schema_contains_physical_card_schema_with_other_schemas(
-            &credential_schemas,
-            &self.config,
-        )?;
+        throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)?;
+
         throw_if_validity_constraint_missing_for_lvvc(&credential_schemas, &request)?;
 
         let claim_schemas = extract_claims_from_credential_schema(

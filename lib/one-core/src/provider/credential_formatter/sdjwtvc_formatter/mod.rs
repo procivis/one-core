@@ -345,6 +345,15 @@ impl CredentialFormatter for SDJWTVCFormatter {
             vec![VerificationProtocolType::OpenId4VpProximityDraft00];
         let mut verification_identifier_types = vec![IdentifierType::Did];
         let mut signing_algorithms = vec![KeyAlgorithmType::Ecdsa];
+        let mut features = vec![
+            Features::SelectiveDisclosure,
+            Features::RequiresSchemaIdForExternal,
+            Features::SupportsCredentialDesign,
+        ];
+
+        if !self.params.swiyu_mode {
+            features.push(Features::SupportsCombinedPresentation);
+        }
 
         if self.params.swiyu_mode {
             datatypes.push("SWIYU_PICTURE".to_string());
@@ -374,11 +383,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             signing_key_algorithms: signing_algorithms.clone(),
             allowed_schema_ids: vec![],
             datatypes,
-            features: vec![
-                Features::SelectiveDisclosure,
-                Features::RequiresSchemaIdForExternal,
-                Features::SupportsCredentialDesign,
-            ],
+            features,
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
             issuance_did_methods,
             issuance_exchange_protocols,

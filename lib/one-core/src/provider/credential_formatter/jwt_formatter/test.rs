@@ -700,7 +700,7 @@ fn test_get_capabilities() {
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
-    assert_eq!(1, jwt_formatter.get_capabilities().features.len());
+    assert_eq!(2, jwt_formatter.get_capabilities().features.len());
 }
 
 #[test]

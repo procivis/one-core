@@ -84,4 +84,20 @@ impl ProofSchemasApi {
             )
             .await
     }
+
+    pub async fn create_with_multiple_schemas(
+        &self,
+        name: &str,
+        organisation_id: impl Into<Uuid>,
+        proof_input_schemas: impl Into<serde_json::Value>,
+    ) -> Response {
+        let body = json!({
+            "expireDuration": 0,
+            "name": name,
+            "organisationId": organisation_id.into(),
+            "proofInputSchemas": proof_input_schemas.into()
+        });
+
+        self.client.post("/api/proof-schema/v1", body).await
+    }
 }

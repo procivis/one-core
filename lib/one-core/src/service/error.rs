@@ -553,6 +553,9 @@ pub enum ValidationError {
     #[error("Proof schema: Mixed wallet storage types")]
     ProofSchemaMixedWalletStorageTypes,
 
+    #[error("Credential format {credential_format} does not support combined presentation")]
+    ProofSchemaInvalidCredentialCombination { credential_format: String },
+
     #[error("Invalid datatype `{datatype}` for value `{value}`: {source}")]
     InvalidDatatype {
         datatype: String,
@@ -583,9 +586,6 @@ pub enum ValidationError {
 
     #[error("Schema id not allowed for format")]
     SchemaIdNotAllowedForFormat,
-
-    #[error("Proof schema must contain only one physical card credential schema")]
-    OnlyOnePhysicalCardSchemaAllowedPerProof,
 
     #[error("Forbidden claim name")]
     ForbiddenClaimName,
@@ -1098,9 +1098,6 @@ pub enum ErrorCode {
     #[strum(message = "Imported proof schema error")]
     BR_0135,
 
-    #[strum(message = "Proof schema must contain only one physical card credential schema")]
-    BR_0137,
-
     #[strum(message = "Missing Schema ID")]
     BR_0138,
 
@@ -1451,6 +1448,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Proof schema: Mixed wallet storage types")]
     BR_0304,
+
+    #[strum(message = "Proof schema: Invalid credential combination")]
+    BR_0305,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1664,7 +1664,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::ValidityConstraintMissingForLvvc => ErrorCode::BR_0140,
             Self::InvalidScanToVerifyParameters => ErrorCode::BR_0144,
             Self::NestedClaimInArrayRequested => ErrorCode::BR_0125,
-            Self::OnlyOnePhysicalCardSchemaAllowedPerProof => ErrorCode::BR_0137,
             Self::ForbiddenClaimName => ErrorCode::BR_0145,
             Self::InvalidMdlParameters => ErrorCode::BR_0147,
             Self::ProofSchemaSharingNotSupported => ErrorCode::BR_0163,
@@ -1710,6 +1709,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
             Self::ProofSchemaMixedWalletStorageTypes => ErrorCode::BR_0304,
+            Self::ProofSchemaInvalidCredentialCombination { .. } => ErrorCode::BR_0305,
         }
     }
 }

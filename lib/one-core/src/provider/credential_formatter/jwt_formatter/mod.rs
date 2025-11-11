@@ -206,7 +206,10 @@ impl CredentialFormatter for JWTFormatter {
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Dilithium,
             ],
-            features: vec![Features::SupportsCredentialDesign],
+            features: vec![
+                Features::SupportsCredentialDesign,
+                Features::SupportsCombinedPresentation,
+            ],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],
             issuance_exchange_protocols: vec![
