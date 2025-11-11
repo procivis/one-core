@@ -826,6 +826,283 @@ async fn test_direct_post_multiple_presentations() {
 }
 
 #[tokio::test]
+async fn test_direct_post_multiple_presentations_missing_inputs() {
+    // GIVEN
+    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let config = fixtures::create_config(&base_url, None);
+    let db_conn = fixtures::create_db(&config).await;
+    let organisation = fixtures::create_organisation(&db_conn).await;
+    let nonce = "nonce123";
+
+    let credential1_claims = vec![
+        (Uuid::new_v4(), "name1", true, "STRING", false), // Presentation 1 token 1
+        (Uuid::new_v4(), "name2", false, "STRING", false), // Provided, not requested
+    ];
+
+    let credential2_claims = vec![
+        (Uuid::new_v4(), "pet1", true, "STRING", false), // Presentation 1 token 0
+        (Uuid::new_v4(), "pet2", false, "STRING", false), // Provided, not requested
+    ];
+
+    let credential3_claims = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 0
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided but requested
+    ];
+
+    let credential_schema1 = create_credential_schema_with_claims(
+        &db_conn,
+        "NameSchema",
+        &organisation,
+        "NONE",
+        &credential1_claims,
+    )
+    .await;
+
+    let credential_schema2 = create_credential_schema_with_claims(
+        &db_conn,
+        "PetSchema",
+        &organisation,
+        "NONE",
+        &credential2_claims,
+    )
+    .await;
+
+    let credential_schema3 = create_credential_schema_with_claims(
+        &db_conn,
+        "CatSchema",
+        &organisation,
+        "NONE",
+        &credential3_claims,
+    )
+    .await;
+
+    let proof_input_schemas = [
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&credential1_claims[0]), // name1
+            ],
+            credential_schema: &credential_schema1,
+            validity_constraint: None,
+        },
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&credential2_claims[0]), // pet1
+            ],
+            credential_schema: &credential_schema2,
+            validity_constraint: None,
+        },
+        CreateProofInputSchema {
+            claims: vec![
+                CreateProofClaim::from(&credential3_claims[0]), // cat1
+                CreateProofClaim::from(&credential3_claims[1]), // cat2 (optional)
+            ],
+            credential_schema: &credential_schema3,
+            validity_constraint: None,
+        },
+    ];
+
+    let proof_schema =
+        create_proof_schema(&db_conn, "Schema1", &organisation, &proof_input_schemas).await;
+
+    let verifier_key = fixtures::create_key(&db_conn, &organisation, None).await;
+    let verifier_did = fixtures::create_did(
+        &db_conn,
+        &organisation,
+        Some(TestingDidParams {
+            keys: Some(vec![RelatedKey {
+                role: KeyRole::Authentication,
+                key: verifier_key.clone(),
+                reference: "1".to_string(),
+            }]),
+            ..Default::default()
+        }),
+    )
+    .await;
+    let verifier_identifier = fixtures::create_identifier(
+        &db_conn,
+        &organisation,
+        Some(TestingIdentifierParams {
+            did: Some(verifier_did),
+            ..Default::default()
+        }),
+    )
+    .await;
+
+    let interaction_data = json!({
+        "nonce": nonce,
+        "presentation_definition": {
+            "id": "75fcc8e1-a14c-4509-9831-993c5fb37e26",
+            "input_descriptors": [
+            {
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
+                "id": "input_0",
+                "constraints": {
+                    "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema1.schema_id
+                            }
+                        },
+                        {
+                            "id": credential1_claims[0].0,
+                            "path": ["$.vc.credentialSubject.name1"],
+                            "optional": false
+                        },
+                    ]
+                }
+            },
+            {
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
+                "id": "input_1",
+                "constraints": {
+                    "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema2.schema_id
+                            }
+                        },
+                        {
+                            "id": credential2_claims[0].0,
+                            "path": ["$.vc.credentialSubject.pet1"],
+                            "optional": false
+                        },
+                    ]
+                }
+            },
+            {
+                "format": {
+                    "jwt_vc_json": {
+                        "alg": ["EdDSA", "ES256"]
+                    }
+                },
+                "id": "input_2",
+                "constraints": {
+                    "fields": [
+                        {
+                            "path": ["$.credentialSchema.id"],
+                            "filter": {
+                                "type": "string",
+                                "const": credential_schema3.schema_id
+                            }
+                        },
+                        {
+                            "id": credential3_claims[0].0,
+                            "path": ["$.vc.credentialSubject.cat1"],
+                            "optional": false
+                        },
+                        {
+                            "id": credential3_claims[1].0,
+                            "path": ["$.vc.credentialSubject.cat2"],
+                            "optional": true
+                        },
+                    ]
+                }
+            }]
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
+    });
+
+    let interaction = fixtures::create_interaction(
+        &db_conn,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+        InteractionType::Verification,
+    )
+    .await;
+
+    let proof = create_proof(
+        &db_conn,
+        &verifier_identifier,
+        None,
+        Some(&proof_schema),
+        ProofStateEnum::Pending,
+        ProofRole::Verifier,
+        "OPENID4VP_DRAFT20",
+        Some(&interaction),
+        Some(&verifier_key),
+        None,
+        None,
+    )
+    .await;
+
+    let presentation_submission = json!({
+        "definition_id": interaction.id,
+        "descriptor_map": [
+            {
+                "format": "jwt_vp_json",
+                "id": "input_2",
+                "path": "$[0]",
+                "path_nested": {
+                        "format": "jwt_vc_json",
+                        "path": "$[0].verifiableCredential[0]"
+                    }
+            },
+            {
+                "format": "jwt_vp_json",
+                "id": "input_2",
+                "path": "$[0]",
+                "path_nested": {
+                        "format": "jwt_vc_json",
+                        "path": "$[0].verifiableCredential[0]"
+                    }
+            },
+            {
+                "format": "jwt_vp_json",
+                "id": "input_2",
+                "path": "$[0]",
+                "path_nested": {
+                        "format": "jwt_vc_json",
+                        "path": "$[0].verifiableCredential[0]"
+                    }
+            }
+        ],
+        "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
+    });
+
+    let params = [
+        (
+            "presentation_submission",
+            presentation_submission.to_string(),
+        ),
+        ("vp_token", json!([TOKEN2]).to_string()),
+        ("state", interaction.id.to_string()),
+    ];
+
+    // WHEN
+    let _handle = run_server(listener, config, &db_conn).await;
+
+    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+
+    let resp = utils::client()
+        .post(url)
+        .form(&params)
+        .send()
+        .await
+        .unwrap();
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+
+    let proof = get_proof(&db_conn, &proof.id).await;
+    assert_eq!(proof.state, ProofStateEnum::Error);
+}
+
+#[tokio::test]
 async fn test_direct_post_wrong_claim_format() {
     // GIVEN
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();

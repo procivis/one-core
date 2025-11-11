@@ -501,6 +501,19 @@ async fn process_proof_submission_presentation_exchange(
         ));
     }
 
+    for descriptor in &presentation_definition.input_descriptors {
+        if presentation_submission
+            .descriptor_map
+            .iter()
+            .all(|entry| entry.id != descriptor.id)
+        {
+            return Err(OpenID4VCError::ValidationError(format!(
+                "No descriptor map entry for input descriptor `{}`",
+                descriptor.id
+            )));
+        }
+    }
+
     let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
 
     // Unpack presentations and credentials
