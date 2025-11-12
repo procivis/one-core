@@ -61,6 +61,7 @@ fn generate_credential_detail_response(
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         profile: None,
         wallet_app_attestation: None,
+        wallet_unit_attestation: None,
     }
 }
 
@@ -156,6 +157,7 @@ fn generate_credential_matching_detail(
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     }
 }
 

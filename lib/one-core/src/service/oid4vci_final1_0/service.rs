@@ -64,7 +64,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     parse_access_token, parse_refresh_token,
 };
 use crate::provider::revocation::model::{CredentialRevocationState, Operation};
-use crate::service::credential::dto::WalletAppAttestationDTO;
+use crate::service::credential::dto::{WalletAppAttestationDTO, WalletUnitAttestationDTO};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
@@ -473,7 +473,7 @@ impl OID4VCIFinal1_0Service {
 
         // Key attestation is expected if wallet storage type is set
         if let Some(wallet_storage_type) = schema.wallet_storage_type {
-            let Some(key_attestation_jwt) = key_attestation else {
+            let Some(key_attestation_jwt) = &key_attestation else {
                 tracing::debug!("expected key attestation but none provided");
                 return Err(ServiceError::OpenID4VCIError(
                     OpenID4VCIError::InvalidOrMissingProof,
@@ -481,7 +481,7 @@ impl OID4VCIFinal1_0Service {
             };
 
             let attested_keys = validator::validate_key_attestation(
-                &key_attestation_jwt,
+                key_attestation_jwt,
                 self.key_algorithm_provider.as_ref(),
                 wallet_storage_type.into(),
                 params.key_attestation_leeway,
@@ -489,7 +489,7 @@ impl OID4VCIFinal1_0Service {
 
             let wallet_unit_attestation_status = self
                 .holder_wallet_unit_proto
-                .check_wallet_unit_attestation_status(&key_attestation_jwt)
+                .check_wallet_unit_attestation_status(key_attestation_jwt)
                 .await?;
 
             if wallet_unit_attestation_status == WalletUnitStatusCheckResponse::Revoked {
@@ -500,11 +500,11 @@ impl OID4VCIFinal1_0Service {
             }
 
             if schema.requires_app_attestation {
-                let Some(wallet_unit_attestation_blob_id) =
-                    &credential.wallet_unit_attestation_blob_id
+                let Some(wallet_app_attestation_blob_id) =
+                    &credential.wallet_app_attestation_blob_id
                 else {
                     tracing::debug!(
-                        "app attestation required but no wallet unit attestation blob ID found"
+                        "app attestation required but no wallet app attestation blob ID found"
                     );
                     return Err(ServiceError::OpenID4VCIError(
                         OpenID4VCIError::InvalidOrMissingProof,
@@ -519,21 +519,21 @@ impl OID4VCIFinal1_0Service {
                         MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
                     })?;
 
-                let wallet_unit_attestation_blob = db_blob_storage
-                    .get(wallet_unit_attestation_blob_id)
+                let wallet_app_attestation_blob = db_blob_storage
+                    .get(wallet_app_attestation_blob_id)
                     .await?
                     .ok_or(ServiceError::MappingError(
-                        "wallet unit attestation blob is None".to_string(),
+                        "wallet app attestation blob is None".to_string(),
                     ))?;
 
                 let waa_dto: WalletAppAttestationDTO =
-                    serde_json::from_slice(&wallet_unit_attestation_blob.value).map_err(|e| {
+                    serde_json::from_slice(&wallet_app_attestation_blob.value).map_err(|e| {
                         ServiceError::MappingError(format!("Failed to deserialize WAA blob: {e}"))
                     })?;
 
                 let waa = Jwt::<WalletAppAttestationClaims>::decompose_token(&waa_dto.attestation)?;
 
-                verify_wua_waa_issuers_match(&key_attestation_jwt, &waa)?;
+                verify_wua_waa_issuers_match(key_attestation_jwt, &waa)?;
             }
 
             let proof_signing_key = match &verified_proof {
@@ -610,6 +610,7 @@ impl OID4VCIFinal1_0Service {
                     holder_identifier,
                     holder_key_id,
                     credential,
+                    key_attestation,
                     &mut response,
                 )
                 .boxed(),
@@ -624,6 +625,7 @@ impl OID4VCIFinal1_0Service {
         holder_identifier: Identifier,
         holder_key_id: String,
         credential: &Credential,
+        key_attestation: Option<String>,
         response: &mut Option<Result<OpenID4VCICredentialResponseDTO, ServiceError>>,
     ) -> Result<(), ServiceError> {
         // Lock interaction, so that the issuance process is done only by one thread
@@ -643,12 +645,32 @@ impl OID4VCIFinal1_0Service {
             );
         };
         let mut interaction_data = interaction_data_to_dto(&interaction)?;
+
+        let wua_blob_id = if let Some(attestation) = key_attestation {
+            let blob_storage = self
+                .blob_storage_provider
+                .get_blob_storage(BlobStorageType::Db)
+                .await
+                .ok_or(MissingProviderError::BlobStorage(
+                    BlobStorageType::Db.to_string(),
+                ))?;
+
+            let wua_dto = serde_json::to_vec(&WalletUnitAttestationDTO { attestation })
+                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+            let wua_blob = Blob::new(wua_dto, BlobType::WalletUnitAttestation);
+            blob_storage.create(wua_blob.clone()).await?;
+            Some(wua_blob.id)
+        } else {
+            None
+        };
+
         self.credential_repository
             .update_credential(
                 credential.id,
                 UpdateCredentialRequest {
                     issuance_date: Some(OffsetDateTime::now_utc()),
                     holder_identifier_id: Some(holder_identifier.id),
+                    wallet_unit_attestation_blob_id: wua_blob_id,
                     ..Default::default()
                 },
             )
@@ -864,7 +886,7 @@ impl OID4VCIFinal1_0Service {
             .await?
             .ok_or(EntityNotFoundError::CredentialSchema(*credential_schema_id))?;
 
-        let wallet_unit_attestation_token = self
+        let wallet_app_attestation_token = self
             .validate_oauth_client_attestation(
                 oauth_client_attestation,
                 oauth_client_attestation_pop,
@@ -951,9 +973,9 @@ impl OID4VCIFinal1_0Service {
             let now = OffsetDateTime::now_utc();
 
             for credential in &credentials {
-                // If a wallet unit attestation token is provided, we create a new blob and update the credential
-                let wallet_unit_attestation_blob_id = match wallet_unit_attestation_token.clone() {
-                    Some(wallet_unit_attestation_token) => {
+                // If a wallet app attestation token is provided, we create a new blob and update the credential
+                let wallet_app_attestation_blob_id = match wallet_app_attestation_token.clone() {
+                    Some(wallet_app_attestation_token) => {
                         let blob_storage = self
                             .blob_storage_provider
                             .get_blob_storage(BlobStorageType::Db)
@@ -963,7 +985,7 @@ impl OID4VCIFinal1_0Service {
                             ))?;
 
                         let wallet_unit_attestation_token =
-                            serde_json::to_vec(&wallet_unit_attestation_token)
+                            serde_json::to_vec(&wallet_app_attestation_token)
                                 .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
                         let blob = Blob::new(
@@ -978,7 +1000,7 @@ impl OID4VCIFinal1_0Service {
                 };
 
                 let mut state_update = UpdateCredentialRequest {
-                    wallet_unit_attestation_blob_id,
+                    wallet_app_attestation_blob_id,
                     ..Default::default()
                 };
 
@@ -987,7 +1009,7 @@ impl OID4VCIFinal1_0Service {
                 }
 
                 // Only update the credential if there is a change
-                if state_update.wallet_unit_attestation_blob_id.is_some()
+                if state_update.wallet_app_attestation_blob_id.is_some()
                     || state_update.state.is_some()
                 {
                     self.credential_repository

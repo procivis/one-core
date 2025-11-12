@@ -20,7 +20,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 
@@ -85,7 +85,14 @@ pub(crate) fn credential_model_to_credential_dto(
     // Missing organisation here.
     credentials
         .into_iter()
-        .map(|credential| credential_detail_response_from_model(credential, config, None, None))
+        .map(|credential| {
+            credential_detail_response_from_model(
+                credential,
+                config,
+                None,
+                CredentialAttestationBlobs::default(),
+            )
+        })
         .collect::<Result<Vec<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>>, _>>()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
 }

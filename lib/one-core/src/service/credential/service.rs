@@ -11,7 +11,6 @@ use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::mapper::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::mapper::list_response_try_into;
 use crate::mapper::oidc::detect_format_with_crypto_suite;
-use crate::model::blob::Blob;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -36,9 +35,9 @@ use crate::provider::revocation::model::{
 use crate::repository::error::DataLayerError;
 use crate::service::credential::CredentialService;
 use crate::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialRevocationCheckResponseDTO,
-    DetailCredentialClaimResponseDTO, GetCredentialListResponseDTO, GetCredentialQueryDTO,
-    SuspendCredentialRequestDTO,
+    CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
+    CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
+    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
 };
 use crate::service::credential::mapper::{claims_from_create_request, from_create_request};
 use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
@@ -333,14 +332,13 @@ impl CredentialService {
             _ => None,
         };
 
-        let wallet_unit_attestation_blob =
-            self.get_wallet_unit_attestation_blob(&credential).await?;
+        let attestation_blobs = self.get_wallet_attestation_blobs(&credential).await?;
 
         let mut response = credential_detail_response_from_model(
             credential,
             &self.config,
             mdoc_validity_credentials,
-            wallet_unit_attestation_blob,
+            attestation_blobs,
         )?;
 
         if response.schema.revocation_method == "LVVC" {
@@ -357,33 +355,39 @@ impl CredentialService {
         Ok(response)
     }
 
-    async fn get_wallet_unit_attestation_blob(
+    async fn get_wallet_attestation_blobs(
         &self,
         credential: &Credential,
-    ) -> Result<Option<Blob>, ServiceError> {
-        Ok(
-            if let Some(wallet_unit_attestation_blob_id) =
-                credential.wallet_unit_attestation_blob_id.as_ref()
-            {
-                let db_blob_storage = self
-                    .blob_storage_provider
-                    .get_blob_storage(BlobStorageType::Db)
-                    .await
-                    .ok_or_else(|| {
-                        MissingProviderError::BlobStorage(BlobStorageType::Db.to_string())
-                    })?;
-                let wallet_unit_attestation_blob = db_blob_storage
-                    .get(wallet_unit_attestation_blob_id)
-                    .await?
-                    .ok_or(ServiceError::MappingError(
-                        "wallet unit attestation blob is None".to_string(),
-                    ))?;
+    ) -> Result<CredentialAttestationBlobs, ServiceError> {
+        if credential.wallet_app_attestation_blob_id.is_none()
+            && credential.wallet_unit_attestation_blob_id.is_none()
+        {
+            return Ok(CredentialAttestationBlobs::default());
+        }
 
-                Some(wallet_unit_attestation_blob)
-            } else {
-                None
-            },
-        )
+        let db_blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
+
+        let wallet_app_attestation_blob = match &credential.wallet_app_attestation_blob_id {
+            Some(blob_id) => Some(db_blob_storage.get(blob_id).await?.ok_or(
+                ServiceError::MappingError("wallet app attestation blob is None".to_string()),
+            )?),
+            None => None,
+        };
+        let wallet_unit_attestation_blob = match &credential.wallet_unit_attestation_blob_id {
+            Some(blob_id) => Some(db_blob_storage.get(blob_id).await?.ok_or(
+                ServiceError::MappingError("wallet unit attestation blob is None".to_string()),
+            )?),
+            None => None,
+        };
+
+        Ok(CredentialAttestationBlobs {
+            wallet_app_attestation_blob,
+            wallet_unit_attestation_blob,
+        })
     }
 
     /// Returns list of credentials according to query

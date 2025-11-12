@@ -8,6 +8,7 @@ use shared_types::{
 use strum::AsRefStr;
 use time::OffsetDateTime;
 
+use crate::model::blob::Blob;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{
     CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
@@ -69,6 +70,7 @@ pub struct CredentialDetailResponseDTO<T> {
     pub protocol: String,
     pub profile: Option<String>,
     pub wallet_app_attestation: Option<WalletAppAttestationDTO>,
+    pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -76,6 +78,12 @@ pub struct CredentialDetailResponseDTO<T> {
 pub struct WalletAppAttestationDTO {
     pub name: String,
     pub link: String,
+    pub attestation: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletUnitAttestationDTO {
     pub attestation: String,
 }
 
@@ -192,4 +200,10 @@ pub struct CredentialRevocationCheckResponseDTO {
     pub status: CredentialStateEnum,
     pub success: bool,
     pub reason: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CredentialAttestationBlobs {
+    pub wallet_app_attestation_blob: Option<Blob>,
+    pub wallet_unit_attestation_blob: Option<Blob>,
 }

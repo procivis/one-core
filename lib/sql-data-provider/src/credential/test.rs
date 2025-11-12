@@ -348,6 +348,7 @@ async fn test_create_credential_success() {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            wallet_app_attestation_blob_id: None,
         })
         .await;
 
@@ -398,6 +399,7 @@ async fn test_create_credential_empty_claims() {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            wallet_app_attestation_blob_id: None,
         })
         .await;
 
@@ -462,6 +464,7 @@ async fn test_create_credential_already_exists() {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            wallet_app_attestation_blob_id: None,
         })
         .await;
 
@@ -535,6 +538,7 @@ async fn test_delete_credential_failed_not_found() {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            wallet_app_attestation_blob_id: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));

@@ -3,6 +3,7 @@ use one_core::service::credential::dto::{
     CredentialRevocationCheckResponseDTO, CredentialRole, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO, WalletAppAttestationDTO,
+    WalletUnitAttestationDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -131,6 +132,8 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// attestation serves as proof that the wallet app instance is a
     /// legitimate installation and may be required by some credential schemas.
     pub wallet_app_attestation: Option<WalletAppAttestationRestDTO>,
+
+    pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
@@ -139,6 +142,13 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
 pub struct WalletAppAttestationRestDTO {
     name: String,
     link: String,
+    attestation: String,
+}
+
+#[derive(Debug, Serialize, ToSchema, From)]
+#[from(WalletUnitAttestationDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct WalletUnitAttestationRestDTO {
     attestation: String,
 }
 

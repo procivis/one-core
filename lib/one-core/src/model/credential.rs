@@ -30,6 +30,7 @@ pub struct Credential {
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_app_attestation_blob_id: Option<BlobId>,
 
     // Relations:
     pub claims: Option<Vec<Claim>>,
@@ -87,6 +88,7 @@ pub struct UpdateCredentialRequest {
     pub state: Option<CredentialStateEnum>,
     pub suspend_end_date: Clearable<Option<OffsetDateTime>>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_app_attestation_blob_id: Option<BlobId>,
 
     pub claims: Option<Vec<Claim>>,
     pub credential_blob_id: Option<BlobId>,

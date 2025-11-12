@@ -5,7 +5,10 @@ use shared_types::CredentialId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::dto::{DetailCredentialSchemaResponseDTO, WalletAppAttestationDTO};
+use super::dto::{
+    CredentialAttestationBlobs, DetailCredentialSchemaResponseDTO, WalletAppAttestationDTO,
+    WalletUnitAttestationDTO,
+};
 use crate::config::core_config::{CoreConfig, DatatypeType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::blob::{Blob, BlobType};
@@ -28,7 +31,7 @@ pub fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
     validity_credential: Option<ValidityCredential>,
-    wallet_unit_attestation_blob: Option<Blob>,
+    attestation: CredentialAttestationBlobs,
 ) -> Result<CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>, ServiceError> {
     let schema = value.schema.ok_or(ServiceError::MappingError(
         "credential_schema is None".to_string(),
@@ -78,7 +81,12 @@ pub fn credential_detail_response_from_model(
         protocol: value.protocol,
         issuer_certificate,
         profile: value.profile,
-        wallet_app_attestation: wallet_unit_attestation_blob
+        wallet_app_attestation: attestation
+            .wallet_app_attestation_blob
+            .map(TryInto::try_into)
+            .transpose()?,
+        wallet_unit_attestation: attestation
+            .wallet_unit_attestation_blob
             .map(TryInto::try_into)
             .transpose()?,
     })
@@ -363,6 +371,7 @@ pub(super) fn from_create_request(
         profile: request.profile,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     }
 }
 
@@ -512,5 +521,22 @@ impl TryFrom<Blob> for WalletAppAttestationDTO {
             ServiceError::MappingError(format!("Failed to parse wallet app attestation blob: {e}"))
         })?;
         Ok(wallet_app_attestation)
+    }
+}
+
+impl TryFrom<Blob> for WalletUnitAttestationDTO {
+    type Error = ServiceError;
+
+    fn try_from(value: Blob) -> Result<Self, Self::Error> {
+        if value.r#type != BlobType::WalletUnitAttestation {
+            return Err(ServiceError::MappingError(format!(
+                "Failed to parse parse wallet unit attestation blob of type: {:?}",
+                value.r#type
+            )));
+        }
+        let wallet_unit_attestation = serde_json::from_slice(&value.value).map_err(|e| {
+            ServiceError::MappingError(format!("Failed to parse wallet unit attestation blob: {e}"))
+        })?;
+        Ok(wallet_unit_attestation)
     }
 }

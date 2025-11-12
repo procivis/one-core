@@ -864,6 +864,7 @@ pub(crate) fn create_credential(
         interaction: Some(interaction),
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     }
 }
 

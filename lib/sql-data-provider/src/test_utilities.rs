@@ -84,6 +84,7 @@ pub async fn insert_credential(
         profile: Set(None),
         credential_blob_id: Set(Some(credential_blob_id)),
         wallet_unit_attestation_blob_id: Set(None),
+        wallet_app_attestation_blob_id: Set(None),
     }
     .insert(db)
     .await?;

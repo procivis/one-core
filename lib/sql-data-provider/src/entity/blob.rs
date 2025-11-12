@@ -39,4 +39,6 @@ pub enum BlobType {
     Proof,
     #[sea_orm(string_value = "WALLET_APP_ATTESTATION")]
     WalletAppAttestation,
+    #[sea_orm(string_value = "WALLET_UNIT_ATTESTATION")]
+    WalletUnitAttestation,
 }

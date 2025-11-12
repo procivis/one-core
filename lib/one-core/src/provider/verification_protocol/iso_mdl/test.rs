@@ -452,6 +452,7 @@ async fn test_get_presentation_definition_ok() {
                 profile: None,
                 credential_blob_id: None,
                 wallet_unit_attestation_blob_id: None,
+                wallet_app_attestation_blob_id: None,
             }])
         });
 

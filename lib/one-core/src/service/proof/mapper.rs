@@ -26,7 +26,7 @@ use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::ServiceError;
@@ -221,7 +221,7 @@ pub(super) async fn get_verifier_proof_detail(
             credential,
             config,
             mdoc_validity_credentials,
-            None,
+            CredentialAttestationBlobs::default(),
         )?;
 
         credential_for_credential_schema.insert(credential_schema.id, credential_detail);
@@ -624,7 +624,7 @@ pub(super) async fn get_holder_proof_detail(
                         credential.clone(),
                         config,
                         mdoc_validity_credentials,
-                        None,
+                        CredentialAttestationBlobs::default(),
                     )?,
                     credential_schema.clone(),
                 ));

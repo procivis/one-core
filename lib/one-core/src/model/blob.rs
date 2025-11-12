@@ -34,4 +34,5 @@ pub enum BlobType {
     Credential,
     Proof,
     WalletAppAttestation,
+    WalletUnitAttestation,
 }

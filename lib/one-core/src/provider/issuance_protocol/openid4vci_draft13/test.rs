@@ -311,6 +311,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     }
 }
 

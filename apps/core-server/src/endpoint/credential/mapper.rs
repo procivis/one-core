@@ -209,6 +209,7 @@ impl<IN, OUT: From<IN>> TryFrom<CredentialDetailResponseDTO<IN>>
             protocol: value.protocol,
             profile: value.profile,
             wallet_app_attestation: convert_inner(value.wallet_app_attestation),
+            wallet_unit_attestation: convert_inner(value.wallet_unit_attestation),
         })
     }
 }

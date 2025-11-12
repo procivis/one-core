@@ -542,6 +542,7 @@ pub(crate) fn extracted_credential_to_model(
             interaction: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            wallet_app_attestation_blob_id: None,
         },
         issuer_details,
         holder_details,
@@ -702,6 +703,7 @@ pub(crate) async fn credential_from_proved(
         wallet_unit_attestation_blob_id: proved_credential
             .credential
             .wallet_unit_attestation_blob_id,
+        wallet_app_attestation_blob_id: proved_credential.credential.wallet_app_attestation_blob_id,
     })
 }
 

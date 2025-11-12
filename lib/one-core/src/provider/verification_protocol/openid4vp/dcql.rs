@@ -28,7 +28,7 @@ use crate::provider::verification_protocol::dto::{
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::mapper::credential_model_to_credential_dto;
 use crate::service::credential::dto::{
-    CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
+    CredentialAttestationBlobs, CredentialDetailResponseDTO, DetailCredentialClaimResponseDTO,
     DetailCredentialClaimValueResponseDTO,
 };
 use crate::service::credential::mapper::credential_detail_response_from_model;
@@ -262,7 +262,10 @@ pub(crate) async fn get_presentation_definition_v2(
                 continue;
             };
             let credential_detail_dto = credential_detail_response_from_model(
-                candidate, config, None, None,
+                candidate,
+                config,
+                None,
+                CredentialAttestationBlobs::default(),
             )
             .map_err(|err| {
                 VerificationProtocolError::Failed(format!("Failed to map credential to DTO: {err}"))
@@ -350,6 +353,7 @@ fn map_to_filtered_dto(
         protocol: full_dto.protocol,
         profile: full_dto.profile,
         wallet_app_attestation: None,
+        wallet_unit_attestation: None,
     }
 }
 

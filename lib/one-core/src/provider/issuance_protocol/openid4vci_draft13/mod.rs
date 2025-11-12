@@ -98,6 +98,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_draft13::service::credentials_format;
@@ -1193,9 +1194,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
         ))?;
 
         // TODO - remove organisation usage from here when moved to open core
-        let credential_detail =
-            credential_detail_response_from_model(credential.clone(), &self.config, None, None)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        let credential_detail = credential_detail_response_from_model(
+            credential.clone(),
+            &self.config,
+            None,
+            CredentialAttestationBlobs::default(),
+        )
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let additional_contexts = revocation_method
             .get_json_ld_context()

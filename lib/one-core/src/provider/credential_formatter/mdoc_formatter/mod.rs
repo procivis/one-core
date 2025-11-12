@@ -511,6 +511,7 @@ impl CredentialFormatter for MdocFormatter {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
+            wallet_app_attestation_blob_id: None,
             issuer_certificate: issuer_identifier
                 .certificates
                 .as_ref()

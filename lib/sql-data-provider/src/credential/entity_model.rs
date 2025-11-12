@@ -21,6 +21,7 @@ pub(super) struct CredentialListEntityModel {
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_app_attestation_blob_id: Option<BlobId>,
 
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,

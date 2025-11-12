@@ -367,6 +367,7 @@ impl CredentialRepository for CredentialProvider {
             convert_inner(key_id),
             request.credential_blob_id,
             request.wallet_unit_attestation_blob_id,
+            request.wallet_app_attestation_blob_id,
         )
         .insert(&self.db)
         .await
@@ -526,6 +527,11 @@ impl CredentialRepository for CredentialProvider {
             Some(blob_id) => Set(Some(blob_id)),
         };
 
+        let wallet_app_attestation_blob_id = match request.wallet_app_attestation_blob_id {
+            None => Unchanged(Default::default()),
+            Some(blob_id) => Set(Some(blob_id)),
+        };
+
         let update_model = credential::ActiveModel {
             id: Unchanged(credential_id),
             last_modified: Set(OffsetDateTime::now_utc()),
@@ -540,6 +546,7 @@ impl CredentialRepository for CredentialProvider {
             state,
             credential_blob_id,
             wallet_unit_attestation_blob_id,
+            wallet_app_attestation_blob_id,
             ..Default::default()
         };
 

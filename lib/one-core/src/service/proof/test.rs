@@ -673,6 +673,7 @@ async fn test_get_proof_with_array_holder() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -944,6 +945,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1230,6 +1232,7 @@ async fn test_get_proof_with_object_array_holder() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1490,6 +1493,7 @@ async fn test_get_proof_with_array() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1767,6 +1771,7 @@ async fn test_get_proof_with_array_in_object() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -2060,6 +2065,7 @@ async fn test_get_proof_with_object_array() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     let proof = Proof {

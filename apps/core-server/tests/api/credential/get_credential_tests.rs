@@ -48,7 +48,7 @@ async fn test_get_credential_success() {
             &identifier,
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
-                wallet_unit_attestation_blob_id: Some(wallet_app_attestation_blob.id),
+                wallet_app_attestation_blob_id: Some(wallet_app_attestation_blob.id),
                 ..Default::default()
             },
         )

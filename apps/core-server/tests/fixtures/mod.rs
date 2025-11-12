@@ -657,6 +657,7 @@ pub struct TestingCredentialParams {
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
+    pub wallet_app_attestation_blob_id: Option<BlobId>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -710,6 +711,7 @@ pub async fn create_credential(
         profile: None,
         credential_blob_id: params.credential_blob_id,
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
+        wallet_app_attestation_blob_id: params.wallet_app_attestation_blob_id,
     };
 
     data_layer

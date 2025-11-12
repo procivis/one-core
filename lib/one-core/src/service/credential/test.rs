@@ -217,6 +217,7 @@ fn generic_credential() -> Credential {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     }
 }
 
@@ -286,6 +287,7 @@ fn generic_credential_list_entity() -> Credential {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     }
 }
 
@@ -3928,6 +3930,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     {
@@ -4495,6 +4498,7 @@ async fn test_get_credential_success_array_index_sorting() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     {
@@ -4811,6 +4815,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     {
@@ -5030,6 +5035,7 @@ async fn test_get_credential_success_array_single_element() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
+        wallet_app_attestation_blob_id: None,
     };
 
     {

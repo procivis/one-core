@@ -50,6 +50,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::Sessi
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
 use crate::provider::verification_protocol::openid4vp::mapper::key_and_did_from_formatted_creds;
+use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
@@ -397,13 +398,17 @@ impl VerificationProtocol for IsoMdl {
                 if credential_claim_requested {
                     applicable_credentials.push(credential.id);
 
-                    let credential =
-                        credential_detail_response_from_model(credential, &self.config, None, None)
-                            .map_err(|err| {
-                                VerificationProtocolError::Failed(format!(
-                                    "Credential model mapping error: {err}"
-                                ))
-                            })?;
+                    let credential = credential_detail_response_from_model(
+                        credential,
+                        &self.config,
+                        None,
+                        CredentialAttestationBlobs::default(),
+                    )
+                    .map_err(|err| {
+                        VerificationProtocolError::Failed(format!(
+                            "Credential model mapping error: {err}"
+                        ))
+                    })?;
                     relevant_credentials.push(credential);
                 }
             }
