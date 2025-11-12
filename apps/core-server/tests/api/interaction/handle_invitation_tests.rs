@@ -2049,6 +2049,24 @@ async fn test_handle_invitation_authorization_code() {
         .mount(&mock_server)
         .await;
 
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/openid-credential-issuer"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{issuer}/credential"),
+                "credential_issuer": issuer,
+                "credential_configurations_supported": {
+                    "test": {
+                        "format": "vc+sd-jwt",
+                        "vct": "vct",
+                    }
+              }
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
     let credential_offer = json!({
         "credential_issuer": issuer,
         "credential_configuration_ids": [
@@ -2110,6 +2128,24 @@ async fn test_handle_invitation_authorization_code_issuer_state() {
             {
                 "issuer": issuer,
                 "authorization_endpoint": authorization_endpoint,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::GET))
+        .and(path("/.well-known/openid-credential-issuer"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credential_endpoint": format!("{issuer}/credential"),
+                "credential_issuer": issuer,
+                "credential_configurations_supported": {
+                    "test": {
+                        "format": "vc+sd-jwt",
+                        "vct": "vct",
+                    }
+              }
             }
         )))
         .expect(1)
@@ -2408,7 +2444,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
 
     // WHEN
     let credential_offer = serde_json::to_string(&credential_offer).unwrap();
-    let mut credential_offer_url: Url = "openid-credential-offer-final1://".parse().unwrap();
+    let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
     credential_offer_url
         .query_pairs_mut()
         .append_pair("credential_offer", &credential_offer);

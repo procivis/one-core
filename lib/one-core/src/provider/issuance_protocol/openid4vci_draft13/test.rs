@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use assert2::let_assert;
 use indexmap::IndexMap;
-use mockall::predicate;
+use mockall::predicate::{self, eq};
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
@@ -32,6 +32,8 @@ use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
+use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
+use crate::provider::caching_loader::{CacheError, ResolverError};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
@@ -76,6 +78,7 @@ use crate::service::test_utilities::{
 #[derive(Default)]
 struct TestInputs {
     pub credential_repository: MockCredentialRepository,
+    pub metadata_cache: MockOpenIDMetadataFetcher,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_provider: MockRevocationMethodProvider,
@@ -92,6 +95,7 @@ struct TestInputs {
 fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
     OpenID4VCI13::new(
         Arc::new(ReqwestClient::default()),
+        Arc::new(inputs.metadata_cache),
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
@@ -1374,10 +1378,8 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     issuer_did: Option<String>,
     openid_configuration_enabled: bool,
 ) {
-    let mock_server = MockServer::start().await;
-    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
     let credential_schema_id = credential.schema.clone().unwrap().id;
-    let credential_issuer = format!("{issuer_url}ssi/openid4vci/draft-13/{credential_schema_id}");
+    let credential_issuer = format!("http://issuer/ssi/openid4vci/draft-13/{credential_schema_id}");
 
     let mut credential_offer = json!({
         "credential_issuer": credential_issuer,
@@ -1402,23 +1404,27 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             .insert("issuer_did".into(), Value::String(issuer_did.to_owned()));
     };
 
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/openid4vci/draft-13/{}/offer/{}",
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+    metadata_cache
+        .expect_get()
+        .with(eq(format!(
+            "http://issuer/ssi/openid4vci/draft-13/{}/offer/{}",
             credential_schema_id, credential.id
         )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+        .once()
+        .returning(move |_| Ok(credential_offer.to_string().into_bytes()));
+
     if openid_configuration_enabled {
         let token_endpoint = format!("{credential_issuer}/token");
-        Mock::given(method(Method::GET))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
+        metadata_cache
+            .expect_get()
+            .with(eq(format!(
+                "http://issuer/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
             )))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-                {
+            .once()
+            .returning({
+                    let credential_issuer = credential_issuer.clone();
+                    move |_| Ok(json!({
                     "authorization_endpoint": format!("{credential_issuer}/authorize"),
                     "grant_types_supported": [
                         "urn:ietf:params:oauth:grant-type:pre-authorized_code"
@@ -1434,26 +1440,24 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
                     ],
                     "token_endpoint": token_endpoint
                 }
-            )))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+            ).to_string().into_bytes())});
     } else {
-        Mock::given(method(Method::GET))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
+        metadata_cache
+            .expect_get()
+            .with(eq(format!(
+                "http://issuer/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
             )))
-            .respond_with(ResponseTemplate::new(404))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+            .once()
+            .returning( |_| Err(CacheError::Resolver(ResolverError::InvalidResponse("".to_string()))));
     }
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
-        )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
+
+    metadata_cache
+            .expect_get()
+            .with(eq(format!(
+                "http://issuer/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+            )))
+            .once()
+            .returning(move |_| Ok(json!({
                 "credential_endpoint": format!("{credential_issuer}/credential"),
                 "credential_issuer": credential_issuer,
                 "credential_configurations_supported": {
@@ -1470,12 +1474,8 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
                         },
                         "format": "vc+sd-jwt",
                     }
-              }
-            }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+                }
+            }).to_string().into_bytes()));
 
     let capture_integration_id = Arc::new(Mutex::new(None));
     storage_proxy
@@ -1509,10 +1509,11 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             })
         });
 
-    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Fdraft-13%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
+    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fissuer%2Fssi%2Fopenid4vci%2Fdraft-13%2F{credential_schema_id}%2Foffer%2F{}", credential.id)).unwrap();
 
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
+        metadata_cache,
         ..Default::default()
     });
     let result = protocol
@@ -1554,77 +1555,86 @@ async fn inner_continue_issuance_test(
     let mut storage_proxy = MockStorageProxy::default();
     let credential = generic_credential_did();
 
-    let mock_server = MockServer::start().await;
-    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
     let credential_schema_id = credential.schema.clone().unwrap().id;
-    let credential_issuer = format!("{issuer_url}ssi/openid4vci/draft-13/{credential_schema_id}");
+    let credential_issuer = format!("http://issuer/ssi/openid4vci/draft-13/{credential_schema_id}");
 
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+
+    let auth_server_metadata_url =
+        format!("{credential_issuer}/.well-known/oauth-authorization-server");
     if openid_configuration_enabled {
-        let token_endpoint = format!("{credential_issuer}/token");
-        Mock::given(method(Method::GET))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
-            )))
-            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-                {
-                    "authorization_endpoint": format!("{credential_issuer}/authorize"),
-                    "grant_types_supported": [
-                        "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-                    ],
-                    "id_token_signing_alg_values_supported": [],
-                    "issuer": credential_issuer,
-                    "jwks_uri": format!("{credential_issuer}/jwks"),
-                    "response_types_supported": [
-                        "token"
-                    ],
-                    "subject_types_supported": [
-                        "public"
-                    ],
-                    "token_endpoint": token_endpoint
+        metadata_cache
+            .expect_get()
+            .with(eq(auth_server_metadata_url))
+            .once()
+            .returning({
+                let credential_issuer = credential_issuer.clone();
+                move |_| {
+                    Ok(json!({
+                        "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                        "grant_types_supported": [
+                            "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                        ],
+                        "id_token_signing_alg_values_supported": [],
+                        "issuer": credential_issuer,
+                        "jwks_uri": format!("{credential_issuer}/jwks"),
+                        "response_types_supported": [
+                            "token"
+                        ],
+                        "subject_types_supported": [
+                            "public"
+                        ],
+                        "token_endpoint": format!("{credential_issuer}/token")
+                    })
+                    .to_string()
+                    .into_bytes())
                 }
-            )))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+            });
     } else {
-        Mock::given(method(Method::GET))
-            .and(path(format!(
-                "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/oauth-authorization-server"
-            )))
-            .respond_with(ResponseTemplate::new(404))
-            .expect(1)
-            .mount(&mock_server)
-            .await;
+        metadata_cache
+            .expect_get()
+            .with(eq(auth_server_metadata_url))
+            .once()
+            .returning(|_| {
+                Err(CacheError::Resolver(ResolverError::InvalidResponse(
+                    "".to_string(),
+                )))
+            });
     }
-    Mock::given(method(Method::GET))
-        .and(path(format!(
-            "/ssi/openid4vci/draft-13/{credential_schema_id}/.well-known/openid-credential-issuer"
+
+    metadata_cache
+        .expect_get()
+        .with(eq(format!(
+            "{credential_issuer}/.well-known/openid-credential-issuer"
         )))
-        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
-            {
-                "credential_endpoint": format!("{credential_issuer}/credential"),
-                "credential_issuer": credential_issuer,
-                "credential_configurations_supported": {
-                    credential_schema_id.to_string(): {
-                        "credential_definition": {
-                            "type": [
-                                "VerifiableCredential"
-                            ],
-                            "credentialSubject" : {
-                                "address": {
-                                    "value_type": "STRING",
+        .once()
+        .returning({
+            let credential_issuer = credential_issuer.clone();
+            move |_| {
+                Ok(json!({
+                    "credential_endpoint": format!("{credential_issuer}/credential"),
+                    "credential_issuer": credential_issuer,
+                    "credential_configurations_supported": {
+                        credential_schema_id.to_string(): {
+                            "credential_definition": {
+                                "type": [
+                                    "VerifiableCredential"
+                                ],
+                                "credentialSubject" : {
+                                    "address": {
+                                        "value_type": "STRING",
+                                    }
                                 }
-                            }
-                        },
-                        "format": "vc+sd-jwt",
-                        "scope": "testScope",
-                    }
-              }
+                            },
+                            "format": "vc+sd-jwt",
+                            "scope": "testScope",
+                        }
+                  }
+                })
+                .to_string()
+                .into_bytes())
             }
-        )))
-        .expect(1)
-        .mount(&mock_server)
-        .await;
+        });
 
     storage_proxy
         .expect_create_credential()
@@ -1653,6 +1663,7 @@ async fn inner_continue_issuance_test(
 
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
+        metadata_cache,
         ..Default::default()
     });
 
@@ -2400,23 +2411,73 @@ fn test_extract_offered_claims_opt_object_opt_obj_present_man_root_field_missing
     assert!(extract_offered_claims(&schema, Uuid::new_v4().into(), &claim_keys).is_err())
 }
 
+fn dummy_issuer_metadata() -> Vec<u8> {
+    json!({
+        "credential_endpoint": "http://base_url/credential",
+        "credential_issuer": "http://base_url",
+        "credential_configurations_supported": {
+            "id": {
+                "credential_definition": {
+                    "type": [
+                        "VerifiableCredential"
+                    ],
+                    "credentialSubject" : {
+                        "address": {
+                            "value_type": "STRING",
+                        }
+                    }
+                },
+                "format": "vc+sd-jwt",
+            }
+      }
+    })
+    .to_string()
+    .into_bytes()
+}
+
+fn dummy_offer() -> Vec<u8> {
+    json!({
+        "credential_issuer": "http://base_url",
+        "credential_configuration_ids" : ["id"],
+        "grants": {
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965"
+            }
+        },
+    })
+    .to_string()
+    .into_bytes()
+}
+
 #[tokio::test]
 async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     let url_scheme = "my-custom-scheme";
 
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+    metadata_cache
+        .expect_get()
+        .with(eq("http://base_url/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965/offer/c322aa7f-9803-410d-b891-939b279fb965"))
+        .returning(|_| Ok(dummy_offer()));
+
+    metadata_cache
+        .expect_get()
+        .with(eq("http://base_url/.well-known/openid-credential-issuer"))
+        .returning(|_| Ok(dummy_issuer_metadata()));
+
     let protocol = setup_protocol(TestInputs {
         params: Some(test_params(url_scheme)),
+        metadata_cache,
         ..Default::default()
     });
 
     let test_url = format!(
         "{url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
     );
-    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()))
+    assert!(protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }
 
-#[test]
-fn test_can_handle_issuance_fail_with_custom_url_scheme() {
+#[tokio::test]
+async fn test_can_handle_issuance_fail_with_custom_url_scheme() {
     let url_scheme = "my-custom-scheme";
     let other_url_scheme = "my-different-scheme";
 
@@ -2428,11 +2489,11 @@ fn test_can_handle_issuance_fail_with_custom_url_scheme() {
     let test_url = format!(
         "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
     );
-    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }
 
-#[test]
-fn test_can_handle_presentation_fail_with_custom_url_scheme() {
+#[tokio::test]
+async fn test_can_handle_presentation_fail_with_custom_url_scheme() {
     let other_url_scheme = "my-different-scheme";
 
     let protocol = setup_protocol(TestInputs {
@@ -2443,7 +2504,7 @@ fn test_can_handle_presentation_fail_with_custom_url_scheme() {
     let test_url = format!(
         "{other_url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
     );
-    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()))
+    assert!(!protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }
 
 #[tokio::test]

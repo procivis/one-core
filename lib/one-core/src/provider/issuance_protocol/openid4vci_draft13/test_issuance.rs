@@ -26,6 +26,7 @@ use crate::model::validity_credential::{ValidityCredential, ValidityCredentialTy
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
+use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialStatus, MockSignatureProvider};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -164,6 +165,7 @@ async fn test_issuer_submit_succeeds() {
 
     let provider = OpenID4VCI13::new(
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(formatter_provider),
@@ -312,6 +314,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 
     let service = OpenID4VCI13::new(
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
@@ -448,6 +451,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
 
     let service = OpenID4VCI13::new(
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
@@ -541,6 +545,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
 
     let service = OpenID4VCI13::new(
         Arc::new(MockHttpClient::new()),
+        Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
         Arc::new(validity_credential_repository),
         Arc::new(MockCredentialFormatterProvider::new()),

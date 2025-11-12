@@ -21,6 +21,9 @@ use one_core::provider::caching_loader::android_attestation_crl::{
 };
 use one_core::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
 use one_core::provider::caching_loader::json_schema::{JsonSchemaCache, JsonSchemaResolver};
+use one_core::provider::caching_loader::openid_metadata::{
+    OpenIDMetadataCache, OpenIDMetadataResolver,
+};
 use one_core::provider::caching_loader::trust_list::{TrustListCache, TrustListResolver};
 use one_core::provider::caching_loader::vct::{VctTypeMetadataCache, VctTypeMetadataResolver};
 use one_core::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
@@ -479,7 +482,7 @@ async fn initialize(
                 })
             };
 
-            let caching_loader = initialize_jsonld_cache_loader(
+            let json_ld_cache = initialize_jsonld_cache_loader(
                 core_config.cache_entities.to_owned(),
                 data_repository.to_owned(),
             );
@@ -505,7 +508,16 @@ async fn initialize(
             let trust_list_cache = Arc::new(
                 initialize_trust_list_cache(
                     &core_config.cache_entities,
-                    data_repository.get_remote_entity_cache_repository().clone(),
+                    data_repository.get_remote_entity_cache_repository(),
+                    client.clone(),
+                )
+                .await,
+            );
+
+            let openid_metadata_cache = Arc::new(
+                initialize_openid_metadata_cache(
+                    &core_config.cache_entities,
+                    data_repository.get_remote_entity_cache_repository(),
                     client.clone(),
                 )
                 .await,
@@ -520,7 +532,7 @@ async fn initialize(
                 Arc::new(initialize_android_key_attestation_crl_cache()?);
 
             let formatter_provider_creator: FormatterProviderCreator = {
-                let caching_loader = caching_loader.clone();
+                let json_ld_cache = json_ld_cache.clone();
                 let vct_type_metadata_cache = vct_type_metadata_cache.clone();
                 let client = client.clone();
                 Box::new(move |format_config, datatype_config, providers| {
@@ -565,7 +577,7 @@ async fn initialize(
                             }
                             FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new(
                                 crypto.clone(),
-                                caching_loader.clone(),
+                                json_ld_cache.clone(),
                                 client.clone(),
                             )) as _,
                             FormatType::SdJwt => {
@@ -604,7 +616,7 @@ async fn initialize(
                                 Arc::new(JsonLdClassic::new(
                                     params,
                                     crypto.clone(),
-                                    caching_loader.clone(),
+                                    json_ld_cache.clone(),
                                     datatype_provider.clone(),
                                     key_algorithm_provider.clone(),
                                     client.clone(),
@@ -620,7 +632,7 @@ async fn initialize(
                                     did_method_provider.clone(),
                                     datatype_provider.clone(),
                                     key_algorithm_provider.clone(),
-                                    caching_loader.clone(),
+                                    json_ld_cache.clone(),
                                     client.clone(),
                                 )) as _
                             }
@@ -661,7 +673,7 @@ async fn initialize(
                                 "JSON_LD_CLASSIC".to_owned(),
                                 Arc::new(LdpVpPresentationFormatter::new(
                                     crypto.clone(),
-                                    caching_loader.clone(),
+                                    json_ld_cache.clone(),
                                     client.clone(),
                                 )) as _,
                             ),
@@ -851,7 +863,7 @@ async fn initialize(
 
             OneCoreBuilder::new(core_config.clone())
                 .with_crypto(crypto)
-                .with_jsonld_caching_loader(caching_loader)
+                .with_jsonld_caching_loader(json_ld_cache)
                 .with_data_provider_creator(storage_creator)
                 .with_key_algorithm_provider(key_algo_creator)
                 .and_then(|b| b.with_certificate_validator(certificate_validator_creator))
@@ -867,6 +879,7 @@ async fn initialize(
                 .map(|b| b.with_json_schema_cache(json_schema_cache))
                 .map(|b| b.with_client(client))
                 .map(|b| b.with_trust_listcache(trust_list_cache))
+                .map(|b| b.with_openid_metadata_cache(openid_metadata_cache))
                 .and_then(|b| b.build())
                 .map_err(|err| SDKError::InitializationFailure(err.to_string()).into())
         }) as _
@@ -1144,6 +1157,36 @@ async fn initialize_trust_list_cache(
 
     TrustListCache::new(
         Arc::new(TrustListResolver::new(client)),
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
+}
+
+pub async fn initialize_openid_metadata_cache(
+    cache_entities_config: &CacheEntitiesConfig,
+    repo: Arc<dyn RemoteEntityCacheRepository>,
+    client: Arc<dyn HttpClient>,
+) -> OpenIDMetadataCache {
+    let config = cache_entities_config
+        .entities
+        .get("OPENID_METADATA")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(repo)),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    OpenIDMetadataCache::new(
+        Arc::new(OpenIDMetadataResolver::new(client)),
         storage,
         config.cache_size as usize,
         config.cache_refresh_timeout,

@@ -118,7 +118,6 @@ issuanceProtocol:
         keyAttestationLeeway: 60
         preAuthorizedCodeExpiresIn: 300
         tokenExpiresIn: 86400
-        urlScheme: openid-credential-offer-final1
         refreshExpiresIn: 7776000 # 90 days in seconds
         redirectUri:
           enabled: true
@@ -571,6 +570,11 @@ cacheEntities:
     cacheRefreshTimeout: 86400
     cacheSize: 1000
   TRUST_LIST:
+    cacheType: DB
+    refreshAfter: 300
+    cacheRefreshTimeout: 86400
+    cacheSize: 1000
+  OPENID_METADATA:
     cacheType: DB
     refreshAfter: 300
     cacheRefreshTimeout: 86400

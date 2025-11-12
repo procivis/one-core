@@ -18,6 +18,7 @@ use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::IssuanceProtocol;
@@ -73,6 +74,7 @@ impl OpenID4VCI13Swiyu {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         client: Arc<dyn HttpClient>,
+        metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -90,6 +92,7 @@ impl OpenID4VCI13Swiyu {
         Self {
             inner: OpenID4VCI13::new_with_custom_version(
                 client,
+                metadata_cache,
                 credential_repository,
                 validity_credential_repository,
                 formatter_provider,
@@ -111,8 +114,8 @@ impl OpenID4VCI13Swiyu {
 
 #[async_trait::async_trait]
 impl IssuanceProtocol for OpenID4VCI13Swiyu {
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        self.inner.holder_can_handle(url)
+    async fn holder_can_handle(&self, url: &Url) -> bool {
+        self.inner.holder_can_handle(url).await
     }
 
     async fn holder_handle_invitation(

@@ -11,7 +11,6 @@ use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::utilities::generate_alphanumeric;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
-use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 use shared_types::{
     BlobId, CertificateId, CredentialId, DidValue, HolderWalletUnitId, IdentifierId,
@@ -50,6 +49,7 @@ use crate::proto::certificate_validator::{
 use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::mapper::credential_data_from_credential_detail_response;
 use crate::provider::credential_formatter::mdoc_formatter;
 use crate::provider::credential_formatter::model::{
@@ -122,6 +122,7 @@ const CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY: &str = "credential_offer_uri";
 
 pub(crate) struct OpenID4VCI13 {
     client: Arc<dyn HttpClient>,
+    metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     credential_repository: Arc<dyn CredentialRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -142,6 +143,7 @@ impl OpenID4VCI13 {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         client: Arc<dyn HttpClient>,
+        metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -159,6 +161,7 @@ impl OpenID4VCI13 {
         let protocol_base_url = base_url.as_ref().map(|url| get_protocol_base_url(url));
         Self {
             client,
+            metadata_cache,
             credential_repository,
             validity_credential_repository,
             formatter_provider,
@@ -179,6 +182,7 @@ impl OpenID4VCI13 {
     #[allow(clippy::too_many_arguments)]
     pub fn new_with_custom_version(
         client: Arc<dyn HttpClient>,
+        metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -199,6 +203,7 @@ impl OpenID4VCI13 {
             .map(|url| format!("{url}/ssi/openid4vci/{protocol_version}"));
         Self {
             client,
+            metadata_cache,
             credential_repository,
             validity_credential_repository,
             formatter_provider,
@@ -803,12 +808,51 @@ impl OpenID4VCI13 {
 
 #[async_trait]
 impl IssuanceProtocol for OpenID4VCI13 {
-    fn holder_can_handle(&self, url: &Url) -> bool {
-        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
+    async fn holder_can_handle(&self, url: &Url) -> bool {
+        if self.params.url_scheme != url.scheme() {
+            return false;
+        }
 
-        self.params.url_scheme == url.scheme()
-            && (query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
-                || query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY))
+        let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
+        if !query_has_key(CREDENTIAL_OFFER_VALUE_QUERY_PARAM_KEY)
+            && !query_has_key(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY)
+        {
+            return false;
+        }
+
+        async {
+            let credential_offer =
+                resolve_credential_offer(self.metadata_cache.as_ref(), url.to_owned()).await?;
+            let credential_issuer: Url = credential_offer
+                .credential_issuer
+                .parse()
+                .map_err(|_| IssuanceProtocolError::Failed(Default::default()))?;
+            let metadata_url =
+                append_well_known(&credential_issuer, ".well-known/openid-credential-issuer")?;
+            let content = self
+                .metadata_cache
+                .fetch::<serde_json::Value>(&metadata_url)
+                .await
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+            // check whether metadata match expected structure
+            serde_json::from_value::<OpenID4VCIIssuerMetadataResponseDTO>(content.to_owned())
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+            // Try to detect fields specific for final-1 protocol
+            #[derive(Deserialize)]
+            struct Final1Fields {
+                #[expect(dead_code)]
+                nonce_endpoint: String,
+            }
+            if serde_json::from_value::<Final1Fields>(content).is_ok() {
+                Err(IssuanceProtocolError::Failed(Default::default()))
+            } else {
+                Ok(())
+            }
+        }
+        .await
+        .is_ok()
     }
 
     async fn holder_handle_invitation(
@@ -1355,17 +1399,11 @@ impl OpenID4VCI13 {
         storage_access: &StorageAccess,
         redirect_uri: Option<String>,
     ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
-        if !self.holder_can_handle(&url) {
-            return Err(IssuanceProtocolError::Failed(
-                "No OpenID4VC query params detected".to_string(),
-            ));
-        }
-
         handle_credential_invitation(
             url,
             organisation,
             protocol,
-            &*self.client,
+            &*self.metadata_cache,
             &*self.certificate_validator,
             storage_access,
             &*self.handle_invitation_operations,
@@ -1386,7 +1424,7 @@ impl OpenID4VCI13 {
             continue_issuance_dto,
             organisation,
             protocol,
-            &*self.client,
+            &*self.metadata_cache,
             storage_access,
             &*self.handle_invitation_operations,
             self.config.as_ref(),
@@ -1400,14 +1438,14 @@ async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
     protocol: IssuanceProtocolType,
-    client: &dyn HttpClient,
+    fetcher: &dyn OpenIDMetadataFetcher,
     certificate_validator: &dyn CertificateValidator,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     redirect_uri: Option<String>,
     config: &CoreConfig,
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
-    let credential_offer = resolve_credential_offer(client, invitation_url).await?;
+    let credential_offer = resolve_credential_offer(fetcher, invitation_url).await?;
 
     if let OpenID4VCIGrants::AuthorizationCode(authorization_code) = credential_offer.grants {
         let params = config
@@ -1439,7 +1477,7 @@ async fn handle_credential_invitation(
             })?;
 
             let (_, issuer_metadata) =
-                get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
+                get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
 
             if issuer_metadata
                 .authorization_servers
@@ -1555,7 +1593,7 @@ async fn handle_credential_invitation(
         })?;
 
     let (token_endpoint, issuer_metadata) =
-        get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
+        get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
 
     let (interaction_id, credentials, wallet_storage_type) =
         prepare_issuance_interaction_and_credentials_with_claims(
@@ -1594,7 +1632,7 @@ async fn handle_continue_issuance(
     continue_issuance_dto: ContinueIssuanceDTO,
     organisation: Organisation,
     protocol: IssuanceProtocolType,
-    client: &dyn HttpClient,
+    fetcher: &dyn OpenIDMetadataFetcher,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     config: &CoreConfig,
@@ -1611,7 +1649,7 @@ async fn handle_continue_issuance(
             })?;
 
     let (token_endpoint, issuer_metadata) =
-        get_discovery_and_issuer_metadata(client, &credential_issuer_endpoint).await?;
+        get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
 
     let scope_to_id: HashMap<&String, &String> = issuer_metadata
         .credential_configurations_supported
@@ -1844,7 +1882,7 @@ fn resolve_schema_id(credential_config: &OpenID4VCICredentialConfigurationData) 
 }
 
 async fn resolve_credential_offer(
-    client: &dyn HttpClient,
+    fetcher: &dyn OpenIDMetadataFetcher,
     invitation_url: Url,
 ) -> Result<OpenID4VCICredentialOfferDTO, IssuanceProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
@@ -1867,20 +1905,11 @@ async fn resolve_credential_offer(
             IssuanceProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
         })?;
 
-        Ok(client
-            .get(credential_offer_url.as_str())
-            .send()
+        Ok(fetcher
+            .fetch(credential_offer_url.as_str())
             .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .json()
             .map_err(|error| {
-                IssuanceProtocolError::Failed(format!(
-                    "Failed decoding credential offer json {error}"
-                ))
+                IssuanceProtocolError::Failed(format!("Failed decoding credential offer {error}"))
             })?)
     } else {
         Err(IssuanceProtocolError::Failed(
@@ -1889,78 +1918,61 @@ async fn resolve_credential_offer(
     }
 }
 
+fn append_well_known(credential_issuer: &Url, path: &str) -> Result<String, IssuanceProtocolError> {
+    let mut url = credential_issuer.to_owned();
+    url.path_segments_mut()
+        .map_err(move |_| {
+            IssuanceProtocolError::Failed(format!(
+                "Invalid credential_issuer URL: {credential_issuer}",
+            ))
+        })?
+        .extend(path.split("/"));
+
+    Ok(url.to_string())
+}
+
 async fn get_discovery_and_issuer_metadata(
-    client: &dyn HttpClient,
+    fetcher: &dyn OpenIDMetadataFetcher,
     credential_issuer_endpoint: &Url,
 ) -> Result<(String, OpenID4VCIIssuerMetadataResponseDTO), IssuanceProtocolError> {
-    async fn fetch<T: DeserializeOwned>(
-        client: &dyn HttpClient,
-        endpoint: String,
-    ) -> Result<T, IssuanceProtocolError> {
-        client
-            .get(&endpoint)
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(IssuanceProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(IssuanceProtocolError::Transport)
-    }
-
-    let append_url_path = |path: &str| {
-        let mut openid_configuration_url = credential_issuer_endpoint.to_owned();
-        openid_configuration_url
-            .path_segments_mut()
-            .map_err(|_| {
-                IssuanceProtocolError::Failed(format!(
-                    "Invalid credential_issuer_endpoint URL: {credential_issuer_endpoint}",
-                ))
-            })?
-            .extend(path.split("/"));
-
-        Ok(openid_configuration_url.to_string())
-    };
-
     let token_endpoint_future = async {
-        let url = append_url_path(".well-known/oauth-authorization-server")?;
-        let response = client
-            .get(&url)
-            .send()
-            .await
-            .context("send error")
-            .map_err(IssuanceProtocolError::Transport)?;
-
-        if response.status.0 == 404 {
-            // Fallback for https://datatracker.ietf.org/doc/html/rfc8414#section-3,
-            // since there is no specification where to obtain the token endpoint
-            // if the issuer is not providing .well-known/oauth-authorization-server
-            Ok(format!("{credential_issuer_endpoint}/token"))
-        } else {
-            let oidc_discovery: OAuthAuthorizationServerMetadata = response
-                .error_for_status()
-                .context("status error")
-                .map_err(IssuanceProtocolError::Transport)?
-                .json()
-                .context("parsing error")
-                .map_err(IssuanceProtocolError::Transport)?;
-            Ok(oidc_discovery
-                .token_endpoint
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing token endpoint".to_string(),
-                ))?
-                .to_string())
-        }
+        let url = append_well_known(
+            credential_issuer_endpoint,
+            ".well-known/oauth-authorization-server",
+        )?;
+        Ok(
+            if let Ok(oidc_discovery) = fetcher
+                .fetch::<OAuthAuthorizationServerMetadata>(&url)
+                .await
+            {
+                oidc_discovery
+                    .token_endpoint
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Missing token endpoint".to_string(),
+                    ))?
+                    .to_string()
+            } else {
+                // Fallback for https://datatracker.ietf.org/doc/html/rfc8414#section-3,
+                // since there is no specification where to obtain the token endpoint
+                // if the issuer is not providing .well-known/oauth-authorization-server
+                format!("{credential_issuer_endpoint}/token")
+            },
+        )
     };
 
-    let issuer_metadata = fetch(
-        client,
-        append_url_path(".well-known/openid-credential-issuer")?,
-    );
-    tokio::try_join!(token_endpoint_future, issuer_metadata)
+    let issuer_metadata_future = async {
+        let url = append_well_known(
+            credential_issuer_endpoint,
+            ".well-known/openid-credential-issuer",
+        )?;
+
+        fetcher
+            .fetch::<OpenID4VCIIssuerMetadataResponseDTO>(&url)
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
+    };
+
+    tokio::try_join!(token_endpoint_future, issuer_metadata_future)
 }
 
 async fn create_and_store_interaction(

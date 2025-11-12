@@ -38,6 +38,7 @@ use crate::provider::blob_storage_provider::{
 };
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::caching_loader::json_schema::JsonSchemaCache;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::caching_loader::trust_list::TrustListCache;
 use crate::provider::caching_loader::vct::VctTypeMetadataCache;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -241,6 +242,7 @@ pub struct OneCoreBuilder {
     vct_type_metadata_cache: Option<Arc<VctTypeMetadataCache>>,
     json_schema_cache: Option<Arc<JsonSchemaCache>>,
     trust_list_cache: Option<Arc<TrustListCache>>,
+    openid_metadata_cache: Option<Arc<dyn OpenIDMetadataFetcher>>,
     client: Option<Arc<dyn HttpClient>>,
 }
 
@@ -412,6 +414,11 @@ impl OneCoreBuilder {
         self
     }
 
+    pub fn with_openid_metadata_cache(mut self, cache: Arc<dyn OpenIDMetadataFetcher>) -> Self {
+        self.openid_metadata_cache = Some(cache);
+        self
+    }
+
     pub fn build(self) -> Result<OneCore, OneCoreBuildError> {
         OneCore::new(
             self.data_provider_creator
@@ -430,6 +437,10 @@ impl OneCoreBuilder {
             self.vct_type_metadata_cache
                 .ok_or(OneCoreBuildError::MissingRequiredField(
                     "VCT type metadata cache is required",
+                ))?,
+            self.openid_metadata_cache
+                .ok_or(OneCoreBuildError::MissingRequiredField(
+                    "OpenID Metadata cache is required",
                 ))?,
             self.trust_list_cache
                 .ok_or(OneCoreBuildError::MissingRequiredField(
@@ -453,6 +464,7 @@ impl OneCore {
         jsonld_caching_loader: Option<JsonLdCachingLoader>,
         client: Arc<dyn HttpClient>,
         vct_type_metadata_cache: Arc<VctTypeMetadataCache>,
+        openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         trust_list_cache: Arc<TrustListCache>,
     ) -> Result<OneCore, OneCoreBuildError> {
         // For now we will just put them here.
@@ -640,6 +652,7 @@ impl OneCore {
             did_method_provider.clone(),
             certificate_validator.clone(),
             client.clone(),
+            openid_metadata_cache.clone(),
             blob_storage_provider.clone(),
             credential_schema_importer_proto,
             credential_schema_import_parser,
@@ -667,7 +680,10 @@ impl OneCore {
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
 
         let config = Arc::new(core_config);
-        let issuance_provider = Arc::new(IssuanceProtocolProviderImpl::new(issuance_protocols));
+        let issuance_provider = Arc::new(IssuanceProtocolProviderImpl::new(
+            issuance_protocols,
+            config.issuance_protocol.to_owned(),
+        ));
 
         let verification_provider = Arc::new(VerificationProtocolProviderImpl::new(
             verification_protocols,

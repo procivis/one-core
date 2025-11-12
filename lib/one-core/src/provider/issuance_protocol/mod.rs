@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use dto::IssuanceProtocolCapabilities;
@@ -24,6 +24,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::caching_loader::vct::VctTypeMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -85,15 +86,13 @@ pub(crate) fn issuance_protocol_providers_from_config(
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
+    metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
 ) -> Result<HashMap<String, Arc<dyn IssuanceProtocol>>, ConfigValidationError> {
     let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
-
-    // URL schemes are used to select provider, hence must not be duplicated
-    let mut openid_url_schemes = HashSet::new();
 
     for (name, fields) in issuance_config.iter_mut() {
         let protocol: Arc<dyn IssuanceProtocol> = match fields.r#type {
@@ -104,14 +103,10 @@ pub(crate) fn issuance_protocol_providers_from_config(
                         key: name.to_owned(),
                         source,
                     })?;
-                validate_url_scheme_unique(
-                    &mut openid_url_schemes,
-                    name,
-                    params.url_scheme.to_string(),
-                )?;
 
                 Arc::new(OpenID4VCIFinal1_0::new(
                     client.clone(),
+                    metadata_cache.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
@@ -134,11 +129,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                         key: name.to_owned(),
                         source,
                     })?;
-                validate_url_scheme_unique(
-                    &mut openid_url_schemes,
-                    name,
-                    params.url_scheme.to_string(),
-                )?;
 
                 let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     vct_type_metadata_cache.clone(),
@@ -149,6 +139,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
 
                 Arc::new(OpenID4VCI13::new(
                     client.clone(),
+                    metadata_cache.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
@@ -171,7 +162,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                         key: name.to_owned(),
                         source,
                     })?;
-                validate_url_scheme_unique(&mut openid_url_schemes, name, "swiyu".to_string())?;
 
                 let handle_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     vct_type_metadata_cache.clone(),
@@ -182,6 +172,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
 
                 Arc::new(OpenID4VCI13Swiyu::new(
                     client.clone(),
+                    metadata_cache.clone(),
                     credential_repository.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
@@ -205,21 +196,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     Ok(providers)
 }
 
-fn validate_url_scheme_unique(
-    openid_url_schemes: &mut HashSet<String>,
-    name: &str,
-    scheme: String,
-) -> Result<(), ConfigValidationError> {
-    if openid_url_schemes.contains(&scheme) {
-        return Err(ConfigValidationError::DuplicateUrlScheme {
-            key: name.to_string(),
-            scheme,
-        });
-    }
-    openid_url_schemes.insert(scheme);
-    Ok(())
-}
-
 #[derive(Debug)]
 pub(crate) struct BasicSchemaData {
     pub id: String,
@@ -238,7 +214,7 @@ pub(crate) struct BuildCredentialSchemaResponse {
 pub(crate) trait IssuanceProtocol: Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the invitation URL.
-    fn holder_can_handle(&self, url: &Url) -> bool;
+    async fn holder_can_handle(&self, url: &Url) -> bool;
 
     /// For handling credential issuance, this method
     /// saves the offer information coming in.

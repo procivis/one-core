@@ -14,6 +14,8 @@ cacheEntities:
     cacheSize: 100
   TRUST_LIST:
     cacheSize: 100
+  OPENID_METADATA:
+    cacheSize: 100
 transport:
   BLE:
     type: "BLE"
