@@ -52,6 +52,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 }
 
 #[options_not_nullable]
@@ -86,6 +87,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 }
 
 #[options_not_nullable]
