@@ -3,7 +3,6 @@ use std::str::FromStr;
 use anyhow::Context;
 use futures::FutureExt;
 use futures::future::BoxFuture;
-use itertools::Itertools;
 use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, ProofId};
 use time::OffsetDateTime;
@@ -12,7 +11,7 @@ use uuid::Uuid;
 
 use super::ProofService;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
-use crate::mapper::{IdentifierRole, encode_cbor_base64, get_or_create_identifier};
+use crate::mapper::encode_cbor_base64;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -242,33 +241,6 @@ impl ProofService {
         .await
         {
             Ok((accept_proof_result, response)) => {
-                // store holder did on proof if it is not ambiguous
-                let holder_details = accept_proof_result
-                    .proved_credentials
-                    .iter()
-                    .map(|cred| &cred.holder_details)
-                    .all_equal_value()
-                    .ok();
-                let holder_identifier_id = if let Some(holder_details) = holder_details {
-                    let (identifier, ..) = get_or_create_identifier(
-                        self.did_method_provider.as_ref(),
-                        self.did_repository.as_ref(),
-                        self.certificate_repository.as_ref(),
-                        self.certificate_validator.as_ref(),
-                        self.key_repository.as_ref(),
-                        self.key_algorithm_provider.as_ref(),
-                        self.identifier_repository.as_ref(),
-                        &Some(organisation.to_owned()),
-                        holder_details,
-                        IdentifierRole::Holder,
-                    )
-                    .await?;
-
-                    Some(identifier.id)
-                } else {
-                    None
-                };
-
                 for proved_credential in accept_proof_result.proved_credentials {
                     let credential_id = proved_credential.credential.id;
                     let mdoc_mso = proved_credential.mdoc_mso.to_owned();
@@ -317,7 +289,6 @@ impl ProofService {
                         &proof.id,
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
-                            holder_identifier_id,
                             proof_blob_id: Some(Some(proof_blob_id)),
                             ..Default::default()
                         },

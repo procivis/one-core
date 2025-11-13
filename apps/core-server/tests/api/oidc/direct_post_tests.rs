@@ -188,22 +188,7 @@ async fn test_direct_post_one_credential_correct() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let proof_history = context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await;
-    assert_eq!(
-        proof_history
-            .values
-            .first()
-            .as_ref()
-            .unwrap()
-            .target
-            .as_ref()
-            .unwrap(),
-        &proof.holder_identifier.unwrap().id.to_string()
-    );
+    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(
@@ -333,22 +318,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let proof_history = context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await;
-    assert_eq!(
-        proof_history
-            .values
-            .first()
-            .as_ref()
-            .unwrap()
-            .target
-            .as_ref()
-            .unwrap(),
-        &proof.holder_identifier.unwrap().id.to_string()
-    );
+    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
 
@@ -1408,22 +1378,7 @@ async fn test_direct_post_draft25() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let proof_history = context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await;
-    assert_eq!(
-        proof_history
-            .values
-            .first()
-            .as_ref()
-            .unwrap()
-            .target
-            .as_ref()
-            .unwrap(),
-        &proof.holder_identifier.unwrap().id.to_string()
-    );
+    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(
@@ -1576,23 +1531,7 @@ async fn test_direct_post_with_profile_verification() {
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
-    let proof_history = context
-        .db
-        .histories
-        .get_by_entity_id(&proof.id.into())
-        .await;
-
-    assert_eq!(
-        proof_history
-            .values
-            .first()
-            .as_ref()
-            .unwrap()
-            .target
-            .as_ref()
-            .unwrap(),
-        &proof.holder_identifier.unwrap().id.to_string()
-    );
+    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(

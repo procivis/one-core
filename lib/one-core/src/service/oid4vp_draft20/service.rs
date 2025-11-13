@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use itertools::Itertools;
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, KeyId, ProofId};
@@ -13,9 +12,7 @@ use super::proof_request::generate_authorization_request_params_draft20;
 use crate::config::core_config::VerificationProtocolType::{
     OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
 };
-use crate::mapper::{
-    IdentifierRole, encode_cbor_base64, get_encryption_key_jwk_from_proof, get_or_create_identifier,
-};
+use crate::mapper::{encode_cbor_base64, get_encryption_key_jwk_from_proof};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -339,34 +336,6 @@ impl OID4VPDraft20Service {
         .await
         {
             Ok((accept_proof_result, response)) => {
-                // store holder did on proof if it is not ambiguous
-                let holder_details = accept_proof_result
-                    .proved_credentials
-                    .iter()
-                    .map(|cred| &cred.holder_details)
-                    .all_equal_value()
-                    .ok();
-
-                let holder_identifier_id = if let Some(holder_details) = holder_details {
-                    let (identifier, ..) = get_or_create_identifier(
-                        self.did_method_provider.as_ref(),
-                        self.did_repository.as_ref(),
-                        self.certificate_repository.as_ref(),
-                        self.certificate_validator.as_ref(),
-                        self.key_repository.as_ref(),
-                        self.key_algorithm_provider.as_ref(),
-                        self.identifier_repository.as_ref(),
-                        &Some(organisation.to_owned()),
-                        holder_details,
-                        IdentifierRole::Holder,
-                    )
-                    .await?;
-
-                    Some(identifier.id)
-                } else {
-                    None
-                };
-
                 for proved_credential in accept_proof_result.proved_credentials {
                     let credential_id = proved_credential.credential.id;
                     let mdoc_mso = proved_credential.mdoc_mso.to_owned();
@@ -415,7 +384,6 @@ impl OID4VPDraft20Service {
                         &proof.id,
                         UpdateProofRequest {
                             state: Some(ProofStateEnum::Accepted),
-                            holder_identifier_id,
                             proof_blob_id: Some(Some(proof_blob_id)),
                             ..Default::default()
                         },

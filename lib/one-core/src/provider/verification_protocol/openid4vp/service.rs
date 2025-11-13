@@ -25,7 +25,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{
-    CredentialClaim, DetailCredential, HolderBindingCtx, IdentifierDetails,
+    CredentialClaim, DetailCredential, HolderBindingCtx,
 };
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -296,8 +296,6 @@ async fn process_proof_submission_dcql_query(
             }
         };
 
-        // We expect that all presentations are signed by the same holder identifier
-        let mut holder_identifier: Option<IdentifierDetails> = None;
         for presentation_string in presentation_strings {
             let presentation_format = match dcql_credential_format {
                 // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
@@ -324,14 +322,6 @@ async fn process_proof_submission_dcql_query(
                 context.clone(),
             )
             .await?;
-
-            if holder_identifier.is_none() {
-                holder_identifier = issuer;
-            } else if holder_identifier != issuer {
-                return Err(OpenID4VCError::ValidationError(
-                    "Holder identifier mismatch".to_string(),
-                ));
-            }
 
             let lvvc_credential_expected = requested_credential_schema.revocation_method == "LVVC";
 
@@ -382,11 +372,9 @@ async fn process_proof_submission_dcql_query(
 
             for credential_token in non_lvvc_credentials {
                 let (credential, mso) = validate_credential(
-                    holder_identifier
-                        .as_ref()
-                        .ok_or(OpenID4VCError::ValidationError(
-                            "Presentation missing holder id".to_string(),
-                        ))?,
+                    issuer.as_ref().ok_or(OpenID4VCError::ValidationError(
+                        "Presentation missing holder id".to_string(),
+                    ))?,
                     &credential_token,
                     &lvvc_credentials,
                     proof_input_schema,
