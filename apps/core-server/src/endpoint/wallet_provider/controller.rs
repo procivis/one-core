@@ -83,7 +83,10 @@ pub(crate) async fn get_wallet_unit_details(
         ("bearer" = [])
     ),
     summary = "Revoke a wallet unit",
-    description = "Revokes a given wallet unit.",
+    description = indoc::formatdoc! {"
+        Revokes a wallet unit, preventing issuance of any new attestation. If Token
+        Status List is enabled for WUAs, all existing attestations are revoked as well.
+    "},
 )]
 #[require_permissions(Permission::WalletUnitRevoke)]
 pub(crate) async fn revoke_wallet_unit(

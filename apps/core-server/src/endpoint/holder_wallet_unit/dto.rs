@@ -20,6 +20,7 @@ use crate::serialize::front_time;
 pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
+    /// Reference the `walletProvider` configuration of the Wallet Provider.
     #[try_into(infallible)]
     pub wallet_provider: WalletProviderRestDTO,
     #[try_into(infallible)]

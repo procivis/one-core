@@ -12,6 +12,7 @@ use crate::utils::{TimestampFormat, into_id};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
+    /// Register with a Wallet Provider.
     #[uniffi::method]
     pub async fn holder_register_wallet_unit(
         &self,
@@ -25,6 +26,8 @@ impl OneCoreBinding {
         Ok(response.to_string())
     }
 
+    /// Check status of wallet unit with the Wallet Provider. Will return an error
+    /// if the unit has been revoked.
     #[uniffi::method]
     pub async fn holder_wallet_unit_status(&self, id: String) -> Result<(), BindingError> {
         let core = self.use_core().await?;
@@ -62,6 +65,7 @@ pub enum WalletProviderTypeBindingEnum {
 pub struct HolderRegisterWalletUnitRequestBindingDTO {
     #[try_into(with_fn = into_id)]
     organisation_id: String,
+    /// Reference the `walletProvider` configuration of the Wallet Provider.
     #[try_into(infallible)]
     wallet_provider: WalletProviderBindingDTO,
     #[try_into(infallible)]

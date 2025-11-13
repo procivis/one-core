@@ -157,8 +157,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             .name("other")
             .description(Some(indoc::formatdoc! {"
                 Returns the system configuration, along with other system information.
-
-                Related guide: [Configuration](/configure)
             "}))
             .extensions(Some(
                 Extensions::builder()
@@ -176,8 +174,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 issuing, holding, and verifying actions are performed by an
                 organization. Keys, DIDs, credentials, and proofs belong exclusively
                 to the organization that created them.
-
-                Related guide: [Organizations](/organizations)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -198,8 +194,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
 
                 This resource also generates Certificate Signing Requests (CSRs), a necessary
                 component of certificate creation.
-
-                Related guide: [Keys](/keys)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -212,8 +206,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .description(Some(indoc::formatdoc! {"
                 Create and manage identifiers of different types for different identity
                 ecosystems. An identifier is needed to issue, hold, or verify.
-
-                Related guide: [Identifiers](/identifiers)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -256,8 +248,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 storage type.
 
                 The system supports the creation of as many credential schemas as needed.
-
-                Related guide: [Credential schemas](/credential-schemas)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -274,8 +264,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 Create a credential by specifying a schema and making claims about a subject.
                 Then create a share endpoint URL for the wallet holder to access the offered
                 credential. Suspension and revocation options are determined by the schema.
-
-                Related guide: [Issuance](/issue)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -296,8 +284,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 within the organization.
 
                 Proof schemas cannot combine hardware- and software-based credentials.
-
-                Related guide: [Proof schemas](/proof-schemas)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -316,8 +302,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 This resource also includes claim data deletion and presentation definition,
                 a filtering function for wallet holders to see what credentials stored in
                 their wallet match a proof request.
-
-                Related guide: [Verify](/verify)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -335,8 +319,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 ID along with either the credential being offered or the proof being requested.
 
                 The holder then makes the choice to accept or reject the exchange.
-
-                Related guide: [Wallets](/hold)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -348,8 +330,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("history_management")
                        .description(Some(indoc::formatdoc! {"
                 Retrieve event history.
-
-                Related guide: [History](/history)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -361,8 +341,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("trust_anchor")
                        .description(Some(indoc::formatdoc! {"
                 Manage trust anchors as a publisher or subscribe to trust anchors as a consumer.
-
-                Related guide: [Trust](/trust)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -374,8 +352,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("trust_entity")
                        .description(Some(indoc::formatdoc! {"
                 Manage trust entities on an anchor.
-
-                Related guide: [Trust](/trust)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -386,22 +362,22 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                    Tag::builder()
                        .name("wallet_unit")
                        .description(Some(indoc::formatdoc! {"
-                Manage wallet units and attestations issued by the system.
+                For Wallet Providers, manage wallet units and attestations issued by the system.
             "}))
                        .extensions(Some(
                            Extensions::builder()
-                               .add("x-displayName", "Holder Wallet units")
+                               .add("x-displayName", "Wallet units")
                                .build(),
                        ))
                        .build(),
                    Tag::builder()
                        .name("holder_wallet_unit")
                        .description(Some(indoc::formatdoc! {"
-                Manage holder wallet units and attestations received by the wallet provider.
+                For wallet units, register with the Wallet Provider and check status.
             "}))
                        .extensions(Some(
                            Extensions::builder()
-                               .add("x-displayName", "Wallet units")
+                               .add("x-displayName", "Holder wallet units")
                                .build(),
                        ))
                        .build(),
@@ -420,8 +396,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("task")
                        .description(Some(indoc::formatdoc! {"
                 Run tasks.
-
-                Related guide: [Configuration](/configure)
             "}))
                        .extensions(Some(
                            Extensions::builder()
@@ -433,8 +407,6 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        .name("cache")
                        .description(Some(indoc::formatdoc! {"
                 Manage cached entities.
-
-                Related guide: [Configuration](/configure)
             "}))
                        .extensions(Some(
                            Extensions::builder()
