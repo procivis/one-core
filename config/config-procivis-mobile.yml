@@ -58,6 +58,15 @@ keyStorage:
     type: "REMOTE_SECURE_ELEMENT"
     enabled: false
     order: 10
+keySecurityLevel:
+  MODERATE:
+    display: keySecurityLevel.moderate
+    order: 30
+    params:
+      public:
+        holder:
+          priority: 30
+          keyStorages: ["SECURE_ELEMENT"]
 trustManagement:
   SIMPLE_TRUST_LIST:
     params:

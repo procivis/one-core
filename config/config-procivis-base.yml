@@ -498,10 +498,12 @@ keyAlgorithm:
     display: "keyAlgorithm.eddsa"
     order: 0
     params: null
+    holderPriority: 50
   ECDSA:
     display: "keyAlgorithm.ecdsa"
     order: 1
     params: null
+    holderPriority: 100
   BBS_PLUS:
     display: "keyAlgorithm.bbs_plus"
     order: 2
@@ -521,6 +523,23 @@ keyStorage:
     enabled: false
     order: 2
     params: null
+keySecurityLevel:
+  BASIC:
+    display: keySecurityLevel.basic
+    order: 10
+    params:
+      public:
+        holder:
+          priority: 10
+          keyStorages: ["INTERNAL"]
+  ENHANCED_BASIC:
+    display: keySecurityLevel.enhancedBasic
+    order: 20
+    params:
+      public:
+        holder:
+          priority: 0
+          keyStorages: []
 task:
   SUSPEND_CHECK:
     type: "SUSPEND_CHECK"

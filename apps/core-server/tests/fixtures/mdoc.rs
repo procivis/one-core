@@ -167,6 +167,7 @@ pub fn datatype_config() -> DatatypeConfig {
         did: {}
         keyAlgorithm: {}
         keyStorage: {}
+        keySecurityLevel: {}
         task: {}
         trustManagement: {}
         transport: {}

@@ -4,6 +4,7 @@ mod formatter;
 mod frontend;
 mod identifier;
 mod key_algorithm;
+mod key_security_level;
 mod key_storage;
 mod revocation_method;
 mod transport;

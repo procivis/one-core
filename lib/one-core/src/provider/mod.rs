@@ -5,6 +5,7 @@ pub mod data_type;
 pub mod did_method;
 pub mod issuance_protocol;
 pub mod key_algorithm;
+pub mod key_security_level;
 pub mod key_storage;
 pub mod presentation_formatter;
 pub mod remote_entity_storage;

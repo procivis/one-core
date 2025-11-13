@@ -54,6 +54,7 @@ pub struct CoreConfig {
     pub key_algorithm: KeyAlgorithmConfig,
     pub holder_key_storage: HolderKeyStorageConfig,
     pub key_storage: KeyStorageConfig,
+    pub key_security_level: KeySecurityLevelConfig,
     pub task: TaskConfig,
     pub trust_management: TrustManagementConfig,
     pub blob_storage: BlobStorageConfig,
@@ -497,6 +498,8 @@ pub struct KeyAlgorithmFields {
     pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
+    #[serde(default)]
+    pub holder_priority: u32,
 }
 
 impl ConfigFields for KeyAlgorithmFields {
@@ -567,6 +570,50 @@ pub enum KeyStorageType {
     #[serde(rename = "REMOTE_SECURE_ELEMENT")]
     #[strum(serialize = "REMOTE_SECURE_ELEMENT")]
     RemoteSecureElement,
+}
+
+pub type KeySecurityLevelConfig = Dict<KeySecurityLevelType, KeySecurityLevelFields>;
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+    Hash,
+)]
+pub enum KeySecurityLevelType {
+    #[serde(rename = "BASIC")]
+    #[strum(serialize = "BASIC")]
+    Basic,
+    #[serde(rename = "ENHANCED_BASIC")]
+    #[strum(serialize = "ENHANCED_BASIC")]
+    EnhancedBasic,
+    #[serde(rename = "MODERATE")]
+    #[strum(serialize = "MODERATE")]
+    Moderate,
+    #[serde(rename = "HIGH")]
+    #[strum(serialize = "HIGH")]
+    High,
+}
+
+#[skip_serializing_none]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct KeySecurityLevelFields {
+    pub display: ConfigEntryDisplay,
+    pub order: Option<u64>,
+    #[serde(skip_deserializing)]
+    pub capabilities: Option<Value>,
+    #[serde(default, deserialize_with = "deserialize_params")]
+    pub params: Option<Params>,
 }
 
 pub type IdentifierConfig = Dict<IdentifierType, IdentifierFields>;

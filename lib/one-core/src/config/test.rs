@@ -112,6 +112,7 @@ rusty_fork_test! {
                     type: 'INTERNAL'
                     order: 0
                     params: null
+            keySecurityLevel: {}
             task: {}
             trustManagement: {}
             cacheEntities: {}

@@ -49,6 +49,7 @@ fn convert_internal_structure_to_dto() {
           },
           "transport": {},
           "keyAlgorithm": {},
+          "keySecurityLevel": {},
           "holderKeyStorage": {},
           "keyStorage": {},
           "trustManagement": {},
@@ -104,6 +105,7 @@ fn do_not_serialize_private_parameters() {
             }
           },
           "keyAlgorithm": {},
+          "keySecurityLevel": {},
           "holderKeyStorage": {},
           "keyStorage": {},
           "trustManagement": {},

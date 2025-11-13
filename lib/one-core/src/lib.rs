@@ -47,6 +47,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::issuance_protocol_providers_from_config;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProviderImpl;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_security_level::key_security_levels_from_config;
+use crate::provider::key_security_level::provider::KeySecurityLevelProviderImpl;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -638,6 +640,12 @@ impl OneCore {
             data_provider.get_holder_wallet_unit_repository(),
         ));
 
+        let key_security_levels = key_security_levels_from_config(
+            &mut core_config.key_security_level,
+            key_provider.clone(),
+        )
+        .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
+
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
             &mut core_config.issuance_protocol,
@@ -688,6 +696,9 @@ impl OneCore {
         let verification_provider = Arc::new(VerificationProtocolProviderImpl::new(
             verification_protocols,
         ));
+
+        let _key_security_level_provider =
+            Arc::new(KeySecurityLevelProviderImpl::new(key_security_levels));
 
         let certificate_service = CertificateService::new(
             certificate_repository.clone(),

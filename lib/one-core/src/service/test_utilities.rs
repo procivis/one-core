@@ -247,6 +247,15 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                   private:
                     aliasPrefix: 'ch.procivis.one.wallet.keys'
+        keySecurityLevel:
+            BASIC:
+                display: keySecurityLevel.basic
+                order: 10
+                params:
+                    public:
+                        holder:
+                            priority: 10
+                            keyStorages: ['INTERNAL']
         holderKeyStorage:
             SOFTWARE:
                 display: 'display'

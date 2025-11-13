@@ -35,6 +35,17 @@ keyStorage:
         adTenantId: "0e235e47-054b-41b2-9c63-6aa0c115ce5b"
         clientId: "de515d45-53da-4b82-a34a-0e6b513db700"
         clientSecret: ""
+keySecurityLevel:
+  HIGH:
+    capabilities:
+      OPENID_SECURITY_LEVEL: ["iso_18045_high"]
+    display: keySecurityLevel.high
+    order: 40
+    params:
+      public:
+        holder:
+          priority: 40
+          keyStorages: ["AZURE_VAULT"]
 cacheEntities:
   STATUS_LIST_CREDENTIAL:
     cacheType: DB
