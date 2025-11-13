@@ -1112,9 +1112,11 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     credential: Credential,
     issuer_did: Option<String>,
 ) {
+    let mock_server = MockServer::start().await;
+    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
+
     let credential_schema_id = credential.schema.clone().unwrap().id;
-    let credential_issuer =
-        format!("http://issuer/ssi/openid4vci/final-1.0/{credential_schema_id}");
+    let credential_issuer = format!("{issuer_url}ssi/openid4vci/final-1.0/{credential_schema_id}");
 
     let mut credential_offer = json!({
         "credential_issuer": credential_issuer,
@@ -1137,20 +1139,21 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             .insert("issuer_did".into(), Value::String(issuer_did.to_owned()));
     };
 
-    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
-    metadata_cache
-        .expect_get()
-        .with(predicate::eq(format!(
-            "http://issuer/ssi/openid4vci/final-1.0/{}/offer/{}",
+    Mock::given(method(Method::GET))
+        .and(path(format!(
+            "/ssi/openid4vci/final-1.0/{}/offer/{}",
             credential_schema_id, credential.id
         )))
-        .once()
-        .returning(move |_| Ok(credential_offer.to_string().into_bytes()));
+        .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
 
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
     metadata_cache
             .expect_get()
             .with(predicate::eq(format!(
-                "http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+                "{issuer_url}.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )))
             .once()
             .returning({
@@ -1176,7 +1179,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     metadata_cache
         .expect_get()
         .with(predicate::eq(format!(
-            "http://issuer/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+            "{issuer_url}.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )))
         .once()
         .returning(move |_| Ok(json!({
@@ -1213,7 +1216,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             }
         });
 
-    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2Fissuer%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", credential_schema_id, credential.id)).unwrap();
+    let url = Url::parse(&format!("openid-credential-offer://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Fopenid4vci%2Ffinal-1.0%2F{}%2Foffer%2F{}", issuer_url.authority(), credential_schema_id, credential.id)).unwrap();
 
     let protocol = setup_protocol(TestInputs {
         metadata_cache,
@@ -1407,30 +1410,31 @@ fn dummy_issuer_metadata() -> Vec<u8> {
     .into_bytes()
 }
 
-fn dummy_offer() -> Vec<u8> {
-    json!({
-        "credential_issuer": "http://base_url",
-        "credential_configuration_ids" : ["id"],
-        "grants": {
-            "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
-                "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965"
-            }
-        },
-    })
-    .to_string()
-    .into_bytes()
-}
-
 #[tokio::test]
 async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     let url_scheme = "my-custom-scheme";
 
-    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
-    metadata_cache
-        .expect_get()
-        .with(predicate::eq("http://base_url/ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965/offer/c322aa7f-9803-410d-b891-939b279fb965"))
-        .returning(|_| Ok(dummy_offer()));
+    let mock_server = MockServer::start().await;
+    let issuer_url = Url::from_str(&mock_server.uri()).unwrap();
 
+    Mock::given(method(Method::GET))
+        .and(path(
+            "ssi/oidc-issuer/v1/c322aa7f-9803-410d-b891-939b279fb965/offer/c322aa7f-9803-410d-b891-939b279fb965"
+        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+            "credential_issuer": "http://base_url",
+            "credential_configuration_ids" : ["id"],
+            "grants": {
+                "urn:ietf:params:oauth:grant-type:pre-authorized_code": {
+                    "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965"
+                }
+            },
+        })))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
     metadata_cache
         .expect_get()
         .with(predicate::eq(
@@ -1445,7 +1449,8 @@ async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     });
 
     let test_url = format!(
-        "{url_scheme}://?credential_offer_uri=http%3A%2F%2Fbase_url%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965"
+        "{url_scheme}://?credential_offer_uri=http%3A%2F%2F{}%2Fssi%2Foidc-issuer%2Fv1%2Fc322aa7f-9803-410d-b891-939b279fb965%2Foffer%2Fc322aa7f-9803-410d-b891-939b279fb965",
+        issuer_url.authority(),
     );
     assert!(protocol.holder_can_handle(&test_url.parse().unwrap()).await)
 }

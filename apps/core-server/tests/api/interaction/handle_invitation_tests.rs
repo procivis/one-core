@@ -1055,7 +1055,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
             "/ssi/openid4vci/draft-13/{credential_schema_id}/offer/{credential_id}"
         )))
         .respond_with(ResponseTemplate::new(200).set_body_json(credential_offer))
-        .expect(1)
+        .expect(2)
         .mount(&mock_server)
         .await;
 
@@ -1089,7 +1089,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
         .await;
 
     // WHEN
-    // let credential_offer = serde_json::to_string(&credential_offer).unwrap();
     let mut credential_offer_url: Url = "openid-credential-offer://".parse().unwrap();
     credential_offer_url.query_pairs_mut().append_pair(
         "credential_offer_uri",

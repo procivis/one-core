@@ -804,7 +804,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         async {
             let credential_offer =
-                resolve_credential_offer(self.metadata_cache.as_ref(), url.to_owned()).await?;
+                resolve_credential_offer(self.client.as_ref(), url.to_owned()).await?;
             let credential_issuer: Url = credential_offer
                 .credential_issuer
                 .parse()
@@ -830,6 +830,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         handle_credential_invitation(
             url,
             organisation,
+            &*self.client,
             &*self.metadata_cache,
             storage_access,
             redirect_uri,
@@ -1535,13 +1536,14 @@ fn match_key_security_level(
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
+    client: &dyn HttpClient,
     fetcher: &dyn OpenIDMetadataFetcher,
     storage_access: &StorageAccess,
     redirect_uri: Option<String>,
     config: &CoreConfig,
     protocol: String,
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
-    let credential_offer = resolve_credential_offer(fetcher, invitation_url).await?;
+    let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
     let Metadata {
         token_endpoint,
@@ -1783,7 +1785,7 @@ async fn prepare_issuance_interaction(
 }
 
 async fn resolve_credential_offer(
-    fetcher: &dyn OpenIDMetadataFetcher,
+    client: &dyn HttpClient,
     invitation_url: Url,
 ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, IssuanceProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
@@ -1806,13 +1808,18 @@ async fn resolve_credential_offer(
             IssuanceProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
         })?;
 
-        Ok(fetcher
-            .fetch(credential_offer_url.as_str())
+        Ok(client
+            .get(credential_offer_url.as_str())
+            .send()
             .await
+            .context("Error during offer request")
+            .map_err(IssuanceProtocolError::Transport)?
+            .error_for_status()
+            .context("status error during offer request")
+            .map_err(IssuanceProtocolError::Transport)?
+            .json()
             .map_err(|error| {
-                IssuanceProtocolError::Failed(format!(
-                    "Failed decoding credential offer json {error}"
-                ))
+                IssuanceProtocolError::Failed(format!("Failed decoding credential offer: {error}"))
             })?)
     } else {
         Err(IssuanceProtocolError::Failed(
@@ -2161,13 +2168,14 @@ async fn prepare_credential_schema(
             .as_mut()
             .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
 
-        let stored_claim_schemas = stored_schema
-            .claim_schemas
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed(
-                "Missing claim_schemas".to_string(),
-            ))?
-            .to_owned();
+        let stored_claim_schemas =
+            stored_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(IssuanceProtocolError::Failed(
+                    "Missing claim_schemas".to_string(),
+                ))?;
+
         let parsed_claim_schemas =
             credential_schema
                 .claim_schemas
@@ -2206,14 +2214,12 @@ async fn prepare_credential_schema(
             return Ok(Default::default());
         }
 
-        let all_claim_schemas = [&stored_claim_schemas[..], &new_claim_schemas[..]].concat();
-
         Ok(CredentialSchemaUpdates {
             update: Some(UpdateCredentialSchemaRequest {
                 id,
                 revocation_method: None,
                 format: None,
-                claim_schemas: Some(all_claim_schemas),
+                claim_schemas: Some(new_claim_schemas),
                 layout_type: None,
                 layout_properties: None,
             }),

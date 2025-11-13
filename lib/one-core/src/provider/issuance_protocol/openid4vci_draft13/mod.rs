@@ -822,7 +822,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         async {
             let credential_offer =
-                resolve_credential_offer(self.metadata_cache.as_ref(), url.to_owned()).await?;
+                resolve_credential_offer(self.client.as_ref(), url.to_owned()).await?;
             let credential_issuer: Url = credential_offer
                 .credential_issuer
                 .parse()
@@ -1403,6 +1403,7 @@ impl OpenID4VCI13 {
             url,
             organisation,
             protocol,
+            &*self.client,
             &*self.metadata_cache,
             &*self.certificate_validator,
             storage_access,
@@ -1438,6 +1439,7 @@ async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
     protocol: IssuanceProtocolType,
+    client: &dyn HttpClient,
     fetcher: &dyn OpenIDMetadataFetcher,
     certificate_validator: &dyn CertificateValidator,
     storage_access: &StorageAccess,
@@ -1445,7 +1447,7 @@ async fn handle_credential_invitation(
     redirect_uri: Option<String>,
     config: &CoreConfig,
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
-    let credential_offer = resolve_credential_offer(fetcher, invitation_url).await?;
+    let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
     if let OpenID4VCIGrants::AuthorizationCode(authorization_code) = credential_offer.grants {
         let params = config
@@ -1882,7 +1884,7 @@ fn resolve_schema_id(credential_config: &OpenID4VCICredentialConfigurationData) 
 }
 
 async fn resolve_credential_offer(
-    fetcher: &dyn OpenIDMetadataFetcher,
+    client: &dyn HttpClient,
     invitation_url: Url,
 ) -> Result<OpenID4VCICredentialOfferDTO, IssuanceProtocolError> {
     let query_pairs: HashMap<_, _> = invitation_url.query_pairs().collect();
@@ -1905,9 +1907,16 @@ async fn resolve_credential_offer(
             IssuanceProtocolError::Failed(format!("Failed decoding credential offer url {error}"))
         })?;
 
-        Ok(fetcher
-            .fetch(credential_offer_url.as_str())
+        Ok(client
+            .get(credential_offer_url.as_str())
+            .send()
             .await
+            .context("Error during offer request")
+            .map_err(IssuanceProtocolError::Transport)?
+            .error_for_status()
+            .context("status error during offer request")
+            .map_err(IssuanceProtocolError::Transport)?
+            .json()
             .map_err(|error| {
                 IssuanceProtocolError::Failed(format!("Failed decoding credential offer {error}"))
             })?)
