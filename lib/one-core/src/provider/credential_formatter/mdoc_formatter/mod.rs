@@ -1107,6 +1107,10 @@ fn parse_claims(
 ) -> Result<Vec<Claim>, FormatterError> {
     let mut result = vec![];
     for (namespace, inner_claims) in namespaces {
+        if namespace == LAYOUT_NAMESPACE {
+            continue;
+        }
+
         for issuer_signed_item in inner_claims {
             let issuer_signed_item = issuer_signed_item.into_inner();
             let path = format!("{namespace}/{}", issuer_signed_item.element_identifier);
