@@ -33,17 +33,11 @@ async fn test_oauth_authorization_server_metadata() {
         .json_value()
         .await;
 
-    // Verify authorization_servers field is present and contains the OAuth authorization server URL
-    let authorization_servers = openid_credential_issuer_resp["authorization_servers"]
-        .as_array()
-        .unwrap();
-    assert_eq!(authorization_servers.len(), 1);
-
-    let expected_auth_server_url = format!(
-        "{}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{}",
-        context.config.app.core_base_url, credential_schema.id
+    // Verify authorization_servers field is missing
+    assert_eq!(
+        openid_credential_issuer_resp.get("authorization_servers"),
+        None
     );
-    assert_eq!(authorization_servers[0], expected_auth_server_url);
 
     let issuer = format!(
         "{}/ssi/openid4vci/final-1.0",
@@ -116,20 +110,8 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
         .await;
 
     assert_eq!(
-        openid_credential_issuer_resp["authorization_servers"]
-            .as_array()
-            .unwrap()
-            .len(),
-        1
-    );
-    assert_eq!(
-        openid_credential_issuer_resp["authorization_servers"]
-            .as_array()
-            .unwrap()[0],
-        format!(
-            "{}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{}",
-            context.config.app.core_base_url, credential_schema.id
-        )
+        openid_credential_issuer_resp.get("authorization_servers"),
+        None
     );
 
     let issuer = format!(

@@ -44,7 +44,6 @@ pub(crate) fn create_issuer_metadata_response(
     supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
-    core_base_url: Option<&String>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
     let credential_configurations_supported: IndexMap<
         String,
@@ -60,20 +59,9 @@ pub(crate) fn create_issuer_metadata_response(
 
     let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
 
-    let base_url = core_base_url.ok_or(OpenID4VCIError::RuntimeError(
-        "Can not build authorization server metadata, missing base_url".to_owned(),
-    ))?;
-
-    let authorization_server_url = {
-        format!(
-            "{base_url}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{}",
-            schema.id
-        )
-    };
-
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
         credential_issuer: schema_base_url.to_owned(),
-        authorization_servers: Some(vec![authorization_server_url]),
+        authorization_servers: None,
         credential_endpoint: format!("{schema_base_url}/credential"),
         nonce_endpoint: Some(format!("{protocol_base_url}/{protocol_id}/nonce")),
         notification_endpoint: Some(format!("{schema_base_url}/notification")),

@@ -149,7 +149,6 @@ impl OID4VCIFinal1_0Service {
                 schema.wallet_storage_type.map(|x| x.into()),
             )),
             credential_signing_alg_values_supported,
-            self.base_url.as_ref(),
         )
         .map_err(Into::into)
     }

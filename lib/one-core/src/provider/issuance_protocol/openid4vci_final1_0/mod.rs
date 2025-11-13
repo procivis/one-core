@@ -1,8 +1,7 @@
 //! Implementation of OpenID4VCI.
-//! https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
+//! https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html
 
 use std::collections::HashMap;
-use std::future;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -1544,6 +1543,18 @@ async fn handle_credential_invitation(
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(fetcher, invitation_url).await?;
 
+    let Metadata {
+        token_endpoint,
+        issuer_metadata,
+        oauth_metadata,
+        ..
+    } = get_issuer_and_authorization_metadata(
+        fetcher,
+        &credential_offer.credential_issuer,
+        credential_offer.grants.authorization_server(),
+    )
+    .await?;
+
     if let OpenID4VCIGrants::AuthorizationCode(authorization_code) = credential_offer.grants {
         let params = config
             .credential_issuer
@@ -1562,28 +1573,6 @@ async fn handle_credential_invitation(
             return Err(IssuanceProtocolError::InvalidRequest(
                 "No credential_configuration_ids provided".to_string(),
             ));
-        }
-
-        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html#section-11.2.3-2.2
-        if let Some(authorization_server) = &authorization_code.authorization_server {
-            let credential_issuer_endpoint: Url = params.issuer.parse().map_err(|_| {
-                IssuanceProtocolError::InvalidRequest(format!(
-                    "Invalid credential issuer url {}",
-                    params.issuer
-                ))
-            })?;
-
-            let (_, issuer_metadata, _) =
-                get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
-
-            if issuer_metadata
-                .authorization_servers
-                .is_none_or(|servers| !servers.contains(authorization_server))
-            {
-                return Err(IssuanceProtocolError::InvalidRequest(format!(
-                    "Authorization server missing in issuer metadata: {authorization_server}"
-                )));
-            }
         }
 
         return Ok(InvitationResponseEnum::AuthorizationFlow {
@@ -1609,22 +1598,11 @@ async fn handle_credential_invitation(
 
     let tx_code = credential_offer.grants.tx_code().cloned();
 
-    let credential_issuer_endpoint: Url =
-        credential_offer.credential_issuer.parse().map_err(|_| {
-            IssuanceProtocolError::Failed(format!(
-                "Invalid credential issuer url {}",
-                credential_offer.credential_issuer
-            ))
-        })?;
-
-    let (token_endpoint, issuer_metadata, auth_server_metadata) =
-        get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
-
     let (interaction_id, wallet_storage_type) = prepare_issuance_interaction(
         organisation,
         token_endpoint,
         issuer_metadata,
-        auth_server_metadata,
+        Some(oauth_metadata),
         credential_offer.grants,
         &credential_offer.credential_configuration_ids,
         storage_access,
@@ -1647,19 +1625,17 @@ async fn handle_continue_issuance(
     storage_access: &StorageAccess,
     protocol: String,
 ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
-    let credential_issuer_endpoint: Url =
-        continue_issuance_dto
-            .credential_issuer
-            .parse()
-            .map_err(|_| {
-                IssuanceProtocolError::Failed(format!(
-                    "Invalid credential issuer url {}",
-                    continue_issuance_dto.credential_issuer
-                ))
-            })?;
-
-    let (token_endpoint, issuer_metadata, auth_server_metadata) =
-        get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
+    let Metadata {
+        token_endpoint,
+        issuer_metadata,
+        oauth_metadata,
+        ..
+    } = get_issuer_and_authorization_metadata(
+        fetcher,
+        &continue_issuance_dto.credential_issuer,
+        continue_issuance_dto.authorization_server.as_ref(),
+    )
+    .await?;
 
     let scope_to_id: HashMap<&String, &String> = issuer_metadata
         .credential_configurations_supported
@@ -1690,7 +1666,7 @@ async fn handle_continue_issuance(
         organisation,
         token_endpoint,
         issuer_metadata,
-        auth_server_metadata,
+        Some(oauth_metadata),
         OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
             issuer_state: None, // issuer state was used at the authorization request stage so it is not relevant anymore
             authorization_server: continue_issuance_dto.authorization_server.to_owned(),
@@ -1858,69 +1834,86 @@ fn prepend_well_known_path(credential_issuer: &Url, well_known_path_segment: &st
     format!("{origin}.well-known/{well_known_path_segment}{path}")
 }
 
-async fn get_discovery_and_issuer_metadata(
+struct Metadata {
+    token_endpoint: String,
+    issuer_metadata: OpenID4VCIIssuerMetadataResponseDTO,
+    oauth_metadata: OAuthAuthorizationServerMetadataResponseDTO,
+}
+
+async fn get_issuer_and_authorization_metadata(
     fetcher: &dyn OpenIDMetadataFetcher,
-    credential_issuer_endpoint: &Url,
-) -> Result<
-    (
-        String,
-        OpenID4VCIIssuerMetadataResponseDTO,
-        Option<OAuthAuthorizationServerMetadataResponseDTO>,
-    ),
-    IssuanceProtocolError,
-> {
-    let oauth_authorization_server_endpoint =
-        prepend_well_known_path(credential_issuer_endpoint, "oauth-authorization-server");
+    credential_issuer: &str,
+    authorization_server: Option<&String>,
+) -> Result<Metadata, IssuanceProtocolError> {
+    let credential_issuer_endpoint: Url = credential_issuer.parse().map_err(|_| {
+        IssuanceProtocolError::InvalidRequest(format!(
+            "Invalid credential issuer url {credential_issuer}",
+        ))
+    })?;
+
     let issuer_metadata_endpoint =
-        prepend_well_known_path(credential_issuer_endpoint, "openid-credential-issuer");
-    let token_fallback_endpoint = format!("{credential_issuer_endpoint}/token");
+        prepend_well_known_path(&credential_issuer_endpoint, "openid-credential-issuer");
 
-    let (token_endpoint, oauth_metadata_response) = {
-        let oauth_metadata_response = fetcher
-            .fetch::<OAuthAuthorizationServerMetadata>(&oauth_authorization_server_endpoint)
-            .await;
+    let issuer_metadata: OpenID4VCIIssuerMetadataResponseDTO = fetcher
+        .fetch(&issuer_metadata_endpoint)
+        .await
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        match oauth_metadata_response {
-            Err(e) => {
-                tracing::warn!("Failed to fetch oauth authorization server: {e}");
-                (token_fallback_endpoint, None)
-            }
-            Ok(doc) => {
-                let token = match doc.token_endpoint.clone() {
-                    Some(t) => t.to_string(),
-                    None => {
-                        tracing::warn!(
-                            "Oauth authorization server missing token endpoint, using fallback"
-                        );
-                        token_fallback_endpoint
-                    }
-                };
-                let dto: OAuthAuthorizationServerMetadataResponseDTO = doc.into();
-                (token, Some(dto))
-            }
+    let authorization_server = if let Some(authorization_server) = authorization_server {
+        if issuer_metadata
+            .authorization_servers
+            .as_ref()
+            .is_none_or(|servers| !servers.contains(authorization_server))
+        {
+            return Err(IssuanceProtocolError::InvalidRequest(format!(
+                "Authorization server missing in issuer metadata: {authorization_server}"
+            )));
         }
+
+        authorization_server.to_owned()
+    } else if let Some(authorization_servers) = &issuer_metadata.authorization_servers {
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.2
+        // > When there are multiple entries in the array, the Wallet may be able to determine which Authorization Server to use by querying the metadata; for example, by examining the grant_types_supported values, the Wallet can filter the server to use based on the grant type it plans to use.
+        // TODO (ONE-7915): try to pick correct server based on querying, until then just pick the first
+        authorization_servers
+            .first()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Empty authorization servers".to_string(),
+            ))?
+            .to_owned()
+    } else {
+        // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-12.2.4-2.2
+        // > If this parameter is omitted, the entity providing the Credential Issuer is also acting as the Authorization Server
+        credential_issuer.to_string()
     };
 
-    let token_endpoint_future =
-        future::ready::<Result<String, IssuanceProtocolError>>(Ok(token_endpoint.clone()));
-    let oauth_authorization_server_metadata_future = future::ready::<
-        Result<Option<OAuthAuthorizationServerMetadataResponseDTO>, IssuanceProtocolError>,
-    >(Ok(oauth_metadata_response.clone()));
+    let authorization_server_endpoint: Url = authorization_server.parse().map_err(|_| {
+        IssuanceProtocolError::InvalidRequest(format!(
+            "Invalid authorization_server url {authorization_server}",
+        ))
+    })?;
 
-    let issuer_metadata_future = async {
-        fetcher
-            .fetch::<OpenID4VCIIssuerMetadataResponseDTO>(&issuer_metadata_endpoint)
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
-    };
+    let authorization_server_metadata_endpoint =
+        prepend_well_known_path(&authorization_server_endpoint, "oauth-authorization-server");
 
-    let (token_endpoint, issuer_metadata, oauth_metadata_opt) = tokio::try_join!(
-        token_endpoint_future,
-        issuer_metadata_future,
-        oauth_authorization_server_metadata_future
-    )?;
+    let oauth_metadata_response: OAuthAuthorizationServerMetadata = fetcher
+        .fetch(&authorization_server_metadata_endpoint)
+        .await
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-    Ok((token_endpoint, issuer_metadata, oauth_metadata_opt))
+    let token_endpoint = oauth_metadata_response
+        .token_endpoint
+        .as_ref()
+        .ok_or(IssuanceProtocolError::Failed(
+            "Missing token_endpoint".to_string(),
+        ))?
+        .to_string();
+
+    Ok(Metadata {
+        token_endpoint,
+        issuer_metadata,
+        oauth_metadata: oauth_metadata_response.into(),
+    })
 }
 
 async fn create_and_store_interaction(

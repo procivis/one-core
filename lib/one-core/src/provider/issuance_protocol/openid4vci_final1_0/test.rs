@@ -30,7 +30,6 @@ use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
-use crate::provider::caching_loader::{CacheError, ResolverError};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -501,19 +500,6 @@ async fn test_generate_share_credentials_offer_by_value() {
             .url
             .contains("%22issuer_did%22%3A%22did%3Aexample%3A123%22")
     )
-}
-
-#[tokio::test]
-async fn test_handle_invitation_credential_by_ref_with_did_success() {
-    let credential = generic_credential_did();
-
-    inner_test_handle_invitation_credential_by_ref_success(
-        MockStorageProxy::default(),
-        credential,
-        Some("did:example:123".to_string()),
-        true,
-    )
-    .await;
 }
 
 #[tokio::test]
@@ -1102,23 +1088,21 @@ async fn test_holder_reject_credential() {
 }
 
 #[tokio::test]
-async fn test_handle_invitation_credential_by_ref_without_did_success() {
+async fn test_handle_invitation_credential_by_ref_with_did_success() {
     inner_test_handle_invitation_credential_by_ref_success(
         MockStorageProxy::default(),
         generic_credential_did(),
-        None,
-        true,
+        Some("did:example:123".to_string()),
     )
     .await;
 }
 
 #[tokio::test]
-async fn test_handle_invitation_credential_no_openid_configuration_success() {
+async fn test_handle_invitation_credential_by_ref_without_did_success() {
     inner_test_handle_invitation_credential_by_ref_success(
         MockStorageProxy::default(),
         generic_credential_did(),
         None,
-        false,
     )
     .await;
 }
@@ -1127,7 +1111,6 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     mut storage_proxy: MockStorageProxy,
     credential: Credential,
     issuer_did: Option<String>,
-    openid_configuration_enabled: bool,
 ) {
     let credential_schema_id = credential.schema.clone().unwrap().id;
     let credential_issuer =
@@ -1164,9 +1147,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         .once()
         .returning(move |_| Ok(credential_offer.to_string().into_bytes()));
 
-    if openid_configuration_enabled {
-        let token_endpoint = format!("{credential_issuer}/token");
-        metadata_cache
+    metadata_cache
             .expect_get()
             .with(predicate::eq(format!(
                 "http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
@@ -1188,18 +1169,9 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
                         "subject_types_supported": [
                             "public"
                         ],
-                        "token_endpoint": token_endpoint
+                        "token_endpoint": format!("{credential_issuer}/token")
                     }).to_string().into_bytes())
                 });
-    } else {
-        metadata_cache
-            .expect_get()
-            .with(predicate::eq(format!(
-                "http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
-            )))
-            .once()
-            .returning( |_| Err(CacheError::Resolver(ResolverError::InvalidResponse("".to_string()))));
-    }
 
     metadata_cache
         .expect_get()
@@ -1269,27 +1241,21 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 }
 
 #[tokio::test]
-async fn test_continue_issuance_no_openid_configuration_and_scope_success() {
-    inner_continue_issuance_test(false, true, false).await;
+async fn test_continue_issuance_with_scope_success() {
+    inner_continue_issuance_test(true, false).await;
 }
 
 #[tokio::test]
-async fn test_continue_issuance_with_openid_configuration_and_credential_configuration_ids_success()
-{
-    inner_continue_issuance_test(true, false, true).await;
+async fn test_continue_issuance_with_credential_configuration_ids_success() {
+    inner_continue_issuance_test(false, true).await;
 }
 
 #[tokio::test]
-async fn test_continue_issuance_with_openid_configuration_and_scope_and_credential_configuration_ids_success()
- {
-    inner_continue_issuance_test(true, true, true).await;
+async fn test_continue_issuance_with_scope_and_credential_configuration_ids_success() {
+    inner_continue_issuance_test(true, true).await;
 }
 
-async fn inner_continue_issuance_test(
-    openid_configuration_enabled: bool,
-    with_scope: bool,
-    with_credential_configuration_ids: bool,
-) {
+async fn inner_continue_issuance_test(with_scope: bool, with_credential_configuration_ids: bool) {
     let mut storage_proxy = MockStorageProxy::default();
     let credential = generic_credential_did();
 
@@ -1299,48 +1265,33 @@ async fn inner_continue_issuance_test(
 
     let mut metadata_cache = MockOpenIDMetadataFetcher::new();
 
-    let auth_server_metadata_url = format!(
-        "http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
-    );
-    if openid_configuration_enabled {
-        metadata_cache
-            .expect_get()
-            .with(predicate::eq(auth_server_metadata_url))
-            .once()
-            .returning({
-                let credential_issuer = credential_issuer.clone();
-                move |_| {
-                    Ok(json!({
-                        "authorization_endpoint": format!("{credential_issuer}/authorize"),
-                        "grant_types_supported": [
-                            "urn:ietf:params:oauth:grant-type:pre-authorized_code"
-                        ],
-                        "id_token_signing_alg_values_supported": [],
-                        "issuer": credential_issuer,
-                        "jwks_uri": format!("{credential_issuer}/jwks"),
-                        "response_types_supported": [
-                            "token"
-                        ],
-                        "subject_types_supported": [
-                            "public"
-                        ],
-                        "token_endpoint": format!("{credential_issuer}/token")
-                    })
-                    .to_string()
-                    .into_bytes())
-                }
-            });
-    } else {
-        metadata_cache
-            .expect_get()
-            .with(predicate::eq(auth_server_metadata_url))
-            .once()
-            .returning(|_| {
-                Err(CacheError::Resolver(ResolverError::InvalidResponse(
-                    "".to_string(),
-                )))
-            });
-    }
+    metadata_cache
+        .expect_get()
+        .with(predicate::eq(format!("http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}")))
+        .once()
+        .returning({
+            let credential_issuer = credential_issuer.clone();
+            move |_| {
+                Ok(json!({
+                    "authorization_endpoint": format!("{credential_issuer}/authorize"),
+                    "grant_types_supported": [
+                        "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+                    ],
+                    "id_token_signing_alg_values_supported": [],
+                    "issuer": credential_issuer,
+                    "jwks_uri": format!("{credential_issuer}/jwks"),
+                    "response_types_supported": [
+                        "token"
+                    ],
+                    "subject_types_supported": [
+                        "public"
+                    ],
+                    "token_endpoint": format!("{credential_issuer}/token")
+                })
+                .to_string()
+                .into_bytes())
+            }
+        });
 
     metadata_cache
         .expect_get()
