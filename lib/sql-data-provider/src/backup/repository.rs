@@ -22,9 +22,8 @@ use crate::backup::helpers::{
 };
 use crate::backup::models::UnexportableCredentialModel;
 use crate::entity::{
-    certificate, claim, claim_schema, credential, credential_schema,
-    credential_schema_claim_schema, did, history, holder_wallet_unit, identifier, key, key_did,
-    organisation, wallet_unit_attestation,
+    certificate, claim, claim_schema, credential, credential_schema, did, history,
+    holder_wallet_unit, identifier, key, key_did, organisation, wallet_unit_attestation,
 };
 use crate::mapper::to_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
@@ -239,36 +238,6 @@ impl BackupRepository for BackupProvider {
             .column_as(
                 organisation::Column::DeactivatedAt,
                 "organisation_deactivated_at",
-            )
-            .expr_as_(
-                coalesce_to_empty_array(
-                    credential_schema_claim_schema::Entity::find()
-                        .select_only()
-                        .expr(
-                            Func::cust(JsonAgg).arg(
-                                Func::cust(JsonObject)
-                                    .arg("credential_schema_claim_schema")
-                                    .arg(json_object_columns(
-                                        credential_schema_claim_schema::Column::iter(),
-                                    ))
-                                    .arg("claim_schema")
-                                    .arg(json_object_columns(claim_schema::Column::iter())),
-                            ),
-                        )
-                        .join(
-                            JoinType::InnerJoin,
-                            credential_schema_claim_schema::Relation::ClaimSchema.def(),
-                        )
-                        .filter(
-                            Expr::col((
-                                credential_schema_claim_schema::Entity,
-                                credential_schema_claim_schema::Column::CredentialSchemaId,
-                            ))
-                            .equals((credential_schema::Entity, credential_schema::Column::Id)),
-                        )
-                        .into_query(),
-                ),
-                "credential_schema_claim_schemas",
             )
             .expr_as_(
                 coalesce_to_empty_array(

@@ -6,7 +6,6 @@ pub mod claim;
 pub mod claim_schema;
 pub mod credential;
 pub mod credential_schema;
-pub mod credential_schema_claim_schema;
 pub mod did;
 pub mod history;
 pub mod holder_wallet_unit;

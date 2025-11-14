@@ -34,7 +34,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     let db = data_layer.db;
 
     let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| Uuid::new_v4().into()).collect();
-    for id in &claim_schema_ids {
+    for (index, id) in claim_schema_ids.iter().enumerate() {
         claim_schema::ActiveModel {
             id: Set(*id),
             created_date: Set(get_dummy_date()),
@@ -43,6 +43,9 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
             datatype: Set("STRING".to_string()),
             array: Set(false),
             metadata: Set(false),
+            credential_schema_id: Set(None),
+            order: Set(index as u32),
+            required: Set(false),
         }
         .insert(&db)
         .await

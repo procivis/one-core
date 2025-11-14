@@ -120,8 +120,8 @@ pub enum CodeTypeEnum {
 pub enum Relation {
     #[sea_orm(has_many = "super::credential::Entity")]
     Credential,
-    #[sea_orm(has_many = "super::credential_schema_claim_schema::Entity")]
-    CredentialSchemaClaimSchema,
+    #[sea_orm(has_many = "super::claim_schema::Entity")]
+    ClaimSchema,
     #[sea_orm(
         belongs_to = "super::organisation::Entity",
         from = "Column::OrganisationId",
@@ -140,28 +140,15 @@ impl Related<super::credential::Entity> for Entity {
     }
 }
 
-impl Related<super::credential_schema_claim_schema::Entity> for Entity {
+impl Related<super::claim_schema::Entity> for Entity {
     fn to() -> RelationDef {
-        Relation::CredentialSchemaClaimSchema.def()
+        Relation::ClaimSchema.def()
     }
 }
 
 impl Related<super::organisation::Entity> for Entity {
     fn to() -> RelationDef {
         Relation::Organisation.def()
-    }
-}
-
-impl Related<super::claim_schema::Entity> for Entity {
-    fn to() -> RelationDef {
-        super::credential_schema_claim_schema::Relation::ClaimSchema.def()
-    }
-    fn via() -> Option<RelationDef> {
-        Some(
-            super::credential_schema_claim_schema::Relation::CredentialSchema
-                .def()
-                .rev(),
-        )
     }
 }
 

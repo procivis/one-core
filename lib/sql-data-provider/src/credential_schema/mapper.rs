@@ -12,7 +12,7 @@ use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::{ColumnTrait, IntoSimpleExpr};
 use shared_types::CredentialSchemaId;
 
-use crate::entity::{claim_schema, credential_schema, credential_schema_claim_schema};
+use crate::entity::{claim_schema, credential_schema};
 use crate::list_query_generic::{
     IntoFilterCondition, IntoSortingColumn, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
@@ -85,10 +85,12 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
 
 pub(super) fn claim_schemas_to_model_vec(
     claim_schemas: Vec<CredentialSchemaClaim>,
+    credential_schema_id: &CredentialSchemaId,
 ) -> Vec<claim_schema::ActiveModel> {
     claim_schemas
         .into_iter()
-        .map(|claim_schema| claim_schema::ActiveModel {
+        .enumerate()
+        .map(|(index, claim_schema)| claim_schema::ActiveModel {
             id: Set(claim_schema.schema.id),
             created_date: Set(claim_schema.schema.created_date),
             last_modified: Set(claim_schema.schema.last_modified),
@@ -96,25 +98,10 @@ pub(super) fn claim_schemas_to_model_vec(
             datatype: Set(claim_schema.schema.data_type),
             array: Set(claim_schema.schema.array),
             metadata: Set(claim_schema.schema.metadata),
+            credential_schema_id: Set(Some(*credential_schema_id)),
+            required: Set(claim_schema.required),
+            order: Set(index as u32),
         })
-        .collect()
-}
-
-pub(super) fn claim_schemas_to_relations(
-    claim_schemas: &[CredentialSchemaClaim],
-    credential_schema_id: &CredentialSchemaId,
-) -> Vec<credential_schema_claim_schema::ActiveModel> {
-    claim_schemas
-        .iter()
-        .enumerate()
-        .map(
-            |(i, claim_schema)| credential_schema_claim_schema::ActiveModel {
-                claim_schema_id: Set(claim_schema.schema.id),
-                credential_schema_id: Set(credential_schema_id.to_string()),
-                required: Set(claim_schema.required),
-                order: Set(i as u32),
-            },
-        )
         .collect()
 }
 

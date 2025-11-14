@@ -31,9 +31,7 @@ use crate::common::calculate_pages_count;
 use crate::credential::CredentialProvider;
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
-use crate::entity::{
-    claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, identifier,
-};
+use crate::entity::{claim, claim_schema, credential, credential_schema, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
 use crate::transaction_context::TransactionManagerImpl;
@@ -75,10 +73,10 @@ async fn get_claims(
         .join(JoinType::InnerJoin, claim::Relation::ClaimSchema.def())
         .join(
             JoinType::InnerJoin,
-            claim_schema::Relation::CredentialSchemaClaimSchema.def(),
+            claim_schema::Relation::CredentialSchema.def(),
         )
         // sorting claims according to the order from credential_schema
-        .order_by_asc(credential_schema_claim_schema::Column::Order)
+        .order_by_asc(claim_schema::Column::Order)
         .into_model::<ClaimIdModel>()
         .all(db)
         .await

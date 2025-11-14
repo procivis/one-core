@@ -5,7 +5,8 @@ use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 
-use super::models::{ClaimWithSchema, SchemaWithClaimSchema, UnexportableCredentialModel};
+use super::models::{ClaimWithSchema, UnexportableCredentialModel};
+use crate::entity::claim_schema;
 
 impl From<ClaimWithSchema> for Claim {
     fn from(value: ClaimWithSchema) -> Self {
@@ -15,11 +16,11 @@ impl From<ClaimWithSchema> for Claim {
     }
 }
 
-impl From<SchemaWithClaimSchema> for CredentialSchemaClaim {
-    fn from(value: SchemaWithClaimSchema) -> Self {
+impl From<claim_schema::Model> for CredentialSchemaClaim {
+    fn from(value: claim_schema::Model) -> Self {
         Self {
-            required: value.credential_schema_claim_schema.required,
-            schema: value.claim_schema.into(),
+            required: value.required,
+            schema: value.into(),
         }
     }
 }
@@ -31,9 +32,10 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
         let claims_with_schema: Vec<ClaimWithSchema> =
             serde_json::from_str(&value.claims).map_err(|_| Self::Error::MappingError)?;
 
-        let credential_schema_claim_schemas: Vec<SchemaWithClaimSchema> =
-            serde_json::from_str(&value.credential_schema_claim_schemas)
-                .map_err(|_| Self::Error::MappingError)?;
+        let (claims, claim_schemas) = claims_with_schema
+            .into_iter()
+            .map(|item| (item.claim.into(), item.claim_schema.into()))
+            .unzip();
 
         Ok(Self {
             id: value.id,
@@ -47,7 +49,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
             state: value.state.into(),
             suspend_end_date: value.suspend_end_date,
             profile: value.profile,
-            claims: Some(convert_inner(claims_with_schema)),
+            claims: Some(claims),
             issuer_identifier: None,
             issuer_certificate: None,
             holder_identifier: None,
@@ -61,7 +63,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 format: value.credential_schema_format,
                 wallet_storage_type: convert_inner(value.credential_schema_wallet_storage_type),
                 revocation_method: value.credential_schema_revocation_method,
-                claim_schemas: Some(convert_inner(credential_schema_claim_schemas)),
+                claim_schemas: Some(claim_schemas),
                 organisation: Some(Organisation {
                     id: value.organisation_id,
                     name: value.organisation_name,

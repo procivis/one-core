@@ -8,7 +8,7 @@ use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState};
 use crate::entity::credential_schema::WalletStorageType;
-use crate::entity::{claim, claim_schema, credential_schema_claim_schema};
+use crate::entity::{claim, claim_schema};
 
 #[derive(Debug, FromQueryResult)]
 pub struct UnexportableCredentialModel {
@@ -47,17 +47,10 @@ pub struct UnexportableCredentialModel {
     pub credential_blob_id: Option<BlobId>,
 
     pub claims: String,
-    pub credential_schema_claim_schemas: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ClaimWithSchema {
     pub claim: claim::Model,
-    pub claim_schema: claim_schema::Model,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct SchemaWithClaimSchema {
-    pub credential_schema_claim_schema: credential_schema_claim_schema::Model,
     pub claim_schema: claim_schema::Model,
 }

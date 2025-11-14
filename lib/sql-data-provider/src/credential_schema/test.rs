@@ -221,14 +221,6 @@ async fn test_create_credential_schema_success() {
         1
     );
     assert_eq!(
-        crate::entity::credential_schema_claim_schema::Entity::find()
-            .all(&db)
-            .await
-            .unwrap()
-            .len(),
-        2
-    );
-    assert_eq!(
         crate::entity::claim_schema::Entity::find()
             .all(&db)
             .await

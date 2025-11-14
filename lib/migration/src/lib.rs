@@ -170,6 +170,7 @@ mod m20251103_141414_add_credential_schema_requires_app_attestation_column;
 mod m20251105_103659_add_remote_entity_storage_indices;
 mod m20251105_121212_waa_and_wua_blobs;
 mod m20251112_152945_remote_entity_type;
+mod m20251114_085246_remove_credential_schema_claim_schema_table;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -342,6 +343,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251105_121212_waa_and_wua_blobs::Migration),
             Box::new(m20251105_103659_add_remote_entity_storage_indices::Migration),
             Box::new(m20251112_152945_remote_entity_type::Migration),
+            Box::new(m20251114_085246_remove_credential_schema_claim_schema_table::Migration),
         ]
     }
 }

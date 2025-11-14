@@ -30,10 +30,9 @@ use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
 use crate::entity::{
-    blob, claim, claim_schema, credential, credential_schema, credential_schema_claim_schema, did,
-    identifier, interaction, key, key_did, organisation, proof, proof_claim,
-    proof_input_claim_schema, proof_input_schema, proof_schema, revocation_list,
-    revocation_list_entry, wallet_unit, wallet_unit_attested_key,
+    blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
+    key_did, organisation, proof, proof_claim, proof_input_claim_schema, proof_input_schema,
+    proof_schema, revocation_list, revocation_list_entry, wallet_unit, wallet_unit_attested_key,
 };
 use crate::{DataLayer, db_conn};
 
@@ -189,13 +188,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
             datatype: Set(claim_schema.datatype.to_string()),
             array: Set(claim_schema.array),
             metadata: Set(claim_schema.metadata),
-        }
-        .insert(database)
-        .await?;
-
-        credential_schema_claim_schema::ActiveModel {
-            claim_schema_id: Set(claim_schema.id),
-            credential_schema_id: Set(claim_input.credential_schema_id.to_string()),
+            credential_schema_id: Set(Some(claim_input.credential_schema_id)),
             required: Set(claim_schema.required),
             order: Set(claim_schema.order),
         }
