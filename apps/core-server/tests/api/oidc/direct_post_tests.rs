@@ -8,6 +8,7 @@ use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
+use crate::fixtures::presentation::dummy_presentations;
 use crate::fixtures::{
     self, TestingDidParams, TestingIdentifierParams, create_credential_schema_with_claims,
     create_proof, create_proof_schema, get_blob, get_proof,
@@ -16,40 +17,6 @@ use crate::utils;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
 use crate::utils::server::run_server;
-
-static TOKEN1: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxMzgwNTcsImV4cCI6MzMyMzYxMzgwNTcsIm5iZiI6MTcwMDEz\
-Nzk5NywiaXNzIjoiZGlkOmtleTp6Nk1rdHRpSlZaQjRkd1drRjlBTHdhRUxVRHE1Smo5ajFCaFpITnpOY0xWTmFtNm4iLCJzdWIiOiJkaWQ6a2V5Ono2TWt0\
-dGlKVlpCNGR3V2tGOUFMd2FFTFVEcTVKajlqMUJoWkhOek5jTFZOYW02biIsImp0aSI6ImEwYmVhNmI3LWYwMjQtNGZiZS05MDNiLWM1MGFmYzhhYjE4ZCIs\
-Im5vbmNlIjoibm9uY2UxMjMiLCJ2cCI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZl\
-cmlmaWFibGVQcmVzZW50YXRpb24iXSwidmVyaWZpYWJsZUNyZWRlbnRpYWwiOlsiZXlKaGJHY2lPaUpGUkVSVFFTSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBZ\
-WFFpT2pFM01EQXdOVEF3TURRc0ltVjRjQ0k2TVRjMk16RXlNakF3TkN3aWJtSm1Jam94TnpBd01EUTVPVFEwTENKcGMzTWlPaUprYVdRNmEyVjVPbm8yVFd0\
-MWQwRjFSalZxTmtFNWJYZFdVM3BwUkdvek5XdHhSRkZaYlhwYU9USnhZV2c1VFhkUVMzRnlSbFppV1NJc0luTjFZaUk2SW1ScFpEcHJaWGs2ZWpaTmEzUjBh\
-VXBXV2tJMFpIZFhhMFk1UVV4M1lVVk1WVVJ4TlVwcU9Xb3hRbWhhU0U1NlRtTk1WazVoYlRadUlpd2lhblJwSWpvaU5HWmtZVEkyWldJdFpUWmxOaTAwTm1Z\
-MExUZzVOVEV0WXpKa09EaGpNRGRpTjJFMUlpd2lkbU1pT25zaVFHTnZiblJsZUhRaU9sc2lhSFIwY0hNNkx5OTNkM2N1ZHpNdWIzSm5Mekl3TVRndlkzSmxa\
-R1Z1ZEdsaGJITXZkakVpWFN3aWRIbHdaU0k2V3lKV1pYSnBabWxoWW14bFEzSmxaR1Z1ZEdsaGJDSmRMQ0pqY21Wa1pXNTBhV0ZzVTNWaWFtVmpkQ0k2ZXlK\
-d1pYUXhJam9pVUVWVU1TSXNJbkJsZERJaU9pSlFSVlF5SW4xOWZRLkRuYXVBOUQ2dk8tQXpFZ0pmTUJiMXhKRUU4b2loN1I5WWpSWG1hRDMyVXU2LXFQSU80\
-bXA0N3Zaa1puQjl6N0VmcV9uMUFyNWo3N0JBVlVrOU5XcERnIiwiZXlKaGJHY2lPaUpGUkVSVFFTSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnBZWFFpT2pFM01E\
-QXdORGs0TmpVc0ltVjRjQ0k2TVRjMk16RXlNVGcyTlN3aWJtSm1Jam94TnpBd01EUTVPREExTENKcGMzTWlPaUprYVdRNmEyVjVPbm8yVFd0MWQwRjFSalZx\
-TmtFNWJYZFdVM3BwUkdvek5XdHhSRkZaYlhwYU9USnhZV2c1VFhkUVMzRnlSbFppV1NJc0luTjFZaUk2SW1ScFpEcHJaWGs2ZWpaTmEzUjBhVXBXV2tJMFpI\
-ZFhhMFk1UVV4M1lVVk1WVVJ4TlVwcU9Xb3hRbWhhU0U1NlRtTk1WazVoYlRadUlpd2lhblJwSWpvaVlUZGhZMlprWm1RdE5EUmtZaTAwTXpJMUxUZzBOR0V0\
-TURFNE9UYzRObVEzWkRkaElpd2lkbU1pT25zaVFHTnZiblJsZUhRaU9sc2lhSFIwY0hNNkx5OTNkM2N1ZHpNdWIzSm5Mekl3TVRndlkzSmxaR1Z1ZEdsaGJI\
-TXZkakVpWFN3aWRIbHdaU0k2V3lKV1pYSnBabWxoWW14bFEzSmxaR1Z1ZEdsaGJDSmRMQ0pqY21Wa1pXNTBhV0ZzVTNWaWFtVmpkQ0k2ZXlKdVlXMWxNaUk2\
-SWs1QlRVVXlJaXdpYm1GdFpURWlPaUpPUVUxRk1TSjlmWDAuMUoyNmNjOFVTSHNISlAwX01iWHMzUzlLalRvWUdCMTZUekd0a1lyRWN1SXhaaVFTd1FzWnJM\
-MFd1Y1dPVm9NbDZjQjFmNFN3SF9pUmt6bFU1TjYyQVEiXX19.JJqURzZQGeeJMP9iI2IwIqYzgb_e1d6_lWVO8-G-lqq3yudM-Q5y1toOpduyD8acxrIhE7J\
-PX3vs6mhX2DmXDQ";
-
-static TOKEN2: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDAxNDQ0MjMsImV4cCI6MzMyMzYxNDQ0MjMsIm5iZiI6MTcwMDE\
-0NDM2MywiaXNzIjoiZGlkOmtleTp6Nk1rdHRpSlZaQjRkd1drRjlBTHdhRUxVRHE1Smo5ajFCaFpITnpOY0xWTmFtNm4iLCJzdWIiOiJkaWQ6a2V5Ono2TWt\
-0dGlKVlpCNGR3V2tGOUFMd2FFTFVEcTVKajlqMUJoWkhOek5jTFZOYW02biIsImp0aSI6IjA5NzUyNTRkLWUwZGYtNGM1Ny04MmEzLTFmOGVlNzg3ODAxNCI\
-sIm5vbmNlIjoibm9uY2UxMjMiLCJ2cCI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSJdLCJ0eXBlIjpbIlZ\
-lcmlmaWFibGVQcmVzZW50YXRpb24iXSwidmVyaWZpYWJsZUNyZWRlbnRpYWwiOlsiZXlKaGJHY2lPaUpGUkVSVFFTSXNJblI1Y0NJNklrcFhWQ0o5LmV5SnB\
-ZWFFpT2pFM01EQXhORFF4T1RFc0ltVjRjQ0k2TVRjMk16SXhOakU1TVN3aWJtSm1Jam94TnpBd01UUTBNVE14TENKcGMzTWlPaUprYVdRNmEyVjVPbm8yVFd\
-0MWQwRjFSalZxTmtFNWJYZFdVM3BwUkdvek5XdHhSRkZaYlhwYU9USnhZV2c1VFhkUVMzRnlSbFppV1NJc0luTjFZaUk2SW1ScFpEcHJaWGs2ZWpaTmEzUjB\
-hVXBXV2tJMFpIZFhhMFk1UVV4M1lVVk1WVVJ4TlVwcU9Xb3hRbWhhU0U1NlRtTk1WazVoYlRadUlpd2lhblJwSWpvaVl6QXlOVFJoWmpndE5UbGpNeTAwTWp\
-ZekxXRXlPRGt0TldaaFkyUTFNell3TlRrMklpd2lkbU1pT25zaVFHTnZiblJsZUhRaU9sc2lhSFIwY0hNNkx5OTNkM2N1ZHpNdWIzSm5Mekl3TVRndlkzSmx\
-aR1Z1ZEdsaGJITXZkakVpWFN3aWRIbHdaU0k2V3lKV1pYSnBabWxoWW14bFEzSmxaR1Z1ZEdsaGJDSmRMQ0pqY21Wa1pXNTBhV0ZzVTNWaWFtVmpkQ0k2ZXl\
-KallYUXhJam9pUTBGVU1TSjlmWDAuZEF3UFJSQkQwMUh4cVlVd0pOMHlhVmJ4Si1JanctRURQUXhMOW5oRTYwREZHaFVHNUlhUDhqN0dBYW0xMlJCYi0zSnd\
-vOFJHUHJrN3A0Y0diNFdOQlEiXX19.uD-PTubYXem7PtYT0R7KsSNvMDLQgHMRHGPUqZdZExg2c3-ygeD-xHszC6N1ZzVlAvOxmEduf6RQjxPZ9OJWBg";
 
 #[tokio::test]
 async fn test_direct_post_one_credential_correct() {
@@ -161,12 +128,13 @@ async fn test_direct_post_one_credential_correct() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (_, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", TOKEN2.to_owned()),
+        ("vp_token", token2),
         ("state", interaction.id.to_string()),
     ];
 
@@ -291,8 +259,9 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
     )
     .await;
 
+    let (_, token2) = dummy_presentations().await;
     let vp_token = json!({
-        credential_schema.schema_id: [TOKEN2, TOKEN2]
+        credential_schema.schema_id: [token2, token2]
     });
 
     let params = [
@@ -471,12 +440,13 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (_, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", TOKEN2.to_owned()),
+        ("vp_token", token2),
         ("state", interaction.id.to_string()),
     ];
 
@@ -750,12 +720,13 @@ async fn test_direct_post_multiple_presentations() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (token1, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", json!([TOKEN1, TOKEN2]).to_string()),
+        ("vp_token", json!([token1, token2]).to_string()),
         ("state", interaction.id.to_string()),
     ];
 
@@ -1044,12 +1015,13 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (_, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", json!([TOKEN2]).to_string()),
+        ("vp_token", json!([token2]).to_string()),
         ("state", interaction.id.to_string()),
     ];
 
@@ -1210,12 +1182,13 @@ async fn test_direct_post_wrong_claim_format() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (_, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", TOKEN2.to_owned()),
+        ("vp_token", token2.to_owned()),
         ("state", interaction.id.to_string()),
     ];
 
@@ -1351,12 +1324,13 @@ async fn test_direct_post_draft25() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (_, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", TOKEN2.to_owned()),
+        ("vp_token", token2),
         ("state", interaction.id.to_string()),
     ];
 
@@ -1507,12 +1481,13 @@ async fn test_direct_post_with_profile_verification() {
         "id": "318ea550-dbb6-4d6a-9cf2-575bad15c6da"
     });
 
+    let (_, token2) = dummy_presentations().await;
     let params = [
         (
             "presentation_submission",
             presentation_submission.to_string(),
         ),
-        ("vp_token", TOKEN2.to_owned()),
+        ("vp_token", token2),
         ("state", proof.interaction.as_ref().unwrap().id.to_string()),
     ];
 

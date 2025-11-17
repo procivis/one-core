@@ -1,7 +1,9 @@
 pub(crate) mod certificate;
 pub(crate) mod dcql;
 pub(crate) mod jsonld_contexts;
+pub(crate) mod jwt;
 pub(crate) mod mdoc;
+pub(crate) mod presentation;
 pub(crate) mod wallet_provider;
 
 use std::str::FromStr;

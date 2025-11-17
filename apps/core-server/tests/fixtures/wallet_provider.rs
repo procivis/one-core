@@ -1,54 +1,18 @@
-use std::ops::Add;
-
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
 use one_core::model::organisation::{Organisation, UpdateOrganisationRequest};
-use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
-use one_core::proto::jwt::model::JWTPayload;
-use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::model::GeneratedKey;
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
-use time::{Duration, OffsetDateTime};
 
+use crate::fixtures::jwt::signed_jwt;
 use crate::fixtures::{TestingDidParams, TestingIdentifierParams, TestingKeyParams};
 use crate::utils::context::TestContext;
 
 pub(crate) async fn create_key_possession_proof(key: &GeneratedKey, aud: String) -> String {
-    let now = OffsetDateTime::now_utc();
-    let jwt = Jwt::new(
-        "JWT".to_string(),
-        "ES256".to_string(),
-        None,
-        Some(JwtPublicKeyInfo::Jwk(
-            key.key.public_key_as_jwk().unwrap().into(),
-        )),
-        JWTPayload {
-            issued_at: Some(now),
-            expires_at: Some(now.add(Duration::hours(10))),
-            invalid_before: Some(now),
-            audience: Some(vec![aud]),
-            custom: (),
-            ..Default::default()
-        },
-    );
-
-    let jwt_header_json = serde_json::to_string(&jwt.header).unwrap();
-    let payload_json = serde_json::to_string(&jwt.payload).unwrap();
-    let mut token = format!(
-        "{}.{}",
-        string_to_b64url_string(&jwt_header_json).unwrap(),
-        string_to_b64url_string(&payload_json).unwrap(),
-    );
-
-    let signature = key.key.sign(token.as_bytes()).await.unwrap();
-    let signature_encoded = bin_to_b64url_string(&signature).unwrap();
-
-    token.push('.');
-    token.push_str(&signature_encoded);
-    token
+    signed_jwt(key, "ES256", Some(aud), None, None, ()).await
 }
 
 pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(
