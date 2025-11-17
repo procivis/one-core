@@ -95,9 +95,6 @@ impl OneCoreBinding {
         &self,
         interaction_id: String,
         submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestBindingDTO>>,
-        did_id: Option<String>,
-        identifier_id: Option<String>,
-        key_id: Option<String>,
     ) -> Result<(), BindingError> {
         let core = self.use_core().await?;
 
@@ -105,9 +102,6 @@ impl OneCoreBinding {
             .submit_proof(PresentationSubmitRequestDTO {
                 interaction_id: into_id(&interaction_id)?,
                 submit_credentials: try_convert_inner_of_inner(submit_credentials)?,
-                did_id: did_id.map(into_id).transpose()?,
-                identifier_id: identifier_id.map(into_id).transpose()?,
-                key_id: key_id.map(|key_id| into_id(&key_id)).transpose()?,
             })
             .await?;
 

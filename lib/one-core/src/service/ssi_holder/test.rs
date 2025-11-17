@@ -32,7 +32,7 @@ use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
-    CredentialSubject, DetailCredential, IdentifierDetails,
+    CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -277,19 +277,22 @@ async fn test_submit_proof_succeeds() {
     let proof_id = Uuid::new_v4().into();
     let protocol = "protocol";
 
+    let key = dummy_key();
+    let did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: key.clone(),
+            reference: "1".to_string(),
+        }]),
+        did_method: "KEY".to_string(),
+        ..dummy_did()
+    };
     let mut identifier_repository = MockIdentifierRepository::default();
+    let did_copy = did.clone();
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {
             id: identifier_id,
-            did: Some(Did {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "1".to_string(),
-                }]),
-                did_method: "KEY".to_string(),
-                ..dummy_did()
-            }),
+            did: Some(did_copy),
             ..dummy_identifier()
         }))
     });
@@ -339,6 +342,12 @@ async fn test_submit_proof_succeeds() {
             Ok(Some(Credential {
                 id: credential_id,
                 claims: Some(vec![]),
+                holder_identifier: Some(Identifier {
+                    key: Some(key.clone()),
+                    did: Some(did.clone()),
+                    ..dummy_identifier()
+                }),
+                key: Some(key.clone()),
                 ..dummy_credential(None)
             }))
         });
@@ -350,16 +359,11 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(|presentation, _, _| Ok(presentation.token));
 
-    formatter
-        .expect_get_capabilities()
-        .times(2)
-        .returning(generic_formatter_capabilities);
-
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .times(2)
+        .times(1)
         .returning(move |_| Some(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
@@ -429,12 +433,6 @@ async fn test_submit_proof_succeeds() {
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .returning(|_| Some(Arc::new(Ecdsa)));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage
         .expect_get()
@@ -447,14 +445,34 @@ async fn test_submit_proof_succeeds() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -469,9 +487,6 @@ async fn test_submit_proof_succeeds() {
                 }],
             ))
             .collect(),
-            did_id: None,
-            identifier_id: Some(identifier_id),
-            key_id: None,
         })
         .await
         .unwrap();
@@ -485,19 +500,23 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     let proof_id = Uuid::new_v4().into();
     let protocol = "protocol";
 
+    let key = dummy_key();
+    let did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: key.clone(),
+            reference: "1".to_string(),
+        }]),
+        did_method: "KEY".to_string(),
+        ..dummy_did()
+    };
+
     let mut identifier_repository = MockIdentifierRepository::default();
+    let did_copy = did.clone();
     identifier_repository.expect_get().return_once(move |_, _| {
         Ok(Some(Identifier {
             id: identifier_id,
-            did: Some(Did {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "1".to_string(),
-                }]),
-                did_method: "KEY".to_string(),
-                ..dummy_did()
-            }),
+            did: Some(did_copy),
             ..dummy_identifier()
         }))
     });
@@ -548,6 +567,12 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
             Ok(Some(Credential {
                 id: *credential_id,
                 claims: Some(vec![]),
+                holder_identifier: Some(Identifier {
+                    key: Some(key.clone()),
+                    did: Some(did.clone()),
+                    ..dummy_identifier()
+                }),
+                key: Some(key.clone()),
                 ..dummy_credential(None)
             }))
         });
@@ -559,16 +584,11 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .times(2)
         .returning(|presentation, _, _| Ok(presentation.token));
 
-    formatter
-        .expect_get_capabilities()
-        .times(4)
-        .returning(generic_formatter_capabilities);
-
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
     formatter_provider
         .expect_get_credential_formatter()
-        .times(4)
+        .times(2)
         .returning(move |_| Some(formatter.clone()));
 
     let mut verification_protocol = MockVerificationProtocol::default();
@@ -648,12 +668,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .once()
         .return_once(move |_| Some(Arc::new(verification_protocol)));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .times(2)
-        .returning(|_| Some(Arc::new(Ecdsa)));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage
         .expect_get()
@@ -666,14 +680,34 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         .times(2)
         .returning(move |_| Some(blob_storage.clone()));
 
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -696,218 +730,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                     }],
                 ),
             ]),
-            did_id: None,
-            identifier_id: Some(identifier_id),
-            key_id: None,
-        })
-        .await
-        .unwrap();
-}
-#[tokio::test]
-async fn test_submit_proof_succeeds_with_did() {
-    let did_id = Uuid::new_v4().into();
-    let interaction_id = Uuid::new_v4();
-
-    let proof_id = Uuid::new_v4().into();
-    let protocol = "protocol";
-
-    let mut identifier_repository = MockIdentifierRepository::default();
-    identifier_repository
-        .expect_get_from_did_id()
-        .return_once(move |_, _| {
-            Ok(Some(Identifier {
-                did: Some(Did {
-                    id: did_id,
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::Authentication,
-                        key: dummy_key(),
-                        reference: "1".to_string(),
-                    }]),
-                    did_method: "KEY".to_string(),
-                    ..dummy_did()
-                }),
-                ..dummy_identifier()
-            }))
-        });
-
-    let mut proof_repository = MockProofRepository::new();
-    proof_repository
-        .expect_get_proof_by_interaction_id()
-        .withf(move |_interaction_id: &Uuid, _| {
-            assert_eq!(_interaction_id, &interaction_id);
-            true
-        })
-        .once()
-        .returning(move |_, _| {
-            Ok(Some(Proof {
-                id: proof_id,
-                protocol: protocol.to_string(),
-                state: ProofStateEnum::Requested,
-                interaction: Some(Interaction {
-                    id: interaction_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    data: Some(serde_json::to_vec(&()).unwrap()),
-                    organisation: None,
-                    nonce_id: None,
-                    interaction_type: InteractionType::Verification,
-                }),
-                ..dummy_proof()
-            }))
-        });
-
-    proof_repository
-        .expect_set_proof_claims()
-        .once()
-        .returning(|_, _| Ok(()));
-
-    proof_repository
-        .expect_update_proof()
-        .once()
-        .returning(|_, _, _| Ok(()));
-
-    let credential_id = Uuid::new_v4().into();
-    let mut credential_repository = MockCredentialRepository::new();
-    credential_repository
-        .expect_get_credential()
-        .once()
-        .returning(move |_, _| {
-            Ok(Some(Credential {
-                id: credential_id,
-                claims: Some(vec![]),
-                ..dummy_credential(None)
-            }))
-        });
-
-    let mut formatter = MockCredentialFormatter::new();
-
-    formatter
-        .expect_format_credential_presentation()
-        .once()
-        .returning(|presentation, _, _| Ok(presentation.token));
-
-    formatter
-        .expect_get_capabilities()
-        .times(2)
-        .returning(generic_formatter_capabilities);
-
-    let mut formatter_provider = MockCredentialFormatterProvider::new();
-    let formatter = Arc::new(formatter);
-    formatter_provider
-        .expect_get_credential_formatter()
-        .times(2)
-        .returning(move |_| Some(formatter.clone()));
-
-    let mut verification_protocol = MockVerificationProtocol::default();
-    verification_protocol
-        .expect_holder_get_presentation_definition()
-        .withf(move |proof, _, _| {
-            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
-            true
-        })
-        .once()
-        .returning(|_, _, _| {
-            Ok(PresentationDefinitionResponseDTO {
-                request_groups: vec![PresentationDefinitionRequestGroupResponseDTO {
-                    id: "random".to_string(),
-                    name: None,
-                    purpose: None,
-                    rule: PresentationDefinitionRuleDTO {
-                        r#type: PresentationDefinitionRuleTypeEnum::All,
-                        min: None,
-                        max: None,
-                        count: None,
-                    },
-                    requested_credentials: vec![
-                        PresentationDefinitionRequestedCredentialResponseDTO {
-                            id: "cred1".to_string(),
-                            name: None,
-                            purpose: None,
-                            multiple: None,
-                            fields: vec![],
-                            applicable_credentials: vec![],
-                            inapplicable_credentials: vec![],
-                            validity_credential_nbf: None,
-                        },
-                    ],
-                }],
-                credentials: vec![],
-            })
-        });
-
-    verification_protocol
-        .expect_get_capabilities()
-        .times(1)
-        .returning(|| VerificationProtocolCapabilities {
-            supported_transports: vec![TransportType::Http],
-            did_methods: vec![core_config::DidType::Key],
-            verifier_identifier_types: vec![core_config::IdentifierType::Did],
-            supported_presentation_definition: vec![PresentationDefinitionVersion::V1],
-        });
-
-    verification_protocol
-        .expect_holder_submit_proof()
-        .withf(move |proof, _| {
-            assert_eq!(Uuid::from(proof.id), Uuid::from(proof_id));
-            true
-        })
-        .once()
-        .returning(|_, _| Ok(Default::default()));
-
-    verification_protocol
-        .expect_holder_get_holder_binding_context()
-        .returning(|_, _| Ok(None));
-
-    let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
-    verification_protocol_provider
-        .expect_get_protocol()
-        .with(eq(protocol))
-        .once()
-        .return_once(move |_| Some(Arc::new(verification_protocol)));
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .returning(|_| Some(Arc::new(Ecdsa)));
-
-    let mut blob_storage = MockBlobStorage::new();
-    blob_storage
-        .expect_get()
-        .once()
-        .returning(|_| Ok(Some(dummy_blob())));
-    let blob_storage = Arc::new(blob_storage);
-    let mut blob_storage_provider = MockBlobStorageProvider::new();
-    blob_storage_provider
-        .expect_get_blob_storage()
-        .once()
-        .returning(move |_| Some(blob_storage.clone()));
-
-    let service = SSIHolderService {
-        credential_repository: Arc::new(credential_repository),
-        proof_repository: Arc::new(proof_repository),
-        formatter_provider: Arc::new(formatter_provider),
-        verification_protocol_provider: Arc::new(verification_protocol_provider),
-        identifier_repository: Arc::new(identifier_repository),
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
-        blob_storage_provider: Arc::new(blob_storage_provider),
-        ..mock_ssi_holder_service()
-    };
-
-    service
-        .submit_proof(PresentationSubmitRequestDTO {
-            interaction_id,
-            submit_credentials: std::iter::once((
-                "cred1".to_string(),
-                vec![PresentationSubmitCredentialRequestDTO {
-                    credential_id,
-                    submit_claims: vec![],
-                }],
-            ))
-            .collect(),
-            did_id: Some(did_id),
-            identifier_id: None,
-            key_id: None,
         })
         .await
         .unwrap();
@@ -915,31 +737,32 @@ async fn test_submit_proof_succeeds_with_did() {
 
 #[tokio::test]
 async fn test_submit_proof_repeating_claims() {
-    let did_id = Uuid::new_v4().into();
     let interaction_id = Uuid::new_v4();
     let proof_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
     let protocol = "protocol";
 
+    let key = dummy_key();
+    let did = Did {
+        keys: Some(vec![RelatedKey {
+            role: KeyRole::Authentication,
+            key: key.clone(),
+            reference: "1".to_string(),
+        }]),
+        did_method: "KEY".to_string(),
+        ..dummy_did()
+    };
+    let identifier = Identifier {
+        did: Some(did.clone()),
+        ..dummy_identifier()
+    };
+
     let mut identifier_repository = MockIdentifierRepository::default();
+    let identifier_copy = identifier.clone();
     identifier_repository
         .expect_get_from_did_id()
-        .return_once(move |_, _| {
-            Ok(Some(Identifier {
-                did: Some(Did {
-                    id: did_id,
-                    keys: Some(vec![RelatedKey {
-                        role: KeyRole::Authentication,
-                        key: dummy_key(),
-                        reference: "1".to_string(),
-                    }]),
-                    did_method: "KEY".to_string(),
-                    ..dummy_did()
-                }),
-                ..dummy_identifier()
-            }))
-        });
+        .return_once(move |_, _| Ok(Some(identifier_copy)));
 
     let mut proof_repository = MockProofRepository::new();
     proof_repository
@@ -987,6 +810,8 @@ async fn test_submit_proof_repeating_claims() {
                         metadata: false,
                     }),
                 }]),
+                holder_identifier: Some(identifier.clone()),
+                key: Some(key.clone()),
                 ..dummy_credential(None)
             }))
         });
@@ -995,11 +820,6 @@ async fn test_submit_proof_repeating_claims() {
     formatter
         .expect_format_credential_presentation()
         .returning(|presentation, _, _| Ok(presentation.token));
-
-    formatter
-        .expect_get_capabilities()
-        .times(3)
-        .returning(generic_formatter_capabilities);
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -1111,12 +931,6 @@ async fn test_submit_proof_repeating_claims() {
         .once()
         .returning(|_, _, _| Ok(()));
 
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .times(2)
-        .returning(|_| Some(Arc::new(Ecdsa)));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage
         .expect_get()
@@ -1129,14 +943,34 @@ async fn test_submit_proof_repeating_claims() {
         .times(2)
         .returning(move |_| Some(blob_storage.clone()));
 
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         proof_repository: Arc::new(proof_repository),
         formatter_provider: Arc::new(formatter_provider),
         verification_protocol_provider: Arc::new(verification_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        key_provider: Arc::new(key_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1159,9 +993,6 @@ async fn test_submit_proof_repeating_claims() {
                     }],
                 ),
             ]),
-            did_id: Some(did_id),
-            identifier_id: None,
-            key_id: None,
         })
         .await
         .unwrap();

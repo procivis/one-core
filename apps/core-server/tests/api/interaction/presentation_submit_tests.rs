@@ -60,7 +60,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         }
     });
 
-    let (holder_did, _, verifier_did, verifier_identifier, credential, interaction, proof) =
+    let (_, _, verifier_did, verifier_identifier, credential, interaction, proof) =
         setup_submittable_presentation(
             &context,
             &organisation,
@@ -98,7 +98,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
-          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -128,10 +127,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc() {
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
         verifier_did.did
-    );
-    assert_eq!(
-        proof.holder_identifier.unwrap().did.unwrap().did,
-        holder_did.did
     );
     let proof_history = context
         .db
@@ -234,7 +229,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
             ),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
-                key: holder_key,
+                key: holder_key.clone(),
                 reference: "1".to_string(),
             }]),
             ..Default::default()
@@ -273,6 +268,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
             "OPENID4VCI_DRAFT13",
             TestingCredentialParams {
                 holder_identifier: Some(holder_identifier.clone()),
+                key: Some(holder_key),
                 role: Some(CredentialRole::Holder),
                 credential_blob_id: Some(blob.id),
                 claims_data: Some(vec![
@@ -390,7 +386,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
         }
     });
 
-    let (holder_did, _, verifier_did, verifier_identifier, credential, interaction, proof) =
+    let (_, _, verifier_did, verifier_identifier, credential, interaction, proof) =
         setup_submittable_presentation(
             &context,
             &organisation,
@@ -421,7 +417,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
-          "didId": holder_did.id,
           "submitCredentials": {
             "query_0": {
               "credentialId": credential.id,
@@ -451,10 +446,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
         verifier_did.did
-    );
-    assert_eq!(
-        proof.holder_identifier.unwrap().did.unwrap().did,
-        holder_did.did
     );
     let proof_history = context
         .db
@@ -513,17 +504,16 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
         }
     });
 
-    let (holder_did, _, verifier_did, _, credential, interaction, proof) =
-        setup_submittable_presentation(
-            &context,
-            &organisation,
-            &identifier,
-            &client_metadata.to_string(),
-            None,
-            None,
-            None,
-        )
-        .await;
+    let (_, _, verifier_did, _, credential, interaction, proof) = setup_submittable_presentation(
+        &context,
+        &organisation,
+        &identifier,
+        &client_metadata.to_string(),
+        None,
+        None,
+        None,
+    )
+    .await;
 
     context
         .server_mock
@@ -544,7 +534,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
-          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -574,10 +563,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_encrypted() {
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
         verifier_did.did
-    );
-    assert_eq!(
-        proof.holder_identifier.unwrap().did.unwrap().did,
-        holder_did.did
     );
 }
 
@@ -689,7 +674,7 @@ async fn setup_submittable_presentation(
                     ),
                     keys: Some(vec![RelatedKey {
                         role: KeyRole::Authentication,
-                        key: holder_key,
+                        key: holder_key.clone(),
                         reference: "1".to_string(),
                     }]),
                     ..Default::default()
@@ -729,6 +714,7 @@ async fn setup_submittable_presentation(
                     holder_identifier: Some(holder_identifier.clone()),
                     role: Some(CredentialRole::Holder),
                     credential_blob_id: Some(blob.id),
+                    key: Some(holder_key),
                     ..Default::default()
                 },
             )
@@ -881,7 +867,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
             ),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
-                key: holder_key,
+                key: holder_key.clone(),
                 reference: "1".to_string(),
             }]),
             ..Default::default()
@@ -929,6 +915,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier),
+            key: Some(holder_key),
             credential_blob_id: Some(blob.id),
             role: Some(CredentialRole::Holder),
             ..Default::default()
@@ -1071,7 +1058,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
-          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -1109,10 +1095,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
         verifier_did.did
-    );
-    assert_eq!(
-        proof.holder_identifier.unwrap().did.unwrap().did,
-        holder_did.did
     );
 }
 
@@ -1154,7 +1136,7 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
         }
     });
 
-    let (holder_did, _, verifier_did, verifier_identifier, credential, interaction, proof) =
+    let (_, _, verifier_did, verifier_identifier, credential, interaction, proof) =
         setup_submittable_presentation_dcql(
             &context,
             &organisation,
@@ -1186,7 +1168,6 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
-          "didId": holder_did.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
@@ -1214,10 +1195,6 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
     assert_eq!(
         proof.verifier_identifier.unwrap().did.unwrap().did,
         verifier_did.did
-    );
-    assert_eq!(
-        proof.holder_identifier.unwrap().did.unwrap().did,
-        holder_did.did
     );
     let proof_history = context
         .db
@@ -1324,7 +1301,7 @@ async fn setup_submittable_presentation_dcql(
             ),
             keys: Some(vec![RelatedKey {
                 role: KeyRole::Authentication,
-                key: holder_key,
+                key: holder_key.clone(),
                 reference: "1".to_string(),
             }]),
             ..Default::default()
@@ -1372,6 +1349,7 @@ async fn setup_submittable_presentation_dcql(
         "OPENID4VCI_DRAFT13",
         TestingCredentialParams {
             holder_identifier: Some(holder_identifier.clone()),
+            key: Some(holder_key),
             role: Some(CredentialRole::Holder),
             credential_blob_id: Some(blob.id),
             ..Default::default()
@@ -1449,107 +1427,8 @@ async fn setup_submittable_presentation_dcql(
 }
 
 #[tokio::test]
-async fn test_presentation_submit_endpoint_wrong_identifier_type() {
-    let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
-
-    let client_metadata = json!(
-    {
-        "jwks": {
-            "keys": [{
-                "crv": "P-256",
-                "kid": "not-a-uuid",
-                "kty": "EC",
-                "x": "cd_LTtCQnat2XnDElumvgQAM5ZcnUMVTkPig458C1yc",
-                "y": "iaQmPUgir80I2XCFqn2_KPqdWH0PxMzCCP8W3uPxlUA",
-                "use": "enc"
-            }]
-        },
-        "vp_formats":
-        {
-            "jwt_vp_json":
-            {
-                "alg":["EdDSA"]
-            },
-            "jwt_vc_json":{
-                "alg":["EdDSA"]
-            },
-            "ldp_vp":{
-                "proof_type":["DataIntegrityProof"]
-            },
-            "mso_mdoc":{
-                "alg":["EdDSA"]
-            },
-            "vc+sd-jwt": {
-                "kb-jwt_alg_values": ["EdDSA", "ES256"],
-                "sd-jwt_alg_values": ["EdDSA", "ES256"]
-            }
-        }
-    });
-
-    let new_key = context
-        .db
-        .keys
-        .create(&organisation, Default::default())
-        .await;
-    let holder_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: None,
-                r#type: Some(IdentifierType::Key),
-                is_remote: Some(false),
-                key: Some(new_key),
-                ..Default::default()
-            },
-        )
-        .await;
-
-    let (.., credential, interaction, _) = setup_submittable_presentation(
-        &context,
-        &organisation,
-        &identifier,
-        &client_metadata.to_string(),
-        None,
-        None,
-        None,
-    )
-    .await;
-
-    // WHEN
-    let url = format!(
-        "{}/api/interaction/v1/presentation-submit",
-        context.config.app.core_base_url
-    );
-
-    let resp = utils::client()
-        .post(url)
-        .bearer_auth("test")
-        .json(&json!({
-          "interactionId": interaction.id,
-          "identifierId": holder_identifier.id,
-          "submitCredentials": {
-            "input_0": {
-              "credentialId": credential.id,
-              "submitClaims": [
-                credential.claims.unwrap().first().unwrap().id
-              ]
-            }
-          }
-        }))
-        .send()
-        .await
-        .unwrap();
-
-    // THEN
-    assert_eq!(resp.status(), 400);
-    assert_eq!(Response::from(resp).error_code().await, "BR_0218")
-}
-
-#[tokio::test]
 async fn test_presentation_submit_endpoint_empty() {
-    let (context, _, _, identifier, ..) = TestContext::new_with_did(None).await;
+    let context = TestContext::new(None).await;
 
     // WHEN
     let url = format!(
@@ -1562,7 +1441,6 @@ async fn test_presentation_submit_endpoint_empty() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": Uuid::new_v4(),
-          "identifierId": identifier.id,
           "submitCredentials": {}
         }))
         .send()

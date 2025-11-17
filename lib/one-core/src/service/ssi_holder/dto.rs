@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
+use shared_types::{CredentialId, OrganisationId, ProofId};
 use uuid::Uuid;
 
 use crate::model::credential_schema::KeyStorageSecurity;
@@ -12,9 +12,6 @@ use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, Op
 pub struct PresentationSubmitRequestDTO {
     pub interaction_id: InteractionId,
     pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestDTO>>,
-    pub did_id: Option<DidId>,
-    pub identifier_id: Option<IdentifierId>,
-    pub key_id: Option<KeyId>,
 }
 
 #[derive(Clone, Debug)]

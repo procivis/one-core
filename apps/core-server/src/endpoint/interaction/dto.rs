@@ -182,12 +182,6 @@ pub(crate) struct PresentationSubmitRequestRestDTO {
     #[into(with_fn = convert_inner_of_inner)]
     #[serde(deserialize_with = "deserialize_submit_credentials")]
     pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestRestDTO>>,
-    pub did_id: Option<DidId>,
-    pub identifier_id: Option<IdentifierId>,
-    /// If the associated DID supports multiple keys for authentication,
-    /// specify which key to use. If no key is specified the first suitable key listed
-    /// will be used.
-    pub key_id: Option<KeyId>,
 }
 
 fn deserialize_submit_credentials<'de, D>(

@@ -25,9 +25,9 @@ use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -51,7 +51,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
     ValidationError,
 };
-use crate::service::ssi_holder::validator::validate_holder_capabilities;
+use crate::service::ssi_holder::mapper::holder_did_key_jwk_from_credential;
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
@@ -146,42 +146,6 @@ impl SSIHolderService {
             );
         };
 
-        let holder_identifier = match (submission.did_id, submission.identifier_id) {
-            (Some(did_id), None) => self
-                .identifier_repository
-                .get_from_did_id(
-                    did_id,
-                    &IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .ok_or(ServiceError::from(ValidationError::DidNotFound))?,
-            (None, Some(identifier_id)) => self
-                .identifier_repository
-                .get(
-                    identifier_id,
-                    &IdentifierRelations {
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
-                            ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
-                    identifier_id,
-                )))?,
-            (Some(_), Some(_)) | (None, None) => {
-                return Err(BusinessLogicError::OverlappingHolderDidWithIdentifier.into());
-            }
-        };
-
         let mut credentials = HashMap::new();
         for submitted_credentials in submission.submit_credentials.values() {
             for submitted_credential in submitted_credentials {
@@ -212,46 +176,6 @@ impl SSIHolderService {
                 credentials.insert(credential.id, credential);
             }
         }
-
-        for credential in credentials.values() {
-            let Some(schema) = &credential.schema else {
-                return Err(ServiceError::MappingError(format!(
-                    "missing credential schema for credential {}",
-                    credential.id
-                )));
-            };
-            let formatter = self
-                .formatter_provider
-                .get_credential_formatter(&schema.format)
-                .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
-            if !formatter
-                .get_capabilities()
-                .holder_identifier_types
-                .contains(&holder_identifier.r#type.clone().into())
-            {
-                Err(BusinessLogicError::IncompatibleHolderIdentifier)?
-            }
-        }
-
-        let holder_did = holder_identifier
-            .did
-            .to_owned()
-            .ok_or(ServiceError::MappingError(
-                "missing identifier did".to_string(),
-            ))?;
-
-        let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
-        let selected_key = match submission.key_id {
-            Some(key_id) => holder_did
-                .find_key(&key_id, &key_filter)?
-                .ok_or(ValidationError::KeyNotFound)?,
-            None => holder_did
-                .find_first_matching_key(&key_filter)?
-                .ok_or(ValidationError::KeyNotFound)?,
-        };
-
-        let holder_jwk_key_id = holder_did.verification_method_id(selected_key);
-        let selected_key = &selected_key.key;
 
         let verification_protocol = self
             .verification_protocol_provider
@@ -382,19 +306,11 @@ impl SSIHolderService {
 
                 let formatter =
                     self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
-
-                validate_holder_capabilities(
-                    self.config.as_ref(),
-                    &holder_did,
-                    &holder_identifier,
-                    selected_key,
-                    &formatter.get_capabilities(),
-                    self.key_algorithm_provider.as_ref(),
-                )?;
                 let credential_presentation = CredentialPresentation {
                     token: credential_content.to_owned(),
                     disclosed_keys: submitted_keys.to_owned(),
                 };
+                let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(credential)?;
                 let (presentation, validity_credential_presentation) = self
                     .prepare_credential_presentation(
                         credential_presentation,
@@ -411,9 +327,9 @@ impl SSIHolderService {
                     reference: PresentationReference::PresentationExchange(
                         requested_credential.to_owned(),
                     ),
-                    holder_did: holder_did.clone(),
-                    key: selected_key.to_owned(),
-                    jwk_key_id: Some(holder_jwk_key_id.clone()),
+                    holder_did,
+                    key,
+                    jwk_key_id: Some(jwk_key_id),
                 };
                 credential_presentations.push(presented_credential);
             }
@@ -424,7 +340,6 @@ impl SSIHolderService {
             &*verification_protocol,
             credential_presentations,
             submitted_claims,
-            Some(holder_identifier),
         )
         .await
     }
@@ -435,7 +350,6 @@ impl SSIHolderService {
         verification_protocol: &dyn VerificationProtocol,
         credential_presentations: Vec<FormattedCredentialPresentation>,
         submitted_claims: Vec<Claim>,
-        holder_identifier: Option<Identifier>,
     ) -> Result<(), ServiceError> {
         let submit_result = verification_protocol
             .holder_submit_proof(proof, credential_presentations)
@@ -459,7 +373,6 @@ impl SSIHolderService {
             .update_proof(
                 &proof.id,
                 UpdateProofRequest {
-                    holder_identifier_id: holder_identifier.map(|ident| ident.id),
                     state: Some(state),
                     ..Default::default()
                 },
@@ -795,22 +708,8 @@ impl SSIHolderService {
                     )
                     .await?;
 
-                let holder_did = credential.holder_identifier.and_then(|id| id.did).ok_or(
-                    ServiceError::MappingError("missing identifier did".to_string()),
-                )?;
-                let key = credential
-                    .key
-                    .ok_or(ServiceError::MappingError("missing holder key".to_string()))?;
-
-                // There should probably be nicer error if a key is rotated out from a did
-                let related_key = holder_did.find_key(&key.id, &KeyFilter::default())?.ok_or(
-                    ServiceError::MappingError(format!(
-                        "Failed to find key `{}` in keys of did `{}`",
-                        key.id, holder_did.id
-                    )),
-                )?;
-                let holder_jwk_key_id = holder_did.verification_method_id(related_key);
-
+                let (holder_did, key, jwk_key_id) =
+                    holder_did_key_jwk_from_credential(&credential)?;
                 let presented_credential = FormattedCredentialPresentation {
                     presentation,
                     validity_credential_presentation,
@@ -820,7 +719,7 @@ impl SSIHolderService {
                     },
                     holder_did,
                     key,
-                    jwk_key_id: Some(holder_jwk_key_id.clone()),
+                    jwk_key_id: Some(jwk_key_id),
                 };
                 credential_presentations.push(presented_credential);
                 let mut claims = credential
@@ -839,7 +738,6 @@ impl SSIHolderService {
             &*verification_protocol,
             credential_presentations,
             submitted_claims,
-            None,
         )
         .await
     }

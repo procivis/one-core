@@ -166,7 +166,7 @@ async fn test_presentation_submit_endpoint_user_selection_duplicate_claim() {
 async fn test_presentation_submit_incompatible_version() {
     let (context, organisation, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let (_, holder_identifier, _, _, credential, interaction, _) =
+    let (_, _, _, _, credential, interaction, _) =
         setup_submittable_presentation_dcql(&context, &organisation, &identifier).await;
 
     // WHEN
@@ -180,7 +180,6 @@ async fn test_presentation_submit_incompatible_version() {
         .bearer_auth("test")
         .json(&json!({
           "interactionId": interaction.id,
-          "identifierId": holder_identifier.id,
           "submitCredentials": {
             "input_0": {
               "credentialId": credential.id,
