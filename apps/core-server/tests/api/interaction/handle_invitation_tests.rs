@@ -2389,7 +2389,6 @@ async fn test_handle_invitation_endpoint_for_openid4vc_final1_0_with_oauth_autho
                 "credential_issuer": credential_issuer,
                 "credential_configurations_supported": {
                     "doctype": {
-                          "procivis_schema": format!("{}/ssi/schema/v1/{credential_schema_id}", {mock_server.uri()}),
                           "format": "mso_mdoc",
                               "claims": {
                               "namespace1": {

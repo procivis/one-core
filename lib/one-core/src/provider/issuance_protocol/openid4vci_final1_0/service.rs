@@ -145,14 +145,12 @@ fn credential_configurations_supported(
             "ldp_vc" => jsonld_configuration(
                 oidc_format,
                 credential_metadata,
-                credential_schema,
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
             ),
             "jwt_vc_json" => jwt_configuration(
                 oidc_format,
                 credential_metadata,
-                credential_schema,
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,
@@ -160,7 +158,6 @@ fn credential_configurations_supported(
             "vc+sd-jwt" => sdjwt_configuration(
                 oidc_format,
                 credential_metadata,
-                credential_schema,
                 Some(schema_id),
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
@@ -169,7 +166,6 @@ fn credential_configurations_supported(
             "dc+sd-jwt" => sdjwt_configuration(
                 oidc_format,
                 credential_metadata,
-                credential_schema,
                 Some(schema_id),
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
@@ -186,7 +182,6 @@ fn credential_configurations_supported(
             _ => jwt_configuration(
                 oidc_format,
                 credential_metadata,
-                credential_schema,
                 cryptographic_binding_methods_supported,
                 proof_types_supported,
                 credential_signing_alg_values_supported,
@@ -258,7 +253,6 @@ pub(crate) fn create_display_dto_from_schema(
 fn jsonld_configuration(
     oidc_format: &str,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
-    credential_schema: &CredentialSchema,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> OpenID4VCICredentialConfigurationData {
@@ -266,7 +260,6 @@ fn jsonld_configuration(
         format: oidc_format.into(),
         credential_definition: None, //TODO! Fill for json_ld
         credential_metadata: Some(credential_metadata),
-        procivis_schema: Some(credential_schema.imported_source_url.clone()),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
         ..Default::default()
@@ -276,7 +269,6 @@ fn jsonld_configuration(
 fn jwt_configuration(
     oidc_format: &str,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
-    credential_schema: &CredentialSchema,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
@@ -285,7 +277,6 @@ fn jwt_configuration(
         format: oidc_format.into(),
         credential_definition: None, //TODO! Fill with W3C types
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
-        procivis_schema: Some(credential_schema.imported_source_url.clone()),
         credential_metadata: Some(credential_metadata),
         proof_types_supported,
         credential_signing_alg_values_supported: Some(credential_signing_alg_values_supported),
@@ -297,7 +288,6 @@ fn jwt_configuration(
 fn sdjwt_configuration(
     oidc_format: &str,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
-    credential_schema: &CredentialSchema,
     vct: Option<String>,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
@@ -307,7 +297,6 @@ fn sdjwt_configuration(
         format: oidc_format.into(),
         credential_metadata: Some(credential_metadata),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
-        procivis_schema: Some(credential_schema.imported_source_url.clone()),
         vct: vct.clone(),
         scope: vct,
         proof_types_supported,

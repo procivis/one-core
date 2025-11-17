@@ -185,9 +185,6 @@ pub struct OpenID4VCICredentialConfigurationData {
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     pub scope: Option<String>,
 
-    // custom - TODO: remove in ONE-7546
-    pub procivis_schema: Option<String>,
-
     // mandatory for W3C formats
     // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-A.1.1.2
     pub credential_definition: Option<OpenID4VCICredentialDefinition>,

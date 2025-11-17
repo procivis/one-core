@@ -166,7 +166,6 @@ pub(super) fn credentials_supported_mdoc(
             .to_string(),
         doctype: Some(schema.schema_id.clone()),
         credential_metadata: Some(credential_metadata),
-        procivis_schema: Some(schema.imported_source_url.clone()),
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         proof_types_supported,
         scope: Some(schema.schema_id),

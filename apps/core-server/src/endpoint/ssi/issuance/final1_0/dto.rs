@@ -58,7 +58,6 @@ pub(crate) struct OpenID4VCIIssuerMetadataDisplayResponseRestDTO {
 pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub format: String,
     pub doctype: Option<String>,
-    pub procivis_schema: Option<String>,
     pub vct: Option<String>,
     #[from(with_fn = convert_inner)]
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseRestDTO>,
