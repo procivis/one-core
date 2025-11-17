@@ -1,6 +1,7 @@
 use std::ops::Add;
 use std::sync::Arc;
 
+use futures::FutureExt;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use one_crypto::utilities::generate_alphanumeric;
@@ -648,17 +649,6 @@ impl WalletProviderService {
             });
         }
 
-        if !app_attestations.is_empty() {
-            self.create_wallet_unit_history(
-                &wallet_unit_id,
-                wallet_unit.name.clone(),
-                HistoryAction::Updated,
-                None,
-                organisation.id,
-            )
-            .await
-        }
-
         let updated_attested_keys = if key_attestation_inputs.is_empty() {
             None
         } else {
@@ -669,31 +659,50 @@ impl WalletProviderService {
 
         // DB update is only necessary if we either issued app or key attestation
         if !app_attestations.is_empty() || updated_attested_keys.is_some() {
-            self.wallet_unit_repository
-                .update_wallet_unit(
-                    &wallet_unit_id,
-                    UpdateWalletUnitRequest {
-                        last_issuance: Some(now),
-                        attested_keys: updated_attested_keys,
-                        ..Default::default()
-                    },
-                )
-                .await?;
+            self.tx_manager
+                .transaction(
+                    async {
+                        self.wallet_unit_repository
+                            .update_wallet_unit(
+                                &wallet_unit_id,
+                                UpdateWalletUnitRequest {
+                                    last_issuance: Some(now),
+                                    attested_keys: updated_attested_keys,
+                                    ..Default::default()
+                                },
+                            )
+                            .await?;
 
-            for key_attestation_input in key_attestation_inputs {
-                key_attestations.push(
-                    self.issue_key_attestation(
-                        &wallet_unit,
-                        &config_params,
-                        &auth_fn,
-                        public_key_info.clone(),
-                        organisation,
-                        &revocation_method,
-                        key_attestation_input,
-                    )
-                    .await?,
-                );
-            }
+                        if !app_attestations.is_empty() {
+                            self.create_wallet_unit_history(
+                                &wallet_unit_id,
+                                wallet_unit.name.clone(),
+                                HistoryAction::Updated,
+                                None,
+                                organisation.id,
+                            )
+                            .await;
+                        }
+
+                        for key_attestation_input in key_attestation_inputs {
+                            key_attestations.push(
+                                self.issue_key_attestation(
+                                    &wallet_unit,
+                                    &config_params,
+                                    &auth_fn,
+                                    public_key_info.clone(),
+                                    organisation,
+                                    &revocation_method,
+                                    key_attestation_input,
+                                )
+                                .await?,
+                            );
+                        }
+                        Ok(())
+                    }
+                    .boxed(),
+                )
+                .await??;
         }
 
         Ok(IssueWalletUnitAttestationResponseDTO {

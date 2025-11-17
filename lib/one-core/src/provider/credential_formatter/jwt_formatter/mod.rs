@@ -157,6 +157,7 @@ impl CredentialFormatter for JWTFormatter {
                     encoded_list,
                     jose_alg,
                     auth_fn,
+                    self.key_algorithm_provider.as_ref(),
                 )
                 .await
             }

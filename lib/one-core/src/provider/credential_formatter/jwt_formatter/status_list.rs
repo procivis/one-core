@@ -12,6 +12,7 @@ use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, Issuer};
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::token_status_list::util::PREFERRED_ENTRY_SIZE;
 
@@ -89,6 +90,7 @@ impl JWTFormatter {
         encoded_list: String,
         jose_alg: String,
         auth_fn: AuthenticationFn,
+        key_alg_provider: &dyn KeyAlgorithmProvider,
     ) -> Result<String, FormatterError> {
         let (issuer, public_key_info) = match issuer_identifier.r#type {
             IdentifierType::Did => {
@@ -131,10 +133,29 @@ impl JWTFormatter {
                     )),
                 )
             }
-            _ => {
-                return Err(FormatterError::Failed(
-                    "Unsupported identifier type".to_string(),
-                ));
+            IdentifierType::Key => {
+                let key = issuer_identifier
+                    .key
+                    .as_ref()
+                    .ok_or(FormatterError::Failed(
+                        "Identifier of type Key missing related key".to_string(),
+                    ))?;
+
+                let key_alg = key.key_algorithm_type().ok_or_else(|| {
+                    FormatterError::Failed(format!("Invalid key type {}", key.key_type))
+                })?;
+
+                let key = key_alg_provider
+                    .key_algorithm_from_type(key_alg)
+                    .ok_or_else(|| {
+                        FormatterError::Failed(format!("Missing key algorithm {key_alg}"))
+                    })?
+                    .reconstruct_key(&key.public_key, None, None)
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+                    .public_key_as_jwk()
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?;
+
+                (None, Some(JwtPublicKeyInfo::Jwk(key.into())))
             }
         };
 

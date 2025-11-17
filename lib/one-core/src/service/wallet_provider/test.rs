@@ -25,6 +25,7 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::common::SignatureProvider;
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
@@ -50,6 +51,7 @@ fn mock_wallet_provider_service() -> WalletProviderService {
         wallet_unit_repository: Arc::new(MockWalletUnitRepository::default()),
         identifier_repository: Arc::new(MockIdentifierRepository::default()),
         history_repository: Arc::new(MockHistoryRepository::default()),
+        tx_manager: Arc::new(NoTransactionManager),
         key_provider: Arc::new(MockKeyProvider::default()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::default()),
         revocation_method_provider: Arc::new(MockRevocationMethodProvider::default()),

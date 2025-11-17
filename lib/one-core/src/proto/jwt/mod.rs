@@ -176,21 +176,24 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                 .map_err(|e| FormatterError::Failed(e.to_string()))?
                 .or(issuer_did);
 
-            let public_key_source = match (issuer_did, &header.x5c) {
-                (Some(issuer_did), None) => PublicKeySource::Did {
+            let public_key_source = match (issuer_did, &header.x5c, &header.jwk) {
+                (Some(issuer_did), None, None) => PublicKeySource::Did {
                     did: Cow::Owned(issuer_did),
                     key_id: header.key_id.as_deref(),
                 },
-                (None, Some(x5c)) => PublicKeySource::X5c { x5c },
-                (Some(_), Some(_)) => {
-                    return Err(FormatterError::CouldNotVerify(
-                        "x5c specified together with issuer did".to_string(),
-                    ));
-                }
-                (None, None) => {
+                (None, Some(x5c), None) => PublicKeySource::X5c { x5c },
+                (None, None, Some(jwk)) => PublicKeySource::Jwk {
+                    jwk: Cow::Owned(jwk.to_owned().into()),
+                },
+                (None, None, None) => {
                     return Err(FormatterError::CouldNotVerify(
                         "Missing public key information for JWT".to_string(),
                     ));
+                }
+                (did, x5c, jwk) => {
+                    return Err(FormatterError::CouldNotVerify(format!(
+                        "Mixed specification of public key info: did:{did:?}, x5c:{x5c:?}, jwk:{jwk:?}",
+                    )));
                 }
             };
 

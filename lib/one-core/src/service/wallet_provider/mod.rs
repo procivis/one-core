@@ -4,6 +4,7 @@ use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::clock::Clock;
 use crate::proto::session_provider::SessionProvider;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -29,6 +30,7 @@ pub struct WalletProviderService {
     wallet_unit_repository: Arc<dyn WalletUnitRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     history_repository: Arc<dyn HistoryRepository>,
+    tx_manager: Arc<dyn TransactionManager>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -46,6 +48,7 @@ impl WalletProviderService {
         wallet_unit_repository: Arc<dyn WalletUnitRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         history_repository: Arc<dyn HistoryRepository>,
+        tx_manager: Arc<dyn TransactionManager>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -60,6 +63,7 @@ impl WalletProviderService {
             wallet_unit_repository,
             identifier_repository,
             history_repository,
+            tx_manager,
             key_provider,
             key_algorithm_provider,
             revocation_method_provider,

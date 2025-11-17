@@ -1027,6 +1027,7 @@ impl OneCore {
                 data_provider.get_wallet_unit_repository(),
                 identifier_repository.clone(),
                 data_provider.get_history_repository(),
+                data_provider.get_tx_manager(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
                 revocation_method_provider.clone(),
