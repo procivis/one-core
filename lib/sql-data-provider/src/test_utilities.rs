@@ -188,7 +188,7 @@ pub async fn insert_many_claims_schema_to_database<'a>(
             datatype: Set(claim_schema.datatype.to_string()),
             array: Set(claim_schema.array),
             metadata: Set(claim_schema.metadata),
-            credential_schema_id: Set(Some(claim_input.credential_schema_id)),
+            credential_schema_id: Set(claim_input.credential_schema_id),
             required: Set(claim_schema.required),
             order: Set(claim_schema.order),
         }

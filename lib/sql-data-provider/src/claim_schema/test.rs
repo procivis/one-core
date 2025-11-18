@@ -2,44 +2,71 @@ use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use sea_orm::{DatabaseConnection, EntityTrait};
+use shared_types::CredentialSchemaId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ClaimSchemaProvider;
+use crate::entity::credential_schema::WalletStorageType;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
 struct TestSetup {
     pub db: DatabaseConnection,
     pub repository: Box<dyn ClaimSchemaRepository>,
+    pub credential_schema_id: CredentialSchemaId,
 }
 
 async fn setup() -> TestSetup {
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
+    let organisation_id = insert_organisation_to_database(&db, None, None)
+        .await
+        .unwrap();
+    let credential_schema_id = insert_credential_schema_to_database(
+        &db,
+        None,
+        organisation_id,
+        "credential schema",
+        "JWT",
+        "NONE",
+        WalletStorageType::Software,
+    )
+    .await
+    .unwrap();
+
     TestSetup {
         repository: Box::new(ClaimSchemaProvider {
             db: TransactionManagerImpl::new(db.clone()),
         }),
         db,
+        credential_schema_id,
     }
 }
 
 #[tokio::test]
 async fn test_create_claim_schema_list() {
-    let TestSetup { repository, db, .. } = setup().await;
+    let TestSetup {
+        repository,
+        db,
+        credential_schema_id,
+        ..
+    } = setup().await;
 
     let result = repository
-        .create_claim_schema_list(vec![ClaimSchema {
-            id: Uuid::new_v4().into(),
-            key: "key".to_string(),
-            data_type: "STRING".to_string(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            array: false,
-            metadata: false,
-        }])
+        .create_claim_schema_list(
+            vec![ClaimSchema {
+                id: Uuid::new_v4().into(),
+                key: "key".to_string(),
+                data_type: "STRING".to_string(),
+                created_date: get_dummy_date(),
+                last_modified: get_dummy_date(),
+                array: false,
+                metadata: false,
+            }],
+            credential_schema_id,
+        )
         .await;
     assert!(result.is_ok());
 
@@ -55,7 +82,11 @@ async fn test_create_claim_schema_list() {
 
 #[tokio::test]
 async fn test_get_claim_schema_list() {
-    let TestSetup { repository, .. } = setup().await;
+    let TestSetup {
+        repository,
+        credential_schema_id,
+        ..
+    } = setup().await;
 
     let schemas = vec![
         ClaimSchema {
@@ -78,7 +109,7 @@ async fn test_get_claim_schema_list() {
         },
     ];
     repository
-        .create_claim_schema_list(schemas.clone())
+        .create_claim_schema_list(schemas.clone(), credential_schema_id)
         .await
         .unwrap();
 

@@ -26,7 +26,7 @@ async fn simple_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .add_column(
                     ColumnDef::new(ClaimSchema::CredentialSchemaId)
                         .char_len(36)
-                        .null(),
+                        .null(), // add as nullable so we can copy data first
                 )
                 .add_column(
                     ColumnDef::new(ClaimSchema::Required)
@@ -52,9 +52,55 @@ async fn simple_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         )
         .await?;
 
-    copy_data_from_credential_schema_claim_schema(manager, ClaimSchema::Table).await?;
-    drop_credential_schema_claim_schema(manager).await?;
+    manager
+        .exec_stmt(
+            Query::update()
+                .table(ClaimSchema::Table)
+                .value(
+                    ClaimSchema::CredentialSchemaId,
+                    Expr::column((
+                        CredentialSchemaClaimSchema::Table,
+                        CredentialSchemaClaimSchema::CredentialSchemaId,
+                    )),
+                )
+                .value(
+                    ClaimSchema::Required,
+                    Expr::column((
+                        CredentialSchemaClaimSchema::Table,
+                        CredentialSchemaClaimSchema::Required,
+                    )),
+                )
+                .value(
+                    ClaimSchema::Order,
+                    Expr::column((
+                        CredentialSchemaClaimSchema::Table,
+                        CredentialSchemaClaimSchema::Order,
+                    )),
+                )
+                .from(CredentialSchemaClaimSchema::Table)
+                .cond_where(Expr::col(ClaimSchema::Id).eq(Expr::col((
+                    CredentialSchemaClaimSchema::Table,
+                    CredentialSchemaClaimSchema::ClaimSchemaId,
+                ))))
+                .to_owned(),
+        )
+        .await?;
 
+    // Now that data has been copied, make the column non-NULL
+    manager
+        .alter_table(
+            Table::alter()
+                .table(ClaimSchema::Table)
+                .modify_column(
+                    ColumnDef::new(ClaimSchema::CredentialSchemaId)
+                        .char_len(36)
+                        .not_null(),
+                )
+                .to_owned(),
+        )
+        .await?;
+
+    drop_credential_schema_claim_schema(manager).await?;
     Ok(())
 }
 
@@ -96,7 +142,7 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
                 .col(
                     ColumnDef::new(ClaimSchema::CredentialSchemaId)
                         .char_len(36)
-                        .null(),
+                        .not_null(),
                 )
                 .col(
                     ColumnDef::new(ClaimSchema::Required)
@@ -122,32 +168,54 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         )
         .await?;
 
-    let copied_columns = vec![
-        ClaimSchema::Id,
-        ClaimSchema::Key,
-        ClaimSchema::Datatype,
-        ClaimSchema::CreatedDate,
-        ClaimSchema::LastModified,
-        ClaimSchema::Array,
-        ClaimSchema::Metadata,
-    ];
-
     manager
         .exec_stmt(
             Query::insert()
                 .into_table(ClaimSchemaNew::Table)
-                .columns(copied_columns.to_vec())
+                .columns(vec![
+                    ClaimSchema::Id,
+                    ClaimSchema::Key,
+                    ClaimSchema::Datatype,
+                    ClaimSchema::CreatedDate,
+                    ClaimSchema::LastModified,
+                    ClaimSchema::Array,
+                    ClaimSchema::Metadata,
+                    ClaimSchema::CredentialSchemaId,
+                    ClaimSchema::Required,
+                    ClaimSchema::Order,
+                ])
                 .select_from(
                     Query::select()
                         .from(ClaimSchema::Table)
-                        .columns(copied_columns)
+                        .columns(vec![
+                            ClaimSchema::Id,
+                            ClaimSchema::Key,
+                            ClaimSchema::Datatype,
+                            ClaimSchema::CreatedDate,
+                            ClaimSchema::LastModified,
+                            ClaimSchema::Array,
+                            ClaimSchema::Metadata,
+                        ])
+                        .join(
+                            JoinType::Join,
+                            CredentialSchemaClaimSchema::Table,
+                            Expr::col(ClaimSchema::Id).eq(Expr::col((
+                                CredentialSchemaClaimSchema::Table,
+                                CredentialSchemaClaimSchema::ClaimSchemaId,
+                            ))),
+                        )
+                        .columns(vec![
+                            CredentialSchemaClaimSchema::CredentialSchemaId,
+                            CredentialSchemaClaimSchema::Required,
+                            CredentialSchemaClaimSchema::Order,
+                        ])
                         .to_owned(),
                 )
                 .map_err(|e| DbErr::Migration(e.to_string()))?
                 .to_owned(),
         )
         .await?;
-    copy_data_from_credential_schema_claim_schema(manager, ClaimSchemaNew::Table).await?;
+
     drop_credential_schema_claim_schema(manager).await?;
 
     // Disable foreign keys for SQLite
@@ -175,48 +243,6 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
         .await?;
 
     Ok(())
-}
-
-async fn copy_data_from_credential_schema_claim_schema<T>(
-    manager: &SchemaManager<'_>,
-    target_table: T,
-) -> Result<(), DbErr>
-where
-    T: IntoTableRef,
-{
-    manager
-        .exec_stmt(
-            Query::update()
-                .table(target_table)
-                .value(
-                    ClaimSchema::CredentialSchemaId,
-                    Expr::column((
-                        CredentialSchemaClaimSchema::Table,
-                        CredentialSchemaClaimSchema::CredentialSchemaId,
-                    )),
-                )
-                .value(
-                    ClaimSchema::Required,
-                    Expr::column((
-                        CredentialSchemaClaimSchema::Table,
-                        CredentialSchemaClaimSchema::Required,
-                    )),
-                )
-                .value(
-                    ClaimSchema::Order,
-                    Expr::column((
-                        CredentialSchemaClaimSchema::Table,
-                        CredentialSchemaClaimSchema::Order,
-                    )),
-                )
-                .from(CredentialSchemaClaimSchema::Table)
-                .cond_where(Expr::col(ClaimSchema::Id).eq(Expr::col((
-                    CredentialSchemaClaimSchema::Table,
-                    CredentialSchemaClaimSchema::ClaimSchemaId,
-                ))))
-                .to_owned(),
-        )
-        .await
 }
 
 async fn drop_credential_schema_claim_schema(manager: &SchemaManager<'_>) -> Result<(), DbErr> {

@@ -33,25 +33,6 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     let data_layer = setup_test_data_layer_and_connection().await;
     let db = data_layer.db;
 
-    let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| Uuid::new_v4().into()).collect();
-    for (index, id) in claim_schema_ids.iter().enumerate() {
-        claim_schema::ActiveModel {
-            id: Set(*id),
-            created_date: Set(get_dummy_date()),
-            last_modified: Set(get_dummy_date()),
-            key: Set("TestKey".to_string()),
-            datatype: Set("STRING".to_string()),
-            array: Set(false),
-            metadata: Set(false),
-            credential_schema_id: Set(None),
-            order: Set(index as u32),
-            required: Set(false),
-        }
-        .insert(&db)
-        .await
-        .unwrap();
-    }
-
     let organisation_id = insert_organisation_to_database(&db, None, None)
         .await
         .unwrap();
@@ -67,6 +48,25 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
     )
     .await
     .unwrap();
+
+    let claim_schema_ids: Vec<ClaimSchemaId> = (0..4).map(|_| Uuid::new_v4().into()).collect();
+    for (index, id) in claim_schema_ids.iter().enumerate() {
+        claim_schema::ActiveModel {
+            id: Set(*id),
+            created_date: Set(get_dummy_date()),
+            last_modified: Set(get_dummy_date()),
+            key: Set("TestKey".to_string()),
+            datatype: Set("STRING".to_string()),
+            array: Set(false),
+            metadata: Set(false),
+            credential_schema_id: Set(*credential_schema_id),
+            order: Set(index as u32),
+            required: Set(false),
+        }
+        .insert(&db)
+        .await
+        .unwrap();
+    }
 
     let did_id = insert_did_key(
         &db,

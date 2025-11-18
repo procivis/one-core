@@ -27,7 +27,7 @@ pub struct Model {
     #[serde(deserialize_with = "bool_from_int")]
     pub metadata: bool,
 
-    pub credential_schema_id: Option<CredentialSchemaId>,
+    pub credential_schema_id: CredentialSchemaId,
     #[serde(deserialize_with = "bool_from_int")]
     pub required: bool,
     pub order: u32,

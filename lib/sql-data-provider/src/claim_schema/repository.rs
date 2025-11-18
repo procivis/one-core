@@ -6,8 +6,8 @@ use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use shared_types::ClaimSchemaId;
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, Set};
+use shared_types::{ClaimSchemaId, CredentialSchemaId};
 
 use super::ClaimSchemaProvider;
 use crate::entity::claim_schema;
@@ -19,8 +19,12 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
     async fn create_claim_schema_list(
         &self,
         claim_schemas: Vec<ClaimSchema>,
+        credential_schema_id: CredentialSchemaId,
     ) -> Result<(), DataLayerError> {
-        let models: Vec<claim_schema::ActiveModel> = convert_inner(claim_schemas);
+        let mut models: Vec<claim_schema::ActiveModel> = convert_inner(claim_schemas);
+        for model in models.iter_mut() {
+            model.credential_schema_id = Set(credential_schema_id);
+        }
 
         claim_schema::Entity::insert_many(models)
             .exec(&self.db)

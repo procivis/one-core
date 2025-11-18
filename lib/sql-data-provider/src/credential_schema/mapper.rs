@@ -98,7 +98,7 @@ pub(super) fn claim_schemas_to_model_vec(
             datatype: Set(claim_schema.schema.data_type),
             array: Set(claim_schema.schema.array),
             metadata: Set(claim_schema.schema.metadata),
-            credential_schema_id: Set(Some(*credential_schema_id)),
+            credential_schema_id: Set(*credential_schema_id),
             required: Set(claim_schema.required),
             order: Set(index as u32),
         })
