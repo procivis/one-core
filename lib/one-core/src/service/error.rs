@@ -550,9 +550,6 @@ pub enum ValidationError {
     #[error("Proof schema: Duplicit claim schema")]
     ProofSchemaDuplicitClaim,
 
-    #[error("Proof schema: Mixed wallet storage types")]
-    ProofSchemaMixedWalletStorageTypes,
-
     #[error("Credential format {credential_format} does not support combined presentation")]
     ProofSchemaInvalidCredentialCombination { credential_format: String },
 
@@ -1446,9 +1443,6 @@ pub enum ErrorCode {
     #[strum(message = "Insufficient security level")]
     BR_0297,
 
-    #[strum(message = "Proof schema: Mixed wallet storage types")]
-    BR_0304,
-
     #[strum(message = "Proof schema: Invalid credential combination")]
     BR_0305,
 }
@@ -1708,7 +1702,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::InvalidProofEngagement => ErrorCode::BR_0078,
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
-            Self::ProofSchemaMixedWalletStorageTypes => ErrorCode::BR_0304,
             Self::ProofSchemaInvalidCredentialCombination { .. } => ErrorCode::BR_0305,
         }
     }

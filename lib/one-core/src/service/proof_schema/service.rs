@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use anyhow::Context;
 use futures::future;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
@@ -20,7 +18,7 @@ use super::validator::{
 use crate::mapper::list_response_into;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -172,18 +170,6 @@ impl ProofSchemaService {
 
         if credential_schemas.len() != expected_credential_schemas {
             return Err(BusinessLogicError::MissingCredentialSchema.into());
-        }
-
-        // mixed wallet storage types are not allowed
-        if HashSet::<WalletStorageTypeEnum>::from_iter(
-            credential_schemas
-                .iter()
-                .filter_map(|schema| schema.wallet_storage_type),
-        )
-        .len()
-            > 1
-        {
-            return Err(ValidationError::ProofSchemaMixedWalletStorageTypes.into());
         }
 
         for credential_schema in &credential_schemas {

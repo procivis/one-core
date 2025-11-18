@@ -463,7 +463,7 @@ async fn test_create_proof_schema_success() {
 }
 
 #[tokio::test]
-async fn test_create_proof_schema_fail_mixed_wallet_storage_types() {
+async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
@@ -549,6 +549,11 @@ async fn test_create_proof_schema_fail_mixed_wallet_storage_types() {
             })
         });
 
+    proof_schema_repository
+        .expect_create_proof_schema()
+        .times(1)
+        .returning(|schema| Ok(schema.id));
+
     let create_request = CreateProofSchemaRequestDTO {
         name: "name".to_string(),
         expire_duration: Some(0),
@@ -573,18 +578,31 @@ async fn test_create_proof_schema_fail_mixed_wallet_storage_types() {
         ],
     };
 
+    let mut capabilities = generic_formatter_capabilities();
+    capabilities
+        .features
+        .push(Features::SupportsCombinedPresentation);
+    let mut formatter = MockCredentialFormatter::default();
+    formatter
+        .expect_get_capabilities()
+        .returning(move || capabilities.clone());
+    let formatter = Arc::new(formatter);
+
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(formatter.clone()));
+
     let service = setup_service(Repositories {
         proof_schema_repository,
         credential_schema_repository,
         organisation_repository,
+        formatter_provider,
         ..Default::default()
     });
 
     let result = service.create_proof_schema(create_request).await;
-    assert!(result.is_err_and(|e| matches!(
-        e,
-        ServiceError::Validation(ValidationError::ProofSchemaMixedWalletStorageTypes)
-    )));
+    assert!(result.is_ok())
 }
 
 #[tokio::test]
