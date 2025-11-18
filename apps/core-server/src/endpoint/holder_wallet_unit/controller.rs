@@ -22,9 +22,9 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
-    summary = "Register wallet unit",
+    summary = "Register with a Wallet Provider",
     description = indoc::formatdoc! {"
-        Register wallet unit with the given wallet provider.
+        Register a wallet unit with a Wallet Provider.
     "},
 )]
 #[require_permissions(Permission::HolderWalletUnitRegister)]
@@ -51,14 +51,14 @@ pub(crate) async fn wallet_unit_holder_register(
     path = "/api/holder-wallet-unit/v1/{id}",
     responses(OkOrErrorResponse<HolderWalletUnitDetailRestDTO>),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit id")
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
     ),
     tag = "holder_wallet_unit",
     security(
         ("bearer" = [])
     ),
-    summary = "Get Wallet Unit details",
-    description = "Fetch the wallet unit details.",
+    summary = "Retrieve wallet registration details",
+    description = "Retrieve details of a wallet unit's registration from the Wallet Provider.",
 )]
 #[require_permissions(Permission::HolderWalletUnitDetail)]
 pub(crate) async fn wallet_unit_holder_details(
@@ -79,14 +79,15 @@ pub(crate) async fn wallet_unit_holder_details(
     path = "/api/holder-wallet-unit/v1/{id}/status",
     responses(EmptyOrErrorResponse),
     params(
-        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit id")
+        ("id" = HolderWalletUnitId, Path, description = "Wallet Unit ID")
     ),
     tag = "holder_wallet_unit",
     security(
         ("bearer" = [])
     ),
-    summary = "Refresh holder wallet unit",
-    description = indoc::formatdoc! {"Check the status of the holder wallet unit."},
+    summary = "Check wallet status",
+    description = indoc::formatdoc! {
+        "Check the status of a wallet unit. Active units return `204`. Revoked units return an error."},
 )]
 #[require_permissions(Permission::HolderWalletUnitDetail)]
 pub(crate) async fn wallet_unit_holder_status(
