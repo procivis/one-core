@@ -319,7 +319,6 @@ fn extract_matching_requested_claim(
 pub(crate) async fn accept_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
-    holder_identifier: IdentifierDetails,
     did_repository: &dyn DidRepository,
     identifier_repository: &dyn IdentifierRepository,
     did_method_provider: &dyn DidMethodProvider,
@@ -405,20 +404,6 @@ pub(crate) async fn accept_proof(
             .push(proved_claim);
     }
 
-    let (holder_identifier, ..) = get_or_create_identifier(
-        did_method_provider,
-        did_repository,
-        certificate_repository,
-        certificate_validator,
-        key_repository,
-        key_algorithm_provider,
-        identifier_repository,
-        &proof_schema.organisation,
-        &holder_identifier,
-        IdentifierRole::Holder,
-    )
-    .await?;
-
     let mut proof_claims: Vec<Claim> = vec![];
     for (_, credential_claims) in claims_per_credential {
         let claims: Vec<(CredentialClaim, ClaimSchema)> = credential_claims
@@ -459,7 +444,7 @@ pub(crate) async fn accept_proof(
             claims,
             issuer_identifier,
             issuer_identifier_relation,
-            Some(holder_identifier.clone()),
+            None,
             proof.protocol.to_owned(),
             first_claim.credential.issuance_date,
         )?;
@@ -479,7 +464,6 @@ pub(crate) async fn accept_proof(
         .update_proof(
             &proof.id,
             UpdateProofRequest {
-                holder_identifier_id: Some(holder_identifier.id),
                 state: Some(ProofStateEnum::Accepted),
                 ..Default::default()
             },

@@ -66,7 +66,6 @@ pub(crate) fn proof_from_handle_invitation(
         schema: None,
         claims: None,
         verifier_identifier,
-        holder_identifier: None,
         interaction: Some(interaction),
         verifier_key: None,
         verifier_certificate: None,

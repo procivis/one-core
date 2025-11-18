@@ -170,7 +170,6 @@ impl TryFrom<ProofListItemModel> for Proof {
             schema,
             claims: None,
             verifier_identifier,
-            holder_identifier: None,
             verifier_key: None,
             verifier_certificate: None,
             interaction: None,
@@ -199,7 +198,6 @@ impl From<proof::Model> for Proof {
             schema: None,
             claims: None,
             verifier_identifier: None,
-            holder_identifier: None,
             verifier_key: None,
             verifier_certificate: None,
             interaction: None,
@@ -222,7 +220,6 @@ impl TryFrom<Proof> for proof::ActiveModel {
             requested_date: Set(value.requested_date),
             completed_date: Set(value.completed_date),
             verifier_identifier_id: Set(value.verifier_identifier.map(|identifier| identifier.id)),
-            holder_identifier_id: Set(value.holder_identifier.map(|identifier| identifier.id)),
             proof_schema_id: Set(value.schema.map(|schema| schema.id)),
             verifier_key_id: Set(value.verifier_key.map(|key| key.id)),
             verifier_certificate_id: Set(value

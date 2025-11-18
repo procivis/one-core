@@ -34,7 +34,6 @@ pub(crate) async fn proof_for_dcql_query(
             None,
             identifier,
             None,
-            None,
             ProofStateEnum::Requested,
             protocol,
             Some(&interaction),

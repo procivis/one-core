@@ -149,11 +149,6 @@ impl ProofRepository for ProofProvider {
         proof: UpdateProofRequest,
         _error_info: Option<HistoryErrorMetadata>,
     ) -> Result<(), DataLayerError> {
-        let holder_identifier_id = match proof.holder_identifier_id {
-            None => Unchanged(Default::default()),
-            Some(identifier_id) => Set(Some(identifier_id)),
-        };
-
         let verifier_identifier_id = match proof.verifier_identifier_id {
             None => Unchanged(Default::default()),
             Some(identifier_id) => Set(Some(identifier_id)),
@@ -193,7 +188,6 @@ impl ProofRepository for ProofProvider {
         let mut update_model = proof::ActiveModel {
             id: Unchanged(*proof_id),
             last_modified: Set(now),
-            holder_identifier_id,
             verifier_identifier_id,
             interaction_id,
             redirect_uri,
@@ -388,17 +382,6 @@ impl ProofProvider {
                 .await?
                 .ok_or(DataLayerError::Db(anyhow!("Verifier identifier not found")))?;
             proof.verifier_identifier = Some(verifier_identifier);
-        }
-
-        if let Some(identifier_relations) = &relations.holder_identifier
-            && let Some(holder_identifier_id) = &proof_model.holder_identifier_id
-        {
-            let holder_identifier = self
-                .identifier_repository
-                .get(*holder_identifier_id, identifier_relations)
-                .await?
-                .ok_or(DataLayerError::Db(anyhow!("Holder identifier not found")))?;
-            proof.holder_identifier = Some(holder_identifier);
         }
 
         if let (Some(interaction_relations), Some(interaction_id)) =

@@ -96,7 +96,6 @@ async fn test_get_client_request() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
             "OPENID4VP_DRAFT20",

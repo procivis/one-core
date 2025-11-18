@@ -180,7 +180,6 @@ async fn test_submit_proof_failed_credential_suspended() {
     };
 
     let interaction_id_copy = interaction_id.to_owned();
-    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof_by_interaction_id()
         .withf(move |_interaction_id, _| {
@@ -194,13 +193,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                 verifier_identifier: Some(Identifier {
                     did: Some(Did {
                         did: verifier_did,
-                        ..dummy_did()
-                    }),
-                    ..dummy_identifier()
-                }),
-                holder_identifier: Some(Identifier {
-                    did: Some(Did {
-                        did: holder_did_clone,
                         ..dummy_did()
                     }),
                     ..dummy_identifier()
@@ -498,7 +490,6 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
     };
 
     let interaction_id_copy = interaction_id.to_owned();
-    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof_by_interaction_id()
         .withf(move |_interaction_id, _| {
@@ -512,14 +503,6 @@ async fn test_submit_proof_failed_incapable_holder_did_method() {
                 verifier_identifier: Some(Identifier {
                     did: Some(Did {
                         did: verifier_did,
-                        ..dummy_did()
-                    }),
-                    ..dummy_identifier()
-                }),
-                holder_identifier: Some(Identifier {
-                    did: Some(Did {
-                        did: holder_did_clone,
-                        did_method: "MDL".to_string(),
                         ..dummy_did()
                     }),
                     ..dummy_identifier()
@@ -849,7 +832,6 @@ async fn test_get_client_metadata_success() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,

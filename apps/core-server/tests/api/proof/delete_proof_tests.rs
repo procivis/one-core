@@ -40,7 +40,6 @@ async fn test_delete_proof_created_holder_success() {
             None,
             &identifier,
             None,
-            None,
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
             Some(&interaction),
@@ -105,7 +104,6 @@ async fn test_delete_proof_accepted_holder_fail() {
             None,
             &identifier,
             None,
-            None,
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
             Some(&interaction),
@@ -134,7 +132,6 @@ async fn test_delete_proof_created_issuer_success() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -190,7 +187,6 @@ async fn test_delete_proof_accepted_issuer_fail() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
@@ -220,7 +216,6 @@ async fn test_delete_proof_issuer_requested_to_retracted() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -323,7 +318,6 @@ async fn test_delete_proof_old_exchange() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "PROCIVIS_TEMPORARY", // this provider no longer exists

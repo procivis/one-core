@@ -100,7 +100,6 @@ async fn test_direct_post_one_credential_correct() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -155,8 +154,6 @@ async fn test_direct_post_one_credential_correct() {
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-
-    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(
@@ -247,7 +244,6 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -286,8 +282,6 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-
-    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
 
@@ -412,7 +406,6 @@ async fn test_direct_post_one_credential_missing_required_claim() {
     let proof = create_proof(
         &db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -674,7 +667,6 @@ async fn test_direct_post_multiple_presentations() {
     let proof = create_proof(
         &db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -969,7 +961,6 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
     let proof = create_proof(
         &db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -1154,7 +1145,6 @@ async fn test_direct_post_wrong_claim_format() {
     let proof = create_proof(
         &db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -1296,7 +1286,6 @@ async fn test_direct_post_draft25() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -1351,8 +1340,6 @@ async fn test_direct_post_draft25() {
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-
-    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(
@@ -1453,7 +1440,6 @@ async fn test_direct_post_with_profile_verification() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -1505,8 +1491,6 @@ async fn test_direct_post_with_profile_verification() {
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-
-    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(

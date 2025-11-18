@@ -100,7 +100,6 @@ async fn test_direct_post_draft25_with_dcql_query() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
@@ -142,8 +141,6 @@ async fn test_direct_post_draft25_with_dcql_query() {
 
     let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
-
-    assert!(proof.holder_identifier.is_none()); // ONE-7860
 
     let claims = proof.claims.unwrap();
     assert!(
@@ -251,7 +248,6 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
     let proof = create_proof(
         &context.db.db_conn,
         &verifier_identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,

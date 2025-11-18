@@ -128,11 +128,6 @@ impl SSIHolderService {
             .get_proof_by_interaction_id(
                 &submission.interaction_id,
                 &ProofRelations {
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -498,11 +493,6 @@ impl SSIHolderService {
             .get_proof_by_interaction_id(
                 &request.interaction_id,
                 &ProofRelations {
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),

@@ -788,7 +788,6 @@ async fn setup_submittable_presentation(
             None,
             &verifier_identifier,
             None,
-            None,
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT25",
             Some(&interaction),
@@ -1023,7 +1022,6 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     let proof = fixtures::create_proof(
         &db_conn,
         &verifier_identifier,
-        None,
         None,
         ProofStateEnum::Requested,
         ProofRole::Holder,
@@ -1405,7 +1403,6 @@ async fn setup_submittable_presentation_dcql(
         .create(
             None,
             &verifier_identifier,
-            None,
             None,
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT25",

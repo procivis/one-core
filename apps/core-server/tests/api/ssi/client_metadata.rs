@@ -44,7 +44,6 @@ async fn test_get_client_metadata() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
             "OPENID4VP_DRAFT20",
@@ -154,7 +153,6 @@ async fn test_fail_to_get_client_metadata_wrong_exchange_protocol() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
             "SCAN_TO_VERIFY",
@@ -211,7 +209,6 @@ async fn test_fail_to_get_client_metadata_wrong_proof_state() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Rejected,
             "OPENID4VP_DRAFT20",

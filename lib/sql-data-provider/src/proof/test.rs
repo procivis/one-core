@@ -237,7 +237,6 @@ async fn setup_with_proof(
     let proof_id = insert_proof_request_to_database(
         &db,
         identifier_id,
-        None,
         &proof_schema_id,
         key_id,
         Some(interaction_id.to_string()),
@@ -333,7 +332,6 @@ async fn test_create_proof_success() {
             input_schemas: None,
         }),
         claims: None,
-        holder_identifier: None,
         verifier_key: Some(Key {
             id: key_id,
             created_date: get_dummy_date(),
@@ -713,10 +711,6 @@ async fn test_get_proof_with_relations() {
                     did: Some(DidRelations::default()),
                     ..Default::default()
                 }),
-                holder_identifier: Some(IdentifierRelations {
-                    did: Some(DidRelations::default()),
-                    ..Default::default()
-                }),
                 verifier_key: Some(KeyRelations::default()),
                 interaction: Some(InteractionRelations::default()),
                 ..Default::default()
@@ -728,7 +722,6 @@ async fn test_get_proof_with_relations() {
 
     assert_eq!(proof.id, proof_id);
     assert_eq!(proof.schema.unwrap().id, proof_schema_id);
-    assert!(proof.holder_identifier.is_none());
     assert_eq!(proof.interaction.unwrap().id, interaction_id);
     assert_eq!(proof.verifier_key.unwrap().id, key_id);
 

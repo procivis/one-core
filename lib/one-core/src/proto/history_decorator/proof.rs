@@ -40,7 +40,6 @@ impl ProofHistoryDecorator {
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
-                    holder_identifier: Some(Default::default()),
                     verifier_identifier: Some(Default::default()),
                     ..Default::default()
                 },
@@ -120,9 +119,7 @@ impl ProofRepository for ProofHistoryDecorator {
             .await?;
 
         // update identifiers to properly write taget
-        if proof.role == ProofRole::Verifier && update.holder_identifier_id.is_some()
-            || proof.role == ProofRole::Holder && update.verifier_identifier_id.is_some()
-        {
+        if proof.role == ProofRole::Holder && update.verifier_identifier_id.is_some() {
             proof = self.fetch_proof(proof_id).await?;
         }
 
@@ -209,10 +206,7 @@ fn target_from_proof(proof: &Proof) -> Option<String> {
             .verifier_identifier
             .as_ref()
             .map(|identifier| identifier.id.to_string()),
-        ProofRole::Verifier => proof
-            .holder_identifier
-            .as_ref()
-            .map(|identifier| identifier.id.to_string()),
+        _ => None,
     }
 }
 

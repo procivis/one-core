@@ -34,7 +34,6 @@ pub struct Proof {
     pub schema: Option<ProofSchema>,
     pub claims: Option<Vec<ProofClaim>>,
     pub verifier_identifier: Option<Identifier>,
-    pub holder_identifier: Option<Identifier>,
     pub verifier_certificate: Option<Certificate>,
     pub verifier_key: Option<Key>,
     pub interaction: Option<Interaction>,
@@ -81,7 +80,6 @@ pub struct ProofRelations {
     pub schema: Option<ProofSchemaRelations>,
     pub claims: Option<ProofClaimRelations>,
     pub verifier_identifier: Option<IdentifierRelations>,
-    pub holder_identifier: Option<IdentifierRelations>,
     pub verifier_key: Option<KeyRelations>,
     pub verifier_certificate: Option<CertificateRelations>,
     pub interaction: Option<InteractionRelations>,
@@ -95,7 +93,6 @@ pub struct ProofClaimRelations {
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateProofRequest {
-    pub holder_identifier_id: Option<IdentifierId>,
     pub verifier_identifier_id: Option<IdentifierId>,
     pub state: Option<ProofStateEnum>,
     pub interaction: Option<Option<InteractionId>>,

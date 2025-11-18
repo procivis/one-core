@@ -79,7 +79,6 @@ impl ProofService {
             transport: transport.to_owned(),
             claims: None,
             verifier_identifier: None,
-            holder_identifier: None,
             verifier_key: None,
             verifier_certificate: None,
             interaction: None,

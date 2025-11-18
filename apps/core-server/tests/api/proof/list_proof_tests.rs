@@ -91,7 +91,6 @@ async fn test_list_proof_success() {
             .create(
                 None,
                 &verifier_identifier,
-                None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
@@ -201,7 +200,6 @@ async fn test_list_proofs_by_ids() {
             .create(
                 None,
                 &verifier_identifier,
-                None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
@@ -344,7 +342,6 @@ async fn test_list_proofs_by_name() {
             .create(
                 None,
                 &verifier_identifier,
-                None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
@@ -364,7 +361,6 @@ async fn test_list_proofs_by_name() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -504,7 +500,6 @@ async fn test_list_proofs_by_schema_ids() {
             .create(
                 None,
                 &verifier_identifier,
-                None,
                 Some(&proof_schema1),
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
@@ -524,7 +519,6 @@ async fn test_list_proofs_by_schema_ids() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema2),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -654,7 +648,6 @@ async fn test_list_proofs_by_verifiers() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -671,7 +664,6 @@ async fn test_list_proofs_by_verifiers() {
         .create(
             None,
             &identifier2,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -784,7 +776,6 @@ async fn test_list_proofs_by_state() {
             .create(
                 None,
                 &verifier_identifier,
-                None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
@@ -804,7 +795,6 @@ async fn test_list_proofs_by_state() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Error,
             "OPENID4VP_DRAFT20",
@@ -921,7 +911,6 @@ async fn test_list_proof_with_retain_date() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
@@ -975,7 +964,6 @@ async fn test_list_proofs_with_org_by_interaction() {
                 None,
                 &identifier,
                 None,
-                None,
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
                 Some(&interaction),
@@ -1023,7 +1011,6 @@ async fn test_list_proofs_with_org_by_interaction() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Error,
             "OPENID4VP_DRAFT20",
@@ -1133,7 +1120,6 @@ async fn test_list_proofs_by_role() {
             .create(
                 None,
                 &verifier_identifier,
-                None,
                 Some(&proof_schema),
                 ProofStateEnum::Requested,
                 "OPENID4VP_DRAFT20",
@@ -1157,7 +1143,6 @@ async fn test_list_proofs_by_role() {
         .create(
             None,
             &verifier_identifier,
-            None,
             None,
             ProofStateEnum::Error,
             "OPENID4VP_DRAFT20",
@@ -1303,7 +1288,6 @@ async fn test_list_proof_with_profile() {
         .create_with_profile(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -1322,7 +1306,6 @@ async fn test_list_proof_with_profile() {
         .create_with_profile(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -1340,7 +1323,6 @@ async fn test_list_proof_with_profile() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -1484,7 +1466,6 @@ async fn test_list_proofs_by_date() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
@@ -1501,7 +1482,6 @@ async fn test_list_proofs_by_date() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -1518,7 +1498,6 @@ async fn test_list_proofs_by_date() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",

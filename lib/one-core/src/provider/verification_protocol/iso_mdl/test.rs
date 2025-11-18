@@ -166,7 +166,6 @@ async fn test_presentation_reject_ok() {
         }),
         claims: None,
         verifier_identifier: None,
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
@@ -251,7 +250,6 @@ async fn test_get_presentation_definition_ok() {
         schema: None,
         claims: None,
         verifier_identifier: None,
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,

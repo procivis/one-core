@@ -54,7 +54,6 @@ async fn test_share_proof_success() {
     let proof = fixtures::create_proof(
         &context.db.db_conn,
         &identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
@@ -113,7 +112,6 @@ async fn test_share_proof_twice() {
     let proof = fixtures::create_proof(
         &context.db.db_conn,
         &identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
@@ -244,7 +242,6 @@ async fn test_share_proof_success_with_separate_encryption_key() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -333,7 +330,6 @@ async fn test_share_proof_success_mdoc() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             VerificationProtocolType::OpenId4VpDraft20.as_ref(),
@@ -461,7 +457,6 @@ async fn test_share_proof_success_jsonld() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -548,7 +543,6 @@ async fn prepare_created_openid4vp_proof(exchange: Option<&str>) -> (TestContext
     let proof = fixtures::create_proof(
         &context.db.db_conn,
         &identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,
@@ -721,7 +715,6 @@ async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
     let proof = fixtures::create_proof(
         &context.db.db_conn,
         &identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,

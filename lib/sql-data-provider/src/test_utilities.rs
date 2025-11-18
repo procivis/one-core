@@ -210,7 +210,6 @@ pub async fn get_proof_by_id(
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_identifier_id: IdentifierId,
-    holder_identifier_id: Option<IdentifierId>,
     proof_schema_id: &ProofSchemaId,
     verifier_key_id: KeyId,
     interaction_id: Option<String>,
@@ -229,7 +228,6 @@ pub async fn insert_proof_request_to_database(
         requested_date: Set(None),
         completed_date: Set(None),
         verifier_identifier_id: Set(Some(verifier_identifier_id)),
-        holder_identifier_id: Set(holder_identifier_id),
         proof_schema_id: Set(Some(*proof_schema_id)),
         verifier_key_id: Set(Some(verifier_key_id)),
         verifier_certificate_id: Set(None),

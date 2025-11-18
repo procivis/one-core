@@ -63,7 +63,6 @@ pub struct ProofDetailResponseDTO {
     pub completed_date: Option<OffsetDateTime>,
     pub verifier: Option<GetIdentifierListItemResponseDTO>,
     pub verifier_certificate: Option<CertificateResponseDTO>,
-    pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
     pub transport: String,
     pub engagement: Option<String>,

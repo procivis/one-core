@@ -99,7 +99,6 @@ async fn test_get_proof_success() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -208,7 +207,6 @@ async fn test_get_proof_detached_success() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -325,7 +323,6 @@ async fn test_get_proof_with_nested_claims() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -437,7 +434,6 @@ async fn test_get_proof_with_empty_array() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -633,7 +629,6 @@ async fn test_get_proof_with_array() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -761,7 +756,6 @@ async fn test_get_proof_with_nested_claims_and_root_field() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -921,7 +915,6 @@ async fn test_get_proof_with_nested_optional_inputs() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -1053,7 +1046,6 @@ async fn test_get_proof_with_credentials() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -1124,24 +1116,6 @@ async fn test_get_proof_as_holder_success() {
             },
         )
         .await;
-    let holder_did = context
-        .db
-        .dids
-        .create(Some(organisation.clone()), Default::default())
-        .await;
-    let holder_identifier = context
-        .db
-        .identifiers
-        .create(
-            &organisation,
-            TestingIdentifierParams {
-                did: Some(holder_did.clone()),
-                r#type: Some(IdentifierType::Did),
-                is_remote: Some(holder_did.did_type == DidType::Remote),
-                ..Default::default()
-            },
-        )
-        .await;
     let interaction = context
         .db
         .interactions
@@ -1154,7 +1128,6 @@ async fn test_get_proof_as_holder_success() {
         .create(
             None,
             &verifier_identifier,
-            Some(&holder_identifier),
             None, // Proof schema is empty on holder side
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -1251,7 +1224,6 @@ async fn test_get_proof_with_retain_date() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
@@ -1372,7 +1344,6 @@ async fn test_get_proof_with_deleted_claims() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
@@ -1469,7 +1440,6 @@ async fn test_get_proof_with_verifier_and_issuer_certificates() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",
@@ -1610,7 +1580,6 @@ async fn test_get_proof_with_credentials_returns_profiles() {
         .create_with_profile(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",

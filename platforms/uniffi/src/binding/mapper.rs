@@ -153,7 +153,6 @@ impl From<ProofDetailResponseDTO> for ProofResponseBindingDTO {
             last_modified: value.last_modified.format_timestamp(),
             proof_schema: convert_inner(value.schema),
             verifier: value.verifier.map(Into::into),
-            holder: value.holder.map(Into::into),
             protocol: value.protocol,
             transport: value.transport,
             engagement: value.engagement,

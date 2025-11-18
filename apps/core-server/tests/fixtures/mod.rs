@@ -750,7 +750,6 @@ pub async fn create_blob(db_conn: &DbConn, params: TestingBlobParams) -> Blob {
 pub async fn create_proof(
     db_conn: &DbConn,
     verifier_identifier: &Identifier,
-    holder_identifier: Option<&Identifier>,
     proof_schema: Option<&ProofSchema>,
     state: ProofStateEnum,
     role: ProofRole,
@@ -790,7 +789,6 @@ pub async fn create_proof(
         claims: None,
         schema: proof_schema.cloned(),
         verifier_identifier: Some(verifier_identifier.to_owned()),
-        holder_identifier: holder_identifier.cloned(),
         verifier_key: verifier_key.cloned(),
         verifier_certificate: None,
         interaction: interaction.cloned(),
@@ -829,10 +827,6 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                     }),
                 }),
                 verifier_identifier: Some(IdentifierRelations {
-                    did: Some(Default::default()),
-                    ..Default::default()
-                }),
-                holder_identifier: Some(IdentifierRelations {
                     did: Some(Default::default()),
                     ..Default::default()
                 }),

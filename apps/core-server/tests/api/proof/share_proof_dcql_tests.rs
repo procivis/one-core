@@ -78,7 +78,6 @@ async fn create_proof_with_claims(
     fixtures::create_proof(
         &context.db.db_conn,
         identifier,
-        None,
         Some(&proof_schema),
         ProofStateEnum::Created,
         ProofRole::Verifier,

@@ -403,9 +403,6 @@ pub(crate) struct ProofDetailResponseRestDTO {
     #[try_from(with_fn = try_convert_inner)]
     pub verifier_certificate: Option<CertificateResponseRestDTO>,
 
-    #[try_from(with_fn = convert_inner, infallible)]
-    pub holder: Option<GetIdentifierListItemResponseRestDTO>,
-
     #[try_from(infallible)]
     pub protocol: String,
 

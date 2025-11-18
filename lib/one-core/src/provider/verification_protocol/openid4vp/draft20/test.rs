@@ -397,7 +397,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: Some(Key {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),

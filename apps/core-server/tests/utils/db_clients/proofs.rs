@@ -32,7 +32,6 @@ impl ProofsDB {
         &self,
         id: Option<ProofId>,
         verifier_identifier: &Identifier,
-        holder_identifier: Option<&Identifier>,
         proof_schema: Option<&ProofSchema>,
         state: ProofStateEnum,
         exchange: &str,
@@ -44,7 +43,6 @@ impl ProofsDB {
         self.create_with_profile(
             id,
             verifier_identifier,
-            holder_identifier,
             proof_schema,
             state,
             exchange,
@@ -62,7 +60,6 @@ impl ProofsDB {
         &self,
         id: Option<ProofId>,
         verifier_identifier: &Identifier,
-        holder_identifier: Option<&Identifier>,
         proof_schema: Option<&ProofSchema>,
         state: ProofStateEnum,
         exchange: &str,
@@ -118,7 +115,6 @@ impl ProofsDB {
             }]),
             schema: proof_schema.cloned(),
             verifier_identifier: Some(verifier_identifier.to_owned()),
-            holder_identifier: holder_identifier.cloned(),
             verifier_key: Some(verifier_key),
             verifier_certificate: verifier_identifier
                 .certificates
@@ -160,10 +156,6 @@ impl ProofsDB {
                         }),
                     }),
                     verifier_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
-                    holder_identifier: Some(IdentifierRelations {
                         did: Some(Default::default()),
                         ..Default::default()
                     }),

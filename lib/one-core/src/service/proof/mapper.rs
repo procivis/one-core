@@ -396,8 +396,6 @@ pub(super) async fn get_verifier_proof_detail(
 
     let redirect_uri = proof.redirect_uri.to_owned();
 
-    let holder = convert_inner(proof.holder_identifier.to_owned());
-
     let verifier_certificate = proof
         .verifier_certificate
         .clone()
@@ -415,7 +413,6 @@ pub(super) async fn get_verifier_proof_detail(
         completed_date: list_item_response.completed_date,
         verifier: list_item_response.verifier,
         verifier_certificate,
-        holder,
         engagement: list_item_response.engagement,
         transport: list_item_response.transport,
         protocol: list_item_response.protocol,
@@ -554,10 +551,6 @@ pub(super) async fn get_holder_proof_detail(
 ) -> Result<ProofDetailResponseDTO, ServiceError> {
     let organisation_id = [
         proof
-            .holder_identifier
-            .as_ref()
-            .and_then(|identifier| identifier.organisation.as_ref()),
-        proof
             .verifier_identifier
             .as_ref()
             .and_then(|identifier| identifier.organisation.as_ref()),
@@ -652,8 +645,6 @@ pub(super) async fn get_holder_proof_detail(
         })
         .collect::<Result<Vec<_>, ServiceError>>()?;
 
-    let holder = convert_inner(proof.holder_identifier.to_owned());
-
     let verifier_certificate = proof
         .verifier_certificate
         .clone()
@@ -672,7 +663,6 @@ pub(super) async fn get_holder_proof_detail(
         verifier: list_item_response.verifier,
         engagement: list_item_response.engagement,
         verifier_certificate,
-        holder,
         transport: list_item_response.transport,
         protocol: list_item_response.protocol,
         state: list_item_response.state,
@@ -712,7 +702,6 @@ pub(super) fn proof_from_create_request(
         transport,
         claims: None,
         verifier_identifier: Some(verifier_identifier),
-        holder_identifier: None,
         verifier_key: Some(verifier_key),
         verifier_certificate,
         interaction,
@@ -744,7 +733,6 @@ pub fn proof_for_scan_to_verify(
         transport: transport.to_owned(),
         claims: None,
         verifier_identifier: None,
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {

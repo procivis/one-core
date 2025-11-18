@@ -156,7 +156,6 @@ async fn test_get_presentation_definition_success() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
             "OPENID4VP_DRAFT20",
@@ -239,7 +238,6 @@ async fn test_get_presentation_definition_failed_wrong_exchange_type() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Requested,
             "OPENID4VP_DRAFT20",
@@ -279,7 +277,6 @@ async fn test_get_presentation_definition_failed_wrong_state() {
         .create(
             None,
             &verifier_identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",

@@ -210,7 +210,6 @@ async fn test_presentation_definition_success() {
                     }),
                     claims: None,
                     verifier_identifier: None,
-                    holder_identifier: None,
                     verifier_key: None,
                     verifier_certificate: None,
                     interaction: Some(Interaction {
@@ -312,7 +311,6 @@ async fn test_submit_proof_failed_credential_suspended() {
     };
 
     let interaction_id_copy = interaction_id.to_owned();
-    let holder_did_clone = holder_did.clone();
     proof_repository
         .expect_get_proof_by_interaction_id()
         .withf(move |_interaction_id, _| {
@@ -326,13 +324,6 @@ async fn test_submit_proof_failed_credential_suspended() {
                 verifier_identifier: Some(Identifier {
                     did: Some(Did {
                         did: verifier_did,
-                        ..dummy_did()
-                    }),
-                    ..dummy_identifier()
-                }),
-                holder_identifier: Some(Identifier {
-                    did: Some(Did {
-                        did: holder_did_clone,
                         ..dummy_did()
                     }),
                     ..dummy_identifier()
@@ -619,7 +610,6 @@ async fn test_get_client_metadata_success() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,
@@ -800,7 +790,6 @@ async fn test_get_client_metadata_success_no_encryption() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: Some(verifier_key),
         verifier_certificate: None,
         interaction: None,

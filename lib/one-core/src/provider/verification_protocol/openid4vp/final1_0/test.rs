@@ -184,7 +184,6 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: verifier_key.map(|k| k.key).or(Some(Key {
             id: key_id,
             created_date: OffsetDateTime::now_utc(),

@@ -240,7 +240,6 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
     let proof_id = insert_proof_request_to_database(
         &db,
         identifier_id,
-        None,
         &proof_schema_id,
         key_id,
         None,

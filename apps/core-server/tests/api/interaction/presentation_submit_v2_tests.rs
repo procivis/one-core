@@ -75,7 +75,6 @@ async fn test_presentation_submit_endpoint_for_openid4vp_dcql() {
         verifier_did.did
     );
     // There is no longer a single holder identifier associated with the proof
-    assert_eq!(proof.holder_identifier, None);
     let proof_history = context
         .db
         .histories
@@ -422,7 +421,6 @@ async fn setup_submittable_presentation_dcql(
         .create(
             None,
             &verifier_identifier,
-            None,
             None,
             ProofStateEnum::Requested,
             "OPENID4VP_FINAL1",

@@ -101,7 +101,6 @@ async fn test_delete_proof_claims_success() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Pending,
             "OPENID4VP_DRAFT20",

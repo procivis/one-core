@@ -282,7 +282,6 @@ async fn test_run_retain_proof_check_with_update() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Accepted,
             "OPENID4VP_DRAFT20",
@@ -299,7 +298,6 @@ async fn test_run_retain_proof_check_with_update() {
         .create(
             None,
             &identifier,
-            None,
             Some(&proof_schema),
             ProofStateEnum::Created,
             "OPENID4VP_DRAFT20",

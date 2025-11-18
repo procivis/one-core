@@ -136,10 +136,6 @@ impl ProofService {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -250,11 +246,6 @@ impl ProofService {
             .get_proof(
                 id,
                 &ProofRelations {
-                    holder_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -898,7 +889,6 @@ impl ProofService {
                 transport: transport.to_owned(),
                 claims: None,
                 verifier_identifier: None,
-                holder_identifier: None,
                 verifier_key: None,
                 verifier_certificate: None,
                 interaction: Some(interaction.clone()),

@@ -97,7 +97,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::test_utilities::{
-    dummy_did, dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
+    dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
 
 #[derive(Default)]
@@ -236,7 +236,6 @@ fn construct_proof_with_state(proof_id: &ProofId, state: ProofStateEnum) -> Proo
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: Some(key),
         verifier_certificate: None,
         interaction: None,
@@ -347,23 +346,6 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                 log: None,
             }),
             is_remote: false,
-            ..dummy_identifier()
-        }),
-        holder_identifier: Some(Identifier {
-            did: Some(Did {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                name: "did".to_string(),
-                did: "did:example:123".parse().unwrap(),
-                did_type: DidType::Remote,
-                did_method: "KEY".to_string(),
-                organisation: None,
-                keys: None,
-                deactivated: false,
-                log: None,
-            }),
-            is_remote: true,
             ..dummy_identifier()
         }),
         verifier_key: None,
@@ -492,7 +474,6 @@ async fn test_get_proof_exists() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -547,10 +528,6 @@ async fn test_get_proof_exists() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -715,10 +692,6 @@ async fn test_get_proof_with_array_holder() {
             organisation: Some(organisation.clone()),
             ..dummy_identifier()
         }),
-        holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
-            ..dummy_identifier()
-        }),
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
@@ -781,10 +754,6 @@ async fn test_get_proof_with_array_holder() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -987,10 +956,6 @@ async fn test_get_proof_with_array_in_object_holder() {
             organisation: Some(organisation.clone()),
             ..dummy_identifier()
         }),
-        holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
-            ..dummy_identifier()
-        }),
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
@@ -1053,10 +1018,6 @@ async fn test_get_proof_with_array_in_object_holder() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -1274,10 +1235,6 @@ async fn test_get_proof_with_object_array_holder() {
             organisation: Some(organisation),
             ..dummy_identifier()
         }),
-        holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
-            ..dummy_identifier()
-        }),
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
@@ -1340,10 +1297,6 @@ async fn test_get_proof_with_object_array_holder() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -1552,7 +1505,6 @@ async fn test_get_proof_with_array() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -1607,10 +1559,6 @@ async fn test_get_proof_with_array() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -1830,7 +1778,6 @@ async fn test_get_proof_with_array_in_object() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -1885,10 +1832,6 @@ async fn test_get_proof_with_array_in_object() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -2124,7 +2067,6 @@ async fn test_get_proof_with_object_array() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,
@@ -2179,10 +2121,6 @@ async fn test_get_proof_with_object_array() {
                         ..Default::default()
                     }),
                     verifier_certificate: Some(CertificateRelations::default()),
-                    holder_identifier: Some(IdentifierRelations {
-                        organisation: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     interaction: Some(InteractionRelations {
                         organisation: Some(Default::default()),
                     }),
@@ -2307,7 +2245,6 @@ async fn test_get_proof_list_success() {
             }),
             ..dummy_identifier()
         }),
-        holder_identifier: None,
         verifier_key: None,
         verifier_certificate: None,
         interaction: None,

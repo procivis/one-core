@@ -313,7 +313,6 @@ pub struct ProofResponseBindingDTO {
     pub created_date: String,
     pub last_modified: String,
     pub verifier: Option<GetIdentifierListItemBindingDTO>,
-    pub holder: Option<GetIdentifierListItemBindingDTO>,
     pub state: ProofStateBindingEnum,
     pub role: ProofRoleBindingEnum,
     pub proof_schema: Option<GetProofSchemaListItemBindingDTO>,

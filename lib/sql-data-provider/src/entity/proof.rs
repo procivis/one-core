@@ -24,7 +24,6 @@ pub struct Model {
     pub engagement: Option<String>,
 
     pub verifier_identifier_id: Option<IdentifierId>,
-    pub holder_identifier_id: Option<IdentifierId>,
     pub proof_schema_id: Option<ProofSchemaId>,
     pub verifier_key_id: Option<KeyId>,
     pub verifier_certificate_id: Option<CertificateId>,
@@ -64,14 +63,6 @@ pub enum Relation {
         on_delete = "Restrict"
     )]
     VerifierIdentifier,
-    #[sea_orm(
-        belongs_to = "super::identifier::Entity",
-        from = "Column::HolderIdentifierId",
-        to = "super::identifier::Column::Id",
-        on_update = "Restrict",
-        on_delete = "Restrict"
-    )]
-    HolderIdentifier,
     #[sea_orm(
         belongs_to = "super::interaction::Entity",
         from = "Column::InteractionId",
