@@ -20,7 +20,7 @@ use crate::dto::common::{ExactColumn, ListQueryParamsRest};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRestDTO, CredentialSchemaLayoutType,
-    CredentialSchemaListItemResponseRestDTO, WalletStorageTypeRestEnum,
+    CredentialSchemaListItemResponseRestDTO, KeyStorageSecurityRestEnum,
 };
 use crate::serialize::{front_time, front_time_option};
 
@@ -164,7 +164,7 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[try_into(infallible)]
     pub imported_source_url: String,
     #[try_into(with_fn = convert_inner, infallible)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     #[try_into(infallible)]
     pub schema_id: String,
     #[try_into(with_fn = convert_inner, infallible)]

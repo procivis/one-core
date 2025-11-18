@@ -41,7 +41,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub revocation_method: String,
     /// Indication of what type of key storage the wallet should use.
     #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     pub imported_source_url: String,
     /// Document type or credential type identifier used by the credential
     /// format. This is the semantic identifier for the credential type, not
@@ -76,7 +76,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
     #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     /// Document type or credential type identifier used by the credential
     /// format. This is the semantic identifier for the credential type, not
     /// the database ID of this schema record.
@@ -186,17 +186,13 @@ pub(crate) enum SortableCredentialSchemaColumnRestEnum {
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[into("one_core::model::credential_schema::WalletStorageTypeEnum")]
-#[from("one_core::model::credential_schema::WalletStorageTypeEnum")]
-pub(crate) enum WalletStorageTypeRestEnum {
-    /// Requires the wallet to use software-based key storage.
-    Software,
-    /// Requires the wallet to use hardware-based key storage (for example,
-    /// a secure element on the device).
-    Hardware,
-    /// Requires the wallet to use remote secure element key storage
-    /// (for example, an HSM in a data center).
-    RemoteSecureElement,
+#[into("one_core::model::credential_schema::KeyStorageSecurity")]
+#[from("one_core::model::credential_schema::KeyStorageSecurity")]
+pub(crate) enum KeyStorageSecurityRestEnum {
+    High,
+    Moderate,
+    EnhancedBasic,
+    Basic,
 }
 
 #[options_not_nullable]
@@ -227,11 +223,10 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
-    /// Specifies requirements that the holder's wallet must meet for
-    /// credential issuance, including key storage type and wallet
-    /// attestation.
+    /// Specifies key storage security requirements that the holder's wallet must meet for
+    /// credential issuance.
     #[try_into(with_fn = convert_inner, infallible)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     /// Determines the general appearance of the credential in the holder's
     /// wallet and the options supported in `layoutProperties`.
     #[serde(default)]
@@ -422,7 +417,7 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaRestDTO>,
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     #[try_into(infallible)]
     pub schema_id: String,
     #[try_into(infallible)]

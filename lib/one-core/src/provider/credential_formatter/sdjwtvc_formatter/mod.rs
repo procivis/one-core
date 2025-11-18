@@ -140,7 +140,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             name: vct.clone(),
             format: FormatType::SdJwtVc.to_string(),
             revocation_method: revocation_method.to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: vct,

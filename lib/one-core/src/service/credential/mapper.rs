@@ -497,7 +497,7 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,
-            wallet_storage_type: value.wallet_storage_type,
+            key_storage_security: value.key_storage_security,
             organisation_id,
             schema_id: value.schema_id,
             layout_type: value.layout_type.into(),

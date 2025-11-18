@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 
 #[derive(Clone, Serialize)]
 pub struct KeySecurityLevelCapabilities {
@@ -9,6 +9,13 @@ pub struct KeySecurityLevelCapabilities {
 }
 
 #[derive(Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Params {
+    pub holder: HolderParams,
+}
+
+#[derive(Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HolderParams {
     #[serde(default)]
     pub priority: u64,

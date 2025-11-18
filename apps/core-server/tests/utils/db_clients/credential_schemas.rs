@@ -3,8 +3,8 @@ use std::sync::Arc;
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
-    CredentialSchemaRelations, GetCredentialSchemaQuery, LayoutProperties, LayoutType,
-    LogoProperties, WalletStorageTypeEnum,
+    CredentialSchemaRelations, GetCredentialSchemaQuery, KeyStorageSecurity, LayoutProperties,
+    LayoutType, LogoProperties,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -20,7 +20,7 @@ pub struct TestingCreateSchemaParams {
     pub id: Option<CredentialSchemaId>,
     pub schema_id: Option<String>,
     pub format: Option<String>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -82,7 +82,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: params.wallet_storage_type,
+            key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: params.deleted_at,
             format: params.format.unwrap_or("JWT".to_string()),
@@ -160,11 +160,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(
-                params
-                    .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
-            ),
+            key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: params.format.unwrap_or("JSON_LD_BBSPLUS".to_string()),
@@ -268,11 +264,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(
-                params
-                    .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
-            ),
+            key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
@@ -376,11 +368,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(
-                params
-                    .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
-            ),
+            key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
@@ -497,11 +485,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(
-                params
-                    .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
-            ),
+            key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
@@ -722,11 +706,7 @@ impl CredentialSchemasDB {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: name.to_owned(),
-            wallet_storage_type: Some(
-                params
-                    .wallet_storage_type
-                    .unwrap_or(WalletStorageTypeEnum::Software),
-            ),
+            key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: params.format.unwrap_or("JWT".to_string()),
@@ -773,7 +753,7 @@ impl CredentialSchemasDB {
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             name: name.to_owned(),
             organisation: Some(organisation.clone()),
             deleted_at: None,
@@ -830,7 +810,7 @@ impl CredentialSchemasDB {
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             name: name.to_owned(),
             organisation: Some(organisation.clone()),
             deleted_at: None,

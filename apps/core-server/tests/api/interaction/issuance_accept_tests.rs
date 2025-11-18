@@ -4,7 +4,7 @@ use std::str::FromStr;
 use one_core::model::certificate::CertificateState;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
-use one_core::model::credential_schema::{CredentialSchemaClaim, WalletStorageTypeEnum};
+use one_core::model::credential_schema::{CredentialSchemaClaim, KeyStorageSecurity};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
@@ -1312,7 +1312,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(WalletStorageTypeEnum::RemoteSecureElement),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 ..Default::default()
             },
         )
@@ -1360,7 +1360,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0097", resp.error_code().await);
+    assert_eq!("BR_0309", resp.error_code().await);
 }
 
 #[tokio::test]
@@ -1552,7 +1552,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::High),
                 ..Default::default()
             },
         )
@@ -1600,7 +1600,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0097", resp.error_code().await);
+    assert_eq!("BR_0310", resp.error_code().await);
 }
 
 #[tokio::test]

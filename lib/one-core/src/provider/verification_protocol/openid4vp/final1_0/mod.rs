@@ -546,6 +546,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
+            &self.config,
         )?;
 
         let client_metadata = create_open_id_for_vp_client_metadata_final1_0(key_agreement_key)?;

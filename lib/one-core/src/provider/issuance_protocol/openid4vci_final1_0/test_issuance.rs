@@ -17,7 +17,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
@@ -37,6 +37,7 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::OpenID4VCRedirectUriParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
@@ -172,6 +173,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
@@ -324,6 +326,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
@@ -464,6 +467,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
@@ -561,6 +565,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeyProvider::new()),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),
         Arc::new(config),
@@ -687,7 +692,7 @@ fn dummy_credential() -> Credential {
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),

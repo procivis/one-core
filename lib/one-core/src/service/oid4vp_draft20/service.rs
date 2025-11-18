@@ -126,11 +126,7 @@ impl OID4VPDraft20Service {
         };
 
         let client_metadata = create_open_id_for_vp_client_metadata_draft(
-            get_encryption_key_jwk_from_proof(
-                &proof,
-                &*self.key_algorithm_provider,
-                &*self.key_provider,
-            )?,
+            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)?,
             create_open_id_for_vp_formats(),
         );
 
@@ -215,11 +211,8 @@ impl OID4VPDraft20Service {
         validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)?;
 
         let formats = create_open_id_for_vp_formats();
-        let jwk = get_encryption_key_jwk_from_proof(
-            &proof,
-            &*self.key_algorithm_provider,
-            &*self.key_provider,
-        )?;
+        let jwk =
+            get_encryption_key_jwk_from_proof(&proof, &*self.key_algorithm_provider, &self.config)?;
 
         Ok(create_open_id_for_vp_client_metadata_draft(jwk, formats))
     }

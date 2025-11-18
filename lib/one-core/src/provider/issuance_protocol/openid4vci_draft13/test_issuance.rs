@@ -16,7 +16,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
@@ -668,7 +668,7 @@ fn dummy_credential() -> Credential {
             deleted_at: None,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),

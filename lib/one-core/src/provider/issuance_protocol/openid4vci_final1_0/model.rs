@@ -12,7 +12,7 @@ use url::Url;
 
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
-use crate::model::credential_schema::{CodeTypeEnum, LayoutProperties, WalletStorageTypeEnum};
+use crate::model::credential_schema::{CodeTypeEnum, LayoutProperties};
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
@@ -211,9 +211,6 @@ pub struct OpenID4VCICredentialDefinition {
 pub struct OpenID4VCICredentialMetadataResponseDTO {
     pub display: Option<Vec<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO>>,
     pub claims: Option<Vec<OpenID4VCICredentialMetadataClaimResponseDTO>>,
-
-    // procivis extension
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
 }
 
 #[skip_serializing_none]

@@ -44,7 +44,6 @@ use crate::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnit, WalletUnitListQuery, WalletUnitOs, WalletUnitRelations,
     WalletUnitStatus,
 };
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
 };
@@ -55,6 +54,7 @@ use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;

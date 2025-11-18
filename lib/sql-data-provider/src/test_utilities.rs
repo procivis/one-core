@@ -22,7 +22,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::entity::blob::BlobType;
-use crate::entity::credential_schema::{LayoutType, WalletStorageType};
+use crate::entity::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::entity::did::DidType;
 use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::interaction::InteractionType;
@@ -118,7 +118,7 @@ pub async fn insert_credential_schema_to_database(
     name: &str,
     format: &str,
     revocation_method: &str,
-    wallet_storage_type: WalletStorageType,
+    key_storage_security: Option<KeyStorageSecurity>,
 ) -> Result<CredentialSchemaId, DbErr> {
     let new_id: CredentialSchemaId = Uuid::new_v4().into();
     let schema = credential_schema::ActiveModel {
@@ -130,13 +130,13 @@ pub async fn insert_credential_schema_to_database(
         name: Set(name.to_owned()),
         revocation_method: Set(revocation_method.to_owned()),
         organisation_id: Set(organisation_id),
-        wallet_storage_type: Set(Some(wallet_storage_type)),
+        key_storage_security: Set(key_storage_security),
         deleted_at: Set(deleted_at),
         layout_type: Set(LayoutType::Card),
         layout_properties: Set(None),
         schema_id: Set(new_id.to_string()),
         allow_suspension: Set(true),
-        requires_app_attestation: Set(wallet_storage_type != WalletStorageType::Software),
+        requires_app_attestation: Set(key_storage_security.is_some()),
     }
     .insert(database)
     .await?;

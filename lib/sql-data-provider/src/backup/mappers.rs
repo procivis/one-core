@@ -61,7 +61,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 imported_source_url: value.credential_schema_imported_source_url,
                 name: value.credential_schema_name,
                 format: value.credential_schema_format,
-                wallet_storage_type: convert_inner(value.credential_schema_wallet_storage_type),
+                key_storage_security: convert_inner(value.credential_schema_key_storage_security),
                 revocation_method: value.credential_schema_revocation_method,
                 claim_schemas: Some(claim_schemas),
                 organisation: Some(Organisation {

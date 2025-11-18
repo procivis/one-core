@@ -5,9 +5,9 @@ use time::OffsetDateTime;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier, OpenID4VCIFinal1Params,
     OpenID4VCIIssuerInteractionDataDTO,

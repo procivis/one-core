@@ -14,7 +14,7 @@ use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::VerificationProtocolType;
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::did::KeyRole;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofRole, ProofStateEnum};
@@ -671,9 +671,6 @@ pub enum ValidationError {
     #[error("CRL signature invalid")]
     CRLSignatureInvalid,
 
-    #[error("Wallet storage type `{0}` not supported")]
-    WalletStorageTypeDisabled(WalletStorageTypeEnum),
-
     #[error("Invalid CA chain: {0}")]
     InvalidCaCertificateChain(String),
 
@@ -706,6 +703,17 @@ pub enum ValidationError {
 
     #[error("Invalid wallet provider url: {0}")]
     InvalidWalletProviderUrl(String),
+
+    #[error(
+        "Key storage `{key_storage}` does not fulfill required security levels {required_security_levels:?}"
+    )]
+    UnfulfilledKeyStorageSecurityLevel {
+        key_storage: String,
+        required_security_levels: Vec<KeyStorageSecurity>,
+    },
+
+    #[error("Key storage security level `{0}` not supported")]
+    KeyStorageSecurityDisabled(KeyStorageSecurity),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1445,6 +1453,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Proof schema: Invalid credential combination")]
     BR_0305,
+
+    #[strum(message = "Key storage security level not supported")]
+    BR_0309,
+
+    #[strum(message = "Key storage does not fulfill required security levels")]
+    BR_0310,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1691,7 +1705,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::CRLCheckFailed(_) => ErrorCode::BR_0233,
             Self::CRLOutdated => ErrorCode::BR_0234,
             Self::CRLSignatureInvalid => ErrorCode::BR_0235,
-            Self::WalletStorageTypeDisabled(_) => ErrorCode::BR_0225,
             Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
             Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
             Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
@@ -1703,6 +1716,8 @@ impl ErrorCodeMixin for ValidationError {
             Self::EngagementProvidedForNonISOmDLFlow => ErrorCode::BR_0272,
             Self::InvalidWalletProviderUrl(_) => ErrorCode::BR_0295,
             Self::ProofSchemaInvalidCredentialCombination { .. } => ErrorCode::BR_0305,
+            Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
+            Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
         }
     }
 }

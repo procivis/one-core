@@ -4,7 +4,7 @@ use std::sync::Arc;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::common::SortDirection;
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
 };
 use one_core::model::list_filter::{ListFilterValue, StringMatch};
 use one_core::model::list_query::{ListPagination, ListSorting};
@@ -32,7 +32,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaProvider;
-use crate::entity::credential_schema::WalletStorageType;
 use crate::entity::proof_schema;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
@@ -192,7 +191,7 @@ async fn test_create_proof_schema_already_exists() {
                 credential_schema: Some(CredentialSchema {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    key_storage_security: Some(KeyStorageSecurity::Basic),
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -235,7 +234,7 @@ async fn test_create_proof_schema_success() {
         "cred-schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
@@ -290,7 +289,7 @@ async fn test_create_proof_schema_success() {
                 credential_schema: Some(CredentialSchema {
                     id: credential_schema_id,
                     deleted_at: None,
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    key_storage_security: Some(KeyStorageSecurity::Basic),
                     imported_source_url: "CORE_URL".to_string(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),
@@ -498,7 +497,7 @@ async fn test_get_proof_schema_with_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
-                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                key_storage_security: Some(KeyStorageSecurity::Basic),
                 imported_source_url: "CORE_URL".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -534,7 +533,7 @@ async fn test_get_proof_schema_with_relations() {
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
@@ -634,7 +633,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
             Ok(Some(CredentialSchema {
                 id: id.to_owned(),
                 deleted_at: None,
-                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                key_storage_security: Some(KeyStorageSecurity::Basic),
                 imported_source_url: "CORE_URL".to_string(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
@@ -670,7 +669,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
@@ -682,7 +681,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         "credential schema2",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic.into()),
     )
     .await
     .unwrap();
@@ -1097,7 +1096,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
         revocation_method: Set("NONE".to_string()),
-        wallet_storage_type: Set(None),
+        key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
         schema_id: Set("JWT".to_string()),
@@ -1119,7 +1118,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
         revocation_method: Set("NONE".to_string()),
-        wallet_storage_type: Set(None),
+        key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
         schema_id: Set("MDOC".to_string()),

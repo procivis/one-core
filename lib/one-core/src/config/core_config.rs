@@ -12,6 +12,7 @@ use figment::providers::Json;
 #[cfg(feature = "config_yaml")]
 use figment::providers::Yaml;
 use figment::providers::{Data, Format};
+use one_dto_mapper::{From, Into};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
@@ -19,7 +20,7 @@ use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::KeyStorageSecurity;
 
 type Dict<K, V> = BTreeMap<K, V>;
 
@@ -52,7 +53,6 @@ pub struct CoreConfig {
     pub did: DidConfig,
     pub datatype: DatatypeConfig,
     pub key_algorithm: KeyAlgorithmConfig,
-    pub holder_key_storage: HolderKeyStorageConfig,
     pub key_storage: KeyStorageConfig,
     pub key_security_level: KeySecurityLevelConfig,
     pub task: TaskConfig,
@@ -470,23 +470,6 @@ pub enum DatatypeType {
     Boolean,
 }
 
-pub type HolderKeyStorageConfig = Dict<WalletStorageTypeEnum, HolderKeyStorageFields>;
-
-#[skip_serializing_none]
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HolderKeyStorageFields {
-    pub display: ConfigEntryDisplay,
-    pub order: Option<u64>,
-    pub enabled: Option<bool>,
-}
-
-impl ConfigFields for HolderKeyStorageFields {
-    fn enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
-    }
-}
-
 pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;
 
 #[skip_serializing_none]
@@ -579,7 +562,6 @@ pub type KeySecurityLevelConfig = Dict<KeySecurityLevelType, KeySecurityLevelFie
     Copy,
     Clone,
     Display,
-    EnumString,
     PartialEq,
     Eq,
     PartialOrd,
@@ -588,7 +570,11 @@ pub type KeySecurityLevelConfig = Dict<KeySecurityLevelType, KeySecurityLevelFie
     Deserialize,
     AsRefStr,
     Hash,
+    From,
+    Into,
 )]
+#[from(KeyStorageSecurity)]
+#[into(KeyStorageSecurity)]
 pub enum KeySecurityLevelType {
     #[serde(rename = "BASIC")]
     #[strum(serialize = "BASIC")]
@@ -610,10 +596,17 @@ pub enum KeySecurityLevelType {
 pub struct KeySecurityLevelFields {
     pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
+    pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
     #[serde(default, deserialize_with = "deserialize_params")]
     pub params: Option<Params>,
+}
+
+impl ConfigFields for KeySecurityLevelFields {
+    fn enabled(&self) -> bool {
+        self.enabled.unwrap_or(true)
+    }
 }
 
 pub type IdentifierConfig = Dict<IdentifierType, IdentifierFields>;

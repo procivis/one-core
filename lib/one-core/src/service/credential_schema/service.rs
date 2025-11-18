@@ -67,8 +67,8 @@ impl CredentialSchemaService {
         super::validator::check_claims_presence_in_layout_properties(&request)?;
         super::validator::check_background_properties(&request)?;
         super::validator::check_logo_properties(&request)?;
-        super::validator::validate_wallet_storage_type_supported(
-            request.wallet_storage_type,
+        super::validator::validate_key_storage_security_supported(
+            request.key_storage_security,
             &self.config,
         )?;
 

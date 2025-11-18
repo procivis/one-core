@@ -1,4 +1,4 @@
-use one_core::model::wallet_unit_attestation::KeyStorageSecurityLevel;
+use one_core::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use one_core::service::wallet_provider::dto;
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;

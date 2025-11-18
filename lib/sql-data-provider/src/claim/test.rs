@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use super::ClaimProvider;
 use crate::entity::claim_schema;
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -44,7 +44,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();

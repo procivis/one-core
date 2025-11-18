@@ -1,5 +1,5 @@
 use one_core::model::credential_schema::{
-    LayoutType, SortableCredentialSchemaColumn, WalletStorageTypeEnum,
+    KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn,
 };
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
@@ -214,7 +214,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,
     #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub schema_id: String,
     pub imported_source_url: String,
     #[from(with_fn = convert_inner)]
@@ -231,7 +231,7 @@ pub struct CredentialSchemaBindingDTO {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub schema_id: String,
     pub layout_type: Option<LayoutTypeBindingEnum>,
     pub imported_source_url: String,
@@ -416,7 +416,7 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     #[try_into(with_fn = try_convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     #[try_into(infallible)]
     pub schema_id: String,
     #[try_into(infallible)]
@@ -459,10 +459,11 @@ pub struct ImportCredentialSchemaLayoutPropertiesBindingDTO {
 }
 
 #[derive(From, Clone, Debug, Into, uniffi::Enum)]
-#[from(WalletStorageTypeEnum)]
-#[into(WalletStorageTypeEnum)]
-pub enum WalletStorageTypeBindingEnum {
-    Hardware,
-    Software,
-    RemoteSecureElement,
+#[from(KeyStorageSecurity)]
+#[into(KeyStorageSecurity)]
+pub enum KeyStorageSecurityBindingEnum {
+    High,
+    Moderate,
+    EnhancedBasic,
+    Basic,
 }

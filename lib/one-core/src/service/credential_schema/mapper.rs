@@ -48,7 +48,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             revocation_method: value.revocation_method,
             organisation_id,
             claims: claim_schemas,
-            wallet_storage_type: value.wallet_storage_type,
+            key_storage_security: value.key_storage_security,
             schema_id: value.schema_id,
             layout_type: Some(value.layout_type),
             layout_properties: value.layout_properties.map(|item| item.into()),
@@ -110,7 +110,7 @@ pub(super) fn from_create_request_with_id(
         last_modified: now,
         name: request.name,
         format: request.format,
-        wallet_storage_type: request.wallet_storage_type,
+        key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
         claim_schemas: Some(
             claim_schemas

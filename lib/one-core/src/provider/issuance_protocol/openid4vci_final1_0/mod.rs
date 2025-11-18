@@ -9,6 +9,7 @@ use anyhow::Context;
 use async_trait::async_trait;
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::utilities::generate_alphanumeric;
+use one_dto_mapper::convert_inner;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -23,8 +24,8 @@ use super::dto::{ContinueIssuanceDTO, Features, IssuanceProtocolCapabilities};
 use super::error::TxCodeError;
 use super::mapper::{get_issued_credential_update, interaction_from_handle_invitation};
 use super::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, ShareResponse, SubmitIssuerResponse,
-    UpdateResponse,
+    ContinueIssuanceResponseDTO, InvitationResponseEnum, KeyStorageSecurityLevel, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use super::openid4vci_final1_0::mapper::{
     get_credential_offer_url, parse_credential_issuer_params,
@@ -46,14 +47,15 @@ use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, KeyAlgorithmType,
 };
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
+use crate::mapper::openid4vci::interaction_data_to_accepted_key_storage_security;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, LayoutType, UpdateCredentialSchemaRequest,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
+    UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
@@ -61,7 +63,6 @@ use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionReq
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
@@ -79,7 +80,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCIFinal1CredentialOfferDTO, TokenRequestWalletAttestationRequest,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::model::KeySecurity;
+use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
@@ -93,6 +94,7 @@ use crate::service::oid4vci_final1_0::dto::{
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
+use crate::validator::key_security::match_key_security_level;
 use crate::validator::validate_issuance_time;
 
 pub(crate) mod mapper;
@@ -118,6 +120,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     key_provider: Arc<dyn KeyProvider>,
+    key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
     base_url: Option<String>,
     protocol_base_url: Option<String>,
     config: Arc<CoreConfig>,
@@ -139,6 +142,7 @@ impl OpenID4VCIFinal1_0 {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         key_provider: Arc<dyn KeyProvider>,
+        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
@@ -164,6 +168,7 @@ impl OpenID4VCIFinal1_0 {
             blob_storage_provider,
             config_id,
             holder_wallet_unit_proto,
+            key_security_level_provider,
         }
     }
 
@@ -553,8 +558,16 @@ impl OpenID4VCIFinal1_0 {
         schema.organisation = Some(organisation.to_owned());
         schema.layout_type = LayoutType::Card;
         schema.layout_properties = metadata_display.and_then(|display| display.to_owned().into());
-        schema.wallet_storage_type =
-            metadata.and_then(|metadata| metadata.wallet_storage_type.to_owned());
+        schema.key_storage_security = interaction_data
+            .proof_types_supported
+            .as_ref()
+            .and_then(|map| map.get("jwt"))
+            .and_then(|jwt| jwt.key_attestations_required.as_ref())
+            .and_then(|att_list| {
+                convert_inner(KeyStorageSecurityLevel::select_lowest(
+                    &att_list.key_storage,
+                ))
+            });
 
         let identifier_updates = match credential.issuer_identifier.as_ref() {
             Some(Identifier {
@@ -868,49 +881,28 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .contains(&"attest_jwt_client_auth".to_string());
 
         let issuer_accepted_levels =
-            interaction_data
-                .proof_types_supported
-                .as_ref()
-                .and_then(|proof_types_supported| {
-                    proof_types_supported
-                        .get("jwt")
-                        .and_then(|proof_type_supported| {
-                            proof_type_supported
-                                .key_attestations_required
-                                .as_ref()
-                                .map(|kar| kar.key_storage.clone())
-                        })
-                });
-
+            interaction_data_to_accepted_key_storage_security(&interaction_data);
         let key_storage_security_level = if let Some(accepted_levels) = &issuer_accepted_levels {
-            let key_security = self
-                .key_provider
-                .get_key_storage(&key.storage_type)
-                .ok_or_else(|| {
-                    IssuanceProtocolError::Failed(format!(
-                        "Key storage provider not found for type: {}",
-                        key.storage_type
-                    ))
-                })?
-                .get_capabilities()
-                .security;
-
-            Some(match_key_security_level(&key_security, accepted_levels)?)
+            Some(
+                match_key_security_level(
+                    &key.storage_type,
+                    accepted_levels,
+                    &*self.key_security_level_provider,
+                )
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+            )
         } else {
             None
         };
 
         let wallet_attestations_issuance_request =
             match (wallet_attestation_required, &key_storage_security_level) {
-                (true, Some(key_storage_security_level)) => {
-                    Some(IssueWalletAttestationRequest::WuaAndWaa(
-                        key,
-                        key_storage_security_level.clone(),
-                    ))
-                }
+                (true, Some(key_storage_security_level)) => Some(
+                    IssueWalletAttestationRequest::WuaAndWaa(key, *key_storage_security_level),
+                ),
                 (true, None) => Some(IssueWalletAttestationRequest::Waa),
                 (false, Some(key_storage_security_level)) => Some(
-                    IssueWalletAttestationRequest::Wua(key, key_storage_security_level.clone()),
+                    IssueWalletAttestationRequest::Wua(key, *key_storage_security_level),
                 ),
                 (false, None) => None,
             };
@@ -1502,36 +1494,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     }
 }
 
-fn match_key_security_level(
-    key_security: &[KeySecurity],
-    issuer_accepted_levels: &[KeyStorageSecurityLevel],
-) -> Result<KeyStorageSecurityLevel, IssuanceProtocolError> {
-    let key_levels: Vec<KeyStorageSecurityLevel> = key_security
-        .iter()
-        .map(|ks| {
-            let wallet_storage: WalletStorageTypeEnum = match ks {
-                KeySecurity::Hardware => WalletStorageTypeEnum::Hardware,
-                KeySecurity::Software => WalletStorageTypeEnum::Software,
-                KeySecurity::RemoteSecureElement => WalletStorageTypeEnum::RemoteSecureElement,
-            };
-            KeyStorageSecurityLevel::from(wallet_storage)
-        })
-        .collect();
-
-    let matching_levels: Vec<KeyStorageSecurityLevel> = issuer_accepted_levels
-        .iter()
-        .filter(|level| key_levels.contains(level))
-        .cloned()
-        .collect();
-
-    KeyStorageSecurityLevel::select_lowest(&matching_levels).ok_or_else(|| {
-        IssuanceProtocolError::Failed(format!(
-            "Key security level does not meet. Key supports: {:?}, Issuer requires one of: {:?}",
-            key_security, issuer_accepted_levels
-        ))
-    })
-}
-
 #[allow(clippy::too_many_arguments)]
 async fn handle_credential_invitation(
     invitation_url: Url,
@@ -1600,7 +1562,7 @@ async fn handle_credential_invitation(
 
     let tx_code = credential_offer.grants.tx_code().cloned();
 
-    let (interaction_id, wallet_storage_type) = prepare_issuance_interaction(
+    let (interaction_id, key_storage_security) = prepare_issuance_interaction(
         organisation,
         token_endpoint,
         issuer_metadata,
@@ -1616,7 +1578,7 @@ async fn handle_credential_invitation(
     Ok(InvitationResponseEnum::Credential {
         interaction_id,
         tx_code,
-        wallet_storage_type,
+        key_storage_security,
     })
 }
 
@@ -1664,7 +1626,7 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
-    let (interaction_id, wallet_storage_type) = prepare_issuance_interaction(
+    let (interaction_id, key_storage_security) = prepare_issuance_interaction(
         organisation,
         token_endpoint,
         issuer_metadata,
@@ -1682,7 +1644,7 @@ async fn handle_continue_issuance(
 
     Ok(ContinueIssuanceResponseDTO {
         interaction_id,
-        wallet_storage_type,
+        key_storage_security,
     })
 }
 
@@ -1697,7 +1659,7 @@ async fn prepare_issuance_interaction(
     storage_access: &StorageAccess,
     continue_issuance: Option<ContinueIssuanceDTO>,
     protocol: String,
-) -> Result<(InteractionId, Option<WalletStorageTypeEnum>), IssuanceProtocolError> {
+) -> Result<(InteractionId, Option<KeyStorageSecurity>), IssuanceProtocolError> {
     // We only support one credential at the time now
     let configuration_id = configuration_ids.first().ok_or_else(|| {
         IssuanceProtocolError::Failed("Credential offer is missing credentials".to_string())
@@ -1765,7 +1727,7 @@ async fn prepare_issuance_interaction(
         create_and_store_interaction(storage_access, data, Some(organisation)).await?;
 
     // Extract wallet_storage_type based on proof_types_supported.key_attestations_required.key_storage
-    let wallet_storage_type = credential_config
+    let key_storage_security = credential_config
         .proof_types_supported
         .as_ref()
         .and_then(|proof_types| {
@@ -1773,15 +1735,12 @@ async fn prepare_issuance_interaction(
                 proof_type
                     .key_attestations_required
                     .as_ref()
-                    .and_then(|kar| {
-                        use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
-                        KeyStorageSecurityLevel::select_lowest(&kar.key_storage)
-                    })
+                    .and_then(|kar| KeyStorageSecurityLevel::select_lowest(&kar.key_storage))
             })
         })
-        .map(WalletStorageTypeEnum::from);
+        .map(KeyStorageSecurity::from);
 
-    Ok((interaction.id, wallet_storage_type))
+    Ok((interaction.id, key_storage_security))
 }
 
 async fn resolve_credential_offer(

@@ -608,17 +608,6 @@ trustManagement:
       public:
         enablePublishing: true
         proofOfPossessionLeeway: 60
-holderKeyStorage:
-  SOFTWARE:
-    display: "holderKeyStorage.software"
-    order: 10
-    enabled: true
-  HARDWARE:
-    display: "holderKeyStorage.hardware"
-    order: 14
-  REMOTE_SECURE_ELEMENT:
-    display: "holderKeyStorage.remoteSecureElement"
-    order: 20
 blobStorage:
   DB:
     enabled: true

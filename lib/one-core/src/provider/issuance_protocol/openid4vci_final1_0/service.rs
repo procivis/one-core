@@ -136,7 +136,6 @@ fn credential_configurations_supported(
     let credential_metadata = OpenID4VCICredentialMetadataResponseDTO {
         display: Some(vec![display_dto]),
         claims: Some(credential_metadata_claims),
-        wallet_storage_type: credential_schema.wallet_storage_type,
     };
 
     Ok(IndexMap::from([(

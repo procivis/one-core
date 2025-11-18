@@ -1,4 +1,4 @@
-use one_core::model::credential_schema::WalletStorageTypeEnum;
+use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::repository::error::DataLayerError;
 use similar_asserts::assert_eq;
 
@@ -69,7 +69,7 @@ async fn test_create_credential_schema_remote_secure_element_success() {
             CreateSchemaParams {
                 name: "some credential schema".into(),
                 organisation_id: organisation.id.into(),
-                wallet_storage_type: Some("REMOTE_SECURE_ELEMENT".into()),
+                key_storage_security: Some("HIGH".into()),
                 format: "JWT".into(),
                 ..Default::default()
             }
@@ -95,8 +95,8 @@ async fn test_create_credential_schema_remote_secure_element_success() {
         2
     );
     assert_eq!(
-        credential_schema.wallet_storage_type,
-        Some(WalletStorageTypeEnum::RemoteSecureElement)
+        credential_schema.key_storage_security,
+        Some(KeyStorageSecurity::High)
     );
 }
 

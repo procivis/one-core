@@ -69,6 +69,11 @@ async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
                 }
             }
         },
+        "keySecurityLevel": {
+            "MODERATE": {
+                "enabled": false
+            }
+        },
         "issuanceProtocol": {
             "OPENID4VCI_DRAFT13": {
                 "params": {

@@ -146,7 +146,7 @@ impl OID4VCIFinal1_0Service {
             Some(map_proof_types_supported(
                 self.key_algorithm_provider
                     .supported_verification_jose_alg_ids(),
-                schema.wallet_storage_type.map(|x| x.into()),
+                schema.key_storage_security.map(|x| x.into()),
             )),
             credential_signing_alg_values_supported,
         )
@@ -471,7 +471,7 @@ impl OID4VCIFinal1_0Service {
             .map_err(|_| OpenID4VCIError::InvalidNonce)?;
 
         // Key attestation is expected if wallet storage type is set
-        if let Some(wallet_storage_type) = schema.wallet_storage_type {
+        if let Some(key_storage_security) = schema.key_storage_security {
             let Some(key_attestation_jwt) = &key_attestation else {
                 tracing::debug!("expected key attestation but none provided");
                 return Err(ServiceError::OpenID4VCIError(
@@ -482,7 +482,7 @@ impl OID4VCIFinal1_0Service {
             let attested_keys = validator::validate_key_attestation(
                 key_attestation_jwt,
                 self.key_algorithm_provider.as_ref(),
-                wallet_storage_type.into(),
+                key_storage_security.into(),
                 params.key_attestation_leeway,
             )?;
 

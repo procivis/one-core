@@ -38,9 +38,6 @@ pub(crate) struct ConfigRestDTO {
     /// Supported key storage security levels.
     #[schema(example = json!({}))]
     pub key_security_level: HashMap<String, Value>,
-    /// Holder binding key storage types.
-    #[schema(example = json!({}))]
-    pub holder_key_storage: HashMap<String, Value>,
     /// How keys are stored.
     #[schema(example = json!({}))]
     pub key_storage: HashMap<String, Value>,
@@ -80,7 +77,6 @@ impl From<ConfigDTO> for ConfigRestDTO {
             did: config.did,
             datatype: config.datatype,
             key_algorithm: config.key_algorithm,
-            holder_key_storage: config.holder_key_storage,
             key_storage: config.key_storage,
             key_security_level: config.key_security_level,
             trust_management: config.trust_management,

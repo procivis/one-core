@@ -24,7 +24,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::dto::mapper::fallback_organisation_id_from_session;
-use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
+use crate::endpoint::credential_schema::dto::KeyStorageSecurityRestEnum;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
@@ -60,7 +60,7 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     /// For issuer-initiated Authorization Code Flows, use this URL to start the
     /// authorization process with the authorization server.
     pub authorization_code_flow_url: Option<String>,
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -71,6 +71,7 @@ pub(crate) enum InteractionTypeRestEnum {
     Verification,
 }
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(ContinueIssuanceResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -79,7 +80,7 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     pub interaction_id: Uuid,
     pub interaction_type: InteractionTypeRestEnum,
     #[from(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeRestEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
 }
 
 #[options_not_nullable]

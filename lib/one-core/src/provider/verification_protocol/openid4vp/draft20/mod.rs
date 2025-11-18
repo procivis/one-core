@@ -407,11 +407,8 @@ impl VerificationProtocol for OpenID4VP20HTTP {
                 .to_string(),
         };
 
-        let client_metadata = generate_client_metadata_draft(
-            proof,
-            &*self.key_algorithm_provider,
-            &*self.key_provider,
-        )?;
+        let client_metadata =
+            generate_client_metadata_draft(proof, &*self.key_algorithm_provider, &self.config)?;
 
         let authorization_request = generate_authorization_request_params_draft20(
             proof,

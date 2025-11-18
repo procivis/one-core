@@ -12,7 +12,7 @@ use one_dto_mapper::{From, Into, convert_inner};
 use url::Url;
 
 use crate::OneCoreBinding;
-use crate::binding::credential_schema::WalletStorageTypeBindingEnum;
+use crate::binding::credential_schema::KeyStorageSecurityBindingEnum;
 use crate::error::BindingError;
 use crate::utils::{into_id, into_id_opt};
 
@@ -132,7 +132,7 @@ pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         /// For reference.
         interaction_id: String,
-        wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+        key_storage_security: Option<KeyStorageSecurityBindingEnum>,
         /// Metadata for entering a transaction code
         /// If a pre-authorized code is issued with a transaction code object, the
         /// wallet user must input a transaction code to receive the offered credential.
@@ -158,14 +158,14 @@ pub enum HandleInvitationResponseBindingEnum {
 pub struct ContinueIssuanceResponseBindingDTO {
     /// For reference.
     pub interaction_id: String,
-    pub wallet_storage_type: Option<WalletStorageTypeBindingEnum>,
+    pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
 }
 
 impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
     fn from(value: ContinueIssuanceResponseDTO) -> Self {
         Self {
             interaction_id: value.interaction_id.to_string(),
-            wallet_storage_type: convert_inner(value.wallet_storage_type),
+            key_storage_security: convert_inner(value.key_storage_security),
         }
     }
 }

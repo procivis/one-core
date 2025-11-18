@@ -16,8 +16,8 @@ use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, KeyStorageSecurity,
+    LayoutType,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -120,7 +120,7 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         name: "SchemaName".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: Some(KeyStorageSecurity::Basic),
         format: "JWT".to_string(),
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -812,7 +812,7 @@ async fn test_create_credential_success() {
     let now = OffsetDateTime::now_utc();
 
     let mut schema = generic_credential_schema();
-    schema.wallet_storage_type = None;
+    schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
@@ -1019,7 +1019,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
 
     let mut schema = generic_credential_schema();
     schema.format = "SD_JWT_VC".to_string();
-    schema.wallet_storage_type = None;
+    schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,
@@ -1226,7 +1226,7 @@ async fn test_create_credential_success_mdoc() {
     let schema = CredentialSchema {
         format: "MDOC".to_string(),
         schema_id: "test.doctype".to_owned(),
-        wallet_storage_type: None,
+        key_storage_security: None,
         ..generic_credential_schema()
     };
     let credential = dummy_credential(
@@ -1679,7 +1679,7 @@ async fn test_create_credential_issuer_failed() {
     let now = OffsetDateTime::now_utc();
 
     let mut schema = generic_credential_schema();
-    schema.wallet_storage_type = None;
+    schema.key_storage_security = None;
     let credential = dummy_credential(
         "OPENID4VCI_FINAL1",
         CredentialStateEnum::Pending,

@@ -7,13 +7,14 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
 
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{
-    CredentialFormat, LayoutProperties, LayoutType, RevocationMethod, WalletStorageTypeEnum,
+    CredentialFormat, KeyStorageSecurity, LayoutProperties, LayoutType, RevocationMethod,
 };
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
@@ -157,6 +158,27 @@ pub struct OpenID4VCICredentialConfigurationData {
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     pub scope: Option<String>,
+}
+
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    Serialize,
+    Deserialize,
+    PartialEq,
+    Display,
+    EnumString,
+    Hash,
+    PartialOrd,
+    Ord,
+)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum WalletStorageTypeEnum {
+    Hardware,
+    Software,
+    RemoteSecureElement,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -577,9 +599,9 @@ pub struct OpenID4VCICredentialValueDetails {
 }
 
 /// deserializes from CredentialSchemaResponseRestDTO
-#[allow(dead_code)]
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[allow(unused)]
 pub(crate) struct CredentialSchemaDetailResponseDTO {
     pub id: CredentialSchemaId,
     #[serde(with = "time::serde::rfc3339")]
@@ -591,7 +613,7 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
@@ -603,7 +625,7 @@ pub(crate) struct CreateCredentialSchemaRequestDTO {
     pub format: String,
     pub revocation_method: String,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: String,

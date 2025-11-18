@@ -9,12 +9,14 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::ProofSchemaService;
-use crate::config::core_config::{CoreConfig, RevocationType};
+use crate::config::core_config::{
+    ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType, RevocationType,
+};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
-    LayoutType, WalletStorageTypeEnum,
+    KeyStorageSecurity, LayoutType,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -384,7 +386,7 @@ async fn test_create_proof_schema_success() {
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schema.clone(),
                     required: false,
@@ -464,6 +466,17 @@ async fn test_create_proof_schema_success() {
 
 #[tokio::test]
 async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
+    let mut config = generic_config();
+    config.core.key_security_level.insert(
+        KeySecurityLevelType::Moderate,
+        KeySecurityLevelFields {
+            display: ConfigEntryDisplay::TranslationId("moderate".to_string()),
+            order: None,
+            enabled: Some(true),
+            capabilities: None,
+            params: None,
+        },
+    );
     let organisation_id = Uuid::new_v4().into();
     let mut organisation_repository = MockOrganisationRepository::default();
     organisation_repository
@@ -505,7 +518,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                key_storage_security: Some(KeyStorageSecurity::Basic),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schema_software.clone(),
                     required: false,
@@ -521,7 +534,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
             let schema_hardware = CredentialSchema {
                 id: credential_schema_hardware_id,
                 name: "hardware".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "hardware".to_owned(),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schema_hardware.clone(),
@@ -598,6 +611,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         credential_schema_repository,
         organisation_repository,
         formatter_provider,
+        config: Some(config.core),
         ..Default::default()
     });
 
@@ -641,7 +655,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 imported_source_url: "CORE_URL".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schema.clone(),
                     required: false,
@@ -687,26 +701,19 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
             })
         });
 
-    let mut config = generic_config().core;
-    config
-        .holder_key_storage
-        .get_mut(&WalletStorageTypeEnum::Hardware)
-        .unwrap()
-        .enabled = Some(false);
-
     let service = setup_service(Repositories {
         proof_schema_repository,
         credential_schema_repository,
         organisation_repository,
-        config: Some(config),
+        config: Some(generic_config().core),
         ..Default::default()
     });
 
     let result = service.create_proof_schema(create_request).await;
     assert!(result.is_err_and(|e| matches!(
         e,
-        ServiceError::Validation(ValidationError::WalletStorageTypeDisabled(
-            WalletStorageTypeEnum::Hardware
+        ServiceError::Validation(ValidationError::KeyStorageSecurityDisabled(
+            KeyStorageSecurity::EnhancedBasic
         ))
     )));
 }
@@ -797,7 +804,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 imported_source_url: "CORE_URL".to_string(),
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schema.clone(),
                     required: false,
@@ -819,7 +826,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 imported_source_url: "CORE_URL".to_string(),
                 format: "PHYSICAL_CARD".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: claim_schem_2.clone(),
                     required: false,
@@ -974,7 +981,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 name: "credential-schema".to_string(),
                 format: "SD_JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
                         schema: claim_schema_root.clone(),
@@ -1135,7 +1142,7 @@ async fn test_create_proof_schema_array_success() {
                 name: "credential-schema".to_string(),
                 format: "SD_JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
                         schema: claim_schema_root.clone(),
@@ -1299,7 +1306,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 name: "credential-schema".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
                         id: Uuid::new_v4().into(),
@@ -1536,7 +1543,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
                 layout_type: None,
                 layout_properties: None,
@@ -1738,7 +1745,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
                 layout_type: None,
                 layout_properties: None,
@@ -1906,7 +1913,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "iso-org-test123".to_string(),
@@ -1962,7 +1969,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
                 layout_type: None,
                 layout_properties: None,
@@ -2070,7 +2077,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
                 layout_type: None,
                 layout_properties: None,
@@ -2142,7 +2149,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 name: "test-credential-schema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
                 layout_type: None,
                 layout_properties: None,
@@ -2208,7 +2215,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 name: "test-credential-schema".to_string(),
                 format: "OTHER_FORMAT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Hardware),
+                key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
                 layout_type: None,
                 layout_properties: None,
@@ -2499,7 +2506,7 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
         format: "".to_string(),
         imported_source_url: "CORE_URL".to_string(),
         revocation_method: "".to_string(),
-        wallet_storage_type: None,
+        key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "".to_string(),
@@ -2751,7 +2758,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 name: "credential-schema".to_string(),
                 format: "JWT".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: None,
+                key_storage_security: None,
                 claim_schemas: Some(
                     claim_schemas_cloned
                         .into_iter()

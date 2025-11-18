@@ -20,7 +20,7 @@ use crate::config::core_config::TransportType;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum};
+use crate::model::credential_schema::{CredentialSchemaClaim, KeyStorageSecurity, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
@@ -47,8 +47,11 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_security_level::basic::Basic;
+use crate::provider::key_security_level::dto::{HolderParams, Params};
+use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::MockKeyStorage;
-use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::MockVerificationProtocol;
 use crate::provider::verification_protocol::dto::{
@@ -1186,23 +1189,6 @@ async fn test_accept_credential() {
         }))
     });
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_key_storage()
-        .once()
-        .return_once(|_| {
-            let mut mock = MockKeyStorage::new();
-            mock.expect_get_capabilities()
-                .once()
-                .return_once(|| KeyStorageCapabilities {
-                    features: vec![],
-                    algorithms: vec![],
-                    security: vec![KeySecurity::Software],
-                });
-
-            Some(Arc::new(mock))
-        });
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -1305,14 +1291,26 @@ async fn test_accept_credential() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .returning(|_| {
+            Some(Arc::new(Basic::new(Params {
+                holder: HolderParams {
+                    priority: 0,
+                    key_storages: vec!["foo".to_string()],
+                },
+            })))
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        key_security_level_provider: Arc::new(key_security_level_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1347,23 +1345,6 @@ async fn test_accept_credential_with_did() {
             }))
         });
 
-    let mut key_provider = MockKeyProvider::new();
-    key_provider
-        .expect_get_key_storage()
-        .once()
-        .return_once(|_| {
-            let mut mock = MockKeyStorage::new();
-            mock.expect_get_capabilities()
-                .once()
-                .return_once(|| KeyStorageCapabilities {
-                    features: vec![],
-                    algorithms: vec![],
-                    security: vec![KeySecurity::Software],
-                });
-
-            Some(Arc::new(mock))
-        });
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
         .expect_key_algorithm_from_type()
@@ -1466,14 +1447,26 @@ async fn test_accept_credential_with_did() {
         .once()
         .returning(move |_| Some(blob_storage.clone()));
 
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_get_from_type()
+        .returning(|_| {
+            Some(Arc::new(Basic::new(Params {
+                holder: HolderParams {
+                    priority: 0,
+                    key_storages: vec!["foo".to_string()],
+                },
+            })))
+        });
+
     let service = SSIHolderService {
         credential_repository: Arc::new(credential_repository),
         issuance_protocol_provider: Arc::new(issuance_protocol_provider),
         identifier_repository: Arc::new(identifier_repository),
-        key_provider: Arc::new(key_provider),
         key_algorithm_provider: Arc::new(key_algorithm_provider),
         formatter_provider: Arc::new(formatter_provider),
         blob_storage_provider: Arc::new(blob_storage_provider),
+        key_security_level_provider: Arc::new(key_security_level_provider),
         ..mock_ssi_holder_service()
     };
 
@@ -1649,7 +1642,7 @@ async fn test_continue_issuance() {
         .returning(move |_, _, _| {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
-                wallet_storage_type: None,
+                key_storage_security: None,
             })
         });
 
@@ -1778,6 +1771,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         certificate_repository: Arc::new(MockCertificateRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
+        key_security_level_provider: Arc::new(MockKeySecurityLevelProvider::new()),
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         issuance_protocol_provider: Arc::new(MockIssuanceProtocolProvider::new()),
         verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
@@ -1838,7 +1832,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -1986,7 +1980,6 @@ async fn test_accept_credential_credential_org_mismatch() {
             .return_once(|| KeyStorageCapabilities {
                 features: vec![],
                 algorithms: vec![],
-                security: vec![KeySecurity::Software],
             });
         Some(Arc::new(key_storage))
     });

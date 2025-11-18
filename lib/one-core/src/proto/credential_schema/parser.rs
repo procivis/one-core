@@ -70,7 +70,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             format: self.parse_format(dto.schema.format)?,
             revocation_method: self
                 .parse_revocation_method(dto.schema.revocation_method, formatter.as_ref())?,
-            wallet_storage_type: dto.schema.wallet_storage_type,
+            key_storage_security: dto.schema.key_storage_security,
             layout_type: dto.schema.layout_type.unwrap_or(LayoutType::Card),
             layout_properties: self.parse_layout_properties(
                 dto.schema.layout_properties,

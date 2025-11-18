@@ -1,5 +1,5 @@
 use one_core::model;
-use one_core::model::credential_schema::WalletStorageTypeEnum as ModelWalletStorageTypeEnum;
+use one_core::model::credential_schema::KeyStorageSecurity as ModelKeyStorageSecurity;
 use one_dto_mapper::{From, Into, convert_inner};
 use sea_orm::FromJsonQueryResult;
 use sea_orm::entity::prelude::*;
@@ -20,7 +20,7 @@ pub struct Model {
     pub name: String,
     pub format: String,
     pub revocation_method: String,
-    pub wallet_storage_type: Option<WalletStorageType>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub organisation_id: OrganisationId,
     #[sea_orm(column_type = "Text")]
     pub layout_type: LayoutType,
@@ -37,17 +37,19 @@ pub struct Model {
 #[derive(
     Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From, Deserialize,
 )]
-#[from(ModelWalletStorageTypeEnum)]
-#[into(ModelWalletStorageTypeEnum)]
+#[from(ModelKeyStorageSecurity)]
+#[into(ModelKeyStorageSecurity)]
 #[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum WalletStorageType {
-    #[sea_orm(string_value = "HARDWARE")]
-    Hardware,
-    #[sea_orm(string_value = "SOFTWARE")]
-    Software,
-    #[sea_orm(string_value = "REMOTE_SECURE_ELEMENT")]
-    RemoteSecureElement,
+pub enum KeyStorageSecurity {
+    #[sea_orm(string_value = "HIGH")]
+    High,
+    #[sea_orm(string_value = "MODERATE")]
+    Moderate,
+    #[sea_orm(string_value = "ENHANCED_BASIC")]
+    EnhancedBasic,
+    #[sea_orm(string_value = "BASIC")]
+    Basic,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]

@@ -23,7 +23,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -51,7 +51,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     HolderInteractionData, OpenID4VCICredentialValueDetails, OpenID4VCIDraft13Params,
-    OpenID4VCIGrants, OpenID4VCIPreAuthorizedCodeGrant,
+    OpenID4VCIGrants, OpenID4VCIPreAuthorizedCodeGrant, WalletStorageTypeEnum,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
@@ -286,7 +286,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -1737,7 +1737,7 @@ fn generic_schema() -> CredentialSchema {
         name: "LPTestNestedSelectiveZug".to_string(),
         format: "JSON_LD_BBSPLUS".to_string(),
         revocation_method: "NONE".to_string(),
-        wallet_storage_type: None,
+        key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
@@ -1855,7 +1855,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         name: "LPTestNestedSelectiveZug".to_string(),
         format: "JSON_LD_CLASSIC".to_string(),
         revocation_method: "NONE".to_string(),
-        wallet_storage_type: None,
+        key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),
@@ -1973,7 +1973,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         name: "LPTestNestedSelectiveZug".to_string(),
         format: "JSON_LD_CLASSIC".to_string(),
         revocation_method: "NONE".to_string(),
-        wallet_storage_type: None,
+        key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: "http://127.0.0.1/ssi/schema/v1/id".to_string(),

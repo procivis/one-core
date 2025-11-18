@@ -288,7 +288,7 @@ async fn test_continue_issuance_endpoint() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-    assert_eq!(resp["walletStorageType"], "SOFTWARE");
+    assert_eq!(resp["keyStorageSecurity"], "BASIC");
 }
 
 #[tokio::test]

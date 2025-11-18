@@ -645,6 +645,8 @@ impl OneCore {
             key_provider.clone(),
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
+        let key_security_level_provider =
+            Arc::new(KeySecurityLevelProviderImpl::new(key_security_levels));
 
         let issuance_protocols = issuance_protocol_providers_from_config(
             Arc::new(core_config.clone()),
@@ -656,6 +658,7 @@ impl OneCore {
             vct_type_metadata_cache,
             key_provider.clone(),
             key_algorithm_provider.clone(),
+            key_security_level_provider.clone(),
             revocation_method_provider.clone(),
             did_method_provider.clone(),
             certificate_validator.clone(),
@@ -696,9 +699,6 @@ impl OneCore {
         let verification_provider = Arc::new(VerificationProtocolProviderImpl::new(
             verification_protocols,
         ));
-
-        let _key_security_level_provider =
-            Arc::new(KeySecurityLevelProviderImpl::new(key_security_levels));
 
         let certificate_service = CertificateService::new(
             certificate_repository.clone(),
@@ -1012,6 +1012,7 @@ impl OneCore {
                 certificate_repository.clone(),
                 key_provider.clone(),
                 key_algorithm_provider.clone(),
+                key_security_level_provider,
                 credential_formatter_provider,
                 issuance_provider,
                 verification_provider,

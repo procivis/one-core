@@ -9,6 +9,7 @@ use async_trait::async_trait;
 use indexmap::IndexMap;
 use one_crypto::encryption::{decrypt_string, encrypt_string};
 use one_crypto::utilities::generate_alphanumeric;
+use one_dto_mapper::convert_inner;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -34,8 +35,7 @@ use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, UpdateCredentialSchemaRequest,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
@@ -1083,9 +1083,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map(|claim| claim.to_owned())
             .collect::<Vec<_>>();
 
-        let credential_subject =
-            credentials_format(credential_schema.wallet_storage_type, &claims, true)
-                .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
+        let credential_subject = credentials_format(
+            convert_inner(credential_schema.key_storage_security),
+            &claims,
+            true,
+        )
+        .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
         if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
@@ -1597,7 +1600,7 @@ async fn handle_credential_invitation(
     let (token_endpoint, issuer_metadata) =
         get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
 
-    let (interaction_id, credentials, wallet_storage_type) =
+    let (interaction_id, credentials, key_storage_security) =
         prepare_issuance_interaction_and_credentials_with_claims(
             organisation,
             token_endpoint,
@@ -1625,7 +1628,7 @@ async fn handle_credential_invitation(
     Ok(InvitationResponseEnum::Credential {
         interaction_id,
         tx_code,
-        wallet_storage_type,
+        key_storage_security,
     })
 }
 
@@ -1678,7 +1681,7 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
-    let (interaction_id, credentials, wallet_storage_type) =
+    let (interaction_id, credentials, key_storage_security) =
         prepare_issuance_interaction_and_credentials_with_claims(
             organisation,
             token_endpoint,
@@ -1708,7 +1711,7 @@ async fn handle_continue_issuance(
 
     Ok(ContinueIssuanceResponseDTO {
         interaction_id,
-        wallet_storage_type,
+        key_storage_security,
     })
 }
 
@@ -1726,14 +1729,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     continue_issuance: Option<ContinueIssuanceDTO>,
     config: &CoreConfig,
-) -> Result<
-    (
-        InteractionId,
-        Vec<Credential>,
-        Option<WalletStorageTypeEnum>,
-    ),
-    IssuanceProtocolError,
-> {
+) -> Result<(InteractionId, Vec<Credential>, Option<KeyStorageSecurity>), IssuanceProtocolError> {
     // We only support one credential at the time now
     let configuration_id = configuration_ids.first().ok_or_else(|| {
         IssuanceProtocolError::Failed("Credential offer is missing credentials".to_string())
@@ -1852,7 +1848,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     Ok((
         interaction_id,
         vec![credential],
-        credential_config.wallet_storage_type,
+        convert_inner(credential_config.wallet_storage_type),
     ))
 }
 fn has_matching_format(

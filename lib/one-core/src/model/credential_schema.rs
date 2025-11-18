@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::CredentialSchemaId;
-use strum::{Display, EnumString};
+use strum::Display;
 use time::OffsetDateTime;
 
 use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -27,7 +27,7 @@ pub struct CredentialSchema {
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: String,
@@ -91,24 +91,14 @@ pub enum LayoutType {
 }
 
 #[derive(
-    Clone,
-    Copy,
-    Debug,
-    Eq,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Display,
-    EnumString,
-    Hash,
-    PartialOrd,
-    Ord,
+    Clone, Copy, Debug, Eq, Serialize, Deserialize, PartialEq, Display, Hash, PartialOrd, Ord,
 )]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum WalletStorageTypeEnum {
-    Hardware,
-    Software,
-    RemoteSecureElement,
+pub enum KeyStorageSecurity {
+    High,
+    Moderate,
+    EnhancedBasic,
+    Basic,
 }
 
 #[skip_serializing_none]

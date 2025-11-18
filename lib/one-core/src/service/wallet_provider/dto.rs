@@ -7,8 +7,8 @@ use time::OffsetDateTime;
 use crate::model::common::GetListResponse;
 use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Clone, Debug)]

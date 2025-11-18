@@ -29,7 +29,7 @@ use crate::model::common::LockType;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{CredentialSchemaRelations, WalletStorageTypeEnum};
+use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInteractionRequest};
@@ -45,7 +45,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     OpenID4VCIDiscoveryResponseDTO, OpenID4VCIDraft13Params, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCINotificationEvent,
     OpenID4VCINotificationRequestDTO, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    Timestamp,
+    Timestamp, WalletStorageTypeEnum,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::proof_formatter::OpenID4VCIProofJWTFormatter;
 use crate::provider::issuance_protocol::openid4vci_draft13::service::{
@@ -207,7 +207,7 @@ impl OID4VCIDraft13Service {
             Some(map_proof_types_supported(
                 self.key_algorithm_provider
                     .supported_verification_jose_alg_ids(),
-                schema.wallet_storage_type.map(|x| x.into()),
+                convert_inner(schema.key_storage_security),
             )),
             credential_signing_alg_values_supported,
         )
@@ -315,11 +315,11 @@ impl OID4VCIDraft13Service {
             .as_ref()
             .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
 
-        let wallet_storage_type = credential
+        let key_storage_security = credential
             .schema
             .as_ref()
             .ok_or(ServiceError::MappingError("schema missing".to_string()))?
-            .wallet_storage_type;
+            .key_storage_security;
 
         let claims = credential
             .claims
@@ -332,9 +332,12 @@ impl OID4VCIDraft13Service {
         let enable_credential_preview =
             enable_credential_preview_from_config(&self.config, &credential.protocol)?;
 
-        let credential_subject =
-            credentials_format(wallet_storage_type, &claims, enable_credential_preview)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+        let credential_subject = credentials_format(
+            convert_inner(key_storage_security),
+            &claims,
+            enable_credential_preview,
+        )
+        .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         Ok(create_credential_offer(
             url,

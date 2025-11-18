@@ -42,7 +42,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ProofProvider;
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::key_did::KeyRole;
 use crate::entity::{blob, claim, credential, interaction, proof_claim};
 use crate::test_utilities::*;
@@ -84,7 +84,7 @@ async fn setup(
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
@@ -643,7 +643,7 @@ async fn test_get_proof_with_relations() {
         "credential schema 1",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
@@ -874,7 +874,7 @@ async fn test_set_proof_claims_success() {
         "credential schema 1",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();

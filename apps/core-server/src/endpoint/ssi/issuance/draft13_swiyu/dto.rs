@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use utoipa::{IntoParams, ToSchema};
 
-use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
+use crate::endpoint::ssi::issuance::draft13::dto::WalletStorageTypeRestEnum;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]

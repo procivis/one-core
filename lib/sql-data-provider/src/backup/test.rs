@@ -13,7 +13,7 @@ use super::BackupProvider;
 use crate::db_conn;
 use crate::entity::certificate::{self, CertificateState};
 use crate::entity::credential::{self, CredentialRole, CredentialState};
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::did::{self, DidType};
 use crate::entity::identifier::{self, IdentifierState, IdentifierType};
 use crate::entity::key;
@@ -304,7 +304,7 @@ async fn add_unexportable_credentials(
         "credential schema 1",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        None,
     )
     .await
     .unwrap();
@@ -316,7 +316,7 @@ async fn add_unexportable_credentials(
         "credential schema 2",
         "JWT",
         "NONE",
-        WalletStorageType::Hardware,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();

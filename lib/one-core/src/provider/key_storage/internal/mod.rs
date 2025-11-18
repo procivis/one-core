@@ -15,9 +15,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::{
-    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
-};
+use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
 
 #[cfg(test)]
 mod test;
@@ -53,7 +51,6 @@ impl KeyStorage for InternalKeyProvider {
                 KeyAlgorithmType::Dilithium,
                 KeyAlgorithmType::BbsPlus,
             ],
-            security: vec![KeySecurity::Software],
             features: vec![Features::Exportable, Features::Importable],
         }
     }

@@ -4,13 +4,12 @@ use std::sync::Arc;
 use crate::config::core_config::KeySecurityLevelType;
 use crate::provider::key_security_level::KeySecurityLevel;
 
-#[expect(dead_code)]
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait KeySecurityLevelProvider: Send + Sync {
     fn get_from_type(&self, level_type: KeySecurityLevelType) -> Option<Arc<dyn KeySecurityLevel>>;
 }
 
 pub(crate) struct KeySecurityLevelProviderImpl {
-    #[expect(dead_code)]
     levels: HashMap<KeySecurityLevelType, Arc<dyn KeySecurityLevel>>,
 }
 

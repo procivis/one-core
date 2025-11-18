@@ -13,7 +13,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
             last_modified: value.last_modified,
             name: value.name,
             format: value.format,
-            wallet_storage_type: value.wallet_storage_type,
+            key_storage_security: value.key_storage_security,
             revocation_method: value.revocation_method,
             deleted_at: value.deleted_at,
             claim_schemas: None,

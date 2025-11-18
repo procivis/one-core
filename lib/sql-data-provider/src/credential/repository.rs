@@ -263,8 +263,8 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_schema_revocation_method",
         )
         .column_as(
-            credential_schema::Column::WalletStorageType,
-            "credential_schema_wallet_storage_type",
+            credential_schema::Column::KeyStorageSecurity,
+            "credential_schema_key_storage_security",
         )
         .column_as(
             credential_schema::Column::SchemaId,

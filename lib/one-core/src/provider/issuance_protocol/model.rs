@@ -1,3 +1,4 @@
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, OrganisationId};
@@ -7,13 +8,12 @@ use uuid::Uuid;
 use crate::model::certificate::Certificate;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
-    CredentialSchema, UpdateCredentialSchemaRequest, WalletStorageTypeEnum,
+    CredentialSchema, KeyStorageSecurity, UpdateCredentialSchemaRequest,
 };
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -37,7 +37,7 @@ pub(crate) enum InvitationResponseEnum {
     Credential {
         interaction_id: InteractionId,
         tx_code: Option<OpenID4VCITxCode>,
-        wallet_storage_type: Option<WalletStorageTypeEnum>,
+        key_storage_security: Option<KeyStorageSecurity>,
     },
     AuthorizationFlow {
         organisation_id: OrganisationId,
@@ -59,6 +59,34 @@ pub struct OpenID4VCIProofTypeSupported {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenIF4VCIKeyAttestationsRequired {
     pub key_storage: Vec<KeyStorageSecurityLevel>,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, From, Into)]
+#[from(KeyStorageSecurity)]
+#[into(KeyStorageSecurity)]
+pub enum KeyStorageSecurityLevel {
+    #[serde(rename = "iso_18045_high")]
+    High,
+    #[serde(rename = "iso_18045_moderate")]
+    Moderate,
+    #[serde(rename = "iso_18045_enhanced-basic")]
+    EnhancedBasic,
+    #[serde(rename = "iso_18045_basic")]
+    Basic,
+}
+
+impl KeyStorageSecurityLevel {
+    pub fn select_lowest(levels: &[Self]) -> Option<Self> {
+        levels
+            .iter()
+            .min_by_key(|level| match level {
+                Self::High => 4,
+                Self::Moderate => 3,
+                Self::EnhancedBasic => 2,
+                Self::Basic => 1,
+            })
+            .cloned()
+    }
 }
 
 #[skip_serializing_none]
@@ -114,5 +142,5 @@ pub(crate) struct ShareResponse<T> {
 #[derive(Clone, Debug)]
 pub(crate) struct ContinueIssuanceResponseDTO {
     pub interaction_id: InteractionId,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
 }

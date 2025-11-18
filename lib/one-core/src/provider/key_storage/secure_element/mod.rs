@@ -16,9 +16,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::{
-    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
-};
+use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
 
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
@@ -59,7 +57,6 @@ impl KeyStorage for SecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             algorithms: vec![KeyAlgorithmType::Ecdsa],
-            security: vec![KeySecurity::Hardware],
             features: vec![Features::Attestation],
         }
     }

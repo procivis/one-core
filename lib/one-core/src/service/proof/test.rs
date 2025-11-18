@@ -27,8 +27,8 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, KeyStorageSecurity,
+    LayoutType,
 };
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
@@ -66,7 +66,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
-use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
@@ -260,7 +260,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "NONE".to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             imported_source_url: "CORE_URL".to_string(),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -316,7 +316,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     imported_source_url: "CORE_URL".to_string(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    key_storage_security: Some(KeyStorageSecurity::Basic),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
                     format: "JWT".to_string(),
@@ -448,7 +448,7 @@ async fn test_get_proof_exists() {
                     id: Uuid::new_v4().into(),
                     deleted_at: None,
                     created_date: OffsetDateTime::now_utc(),
-                    wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                    key_storage_security: Some(KeyStorageSecurity::Basic),
                     imported_source_url: "CORE_URL".to_string(),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "credential schema".to_string(),
@@ -604,7 +604,7 @@ async fn test_get_proof_with_array_holder() {
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -869,7 +869,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1145,7 +1145,7 @@ async fn test_get_proof_with_object_array_holder() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
@@ -1423,7 +1423,7 @@ async fn test_get_proof_with_array() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
@@ -1695,7 +1695,7 @@ async fn test_get_proof_with_array_in_object() {
         deleted_at: None,
         imported_source_url: "CORE_URL".to_string(),
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
@@ -1978,7 +1978,7 @@ async fn test_get_proof_with_object_array() {
         id: Uuid::new_v4().into(),
         deleted_at: None,
         created_date: OffsetDateTime::now_utc(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
         last_modified: OffsetDateTime::now_utc(),
         name: "credential schema".to_string(),
@@ -3015,7 +3015,7 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         .credential_schema
         .as_mut()
         .unwrap()
-        .wallet_storage_type = Some(WalletStorageTypeEnum::Hardware);
+        .key_storage_security = Some(KeyStorageSecurity::EnhancedBasic);
 
     let mut proof_schema_repository = MockProofSchemaRepository::default();
     proof_schema_repository
@@ -3108,28 +3108,19 @@ async fn test_create_proof_fail_unsupported_wallet_storage_type() {
         Some(Arc::new(protocol))
     });
 
-    let mut config = generic_config().core;
-    config
-        .holder_key_storage
-        .get_mut(&WalletStorageTypeEnum::Hardware)
-        .unwrap()
-        .enabled = Some(false);
-
     let service = setup_service(Repositories {
         identifier_repository,
         proof_schema_repository,
         credential_formatter_provider,
         protocol_provider,
-        config,
+        config: generic_config().core,
         ..Default::default()
     });
 
     let result = service.create_proof(request).await;
     assert!(result.is_err_and(|e| matches!(
         e,
-        ServiceError::Validation(ValidationError::WalletStorageTypeDisabled(
-            WalletStorageTypeEnum::Hardware
-        ))
+        ServiceError::Validation(ValidationError::KeyStorageSecurityDisabled(_))
     )));
 }
 
@@ -3725,7 +3716,6 @@ async fn test_share_proof_created_success() {
             .return_once(|| KeyStorageCapabilities {
                 features: vec![],
                 algorithms: vec![],
-                security: vec![KeySecurity::Software],
             });
 
         Some(Arc::new(key_storage))
@@ -3888,9 +3878,7 @@ async fn test_share_proof_pending_success() {
             .return_once(|| KeyStorageCapabilities {
                 features: vec![],
                 algorithms: vec![],
-                security: vec![KeySecurity::Software],
             });
-
         Some(Arc::new(key_storage))
     });
 

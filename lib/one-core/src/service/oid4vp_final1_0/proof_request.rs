@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use dcql::DcqlQuery;
 use url::Url;
 
+use crate::config::core_config::{ConfigExt, CoreConfig, KeyStorageType};
 use crate::mapper::PublicKeyWithJwk;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
@@ -11,7 +12,6 @@ use crate::model::key::JwkUse;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::KeySecurity;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::{
@@ -100,6 +100,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     key_provider: &dyn KeyProvider,
+    config: &CoreConfig,
 ) -> Result<Option<PublicKeyWithJwk>, VerificationProtocolError> {
     let Some(verifier_identifier) = proof.verifier_identifier.as_ref() else {
         return Err(VerificationProtocolError::Failed(
@@ -154,7 +155,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
             candidate_encryption_key.key_type
         )))?;
 
-    let key_storage = key_provider
+    key_provider
         .get_key_storage(&candidate_encryption_key.storage_type)
         .ok_or(KeyStorageError::NotSupported(
             candidate_encryption_key.storage_type.to_owned(),
@@ -166,10 +167,12 @@ pub(crate) fn select_key_agreement_key_from_proof(
      * This needs more investigation and a refactor to support creating shared secret
      * through key storage
      */
-    if key_storage
-        .get_capabilities()
-        .security
-        .contains(&KeySecurity::RemoteSecureElement)
+    if config
+        .key_storage
+        .get_if_enabled(&candidate_encryption_key.storage_type)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+        .r#type
+        == KeyStorageType::AzureVault
     {
         return Ok(None);
     }

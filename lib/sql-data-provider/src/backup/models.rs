@@ -7,7 +7,7 @@ use shared_types::{BlobId, CredentialId, CredentialSchemaId, IdentifierId, Organ
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState};
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim, claim_schema};
 
 #[derive(Debug, FromQueryResult)]
@@ -31,7 +31,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_name: CredentialSchemaName,
     pub credential_schema_format: CredentialFormat,
     pub credential_schema_revocation_method: RevocationMethod,
-    pub credential_schema_wallet_storage_type: Option<WalletStorageType>,
+    pub credential_schema_key_storage_security: Option<KeyStorageSecurity>,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,
     pub credential_schema_requires_app_attestation: bool,

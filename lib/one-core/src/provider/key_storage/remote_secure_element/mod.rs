@@ -16,9 +16,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::{
-    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
-};
+use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
 
 pub struct RemoteSecureElementKeyProvider {
     native_storage: Arc<dyn NativeKeyStorage>,
@@ -29,7 +27,6 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
     fn get_capabilities(&self) -> KeyStorageCapabilities {
         KeyStorageCapabilities {
             algorithms: vec![KeyAlgorithmType::Eddsa],
-            security: vec![KeySecurity::RemoteSecureElement],
             features: vec![],
         }
     }

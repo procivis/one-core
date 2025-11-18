@@ -35,7 +35,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
-use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::MockPresentationFormatter;
 use crate::provider::presentation_formatter::model::ExtractedPresentation;
@@ -202,7 +202,7 @@ async fn test_presentation_definition_success() {
                                 name: "Credential1".to_owned(),
                                 format: "JWT".to_owned(),
                                 revocation_method: "NONE".to_owned(),
-                                wallet_storage_type: None,
+                                key_storage_security: None,
                                 claim_schemas: None,
                                 organisation: None,
                                 layout_type: LayoutType::Card,
@@ -1027,7 +1027,6 @@ async fn test_get_client_metadata_success() {
             .return_once(|| KeyStorageCapabilities {
                 features: vec![],
                 algorithms: vec![],
-                security: vec![KeySecurity::Software],
             });
 
         Some(Arc::new(key_storage))

@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use super::OpenID4VPFinal1_0;
 use super::model::{Params, PresentationVerifierParams};
-use crate::config::core_config::{CoreConfig, FormatType};
+use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -43,7 +43,7 @@ use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::service::test_utilities::{dummy_claim_schema, dummy_identifier};
+use crate::service::test_utilities::{dummy_claim_schema, dummy_identifier, generic_config};
 
 #[derive(Default)]
 struct TestInputs {
@@ -67,7 +67,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         Arc::new(inputs.certificate_validator),
         Arc::new(ReqwestClient::default()),
         inputs.params.unwrap_or(generic_params()),
-        Arc::new(CoreConfig::default()),
+        Arc::new(generic_config().core),
     )
 }
 
@@ -138,7 +138,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
                     name: "test-credential-schema".to_string(),
                     format: credential_format.to_string(),
                     revocation_method: "NONE".to_string(),
-                    wallet_storage_type: None,
+                    key_storage_security: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,
                     schema_id: "test_schema_id".to_string(),

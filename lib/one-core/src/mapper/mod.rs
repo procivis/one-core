@@ -10,6 +10,7 @@ use strum::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::{ConfigExt, CoreConfig, KeyStorageType};
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
@@ -40,20 +41,18 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::KeySecurity;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
-
 pub(crate) mod credential_schema_claim;
 pub(crate) mod exchange;
 mod holder_wallet_unit;
 pub(crate) mod identifier;
+mod key_security;
 pub(crate) mod oidc;
+pub(crate) mod openid4vci;
 pub(crate) mod openid4vp;
 pub(crate) mod params;
 pub(crate) mod timestamp;
@@ -559,7 +558,7 @@ pub(crate) struct PublicKeyWithJwk {
 pub(crate) fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    key_provider: &dyn KeyProvider,
+    config: &CoreConfig,
 ) -> Result<Option<PublicKeyWithJwk>, ServiceError> {
     let verifier_identifier =
         proof
@@ -619,16 +618,11 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
      * This needs more investigation and a refactor to support creating shared secret
      * through key storage
      */
-    let key_storage = key_provider
-        .get_key_storage(&encryption_key.storage_type)
-        .ok_or(KeyStorageError::NotSupported(
-            encryption_key.storage_type.to_owned(),
-        ))?;
-    let r#use = if key_storage
-        .get_capabilities()
-        .security
-        .iter()
-        .any(|v| *v != KeySecurity::RemoteSecureElement)
+    let r#use = if config
+        .key_storage
+        .get_if_enabled(&encryption_key.storage_type)?
+        .r#type
+        != KeyStorageType::AzureVault
     {
         Some(JwkUse::Encryption)
     } else {
@@ -869,7 +863,7 @@ mod tests {
     use similar_asserts::assert_eq;
 
     use super::*;
-    use crate::model::credential_schema::{LayoutType, WalletStorageTypeEnum};
+    use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 
     #[test]
     fn test_extracted_credential_to_model_mdoc() {
@@ -929,7 +923,7 @@ mod tests {
                 name: "CredentialSchema".to_string(),
                 format: "MDOC".to_string(),
                 revocation_method: "NONE".to_string(),
-                wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+                key_storage_security: Some(KeyStorageSecurity::Basic),
                 layout_type: LayoutType::Card,
                 layout_properties: None,
                 schema_id: "pavel.3310.simple".to_string(),

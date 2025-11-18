@@ -33,7 +33,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, ImportCredentialSchemaRequestSchemaDTO,
 };
-use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
+use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
@@ -173,8 +173,8 @@ impl ProofSchemaService {
         }
 
         for credential_schema in &credential_schemas {
-            validate_wallet_storage_type_supported(
-                credential_schema.wallet_storage_type,
+            validate_key_storage_security_supported(
+                credential_schema.key_storage_security,
                 &self.config,
             )?;
         }

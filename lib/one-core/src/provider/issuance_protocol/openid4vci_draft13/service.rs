@@ -17,12 +17,12 @@ use super::model::{
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
-    Timestamp,
+    Timestamp, WalletStorageTypeEnum,
 };
 use super::validator::throw_if_credential_state_not_eq;
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential::{Credential, CredentialStateEnum};
-use crate::model::credential_schema::{CredentialSchema, WalletStorageTypeEnum};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
@@ -78,7 +78,13 @@ fn credential_configurations_supported(
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
-    let wallet_storage_type = credential_schema.wallet_storage_type.to_owned();
+    let wallet_storage_type = Some(
+        credential_schema
+            .key_storage_security
+            .to_owned()
+            .map(Into::into)
+            .unwrap_or(WalletStorageTypeEnum::Software),
+    );
     let schema_id = credential_schema.schema_id.to_owned();
 
     let claims = prepare_nested_representation(credential_schema, config)?;

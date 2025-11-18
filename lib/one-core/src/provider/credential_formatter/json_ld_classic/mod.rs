@@ -316,7 +316,7 @@ impl CredentialFormatter for JsonLdClassic {
             name: schema_name,
             format: "JSON_LD_CLASSIC".to_string(),
             revocation_method: revocation_method.to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id,

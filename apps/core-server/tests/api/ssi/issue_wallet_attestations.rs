@@ -2,11 +2,11 @@ use one_core::model::history::HistoryAction;
 use one_core::model::wallet_unit::{
     UpdateWalletUnitRequest, WalletUnitRelations, WalletUnitStatus,
 };
-use one_core::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use one_core::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations,
 };
 use one_core::proto::jwt::Jwt;
+use one_core::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use serde_json::json;

@@ -461,7 +461,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             name: schema_name,
             format: "JSON_LD_BBSPLUS".to_string(),
             revocation_method: revocation_method.to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id,

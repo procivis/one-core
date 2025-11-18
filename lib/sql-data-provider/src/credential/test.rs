@@ -10,7 +10,6 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-    WalletStorageTypeEnum,
 };
 use one_core::model::did::Did;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -41,7 +40,7 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::CredentialProvider;
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{claim, interaction};
 use crate::test_utilities;
 use crate::test_utilities::*;
@@ -68,7 +67,7 @@ async fn setup_empty() -> TestSetup {
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();
@@ -102,7 +101,7 @@ async fn setup_empty() -> TestSetup {
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),
         format: "JWT".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: Some(KeyStorageSecurity::Basic.into()),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(
             new_claim_schemas

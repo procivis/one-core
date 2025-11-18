@@ -15,7 +15,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::RevocationListProvider;
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::revocation_list::RevocationListFormat;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
@@ -280,7 +280,7 @@ async fn create_dummy_credential(
         credential_schema_name,
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();

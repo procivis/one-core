@@ -101,7 +101,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
             name: "schema".to_string(),
             format: "JWT".to_string(),
             revocation_method: "LVVC".to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,
             schema_id: "schema_id".to_string(),

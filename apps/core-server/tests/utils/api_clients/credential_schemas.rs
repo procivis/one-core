@@ -46,7 +46,7 @@ pub struct CreateSchemaParams {
     pub schema_id: Option<String>,
     pub revocation_method: Option<String>,
     pub suspension_allowed: Option<bool>,
-    pub wallet_storage_type: Option<String>,
+    pub key_storage_security: Option<String>,
     pub logo: Option<String>,
 }
 
@@ -99,8 +99,8 @@ impl CredentialSchemasApi {
         if let Some(suspension_allowed) = params.suspension_allowed {
             body["allowSuspension"] = json!(suspension_allowed);
         }
-        if let Some(wallet_storage_type) = params.wallet_storage_type {
-            body["walletStorageType"] = json!(wallet_storage_type);
+        if let Some(key_storage_security) = params.key_storage_security {
+            body["keyStorageSecurity"] = json!(key_storage_security);
         }
         if let Some(logo) = params.logo {
             body["layoutProperties"]["logo"] = json!({"image": logo});

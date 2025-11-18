@@ -8,8 +8,8 @@ use uuid::Uuid;
 use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList, LayoutType,
-    WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList, KeyStorageSecurity,
+    LayoutType,
 };
 use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
@@ -104,7 +104,7 @@ fn test_parse_import_credential_schema_success() {
                 array: Some(false),
                 claims: vec![],
             }],
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             schema_id: "http://example.com/schema".to_string(),
             layout_type: Some(LayoutType::Card),
             layout_properties: None,
@@ -190,7 +190,7 @@ fn test_parse_import_with_nested_claims_success() {
                     claims: vec![],
                 }],
             }],
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             schema_id: "http://example.com/schema".to_string(),
             layout_type: Some(LayoutType::Card),
             layout_properties: None,
@@ -217,7 +217,7 @@ async fn test_importer_import_credential_schema_success() {
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Test Schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
@@ -286,7 +286,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),
@@ -351,7 +351,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         imported_source_url: "http://source.com".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
         format: "JWT".to_string(),
         revocation_method: "NONE".to_string(),

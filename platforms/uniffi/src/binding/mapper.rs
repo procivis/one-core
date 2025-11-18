@@ -178,7 +178,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             name: value.name,
             format: value.format,
             revocation_method: value.revocation_method,
-            wallet_storage_type: convert_inner(value.wallet_storage_type),
+            key_storage_security: convert_inner(value.key_storage_security),
             schema_id: value.schema_id,
             imported_source_url: value.imported_source_url,
             layout_type: convert_inner(value.layout_type),
@@ -229,11 +229,11 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
             HandleInvitationResultDTO::Credential {
                 interaction_id,
                 tx_code,
-                wallet_storage_type,
+                key_storage_security,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 tx_code: convert_inner(tx_code),
-                wallet_storage_type: convert_inner(wallet_storage_type),
+                key_storage_security: convert_inner(key_storage_security),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
@@ -343,7 +343,7 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             format: value.format,
             imported_source_url: value.imported_source_url,
             revocation_method: value.revocation_method,
-            wallet_storage_type: convert_inner(value.wallet_storage_type),
+            key_storage_security: convert_inner(value.key_storage_security),
             schema_id: value.schema_id,
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),

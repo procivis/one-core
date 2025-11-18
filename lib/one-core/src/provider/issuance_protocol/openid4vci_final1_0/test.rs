@@ -20,7 +20,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -55,6 +55,7 @@ use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProvider, KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
 };
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
+use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -76,6 +77,7 @@ struct TestInputs {
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub key_security_level_provider: MockKeySecurityLevelProvider,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIFinal1Params>,
 }
@@ -91,6 +93,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
+        Arc::new(inputs.key_security_level_provider),
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
@@ -277,7 +280,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             deleted_at: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: now,
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -1229,7 +1232,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     let InvitationResponseEnum::Credential {
         interaction_id,
-        wallet_storage_type,
+        key_storage_security: wallet_storage_type,
         ..
     } = result
     else {

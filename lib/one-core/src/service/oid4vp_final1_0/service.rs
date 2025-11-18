@@ -132,6 +132,7 @@ impl OID4VPFinal1_0Service {
             &proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
+            &self.config,
         )?;
 
         let authorization_request = generate_authorization_request_params_final1_0(
@@ -219,6 +220,7 @@ impl OID4VPFinal1_0Service {
             &proof,
             &*self.key_algorithm_provider,
             &*self.key_provider,
+            &self.config,
         )?;
 
         create_open_id_for_vp_client_metadata_final1_0(key_handle).map_err(|e| e.into())

@@ -1,9 +1,9 @@
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_security_level::KeySecurityLevel;
-use crate::provider::key_security_level::dto::{HolderParams, KeySecurityLevelCapabilities};
+use crate::provider::key_security_level::dto::{KeySecurityLevelCapabilities, Params};
 
 pub struct EnhancedBasic {
-    holder_params: HolderParams,
+    params: Params,
 }
 
 impl KeySecurityLevel for EnhancedBasic {
@@ -13,16 +13,16 @@ impl KeySecurityLevel for EnhancedBasic {
         }
     }
     fn get_priority(&self) -> u64 {
-        self.holder_params.priority
+        self.params.holder.priority
     }
 
     fn get_key_storages(&self) -> &[String] {
-        self.holder_params.key_storages.as_slice()
+        self.params.holder.key_storages.as_slice()
     }
 }
 
 impl EnhancedBasic {
-    pub(crate) fn new(holder_params: HolderParams) -> Self {
-        Self { holder_params }
+    pub(crate) fn new(params: Params) -> Self {
+        Self { params }
     }
 }

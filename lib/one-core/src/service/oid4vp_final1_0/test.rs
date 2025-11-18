@@ -35,7 +35,7 @@ use crate::provider::key_algorithm::key::{
 };
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
-use crate::provider::key_storage::model::{KeySecurity, KeyStorageCapabilities};
+use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::MockPresentationFormatter;
 use crate::provider::presentation_formatter::model::ExtractedPresentation;
@@ -898,7 +898,6 @@ async fn test_get_client_metadata_success() {
             .return_once(|| KeyStorageCapabilities {
                 features: vec![],
                 algorithms: vec![],
-                security: vec![KeySecurity::Software],
             });
 
         Some(Arc::new(key_storage))

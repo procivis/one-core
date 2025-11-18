@@ -12,14 +12,14 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
             HandleInvitationResultDTO::Credential {
                 interaction_id,
                 tx_code,
-                wallet_storage_type,
+                key_storage_security,
             } => Self {
                 interaction_id,
                 proof_id: None,
                 tx_code: convert_inner(tx_code),
                 interaction_type: InteractionTypeRestEnum::Issuance,
                 authorization_code_flow_url: None,
-                wallet_storage_type: convert_inner(wallet_storage_type),
+                key_storage_security: convert_inner(key_storage_security),
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
@@ -30,7 +30,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 proof_id: None,
                 tx_code: None,
                 authorization_code_flow_url: Some(authorization_code_flow_url),
-                wallet_storage_type: None,
+                key_storage_security: None,
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
@@ -41,7 +41,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 proof_id: Some(proof_id),
                 tx_code: None,
                 authorization_code_flow_url: None,
-                wallet_storage_type: None,
+                key_storage_security: None,
             },
         }
     }

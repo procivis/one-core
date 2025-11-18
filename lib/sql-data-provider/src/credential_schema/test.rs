@@ -4,7 +4,6 @@ use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations,
     GetCredentialSchemaQuery, LayoutProperties, LayoutType, UpdateCredentialSchemaRequest,
-    WalletStorageTypeEnum,
 };
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
@@ -21,7 +20,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::CredentialSchemaProvider;
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::{credential_schema, organisation};
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
@@ -84,7 +83,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        None,
     )
     .await
     .unwrap();
@@ -114,7 +113,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         credential_schema: CredentialSchema {
             id: credential_schema_id,
             deleted_at: None,
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: None,
             imported_source_url: "CORE_URL".to_string(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -194,7 +193,7 @@ async fn test_create_credential_schema_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             deleted_at: None,
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic.into()),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             format: "JWT".to_string(),
@@ -487,7 +486,7 @@ async fn test_delete_credential_schema_not_found() {
             name: "Test".to_string(),
             format: "MDOC".to_string(),
             revocation_method: "NONE".to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             layout_type: LayoutType::Document,
             layout_properties: None,
             schema_id: "Test_schema_id".to_string(),

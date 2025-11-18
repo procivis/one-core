@@ -9,7 +9,7 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity::credential_schema::WalletStorageType;
+use crate::entity::credential_schema::KeyStorageSecurity;
 use crate::entity::did::DidType;
 use crate::entity::validity_credential;
 use crate::transaction_context::TransactionManagerImpl;
@@ -137,7 +137,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         "credential-schema",
         "jwt",
         "LVVC",
-        WalletStorageType::Software,
+        Some(KeyStorageSecurity::Basic),
     )
     .await
     .unwrap();

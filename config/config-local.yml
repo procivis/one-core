@@ -196,6 +196,15 @@ cacheEntities:
     refreshAfter: 86400
     cacheRefreshTimeout: 86400
     cacheSize: 1000
+keySecurityLevel:
+  HIGH:
+    display: keySecurityLevel.high
+    order: 40
+    params:
+      public:
+        holder:
+          priority: 40
+          keyStorages: []
 credentialIssuer:
   EUDI_PID_FLOW:
     display:

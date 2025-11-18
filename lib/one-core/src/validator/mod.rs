@@ -14,6 +14,7 @@ use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::PresentationDefinitionVersion;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
+pub(crate) mod key_security;
 pub(crate) mod x509;
 
 pub(crate) fn throw_if_credential_state_eq(

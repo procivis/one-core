@@ -37,9 +37,7 @@ use crate::provider::key_storage::azure_vault::dto::{
 };
 use crate::provider::key_storage::azure_vault::mapper::create_import_key_request;
 use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::model::{
-    Features, KeySecurity, KeyStorageCapabilities, StorageGeneratedKey,
-};
+use crate::provider::key_storage::model::{Features, KeyStorageCapabilities, StorageGeneratedKey};
 
 mod dto;
 mod mapper;
@@ -73,7 +71,6 @@ impl KeyStorage for AzureVaultKeyProvider {
         KeyStorageCapabilities {
             features: vec![Features::Exportable, Features::Importable],
             algorithms: vec![KeyAlgorithmType::Ecdsa],
-            security: vec![KeySecurity::RemoteSecureElement],
         }
     }
 

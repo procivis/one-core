@@ -4,7 +4,7 @@ use serde_with::skip_serializing_none;
 use shared_types::WalletUnitId;
 
 use crate::model::wallet_unit::WalletUnitOs;
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::service::key::dto::PublicKeyJwkDTO;
 use crate::service::wallet_provider::dto;
 

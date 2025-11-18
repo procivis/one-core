@@ -14,7 +14,7 @@ use crate::model::credential::{
     CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
 };
 use crate::model::credential_schema::{
-    CredentialFormat, LayoutType, RevocationMethod, WalletStorageTypeEnum,
+    CredentialFormat, KeyStorageSecurity, LayoutType, RevocationMethod,
 };
 use crate::model::list_query::ListQuery;
 use crate::service::certificate::dto::CertificateResponseDTO;
@@ -113,7 +113,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,

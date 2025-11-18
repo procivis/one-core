@@ -15,6 +15,7 @@ use super::validator::{
     validate_initiate_issuance_request,
 };
 use crate::config::core_config::FormatType;
+use crate::mapper::openid4vci::interaction_data_to_accepted_key_storage_security;
 use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
@@ -22,9 +23,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
-use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaRelations, WalletStorageTypeEnum,
-};
+use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{
@@ -45,12 +44,14 @@ use crate::provider::issuance_protocol::model::{
 use crate::provider::issuance_protocol::{
     IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
 };
-use crate::provider::key_storage::model::KeySecurity;
 use crate::service::error::ServiceError::BusinessLogic;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::service::storage_proxy::{StorageAccess, StorageProxyImpl};
+use crate::validator::key_security::{
+    match_key_security_level, validate_key_storage_supports_security_requirement,
+};
 use crate::validator::{
     throw_if_credential_state_not_eq, throw_if_org_not_matching_session,
     throw_if_org_relation_not_matching_session,
@@ -148,20 +149,12 @@ impl SSIHolderService {
         let holder_jwk_key_id = did.verification_method_id(selected_key);
         let selected_key = &selected_key.key;
 
-        let key_security = self
-            .key_provider
-            .get_key_storage(&selected_key.storage_type)
-            .ok_or_else(|| MissingProviderError::KeyStorage(selected_key.storage_type.clone()))?
-            .get_capabilities()
-            .security;
-
         if credentials.is_empty() {
             return self
                 .accept_credential_final1(
                     interaction_id,
                     &did,
                     &identifier,
-                    &key_security,
                     selected_key,
                     holder_jwk_key_id,
                     tx_code,
@@ -183,7 +176,6 @@ impl SSIHolderService {
                     &credential,
                     &did,
                     &identifier,
-                    &key_security,
                     selected_key,
                     &holder_jwk_key_id,
                     tx_code.clone(),
@@ -223,7 +215,6 @@ impl SSIHolderService {
         interaction_id: InteractionId,
         holder_did: &Did,
         holder_identifier: &Identifier,
-        key_security: &[KeySecurity],
         selected_key: &Key,
         holder_jwk_key_id: String,
         tx_code: Option<String>,
@@ -250,13 +241,11 @@ impl SSIHolderService {
         let data: issuance_protocol::openid4vci_final1_0::model::HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
-        self.validate_key_compliance(
-            data.credential_metadata
-                .as_ref()
-                .and_then(|metadata| metadata.wallet_storage_type.as_ref()),
-            key_security,
-        )
-        .await?;
+        match_key_security_level(
+            &selected_key.storage_type,
+            &interaction_data_to_accepted_key_storage_security(&data).unwrap_or_default(),
+            &*self.key_security_level_provider,
+        )?;
 
         let format_type = match data.format.as_str() {
             "jwt_vc_json" => FormatType::Jwt,
@@ -359,7 +348,6 @@ impl SSIHolderService {
         credential: &Credential,
         holder_did: &Did,
         holder_identifier: &Identifier,
-        key_security: &[KeySecurity],
         selected_key: &Key,
         holder_jwk_key_id: &str,
         tx_code: Option<String>,
@@ -371,8 +359,11 @@ impl SSIHolderService {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
-        self.validate_key_compliance(schema.wallet_storage_type.as_ref(), key_security)
-            .await?;
+        validate_key_storage_supports_security_requirement(
+            &selected_key.storage_type,
+            &schema.key_storage_security,
+            &*self.key_security_level_provider,
+        )?;
 
         let format = &schema.format;
         let formatter = self
@@ -642,11 +633,11 @@ impl SSIHolderService {
             InvitationResponseEnum::Credential {
                 interaction_id,
                 tx_code,
-                wallet_storage_type,
+                key_storage_security,
             } => Ok(HandleInvitationResultDTO::Credential {
                 interaction_id,
                 tx_code,
-                wallet_storage_type,
+                key_storage_security,
             }),
             InvitationResponseEnum::AuthorizationFlow {
                 organisation_id,
@@ -866,7 +857,7 @@ impl SSIHolderService {
 
         let issuance_protocol::model::ContinueIssuanceResponseDTO {
             interaction_id,
-            wallet_storage_type,
+            key_storage_security,
         } = self
             .issuance_protocol_provider
             .get_protocol(&issuance.request.protocol)
@@ -898,29 +889,8 @@ impl SSIHolderService {
         Ok(ContinueIssuanceResponseDTO {
             interaction_id,
             interaction_type: InteractionType::Issuance,
-            wallet_storage_type,
+            key_storage_security,
         })
-    }
-
-    async fn validate_key_compliance(
-        &self,
-        wallet_storage_type: Option<&WalletStorageTypeEnum>,
-        key_security: &[KeySecurity],
-    ) -> Result<(), ServiceError> {
-        let wallet_storage_matches = match wallet_storage_type {
-            Some(WalletStorageTypeEnum::Hardware) => key_security.contains(&KeySecurity::Hardware),
-            Some(WalletStorageTypeEnum::Software) => key_security.contains(&KeySecurity::Software),
-            Some(WalletStorageTypeEnum::RemoteSecureElement) => {
-                key_security.contains(&KeySecurity::RemoteSecureElement)
-            }
-            None => true,
-        };
-
-        if !wallet_storage_matches {
-            return Err(BusinessLogicError::UnfulfilledWalletStorageType.into());
-        }
-
-        Ok(())
     }
 
     fn create_storage_proxy(&self) -> Arc<StorageAccess> {

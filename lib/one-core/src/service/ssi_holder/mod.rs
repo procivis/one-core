@@ -9,6 +9,7 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
 use crate::repository::certificate_repository::CertificateRepository;
@@ -47,6 +48,7 @@ pub struct SSIHolderService {
     certificate_repository: Arc<dyn CertificateRepository>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
@@ -73,6 +75,7 @@ impl SSIHolderService {
         certificate_repository: Arc<dyn CertificateRepository>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
@@ -105,6 +108,7 @@ impl SSIHolderService {
             client,
             blob_storage_provider,
             session_provider,
+            key_security_level_provider,
         }
     }
 }

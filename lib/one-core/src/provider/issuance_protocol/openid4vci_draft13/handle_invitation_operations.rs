@@ -1,6 +1,7 @@
 use std::sync::{Arc, LazyLock};
 
 use indexmap::IndexMap;
+use one_dto_mapper::convert_inner;
 use regex::Regex;
 use shared_types::CredentialId;
 use time::OffsetDateTime;
@@ -143,7 +144,9 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         } else {
                             vec![]
                         },
-                        wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
+                        key_storage_security: convert_inner(
+                            credential_config.wallet_storage_type.to_owned(),
+                        ),
                         layout_type,
                         layout_properties,
                         schema_id: schema.id.clone(),
@@ -292,7 +295,9 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         name,
                         format: credential_format,
                         imported_source_url: schema_url,
-                        wallet_storage_type: credential_config.wallet_storage_type.to_owned(),
+                        key_storage_security: convert_inner(
+                            credential_config.wallet_storage_type.to_owned(),
+                        ),
                         revocation_method: "NONE".to_string(),
                         claim_schemas: Some(claim_schemas),
                         layout_type: LayoutType::Card,

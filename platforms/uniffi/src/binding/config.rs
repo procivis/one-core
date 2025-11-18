@@ -38,8 +38,6 @@ pub struct ConfigBindingDTO {
     #[from(with_fn = serialize_config_entity)]
     pub key_algorithm: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
-    pub holder_key_storage: HashMap<String, String>,
-    #[from(with_fn = serialize_config_entity)]
     pub key_storage: HashMap<String, String>,
     #[from(with_fn = serialize_config_entity)]
     pub trust_management: HashMap<String, String>,

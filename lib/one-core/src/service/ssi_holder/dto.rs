@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId};
 use uuid::Uuid;
 
-use crate::model::credential_schema::WalletStorageTypeEnum;
+use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::interaction::{InteractionId, InteractionType};
 use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
 
@@ -47,7 +47,7 @@ pub enum HandleInvitationResultDTO {
     Credential {
         interaction_id: InteractionId,
         tx_code: Option<OpenID4VCITxCode>,
-        wallet_storage_type: Option<WalletStorageTypeEnum>,
+        key_storage_security: Option<KeyStorageSecurity>,
     },
     AuthorizationCodeFlow {
         interaction_id: InteractionId,
@@ -63,7 +63,7 @@ pub enum HandleInvitationResultDTO {
 pub struct ContinueIssuanceResponseDTO {
     pub interaction_id: InteractionId,
     pub interaction_type: InteractionType,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

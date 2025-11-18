@@ -475,7 +475,7 @@ impl CredentialFormatter for MdocFormatter {
             name: doctype.to_owned(),
             format: "MDOC".to_string(),
             revocation_method: "NONE".to_string(),
-            wallet_storage_type: None,
+            key_storage_security: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,
             schema_id: doctype,

@@ -15,7 +15,7 @@ use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -347,7 +347,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "schema".to_string(),
-            wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+            key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "format".to_string(),
             imported_source_url: "CORE_URL".to_string(),
             revocation_method: "revocation method".to_string(),
@@ -516,7 +516,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         name: "name".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
         format: "format".to_string(),
         revocation_method: "format".to_string(),

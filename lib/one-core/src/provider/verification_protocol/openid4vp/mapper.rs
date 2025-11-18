@@ -664,6 +664,7 @@ pub(crate) async fn credential_from_proved(
         schema: proved_credential
             .credential
             .schema
+            // TODO ONE-7859: Inline and clean up
             .map(|schema| from_provider_schema(schema, organisation.to_owned())),
         interaction: None,
         key: proved_credential.credential.key,
@@ -686,12 +687,12 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         name: schema.name,
         format: schema.format,
         revocation_method: schema.revocation_method,
-        wallet_storage_type: convert_inner(schema.wallet_storage_type),
+        key_storage_security: schema.key_storage_security,
         layout_type: schema.layout_type,
-        layout_properties: convert_inner(schema.layout_properties),
+        layout_properties: schema.layout_properties,
         imported_source_url: schema.imported_source_url,
         schema_id: schema.schema_id,
-        claim_schemas: convert_inner_of_inner(schema.claim_schemas),
+        claim_schemas: schema.claim_schemas,
         organisation: organisation.into(),
         allow_suspension: schema.allow_suspension,
         requires_app_attestation: schema.requires_app_attestation,
@@ -1028,10 +1029,10 @@ pub(crate) async fn format_authorization_request_client_id_scheme_redirect_uri<T
 pub(crate) fn generate_client_metadata_draft(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    key_provider: &dyn KeyProvider,
+    config: &CoreConfig,
 ) -> Result<OpenID4VPDraftClientMetadata, VerificationProtocolError> {
     let vp_formats = create_open_id_for_vp_formats();
-    let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, key_provider)
+    let jwk = get_encryption_key_jwk_from_proof(proof, key_algorithm_provider, config)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(create_open_id_for_vp_client_metadata_draft(jwk, vp_formats))

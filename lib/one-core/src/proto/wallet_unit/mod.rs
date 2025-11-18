@@ -7,11 +7,11 @@ use time::{Duration, OffsetDateTime};
 
 use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
 use crate::model::key::{Key, KeyRelations};
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
+use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::provider::KeyProvider;

@@ -7,7 +7,6 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ClaimSchemaProvider;
-use crate::entity::credential_schema::WalletStorageType;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -31,7 +30,7 @@ async fn setup() -> TestSetup {
         "credential schema",
         "JWT",
         "NONE",
-        WalletStorageType::Software,
+        None,
     )
     .await
     .unwrap();

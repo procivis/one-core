@@ -69,7 +69,7 @@ use crate::provider::verification_protocol::iso_mdl::device_engagement::{
 use crate::provider::verification_protocol::iso_mdl::nfc::create_nfc_handover_select_message;
 use crate::provider::verification_protocol::openid4vp::mapper::create_format_map;
 use crate::provider::verification_protocol::{FormatMapper, TypeToDescriptorMapper};
-use crate::service::credential_schema::validator::validate_wallet_storage_type_supported;
+use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
@@ -370,8 +370,8 @@ impl ProofService {
             .iter()
             .flat_map(|input| input.credential_schema.as_ref())
         {
-            validate_wallet_storage_type_supported(
-                credential_schema.wallet_storage_type,
+            validate_key_storage_security_supported(
+                credential_schema.key_storage_security,
                 &self.config,
             )?;
         }

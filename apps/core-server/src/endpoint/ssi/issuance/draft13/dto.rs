@@ -22,8 +22,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use utoipa::ToSchema;
 
-use crate::endpoint::credential_schema::dto::WalletStorageTypeRestEnum;
-
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema)]
 pub(crate) struct OpenID4VCIIssuerMetadataResponseRestDTO {
@@ -83,6 +81,21 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     #[schema(value_type = Object)]
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into("one_core::provider::issuance_protocol::openid4vci_draft13::model::WalletStorageTypeEnum")]
+#[from("one_core::provider::issuance_protocol::openid4vci_draft13::model::WalletStorageTypeEnum")]
+pub(crate) enum WalletStorageTypeRestEnum {
+    /// Requires the wallet to use software-based key storage.
+    Software,
+    /// Requires the wallet to use hardware-based key storage (for example,
+    /// a secure element on the device).
+    Hardware,
+    /// Requires the wallet to use remote secure element key storage
+    /// (for example, an HSM in a data center).
+    RemoteSecureElement,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

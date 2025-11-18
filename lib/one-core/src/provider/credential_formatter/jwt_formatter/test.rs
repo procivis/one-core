@@ -720,7 +720,7 @@ fn test_schema_id() {
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         external_schema: false,
         claims: vec![],
-        wallet_storage_type: None,
+        key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
         schema_id: None,

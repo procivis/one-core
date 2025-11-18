@@ -19,8 +19,8 @@ use one_core::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
 };
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutProperties,
-    LayoutType, WalletStorageTypeEnum,
+    CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, KeyStorageSecurity,
+    LayoutProperties, LayoutType,
 };
 use one_core::model::did::{Did, DidType, RelatedKey};
 use one_core::model::history::HistoryAction;
@@ -389,7 +389,7 @@ pub struct TestingCredentialSchemaParams {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: Option<String>,
     pub format: Option<String>,
-    pub wallet_storage_type: Option<Option<WalletStorageTypeEnum>>,
+    pub key_storage_security: Option<Option<KeyStorageSecurity>>,
     pub revocation_method: Option<String>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
@@ -428,9 +428,7 @@ pub async fn create_credential_schema(
         imported_source_url: "CORE_URL".to_string(),
         last_modified: params.last_modified.unwrap_or(now),
         name: unwrap_or_random(params.name),
-        wallet_storage_type: params
-            .wallet_storage_type
-            .unwrap_or(Some(WalletStorageTypeEnum::Software)),
+        key_storage_security: params.key_storage_security.unwrap_or_default(),
         organisation: Some(organisation.to_owned()),
         deleted_at: params.deleted_at,
         format: params.format.unwrap_or("JWT".to_string()),
@@ -484,7 +482,7 @@ pub async fn create_credential_schema_with_claims(
         imported_source_url: "CORE_URL".to_string(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        wallet_storage_type: None,
+        key_storage_security: None,
         name: name.to_owned(),
         organisation: Some(organisation.to_owned()),
         deleted_at: None,

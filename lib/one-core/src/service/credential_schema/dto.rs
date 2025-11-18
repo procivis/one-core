@@ -9,8 +9,8 @@ use uuid::Uuid;
 use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialFormat, CredentialSchema, LayoutType, RevocationMethod,
-    SortableCredentialSchemaColumn, WalletStorageTypeEnum,
+    CredentialFormat, CredentialSchema, KeyStorageSecurity, LayoutType, RevocationMethod,
+    SortableCredentialSchemaColumn,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
@@ -34,7 +34,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: RevocationMethod,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,
@@ -57,7 +57,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub revocation_method: RevocationMethod,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,
@@ -115,7 +115,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub revocation_method: String,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub external_schema: bool,
     pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
@@ -257,8 +257,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub organisation_id: Uuid,
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
-    #[into(with_fn = convert_inner)]
-    pub wallet_storage_type: Option<WalletStorageTypeEnum>,
+    pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
     #[into(with_fn = convert_inner)]

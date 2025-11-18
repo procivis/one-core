@@ -2,6 +2,7 @@ use indexmap::IndexMap;
 use indexmap::map::Entry;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use one_dto_mapper::convert_inner;
 use secrecy::ExposeSecret;
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
@@ -13,6 +14,7 @@ use super::model::{
     CredentialSchemaLogoPropertiesRequestDTO, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialSubjectItem, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
+    WalletStorageTypeEnum,
 };
 use crate::config::core_config::{CoreConfig, DatatypeType, Params};
 use crate::config::{ConfigError, ConfigParsingError};
@@ -25,13 +27,12 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     Arrayed, BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
     CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
-    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, LayoutProperties,
-    LogoProperties,
+    CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, KeyStorageSecurity,
+    LayoutProperties, LogoProperties,
 };
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
-use crate::model::wallet_unit_attestation::KeyStorageSecurityLevel;
 use crate::proto::credential_schema::dto::{
     CredentialSchemaCodePropertiesDTO, ImportCredentialSchemaClaimSchemaDTO,
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
@@ -41,7 +42,7 @@ use crate::proto::http_client;
 use crate::proto::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::model::{
-    OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
+    KeyStorageSecurityLevel, OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -471,7 +472,7 @@ fn from_create_request_with_id(
         last_modified: now,
         name: request.name,
         format: request.format,
-        wallet_storage_type: request.wallet_storage_type,
+        key_storage_security: request.key_storage_security,
         revocation_method: request.revocation_method,
         claim_schemas: Some(
             claim_schemas
@@ -1045,7 +1046,7 @@ pub(super) fn credentials_supported_mdoc(
         .r#type;
 
     let credential_configuration = OpenID4VCICredentialConfigurationData {
-        wallet_storage_type: schema.wallet_storage_type,
+        wallet_storage_type: convert_inner(schema.key_storage_security),
         format: map_to_openid4vp_format(&format_type)
             .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?
             .to_string(),
@@ -1132,7 +1133,7 @@ pub(crate) fn map_to_import_credential_schema_request(
                 .into_iter()
                 .map(|cs| map_to_import_claim_schema(now, cs))
                 .collect(),
-            wallet_storage_type: credential_schema.wallet_storage_type,
+            key_storage_security: credential_schema.key_storage_security,
             layout_type: credential_schema.layout_type,
             layout_properties: credential_schema
                 .layout_properties
@@ -1219,5 +1220,27 @@ fn map_layout_code(
     CredentialSchemaCodePropertiesDTO {
         attribute: code.attribute,
         r#type: code.r#type.into(),
+    }
+}
+
+impl From<WalletStorageTypeEnum> for KeyStorageSecurity {
+    fn from(value: WalletStorageTypeEnum) -> Self {
+        match value {
+            WalletStorageTypeEnum::RemoteSecureElement => KeyStorageSecurity::High,
+            WalletStorageTypeEnum::Hardware => KeyStorageSecurity::Moderate,
+            WalletStorageTypeEnum::Software => KeyStorageSecurity::Basic,
+        }
+    }
+}
+
+impl From<KeyStorageSecurity> for WalletStorageTypeEnum {
+    fn from(value: KeyStorageSecurity) -> Self {
+        match value {
+            KeyStorageSecurity::High => WalletStorageTypeEnum::RemoteSecureElement,
+            KeyStorageSecurity::Moderate | KeyStorageSecurity::EnhancedBasic => {
+                WalletStorageTypeEnum::Hardware
+            }
+            KeyStorageSecurity::Basic => WalletStorageTypeEnum::Software,
+        }
     }
 }

@@ -18,7 +18,6 @@ use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
-    WalletStorageTypeEnum,
 };
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -112,7 +111,7 @@ fn generic_credential_schema() -> CredentialSchema {
         created_date: now,
         last_modified: now,
         name: "SchemaName".to_string(),
-        wallet_storage_type: Some(WalletStorageTypeEnum::Software),
+        key_storage_security: None,
         format: "JWT".to_string(),
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {

@@ -55,6 +55,7 @@ use model::{ContinueIssuanceResponseDTO, ShareResponse, SubmitIssuerResponse, Up
 
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParser;
+use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 
 pub(crate) fn deserialize_interaction_data<DataDTO: for<'a> Deserialize<'a>>(
     data: Option<&Vec<u8>>,
@@ -82,6 +83,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
@@ -114,6 +116,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     key_provider.clone(),
+                    key_security_level_provider.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),
