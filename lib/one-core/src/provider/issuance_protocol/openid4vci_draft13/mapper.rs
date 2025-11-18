@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use indexmap::IndexMap;
 use indexmap::map::Entry;
 use one_crypto::Hasher;
@@ -49,6 +51,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaRequestDTO, CredentialIssuerParams,
     CredentialSchemaDetailResponseDTO, OpenID4VCICredentialValueDetails,
 };
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{ServiceError, ValidationError};
 
@@ -1243,4 +1246,28 @@ impl From<KeyStorageSecurity> for WalletStorageTypeEnum {
             KeyStorageSecurity::Basic => WalletStorageTypeEnum::Software,
         }
     }
+}
+
+pub(super) fn credential_config_to_holder_signing_algs(
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    credential_config: &OpenID4VCICredentialConfigurationData,
+) -> Option<Vec<String>> {
+    let proof_type = credential_config
+        .proof_types_supported
+        .as_ref()?
+        .get("jwt")?;
+    let algs = proof_type
+        .proof_signing_alg_values_supported
+        .iter()
+        .filter_map(|alg| {
+            key_algorithm_provider
+                .key_algorithm_from_jose_alg(alg)
+                .map(|(alg_type, _)| alg_type)
+        })
+        .map(|alg_type| alg_type.to_string())
+        .collect::<HashSet<_>>();
+    if algs.is_empty() {
+        return None;
+    }
+    Some(algs.into_iter().collect())
 }

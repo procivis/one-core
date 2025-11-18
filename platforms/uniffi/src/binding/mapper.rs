@@ -229,10 +229,12 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseBindingEnum {
                 interaction_id,
                 tx_code,
                 key_storage_security,
+                key_algorithms,
             } => Self::CredentialIssuance {
                 interaction_id: interaction_id.to_string(),
                 tx_code: convert_inner(tx_code),
-                key_storage_security: convert_inner(key_storage_security),
+                key_storage_security: convert_inner_of_inner(key_storage_security),
+                key_algorithms,
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,

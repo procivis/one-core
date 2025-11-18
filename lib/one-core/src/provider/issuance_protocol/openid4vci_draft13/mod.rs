@@ -71,8 +71,8 @@ use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_op
     HandleInvitationOperations, HandleInvitationOperationsAccess,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
-    create_credential, extract_offered_claims, get_credential_offer_url,
-    parse_credential_issuer_params,
+    create_credential, credential_config_to_holder_signing_algs, extract_offered_claims,
+    get_credential_offer_url, parse_credential_issuer_params,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
@@ -1413,6 +1413,7 @@ impl OpenID4VCI13 {
             &*self.handle_invitation_operations,
             redirect_uri,
             &self.config,
+            &*self.key_algorithm_provider,
         )
         .await
     }
@@ -1432,6 +1433,7 @@ impl OpenID4VCI13 {
             storage_access,
             &*self.handle_invitation_operations,
             self.config.as_ref(),
+            &*self.key_algorithm_provider,
         )
         .await
     }
@@ -1449,6 +1451,7 @@ async fn handle_credential_invitation(
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     redirect_uri: Option<String>,
     config: &CoreConfig,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
@@ -1600,22 +1603,27 @@ async fn handle_credential_invitation(
     let (token_endpoint, issuer_metadata) =
         get_discovery_and_issuer_metadata(fetcher, &credential_issuer_endpoint).await?;
 
-    let (interaction_id, credentials, key_storage_security) =
-        prepare_issuance_interaction_and_credentials_with_claims(
-            organisation,
-            token_endpoint,
-            issuer_metadata,
-            credential_offer.grants,
-            &credential_offer.credential_configuration_ids,
-            issuer,
-            issuer_certificate,
-            credential_offer.credential_subject.as_ref(),
-            storage_access,
-            handle_invitation_operations,
-            None,
-            config,
-        )
-        .await?;
+    let PrepareIssuanceSuccess {
+        interaction_id,
+        credentials,
+        key_storage_security,
+        key_algorithms,
+    } = prepare_issuance_interaction_and_credentials_with_claims(
+        organisation,
+        token_endpoint,
+        issuer_metadata,
+        credential_offer.grants,
+        &credential_offer.credential_configuration_ids,
+        issuer,
+        issuer_certificate,
+        credential_offer.credential_subject.as_ref(),
+        storage_access,
+        handle_invitation_operations,
+        None,
+        config,
+        key_algorithm_provider,
+    )
+    .await?;
 
     for mut credential in credentials {
         credential.protocol = protocol.to_string();
@@ -1629,6 +1637,7 @@ async fn handle_credential_invitation(
         interaction_id,
         tx_code,
         key_storage_security,
+        key_algorithms,
     })
 }
 
@@ -1641,6 +1650,7 @@ async fn handle_continue_issuance(
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     config: &CoreConfig,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
     let credential_issuer_endpoint: Url =
         continue_issuance_dto
@@ -1681,25 +1691,30 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
-    let (interaction_id, credentials, key_storage_security) =
-        prepare_issuance_interaction_and_credentials_with_claims(
-            organisation,
-            token_endpoint,
-            issuer_metadata,
-            OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
-                issuer_state: None, // issuer state was used at the authorization request stage so it is not relevant anymore
-                authorization_server: continue_issuance_dto.authorization_server.to_owned(),
-            }),
-            &all_credential_configuration_ids,
-            None,
-            None,
-            None,
-            storage_access,
-            handle_invitation_operations,
-            Some(continue_issuance_dto),
-            config,
-        )
-        .await?;
+    let PrepareIssuanceSuccess {
+        interaction_id,
+        credentials,
+        key_storage_security,
+        key_algorithms,
+    } = prepare_issuance_interaction_and_credentials_with_claims(
+        organisation,
+        token_endpoint,
+        issuer_metadata,
+        OpenID4VCIGrants::AuthorizationCode(OpenID4VCIAuthorizationCodeGrant {
+            issuer_state: None, // issuer state was used at the authorization request stage so it is not relevant anymore
+            authorization_server: continue_issuance_dto.authorization_server.to_owned(),
+        }),
+        &all_credential_configuration_ids,
+        None,
+        None,
+        None,
+        storage_access,
+        handle_invitation_operations,
+        Some(continue_issuance_dto),
+        config,
+        key_algorithm_provider,
+    )
+    .await?;
 
     for mut credential in credentials {
         credential.protocol = protocol.to_string();
@@ -1712,7 +1727,15 @@ async fn handle_continue_issuance(
     Ok(ContinueIssuanceResponseDTO {
         interaction_id,
         key_storage_security,
+        key_algorithms,
     })
+}
+
+struct PrepareIssuanceSuccess {
+    interaction_id: InteractionId,
+    credentials: Vec<Credential>,
+    key_storage_security: Option<Vec<KeyStorageSecurity>>,
+    key_algorithms: Option<Vec<String>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1729,7 +1752,8 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     continue_issuance: Option<ContinueIssuanceDTO>,
     config: &CoreConfig,
-) -> Result<(InteractionId, Vec<Credential>, Option<KeyStorageSecurity>), IssuanceProtocolError> {
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<PrepareIssuanceSuccess, IssuanceProtocolError> {
     // We only support one credential at the time now
     let configuration_id = configuration_ids.first().ok_or_else(|| {
         IssuanceProtocolError::Failed("Credential offer is missing credentials".to_string())
@@ -1845,12 +1869,19 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         issuer_certificate,
     );
 
-    Ok((
+    Ok(PrepareIssuanceSuccess {
         interaction_id,
-        vec![credential],
-        convert_inner(credential_config.wallet_storage_type),
-    ))
+        credentials: vec![credential],
+        key_storage_security: credential_config
+            .wallet_storage_type
+            .map(|storage_type| vec![KeyStorageSecurity::from(storage_type)]),
+        key_algorithms: credential_config_to_holder_signing_algs(
+            key_algorithm_provider,
+            credential_config,
+        ),
+    })
 }
+
 fn has_matching_format(
     credential_config: &OpenID4VCICredentialConfigurationData,
     format_type: FormatType,

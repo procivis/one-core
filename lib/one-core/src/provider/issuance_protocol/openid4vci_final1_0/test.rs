@@ -1232,7 +1232,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     let InvitationResponseEnum::Credential {
         interaction_id,
-        key_storage_security: wallet_storage_type,
+        key_storage_security,
         ..
     } = result
     else {
@@ -1243,7 +1243,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
         capture_integration_id.lock().unwrap().unwrap(),
         interaction_id
     );
-    assert_eq!(wallet_storage_type, None);
+    assert_eq!(key_storage_security, None);
 }
 
 #[tokio::test]

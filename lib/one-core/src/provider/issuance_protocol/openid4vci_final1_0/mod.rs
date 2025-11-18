@@ -28,7 +28,8 @@ use super::model::{
     SubmitIssuerResponse, UpdateResponse,
 };
 use super::openid4vci_final1_0::mapper::{
-    get_credential_offer_url, parse_credential_issuer_params,
+    credential_config_to_holder_signing_algs_and_key_storage_security, get_credential_offer_url,
+    parse_credential_issuer_params,
 };
 use super::openid4vci_final1_0::model::{
     ChallengeResponseDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
@@ -849,6 +850,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             redirect_uri,
             &self.config,
             self.config_id.to_owned(),
+            &*self.key_algorithm_provider,
         )
         .await
     }
@@ -1477,6 +1479,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             &*self.metadata_cache,
             storage_access,
             self.config_id.to_owned(),
+            &*self.key_algorithm_provider,
         )
         .await
     }
@@ -1504,6 +1507,7 @@ async fn handle_credential_invitation(
     redirect_uri: Option<String>,
     config: &CoreConfig,
     protocol: String,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<InvitationResponseEnum, IssuanceProtocolError> {
     let credential_offer = resolve_credential_offer(client, invitation_url).await?;
 
@@ -1562,7 +1566,11 @@ async fn handle_credential_invitation(
 
     let tx_code = credential_offer.grants.tx_code().cloned();
 
-    let (interaction_id, key_storage_security) = prepare_issuance_interaction(
+    let PrepareIssuanceSuccess {
+        interaction_id,
+        key_storage_security,
+        key_algorithms,
+    } = prepare_issuance_interaction(
         organisation,
         token_endpoint,
         issuer_metadata,
@@ -1572,6 +1580,7 @@ async fn handle_credential_invitation(
         storage_access,
         None,
         protocol,
+        key_algorithm_provider,
     )
     .await?;
 
@@ -1579,6 +1588,7 @@ async fn handle_credential_invitation(
         interaction_id,
         tx_code,
         key_storage_security,
+        key_algorithms,
     })
 }
 
@@ -1588,6 +1598,7 @@ async fn handle_continue_issuance(
     fetcher: &dyn OpenIDMetadataFetcher,
     storage_access: &StorageAccess,
     protocol: String,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<ContinueIssuanceResponseDTO, IssuanceProtocolError> {
     let Metadata {
         token_endpoint,
@@ -1626,7 +1637,11 @@ async fn handle_continue_issuance(
     ]
     .concat();
 
-    let (interaction_id, key_storage_security) = prepare_issuance_interaction(
+    let PrepareIssuanceSuccess {
+        interaction_id,
+        key_storage_security,
+        key_algorithms,
+    } = prepare_issuance_interaction(
         organisation,
         token_endpoint,
         issuer_metadata,
@@ -1639,13 +1654,21 @@ async fn handle_continue_issuance(
         storage_access,
         Some(continue_issuance_dto),
         protocol,
+        key_algorithm_provider,
     )
     .await?;
 
     Ok(ContinueIssuanceResponseDTO {
         interaction_id,
         key_storage_security,
+        key_algorithms,
     })
+}
+
+struct PrepareIssuanceSuccess {
+    interaction_id: InteractionId,
+    key_storage_security: Option<Vec<KeyStorageSecurity>>,
+    key_algorithms: Option<Vec<String>>,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -1659,7 +1682,8 @@ async fn prepare_issuance_interaction(
     storage_access: &StorageAccess,
     continue_issuance: Option<ContinueIssuanceDTO>,
     protocol: String,
-) -> Result<(InteractionId, Option<KeyStorageSecurity>), IssuanceProtocolError> {
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Result<PrepareIssuanceSuccess, IssuanceProtocolError> {
     // We only support one credential at the time now
     let configuration_id = configuration_ids.first().ok_or_else(|| {
         IssuanceProtocolError::Failed("Credential offer is missing credentials".to_string())
@@ -1725,22 +1749,16 @@ async fn prepare_issuance_interaction(
 
     let interaction =
         create_and_store_interaction(storage_access, data, Some(organisation)).await?;
-
-    // Extract wallet_storage_type based on proof_types_supported.key_attestations_required.key_storage
-    let key_storage_security = credential_config
-        .proof_types_supported
-        .as_ref()
-        .and_then(|proof_types| {
-            proof_types.get("jwt").and_then(|proof_type| {
-                proof_type
-                    .key_attestations_required
-                    .as_ref()
-                    .and_then(|kar| KeyStorageSecurityLevel::select_lowest(&kar.key_storage))
-            })
-        })
-        .map(KeyStorageSecurity::from);
-
-    Ok((interaction.id, key_storage_security))
+    let (key_algorithms, key_storage_security) =
+        credential_config_to_holder_signing_algs_and_key_storage_security(
+            key_algorithm_provider,
+            credential_config,
+        );
+    Ok(PrepareIssuanceSuccess {
+        interaction_id: interaction.id,
+        key_storage_security,
+        key_algorithms,
+    })
 }
 
 async fn resolve_credential_offer(

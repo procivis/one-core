@@ -12,7 +12,7 @@ use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
     PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
-use one_dto_mapper::{From, Into, TryInto, convert_inner, convert_inner_of_inner};
+use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{
@@ -60,7 +60,8 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     /// For issuer-initiated Authorization Code Flows, use this URL to start the
     /// authorization process with the authorization server.
     pub authorization_code_flow_url: Option<String>,
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    pub key_storage_security: Option<Vec<KeyStorageSecurityRestEnum>>,
+    pub key_algorithms: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
@@ -79,8 +80,9 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     /// For reference.
     pub interaction_id: Uuid,
     pub interaction_type: InteractionTypeRestEnum,
-    #[from(with_fn = convert_inner)]
-    pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub key_storage_security: Option<Vec<KeyStorageSecurityRestEnum>>,
+    pub key_algorithms: Option<Vec<String>>,
 }
 
 #[options_not_nullable]

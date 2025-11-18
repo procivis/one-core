@@ -1474,6 +1474,7 @@ async fn test_continue_issuance() {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
                 key_storage_security: None,
+                key_algorithms: None,
             })
         });
 

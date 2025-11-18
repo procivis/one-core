@@ -13,13 +13,15 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 interaction_id,
                 tx_code,
                 key_storage_security,
+                key_algorithms,
             } => Self {
                 interaction_id,
                 proof_id: None,
                 tx_code: convert_inner(tx_code),
                 interaction_type: InteractionTypeRestEnum::Issuance,
                 authorization_code_flow_url: None,
-                key_storage_security: convert_inner(key_storage_security),
+                key_storage_security: convert_inner_of_inner(key_storage_security),
+                key_algorithms,
             },
             HandleInvitationResultDTO::AuthorizationCodeFlow {
                 interaction_id,
@@ -31,6 +33,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 tx_code: None,
                 authorization_code_flow_url: Some(authorization_code_flow_url),
                 key_storage_security: None,
+                key_algorithms: None,
             },
             HandleInvitationResultDTO::ProofRequest {
                 proof_id,
@@ -42,6 +45,7 @@ impl From<HandleInvitationResultDTO> for HandleInvitationResponseRestDTO {
                 tx_code: None,
                 authorization_code_flow_url: None,
                 key_storage_security: None,
+                key_algorithms: None,
             },
         }
     }

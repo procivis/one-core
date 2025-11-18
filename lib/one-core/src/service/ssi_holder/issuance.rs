@@ -634,10 +634,12 @@ impl SSIHolderService {
                 interaction_id,
                 tx_code,
                 key_storage_security,
+                key_algorithms,
             } => Ok(HandleInvitationResultDTO::Credential {
                 interaction_id,
                 tx_code,
                 key_storage_security,
+                key_algorithms,
             }),
             InvitationResponseEnum::AuthorizationFlow {
                 organisation_id,
@@ -858,6 +860,7 @@ impl SSIHolderService {
         let issuance_protocol::model::ContinueIssuanceResponseDTO {
             interaction_id,
             key_storage_security,
+            key_algorithms,
         } = self
             .issuance_protocol_provider
             .get_protocol(&issuance.request.protocol)
@@ -890,6 +893,7 @@ impl SSIHolderService {
             interaction_id,
             interaction_type: InteractionType::Issuance,
             key_storage_security,
+            key_algorithms,
         })
     }
 

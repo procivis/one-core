@@ -1,6 +1,9 @@
+use std::collections::HashSet;
+
 use indexmap::IndexMap;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use one_dto_mapper::convert_inner_of_inner;
 use secrecy::ExposeSecret;
 use time::OffsetDateTime;
 
@@ -17,13 +20,14 @@ use crate::config::{ConfigError, ConfigParsingError};
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
-    BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, LayoutProperties,
-    LogoProperties,
+    BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, KeyStorageSecurity,
+    LayoutProperties, LogoProperties,
 };
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::model::{
     KeyStorageSecurityLevel, OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
 };
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub(crate) fn get_credential_offer_url(
     protocol_base_url: String,
@@ -279,4 +283,36 @@ impl From<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO> for Option<Layo
             }),
         }
     }
+}
+
+pub(super) fn credential_config_to_holder_signing_algs_and_key_storage_security(
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    credential_config: &OpenID4VCICredentialConfigurationData,
+) -> (Option<Vec<String>>, Option<Vec<KeyStorageSecurity>>) {
+    let Some(proof_types_supported) = &credential_config.proof_types_supported else {
+        return (None, None);
+    };
+    let Some(proof_type) = proof_types_supported.get("jwt") else {
+        return (None, None);
+    };
+    let algs = proof_type
+        .proof_signing_alg_values_supported
+        .iter()
+        .filter_map(|alg| {
+            key_algorithm_provider
+                .key_algorithm_from_jose_alg(alg)
+                .map(|(alg_type, _)| alg_type.to_string())
+        })
+        .collect::<HashSet<_>>();
+    let algs = if algs.is_empty() {
+        None
+    } else {
+        Some(algs.into_iter().collect())
+    };
+
+    let key_storage_security = proof_type
+        .key_attestations_required
+        .as_ref()
+        .map(|key_attestations| key_attestations.key_storage.clone());
+    (algs, convert_inner_of_inner(key_storage_security))
 }

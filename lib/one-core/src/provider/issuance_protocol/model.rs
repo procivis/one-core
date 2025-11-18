@@ -37,7 +37,8 @@ pub(crate) enum InvitationResponseEnum {
     Credential {
         interaction_id: InteractionId,
         tx_code: Option<OpenID4VCITxCode>,
-        key_storage_security: Option<KeyStorageSecurity>,
+        key_storage_security: Option<Vec<KeyStorageSecurity>>,
+        key_algorithms: Option<Vec<String>>,
     },
     AuthorizationFlow {
         organisation_id: OrganisationId,
@@ -142,5 +143,6 @@ pub(crate) struct ShareResponse<T> {
 #[derive(Clone, Debug)]
 pub(crate) struct ContinueIssuanceResponseDTO {
     pub interaction_id: InteractionId,
-    pub key_storage_security: Option<KeyStorageSecurity>,
+    pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
+    pub key_algorithms: Option<Vec<String>>,
 }
