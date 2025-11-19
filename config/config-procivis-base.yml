@@ -130,6 +130,7 @@ verificationProtocol:
     params:
       public:
         useRequestUri: true
+        urlScheme: openid4vp-draft20
         verifier:
           supportedClientIdSchemes:
             [verifier_attestation, redirect_uri, did, x509_san_dns]
@@ -161,6 +162,7 @@ verificationProtocol:
     params:
       public:
         useRequestUri: true
+        urlScheme: openid4vp-draft25
         verifier:
           useDcql: false
           supportedClientIdSchemes:
@@ -209,7 +211,6 @@ verificationProtocol:
     params:
       public:
         useRequestUri: true
-        urlScheme: openid4vp-final
         verifier:
           supportedClientIdSchemes:
             [

@@ -74,6 +74,7 @@ const DCQL_QUERY_VALUE_QUERY_PARAM_KEY: &str = "dcql_query";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
 const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
+const PROXIMITY_QUERY_PARAM_KEY: &str = "key";
 
 pub(crate) struct OpenID4VPFinal1_0 {
     client: Arc<dyn HttpClient>,
@@ -290,6 +291,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         self.params.url_scheme == url.scheme()
+            && !query_has_key(PROXIMITY_QUERY_PARAM_KEY) // Ensure we do not match proximity URLs
             && (!query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
                 || query_has_key(DCQL_QUERY_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)
