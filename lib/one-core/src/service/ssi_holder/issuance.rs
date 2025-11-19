@@ -244,10 +244,13 @@ impl SSIHolderService {
         let data: issuance_protocol::openid4vci_final1_0::model::HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
-        if let Some(holder_binding) = &holder_binding {
+        if let Some(holder_binding) = &holder_binding
+            && let Some(accepted_security_levels) =
+                interaction_data_to_accepted_key_storage_security(&data)
+        {
             match_key_security_level(
                 &holder_binding.key.key.storage_type,
-                &interaction_data_to_accepted_key_storage_security(&data).unwrap_or_default(),
+                &accepted_security_levels,
                 &*self.key_security_level_provider,
             )?;
         }
