@@ -60,13 +60,15 @@ keyStorage:
     order: 10
 keySecurityLevel:
   MODERATE:
-    display: keySecurityLevel.moderate
-    order: 30
     params:
       public:
         holder:
-          priority: 30
           keyStorages: ["SECURE_ELEMENT"]
+  HIGH:
+    params:
+      public:
+        holder:
+          keyStorages: ["UBIQU_RSE"]
 trustManagement:
   SIMPLE_TRUST_LIST:
     params:

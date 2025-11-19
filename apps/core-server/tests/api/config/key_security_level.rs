@@ -20,7 +20,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({ "OPENID_SECURITY_LEVEL": ["iso_18045_basic"] })
     );
     assert_eq!(
-        resp["keySecurityLevel"]["ENHANCED_BASIC"]["capabilities"],
-        json!({ "OPENID_SECURITY_LEVEL": ["iso_18045_enhanced-basic"] })
+        resp["keySecurityLevel"]["MODERATE"]["capabilities"],
+        json!({ "OPENID_SECURITY_LEVEL": ["iso_18045_moderate"] })
     );
 }

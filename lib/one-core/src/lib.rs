@@ -642,7 +642,7 @@ impl OneCore {
 
         let key_security_levels = key_security_levels_from_config(
             &mut core_config.key_security_level,
-            key_provider.clone(),
+            &core_config.key_storage,
         )
         .map_err(|e| OneCoreBuildError::Config(ConfigError::Validation(e)))?;
         let key_security_level_provider =

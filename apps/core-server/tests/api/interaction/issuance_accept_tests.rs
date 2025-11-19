@@ -1312,7 +1312,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                key_storage_security: Some(KeyStorageSecurity::Moderate),
+                key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 ..Default::default()
             },
         )

@@ -9,9 +9,10 @@ use self::enhanced_basic::EnhancedBasic;
 use self::high::High;
 use self::moderate::Moderate;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{ConfigFields, KeySecurityLevelConfig, KeySecurityLevelType};
+use crate::config::core_config::{
+    ConfigFields, KeySecurityLevelConfig, KeySecurityLevelType, KeyStorageConfig,
+};
 use crate::provider::key_security_level::mapper::params_from_fields;
-use crate::provider::key_storage::provider::KeyProvider;
 
 pub mod basic;
 pub mod dto;
@@ -30,7 +31,7 @@ pub trait KeySecurityLevel: Send + Sync {
 
 pub(crate) fn key_security_levels_from_config(
     config: &mut KeySecurityLevelConfig,
-    key_provider: Arc<dyn KeyProvider>,
+    key_storage_config: &KeyStorageConfig,
 ) -> Result<HashMap<KeySecurityLevelType, Arc<dyn KeySecurityLevel>>, ConfigValidationError> {
     let mut levels: HashMap<KeySecurityLevelType, Arc<dyn KeySecurityLevel>> = HashMap::new();
 
@@ -46,7 +47,7 @@ pub(crate) fn key_security_levels_from_config(
         })?;
 
         for storage_type in &params.holder.key_storages {
-            if key_provider.get_key_storage(storage_type).is_none() {
+            if key_storage_config.get::<()>(storage_type).is_ok() {
                 return Err(ConfigValidationError::EntryNotFound(format!(
                     "No key storage with type {}",
                     storage_type
