@@ -25,7 +25,7 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
-use crate::model::did::{Did, DidType};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
@@ -45,7 +45,9 @@ use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, OpenID4VCRedirectUriParams,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
+use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
+    BuildCredentialSchemaResponse, MockHandleInvitationOperations,
+};
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     extract_offered_claims, get_parent_claim_paths,
 };
@@ -55,7 +57,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::model::{
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::service::create_credential_offer;
 use crate::provider::issuance_protocol::openid4vci_draft13::{IssuanceProtocolError, OpenID4VCI13};
-use crate::provider::issuance_protocol::{BuildCredentialSchemaResponse, IssuanceProtocol};
+use crate::provider::issuance_protocol::{HolderBindingInput, IssuanceProtocol};
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -751,9 +753,15 @@ async fn test_holder_accept_credential_success() {
     let result = openid_provider
         .holder_accept_credential(
             interaction,
-            &dummy_did(),
-            &dummy_key(),
-            None,
+            Some(HolderBindingInput {
+                identifier: dummy_identifier(),
+                did: dummy_did(),
+                key: RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: dummy_key(),
+                    reference: "ref".to_string(),
+                },
+            }),
             &storage_access,
             None,
             None,
@@ -963,9 +971,15 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     let result = openid_provider
         .holder_accept_credential(
             interaction,
-            &dummy_did(),
-            &dummy_key(),
-            None,
+            Some(HolderBindingInput {
+                identifier: dummy_identifier(),
+                did: dummy_did(),
+                key: RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: dummy_key(),
+                    reference: "ref".to_string(),
+                },
+            }),
             &storage_access,
             None,
             None,
@@ -1168,9 +1182,15 @@ async fn test_holder_accept_expired_credential_fails() {
     let result = openid_provider
         .holder_accept_credential(
             interaction,
-            &dummy_did(),
-            &dummy_key(),
-            None,
+            Some(HolderBindingInput {
+                identifier: dummy_identifier(),
+                did: dummy_did(),
+                key: RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: dummy_key(),
+                    reference: "ref".to_string(),
+                },
+            }),
             &storage_access,
             None,
             None,

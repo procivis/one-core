@@ -418,8 +418,8 @@ pub enum BusinessLogicError {
     #[error("Trust anchor is disabled")]
     TrustAnchorIsDisabled,
 
-    #[error("Overlapping holder DID with identifier")]
-    OverlappingHolderDidWithIdentifier,
+    #[error("Invalid holder identifier: {0}")]
+    InvalidHolderIdentifier(String),
 
     #[error("Incompatible holder did method")]
     IncompatibleHolderDidMethod,
@@ -1255,7 +1255,7 @@ pub enum ErrorCode {
     #[strum(message = "Key does not match public key of certificate")]
     BR_0214,
 
-    #[strum(message = "Overlapping did with identifier")]
+    #[strum(message = "Invalid holder identifier")]
     BR_0217,
 
     #[strum(message = "Identifier not compatible with format")]
@@ -1617,7 +1617,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::RevocationCheckNotAllowedForRole { .. } => ErrorCode::BR_0197,
             Self::InvalidProofRole { .. } => ErrorCode::BR_0198,
             Self::InvalidProofExchangeForRetraction { .. } => ErrorCode::BR_0199,
-            Self::OverlappingHolderDidWithIdentifier => ErrorCode::BR_0217,
+            Self::InvalidHolderIdentifier(_) => ErrorCode::BR_0217,
             Self::IncompatibleIssuanceIdentifier => ErrorCode::BR_0218,
             Self::IncompatibleProofVerificationIdentifier => ErrorCode::BR_0218,
             Self::IncompatibleHolderDidMethod => ErrorCode::BR_0218,

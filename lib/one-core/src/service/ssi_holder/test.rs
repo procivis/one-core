@@ -1040,7 +1040,7 @@ async fn test_accept_credential() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _, _| {
+        .returning(|_, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),
@@ -1196,7 +1196,7 @@ async fn test_accept_credential_with_did() {
     exchange_protocol_mock
         .expect_holder_accept_credential()
         .once()
-        .returning(|_, _, _, _, _, _, _| {
+        .returning(|_, _, _, _, _| {
             Ok(UpdateResponse {
                 result: SubmitIssuerResponse {
                     credential: "credential".to_string(),

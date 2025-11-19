@@ -15,7 +15,6 @@ use super::validator::{
     validate_initiate_issuance_request,
 };
 use crate::config::core_config::FormatType;
-use crate::mapper::openid4vci::interaction_data_to_accepted_key_storage_security;
 use crate::mapper::value_to_model_claims;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::claim::Claim;
@@ -24,16 +23,14 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::{Did, DidRelations, KeyFilter, KeyRole};
-use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{
     Interaction, InteractionId, InteractionRelations, InteractionType,
 };
-use crate::model::key::Key;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::issuance_protocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, Features};
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
@@ -41,8 +38,10 @@ use crate::provider::issuance_protocol::error::{
 use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, SubmitIssuerResponse, UpdateResponse,
 };
+use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::interaction_data_to_accepted_key_storage_security;
 use crate::provider::issuance_protocol::{
-    IssuanceProtocol, deserialize_interaction_data, serialize_interaction_data,
+    self, HolderBindingInput, IssuanceProtocol, deserialize_interaction_data,
+    serialize_interaction_data,
 };
 use crate::service::error::ServiceError::BusinessLogic;
 use crate::service::error::{
@@ -88,75 +87,86 @@ impl SSIHolderService {
             .await?;
 
         let identifier = match (did_id, identifier_id) {
-            (Some(did_id), None) => self
-                .identifier_repository
-                .get_from_did_id(
-                    did_id,
-                    &IdentifierRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
+            (Some(did_id), None) => Some(
+                self.identifier_repository
+                    .get_from_did_id(
+                        did_id,
+                        &IdentifierRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            did: Some(DidRelations {
+                                keys: Some(Default::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
-                )
-                .await?
-                .ok_or(ServiceError::from(ValidationError::DidNotFound))?,
-            (None, Some(identifier_id)) => self
-                .identifier_repository
-                .get(
-                    identifier_id,
-                    &IdentifierRelations {
-                        organisation: Some(OrganisationRelations::default()),
-                        did: Some(DidRelations {
-                            keys: Some(Default::default()),
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::from(ValidationError::DidNotFound))?,
+            ),
+            (None, Some(identifier_id)) => Some(
+                self.identifier_repository
+                    .get(
+                        identifier_id,
+                        &IdentifierRelations {
+                            organisation: Some(OrganisationRelations::default()),
+                            did: Some(DidRelations {
+                                keys: Some(Default::default()),
+                                ..Default::default()
+                            }),
                             ..Default::default()
-                        }),
-                        ..Default::default()
-                    },
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
+                        identifier_id,
+                    )))?,
+            ),
+            (None, None) => None,
+            (Some(_), Some(_)) => {
+                return Err(BusinessLogicError::InvalidHolderIdentifier(
+                    "Both didId and identifierId specified".to_string(),
                 )
-                .await?
-                .ok_or(ServiceError::from(EntityNotFoundError::Identifier(
-                    identifier_id,
-                )))?,
-            (Some(_), Some(_)) | (None, None) => {
-                return Err(BusinessLogicError::OverlappingHolderDidWithIdentifier.into());
-            }
-        };
-        throw_if_org_relation_not_matching_session(
-            identifier.organisation.as_ref(),
-            &*self.session_provider,
-        )?;
-
-        let did = identifier.did.to_owned().ok_or(BusinessLogic(
-            BusinessLogicError::IncompatibleHolderIdentifier,
-        ))?;
-
-        let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
-        let selected_key = match key_id {
-            Some(key_id) => did
-                .find_key(&key_id, &key_filter)?
-                .ok_or(ValidationError::KeyNotFound)?,
-            None => {
-                did.find_first_matching_key(&key_filter)?
-                    .ok_or(ValidationError::InvalidKey(
-                        "No key with role authentication available".to_string(),
-                    ))?
+                .into());
             }
         };
 
-        let holder_jwk_key_id = did.verification_method_id(selected_key);
-        let selected_key = &selected_key.key;
+        let holder_binding_input = if let Some(identifier) = identifier {
+            throw_if_org_relation_not_matching_session(
+                identifier.organisation.as_ref(),
+                &*self.session_provider,
+            )?;
+
+            let did = identifier.did.to_owned().ok_or(BusinessLogic(
+                BusinessLogicError::IncompatibleHolderIdentifier,
+            ))?;
+
+            let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
+            let selected_key = match key_id {
+                Some(key_id) => did
+                    .find_key(&key_id, &key_filter)?
+                    .ok_or(ValidationError::KeyNotFound)?,
+                None => {
+                    did.find_first_matching_key(&key_filter)?
+                        .ok_or(ValidationError::InvalidKey(
+                            "No key with role authentication available".to_string(),
+                        ))?
+                }
+            };
+
+            Some(HolderBindingInput {
+                identifier,
+                key: selected_key.to_owned(),
+                did,
+            })
+        } else {
+            None
+        };
 
         if credentials.is_empty() {
             return self
                 .accept_credential_final1(
                     interaction_id,
-                    &did,
-                    &identifier,
-                    selected_key,
-                    holder_jwk_key_id,
+                    holder_binding_input,
                     tx_code,
                     holder_wallet_unit_id,
                 )
@@ -174,10 +184,7 @@ impl SSIHolderService {
             if let Err(error) = self
                 .accept_and_save_credential_draft13(
                     &credential,
-                    &did,
-                    &identifier,
-                    selected_key,
-                    &holder_jwk_key_id,
+                    holder_binding_input.clone(),
                     tx_code.clone(),
                 )
                 .await
@@ -209,14 +216,10 @@ impl SSIHolderService {
     }
 
     /// specific handling for the final-1 protocol, credential gets created after issued
-    #[allow(clippy::too_many_arguments)]
     async fn accept_credential_final1(
         &self,
         interaction_id: InteractionId,
-        holder_did: &Did,
-        holder_identifier: &Identifier,
-        selected_key: &Key,
-        holder_jwk_key_id: String,
+        holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
         holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<CredentialId, ServiceError> {
@@ -241,11 +244,13 @@ impl SSIHolderService {
         let data: issuance_protocol::openid4vci_final1_0::model::HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
 
-        match_key_security_level(
-            &selected_key.storage_type,
-            &interaction_data_to_accepted_key_storage_security(&data).unwrap_or_default(),
-            &*self.key_security_level_provider,
-        )?;
+        if let Some(holder_binding) = &holder_binding {
+            match_key_security_level(
+                &holder_binding.key.key.storage_type,
+                &interaction_data_to_accepted_key_storage_security(&data).unwrap_or_default(),
+                &*self.key_security_level_provider,
+            )?;
+        }
 
         let format_type = match data.format.as_str() {
             "jwt_vc_json" => FormatType::Jwt,
@@ -278,14 +283,14 @@ impl SSIHolderService {
                 MissingProviderError::Formatter(format),
             ))?;
 
-        validate_holder_capabilities(
-            &self.config,
-            holder_did,
-            holder_identifier,
-            selected_key,
-            &formatter.get_capabilities(),
-            self.key_algorithm_provider.as_ref(),
-        )?;
+        if let Some(holder_binding) = &holder_binding {
+            validate_holder_capabilities(
+                &self.config,
+                holder_binding,
+                &formatter.get_capabilities(),
+                self.key_algorithm_provider.as_ref(),
+            )?;
+        }
 
         let protocol = self
             .issuance_protocol_provider
@@ -296,9 +301,7 @@ impl SSIHolderService {
         let issuer_response = protocol
             .holder_accept_credential(
                 interaction,
-                holder_did,
-                selected_key,
-                Some(holder_jwk_key_id),
+                holder_binding,
                 storage_proxy.as_ref(),
                 tx_code,
                 holder_wallet_unit_id,
@@ -332,8 +335,6 @@ impl SSIHolderService {
             .credential_repository
             .create_credential(Credential {
                 state: CredentialStateEnum::Accepted,
-                holder_identifier: Some(holder_identifier.to_owned()),
-                key: Some(selected_key.to_owned()),
                 credential_blob_id: Some(blob_id),
                 ..credential
             })
@@ -342,14 +343,10 @@ impl SSIHolderService {
         Ok(credential_id)
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn accept_and_save_credential_draft13(
         &self,
         credential: &Credential,
-        holder_did: &Did,
-        holder_identifier: &Identifier,
-        selected_key: &Key,
-        holder_jwk_key_id: &str,
+        holder_binding: Option<HolderBindingInput>,
         tx_code: Option<String>,
     ) -> Result<(), ServiceError> {
         throw_if_credential_state_not_eq(credential, CredentialStateEnum::Pending)?;
@@ -359,11 +356,13 @@ impl SSIHolderService {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
-        validate_key_storage_supports_security_requirement(
-            &selected_key.storage_type,
-            &schema.key_storage_security,
-            &*self.key_security_level_provider,
-        )?;
+        if let Some(holder_binding) = &holder_binding {
+            validate_key_storage_supports_security_requirement(
+                &holder_binding.key.key.storage_type,
+                &schema.key_storage_security,
+                &*self.key_security_level_provider,
+            )?;
+        }
 
         let format = &schema.format;
         let formatter = self
@@ -373,14 +372,14 @@ impl SSIHolderService {
                 MissingProviderError::Formatter(format.to_owned()),
             ))?;
 
-        validate_holder_capabilities(
-            &self.config,
-            holder_did,
-            holder_identifier,
-            selected_key,
-            &formatter.get_capabilities(),
-            self.key_algorithm_provider.as_ref(),
-        )?;
+        if let Some(holder_binding) = &holder_binding {
+            validate_holder_capabilities(
+                &self.config,
+                holder_binding,
+                &formatter.get_capabilities(),
+                self.key_algorithm_provider.as_ref(),
+            )?;
+        }
 
         let interaction = credential
             .interaction
@@ -399,9 +398,7 @@ impl SSIHolderService {
             ))?
             .holder_accept_credential(
                 interaction,
-                holder_did,
-                selected_key,
-                Some(holder_jwk_key_id.to_string()),
+                holder_binding,
                 storage_proxy.as_ref(),
                 tx_code,
                 None,
@@ -446,8 +443,6 @@ impl SSIHolderService {
                 credential.id,
                 UpdateCredentialRequest {
                     state: Some(CredentialStateEnum::Accepted),
-                    holder_identifier_id: Some(holder_identifier.id),
-                    key: Some(selected_key.id),
                     claims: Some(claims),
                     credential_blob_id: Some(blob_id),
                     ..Default::default()
@@ -677,7 +672,7 @@ impl SSIHolderService {
 
     async fn resolve_update_issuer_response(
         &self,
-        update_response: UpdateResponse<SubmitIssuerResponse>,
+        update_response: UpdateResponse,
     ) -> Result<SubmitIssuerResponse, ServiceError> {
         if let Some(create_did) = update_response.create_did {
             self.did_repository.create_did(create_did).await?;

@@ -11,8 +11,9 @@ use super::model::{
     CredentialIssuerParams, CredentialSchemaBackgroundPropertiesRequestDTO,
     CredentialSchemaCodePropertiesRequestDTO, CredentialSchemaCodeTypeEnum,
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLogoPropertiesRequestDTO,
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialMetadataResponseDTO,
-    OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
+    HolderInteractionData, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
 };
 use crate::config::core_config::{CoreConfig, Params};
@@ -283,6 +284,19 @@ impl From<OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO> for Option<Layo
             }),
         }
     }
+}
+
+pub(crate) fn interaction_data_to_accepted_key_storage_security(
+    data: &HolderInteractionData,
+) -> Option<Vec<KeyStorageSecurityLevel>> {
+    data.proof_types_supported.as_ref().and_then(|proof_types| {
+        proof_types.get("jwt").and_then(|proof_type| {
+            proof_type
+                .key_attestations_required
+                .as_ref()
+                .map(|kar| kar.key_storage.clone())
+        })
+    })
 }
 
 pub(super) fn credential_config_to_holder_signing_algs_and_key_storage_security(

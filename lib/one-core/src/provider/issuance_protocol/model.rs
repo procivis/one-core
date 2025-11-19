@@ -112,9 +112,9 @@ pub enum OpenID4VCITxCodeInputMode {
     Text,
 }
 
-#[derive(Clone, Debug, Default)]
-pub(crate) struct UpdateResponse<T> {
-    pub result: T,
+#[derive(Clone, Debug)]
+pub(crate) struct UpdateResponse {
+    pub result: SubmitIssuerResponse,
     pub create_did: Option<Did>,
     pub create_key: Option<Key>,
     pub create_certificate: Option<Certificate>,

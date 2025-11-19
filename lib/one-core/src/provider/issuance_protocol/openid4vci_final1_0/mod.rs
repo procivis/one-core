@@ -29,7 +29,7 @@ use super::model::{
 };
 use super::openid4vci_final1_0::mapper::{
     credential_config_to_holder_signing_algs_and_key_storage_security, get_credential_offer_url,
-    parse_credential_issuer_params,
+    interaction_data_to_accepted_key_storage_security, parse_credential_issuer_params,
 };
 use super::openid4vci_final1_0::model::{
     ChallengeResponseDTO, HolderInteractionData, OAuthAuthorizationServerMetadata,
@@ -41,14 +41,13 @@ use super::openid4vci_final1_0::model::{
 use super::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
 use super::openid4vci_final1_0::service::{create_credential_offer, get_protocol_base_url};
 use super::{
-    IssuanceProtocol, IssuanceProtocolError, StorageAccess, deserialize_interaction_data,
-    serialize_interaction_data,
+    HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
+    deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, KeyAlgorithmType,
 };
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
-use crate::mapper::openid4vci::interaction_data_to_accepted_key_storage_security;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::claim::ClaimRelations;
@@ -513,10 +512,11 @@ impl OpenID4VCIFinal1_0 {
         &self,
         issuer_response: SubmitIssuerResponse,
         interaction_data: &HolderInteractionData,
+        holder_binding: HolderBindingInput,
         storage_access: &StorageAccess,
         organisation: &Organisation,
         interaction: &Interaction,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
+    ) -> Result<UpdateResponse, IssuanceProtocolError> {
         let format = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
             Some(&issuer_response.credential),
@@ -612,6 +612,8 @@ impl OpenID4VCIFinal1_0 {
 
         credential.redirect_uri = issuer_response.redirect_uri.clone();
         credential.state = CredentialStateEnum::Accepted;
+        credential.holder_identifier = Some(holder_binding.identifier);
+        credential.key = Some(holder_binding.key.key);
         credential.protocol = self.config_id.to_owned();
         credential.interaction = Some(interaction.to_owned());
         if let Some(identifier) = credential.issuer_identifier.as_mut() {
@@ -858,13 +860,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     async fn holder_accept_credential(
         &self,
         interaction: Interaction,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        holder_binding: Option<HolderBindingInput>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
         holder_wallet_unit_id: Option<HolderWalletUnitId>,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
+    ) -> Result<UpdateResponse, IssuanceProtocolError> {
         let organisation =
             interaction
                 .organisation
@@ -875,6 +875,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
+
+        let holder_binding = holder_binding.ok_or(IssuanceProtocolError::InvalidRequest(
+            "holder binding material not specified".to_string(),
+        ))?;
+
+        let key = &holder_binding.key.key;
 
         let wallet_attestation_required = interaction_data
             .token_endpoint_auth_methods_supported
@@ -1031,9 +1037,17 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
         }
 
+        let holder_jwk_key_id = holder_binding
+            .did
+            .verification_method_id(&holder_binding.key);
+
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id.clone(), self.key_algorithm_provider.clone())
+            .get_signature_provider(
+                key,
+                Some(holder_jwk_key_id),
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let key = self
@@ -1054,7 +1068,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let credential_response = self
             .holder_request_credential(
                 &interaction_data,
-                &holder_did.did,
+                &holder_binding.did.did,
                 key,
                 Some(nonce),
                 auth_fn,
@@ -1069,6 +1083,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .holder_process_accepted_credential(
                 credential_response,
                 &interaction_data,
+                holder_binding,
                 storage_access,
                 organisation,
                 &interaction,

@@ -12,13 +12,10 @@ use url::Url;
 
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
-use crate::model::claim::Claim;
 use crate::model::credential::Credential;
-use crate::model::credential_schema::CredentialSchema;
-use crate::model::did::Did;
+use crate::model::did::{Did, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -205,9 +202,11 @@ pub(crate) struct BasicSchemaData {
     pub offer_id: String,
 }
 
-pub(crate) struct BuildCredentialSchemaResponse {
-    pub claims: Vec<Claim>,
-    pub schema: CredentialSchema,
+#[derive(Debug, Clone)]
+pub(crate) struct HolderBindingInput {
+    pub identifier: Identifier,
+    pub did: Did,
+    pub key: RelatedKey,
 }
 
 /// This trait contains methods for exchanging credentials between issuers and holders
@@ -233,13 +232,11 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     async fn holder_accept_credential(
         &self,
         interaction: Interaction,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        holder_binding: Option<HolderBindingInput>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
         holder_wallet_unit_id: Option<HolderWalletUnitId>,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError>;
+    ) -> Result<UpdateResponse, IssuanceProtocolError>;
 
     /// Rejects a previously-accepted credential offer.
     async fn holder_reject_credential(

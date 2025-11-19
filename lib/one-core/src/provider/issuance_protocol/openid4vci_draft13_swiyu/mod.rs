@@ -10,10 +10,8 @@ use crate::config::core_config::DidType::WebVh;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential::Credential;
-use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -21,7 +19,6 @@ use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::IssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::{
@@ -31,6 +28,7 @@ use crate::provider::issuance_protocol::model::{
 use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::HandleInvitationOperations;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
+use crate::provider::issuance_protocol::{HolderBindingInput, IssuanceProtocol};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -139,23 +137,13 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
     async fn holder_accept_credential(
         &self,
         interaction: Interaction,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        holder_binding: Option<HolderBindingInput>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
         _holder_wallet_unit_id: Option<HolderWalletUnitId>,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
+    ) -> Result<UpdateResponse, IssuanceProtocolError> {
         self.inner
-            .holder_accept_credential(
-                interaction,
-                holder_did,
-                key,
-                jwk_key_id,
-                storage_access,
-                tx_code,
-                None,
-            )
+            .holder_accept_credential(interaction, holder_binding, storage_access, tx_code, None)
             .await
     }
 

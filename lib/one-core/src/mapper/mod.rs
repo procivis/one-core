@@ -46,13 +46,13 @@ use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+
 pub(crate) mod credential_schema_claim;
 pub(crate) mod exchange;
 mod holder_wallet_unit;
 pub(crate) mod identifier;
 mod key_security;
 pub(crate) mod oidc;
-pub(crate) mod openid4vci;
 pub(crate) mod openid4vp;
 pub(crate) mod params;
 pub(crate) mod timestamp;

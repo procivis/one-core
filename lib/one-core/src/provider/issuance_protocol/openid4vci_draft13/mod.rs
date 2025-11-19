@@ -21,7 +21,9 @@ use url::Url;
 use uuid::Uuid;
 
 use super::dto::{ContinueIssuanceDTO, IssuanceProtocolCapabilities};
-use super::{BasicSchemaData, IssuanceProtocol, IssuanceProtocolError, StorageAccess};
+use super::{
+    BasicSchemaData, HolderBindingInput, IssuanceProtocol, IssuanceProtocolError, StorageAccess,
+};
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, IssuanceProtocolType,
 };
@@ -68,7 +70,7 @@ use crate::provider::issuance_protocol::model::{
     UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
-    HandleInvitationOperations, HandleInvitationOperationsAccess,
+    BuildCredentialSchemaResponse, HandleInvitationOperations, HandleInvitationOperationsAccess,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
     create_credential, credential_config_to_holder_signing_algs, extract_offered_claims,
@@ -90,7 +92,7 @@ use crate::provider::issuance_protocol::openid4vci_draft13::service::{
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::validator::validate_issuer;
 use crate::provider::issuance_protocol::{
-    BuildCredentialSchemaResponse, deserialize_interaction_data, serialize_interaction_data,
+    deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -490,8 +492,9 @@ impl OpenID4VCI13 {
         &self,
         issuer_response: SubmitIssuerResponse,
         credential: &Credential,
+        holder_binding: HolderBindingInput,
         storage_access: &StorageAccess,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
+    ) -> Result<UpdateResponse, IssuanceProtocolError> {
         let schema = credential
             .schema
             .as_ref()
@@ -628,6 +631,8 @@ impl OpenID4VCI13 {
                 UpdateCredentialRequest {
                     issuer_identifier_id: Some(identifier_updates.issuer_identifier_id),
                     issuer_certificate_id: identifier_updates.issuer_certificate_id,
+                    holder_identifier_id: Some(holder_binding.identifier.id),
+                    key: Some(holder_binding.key.key.id),
                     redirect_uri: Some(redirect_uri),
                     suspend_end_date: Clearable::DontTouch,
                     issuance_date: response_credential.issuance_date,
@@ -875,13 +880,15 @@ impl IssuanceProtocol for OpenID4VCI13 {
     async fn holder_accept_credential(
         &self,
         mut interaction: Interaction,
-        holder_did: &Did,
-        key: &Key,
-        jwk_key_id: Option<String>,
+        holder_binding: Option<HolderBindingInput>,
         storage_access: &StorageAccess,
         tx_code: Option<String>,
         _holder_wallet_unit_id: Option<HolderWalletUnitId>,
-    ) -> Result<UpdateResponse<SubmitIssuerResponse>, IssuanceProtocolError> {
+    ) -> Result<UpdateResponse, IssuanceProtocolError> {
+        let holder_binding = holder_binding.ok_or(IssuanceProtocolError::InvalidRequest(
+            "holder binding material not specified".to_string(),
+        ))?;
+
         let credential = storage_access
             .get_credential_by_interaction_id(&interaction.id)
             .await
@@ -929,19 +936,26 @@ impl IssuanceProtocol for OpenID4VCI13 {
             interaction_data.nonce = token_response.c_nonce.clone();
         }
 
+        let holder_jwk_key_id = holder_binding
+            .did
+            .verification_method_id(&holder_binding.key);
+
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, jwk_key_id.clone(), self.key_algorithm_provider.clone())
+            .get_signature_provider(
+                &holder_binding.key.key,
+                Some(holder_jwk_key_id),
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let key = self
             .key_algorithm_provider
             .reconstruct_key(
-                key.key_algorithm_type()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Invalid key algorithm".to_string(),
-                    ))?,
-                &key.public_key,
+                holder_binding.key.key.key_algorithm_type().ok_or(
+                    IssuanceProtocolError::Failed("Invalid key algorithm".to_string()),
+                )?,
+                &holder_binding.key.key.public_key,
                 None,
                 None,
             )
@@ -952,7 +966,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
         let credential_response = self
             .holder_request_credential(
                 &interaction_data,
-                &holder_did.did,
+                &holder_binding.did.did,
                 key,
                 schema,
                 token_response.c_nonce,
@@ -971,7 +985,12 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
         let result = self
-            .holder_process_accepted_credential(credential_response, &credential, storage_access)
+            .holder_process_accepted_credential(
+                credential_response,
+                &credential,
+                holder_binding,
+                storage_access,
+            )
             .await;
 
         if let (Some(notification_id), Some(notification_endpoint)) =
