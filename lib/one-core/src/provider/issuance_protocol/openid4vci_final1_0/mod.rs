@@ -1675,7 +1675,7 @@ async fn handle_continue_issuance(
 
     Ok(ContinueIssuanceResponseDTO {
         interaction_id,
-        key_storage_security,
+        key_storage_security_levels: key_storage_security,
         key_algorithms,
     })
 }

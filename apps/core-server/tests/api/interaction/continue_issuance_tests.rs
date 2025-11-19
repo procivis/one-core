@@ -289,7 +289,7 @@ async fn test_continue_issuance_endpoint() {
 
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
     resp["keyAlgorithms"].assert_eq_unordered(&[
         "ECDSA".to_string(),
         "EDDSA".to_string(),

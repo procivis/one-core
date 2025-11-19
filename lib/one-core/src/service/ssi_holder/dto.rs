@@ -44,7 +44,7 @@ pub enum HandleInvitationResultDTO {
     Credential {
         interaction_id: InteractionId,
         tx_code: Option<OpenID4VCITxCode>,
-        key_storage_security: Option<Vec<KeyStorageSecurity>>,
+        key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
         key_algorithms: Option<Vec<String>>,
     },
     AuthorizationCodeFlow {
@@ -61,7 +61,7 @@ pub enum HandleInvitationResultDTO {
 pub struct ContinueIssuanceResponseDTO {
     pub interaction_id: InteractionId,
     pub interaction_type: InteractionType,
-    pub key_storage_security: Option<Vec<KeyStorageSecurity>>,
+    pub key_storage_security_levels: Option<Vec<KeyStorageSecurity>>,
     pub key_algorithms: Option<Vec<String>>,
 }
 

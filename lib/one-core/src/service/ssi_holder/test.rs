@@ -1473,7 +1473,7 @@ async fn test_continue_issuance() {
         .returning(move |_, _, _| {
             Ok(ContinueIssuanceResponseDTO {
                 interaction_id,
-                key_storage_security: None,
+                key_storage_security_levels: None,
                 key_algorithms: None,
             })
         });

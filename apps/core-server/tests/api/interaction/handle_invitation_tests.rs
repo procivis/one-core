@@ -299,7 +299,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
 }
 
 #[tokio::test]
@@ -469,7 +469,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
 
     let resp = resp.json_value().await;
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
 }
 
 #[tokio::test]
@@ -646,7 +646,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
 }
 
 #[tokio::test]
@@ -827,7 +827,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
 }
 
 #[tokio::test]
@@ -1105,7 +1105,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
 }
 
 #[tokio::test]
@@ -1561,7 +1561,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_t
     let resp = resp.json_value().await;
     assert!(resp.get("interactionId").is_some());
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
     let code = &resp["txCode"];
     assert_eq!(code["input_mode"], "numeric");
     assert_eq!(code["length"], 5);
@@ -1822,7 +1822,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
     assert_eq!(resp["interactionType"], "ISSUANCE");
-    assert_eq!(resp["keyStorageSecurity"], json!(["BASIC"]));
+    assert_eq!(resp["keyStorageSecurityLevels"], json!(["BASIC"]));
 }
 
 #[tokio::test]

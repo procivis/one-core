@@ -60,7 +60,7 @@ pub(crate) struct HandleInvitationResponseRestDTO {
     /// For issuer-initiated Authorization Code Flows, use this URL to start the
     /// authorization process with the authorization server.
     pub authorization_code_flow_url: Option<String>,
-    pub key_storage_security: Option<Vec<KeyStorageSecurityRestEnum>>,
+    pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
 }
 
@@ -81,7 +81,7 @@ pub(crate) struct ContinueIssuanceResponseRestDTO {
     pub interaction_id: Uuid,
     pub interaction_type: InteractionTypeRestEnum,
     #[from(with_fn = convert_inner_of_inner)]
-    pub key_storage_security: Option<Vec<KeyStorageSecurityRestEnum>>,
+    pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
     pub key_algorithms: Option<Vec<String>>,
 }
 

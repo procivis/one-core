@@ -132,7 +132,7 @@ pub enum HandleInvitationResponseBindingEnum {
     CredentialIssuance {
         /// For reference.
         interaction_id: String,
-        key_storage_security: Option<Vec<KeyStorageSecurityBindingEnum>>,
+        key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
         key_algorithms: Option<Vec<String>>,
         /// Metadata for entering a transaction code
         /// If a pre-authorized code is issued with a transaction code object, the
@@ -159,7 +159,7 @@ pub enum HandleInvitationResponseBindingEnum {
 pub struct ContinueIssuanceResponseBindingDTO {
     /// For reference.
     pub interaction_id: String,
-    pub key_storage_security: Option<Vec<KeyStorageSecurityBindingEnum>>,
+    pub key_storage_security_levels: Option<Vec<KeyStorageSecurityBindingEnum>>,
     pub key_algorithms: Option<Vec<String>>,
 }
 
@@ -167,7 +167,7 @@ impl From<ContinueIssuanceResponseDTO> for ContinueIssuanceResponseBindingDTO {
     fn from(value: ContinueIssuanceResponseDTO) -> Self {
         Self {
             interaction_id: value.interaction_id.to_string(),
-            key_storage_security: convert_inner_of_inner(value.key_storage_security),
+            key_storage_security_levels: convert_inner_of_inner(value.key_storage_security_levels),
             key_algorithms: value.key_algorithms,
         }
     }
