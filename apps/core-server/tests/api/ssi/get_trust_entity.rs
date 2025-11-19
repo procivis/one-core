@@ -130,11 +130,13 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         )
         .await;
 
-    let key_algorithm_provider =
-        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![(
             KeyAlgorithmType::Ecdsa,
             Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
-        )])));
+        )]),
+        Default::default(),
+    ));
     let did_method = KeyDidMethod::new(key_algorithm_provider.clone());
 
     let keys = vec![key.clone()];

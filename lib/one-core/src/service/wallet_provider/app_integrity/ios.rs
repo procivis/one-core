@@ -343,11 +343,13 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
     }
 
     fn test_cert_validator(clock: Arc<dyn Clock>) -> CertificateValidatorImpl {
-        let key_algorithm_provider =
-            Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+            HashMap::from_iter(vec![(
                 KeyAlgorithmType::Ecdsa,
                 Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
-            )])));
+            )]),
+            Default::default(),
+        ));
 
         let crl_cache = Arc::new(X509CrlCache::new(
             Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),

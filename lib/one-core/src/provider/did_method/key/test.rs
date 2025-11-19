@@ -27,7 +27,7 @@ fn setup_key_did_method(
     let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
     key_algorithms.insert(algorithm_id, Arc::new(key_algorithm));
 
-    let key_algorithm_provider = KeyAlgorithmProviderImpl::new(key_algorithms);
+    let key_algorithm_provider = KeyAlgorithmProviderImpl::new(key_algorithms, Default::default());
 
     KeyDidMethod::new(Arc::new(key_algorithm_provider))
 }

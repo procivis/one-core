@@ -147,7 +147,10 @@ pub async fn initialize_core(
             }
         }
 
-        Ok(Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms)))
+        Ok(Arc::new(KeyAlgorithmProviderImpl::new(
+            key_algorithms,
+            config.to_owned(),
+        )))
     });
 
     let session_provider = Arc::new(CoreServerSessionProvider);

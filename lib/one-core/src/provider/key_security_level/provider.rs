@@ -1,5 +1,8 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::Arc;
+
+use itertools::Itertools;
 
 use crate::config::core_config::KeySecurityLevelType;
 use crate::provider::key_security_level::KeySecurityLevel;
@@ -7,6 +10,7 @@ use crate::provider::key_security_level::KeySecurityLevel;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait KeySecurityLevelProvider: Send + Sync {
     fn get_from_type(&self, level_type: KeySecurityLevelType) -> Option<Arc<dyn KeySecurityLevel>>;
+    fn ordered_by_priority(&self) -> Vec<(KeySecurityLevelType, Arc<dyn KeySecurityLevel>)>;
 }
 
 pub(crate) struct KeySecurityLevelProviderImpl {
@@ -22,5 +26,13 @@ impl KeySecurityLevelProviderImpl {
 impl KeySecurityLevelProvider for KeySecurityLevelProviderImpl {
     fn get_from_type(&self, level_type: KeySecurityLevelType) -> Option<Arc<dyn KeySecurityLevel>> {
         self.levels.get(&level_type).cloned()
+    }
+
+    fn ordered_by_priority(&self) -> Vec<(KeySecurityLevelType, Arc<dyn KeySecurityLevel>)> {
+        self.levels
+            .iter()
+            .sorted_by_key(|(_, v)| Reverse(v.get_priority()))
+            .map(|(k, v)| (*k, v.to_owned()))
+            .collect()
     }
 }

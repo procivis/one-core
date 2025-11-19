@@ -1377,11 +1377,13 @@ fn formatter_for_params(
     };
     let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
     let key_alg = Eddsa;
-    let key_algorithm_provider =
-        Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![(
             KeyAlgorithmType::Eddsa,
             Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
-        )])));
+        )]),
+        Default::default(),
+    ));
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
         caching_loader,
         IndexMap::from_iter(vec![

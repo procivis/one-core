@@ -64,16 +64,19 @@ pub(crate) async fn format_mdoc_credential(
 
     let key_alg_eddsa = Eddsa;
     let key_alg_ecdsa = Ecdsa;
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![
-        (
-            KeyAlgorithmType::Eddsa,
-            Arc::new(key_alg_eddsa) as Arc<dyn KeyAlgorithm>,
-        ),
-        (
-            KeyAlgorithmType::Ecdsa,
-            Arc::new(key_alg_ecdsa) as Arc<dyn KeyAlgorithm>,
-        ),
-    ])));
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![
+            (
+                KeyAlgorithmType::Eddsa,
+                Arc::new(key_alg_eddsa) as Arc<dyn KeyAlgorithm>,
+            ),
+            (
+                KeyAlgorithmType::Ecdsa,
+                Arc::new(key_alg_ecdsa) as Arc<dyn KeyAlgorithm>,
+            ),
+        ]),
+        Default::default(),
+    ));
 
     let did_method_provider = Arc::new(DidMethodProviderImpl::new(
         did_cache,

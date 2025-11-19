@@ -44,6 +44,9 @@ use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
@@ -167,6 +170,9 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -320,6 +326,9 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -461,6 +470,9 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -559,6 +571,9 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),

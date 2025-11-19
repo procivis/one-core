@@ -932,8 +932,10 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         });
 
     let arc: Arc<dyn KeyAlgorithm + 'static> = Arc::new(Ecdsa);
-    let real_key_algorithm_provider =
-        KeyAlgorithmProviderImpl::new(HashMap::from([(KeyAlgorithmType::Ecdsa, arc)]));
+    let real_key_algorithm_provider = KeyAlgorithmProviderImpl::new(
+        HashMap::from([(KeyAlgorithmType::Ecdsa, arc)]),
+        Default::default(),
+    );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider

@@ -1,11 +1,13 @@
+use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use itertools::Itertools;
 use secrecy::SecretSlice;
 
 use super::KeyAlgorithm;
 use super::error::KeyAlgorithmProviderError;
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{ConfigExt, KeyAlgorithmConfig, KeyAlgorithmType};
 use crate::model::key::{JwkUse, PublicKeyJwk};
 use crate::provider::key_algorithm::key::KeyHandle;
 
@@ -42,15 +44,20 @@ pub trait KeyAlgorithmProvider: Send + Sync {
     ) -> Result<KeyHandle, KeyAlgorithmProviderError>;
 
     fn supported_verification_jose_alg_ids(&self) -> Vec<String>;
+    fn ordered_by_holder_priority(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)>;
 }
 
 pub struct KeyAlgorithmProviderImpl {
     algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>,
+    config: KeyAlgorithmConfig,
 }
 
 impl KeyAlgorithmProviderImpl {
-    pub fn new(algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>) -> Self {
-        Self { algorithms }
+    pub fn new(
+        algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>,
+        config: KeyAlgorithmConfig,
+    ) -> Self {
+        Self { algorithms, config }
     }
 }
 
@@ -150,6 +157,22 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         self.algorithms
             .values()
             .flat_map(|key_alg| key_alg.verification_jose_alg_ids())
+            .collect()
+    }
+
+    fn ordered_by_holder_priority(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)> {
+        let get_holder_priority = |r#type: &KeyAlgorithmType| -> u32 {
+            self.config
+                .get_if_enabled(r#type)
+                .ok()
+                .map(|v| v.holder_priority)
+                .unwrap_or(0)
+        };
+
+        self.algorithms
+            .iter()
+            .sorted_by_key(|(k, _)| Reverse(get_holder_priority(k)))
+            .map(|(k, v)| (*k, v.to_owned()))
             .collect()
     }
 }

@@ -189,7 +189,10 @@ impl OneDevCore {
                 (core_config::KeyAlgorithmType::Ecdsa, Arc::new(Ecdsa) as _),
                 (core_config::KeyAlgorithmType::BbsPlus, Arc::new(BBS) as _),
             ]);
-        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms));
+        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+            key_algorithms,
+            Default::default(),
+        ));
 
         // initialize key storage provider
         let key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::from_iter(vec![(

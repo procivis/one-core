@@ -1743,6 +1743,7 @@ impl ErrorCodeMixin for IssuanceProtocolError {
             | Self::KeyMismatch
             | Self::CertificateMismatch
             | Self::CredentialVerificationFailed(_) => ErrorCode::BR_0173,
+            Self::BindingAutogenerationFailure(_) => ErrorCode::BR_0217,
             Self::Suspended | Self::RefreshTooSoon => ErrorCode::BR_0238,
         }
     }

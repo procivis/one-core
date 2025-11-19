@@ -95,16 +95,19 @@ pub(super) async fn proof_jwt_for(
         }
     };
 
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([
-        (
-            KeyAlgorithmType::Eddsa,
-            Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
-        ),
-        (
-            KeyAlgorithmType::Ecdsa,
-            Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
-        ),
-    ])));
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter([
+            (
+                KeyAlgorithmType::Eddsa,
+                Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
+            ),
+            (
+                KeyAlgorithmType::Ecdsa,
+                Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
+            ),
+        ]),
+        Default::default(),
+    ));
     let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");
     let key_provider = InternalKeyProvider::new(
         key_algorithm_provider,

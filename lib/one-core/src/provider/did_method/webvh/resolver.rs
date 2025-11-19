@@ -533,11 +533,13 @@ mod test {
             Duration::minutes(1),
             Duration::minutes(1),
         );
-        let key_algorithm_provider =
-            Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![(
+        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+            HashMap::from_iter(vec![(
                 KeyAlgorithmType::Eddsa,
                 Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
-            )])));
+            )]),
+            Default::default(),
+        ));
         DidMethodProviderImpl::new(
             caching_loader,
             IndexMap::from_iter(vec![

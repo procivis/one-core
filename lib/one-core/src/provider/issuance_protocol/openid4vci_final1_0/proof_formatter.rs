@@ -259,11 +259,10 @@ mod test {
             })
         });
 
-        let key_algorithm_provider =
-            Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([(
-                KeyAlgorithmType::Eddsa,
-                Arc::new(Eddsa) as _,
-            )])));
+        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+            HashMap::from_iter([(KeyAlgorithmType::Eddsa, Arc::new(Eddsa) as _)]),
+            Default::default(),
+        ));
 
         let key_verification = KeyVerification {
             did_method_provider: Arc::new(did_method_provider),
@@ -295,9 +294,10 @@ mod test {
             },
             key_handle,
             jwk_key_id: key_id,
-            key_algorithm_provider: Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter([
-                (KeyAlgorithmType::Eddsa, Arc::new(key_algorithm) as _),
-            ]))),
+            key_algorithm_provider: Arc::new(KeyAlgorithmProviderImpl::new(
+                HashMap::from_iter([(KeyAlgorithmType::Eddsa, Arc::new(key_algorithm) as _)]),
+                Default::default(),
+            )),
         };
 
         Box::new(provider)

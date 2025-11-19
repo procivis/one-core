@@ -280,7 +280,10 @@ async fn initialize(
                     key_algorithms.insert(name.to_owned(), key_algorithm);
                 }
 
-                Ok(Arc::new(KeyAlgorithmProviderImpl::new(key_algorithms)))
+                Ok(Arc::new(KeyAlgorithmProviderImpl::new(
+                    key_algorithms,
+                    config.to_owned(),
+                )))
             });
 
             let key_storage_creator: KeyStorageCreator = Box::new(move |config, providers| {

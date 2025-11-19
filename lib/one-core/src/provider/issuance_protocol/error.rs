@@ -18,6 +18,8 @@ pub enum IssuanceProtocolError {
     MissingBaseUrl,
     #[error("Invalid request: `{0}`")]
     InvalidRequest(String),
+    #[error("Failed to autogenerate binding: `{0}`")]
+    BindingAutogenerationFailure(String),
     #[error("Incorrect credential schema type")]
     IncorrectCredentialSchemaType,
     #[error(transparent)]

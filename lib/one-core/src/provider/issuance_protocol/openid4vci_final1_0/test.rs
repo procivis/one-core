@@ -14,7 +14,9 @@ use wiremock::http::Method;
 use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
-use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
+use crate::config::core_config::{
+    CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
+};
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -55,10 +57,16 @@ use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProvider, KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
 };
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
+use crate::provider::key_security_level::MockKeySecurityLevel;
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
+use crate::provider::key_storage::MockKeyStorage;
+use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::storage_proxy::MockStorageProxy;
@@ -69,6 +77,9 @@ use crate::service::test_utilities::{
 #[derive(Default)]
 struct TestInputs {
     pub credential_repository: MockCredentialRepository,
+    pub key_repository: MockKeyRepository,
+    pub did_repository: MockDidRepository,
+    pub identifier_repository: MockIdentifierRepository,
     pub metadata_cache: MockOpenIDMetadataFetcher,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -87,6 +98,9 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(ReqwestClient::default()),
         Arc::new(inputs.metadata_cache),
         Arc::new(inputs.credential_repository),
+        Arc::new(inputs.key_repository),
+        Arc::new(inputs.did_repository),
+        Arc::new(inputs.identifier_repository),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
@@ -856,8 +870,10 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         });
 
     let arc: Arc<dyn KeyAlgorithm + 'static> = Arc::new(Ecdsa);
-    let real_key_algorithm_provider =
-        KeyAlgorithmProviderImpl::new(HashMap::from([(KeyAlgorithmType::Ecdsa, arc)]));
+    let real_key_algorithm_provider = KeyAlgorithmProviderImpl::new(
+        HashMap::from([(KeyAlgorithmType::Ecdsa, arc)]),
+        Default::default(),
+    );
 
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
     key_algorithm_provider
@@ -926,6 +942,277 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     assert_eq!(
         create_credential.issuer_identifier.unwrap().id,
         create_identifier.id
+    );
+}
+
+#[tokio::test]
+async fn test_holder_accept_credential_autogenerate_holder_binding() {
+    let mock_server = MockServer::start().await;
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+    let mut storage_access = MockStorageProxy::default();
+    let mut key_provider = MockKeyProvider::default();
+
+    let credential = generic_credential_did();
+
+    let interaction_data = HolderInteractionData {
+        issuer_url: mock_server.uri(),
+        credential_endpoint: format!("{}/credential", mock_server.uri()),
+        token_endpoint: Some(format!("{}/token", mock_server.uri())),
+        nonce_endpoint: Some(format!("{}/nonce", mock_server.uri())),
+        notification_endpoint: Some(format!("{}/notification", mock_server.uri())),
+        challenge_endpoint: None,
+        grants: Some(OpenID4VCIGrants::PreAuthorizedCode(
+            OpenID4VCIPreAuthorizedCodeGrant {
+                pre_authorized_code: "code".to_string(),
+                tx_code: None,
+                authorization_server: None,
+            },
+        )),
+        access_token: None,
+        access_token_expires_at: None,
+        refresh_token: None,
+        token_endpoint_auth_methods_supported: None,
+        refresh_token_expires_at: None,
+        cryptographic_binding_methods_supported: None,
+        credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
+        continue_issuance: None,
+        credential_configuration_id: credential.schema.as_ref().unwrap().schema_id.to_owned(),
+        credential_metadata: None,
+        notification_id: None,
+        protocol: "OPENID4VCI_FINAL1".to_string(),
+        format: "jwt_vc_json".to_string(),
+    };
+
+    let interaction = Interaction {
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        created_date: get_dummy_date(),
+        last_modified: get_dummy_date(),
+        data: Some(serde_json::to_vec(&interaction_data).unwrap()),
+        organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
+        nonce_id: None,
+        interaction_type: InteractionType::Issuance,
+    };
+
+    Mock::given(method(Method::POST))
+        .and(path("/token"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "access_token": "321",
+                "token_type": "bearer",
+                "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                "refresh_token": "321",
+                "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/nonce"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "c_nonce": "123"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/credential"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+            {
+                "credentials": [{"credential": "credential"}],
+                "notification_id": "notification_id"
+            }
+        )))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    Mock::given(method(Method::POST))
+        .and(path("/notification"))
+        .and(body_json(json!({
+            "notification_id": "notification_id",
+            "event": "credential_accepted"
+        })))
+        .respond_with(ResponseTemplate::new(204))
+        .expect(1)
+        .mount(&mock_server)
+        .await;
+
+    let mut formatter = MockCredentialFormatter::new();
+    formatter.expect_get_leeway().returning(|| 1000);
+    formatter.expect_parse_credential().returning({
+        let clone = credential.clone();
+        move |_| Ok(clone.clone())
+    });
+
+    let formatter = Arc::new(formatter);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .with(predicate::eq("JWT"))
+        .returning(move |_| Some(formatter.clone()));
+
+    let schema = credential.schema.as_ref().unwrap().to_owned();
+    storage_access
+        .expect_get_schema()
+        .once()
+        .returning(move |_, _| Ok(Some(schema.clone())));
+
+    storage_access
+        .expect_get_did_by_value()
+        .returning(|_, _| Ok(Some(dummy_did())));
+
+    storage_access
+        .expect_update_interaction()
+        .once()
+        .returning(move |_, _| Ok(()));
+
+    let identifier = dummy_identifier();
+    storage_access.expect_get_identifier_for_did().returning({
+        let identifier = identifier.clone();
+        move |_| Ok(identifier.clone())
+    });
+
+    key_provider
+        .expect_get_signature_provider()
+        .returning(move |_, _, _| {
+            let mut mock_signature_provider = MockSignatureProvider::new();
+            mock_signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+
+            mock_signature_provider
+                .expect_get_key_id()
+                .returning(|| Some("key-id".to_string()));
+
+            mock_signature_provider
+                .expect_sign()
+                .returning(|_| Ok(vec![0; 32]));
+
+            Ok(Box::new(mock_signature_provider))
+        });
+    key_provider.expect_get_key_storage().returning(move |_| {
+        let mut storage = MockKeyStorage::new();
+        storage
+            .expect_get_capabilities()
+            .returning(|| KeyStorageCapabilities {
+                features: vec![],
+                algorithms: vec![KeyAlgorithmType::Ecdsa],
+            });
+
+        storage.expect_generate().returning(|_, _| {
+            Ok(StorageGeneratedKey {
+                public_key: vec![],
+                key_reference: Some(vec![]),
+            })
+        });
+
+        Some(Arc::new(storage))
+    });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_reconstruct_key()
+        .returning(|_, _, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: None,
+                    kid: None,
+                    crv: "P-256".to_string(),
+                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+                }))
+            });
+
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+    key_algorithm_provider
+        .expect_ordered_by_holder_priority()
+        .returning(|| vec![(KeyAlgorithmType::Ecdsa, Arc::new(MockKeyAlgorithm::new()))]);
+
+    let mut key_security_level_provider = MockKeySecurityLevelProvider::new();
+    key_security_level_provider
+        .expect_ordered_by_priority()
+        .once()
+        .returning(|| {
+            let mut security = MockKeySecurityLevel::new();
+            security
+                .expect_get_key_storages()
+                .return_const(vec!["INTERNAL".to_string()]);
+            vec![(KeySecurityLevelType::Basic, Arc::new(security))]
+        });
+
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method()
+        .once()
+        .returning(|_| {
+            let mut did_method = MockDidMethod::new();
+            did_method.expect_create().once().returning(|_, _, _| {
+                Ok(DidCreated {
+                    did: "did:key:123".to_string().try_into().unwrap(),
+                    log: None,
+                })
+            });
+            did_method
+                .expect_get_reference_for_key()
+                .returning(|_| Ok("ref".to_string()));
+            Some(Arc::new(did_method))
+        });
+
+    let mut key_repository = MockKeyRepository::new();
+    key_repository
+        .expect_create_key()
+        .once()
+        .returning(|key| Ok(key.id));
+
+    let mut did_repository = MockDidRepository::new();
+    did_repository
+        .expect_create_did()
+        .once()
+        .returning(|did| Ok(did.id));
+
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_create()
+        .once()
+        .returning(|identifier| Ok(identifier.id));
+
+    let openid_provider = setup_protocol(TestInputs {
+        formatter_provider,
+        key_provider,
+        key_repository,
+        did_repository,
+        identifier_repository,
+        key_algorithm_provider,
+        key_security_level_provider,
+        did_method_provider,
+        config: dummy_config(),
+        ..Default::default()
+    });
+
+    let result = openid_provider
+        .holder_accept_credential(interaction, None, &storage_access, None, None)
+        .await
+        .unwrap();
+
+    let issuer_response = result.result;
+    assert_eq!(issuer_response.credential, "credential");
+    assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
+
+    let create_credential = result.create_credential.unwrap();
+    assert_eq!(create_credential.id, credential.id);
+    assert_eq!(
+        create_credential.issuer_identifier.unwrap().id,
+        identifier.id
     );
 }
 

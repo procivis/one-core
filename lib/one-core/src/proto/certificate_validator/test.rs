@@ -200,16 +200,19 @@ fn create_intermediate_ca_cert(
 }
 
 fn create_certificate_validator() -> CertificateValidatorImpl {
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(HashMap::from_iter(vec![
-        (
-            KeyAlgorithmType::Eddsa,
-            Arc::new(crate::provider::key_algorithm::eddsa::Eddsa) as Arc<dyn KeyAlgorithm>,
-        ),
-        (
-            KeyAlgorithmType::Ecdsa,
-            Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa) as Arc<dyn KeyAlgorithm>,
-        ),
-    ])));
+    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
+        HashMap::from_iter(vec![
+            (
+                KeyAlgorithmType::Eddsa,
+                Arc::new(crate::provider::key_algorithm::eddsa::Eddsa) as Arc<dyn KeyAlgorithm>,
+            ),
+            (
+                KeyAlgorithmType::Ecdsa,
+                Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa) as Arc<dyn KeyAlgorithm>,
+            ),
+        ]),
+        Default::default(),
+    ));
     let crl_cache = Arc::new(X509CrlCache::new(
         Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
         Arc::new(InMemoryStorage::new(HashMap::new())),
