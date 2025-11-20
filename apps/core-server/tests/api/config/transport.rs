@@ -30,7 +30,7 @@ async fn test_server_starts_with_base_config() {
         indoc::indoc! {"
         app:
             auth:
-                mode: STATIC
+                mode: UNSAFE_STATIC
                 staticToken: \"test\"
         keyStorage:
             INTERNAL:
@@ -85,7 +85,7 @@ async fn test_server_starts_with_base_config() {
         enable_external_endpoints: Default::default(),
         enable_management_endpoints: Default::default(),
         enable_wallet_provider: Default::default(),
-        auth: AuthMode::Static {
+        auth: AuthMode::UnsafeStatic {
             static_token: "test".to_string(),
         },
     };

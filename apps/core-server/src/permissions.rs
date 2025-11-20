@@ -162,7 +162,7 @@ mod test {
         assert!(
             permission_check(
                 &authorized,
-                &dummy_server_config(AuthMode::InsecureNone),
+                &dummy_server_config(AuthMode::UnsafeNone),
                 &required
             )
             .is_ok()
@@ -180,7 +180,7 @@ mod test {
         assert!(
             permission_check(
                 &authorized,
-                &dummy_server_config(AuthMode::Static {
+                &dummy_server_config(AuthMode::UnsafeStatic {
                     static_token: "test".to_string()
                 }),
                 &required

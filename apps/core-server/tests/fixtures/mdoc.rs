@@ -144,7 +144,7 @@ pub fn datatype_config() -> DatatypeConfig {
     let config = indoc! {"
         app:
             auth:
-                mode: 'STATIC'
+                mode: 'UNSAFE_STATIC'
                 staticToken: 'test'
         datatype:
             STRING:

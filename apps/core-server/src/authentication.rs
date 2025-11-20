@@ -14,8 +14,8 @@ pub(crate) async fn authentication(
     config: &Arc<ServerConfig>,
 ) -> Result<Authentication, StsJwksFetcherError> {
     match &config.auth {
-        AuthMode::InsecureNone => Ok(Authentication::None),
-        AuthMode::Static { static_token } => Ok(Authentication::Static(static_token.clone())),
+        AuthMode::UnsafeNone => Ok(Authentication::None),
+        AuthMode::UnsafeStatic { static_token } => Ok(Authentication::Static(static_token.clone())),
         AuthMode::SecurityTokenService {
             sts_token_validation,
         } => {

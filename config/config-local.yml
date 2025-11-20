@@ -15,7 +15,7 @@ app:
   enableManagementEndpoints: true
   enableWalletProvider: true
   auth:
-    mode: STATIC
+    mode: UNSAFE_STATIC
     staticToken: "test"
 walletProvider:
   PROCIVIS_ONE:

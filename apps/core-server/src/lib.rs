@@ -73,10 +73,10 @@ pub struct ServerConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "mode", rename_all_fields = "camelCase")]
 pub enum AuthMode {
-    #[serde(rename = "INSECURE_NONE")]
-    InsecureNone,
-    #[serde(rename = "STATIC")]
-    Static { static_token: String },
+    #[serde(rename = "UNSAFE_NONE")]
+    UnsafeNone,
+    #[serde(rename = "UNSAFE_STATIC")]
+    UnsafeStatic { static_token: String },
     #[serde(rename = "STS")]
     SecurityTokenService {
         sts_token_validation: StsTokenValidation,

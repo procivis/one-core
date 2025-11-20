@@ -50,8 +50,8 @@ pub(crate) fn gen_openapi_documentation(
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
             let components = openapi.components.as_mut().expect("OpenAPI Components");
             match self.config.auth {
-                AuthMode::InsecureNone => {}
-                AuthMode::Static { .. } | AuthMode::SecurityTokenService { .. } => {
+                AuthMode::UnsafeNone => {}
+                AuthMode::UnsafeStatic { .. } | AuthMode::SecurityTokenService { .. } => {
                     components.add_security_scheme(
                         "bearer",
                         SecurityScheme::Http(

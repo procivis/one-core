@@ -25,7 +25,7 @@ async fn test_insecure_none_authentication_success() {
     let config = indoc::indoc! {"
       app:
         auth:
-            mode: INSECURE_NONE
+            mode: UNSAFE_NONE
     "}
     .to_string();
     let context = TestContext::new(Some(config)).await;
@@ -50,7 +50,7 @@ async fn test_static_token_authentication_success() {
     let config = indoc::indoc! {"
       app:
         auth:
-            mode: STATIC
+            mode: UNSAFE_STATIC
             staticToken: 'test123'
     "}
     .to_string();
@@ -77,7 +77,7 @@ async fn test_static_token_authentication_fails_invalid_token() {
     let config = indoc::indoc! {"
       app:
         auth:
-            mode: STATIC
+            mode: UNSAFE_STATIC
             staticToken: 'test123'
     "}
     .to_string();

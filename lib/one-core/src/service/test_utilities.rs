@@ -35,7 +35,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
     let config = indoc! {"
         app:
             auth:
-                mode: STATIC
+                mode: UNSAFE_STATIC
                 staticToken: \"test\"
         transport:
             HTTP:
