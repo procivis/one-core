@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use anyhow::Context;
 use futures::future;
 use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
@@ -141,7 +143,11 @@ impl ProofSchemaService {
             .iter()
             .map(|proof_input_schema| proof_input_schema.credential_schema_id)
             .collect();
-
+        let deduplicated_schema_ids =
+            HashSet::<&CredentialSchemaId>::from_iter(credential_schema_ids.iter());
+        if credential_schema_ids.len() != deduplicated_schema_ids.len() {
+            return Err(BusinessLogicError::DuplicateProofInputCredentialSchema.into());
+        }
         let expected_credential_schemas = credential_schema_ids.len();
         let credential_schemas = self
             .credential_schema_repository

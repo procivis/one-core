@@ -14,6 +14,7 @@ pub(crate) async fn signed_jwt<T: Serialize>(
     iss: Option<String>,
     sub: Option<String>,
     custom: T,
+    jwt_id: Option<String>,
 ) -> String {
     let now = OffsetDateTime::now_utc();
     let jwt = Jwt::new(
@@ -28,7 +29,7 @@ pub(crate) async fn signed_jwt<T: Serialize>(
             expires_at: Some(now.add(Duration::hours(10))),
             invalid_before: Some(now),
             audience: aud.map(|aud| vec![aud]),
-            jwt_id: None,
+            jwt_id,
             issuer: iss,
             subject: sub,
             custom,

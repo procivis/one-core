@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -565,6 +565,7 @@ async fn process_proof_submission_presentation_exchange(
     }
 
     let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+    let mut validated_credentials = HashSet::new();
 
     // Unpack presentations and credentials
     for presentation_submitted in &presentation_submission.descriptor_map {
@@ -704,6 +705,14 @@ async fn process_proof_submission_presentation_exchange(
                 "Credential at index {credential_index} not found",
             )),
         )?;
+
+        if validated_credentials.contains(credential_token) {
+            return Err(OpenID4VCError::ValidationError(
+                "Multiple input descriptors pointing to the same credential presentation"
+                    .to_string(),
+            ));
+        }
+        validated_credentials.insert(credential_token.clone());
 
         let (credential, mso) = validate_credential(
             holder_details,

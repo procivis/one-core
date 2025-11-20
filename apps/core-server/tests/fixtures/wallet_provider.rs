@@ -12,7 +12,7 @@ use crate::fixtures::{TestingDidParams, TestingIdentifierParams, TestingKeyParam
 use crate::utils::context::TestContext;
 
 pub(crate) async fn create_key_possession_proof(key: &GeneratedKey, aud: String) -> String {
-    signed_jwt(key, "ES256", Some(aud), None, None, ()).await
+    signed_jwt(key, "ES256", Some(aud), None, None, (), None).await
 }
 
 pub(crate) async fn create_wallet_unit_attestation_issuer_identifier(

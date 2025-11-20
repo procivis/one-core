@@ -281,6 +281,9 @@ pub enum BusinessLogicError {
     #[error("Missing credential schema")]
     MissingCredentialSchema,
 
+    #[error("Duplicate proof input credential schema")]
+    DuplicateProofInputCredentialSchema,
+
     #[error("Missing claim schema: {claim_schema_id}")]
     MissingClaimSchema { claim_schema_id: ClaimSchemaId },
 
@@ -1459,6 +1462,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Key storage does not fulfill required security levels")]
     BR_0310,
+
+    #[strum(message = "Duplicate proof input credential schema")]
+    BR_0313,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1636,6 +1642,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
             Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
             Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
+            Self::DuplicateProofInputCredentialSchema => ErrorCode::BR_0313,
         }
     }
 }
