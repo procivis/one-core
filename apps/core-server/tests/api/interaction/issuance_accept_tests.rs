@@ -9,6 +9,8 @@ use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
+use one_core::provider::key_algorithm::KeyAlgorithm;
+use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use rcgen::CertificateParams;
 use serde_json::json;
 use shared_types::DidValue;
@@ -17,6 +19,7 @@ use time::macros::datetime;
 use uuid::Uuid;
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
+use crate::fixtures::presentation::w3c_jwt_vc;
 use crate::fixtures::{
     ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
     TestingKeyParams, encrypted_token,
@@ -26,13 +29,27 @@ use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 
-static RANDOM_DOCUMENT: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCg";
-static DOCUMENT_INVALID_SIG: &str = "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCw";
+async fn random_document() -> String {
+    let key = Ecdsa.generate_key().unwrap();
+    let multibase = key.key.public_key_as_multibase().unwrap();
+    let did: DidValue = format!("did:key:{multibase}").parse().unwrap();
+    w3c_jwt_vc(
+        &key,
+        "ES256",
+        did.clone(),
+        did.clone(),
+        json!({"string":"value"}),
+    )
+    .await
+}
 
 #[tokio::test]
 async fn test_issuance_accept_openid4vc() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
     let issuer_did = context
         .db
         .dids
@@ -40,11 +57,7 @@ async fn test_issuance_accept_openid4vc() {
             Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
-                did: Some(
-                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                        .parse()
-                        .unwrap(),
-                ),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
                 ..Default::default()
             },
         )
@@ -183,9 +196,18 @@ async fn test_issuance_accept_openid4vc() {
         )
         .await;
 
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"string"}),
+    )
+    .await;
+
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", RANDOM_DOCUMENT, "JWT", 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, "JWT", 1, None)
         .await;
 
     context
@@ -218,7 +240,7 @@ async fn test_issuance_accept_openid4vc() {
     assert_eq!(claims[0].path, "iss");
     assert_eq!(
         claims[0].value.as_ref().unwrap(),
-        "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+        &issuer_did.did.to_string()
     );
     assert_eq!(claims[0].selectively_disclosable, false);
     assert_eq!(claims[0].schema.as_ref().unwrap().metadata, true);
@@ -381,7 +403,14 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", RANDOM_DOCUMENT, "JWT", 1, None)
+        .ssi_credential_endpoint(
+            credential_schema.id,
+            "123",
+            random_document().await,
+            "JWT",
+            1,
+            None,
+        )
         .await;
 
     context
@@ -548,7 +577,14 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
 
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", RANDOM_DOCUMENT, "JWT", 1, None)
+        .ssi_credential_endpoint(
+            credential_schema.id,
+            "123",
+            random_document().await,
+            "JWT",
+            1,
+            None,
+        )
         .await;
 
     context
@@ -706,12 +742,16 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         )
         .await;
 
+    let document = random_document().await;
+    let (jwt_content, _sig) = document.rsplit_once(".").unwrap();
+    let document_invalid_sig = format!("{jwt_content}.invalid");
+
     context
         .server_mock
         .ssi_credential_endpoint(
             credential_schema.id,
             "123",
-            DOCUMENT_INVALID_SIG,
+            document_invalid_sig,
             "JWT",
             1,
             None,
@@ -739,6 +779,9 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
 async fn test_issuance_accept_openid4vc_with_key_id() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
     let issuer_did = context
         .db
         .dids
@@ -746,11 +789,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
-                did: Some(
-                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                        .parse()
-                        .unwrap(),
-                ),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
                 ..Default::default()
             },
         )
@@ -877,9 +916,17 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .token_endpoint(credential_schema.schema_id, "123")
         .await;
 
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"value"}),
+    )
+    .await;
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCg", "JWT", 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, "JWT", 1, None)
         .await;
 
     // WHEN
@@ -907,6 +954,9 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
 async fn test_issuance_accept_autogenerate_holder_binding() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
     let issuer_did = context
         .db
         .dids
@@ -914,11 +964,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
             Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
-                did: Some(
-                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                        .parse()
-                        .unwrap(),
-                ),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
                 ..Default::default()
             },
         )
@@ -1007,9 +1053,18 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
         .token_endpoint(credential_schema.schema_id, "123")
         .await;
 
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        issuer_did.did.clone(),
+        json!({"string":"value"}),
+    )
+    .await;
+
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCg", "JWT", 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, "JWT", 1, None)
         .await;
 
     // WHEN
@@ -1731,6 +1786,9 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
 async fn test_issuance_accept_openid4vc_with_tx_code() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
     let issuer_did = context
         .db
         .dids
@@ -1738,11 +1796,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
-                did: Some(
-                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                        .parse()
-                        .unwrap(),
-                ),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
                 ..Default::default()
             },
         )
@@ -1866,9 +1920,17 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         )
         .await;
 
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"string"}),
+    )
+    .await;
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", RANDOM_DOCUMENT, "JWT", 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, "JWT", 1, None)
         .await;
 
     let tx_code = "45454";
@@ -1903,6 +1965,9 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
 async fn test_issuance_accept_openid4vc_update_from_vc() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
     let issuer_did = context
         .db
         .dids
@@ -1910,11 +1975,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             Some(organisation.clone()),
             TestingDidParams {
                 did_type: Some(DidType::Remote),
-                did: Some(
-                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
-                        .parse()
-                        .unwrap(),
-                ),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
                 ..Default::default()
             },
         )
@@ -2044,9 +2105,17 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         )
         .await;
 
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"string"}),
+    )
+    .await;
     context
         .server_mock
-        .ssi_credential_endpoint(credential_schema.id, "123", RANDOM_DOCUMENT, "JWT", 1, None)
+        .ssi_credential_endpoint(credential_schema.id, "123", jwt_credential, "JWT", 1, None)
         .await;
 
     context
