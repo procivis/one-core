@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use indexmap::IndexMap;
 use shared_types::{BlobId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
@@ -16,6 +19,7 @@ use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
+use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
@@ -62,83 +66,16 @@ pub(super) async fn autogenerate_holder_binding(
     did_repository: &dyn DidRepository,
     identifier_repository: &dyn IdentifierRepository,
 ) -> Result<HolderBindingInput, IssuanceProtocolError> {
-    let issuer_proof_config = proof_types_supported
-        .as_ref()
-        .and_then(|proof_types| proof_types.get("jwt"));
-
-    let issuer_accepted_security_levels = issuer_proof_config.and_then(|proof_type| {
-        proof_type
-            .key_attestations_required
-            .as_ref()
-            .map(|kar| &kar.key_storage)
-    });
-
-    let issuer_accepted_algorithms = issuer_proof_config.map(|proof_type| {
-        proof_type
-            .proof_signing_alg_values_supported
-            .iter()
-            .filter_map(|alg| key_algorithm_provider.key_algorithm_from_jose_alg(alg))
-            .map(|(alg, _)| alg)
-            .collect::<Vec<_>>()
-    });
-
-    let key_storages = key_security_level_provider
-            .ordered_by_priority()
-            .iter()
-            .find(|(_, v)| {
-                issuer_accepted_security_levels
-                    .as_ref()
-                    .is_none_or(|issuer_accepted_levels| {
-                        v.get_capabilities()
-                            .openid_security_level
-                            .iter()
-                            .any(|level| issuer_accepted_levels.contains(level))
-                    })
-                    && !v.get_key_storages().is_empty()
-            })
-            .ok_or(IssuanceProtocolError::BindingAutogenerationFailure(
-                format!("Could not determine key security level, issuer_accepted_security_levels:{issuer_accepted_security_levels:?}"),
-            ))?
-            .1
-            .get_key_storages()
-            .to_vec();
-
-    let mut key_storage = None;
-    let mut key_algorithm = None;
-    for key_storage_id in key_storages {
-        let Some(storage) = key_provider.get_key_storage(&key_storage_id) else {
-            continue;
-        };
-
-        for (algorithm, _) in key_algorithm_provider.ordered_by_holder_priority() {
-            if !storage.get_capabilities().algorithms.contains(&algorithm) {
-                continue;
-            }
-
-            if let Some(issuer_accepted_algorithms) = &issuer_accepted_algorithms
-                && !issuer_accepted_algorithms.contains(&algorithm)
-            {
-                continue;
-            }
-
-            key_algorithm = Some(algorithm);
-            break;
-        }
-
-        if key_algorithm.is_some() {
-            key_storage = Some((key_storage_id, storage));
-            break;
-        }
-    }
-
-    let (Some((key_storage_id, key_storage)), Some(key_algorithm)) = (key_storage, key_algorithm)
-    else {
-        return Err(IssuanceProtocolError::BindingAutogenerationFailure(
-            format!(
-                "Could not find a proper key storage, issuer_accepted_security_levels:{issuer_accepted_security_levels:?}, issuer_accepted_algorithms:{issuer_accepted_algorithms:?}"
-            ),
-        ));
-    };
+    let PickedKeyConfig {
+        key_storage_id,
+        key_storage,
+        key_algorithm,
+    } = pick_key_configuration(
+        proof_types_supported,
+        key_provider,
+        key_algorithm_provider,
+        key_security_level_provider,
+    )?;
 
     let key_id = Uuid::new_v4().into();
     let key = key_storage
@@ -240,4 +177,82 @@ pub(super) async fn autogenerate_holder_binding(
         did,
         identifier,
     })
+}
+
+struct PickedKeyConfig {
+    key_storage_id: String,
+    key_storage: Arc<dyn KeyStorage>,
+    key_algorithm: KeyAlgorithmType,
+}
+
+fn pick_key_configuration(
+    proof_types_supported: Option<&IndexMap<String, OpenID4VCIProofTypeSupported>>,
+    key_provider: &dyn KeyProvider,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_security_level_provider: &dyn KeySecurityLevelProvider,
+) -> Result<PickedKeyConfig, IssuanceProtocolError> {
+    let issuer_proof_config = proof_types_supported
+        .as_ref()
+        .and_then(|proof_types| proof_types.get("jwt"));
+
+    let issuer_accepted_security_levels = issuer_proof_config.and_then(|proof_type| {
+        proof_type
+            .key_attestations_required
+            .as_ref()
+            .map(|kar| &kar.key_storage)
+    });
+
+    let issuer_accepted_algorithms = issuer_proof_config.map(|proof_type| {
+        proof_type
+            .proof_signing_alg_values_supported
+            .iter()
+            .filter_map(|alg| key_algorithm_provider.key_algorithm_from_jose_alg(alg))
+            .map(|(alg, _)| alg)
+            .collect::<Vec<_>>()
+    });
+
+    for (_, security_level) in key_security_level_provider.ordered_by_priority() {
+        if issuer_accepted_security_levels
+            .as_ref()
+            .is_some_and(|issuer_accepted_levels| {
+                !security_level
+                    .get_capabilities()
+                    .openid_security_level
+                    .iter()
+                    .any(|level| issuer_accepted_levels.contains(level))
+            })
+        {
+            continue;
+        }
+
+        for key_storage_id in security_level.get_key_storages() {
+            let Some(storage) = key_provider.get_key_storage(key_storage_id) else {
+                continue;
+            };
+
+            for (algorithm, _) in key_algorithm_provider.ordered_by_holder_priority() {
+                if !storage.get_capabilities().algorithms.contains(&algorithm) {
+                    continue;
+                }
+
+                if let Some(issuer_accepted_algorithms) = &issuer_accepted_algorithms
+                    && !issuer_accepted_algorithms.contains(&algorithm)
+                {
+                    continue;
+                }
+
+                return Ok(PickedKeyConfig {
+                    key_storage_id: key_storage_id.to_owned(),
+                    key_storage: storage,
+                    key_algorithm: algorithm,
+                });
+            }
+        }
+    }
+
+    Err(IssuanceProtocolError::BindingAutogenerationFailure(
+        format!(
+            "Could not find a proper key storage, issuer_accepted_security_levels:{issuer_accepted_security_levels:?}, issuer_accepted_algorithms:{issuer_accepted_algorithms:?}"
+        ),
+    ))
 }
