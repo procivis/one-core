@@ -9,7 +9,6 @@ use one_core::model::proof_schema::{
     GetProofSchemaList, GetProofSchemaQuery, ProofInputClaimSchema, ProofInputSchema,
     ProofInputSchemaRelations, ProofSchema, ProofSchemaRelations,
 };
-use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{
@@ -23,7 +22,7 @@ use super::ProofSchemaProvider;
 use crate::common::list_query_with_base_model;
 use crate::entity::{proof_input_claim_schema, proof_input_schema, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error, unpack_data_layer_error};
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -99,7 +98,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             if retrieved_proof_input_schema.len() != proof_input_schemas_with_order.len() {
                 return Err(DataLayerError::Db(anyhow!(
                     "Length of retrieved proof input schemas is different from the proof input schemas in the request for proof schema: {proof_schema_id}"
-                )).into());
+                )));
             }
 
             let mut retrieved_proof_input_schema = retrieved_proof_input_schema;
@@ -124,7 +123,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 {
                     return Err(DataLayerError::Db(anyhow!(
                         "Inserted proof input schema model doesn't match request proof input schema for proof schema: {proof_schema_id}"
-                    )).into());
+                    )));
                 }
 
                 let claim_schemas = request
@@ -146,12 +145,9 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                 .exec(&self.db)
                 .await
                 .map_err(|err| DataLayerError::Db(err.into()))?;
-            Ok(())
+            Ok::<_, DataLayerError>(())
         }.boxed();
-        self.db
-            .transaction(action)
-            .await?
-            .map_err(unpack_data_layer_error)?;
+        self.db.tx(action).await??;
         Ok(proof_schema_id)
     }
 

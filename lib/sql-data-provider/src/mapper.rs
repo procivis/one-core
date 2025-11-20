@@ -1,7 +1,6 @@
 use one_core::model::common::{LockType, SortDirection};
 use one_core::proto::transaction_manager;
 use one_core::repository::error::DataLayerError;
-use one_core::service::error::ServiceError;
 use sea_orm::{AccessMode, DbErr, IsolationLevel, Order, SqlErr};
 
 pub(crate) fn order_from_sort_direction(direction: SortDirection) -> Order {
@@ -46,12 +45,5 @@ pub(crate) fn map_lock_type(level: LockType) -> sea_orm::sea_query::LockType {
     match level {
         LockType::Update => sea_orm::sea_query::LockType::Update,
         LockType::Share => sea_orm::sea_query::LockType::Share,
-    }
-}
-
-pub(crate) fn unpack_data_layer_error(e: ServiceError) -> DataLayerError {
-    match e {
-        ServiceError::Repository(err) => err,
-        err => DataLayerError::TransactionError(format!("transaction failed: {err}")),
     }
 }

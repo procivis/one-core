@@ -473,20 +473,11 @@ impl OID4VCIDraft13Service {
             ))
         }?;
 
-        let mut response = None;
         self.transaction_manager
-            .transaction(
-                self.issue_tx(
-                    interaction_id,
-                    holder_identifier,
-                    holder_key_id,
-                    credential,
-                    &mut response,
-                )
-                .boxed(),
-            )
-            .await??;
-        response.ok_or(ServiceError::Other("Missing issuance result".to_string()))?
+            .tx(self
+                .issue_tx(interaction_id, holder_identifier, holder_key_id, credential)
+                .boxed())
+            .await?
     }
 
     async fn issue_tx(
@@ -495,8 +486,7 @@ impl OID4VCIDraft13Service {
         holder_identifier: Identifier,
         holder_key_id: String,
         credential: &Credential,
-        response: &mut Option<Result<OpenID4VCICredentialResponseDTO, ServiceError>>,
-    ) -> Result<(), ServiceError> {
+    ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
         // Lock interaction, so that the issuance process is done only by one thread
         let Some(interaction) = self
             .interaction_repository
@@ -552,13 +542,12 @@ impl OID4VCIDraft13Service {
                         )
                         .await?;
                 }
-
-                *response = Some(Ok(issued_credential.into()));
+                Ok(issued_credential.into())
             }
             Err(err @ IssuanceProtocolError::Suspended)
             | Err(err @ IssuanceProtocolError::RefreshTooSoon) => {
                 // propagate error to client but do _not_ put credential to Errored state¬
-                *response = Some(Err(err.into()));
+                Err(err.into())
             }
             Err(error) => {
                 self.credential_repository
@@ -570,10 +559,9 @@ impl OID4VCIDraft13Service {
                         },
                     )
                     .await?;
-                *response = Some(Err(error.into()));
+                Err(error.into())
             }
-        };
-        Ok(())
+        }
     }
 
     pub async fn handle_notification(
@@ -771,7 +759,6 @@ impl OID4VCIDraft13Service {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
 
-        let mut tx_result = None;
         let tx = async {
             // Lock the interaction to ensure exclusive access
             let mut interaction = self
@@ -834,14 +821,10 @@ impl OID4VCIDraft13Service {
             self.interaction_repository
                 .update_interaction(interaction.id, interaction.into())
                 .await?;
-            tx_result = Some(response);
-            Ok(())
+            Ok(response)
         }
         .boxed();
-        self.transaction_manager.transaction(tx).await??;
-        tx_result.ok_or(ServiceError::Other(
-            "Missing token endpoint tx result".to_string(),
-        ))
+        self.transaction_manager.tx(tx).await?
     }
 }
 

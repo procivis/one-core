@@ -4,7 +4,6 @@ use one_core::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnit, HolderWalletUnitRelations,
     UpdateHolderWalletUnitRequest,
 };
-use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use sea_orm::{ActiveModelTrait, EntityTrait, Set, Unchanged};
@@ -13,7 +12,7 @@ use time::OffsetDateTime;
 
 use crate::entity::holder_wallet_unit;
 use crate::holder_wallet_unit::HolderWalletUnitProvider;
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error, unpack_data_layer_error};
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[async_trait]
 impl HolderWalletUnitRepository for HolderWalletUnitProvider {
@@ -119,16 +118,13 @@ impl HolderWalletUnitRepository for HolderWalletUnitProvider {
                                 .update_wallet_attestation(&attestation_id, attestation.into())
                                 .await?
                         }
-                        err => return Err(err.into()),
+                        err => return Err(err),
                     }
                 }
             }
             Ok(())
         }
         .boxed();
-        self.db
-            .transaction(action)
-            .await?
-            .map_err(unpack_data_layer_error)
+        self.db.tx(action).await?
     }
 }

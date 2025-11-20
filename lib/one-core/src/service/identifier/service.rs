@@ -249,10 +249,10 @@ impl IdentifierService {
                                 e => e.into(),
                             })?;
                     }
-                    Ok(())
+                    Ok::<_, ServiceError>(())
                 }
                 .boxed();
-                self.tx_manager.transaction(repository_actions).await??;
+                self.tx_manager.tx(repository_actions).await??;
                 Ok(id)
             }
             // invalid input combinations

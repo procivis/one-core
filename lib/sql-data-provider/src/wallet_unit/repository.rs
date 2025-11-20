@@ -17,7 +17,7 @@ use super::WalletUnitProvider;
 use crate::common::calculate_pages_count;
 use crate::entity::wallet_unit;
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error, unpack_data_layer_error};
+use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -27,31 +27,23 @@ impl WalletUnitRepository for WalletUnitProvider {
         request: WalletUnit,
     ) -> Result<WalletUnitId, DataLayerError> {
         let attested_keys = request.attested_keys.clone();
-        let mut wallet_unit_id = None;
         self.db
-            .transaction(
-                async {
-                    let wallet_unit = wallet_unit::ActiveModel::try_from(request)?
-                        .insert(&self.db)
-                        .await
-                        .map_err(to_data_layer_error)?;
-                    if let Some(attested_keys) = attested_keys {
-                        for key in attested_keys {
-                            self.wallet_unit_attested_key_repository
-                                .create_attested_key(key.clone())
-                                .await?;
-                        }
+            .tx(async {
+                let wallet_unit = wallet_unit::ActiveModel::try_from(request)?
+                    .insert(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
+                if let Some(attested_keys) = attested_keys {
+                    for key in attested_keys {
+                        self.wallet_unit_attested_key_repository
+                            .create_attested_key(key.clone())
+                            .await?;
                     }
-                    wallet_unit_id = Some(wallet_unit.id);
-                    Ok(())
                 }
-                .boxed(),
-            )
+                Ok(wallet_unit.id)
+            }
+            .boxed())
             .await?
-            .map_err(unpack_data_layer_error)?;
-        wallet_unit_id.ok_or(DataLayerError::TransactionError(
-            "Missing transaction result".to_string(),
-        ))
     }
 
     async fn get_wallet_unit(

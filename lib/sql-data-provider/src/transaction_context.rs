@@ -2,10 +2,10 @@ use std::pin::Pin;
 use std::sync::Arc;
 
 use async_trait::async_trait;
+use futures::FutureExt;
 use one_core::proto::transaction_manager;
-use one_core::proto::transaction_manager::TransactionManager;
+use one_core::proto::transaction_manager::{AccessMode, IsolationLevel, TransactionManager};
 use one_core::repository::error::DataLayerError;
-use one_core::service::error::ServiceError;
 use sea_orm::{
     ConnectionTrait, DatabaseTransaction, DbBackend, DbErr, ExecResult, QueryResult, Statement,
     TransactionTrait,
@@ -26,6 +26,32 @@ pub struct TransactionManagerImpl {
 impl TransactionManagerImpl {
     pub fn new(db: DbConn) -> Self {
         Self { db }
+    }
+
+    pub async fn tx<T, E>(
+        &self,
+        future: impl Future<Output = Result<T, E>> + Send,
+    ) -> Result<Result<T, E>, DataLayerError>
+    where
+        T: Send + 'static,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        (self as &dyn TransactionManager).tx(future.boxed()).await
+    }
+
+    pub async fn tx_with_config<T, E>(
+        &self,
+        future: impl Future<Output = Result<T, E>> + Send,
+        isolation_level: Option<IsolationLevel>,
+        access_mode: Option<AccessMode>,
+    ) -> Result<Result<T, E>, DataLayerError>
+    where
+        T: Send + 'static,
+        E: std::error::Error + Send + Sync + 'static,
+    {
+        (self as &dyn TransactionManager)
+            .tx_with_config(future.boxed(), isolation_level, access_mode)
+            .await
     }
 }
 
@@ -72,10 +98,10 @@ impl ConnectionTrait for TransactionManagerImpl {
 impl TransactionManager for TransactionManagerImpl {
     async fn transaction_with_config(
         &self,
-        future: Pin<Box<dyn Future<Output = Result<(), ServiceError>> + Send + 'async_trait>>,
+        future: Pin<Box<dyn Future<Output = Result<(), anyhow::Error>> + Send + 'async_trait>>,
         isolation_level: Option<transaction_manager::IsolationLevel>,
         access_mode: Option<transaction_manager::AccessMode>,
-    ) -> Result<Result<(), ServiceError>, DataLayerError> {
+    ) -> Result<Result<(), anyhow::Error>, DataLayerError> {
         let isolation_level = isolation_level.map(map_isolation_level);
         let access_mode = access_mode.map(map_access_mode);
         // Check if we are already in a transaction. If we are, we need to nest deeper on the existing one.

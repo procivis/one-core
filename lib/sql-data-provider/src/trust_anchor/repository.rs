@@ -1,7 +1,6 @@
 use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::trust_anchor::TrustAnchor;
-use one_core::proto::transaction_manager::TransactionManager;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
@@ -18,7 +17,7 @@ use super::TrustAnchorProvider;
 use crate::common::calculate_pages_count;
 use crate::entity::{trust_anchor, trust_entity};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::{to_data_layer_error, unpack_data_layer_error};
+use crate::mapper::to_data_layer_error;
 use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 
 #[autometrics]
@@ -82,24 +81,20 @@ impl TrustAnchorRepository for TrustAnchorProvider {
 
     async fn delete(&self, id: TrustAnchorId) -> Result<(), DataLayerError> {
         self.db
-            .transaction(
-                async {
-                    trust_entity::Entity::delete_many()
-                        .filter(trust_entity::Column::TrustAnchorId.eq(id))
-                        .exec(&self.db)
-                        .await
-                        .map_err(to_data_layer_error)?;
+            .tx(async {
+                trust_entity::Entity::delete_many()
+                    .filter(trust_entity::Column::TrustAnchorId.eq(id))
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
 
-                    trust_anchor::Entity::delete_by_id(id)
-                        .exec(&self.db)
-                        .await
-                        .map_err(to_data_layer_error)?;
-                    Ok(())
-                }
-                .boxed(),
-            )
+                trust_anchor::Entity::delete_by_id(id)
+                    .exec(&self.db)
+                    .await
+                    .map_err(to_data_layer_error)?;
+                Ok(())
+            }
+            .boxed())
             .await?
-            .map_err(unpack_data_layer_error)?;
-        Ok(())
     }
 }
