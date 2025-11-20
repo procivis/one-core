@@ -67,9 +67,13 @@ use crate::provider::key_algorithm::provider::{
     KeyAlgorithmProvider, KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
 };
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
+use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_draft13::service::credentials_format;
 use crate::service::storage_proxy::MockStorageProxy;
@@ -99,11 +103,15 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(ReqwestClient::default()),
         Arc::new(inputs.metadata_cache),
         Arc::new(inputs.credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
         Arc::new(inputs.did_method_provider),
         Arc::new(inputs.key_algorithm_provider),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
         Arc::new(inputs.blob_storage_provider),
@@ -594,6 +602,7 @@ async fn test_holder_accept_credential_success() {
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
         continue_issuance: None,
         notification_id: None,
     };
@@ -807,6 +816,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
         continue_issuance: None,
         notification_id: None,
     };
@@ -1033,6 +1043,7 @@ async fn test_holder_accept_expired_credential_fails() {
         refresh_token_expires_at: None,
         cryptographic_binding_methods_supported: None,
         credential_signing_alg_values_supported: None,
+        proof_types_supported: None,
         continue_issuance: None,
         notification_id: None,
     };
@@ -1243,6 +1254,7 @@ async fn test_holder_reject_credential() {
             refresh_token_expires_at: None,
             cryptographic_binding_methods_supported: None,
             credential_signing_alg_values_supported: None,
+            proof_types_supported: None,
             continue_issuance: None,
             notification_id: Some("notification_id".to_string()),
         };

@@ -31,7 +31,7 @@ impl InteractionsApi {
     pub async fn issuance_accept(
         &self,
         interaction_id: impl Into<Uuid>,
-        did_id: impl Into<DidId>,
+        did_id: impl Into<Option<DidId>>,
         key_id: impl Into<Option<KeyId>>,
         tx_code: impl Into<Option<&str>>,
     ) -> Response {

@@ -1,10 +1,25 @@
+use indexmap::IndexMap;
 use shared_types::{BlobId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
+use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::provider::did_method::DidKeys;
+use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::issuance_protocol::HolderBindingInput;
+use crate::provider::issuance_protocol::error::IssuanceProtocolError;
+use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
+use crate::provider::key_storage::provider::KeyProvider;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 
 pub(super) fn get_issued_credential_update(
     credential_blob_id: BlobId,
@@ -33,4 +48,196 @@ pub(crate) fn interaction_from_handle_invitation(
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
     }
+}
+
+#[expect(clippy::too_many_arguments)]
+pub(super) async fn autogenerate_holder_binding(
+    proof_types_supported: Option<&IndexMap<String, OpenID4VCIProofTypeSupported>>,
+    organisation: &Organisation,
+    key_provider: &dyn KeyProvider,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    key_security_level_provider: &dyn KeySecurityLevelProvider,
+    did_method_provider: &dyn DidMethodProvider,
+    key_repository: &dyn KeyRepository,
+    did_repository: &dyn DidRepository,
+    identifier_repository: &dyn IdentifierRepository,
+) -> Result<HolderBindingInput, IssuanceProtocolError> {
+    let issuer_proof_config = proof_types_supported
+        .as_ref()
+        .and_then(|proof_types| proof_types.get("jwt"));
+
+    let issuer_accepted_security_levels = issuer_proof_config.and_then(|proof_type| {
+        proof_type
+            .key_attestations_required
+            .as_ref()
+            .map(|kar| &kar.key_storage)
+    });
+
+    let issuer_accepted_algorithms = issuer_proof_config.map(|proof_type| {
+        proof_type
+            .proof_signing_alg_values_supported
+            .iter()
+            .filter_map(|alg| key_algorithm_provider.key_algorithm_from_jose_alg(alg))
+            .map(|(alg, _)| alg)
+            .collect::<Vec<_>>()
+    });
+
+    let key_storages = key_security_level_provider
+            .ordered_by_priority()
+            .iter()
+            .find(|(_, v)| {
+                issuer_accepted_security_levels
+                    .as_ref()
+                    .is_none_or(|issuer_accepted_levels| {
+                        v.get_capabilities()
+                            .openid_security_level
+                            .iter()
+                            .any(|level| issuer_accepted_levels.contains(level))
+                    })
+                    && !v.get_key_storages().is_empty()
+            })
+            .ok_or(IssuanceProtocolError::BindingAutogenerationFailure(
+                format!("Could not determine key security level, issuer_accepted_security_levels:{issuer_accepted_security_levels:?}"),
+            ))?
+            .1
+            .get_key_storages()
+            .to_vec();
+
+    let mut key_storage = None;
+    let mut key_algorithm = None;
+    for key_storage_id in key_storages {
+        let Some(storage) = key_provider.get_key_storage(&key_storage_id) else {
+            continue;
+        };
+
+        for (algorithm, _) in key_algorithm_provider.ordered_by_holder_priority() {
+            if !storage.get_capabilities().algorithms.contains(&algorithm) {
+                continue;
+            }
+
+            if let Some(issuer_accepted_algorithms) = &issuer_accepted_algorithms
+                && !issuer_accepted_algorithms.contains(&algorithm)
+            {
+                continue;
+            }
+
+            key_algorithm = Some(algorithm);
+            break;
+        }
+
+        if key_algorithm.is_some() {
+            key_storage = Some((key_storage_id, storage));
+            break;
+        }
+    }
+
+    let (Some((key_storage_id, key_storage)), Some(key_algorithm)) = (key_storage, key_algorithm)
+    else {
+        return Err(IssuanceProtocolError::BindingAutogenerationFailure(
+            format!(
+                "Could not find a proper key storage, issuer_accepted_security_levels:{issuer_accepted_security_levels:?}, issuer_accepted_algorithms:{issuer_accepted_algorithms:?}"
+            ),
+        ));
+    };
+
+    let key_id = Uuid::new_v4().into();
+    let key = key_storage
+        .generate(key_id, key_algorithm)
+        .await
+        .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
+    let key = Key {
+        id: key_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: key.public_key,
+        name: format!("autogenerated-{key_id}"),
+        key_reference: key.key_reference,
+        storage_type: key_storage_id,
+        key_type: key_algorithm.to_string(),
+        organisation: Some(organisation.to_owned()),
+    };
+    key_repository
+        .create_key(key.to_owned())
+        .await
+        .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
+
+    // TODO(ONE-7819): use key-type identifier (needs refactoring of multiple interfaces)
+    let did_method_id = "KEY".to_string();
+    let did_method = did_method_provider.get_did_method(&did_method_id).ok_or(
+        IssuanceProtocolError::BindingAutogenerationFailure(
+            "Could not get did method provider".to_string(),
+        ),
+    )?;
+    let did_id = Uuid::new_v4().into();
+    let did = did_method
+        .create(
+            Some(did_id),
+            &None,
+            Some(DidKeys {
+                authentication: vec![key.to_owned()],
+                assertion_method: vec![key.to_owned()],
+                key_agreement: vec![key.to_owned()],
+                capability_invocation: vec![key.to_owned()],
+                capability_delegation: vec![key.to_owned()],
+                ..Default::default()
+            }),
+        )
+        .await
+        .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
+    let related_key = RelatedKey {
+        role: KeyRole::Authentication,
+        reference: did_method
+            .get_reference_for_key(&key)
+            .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?,
+        key,
+    };
+    let did = Did {
+        id: did_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: format!("autogenerated-{did_id}"),
+        did: did.did,
+        did_method: did_method_id,
+        did_type: DidType::Local,
+        deactivated: false,
+        log: None,
+        keys: Some(vec![
+            related_key.to_owned(),
+            RelatedKey {
+                role: KeyRole::AssertionMethod,
+                ..related_key.to_owned()
+            },
+        ]),
+        organisation: Some(organisation.to_owned()),
+    };
+    did_repository
+        .create_did(did.to_owned())
+        .await
+        .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
+
+    let identifier_id = Uuid::new_v4().into();
+    let identifier = Identifier {
+        id: identifier_id,
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        name: format!("autogenerated-{identifier_id}"),
+        r#type: IdentifierType::Did,
+        is_remote: false,
+        state: IdentifierState::Active,
+        deleted_at: None,
+        organisation: Some(organisation.to_owned()),
+        did: Some(did.to_owned()),
+        key: None,
+        certificates: None,
+    };
+    identifier_repository
+        .create(identifier.to_owned())
+        .await
+        .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
+
+    Ok(HolderBindingInput {
+        key: related_key,
+        did,
+        identifier,
+    })
 }

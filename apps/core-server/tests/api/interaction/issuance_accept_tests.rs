@@ -904,6 +904,130 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
 }
 
 #[tokio::test]
+async fn test_issuance_accept_autogenerate_holder_binding() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(
+                    "did:key:z6Mkv3HL52XJNh4rdtnPKPRndGwU8nAuVpE7yFFie5SNxZkX"
+                        .parse()
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let schema_id = Uuid::new_v4();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: schema_id.into(),
+                        key: "string".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
+                    },
+                    required: true,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": "http://127.0.0.1",
+        "credential_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": null,
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+    }))
+    .unwrap();
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+        )
+        .await;
+
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                interaction: Some(interaction.to_owned()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .server_mock
+        .token_endpoint(credential_schema.schema_id, "123")
+        .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint(credential_schema.id, "123", "eyJhbGciOiJFRERTQSIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MDEyNTk2MzcsImV4cCI6MTc2NDMzMTYzNywibmJmIjoxNzAxMjU5NTc3LCJpc3MiOiJkaWQ6a2V5Ono2TWt2M0hMNTJYSk5oNHJkdG5QS1BSbmRHd1U4bkF1VnBFN3lGRmllNVNOeFprWCIsInN1YiI6ImRkMmZmMDE2LTVmYmUtNDNiMC1hMmJhLTNiMDIzZWNjNTRmYiIsImp0aSI6IjNjNDgwYjUxLTI0ZDQtNGM3OS05MDViLTI3MTQ4YjYyY2RlNiIsInZjIjp7IkBjb250ZXh0IjpbImh0dHBzOi8vd3d3LnczLm9yZy8yMDE4L2NyZWRlbnRpYWxzL3YxIiwiaHR0cHM6Ly93M2lkLm9yZy92Yy9zdGF0dXMtbGlzdC8yMDIxL3YxIl0sInR5cGUiOlsiVmVyaWZpYWJsZUNyZWRlbnRpYWwiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsic3RyaW5nIjoic3RyaW5nIn0sImNyZWRlbnRpYWxTdGF0dXMiOnsiaWQiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIzAiLCJ0eXBlIjoiU3RhdHVzTGlzdDIwMjFFbnRyeSIsInN0YXR1c1B1cnBvc2UiOiJyZXZvY2F0aW9uIiwic3RhdHVzTGlzdENyZWRlbnRpYWwiOiJodHRwOi8vMC4wLjAuMDozMDAwL3NzaS9yZXZvY2F0aW9uL3YxL2xpc3QvOGJmNmRjOGYtMjI4Zi00MTVjLTgzZjItOTVkODUxYzE5MjdiIiwic3RhdHVzTGlzdEluZGV4IjoiMCJ9fX0.JUe1lljvJAXMMLr9mKOKLMFJ1XQr_GzL0i8JTOvt1_uNwVgQzMFQPqMUZ-sQg2JtWogDHLaUsjW64yFyc7ExCg", "JWT", 1, None)
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, None, None, None)
+        .await;
+
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["id"].as_str().unwrap(), credential.id.to_string());
+
+    let credential = context.db.credentials.get(&credential.id).await;
+    assert_eq!(CredentialStateEnum::Accepted, credential.state);
+}
+
+#[tokio::test]
 async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
@@ -981,7 +1105,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, Uuid::new_v4(), None, None)
+        .issuance_accept(interaction.id, Some(Uuid::new_v4().into()), None, None)
         .await;
 
     // THEN

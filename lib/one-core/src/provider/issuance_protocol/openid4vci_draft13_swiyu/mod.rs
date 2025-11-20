@@ -30,9 +30,13 @@ use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_op
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::issuance_protocol::{HolderBindingInput, IssuanceProtocol};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
 
@@ -74,11 +78,15 @@ impl OpenID4VCI13Swiyu {
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
+        key_repository: Arc<dyn KeyRepository>,
+        did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -92,11 +100,15 @@ impl OpenID4VCI13Swiyu {
                 client,
                 metadata_cache,
                 credential_repository,
+                key_repository,
+                did_repository,
+                identifier_repository,
                 validity_credential_repository,
                 formatter_provider,
                 revocation_provider,
                 did_method_provider,
                 key_algorithm_provider,
+                key_security_level_provider,
                 key_provider,
                 certificate_validator,
                 blob_storage_provider,

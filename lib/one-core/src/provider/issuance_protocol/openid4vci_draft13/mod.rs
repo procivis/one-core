@@ -63,7 +63,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::mapper::{
-    get_issued_credential_update, interaction_from_handle_invitation,
+    autogenerate_holder_binding, get_issued_credential_update, interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, InvitationResponseEnum, ShareResponse, SubmitIssuerResponse,
@@ -95,9 +95,13 @@ use crate::provider::issuance_protocol::{
     deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
+use crate::repository::did_repository::DidRepository;
+use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::credential::dto::CredentialAttestationBlobs;
@@ -126,11 +130,15 @@ pub(crate) struct OpenID4VCI13 {
     client: Arc<dyn HttpClient>,
     metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     credential_repository: Arc<dyn CredentialRepository>,
+    key_repository: Arc<dyn KeyRepository>,
+    did_repository: Arc<dyn DidRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     base_url: Option<String>,
@@ -147,11 +155,15 @@ impl OpenID4VCI13 {
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
+        key_repository: Arc<dyn KeyRepository>,
+        did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -165,11 +177,15 @@ impl OpenID4VCI13 {
             client,
             metadata_cache,
             credential_repository,
+            key_repository,
+            did_repository,
+            identifier_repository,
             validity_credential_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
             key_algorithm_provider,
+            key_security_level_provider,
             key_provider,
             base_url,
             protocol_base_url,
@@ -186,11 +202,15 @@ impl OpenID4VCI13 {
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
+        key_repository: Arc<dyn KeyRepository>,
+        did_repository: Arc<dyn DidRepository>,
+        identifier_repository: Arc<dyn IdentifierRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -207,11 +227,15 @@ impl OpenID4VCI13 {
             client,
             metadata_cache,
             credential_repository,
+            key_repository,
+            did_repository,
+            identifier_repository,
             validity_credential_repository,
             formatter_provider,
             revocation_provider,
             did_method_provider,
             key_algorithm_provider,
+            key_security_level_provider,
             key_provider,
             base_url,
             protocol_base_url,
@@ -809,6 +833,25 @@ impl OpenID4VCI13 {
         };
         Ok(credential_blob_id)
     }
+
+    async fn create_holder_binding(
+        &self,
+        interaction_data: &HolderInteractionData,
+        organisation: &Organisation,
+    ) -> Result<HolderBindingInput, IssuanceProtocolError> {
+        autogenerate_holder_binding(
+            interaction_data.proof_types_supported.as_ref(),
+            organisation,
+            self.key_provider.as_ref(),
+            self.key_algorithm_provider.as_ref(),
+            self.key_security_level_provider.as_ref(),
+            self.did_method_provider.as_ref(),
+            self.key_repository.as_ref(),
+            self.did_repository.as_ref(),
+            self.identifier_repository.as_ref(),
+        )
+        .await
+    }
 }
 
 #[async_trait]
@@ -885,10 +928,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
         tx_code: Option<String>,
         _holder_wallet_unit_id: Option<HolderWalletUnitId>,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
-        let holder_binding = holder_binding.ok_or(IssuanceProtocolError::InvalidRequest(
-            "holder binding material not specified".to_string(),
-        ))?;
-
         let credential = storage_access
             .get_credential_by_interaction_id(&interaction.id)
             .await
@@ -908,6 +947,21 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let mut interaction_data: HolderInteractionData =
             deserialize_interaction_data(interaction.data.as_ref())?;
+
+        let holder_binding = if let Some(holder_binding) = holder_binding {
+            holder_binding
+        } else {
+            self.create_holder_binding(
+                &interaction_data,
+                interaction
+                    .organisation
+                    .as_ref()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "organisation is None".to_string(),
+                    ))?,
+            )
+            .await?
+        };
 
         let token_response = self.holder_fetch_token(&interaction_data, tx_code).await?;
 
@@ -1818,6 +1872,7 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         cryptographic_binding_methods_supported: credential_config
             .cryptographic_binding_methods_supported
             .clone(),
+        proof_types_supported: credential_config.proof_types_supported.clone(),
         nonce: None,
         notification_id: None,
     };

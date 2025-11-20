@@ -38,12 +38,16 @@ use crate::provider::issuance_protocol::openid4vci_draft13::OpenID4VCI13;
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::MockHandleInvitationOperations;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
 use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
+use crate::repository::did_repository::MockDidRepository;
+use crate::repository::identifier_repository::MockIdentifierRepository;
+use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::test_utilities::{dummy_identifier, dummy_organisation, generic_config};
 
@@ -167,11 +171,15 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(blob_storage_provider),
@@ -316,11 +324,15 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(blob_storage_provider),
@@ -453,11 +465,15 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),
@@ -547,11 +563,15 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockHttpClient::new()),
         Arc::new(MockOpenIDMetadataFetcher::new()),
         Arc::new(credential_repository),
+        Arc::new(MockKeyRepository::new()),
+        Arc::new(MockDidRepository::new()),
+        Arc::new(MockIdentifierRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
+        Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockCertificateValidator::new()),
         Arc::new(MockBlobStorageProvider::new()),

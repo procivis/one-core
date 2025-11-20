@@ -117,6 +117,8 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub credential_signing_alg_values_supported: Option<Vec<String>>,
     #[serde(default)]
+    pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
+    #[serde(default)]
     pub notification_id: Option<String>,
 }
 
