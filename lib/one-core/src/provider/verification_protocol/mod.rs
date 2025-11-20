@@ -31,6 +31,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::session_provider::SessionProvider;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -88,6 +89,7 @@ pub(crate) fn verification_protocol_providers_from_config(
     session_provider: Arc<dyn SessionProvider>,
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
+    openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     mqtt_client: Option<Arc<dyn MqttClient>>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
 ) -> Result<HashMap<String, Arc<dyn VerificationProtocol>>, ConfigValidationError> {
@@ -180,6 +182,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     key_provider.clone(),
                     certificate_validator.clone(),
                     client.clone(),
+                    openid_metadata_cache.clone(),
                     params.clone(),
                     config.clone(),
                 )?;
@@ -209,6 +212,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     key_provider.clone(),
                     certificate_validator.clone(),
                     client.clone(),
+                    openid_metadata_cache.clone(),
                     params.into(),
                     config.clone(),
                 )?;
@@ -279,6 +283,7 @@ fn openid4vp_draft20_from_params(
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
     client: Arc<dyn HttpClient>,
+    openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     params: OpenID4Vp20Params,
     config: Arc<CoreConfig>,
 ) -> Result<OpenID4VP20HTTP, ConfigValidationError> {
@@ -291,6 +296,7 @@ fn openid4vp_draft20_from_params(
         key_provider,
         certificate_validator,
         client,
+        openid_metadata_cache,
         params,
         config,
     ))

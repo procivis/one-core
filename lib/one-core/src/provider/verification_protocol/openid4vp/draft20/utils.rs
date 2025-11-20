@@ -18,6 +18,7 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::proto::key_verification::KeyVerification;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
 };
@@ -253,9 +254,11 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn interaction_data_from_openid4vp_20_query(
     query: &str,
     client: &Arc<dyn HttpClient>,
+    metadata_cache: &Arc<dyn OpenIDMetadataFetcher>,
     allow_insecure_http_transport: bool,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
@@ -424,18 +427,10 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
             ));
         }
 
-        let client_metadata = client
-            .get(client_metadata_uri.as_str())
-            .send()
+        let client_metadata = metadata_cache
+            .fetch(client_metadata_uri.as_str())
             .await
-            .context("send error")
-            .map_err(VerificationProtocolError::Transport)?
-            .error_for_status()
-            .context("status error")
-            .map_err(VerificationProtocolError::Transport)?
-            .json()
-            .context("parsing error")
-            .map_err(VerificationProtocolError::Transport)?;
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         interaction_data.client_metadata = Some(client_metadata);
     }

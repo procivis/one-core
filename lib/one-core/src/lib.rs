@@ -688,6 +688,7 @@ impl OneCore {
             providers.session_provider.clone(),
             ble_waiter.clone(),
             client.clone(),
+            openid_metadata_cache.clone(),
             mqtt_client,
             nfc_hce.clone(),
         )

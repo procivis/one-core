@@ -21,6 +21,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -68,6 +69,7 @@ const REQUEST_QUERY_PARAM_KEY: &str = "request";
 
 pub(crate) struct OpenID4VP20HTTP {
     client: Arc<dyn HttpClient>,
+    metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -90,11 +92,13 @@ impl OpenID4VP20HTTP {
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
         client: Arc<dyn HttpClient>,
+        metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         params: OpenID4Vp20Params,
         config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             base_url,
+            metadata_cache,
             credential_formatter_provider,
             presentation_formatter_provider,
             did_method_provider,
@@ -222,6 +226,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             url,
             self.params.allow_insecure_http_transport,
             &self.client,
+            &self.metadata_cache,
             storage_access,
             Some(organisation),
             &self.key_algorithm_provider,
@@ -474,6 +479,7 @@ async fn handle_proof_invitation(
     url: Url,
     allow_insecure_http_transport: bool,
     client: &Arc<dyn HttpClient>,
+    metadata_cache: &Arc<dyn OpenIDMetadataFetcher>,
     storage_access: &StorageAccess,
     organisation: Option<Organisation>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
@@ -490,6 +496,7 @@ async fn handle_proof_invitation(
     let interaction_data = interaction_data_from_openid4vp_20_query(
         query,
         client,
+        metadata_cache,
         allow_insecure_http_transport,
         key_algorithm_provider,
         did_method_provider,

@@ -26,6 +26,7 @@ use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{FormatterCapabilities, IdentifierDetails};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -62,6 +63,7 @@ struct TestInputs {
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub metadata_cache: MockOpenIDMetadataFetcher,
     pub params: Option<OpenID4Vp20Params>,
 }
 
@@ -75,6 +77,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VP20HTTP {
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
         Arc::new(ReqwestClient::default()),
+        Arc::new(inputs.metadata_cache),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(CoreConfig::default()),
     )
@@ -534,8 +537,6 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
 
 #[tokio::test]
 async fn test_handle_invitation_proof_success() {
-    let protocol = setup_protocol(Default::default());
-
     let client_metadata = serde_json::to_string(&OpenID4VPDraftClientMetadata {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
@@ -564,7 +565,7 @@ async fn test_handle_invitation_proof_success() {
         .times(2)
         .returning(move |request| Ok(request.id));
 
-    protocol
+    setup_protocol(Default::default())
         .holder_handle_invitation(
             url,
             dummy_organisation(None),
@@ -575,18 +576,9 @@ async fn test_handle_invitation_proof_success() {
         .unwrap();
 
     let mock_server = MockServer::start().await;
-
     let client_metadata_uri = format!("{}/client_metadata_uri", mock_server.uri());
     let presentation_definition_uri = format!("{}/presentation_definition_uri", mock_server.uri());
 
-    Mock::given(method(Method::GET))
-        .and(path("/client_metadata_uri"))
-        .respond_with(
-            ResponseTemplate::new(200).set_body_raw(client_metadata.to_owned(), "application/json"),
-        )
-        .expect(1)
-        .mount(&mock_server)
-        .await;
     Mock::given(method(Method::GET))
         .and(path("/presentation_definition_uri"))
         .respond_with(
@@ -597,17 +589,27 @@ async fn test_handle_invitation_proof_success() {
         .mount(&mock_server)
         .await;
 
+    let mut metadata_cache = MockOpenIDMetadataFetcher::new();
+    metadata_cache
+        .expect_get()
+        .with(eq(client_metadata_uri.clone()))
+        .once()
+        .returning(move |_| Ok(client_metadata.to_string().into_bytes()));
+
     let url_using_uri_instead_of_values = Url::parse(&format!("openid4vp://?response_type=vp_token&nonce={nonce}&client_id_scheme=redirect_uri&client_id={callback_url}&client_metadata_uri={client_metadata_uri}&response_mode=direct_post&response_uri={callback_url}&presentation_definition_uri={presentation_definition_uri}")).unwrap();
 
-    protocol
-        .holder_handle_invitation(
-            url_using_uri_instead_of_values,
-            dummy_organisation(None),
-            &storage_proxy,
-            "HTTP".to_string(),
-        )
-        .await
-        .unwrap();
+    setup_protocol(TestInputs {
+        metadata_cache,
+        ..Default::default()
+    })
+    .holder_handle_invitation(
+        url_using_uri_instead_of_values,
+        dummy_organisation(None),
+        &storage_proxy,
+        "HTTP".to_string(),
+    )
+    .await
+    .unwrap();
 }
 
 #[tokio::test]
