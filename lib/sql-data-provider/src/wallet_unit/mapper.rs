@@ -98,11 +98,10 @@ impl IntoFilterCondition for WalletUnitFilterValue {
                                         history::Column::EntityType
                                             .eq(history::HistoryEntityType::WalletUnit),
                                     )
-                                    .add(history::Column::Action.is_in([
-                                        history::HistoryAction::Created,
-                                        history::HistoryAction::Updated,
-                                        history::HistoryAction::Activated,
-                                    ]))
+                                    .add(
+                                        history::Column::Action
+                                            .is_in([history::HistoryAction::Issued]),
+                                    )
                                     .add(history::Column::Metadata.eq(history_metadata_json)),
                             )
                             .to_owned(),
