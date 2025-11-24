@@ -11,6 +11,7 @@ use crate::config::core_config::{DidType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::key::PublicKeyJwk;
+use crate::model::proof::Proof;
 use crate::model::proof_schema::ProofInputSchema;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -522,5 +523,55 @@ pub(crate) fn validate_san_dns_matching_client_id(
         )));
     }
 
+    Ok(())
+}
+
+pub(super) fn validate_proof_completeness(
+    proof: &Proof,
+    proved_claims: &[ValidatedProofClaimDTO],
+) -> Result<(), OpenID4VCError> {
+    for input_schema in proof
+        .schema
+        .as_ref()
+        .ok_or(OpenID4VCError::ValidationError(
+            "Missing proof schema".to_string(),
+        ))?
+        .input_schemas
+        .as_ref()
+        .ok_or(OpenID4VCError::ValidationError(
+            "Missing proof input schemas".to_string(),
+        ))?
+    {
+        let credential_schema =
+            input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(OpenID4VCError::ValidationError(
+                    "Missing credential schema".to_string(),
+                ))?;
+        for proof_claim_input_schema in
+            input_schema
+                .claim_schemas
+                .as_ref()
+                .ok_or(OpenID4VCError::ValidationError(
+                    "Missing claim input schemas".to_string(),
+                ))?
+        {
+            if proof_claim_input_schema.required
+                && !proved_claims.iter().any(|proved_claim| {
+                    credential_schema.id == proved_claim.credential_schema.id
+                        && proof_claim_input_schema.schema.id
+                            == proved_claim.proof_input_claim.schema.id
+                })
+            {
+                return Err(OpenID4VCError::ValidationError(format!(
+                    "Claim `{}` (key `{}`) is required but not found in proof submission for proof `{}`",
+                    proof_claim_input_schema.schema.id,
+                    proof_claim_input_schema.schema.key,
+                    proof.id
+                )));
+            }
+        }
+    }
     Ok(())
 }

@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -51,6 +51,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
+    validate_proof_completeness,
 };
 use crate::validator::throw_if_latest_proof_state_not_eq;
 
@@ -233,6 +234,7 @@ pub(crate) async fn oid4vp_verifier_process_submission(
             "Missing DCQL query and presentation submission".to_string(),
         )),
     }?;
+    validate_proof_completeness(&proof, &proved_claims)?;
 
     let redirect_uri: Option<String> = proof.redirect_uri.to_owned();
     let result = accept_proof(proof, proved_claims).await?;
@@ -565,7 +567,6 @@ async fn process_proof_submission_presentation_exchange(
     }
 
     let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
-    let mut validated_credentials = HashSet::new();
 
     // Unpack presentations and credentials
     for presentation_submitted in &presentation_submission.descriptor_map {
@@ -705,14 +706,6 @@ async fn process_proof_submission_presentation_exchange(
                 "Credential at index {credential_index} not found",
             )),
         )?;
-
-        if validated_credentials.contains(credential_token) {
-            return Err(OpenID4VCError::ValidationError(
-                "Multiple input descriptors pointing to the same credential presentation"
-                    .to_string(),
-            ));
-        }
-        validated_credentials.insert(credential_token.clone());
 
         let (credential, mso) = validate_credential(
             holder_details,
