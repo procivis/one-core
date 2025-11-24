@@ -91,7 +91,7 @@ pub fn permission_check(
         .iter()
         .any(|p| required_permissions.contains(p))
     {
-        tracing::trace!(
+        tracing::debug!(
             "Permission check failed: authorized permissions are {:?}, required are any of {required_permissions:?}",
             authorized.permissions
         );

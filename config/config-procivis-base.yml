@@ -531,7 +531,7 @@ keySecurityLevel:
     params:
       public:
         holder:
-          priority: 10
+          priority: 40
           keyStorages: ["INTERNAL"]
   ENHANCED_BASIC:
     enabled: false
@@ -556,7 +556,7 @@ keySecurityLevel:
     params:
       public:
         holder:
-          priority: 40
+          priority: 20
           keyStorages: ["AZURE_VAULT"]
 task:
   SUSPEND_CHECK:
