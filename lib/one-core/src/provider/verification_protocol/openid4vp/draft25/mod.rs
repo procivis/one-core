@@ -12,9 +12,7 @@ use url::Url;
 use utils::{interaction_data_from_openid4vp_25_query, validate_interaction_data};
 use uuid::Uuid;
 
-use super::mapper::{
-    encrypted_params, format_to_type, key_and_did_from_formatted_creds, unencrypted_params,
-};
+use super::mapper::{encrypted_params, format_to_type, unencrypted_params};
 use super::mdoc::{mdoc_draft_handover, mdoc_presentation_context};
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
@@ -386,15 +384,10 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             )
             .await?
         } else {
-            let (key, jwk_key_id, did) =
-                key_and_did_from_formatted_creds(&credential_presentations)?;
             pex_submission_data(
                 credential_presentations,
                 &interaction_data,
                 &holder_nonce,
-                &did,
-                &key,
-                jwk_key_id,
                 &*self.client,
                 &self.config,
                 &*self.presentation_formatter_provider,

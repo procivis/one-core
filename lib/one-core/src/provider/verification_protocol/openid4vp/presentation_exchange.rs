@@ -4,8 +4,6 @@ use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, FormatType};
 use crate::mapper::oidc::map_to_openid4vp_format;
-use crate::model::did::Did;
-use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -36,9 +34,6 @@ pub(crate) async fn pex_submission_data(
     credential_presentations: Vec<FormattedCredentialPresentation>,
     interaction_data: &OpenID4VPHolderInteractionData,
     holder_nonce: &str,
-    did: &Did,
-    key: &Key,
-    jwk_key_id: Option<String>,
     client: &dyn HttpClient,
     config: &CoreConfig,
     presentation_formatter_provider: &dyn PresentationFormatterProvider,
@@ -105,8 +100,8 @@ pub(crate) async fn pex_submission_data(
 
         let auth_fn = key_provider
             .get_signature_provider(
-                &key.to_owned(),
-                jwk_key_id.clone(),
+                &credential.key,
+                credential.jwk_key_id,
                 key_algorithm_provider.clone(),
             )
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
@@ -127,7 +122,12 @@ pub(crate) async fn pex_submission_data(
             vp_token,
             oidc_format,
         } = presentation_formatter
-            .format_presentation(credentials_to_present, auth_fn, &did.did, ctx)
+            .format_presentation(
+                credentials_to_present,
+                auth_fn,
+                &credential.holder_did.did,
+                ctx,
+            )
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
         vp_tokens.push(vp_token);

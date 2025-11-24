@@ -12,7 +12,7 @@ use url::Url;
 use utils::{interaction_data_from_openid4vp_20_query, validate_interaction_data};
 use uuid::Uuid;
 
-use super::mapper::{encrypted_params, key_and_did_from_formatted_creds, unencrypted_params};
+use super::mapper::{encrypted_params, unencrypted_params};
 use crate::config::core_config::{
     CoreConfig, DidType, IdentifierType, TransportType, VerificationProtocolType,
 };
@@ -247,8 +247,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         proof: &Proof,
         credential_presentations: Vec<FormattedCredentialPresentation>,
     ) -> Result<UpdateResponse, VerificationProtocolError> {
-        let (key, jwk_key_id, did) = key_and_did_from_formatted_creds(&credential_presentations)?;
-
         let interaction = proof
             .interaction
             .as_ref()
@@ -263,9 +261,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             credential_presentations,
             &interaction_data,
             &holder_nonce,
-            &did,
-            &key,
-            jwk_key_id,
             &*self.client,
             &self.config,
             &*self.presentation_formatter_provider,

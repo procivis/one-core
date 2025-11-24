@@ -143,9 +143,9 @@ pub(crate) async fn w3c_jwt_enveloped_presentation(
 
 pub(crate) async fn dummy_presentations() -> (String, String) {
     let alg = "ES256";
-    let holder_key_pair = Ecdsa.generate_key().unwrap();
-    let multibase = holder_key_pair.key.public_key_as_multibase().unwrap();
-    let holder_did = DidValue::from_did_url(format!("did:key:{}", multibase).as_str()).unwrap();
+    let holder_key_pair1 = Ecdsa.generate_key().unwrap();
+    let multibase1 = holder_key_pair1.key.public_key_as_multibase().unwrap();
+    let holder_did1 = DidValue::from_did_url(format!("did:key:{}", multibase1).as_str()).unwrap();
 
     let issuer_key_pair = Ecdsa.generate_key().unwrap();
     let multibase = issuer_key_pair.key.public_key_as_multibase().unwrap();
@@ -167,7 +167,7 @@ pub(crate) async fn dummy_presentations() -> (String, String) {
         &issuer_key_pair,
         alg,
         issuer_did.clone(),
-        holder_did.clone(),
+        holder_did1.clone(),
         pet_cred_subj,
     )
     .await;
@@ -175,34 +175,39 @@ pub(crate) async fn dummy_presentations() -> (String, String) {
         &issuer_key_pair,
         alg,
         issuer_did.clone(),
-        holder_did.clone(),
+        holder_did1.clone(),
         name_cred_subj,
     )
     .await;
+    let pres1 = w3c_jwt_enveloped_presentation(
+        &holder_key_pair1,
+        alg,
+        vec![token1, token2],
+        holder_did1.clone(),
+        holder_did1.clone(),
+        Some("nonce123".to_string()),
+    )
+    .await;
+
+    let holder_key_pair2 = Ecdsa.generate_key().unwrap();
+    let multibase2 = holder_key_pair2.key.public_key_as_multibase().unwrap();
+    let holder_did2 = DidValue::from_did_url(format!("did:key:{}", multibase2).as_str()).unwrap();
+
     let token3 = w3c_jwt_vc(
         &issuer_key_pair,
         alg,
         issuer_did,
-        holder_did.clone(),
+        holder_did2.clone(),
         cat_cred_subj,
     )
     .await;
 
-    let pres1 = w3c_jwt_enveloped_presentation(
-        &holder_key_pair,
-        alg,
-        vec![token1, token2],
-        holder_did.clone(),
-        holder_did.clone(),
-        Some("nonce123".to_string()),
-    )
-    .await;
     let pres2 = w3c_jwt_enveloped_presentation(
-        &holder_key_pair,
+        &holder_key_pair2,
         alg,
         vec![token3],
-        holder_did.clone(),
-        holder_did,
+        holder_did2.clone(),
+        holder_did2,
         Some("nonce123".to_string()),
     )
     .await;

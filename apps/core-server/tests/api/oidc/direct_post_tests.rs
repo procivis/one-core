@@ -931,11 +931,8 @@ async fn test_direct_post_one_credential_missing_required_claim() {
 #[tokio::test]
 async fn test_direct_post_multiple_presentations() {
     // GIVEN
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
     let nonce = "nonce123";
 
     let credential1_claims = vec![
@@ -954,7 +951,7 @@ async fn test_direct_post_multiple_presentations() {
     ];
 
     let credential_schema1 = create_credential_schema_with_claims(
-        &db_conn,
+        &context.db.db_conn,
         "NameSchema",
         &organisation,
         "NONE",
@@ -963,7 +960,7 @@ async fn test_direct_post_multiple_presentations() {
     .await;
 
     let credential_schema2 = create_credential_schema_with_claims(
-        &db_conn,
+        &context.db.db_conn,
         "PetSchema",
         &organisation,
         "NONE",
@@ -972,7 +969,7 @@ async fn test_direct_post_multiple_presentations() {
     .await;
 
     let credential_schema3 = create_credential_schema_with_claims(
-        &db_conn,
+        &context.db.db_conn,
         "CatSchema",
         &organisation,
         "NONE",
@@ -1005,30 +1002,11 @@ async fn test_direct_post_multiple_presentations() {
         },
     ];
 
-    let proof_schema =
-        create_proof_schema(&db_conn, "Schema1", &organisation, &proof_input_schemas).await;
-
-    let verifier_key = fixtures::create_key(&db_conn, &organisation, None).await;
-    let verifier_did = fixtures::create_did(
-        &db_conn,
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
         &organisation,
-        Some(TestingDidParams {
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::Authentication,
-                key: verifier_key.clone(),
-                reference: "1".to_string(),
-            }]),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let verifier_identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            did: Some(verifier_did),
-            ..Default::default()
-        }),
+        &proof_input_schemas,
     )
     .await;
 
@@ -1121,7 +1099,7 @@ async fn test_direct_post_multiple_presentations() {
     });
 
     let interaction = fixtures::create_interaction(
-        &db_conn,
+        &context.db.db_conn,
         interaction_data.to_string().as_bytes(),
         &organisation,
         InteractionType::Verification,
@@ -1129,7 +1107,7 @@ async fn test_direct_post_multiple_presentations() {
     .await;
 
     let proof = create_proof(
-        &db_conn,
+        &context.db.db_conn,
         &verifier_identifier,
         Some(&proof_schema),
         ProofStateEnum::Pending,
@@ -1187,9 +1165,10 @@ async fn test_direct_post_multiple_presentations() {
     ];
 
     // WHEN
-    let _handle = run_server(listener, config, &db_conn).await;
-
-    let url = format!("{base_url}/ssi/openid4vp/draft-20/response");
+    let url = format!(
+        "{}/ssi/openid4vp/draft-20/response",
+        context.config.app.core_base_url
+    );
 
     let resp = utils::client()
         .post(url)
@@ -1201,7 +1180,7 @@ async fn test_direct_post_multiple_presentations() {
     // THEN
     assert_eq!(resp.status(), 200);
 
-    let proof = get_proof(&db_conn, &proof.id).await;
+    let proof = get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
 
     let expected_claims: BTreeSet<String> = proof_input_schemas
