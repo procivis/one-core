@@ -10,7 +10,7 @@ use strum::Display;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::config::core_config::{ConfigExt, CoreConfig, KeyStorageType};
+use crate::config::core_config::{CoreConfig, KeyStorageType};
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
 };
@@ -41,6 +41,7 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
@@ -620,8 +621,13 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
      */
     let r#use = if config
         .key_storage
-        .get_if_enabled(&encryption_key.storage_type)?
-        .r#type
+        .get_type(&encryption_key.storage_type)
+        .map_err(|e| {
+            VerificationProtocolError::Failed(format!(
+                "Key storage `{}` not supported: {e}",
+                &encryption_key.storage_type
+            ))
+        })?
         != KeyStorageType::AzureVault
     {
         Some(JwkUse::Encryption)

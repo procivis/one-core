@@ -131,7 +131,6 @@ impl OID4VPFinal1_0Service {
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
             &*self.key_algorithm_provider,
-            &*self.key_provider,
             &self.config,
         )?;
 
@@ -219,7 +218,6 @@ impl OID4VPFinal1_0Service {
         let key_handle = select_key_agreement_key_from_proof(
             &proof,
             &*self.key_algorithm_provider,
-            &*self.key_provider,
             &self.config,
         )?;
 

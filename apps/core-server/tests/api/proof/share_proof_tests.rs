@@ -77,6 +77,76 @@ async fn test_share_proof_success() {
 }
 
 #[tokio::test]
+async fn test_share_proof_key_storage_disabled_success() {
+    // check that sharing works also when using disabled key storage
+    let additional_config = Some(
+        indoc::indoc! {"
+      keyStorage:
+        INTERNAL:
+          enabled: false
+  "}
+        .to_string(),
+    );
+    // GIVEN
+    let (context, organisation, _, identifier, key) =
+        TestContext::new_with_did(additional_config).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = fixtures::create_proof_schema(
+        &context.db.db_conn,
+        "test",
+        &organisation,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
+    )
+    .await;
+
+    for exchange in ["OPENID4VP_DRAFT20", "OPENID4VP_DRAFT25", "OPENID4VP_FINAL1"] {
+        let proof = fixtures::create_proof(
+            &context.db.db_conn,
+            &identifier,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            ProofRole::Verifier,
+            exchange,
+            None,
+            Some(&key),
+            None,
+            None,
+        )
+        .await;
+
+        // WHEN
+        let resp = context.api.proofs.share(proof.id, None).await;
+
+        // THEN
+        assert_eq!(resp.status(), 201);
+        let resp = resp.json::<Value>().await;
+        let url = resp["url"].as_str().unwrap();
+        assert!(url.starts_with("openid4vp"));
+        assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+    }
+}
+
+#[tokio::test]
 async fn test_share_proof_twice() {
     // GIVEN
     let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;

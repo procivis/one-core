@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use dcql::DcqlQuery;
 use url::Url;
 
-use crate::config::core_config::{ConfigExt, CoreConfig, KeyStorageType};
+use crate::config::core_config::{CoreConfig, KeyStorageType};
 use crate::mapper::PublicKeyWithJwk;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
@@ -11,8 +11,6 @@ use crate::model::interaction::InteractionId;
 use crate::model::key::JwkUse;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::provider::key_storage::error::KeyStorageError;
-use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::{
     AuthorizationRequest, OpenID4VPFinal1_0ClientMetadata,
@@ -99,7 +97,6 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresen
 pub(crate) fn select_key_agreement_key_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    key_provider: &dyn KeyProvider,
     config: &CoreConfig,
 ) -> Result<Option<PublicKeyWithJwk>, VerificationProtocolError> {
     let Some(verifier_identifier) = proof.verifier_identifier.as_ref() else {
@@ -155,13 +152,6 @@ pub(crate) fn select_key_agreement_key_from_proof(
             candidate_encryption_key.key_type
         )))?;
 
-    key_provider
-        .get_key_storage(&candidate_encryption_key.storage_type)
-        .ok_or(KeyStorageError::NotSupported(
-            candidate_encryption_key.storage_type.to_owned(),
-        ))
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
     /*
      * TODO(ONE-5428): Azure vault doesn't work directly with encrypted JWE params
      * This needs more investigation and a refactor to support creating shared secret
@@ -169,9 +159,13 @@ pub(crate) fn select_key_agreement_key_from_proof(
      */
     if config
         .key_storage
-        .get_if_enabled(&candidate_encryption_key.storage_type)
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .r#type
+        .get_type(&candidate_encryption_key.storage_type)
+        .map_err(|e| {
+            VerificationProtocolError::Failed(format!(
+                "Key storage `{}` not supported: {e}",
+                &candidate_encryption_key.storage_type
+            ))
+        })?
         == KeyStorageType::AzureVault
     {
         return Ok(None);
