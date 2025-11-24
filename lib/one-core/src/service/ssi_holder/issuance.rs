@@ -24,7 +24,7 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
-use crate::model::identifier::IdentifierRelations;
+use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::interaction::{
     Interaction, InteractionId, InteractionRelations, InteractionType,
 };
@@ -97,6 +97,7 @@ impl SSIHolderService {
                                 keys: Some(Default::default()),
                                 ..Default::default()
                             }),
+                            key: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -113,6 +114,7 @@ impl SSIHolderService {
                                 keys: Some(Default::default()),
                                 ..Default::default()
                             }),
+                            key: Some(Default::default()),
                             ..Default::default()
                         },
                     )
@@ -136,28 +138,48 @@ impl SSIHolderService {
                 &*self.session_provider,
             )?;
 
-            let did = identifier.did.to_owned().ok_or(BusinessLogic(
-                BusinessLogicError::IncompatibleHolderIdentifier,
-            ))?;
+            let key = match identifier.r#type {
+                IdentifierType::Key => {
+                    let key = identifier.key.to_owned().ok_or(ServiceError::MappingError(
+                        "Missing identifier key".to_string(),
+                    ))?;
 
-            let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
-            let selected_key = match key_id {
-                Some(key_id) => did
-                    .find_key(&key_id, &key_filter)?
-                    .ok_or(ValidationError::KeyNotFound)?,
-                None => {
-                    did.find_first_matching_key(&key_filter)?
-                        .ok_or(ValidationError::InvalidKey(
-                            "No key with role authentication available".to_string(),
-                        ))?
+                    if let Some(key_id) = key_id
+                        && key_id != key.id
+                    {
+                        return Err(ValidationError::InvalidKey(
+                            "Mismatch keyId of selected identifier".to_string(),
+                        )
+                        .into());
+                    }
+                    key
+                }
+                IdentifierType::Did => {
+                    let did = identifier.did.to_owned().ok_or(ServiceError::MappingError(
+                        "Missing identifier did".to_string(),
+                    ))?;
+
+                    let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
+                    let selected_key = match key_id {
+                        Some(key_id) => did
+                            .find_key(&key_id, &key_filter)?
+                            .ok_or(ValidationError::KeyNotFound)?,
+                        None => did.find_first_matching_key(&key_filter)?.ok_or(
+                            ValidationError::InvalidKey(
+                                "No key with role authentication available".to_string(),
+                            ),
+                        )?,
+                    };
+                    selected_key.key.to_owned()
+                }
+                _ => {
+                    return Err(BusinessLogic(
+                        BusinessLogicError::IncompatibleHolderIdentifier,
+                    ));
                 }
             };
 
-            Some(HolderBindingInput {
-                identifier,
-                key: selected_key.to_owned(),
-                did,
-            })
+            Some(HolderBindingInput { identifier, key })
         } else {
             None
         };
@@ -249,7 +271,7 @@ impl SSIHolderService {
                 interaction_data_to_accepted_key_storage_security(&data)
         {
             match_key_security_level(
-                &holder_binding.key.key.storage_type,
+                &holder_binding.key.storage_type,
                 &accepted_security_levels,
                 &*self.key_security_level_provider,
             )?;
@@ -361,7 +383,7 @@ impl SSIHolderService {
 
         if let Some(holder_binding) = &holder_binding {
             validate_key_storage_supports_security_requirement(
-                &holder_binding.key.key.storage_type,
+                &holder_binding.key.storage_type,
                 &schema.key_storage_security,
                 &*self.key_security_level_provider,
             )?;

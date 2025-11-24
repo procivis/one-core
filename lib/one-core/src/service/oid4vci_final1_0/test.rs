@@ -260,6 +260,7 @@ async fn test_get_issuer_metadata_jwt() {
         .expect_get_capabilities()
         .return_once(|| FormatterCapabilities {
             signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            holder_identifier_types: vec![IdentifierType::Did.into()],
             ..Default::default()
         });
 
@@ -313,7 +314,7 @@ async fn test_get_issuer_metadata_jwt() {
         credential_configuration
             .cryptographic_binding_methods_supported
             .unwrap(),
-        vec!["did:key".to_string(), "jwk".to_string()]
+        vec!["did:key".to_string()]
     );
     assert_eq!(
         credential_configuration
@@ -367,6 +368,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
         .expect_get_capabilities()
         .return_once(|| FormatterCapabilities {
             signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            holder_identifier_types: vec![IdentifierType::Did.into(), IdentifierType::Key.into()],
             ..Default::default()
         });
 
@@ -417,7 +419,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     assert!(credential.doctype.is_none());
     assert_eq!(
         credential.cryptographic_binding_methods_supported.unwrap(),
-        vec!["did:key".to_string(), "jwk".to_string()]
+        vec!["jwk".to_string(), "did:key".to_string()]
     );
     assert_eq!(
         credential
@@ -463,6 +465,7 @@ async fn test_get_issuer_metadata_mdoc() {
         .expect_get_capabilities()
         .return_once(|| FormatterCapabilities {
             signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa],
+            holder_identifier_types: vec![IdentifierType::Did.into(), IdentifierType::Key.into()],
             ..Default::default()
         });
 
@@ -532,7 +535,7 @@ async fn test_get_issuer_metadata_mdoc() {
     );
     assert_eq!(
         credential.cryptographic_binding_methods_supported.unwrap(),
-        vec!["did:key".to_string(), "jwk".to_string()]
+        vec!["jwk".to_string(), "did:key".to_string()]
     );
     assert_eq!(
         credential

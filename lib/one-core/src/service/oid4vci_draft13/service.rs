@@ -38,7 +38,9 @@ use crate::proto::key_verification::KeyVerification;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
-use crate::provider::issuance_protocol::openid4vci_draft13::mapper::map_proof_types_supported;
+use crate::provider::issuance_protocol::openid4vci_draft13::mapper::{
+    map_cryptographic_binding_methods_supported, map_proof_types_supported,
+};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OAuthAuthorizationServerMetadata,
     OpenID4VCICredentialOfferDTO, OpenID4VCICredentialRequestDTO, OpenID4VCICredentialValueDetails,
@@ -187,8 +189,8 @@ impl OID4VCIDraft13Service {
             .get_credential_formatter(&schema.format)
             .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?;
 
-        let credential_signing_alg_values_supported = formatter
-            .get_capabilities()
+        let format_capabilities = formatter.get_capabilities();
+        let credential_signing_alg_values_supported = format_capabilities
             .signing_key_algorithms
             .into_iter()
             .filter_map(|alg_type| {
@@ -203,7 +205,10 @@ impl OID4VCIDraft13Service {
             &format_type,
             &schema,
             &self.config,
-            &self.did_method_provider.supported_method_names(),
+            map_cryptographic_binding_methods_supported(
+                &self.did_method_provider.supported_method_names(),
+                &format_capabilities.holder_identifier_types,
+            ),
             Some(map_proof_types_supported(
                 self.key_algorithm_provider
                     .supported_verification_jose_alg_ids(),

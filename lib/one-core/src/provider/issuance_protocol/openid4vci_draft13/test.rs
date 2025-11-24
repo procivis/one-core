@@ -759,17 +759,17 @@ async fn test_holder_accept_credential_success() {
         ..Default::default()
     });
 
+    let key = dummy_key();
     let result = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
-                identifier: dummy_identifier(),
-                did: dummy_did(),
-                key: RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "ref".to_string(),
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
                 },
+                key,
             }),
             &storage_access,
             None,
@@ -980,17 +980,27 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         ..Default::default()
     });
 
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        ..dummy_key()
+    };
     let result = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
-                identifier: dummy_identifier(),
-                did: dummy_did(),
-                key: RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "ref".to_string(),
+                identifier: Identifier {
+                    r#type: IdentifierType::Did,
+                    did: Some(Did {
+                        keys: Some(vec![RelatedKey {
+                            role: KeyRole::Authentication,
+                            key: key.to_owned(),
+                            reference: "ref".to_string(),
+                        }]),
+                        ..dummy_did()
+                    }),
+                    ..dummy_identifier()
                 },
+                key,
             }),
             &storage_access,
             None,
@@ -1192,17 +1202,17 @@ async fn test_holder_accept_expired_credential_fails() {
         ..Default::default()
     });
 
+    let key = dummy_key();
     let result = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
-                identifier: dummy_identifier(),
-                did: dummy_did(),
-                key: RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "ref".to_string(),
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
                 },
+                key,
             }),
             &storage_access,
             None,

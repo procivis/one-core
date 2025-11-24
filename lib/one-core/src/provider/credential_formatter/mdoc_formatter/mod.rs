@@ -154,15 +154,57 @@ impl CredentialFormatter for MdocFormatter {
         let namespaces =
             try_build_namespaces(claims, credential_data.claims, &self.datatype_config)?;
 
-        let holder_did = credential_data
-            .holder_identifier
-            .as_ref()
-            .and_then(|identifier| identifier.did.as_ref())
-            .ok_or(FormatterError::CouldNotFormat(
-                "Missing holder did for mdoc".to_string(),
-            ))?;
+        let holder_identifier =
+            credential_data
+                .holder_identifier
+                .ok_or(FormatterError::CouldNotFormat(
+                    "Missing holder identifier".to_string(),
+                ))?;
 
-        let cose_key = try_build_cose_key(&*self.did_method_provider, &holder_did.did).await?;
+        let holder_key = match holder_identifier.r#type {
+            crate::model::identifier::IdentifierType::Key => {
+                let key = holder_identifier.key.ok_or(FormatterError::CouldNotFormat(
+                    "Missing holder key".to_string(),
+                ))?;
+
+                let key_alg = key
+                    .key_algorithm_type()
+                    .ok_or(FormatterError::Failed(format!(
+                        "Invalid key algorithm {}",
+                        key.key_type
+                    )))?;
+
+                self.key_algorithm_provider
+                    .key_algorithm_from_type(key_alg)
+                    .ok_or_else(|| {
+                        FormatterError::Failed(format!("Missing key algorithm {key_alg}"))
+                    })?
+                    .reconstruct_key(&key.public_key, None, None)
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+                    .public_key_as_jwk()
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+            }
+            crate::model::identifier::IdentifierType::Did => {
+                try_extract_did(
+                    self.did_method_provider.as_ref(),
+                    &holder_identifier
+                        .did
+                        .ok_or(FormatterError::CouldNotFormat(
+                            "Missing holder did".to_string(),
+                        ))?
+                        .did,
+                    credential_data.holder_key_id.as_ref(),
+                )
+                .await?
+            }
+            _ => {
+                return Err(FormatterError::CouldNotFormat(
+                    "Invalid holder identifier".to_string(),
+                ));
+            }
+        };
+
+        let cose_key = try_build_cose_key(holder_key).await?;
 
         let device_key_info = DeviceKeyInfo {
             device_key: DeviceKey(cose_key),
@@ -383,7 +425,7 @@ impl CredentialFormatter for MdocFormatter {
             forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
             issuance_identifier_types: vec![IdentifierType::Certificate],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
-            holder_identifier_types: vec![IdentifierType::Did],
+            holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
             holder_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }
@@ -900,25 +942,36 @@ fn try_build_value_digests(
     Ok(value_digests)
 }
 
-async fn try_build_cose_key(
+async fn try_extract_did(
     did_resolver: &dyn DidMethodProvider,
     holder_did: &DidValue,
-) -> Result<CoseKey, FormatterError> {
-    let mut did_document = did_resolver
+    holder_key_id: Option<&String>,
+) -> Result<PublicKeyJwk, FormatterError> {
+    let did_document = did_resolver
         .resolve(holder_did)
         .await
         .map_err(|err| FormatterError::Failed(format!("Failed resolving did {err}")))?;
 
+    for verification_method in did_document.verification_method {
+        if holder_key_id.is_some_and(|key_id| key_id != &verification_method.id) {
+            continue;
+        }
+
+        return Ok(verification_method.public_key_jwk);
+    }
+
+    Err(FormatterError::CouldNotVerify(format!(
+        "Verification method not found: did:{holder_did}, keyId:{holder_key_id:?}"
+    )))
+}
+
+async fn try_build_cose_key(key: PublicKeyJwk) -> Result<CoseKey, FormatterError> {
     let base64decode = |v| {
         Base64UrlSafeNoPadding::decode_to_vec(v, None)
             .map_err(|err| FormatterError::Failed(format!("Failed base64 decoding key {err}")))
     };
 
-    let cose_key = match did_document
-        .verification_method
-        .swap_remove(0)
-        .public_key_jwk
-    {
+    Ok(match key {
         PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
             crv, x, y: Some(y), ..
         }) if &crv == "P-256" => {
@@ -944,9 +997,7 @@ async fn try_build_cose_key(
                 "Key not available for mdoc {key:?}"
             )));
         }
-    };
-
-    Ok(cose_key)
+    })
 }
 
 fn build_json_value(value: DataElementValue) -> Result<serde_json::Value, FormatterError> {

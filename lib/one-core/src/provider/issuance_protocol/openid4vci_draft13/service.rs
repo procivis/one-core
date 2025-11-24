@@ -7,10 +7,7 @@ use shared_types::CredentialSchemaId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::mapper::{
-    credentials_supported_mdoc, map_cryptographic_binding_methods_supported,
-    prepare_nested_representation,
-};
+use super::mapper::{credentials_supported_mdoc, prepare_nested_representation};
 use super::model::{
     ExtendedSubjectDTO, OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
     OpenID4VCICredentialSubjectItem, OpenID4VCIDiscoveryResponseDTO, OpenID4VCIGrants,
@@ -38,7 +35,7 @@ pub(crate) fn create_issuer_metadata_response(
     format_type: &FormatType,
     schema: &CredentialSchema,
     config: &CoreConfig,
-    supported_did_methods: &[String],
+    cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
@@ -46,7 +43,7 @@ pub(crate) fn create_issuer_metadata_response(
         format_type,
         schema,
         config,
-        supported_did_methods,
+        cryptographic_binding_methods_supported,
         proof_types_supported,
         credential_signing_alg_values_supported,
     )?;
@@ -74,7 +71,7 @@ fn credential_configurations_supported(
     format_type: &FormatType,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
-    supported_did_methods: &[String],
+    cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
@@ -88,8 +85,6 @@ fn credential_configurations_supported(
     let schema_id = credential_schema.schema_id.to_owned();
 
     let claims = prepare_nested_representation(credential_schema, config)?;
-    let cryptographic_binding_methods_supported =
-        map_cryptographic_binding_methods_supported(supported_did_methods);
 
     Ok(IndexMap::from([(
         schema_id.clone(),
