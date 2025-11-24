@@ -58,7 +58,7 @@ pub fn eddsa_key_2() -> TestKey {
 
 pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let holder_key = eddsa_key_2();
-    let holder_key_id = format!("did:key:{}#{}", holder_key.multibase, holder_key.multibase);
+    let holder_key_id = format!("did:key:{}", holder_key.multibase);
     proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id), nonce).await
 }
 

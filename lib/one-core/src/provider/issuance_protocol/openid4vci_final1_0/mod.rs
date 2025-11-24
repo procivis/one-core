@@ -626,7 +626,7 @@ impl OpenID4VCIFinal1_0 {
         credential.redirect_uri = issuer_response.redirect_uri.clone();
         credential.state = CredentialStateEnum::Accepted;
         credential.holder_identifier = Some(holder_binding.identifier);
-        credential.key = Some(holder_binding.key);
+        credential.key = Some(holder_binding.key.key);
         credential.protocol = self.config_id.to_owned();
         credential.interaction = Some(interaction.to_owned());
         if let Some(identifier) = credential.issuer_identifier.as_mut() {
@@ -689,29 +689,39 @@ impl OpenID4VCIFinal1_0 {
     async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
-        holder_did: Option<&DidValue>,
+        holder_did: &DidValue,
         holder_key: PublicKeyJwk,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
         access_token: &str,
         key_attestation: Option<String>,
     ) -> Result<SubmitIssuerResponse, IssuanceProtocolError> {
-        let jwk = interaction_data
+        // Very basic support for JWK as crypto binding method for EUDI
+        let jwk = match interaction_data
             .cryptographic_binding_methods_supported
-            .as_ref()
-            .and_then(|methods| {
-                if let Some(holder_did) = holder_did
-                    && methods
-                        .iter()
-                        .any(|method| &format!("did:{}", holder_did.method()) == method)
+            .to_owned()
+        {
+            Some(methods) => {
+                // Prefer kid-based holder binding proofs instead of using jwk because
+                // that way the did does not need to be resolved.
+                if methods
+                    .iter()
+                    .any(|method| &format!("did:{}", holder_did.method()) == method)
+                    // swiyu specific workaround: in the swiyu configuration did:jwk is specified, but jwk is expected instead
+                    && methods != vec!["did:jwk".to_string()]
                 {
                     None
-                } else if methods.contains(&"jwk".to_string()) {
+                } else if methods.contains(&"jwk".to_string())
+                    // swiyu specific workaround
+                    || methods == vec!["did:jwk".to_string()]
+                {
                     Some(holder_key.into())
                 } else {
                     None
                 }
-            });
+            }
+            None => None,
+        };
 
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url.to_owned(),
@@ -812,9 +822,6 @@ impl OpenID4VCIFinal1_0 {
         organisation: &Organisation,
     ) -> Result<HolderBindingInput, IssuanceProtocolError> {
         autogenerate_holder_binding(
-            interaction_data
-                .cryptographic_binding_methods_supported
-                .as_ref(),
             interaction_data.proof_types_supported.as_ref(),
             organisation,
             self.key_provider.as_ref(),
@@ -908,7 +915,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 .await?
         };
 
-        let key = &holder_binding.key;
+        let key = &holder_binding.key.key;
 
         let wallet_attestation_required = interaction_data
             .token_endpoint_auth_methods_supported
@@ -1065,36 +1072,17 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 .and_then(|expires_in| OffsetDateTime::from_unix_timestamp(expires_in.0).ok());
         }
 
-        let holder_jwk_key_id = if holder_binding.identifier.r#type == IdentifierType::Did {
-            let did =
-                holder_binding
-                    .identifier
-                    .did
-                    .as_ref()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Missing identifier did".to_string(),
-                    ))?;
-
-            let related_key = did
-                .find_key(
-                    &holder_binding.key.id,
-                    &KeyFilter::role_filter(KeyRole::Authentication),
-                )
-                .map_err(|err| {
-                    IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
-                })?
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing did related key".to_string(),
-                ))?;
-
-            Some(did.verification_method_id(related_key))
-        } else {
-            None
-        };
+        let holder_jwk_key_id = holder_binding
+            .did
+            .verification_method_id(&holder_binding.key);
 
         let auth_fn = self
             .key_provider
-            .get_signature_provider(key, holder_jwk_key_id, self.key_algorithm_provider.clone())
+            .get_signature_provider(
+                key,
+                Some(holder_jwk_key_id),
+                self.key_algorithm_provider.clone(),
+            )
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let key = self
@@ -1115,7 +1103,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         let credential_response = self
             .holder_request_credential(
                 &interaction_data,
-                holder_binding.identifier.did.as_ref().map(|did| &did.did),
+                &holder_binding.did.did,
                 key,
                 Some(nonce),
                 auth_fn,

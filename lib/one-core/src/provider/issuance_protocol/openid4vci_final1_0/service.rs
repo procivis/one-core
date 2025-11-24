@@ -7,7 +7,7 @@ use shared_types::CredentialSchemaId;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-use super::mapper::credentials_supported_mdoc;
+use super::mapper::{credentials_supported_mdoc, map_cryptographic_binding_methods_supported};
 use super::model::{
     ExtendedSubjectDTO, OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
@@ -41,7 +41,7 @@ pub(crate) fn create_issuer_metadata_response(
     oidc_format: &str,
     schema: &CredentialSchema,
     config: &CoreConfig,
-    cryptographic_binding_methods_supported: Vec<String>,
+    supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCIError> {
@@ -52,7 +52,7 @@ pub(crate) fn create_issuer_metadata_response(
         oidc_format,
         schema,
         config,
-        cryptographic_binding_methods_supported,
+        supported_did_methods,
         proof_types_supported,
         credential_signing_alg_values_supported,
     )?;
@@ -85,11 +85,13 @@ fn credential_configurations_supported(
     oidc_format: &str,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
-    cryptographic_binding_methods_supported: Vec<String>,
+    supported_did_methods: &[String],
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
 ) -> Result<IndexMap<String, OpenID4VCICredentialConfigurationData>, OpenID4VCIError> {
     let schema_id = credential_schema.schema_id.to_owned();
+    let cryptographic_binding_methods_supported =
+        map_cryptographic_binding_methods_supported(supported_did_methods);
 
     let credential_metadata_claims: Vec<OpenID4VCICredentialMetadataClaimResponseDTO> = {
         if let Some(claims) = credential_schema.claim_schemas.as_ref() {
