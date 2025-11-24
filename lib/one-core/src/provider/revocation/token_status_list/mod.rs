@@ -4,6 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use futures::FutureExt;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::RevocationListId;
@@ -14,6 +15,7 @@ use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
 use crate::mapper::params::convert_params;
 use crate::model::certificate::CertificateRelations;
+use crate::model::common::LockType;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -29,6 +31,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
@@ -47,6 +50,7 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
     Operation, RevocationMethodCapabilities,
 };
+use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
@@ -76,16 +80,17 @@ impl Default for Params {
 }
 
 pub struct TokenStatusList {
-    pub core_base_url: Option<String>,
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    pub did_method_provider: Arc<dyn DidMethodProvider>,
-    pub key_provider: Arc<dyn KeyProvider>,
-    pub caching_loader: StatusListCachingLoader,
-    pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    pub certificate_validator: Arc<dyn CertificateValidator>,
-    pub revocation_list_repository: Arc<dyn RevocationListRepository>,
-    pub wallet_unit_repository: Arc<dyn WalletUnitRepository>,
-    pub identifier_repository: Arc<dyn IdentifierRepository>,
+    core_base_url: Option<String>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    did_method_provider: Arc<dyn DidMethodProvider>,
+    key_provider: Arc<dyn KeyProvider>,
+    caching_loader: StatusListCachingLoader,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    certificate_validator: Arc<dyn CertificateValidator>,
+    revocation_list_repository: Arc<dyn RevocationListRepository>,
+    wallet_unit_repository: Arc<dyn WalletUnitRepository>,
+    identifier_repository: Arc<dyn IdentifierRepository>,
+    transaction_manager: Arc<dyn TransactionManager>,
     resolver: Arc<StatusListResolver>,
     params: Params,
 }
@@ -103,6 +108,7 @@ impl TokenStatusList {
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         wallet_unit_repository: Arc<dyn WalletUnitRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
+        transaction_manager: Arc<dyn TransactionManager>,
         client: Arc<dyn HttpClient>,
         params: Option<Params>,
     ) -> Result<Self, RevocationError> {
@@ -125,6 +131,7 @@ impl TokenStatusList {
             revocation_list_repository,
             wallet_unit_repository,
             identifier_repository,
+            transaction_manager,
             resolver: Arc::new(StatusListResolver::new(client)),
             params,
         })
@@ -149,23 +156,14 @@ impl RevocationMethod for TokenStatusList {
                     "issuer identifier is None".to_string(),
                 ))?;
 
-        let (list_id, index_on_status_list) = self.add_entry(issuer_identifier.to_owned()).await?;
-
-        self.revocation_list_repository
+        let entry = self
             .create_entry(
-                list_id,
                 RevocationListEntityId::Credential(credential.id),
-                index_on_status_list,
+                issuer_identifier,
             )
             .await?;
 
-        Ok(vec![CredentialRevocationInfo {
-            credential_status: self.create_credential_status(
-                &list_id,
-                index_on_status_list,
-                "revocation",
-            )?,
-        }])
+        Ok(vec![entry])
     }
 
     async fn mark_credential_as(
@@ -342,23 +340,11 @@ impl RevocationMethod for TokenStatusList {
                 "Missing issuer_identifier".to_string(),
             ))?;
 
-        let (list_id, index_on_status_list) = self.add_entry(issuer_identifier).await?;
-
-        self.revocation_list_repository
-            .create_entry(
-                list_id,
-                RevocationListEntityId::WalletUnitAttestedKey(attestation.id),
-                index_on_status_list,
-            )
-            .await?;
-
-        Ok(CredentialRevocationInfo {
-            credential_status: self.create_credential_status(
-                &list_id,
-                index_on_status_list,
-                "revocation",
-            )?,
-        })
+        self.create_entry(
+            RevocationListEntityId::WalletUnitAttestedKey(attestation.id),
+            &issuer_identifier,
+        )
+        .await
     }
 
     async fn get_attestation_revocation_info(
@@ -369,7 +355,6 @@ impl RevocationMethod for TokenStatusList {
             credential_status: self.create_credential_status(
                 &key_info.revocation_list.id,
                 key_info.revocation_list_index,
-                "revocation",
             )?,
         })
     }
@@ -433,70 +418,148 @@ impl TokenStatusList {
             .ok_or(RevocationError::FormatterNotFound(format))
     }
 
-    async fn add_entry(
+    async fn create_entry(
         &self,
-        issuer_identifier: Identifier,
-    ) -> Result<(RevocationListId, usize), RevocationError> {
-        let current_list = self
-            .revocation_list_repository
-            .get_revocation_by_issuer_identifier_id(
-                issuer_identifier.id,
-                RevocationListPurpose::Revocation,
-                StatusListType::TokenStatusList,
-                &Default::default(),
+        entity_id: RevocationListEntityId,
+        issuer_identifier: &Identifier,
+    ) -> Result<CredentialRevocationInfo, RevocationError> {
+        let mut list_id = None;
+        let mut index: Option<usize> = None;
+        let tx_ok = self
+            .transaction_manager
+            .transaction(
+                async {
+                    let current_list = self
+                        .revocation_list_repository
+                        .get_revocation_by_issuer_identifier_id(
+                            issuer_identifier.id,
+                            RevocationListPurpose::Revocation,
+                            StatusListType::TokenStatusList,
+                            &Default::default(),
+                        )
+                        .await?;
+
+                    list_id = Some(if let Some(current_list) = current_list {
+                        current_list.id
+                    } else {
+                        let list_id = self
+                            .start_new_list_for_entity(entity_id.clone(), issuer_identifier)
+                            .await?;
+                        index = Some(0);
+                        list_id
+                    });
+
+                    Ok(())
+                }
+                .boxed(),
             )
-            .await?;
+            .await
+            .is_ok_and(|res| res.is_ok());
 
-        let mut index_on_status_list = 0;
+        if !tx_ok {
+            list_id = None;
+            index = None;
+        }
 
-        let list_id = if let Some(current_list) = &current_list {
-            index_on_status_list = 1 + self
-                .revocation_list_repository
-                .get_max_used_index(&current_list.id, None)
-                .await?
-                .ok_or(RevocationError::MappingError(format!(
-                    "No index found on status-list of identifier: {}",
-                    issuer_identifier.id
-                )))?;
-
-            current_list.id
+        let list_id = if let Some(list_id) = list_id {
+            list_id
         } else {
-            // Create a new list
-
-            let revocation_list_id = Uuid::new_v4().into();
-            let list_credential = format_status_list_credential(
-                &revocation_list_id,
-                &issuer_identifier,
-                generate_token_from_entries(vec![], None).await?,
-                &*self.key_provider,
-                &self.key_algorithm_provider,
-                &self.core_base_url,
-                &*self.get_formatter_for_issuance()?,
-            )
-            .await?;
-
+            // this means the transaction failed, and a new list was created in parallel
+            // fetch the newly created list instead
             self.revocation_list_repository
-                .create_revocation_list(RevocationList {
-                    id: revocation_list_id,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    credentials: list_credential.into_bytes(),
-                    format: self.params.format,
-                    r#type: StatusListType::TokenStatusList,
-                    purpose: RevocationListPurpose::Revocation,
-                    issuer_identifier: Some(issuer_identifier),
-                })
+                .get_revocation_by_issuer_identifier_id(
+                    issuer_identifier.id,
+                    RevocationListPurpose::Revocation,
+                    StatusListType::TokenStatusList,
+                    &Default::default(),
+                )
                 .await?
+                .ok_or(RevocationError::MappingError(
+                    "No revocation list found".to_string(),
+                ))?
+                .id
         };
 
-        Ok((list_id, index_on_status_list))
+        let index = if let Some(index) = index {
+            index
+        } else {
+            self.add_entity_to_list(list_id, entity_id).await?
+        };
+
+        Ok(CredentialRevocationInfo {
+            credential_status: self.create_credential_status(&list_id, index)?,
+        })
+    }
+
+    async fn add_entity_to_list(
+        &self,
+        list_id: RevocationListId,
+        entity_id: RevocationListEntityId,
+    ) -> Result<usize, RevocationError> {
+        Ok(self
+            .transaction_manager
+            .tx(async {
+                let max_index = self
+                    .revocation_list_repository
+                    .get_max_used_index(&list_id, Some(LockType::Update))
+                    .await?
+                    .ok_or(DataLayerError::TransactionError(format!(
+                        "Cannot get current index for list: {list_id}"
+                    )))?;
+
+                let index = max_index + 1;
+
+                self.revocation_list_repository
+                    .create_entry(list_id, entity_id, index)
+                    .await?;
+
+                Ok::<_, DataLayerError>(index)
+            }
+            .boxed())
+            .await??)
+    }
+
+    async fn start_new_list_for_entity(
+        &self,
+        entity_id: RevocationListEntityId,
+        issuer_identifier: &Identifier,
+    ) -> Result<RevocationListId, RevocationError> {
+        let revocation_list_id = Uuid::new_v4().into();
+        let list_credential = format_status_list_credential(
+            &revocation_list_id,
+            issuer_identifier,
+            generate_token_from_entries(vec![], None).await?,
+            &*self.key_provider,
+            &self.key_algorithm_provider,
+            &self.core_base_url,
+            &*self.get_formatter_for_issuance()?,
+        )
+        .await?;
+
+        self.revocation_list_repository
+            .create_revocation_list(RevocationList {
+                id: revocation_list_id,
+                created_date: OffsetDateTime::now_utc(),
+                last_modified: OffsetDateTime::now_utc(),
+                credentials: list_credential.into_bytes(),
+                format: self.params.format,
+                r#type: StatusListType::TokenStatusList,
+                purpose: RevocationListPurpose::Revocation,
+                issuer_identifier: Some(issuer_identifier.to_owned()),
+            })
+            .await?;
+
+        self.revocation_list_repository
+            .create_entry(revocation_list_id, entity_id, 0)
+            .await?;
+
+        Ok(revocation_list_id)
     }
 
     fn create_credential_status(
         &self,
         revocation_list_id: &RevocationListId,
         index_on_status_list: usize,
-        purpose: &str,
     ) -> Result<CredentialStatus, RevocationError> {
         let revocation_list_url = get_revocation_list_url(revocation_list_id, &self.core_base_url)?;
         Ok(CredentialStatus {
@@ -510,7 +573,7 @@ impl TokenStatusList {
                     })?,
             ),
             r#type: CREDENTIAL_STATUS_TYPE.to_string(),
-            status_purpose: Some(purpose.to_string()),
+            status_purpose: Some("revocation".to_string()),
             additional_fields: HashMap::from([
                 (URI_KEY.to_string(), revocation_list_url.into()),
                 (

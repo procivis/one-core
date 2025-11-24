@@ -255,7 +255,8 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
 
     let mut issuances = vec![];
-    for _ in 0..10 {
+    const NUM_CREDENTIALS: usize = 10;
+    for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
         let interaction_id = Uuid::new_v4();
         let access_token = format!("{interaction_id}.test");
@@ -329,7 +330,115 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         .unwrap();
 
     let entries = context.db.revocation_lists.get_entries(list.id).await;
-    assert_eq!(entries.len(), 10);
+    assert_eq!(entries.len(), NUM_CREDENTIALS);
+}
+
+#[tokio::test]
+async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
+    let TestIssuerSetup {
+        organisation,
+        context,
+        key,
+        issuer_identifier,
+        ..
+    } = issuer_setup().await;
+
+    let schema_id = "schema-id".to_string();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "schema-1",
+            &organisation,
+            "TOKENSTATUSLIST",
+            TestingCreateSchemaParams {
+                format: Some("SD_JWT_VC".to_string()),
+                schema_id: Some(schema_id.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let date_format =
+        format_description!("[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond]Z");
+
+    let mut issuances = vec![];
+    const NUM_CREDENTIALS: usize = 10;
+    for _ in 0..NUM_CREDENTIALS {
+        let schema_id = schema_id.clone();
+        let interaction_id = Uuid::new_v4();
+        let access_token = format!("{interaction_id}.test");
+        let interaction_data = json!({
+            "pre_authorized_code_used": true,
+            "access_token_hash": SHA256.hash(access_token.as_bytes()).unwrap(),
+            "access_token_expires_at": (OffsetDateTime::now_utc() + time::Duration::seconds(20)).format(&date_format).unwrap(),
+        });
+
+        let interaction = context
+            .db
+            .interactions
+            .create(
+                Some(interaction_id),
+                &serde_json::to_vec(&interaction_data).unwrap(),
+                &organisation,
+                InteractionType::Issuance,
+            )
+            .await;
+
+        context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Offered,
+                &issuer_identifier,
+                "OPENID4VCI_FINAL1",
+                TestingCredentialParams {
+                    interaction: Some(interaction),
+                    key: Some(key.clone()),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let value = context
+            .api
+            .ssi
+            .generate_nonce("OPENID4VCI_FINAL1")
+            .await
+            .json_value()
+            .await;
+        let nonce = value["c_nonce"].as_str().unwrap();
+        let key = Eddsa.generate_key().unwrap();
+        let jwt = proof_jwt_for(&key.key, "EdDSA".to_string(), None, Some(nonce)).await;
+        let api = Client::new(context.api.base_url.clone(), access_token);
+
+        issuances.push(async move {
+            api.ssi
+                .issuer_create_credential_vci_final(credential_schema.id, &schema_id, &jwt)
+                .await
+        });
+    }
+
+    let responses = join_all(issuances).await;
+    for response in responses {
+        assert_eq!(200, response.status());
+    }
+
+    let list = context
+        .db
+        .revocation_lists
+        .get_revocation_by_issuer_identifier_id(
+            issuer_identifier.id,
+            RevocationListPurpose::Revocation,
+            StatusListType::TokenStatusList,
+            &Default::default(),
+        )
+        .await
+        .unwrap();
+
+    let entries = context.db.revocation_lists.get_entries(list.id).await;
+    assert_eq!(entries.len(), NUM_CREDENTIALS);
 }
 
 #[tokio::test]

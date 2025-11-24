@@ -17,7 +17,7 @@ pub(crate) fn gen_openapi_documentation(
 ) -> utoipa::openapi::OpenApi {
     #[utoipauto(paths = "./apps/core-server/src")]
     #[derive(OpenApi)]
-    #[openapi(components(schemas(shared_types::EntityId)))]
+    #[openapi(components(schemas(shared_types::EntityId, shared_types::RevocationListId)))]
     struct ApiDoc;
 
     struct ApiDocModifier {

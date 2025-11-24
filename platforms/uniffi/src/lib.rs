@@ -810,6 +810,7 @@ async fn initialize(
                                     data_repository.get_revocation_list_repository(),
                                     data_repository.get_wallet_unit_repository(),
                                     data_repository.get_identifier_repository(),
+                                    data_repository.get_tx_manager(),
                                     client.clone(),
                                     None,
                                 )

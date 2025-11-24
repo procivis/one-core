@@ -528,8 +528,7 @@ impl BitstringStatusList {
         let index = if let Some(index) = index {
             index
         } else {
-            self.add_credential_to_list(list_id, credential_id, issuer_identifier)
-                .await?
+            self.add_credential_to_list(list_id, credential_id).await?
         };
 
         Ok(CredentialRevocationInfo {
@@ -541,40 +540,32 @@ impl BitstringStatusList {
         &self,
         list_id: RevocationListId,
         credential_id: CredentialId,
-        issuer_identifier: &Identifier,
     ) -> Result<usize, RevocationError> {
-        let mut result = 0;
-        self.transaction_manager
-            .transaction(
-                async {
-                    let max_index = self
-                        .revocation_list_repository
-                        .get_max_used_index(&list_id, Some(LockType::Update))
-                        .await?
-                        .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
-                            credential_id,
-                            issuer_identifier.id,
-                        ))?;
+        Ok(self
+            .transaction_manager
+            .tx(async {
+                let max_index = self
+                    .revocation_list_repository
+                    .get_max_used_index(&list_id, Some(LockType::Update))
+                    .await?
+                    .ok_or(DataLayerError::TransactionError(format!(
+                        "Could not determine max-index for list: {list_id}"
+                    )))?;
 
-                    let index = max_index + 1;
+                let index = max_index + 1;
 
-                    self.revocation_list_repository
-                        .create_entry(
-                            list_id,
-                            RevocationListEntityId::Credential(credential_id),
-                            index,
-                        )
-                        .await?;
+                self.revocation_list_repository
+                    .create_entry(
+                        list_id,
+                        RevocationListEntityId::Credential(credential_id),
+                        index,
+                    )
+                    .await?;
 
-                    result = index;
-                    Ok(())
-                }
-                .boxed(),
-            )
-            .await?
-            .map_err(|e| DataLayerError::TransactionError(e.to_string()))?;
-
-        Ok(result)
+                Ok::<_, DataLayerError>(index)
+            }
+            .boxed())
+            .await??)
     }
 
     async fn start_new_list_for_credential(
