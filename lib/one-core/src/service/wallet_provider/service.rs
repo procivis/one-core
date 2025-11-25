@@ -34,7 +34,7 @@ use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
 use crate::model::did::{DidRelations, KeyFilter};
 use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::{KeyRelations, PublicKeyJwk};
@@ -233,6 +233,7 @@ impl WalletProviderService {
                 created_date: self.clock.now_utc(),
                 action,
                 name: wallet_unit_name,
+                source: HistorySource::Core,
                 target: Some(wallet_unit_id.to_string()),
                 entity_id: Some(EntityId::from(*wallet_unit_id)),
                 entity_type: HistoryEntityType::WalletUnit,

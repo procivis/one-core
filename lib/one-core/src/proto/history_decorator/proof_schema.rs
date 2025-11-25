@@ -5,7 +5,7 @@ use shared_types::{OrganisationId, ProofSchemaId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::proof_schema::{
     GetProofSchemaList, GetProofSchemaQuery, ProofSchema, ProofSchemaRelations,
 };
@@ -127,6 +127,7 @@ impl ProofSchemaHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::ProofSchema,

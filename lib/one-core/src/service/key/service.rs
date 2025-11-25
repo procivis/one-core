@@ -12,7 +12,7 @@ use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyRequestDTO, PrivateKeyJwkDTO};
 use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::session_provider::SessionExt;
@@ -194,6 +194,7 @@ impl KeyService {
                 created_date: OffsetDateTime::now_utc(),
                 action: HistoryAction::CsrGenerated,
                 name: key.name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(key.id.into()),
                 entity_type: HistoryEntityType::Key,

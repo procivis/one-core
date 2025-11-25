@@ -468,6 +468,9 @@ pub enum BusinessLogicError {
 
     #[error("Verification protocol does not support this API endpoint version")]
     IncompatiblePresentationEndpoint,
+
+    #[error("Invalid history source")]
+    InvalidHistorySource,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1465,6 +1468,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Duplicate proof input credential schema")]
     BR_0313,
+
+    #[strum(message = "Invalid history source")]
+    BR_0315,
 }
 
 impl From<uuid::Error> for ServiceError {
@@ -1643,6 +1649,7 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::InvalidPresentationSubmission { .. } => ErrorCode::BR_0291,
             Self::IncompatiblePresentationEndpoint => ErrorCode::BR_0292,
             Self::DuplicateProofInputCredentialSchema => ErrorCode::BR_0313,
+            Self::InvalidHistorySource => ErrorCode::BR_0315,
         }
     }
 }

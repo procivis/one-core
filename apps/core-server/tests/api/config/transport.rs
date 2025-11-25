@@ -85,6 +85,7 @@ async fn test_server_starts_with_base_config() {
         enable_external_endpoints: Default::default(),
         enable_management_endpoints: Default::default(),
         enable_wallet_provider: Default::default(),
+        enable_history_create_endpoint: Default::default(),
         auth: AuthMode::UnsafeStatic {
             static_token: "test".to_string(),
         },

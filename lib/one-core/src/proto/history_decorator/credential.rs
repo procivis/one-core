@@ -11,7 +11,7 @@ use crate::model::credential::{
     GetCredentialQuery, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::InteractionId;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
@@ -99,6 +99,7 @@ impl CredentialHistoryDecorator {
             created_date: OffsetDateTime::now_utc(),
             action,
             name: credential_schema.name.to_owned(),
+            source: HistorySource::Core,
             target: target_from_credential(credential),
             entity_id: Some(credential.id.into()),
             entity_type: HistoryEntityType::Credential,

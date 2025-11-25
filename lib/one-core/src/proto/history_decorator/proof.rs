@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::model::claim::Claim;
 use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::proof::{
@@ -81,6 +81,7 @@ impl ProofHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target,
                 entity_id: Some(proof_id.into()),
                 entity_type: HistoryEntityType::Proof,

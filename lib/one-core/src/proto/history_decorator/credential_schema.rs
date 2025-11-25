@@ -8,7 +8,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaList, GetCredentialSchemaQuery,
     UpdateCredentialSchemaRequest,
 };
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::Organisation;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -145,6 +145,7 @@ impl CredentialSchemaHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name: credential_schema.name.to_owned(),
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(credential_schema.id.into()),
                 entity_type: HistoryEntityType::CredentialSchema,

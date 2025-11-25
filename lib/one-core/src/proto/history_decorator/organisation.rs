@@ -5,7 +5,7 @@ use shared_types::OrganisationId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{
     GetOrganisationList, Organisation, OrganisationListQuery, OrganisationRelations,
     UpdateOrganisationRequest,
@@ -35,6 +35,7 @@ impl OrganisationHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(organisation_id.into()),
                 entity_type: HistoryEntityType::Organisation,

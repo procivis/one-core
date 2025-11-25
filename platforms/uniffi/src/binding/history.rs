@@ -143,6 +143,7 @@ pub enum HistoryActionBindingEnum {
     Updated,
     Reactivated,
     Expired,
+    InteractionCreated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
@@ -162,6 +163,10 @@ pub enum HistoryEntityTypeBindingEnum {
     TrustAnchor,
     TrustEntity,
     WalletUnit,
+    User,
+    StsRole,
+    StsOrganisation,
+    StsIamRole,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
@@ -173,6 +178,7 @@ pub enum HistoryMetadataBinding {
         value: HistoryErrorMetadataBindingDTO,
     },
     WalletUnitJWT(String),
+    External(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]

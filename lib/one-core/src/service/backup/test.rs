@@ -15,7 +15,7 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, KeyStorageSecurity, LayoutType,
 };
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{GetOrganisationList, OrganisationListQuery};
 use crate::repository::backup_repository::MockBackupRepository;
 use crate::repository::history_repository::MockHistoryRepository;
@@ -120,6 +120,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             created_date: get_dummy_date(),
             action: HistoryAction::Accepted,
             name: "test".to_string(),
+            source: HistorySource::Core,
             target: None,
             entity_id: Some(Uuid::new_v4().into()),
             entity_type: HistoryEntityType::WalletUnit,

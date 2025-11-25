@@ -174,6 +174,7 @@ mod m20251112_152945_remote_entity_type;
 mod m20251114_085246_remove_credential_schema_claim_schema_table;
 mod m20251114_092439_drop_holder_identifier_column_from_proof;
 mod m20251124_055356_revocation_list_unique;
+mod m20251125_104708_history_source;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -350,6 +351,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251110_130252_migrate_storage_type::Migration),
             Box::new(m20251114_092439_drop_holder_identifier_column_from_proof::Migration),
             Box::new(m20251124_055356_revocation_list_unique::Migration),
+            Box::new(m20251125_104708_history_source::Migration),
         ]
     }
 }

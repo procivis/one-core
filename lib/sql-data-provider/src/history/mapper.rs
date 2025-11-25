@@ -26,6 +26,7 @@ impl TryFrom<history::Model> for History {
             metadata,
             organisation_id: value.organisation_id,
             name: value.name,
+            source: value.source.into(),
             target: value.target,
             user: value.user,
         })
@@ -52,6 +53,7 @@ impl TryFrom<History> for history::ActiveModel {
             metadata: Set(metadata),
             organisation_id: Set(value.organisation_id),
             name: Set(value.name),
+            source: Set(value.source.into()),
             target: Set(value.target),
             user: Set(value.user),
         })

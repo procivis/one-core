@@ -16,6 +16,7 @@ pub enum HistoryMetadata {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadata),
     WalletUnitJWT(String),
+    External(serde_json::Value),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -37,6 +38,7 @@ pub struct History {
     pub action: HistoryAction,
     pub name: String,
     pub target: Option<String>,
+    pub source: HistorySource,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub metadata: Option<HistoryMetadata>,
@@ -71,6 +73,7 @@ pub enum HistoryAction {
     Updated,
     Reactivated,
     Expired,
+    InteractionCreated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
@@ -89,6 +92,20 @@ pub enum HistoryEntityType {
     TrustAnchor,
     TrustEntity,
     WalletUnit,
+    User,
+    StsRole,
+    StsOrganisation,
+    StsIamRole,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum HistorySource {
+    Core,
+    Bridge,
+    Sts,
+    Wrpr,
+    Bff,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

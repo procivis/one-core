@@ -9,7 +9,7 @@ use crate::model::certificate::{
     Certificate, CertificateListQuery, CertificateRelations, CertificateState, GetCertificateList,
     UpdateCertificateRequest,
 };
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::certificate_repository::CertificateRepository;
@@ -73,6 +73,7 @@ impl CertificateHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Certificate,

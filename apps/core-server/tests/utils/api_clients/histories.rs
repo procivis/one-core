@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use core_server::endpoint::history::dto::{HistoryAction, HistoryEntityType, HistorySource};
+use serde_json::json;
 use shared_types::{CredentialSchemaId, HistoryId};
 
 use super::{HttpClient, Response};
@@ -58,5 +60,22 @@ impl HistoriesApi {
     pub async fn get(&self, history_id: HistoryId) -> Response {
         let url = format!("/api/history/v1/{history_id}");
         self.client.get(&url).await
+    }
+
+    pub async fn create(
+        &self,
+        source: impl Into<HistorySource>,
+        entity_type: impl Into<HistoryEntityType>,
+        action: impl Into<HistoryAction>,
+        metadata: Option<serde_json::Value>,
+    ) -> Response {
+        let body = json!({
+          "source": source.into(),
+          "entityType": entity_type.into(),
+          "action": action.into(),
+          "metadata": metadata,
+        });
+
+        self.client.post("/api/history/v1", body).await
     }
 }

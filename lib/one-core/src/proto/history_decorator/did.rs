@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::did::{Did, DidListQuery, DidRelations, GetDidList, UpdateDidRequest};
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::Organisation;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::did_repository::DidRepository;
@@ -39,6 +39,7 @@ impl DidHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Did,

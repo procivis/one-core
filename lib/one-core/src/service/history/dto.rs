@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
 use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata,
+    History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
 use crate::service::error::ErrorCode;
@@ -16,6 +16,7 @@ pub enum HistoryMetadataResponse {
     UnexportableEntities(UnexportableEntitiesResponseDTO),
     ErrorMetadata(HistoryErrorMetadataDTO),
     WalletUnitJWT(String),
+    External(serde_json::Value),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, From)]
@@ -37,8 +38,22 @@ pub struct HistoryResponseDTO {
     pub organisation_id: Option<OrganisationId>,
     #[from(with_fn = convert_inner)]
     pub metadata: Option<HistoryMetadataResponse>,
+    pub source: HistorySource,
     pub target: Option<String>,
     pub user: Option<String>,
 }
 
 pub type GetHistoryListResponseDTO = GetListResponse<HistoryResponseDTO>;
+
+#[derive(Debug, Clone)]
+pub struct CreateHistoryRequestDTO {
+    pub action: HistoryAction,
+    pub name: Option<String>,
+    pub entity_id: Option<EntityId>,
+    pub entity_type: HistoryEntityType,
+    pub organisation_id: Option<OrganisationId>,
+    pub metadata: Option<serde_json::Value>,
+    pub source: HistorySource,
+    pub target: Option<String>,
+    pub user: Option<String>,
+}

@@ -1,3 +1,4 @@
+use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
@@ -5,9 +6,10 @@ use proc_macros::require_permissions;
 use shared_types::HistoryId;
 
 use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
-use crate::dto::common::GetHistoryListResponseRestDTO;
+use crate::dto::common::{EntityResponseRestDTO, GetHistoryListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
-use crate::dto::response::OkOrErrorResponse;
+use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
+use crate::endpoint::history::dto::CreateHistoryRequestRestDTO;
 use crate::extractor::Qs;
 use crate::permissions::Permission;
 use crate::router::AppState;
@@ -43,6 +45,39 @@ pub(crate) async fn get_history_list(
     .await;
 
     OkOrErrorResponse::from_result(result, state, "getting history list")
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/history/v1",
+    request_body = CreateHistoryRequestRestDTO,
+    responses(CreatedOrErrorResponse<EntityResponseRestDTO>),
+    tag = "history_management",
+    security(
+        ("bearer" = [])
+    ),
+    summary = "Create history event",
+    description = indoc::formatdoc! {"
+        Creates a new history entry managed outside core
+
+        Related guide: [History](/history)
+    "},
+)]
+#[require_permissions(Permission::HistoryCreate)]
+pub(crate) async fn create_history(
+    state: State<AppState>,
+    WithRejection(Json(request), _): WithRejection<
+        Json<CreateHistoryRequestRestDTO>,
+        ErrorResponseRestDTO,
+    >,
+) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
+    let result = state
+        .core
+        .history_service
+        .create_history(request.into())
+        .await;
+
+    CreatedOrErrorResponse::from_result(result, state, "creating history")
 }
 
 #[utoipa::path(

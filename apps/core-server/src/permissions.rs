@@ -29,6 +29,7 @@ pub enum Permission {
     DidResolve,
     HistoryDetail,
     HistoryList,
+    HistoryCreate,
     HolderCredentialList,
     IdentifierCreate,
     IdentifierDelete,
@@ -220,6 +221,7 @@ mod test {
             enable_external_endpoints: false,
             enable_management_endpoints: false,
             enable_wallet_provider: false,
+            enable_history_create_endpoint: false,
             auth,
         }
     }

@@ -5,7 +5,7 @@ use shared_types::{TrustAnchorId, TrustEntityId, TrustEntityKey};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::trust_entity::{
     TrustEntity, TrustEntityRelations, TrustEntityState, UpdateTrustEntityRequest,
@@ -175,6 +175,7 @@ impl TrustEntityHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::TrustEntity,

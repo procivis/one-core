@@ -7,7 +7,7 @@ use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
 };
@@ -156,6 +156,7 @@ impl WalletUnitService {
                 created_date: now,
                 action: HistoryAction::Created,
                 name: wallet_unit_name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(holder_wallet_unit_id.into()),
                 entity_type: HistoryEntityType::WalletUnit,
@@ -229,6 +230,7 @@ impl WalletUnitService {
                     id: Uuid::new_v4().into(),
                     action: HistoryAction::Revoked,
                     name: holder_wallet_unit.wallet_provider_name.clone(),
+                    source: HistorySource::Core,
                     target: None,
                     entity_id: Some(id.into()),
                     entity_type: HistoryEntityType::WalletUnit,

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use shared_types::KeyId;
 use uuid::Uuid;
 
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::key::{GetKeyList, Key, KeyListQuery, KeyRelations};
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::error::DataLayerError;
@@ -28,6 +28,7 @@ impl KeyRepository for KeyHistoryDecorator {
                 created_date: request.created_date,
                 action: HistoryAction::Created,
                 name: request.name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(key_id.into()),
                 entity_type: HistoryEntityType::Key,

@@ -10,7 +10,9 @@ use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 
 use super::dto::MetadataDTO;
-use crate::model::history::{History, HistoryAction, HistoryEntityType, HistoryMetadata};
+use crate::model::history::{
+    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
+};
 use crate::service::error::ServiceError;
 
 const DB_FILE: &str = "database.sqlite3";
@@ -150,6 +152,7 @@ pub(super) fn create_backup_history_event(
         created_date: OffsetDateTime::now_utc(),
         action,
         name,
+        source: HistorySource::Core,
         target: None,
         entity_id: None,
         entity_type: HistoryEntityType::Backup,

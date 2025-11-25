@@ -5,7 +5,7 @@ use shared_types::{DidId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::history::{History, HistoryAction, HistoryEntityType};
+use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::{
     GetIdentifierList, Identifier, IdentifierListQuery, IdentifierRelations, IdentifierState,
     UpdateIdentifierRequest,
@@ -42,6 +42,7 @@ impl IdentifierHistoryDecorator {
                 created_date: OffsetDateTime::now_utc(),
                 action,
                 name,
+                source: HistorySource::Core,
                 target: None,
                 entity_id: Some(id.into()),
                 entity_type: HistoryEntityType::Identifier,

@@ -15,6 +15,7 @@ app:
   enableManagementEndpoints: true
   enableServerInfo: true
   enableOpenApi: true
+  enableHistoryCreateEndpoint: true
   enableWalletProvider: true
   auth:
     mode: STS

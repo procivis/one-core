@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use one_core::model::history::{
     GetHistoryList, History, HistoryAction, HistoryEntityType, HistoryFilterValue,
-    HistoryListQuery, HistoryMetadata,
+    HistoryListQuery, HistoryMetadata, HistorySource,
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::ListPagination;
@@ -21,6 +21,7 @@ pub struct TestingHistoryParams {
     pub entity_type: Option<HistoryEntityType>,
     pub metadata: Option<HistoryMetadata>,
     pub name: Option<String>,
+    pub source: Option<HistorySource>,
     pub target: Option<String>,
     pub user: Option<String>,
 }
@@ -51,6 +52,7 @@ impl HistoriesDB {
             metadata: params.metadata,
             organisation_id: Some(organisation.id),
             name: params.name.unwrap_or_default(),
+            source: params.source.unwrap_or(HistorySource::Core),
             target: params.target,
             user: params.user,
         };
@@ -76,6 +78,7 @@ impl HistoriesDB {
             metadata: params.metadata,
             organisation_id: None,
             name: params.name.unwrap_or_default(),
+            source: params.source.unwrap_or(HistorySource::Core),
             target: params.target,
             //TODO: pass user
             user: None,
@@ -87,6 +90,14 @@ impl HistoriesDB {
             .unwrap();
 
         history
+    }
+
+    pub async fn get_entry(&self, history_id: HistoryId) -> History {
+        self.repository
+            .get_history_entry(history_id)
+            .await
+            .unwrap()
+            .unwrap()
     }
 
     pub async fn get_by_entity_id(&self, entity_id: &EntityId) -> GetHistoryList {

@@ -1,5 +1,6 @@
 use one_core::model::history::{
     HistoryAction as ModelHistoryAction, HistoryEntityType as ModelHistoryEntityType,
+    HistorySource as ModelHistorySource,
 };
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
@@ -18,6 +19,7 @@ pub struct Model {
     pub entity_type: HistoryEntityType,
     pub metadata: Option<String>,
     pub name: String,
+    pub source: HistorySource,
     pub target: Option<String>,
     pub user: Option<String>,
 
@@ -111,6 +113,8 @@ pub enum HistoryAction {
     Reactivated,
     #[sea_orm(string_value = "EXPIRED")]
     Expired,
+    #[sea_orm(string_value = "INTERACTION_CREATED")]
+    InteractionCreated,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
@@ -144,4 +148,29 @@ pub enum HistoryEntityType {
     TrustEntity,
     #[sea_orm(string_value = "WALLET_UNIT")]
     WalletUnit,
+    #[sea_orm(string_value = "USER")]
+    User,
+    #[sea_orm(string_value = "STS_ROLE")]
+    StsRole,
+    #[sea_orm(string_value = "STS_ORGANISATION")]
+    StsOrganisation,
+    #[sea_orm(string_value = "STS_IAM_ROLE")]
+    StsIamRole,
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
+#[from(ModelHistorySource)]
+#[into(ModelHistorySource)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum HistorySource {
+    #[sea_orm(string_value = "CORE")]
+    Core,
+    #[sea_orm(string_value = "BRIDGE")]
+    Bridge,
+    #[sea_orm(string_value = "BFF")]
+    Bff,
+    #[sea_orm(string_value = "WRPR")]
+    Wrpr,
+    #[sea_orm(string_value = "STS")]
+    Sts,
 }

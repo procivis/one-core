@@ -568,6 +568,7 @@ pub async fn insert_history(
         entity_type: Set(entity_type),
         metadata: Set(None),
         organisation_id: Set(Some(organisation_id)),
+        source: Set(history::HistorySource::Core),
         target: Set(None),
         //TODO: pass user
         user: Set(None),

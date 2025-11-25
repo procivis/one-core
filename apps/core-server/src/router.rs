@@ -148,10 +148,17 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 "/api/proof-schema/v1/import",
                 post(proof_schema::controller::import_proof_schema),
             )
-            .route(
-                "/api/history/v1",
-                get(history::controller::get_history_list),
-            )
+            .route("/api/history/v1", {
+                let mut routes = get(history::controller::get_history_list);
+                if config.enable_history_create_endpoint {
+                    routes = routes.post(history::controller::create_history);
+                } else if let Some(paths) = openapi_paths.as_mut()
+                    && let Some(path) = paths.get_mut("/api/history/v1")
+                {
+                    path.post = None;
+                }
+                routes
+            })
             .route(
                 "/api/history/v1/{id}",
                 get(history::controller::get_history_entry),

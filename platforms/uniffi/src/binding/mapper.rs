@@ -310,9 +310,8 @@ impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
                     message: value.message,
                 },
             },
-            HistoryMetadataResponse::WalletUnitJWT(value) => {
-                HistoryMetadataBinding::WalletUnitJWT(value)
-            }
+            HistoryMetadataResponse::WalletUnitJWT(value) => Self::WalletUnitJWT(value),
+            HistoryMetadataResponse::External(value) => Self::External(value.to_string()),
         }
     }
 }

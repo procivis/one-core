@@ -1,7 +1,10 @@
-use one_core::service::history::dto::{HistoryErrorMetadataDTO, HistoryResponseDTO};
+use one_core::service::history::dto::{
+    CreateHistoryRequestDTO, HistoryErrorMetadataDTO, HistoryResponseDTO,
+};
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use shared_types::{
     CredentialId, CredentialSchemaId, EntityId, HistoryId, IdentifierId, OrganisationId,
     ProofSchemaId,
@@ -24,6 +27,22 @@ pub(crate) type GetHistoryQuery =
     ListQueryParamsRest<HistoryFilterQueryParamsRest, SortableHistoryColumnRestDTO>;
 
 #[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(CreateHistoryRequestDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CreateHistoryRequestRestDTO {
+    pub action: HistoryAction,
+    pub name: Option<String>,
+    pub entity_id: Option<EntityId>,
+    pub entity_type: HistoryEntityType,
+    pub organisation_id: Option<OrganisationId>,
+    pub source: HistorySource,
+    pub target: Option<String>,
+    pub user: Option<String>,
+    pub metadata: Option<Value>,
+}
+
+#[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[from(HistoryResponseDTO)]
 #[serde(rename_all = "camelCase")]
@@ -38,6 +57,7 @@ pub(crate) struct HistoryResponseRestDTO {
     pub entity_id: Option<Uuid>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: Option<OrganisationId>,
+    pub source: HistorySource,
     pub target: Option<String>,
     pub user: Option<String>,
 }
@@ -66,6 +86,8 @@ pub(crate) struct HistoryResponseDetailRestDTO {
     #[try_from(with_fn = try_convert_inner)]
     pub metadata: Option<HistoryMetadataRestEnum>,
     #[try_from(infallible)]
+    pub source: HistorySource,
+    #[try_from(infallible)]
     pub target: Option<String>,
     #[try_from(with_fn = convert_inner, infallible)]
     pub user: Option<String>,
@@ -77,6 +99,7 @@ pub(crate) enum HistoryMetadataRestEnum {
     UnexportableEntities(UnexportableEntitiesResponseRestDTO),
     ErrorMetadata(#[try_from(infallible)] HistoryErrorMetadataRestDTO),
     WalletUnitJWT(#[try_from(infallible)] String),
+    External(#[try_from(infallible)] serde_json::Value),
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]
@@ -115,7 +138,7 @@ impl From<HistoryErrorMetadataDTO> for HistoryErrorMetadataRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::history::HistoryAction")]
 #[into("one_core::model::history::HistoryAction")]
-pub(crate) enum HistoryAction {
+pub enum HistoryAction {
     Accepted,
     Created,
     CsrGenerated,
@@ -140,13 +163,14 @@ pub(crate) enum HistoryAction {
     Updated,
     Reactivated,
     Expired,
+    InteractionCreated,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[from("one_core::model::history::HistoryEntityType")]
 #[into("one_core::model::history::HistoryEntityType")]
-pub(crate) enum HistoryEntityType {
+pub enum HistoryEntityType {
     Key,
     Did,
     Certificate,
@@ -160,6 +184,22 @@ pub(crate) enum HistoryEntityType {
     TrustAnchor,
     TrustEntity,
     WalletUnit,
+    User,
+    StsRole,
+    StsOrganisation,
+    StsIamRole,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[from("one_core::model::history::HistorySource")]
+#[into("one_core::model::history::HistorySource")]
+pub enum HistorySource {
+    Core,
+    Bridge,
+    Sts,
+    Wrpr,
+    Bff,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
