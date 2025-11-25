@@ -339,9 +339,7 @@ impl BackupRepository for BackupProvider {
             .all(&db);
 
         let select_history = history::Entity::find()
-            .filter(
-                history::Column::EntityType.eq(history::HistoryEntityType::WalletUnitAttestation),
-            )
+            .filter(history::Column::EntityType.eq(history::HistoryEntityType::WalletUnit))
             .all(&db);
 
         let (
@@ -523,7 +521,7 @@ async fn delete_history_related_to_wallet_unit_attestations(
     db: &TransactionManagerImpl,
 ) -> Result<(), sea_orm::DbErr> {
     history::Entity::delete_many()
-        .filter(history::Column::EntityType.eq(history::HistoryEntityType::WalletUnitAttestation))
+        .filter(history::Column::EntityType.eq(history::HistoryEntityType::WalletUnit))
         .exec(db)
         .await?;
     Ok(())

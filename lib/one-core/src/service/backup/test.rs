@@ -122,7 +122,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
             name: "test".to_string(),
             target: None,
             entity_id: Some(Uuid::new_v4().into()),
-            entity_type: HistoryEntityType::WalletUnitAttestation,
+            entity_type: HistoryEntityType::WalletUnit,
             metadata: None,
             organisation_id: None,
             user: None,

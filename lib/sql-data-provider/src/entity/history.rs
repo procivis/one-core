@@ -144,6 +144,4 @@ pub enum HistoryEntityType {
     TrustEntity,
     #[sea_orm(string_value = "WALLET_UNIT")]
     WalletUnit,
-    #[sea_orm(string_value = "WALLET_UNIT_ATTESTATION")]
-    WalletUnitAttestation,
 }

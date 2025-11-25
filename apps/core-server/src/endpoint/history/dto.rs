@@ -160,7 +160,6 @@ pub(crate) enum HistoryEntityType {
     TrustAnchor,
     TrustEntity,
     WalletUnit,
-    WalletUnitAttestation,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

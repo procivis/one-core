@@ -162,7 +162,6 @@ pub enum HistoryEntityTypeBindingEnum {
     TrustAnchor,
     TrustEntity,
     WalletUnit,
-    WalletUnitAttestation,
 }
 
 #[derive(Clone, Debug, uniffi::Enum)]
