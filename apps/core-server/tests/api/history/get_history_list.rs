@@ -6,6 +6,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
+use crate::utils::api_clients::histories::QueryParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 
@@ -31,7 +32,14 @@ async fn test_get_history_list_simple() {
     let resp = context
         .api
         .histories
-        .list(0, 10, &organisation.id, None, None, None, None)
+        .list(
+            0,
+            10,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                ..Default::default()
+            },
+        )
         .await;
 
     // THEN
@@ -144,7 +152,15 @@ async fn test_get_history_list_schema_joins_credentials() {
     let resp = context
         .api
         .histories
-        .list(0, 999, &organisation.id, Some(schema.id), None, None, None)
+        .list(
+            0,
+            999,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                credential_schema_id: Some(schema.id),
+                ..Default::default()
+            },
+        )
         .await;
 
     // THEN
@@ -213,11 +229,11 @@ async fn test_get_history_filter_by_entity_types() {
         .list(
             0,
             10,
-            &organisation.id,
-            None,
-            Some(vec!["CREDENTIAL".to_string(), "PROOF".to_string()]),
-            None,
-            None,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                entity_types: Some(vec!["CREDENTIAL".to_string(), "PROOF".to_string()]),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -282,11 +298,11 @@ async fn test_get_history_filter_by_actions() {
         .list(
             0,
             10,
-            &organisation.id,
-            None,
-            None,
-            Some(vec!["DELETED".to_string(), "DEACTIVATED".to_string()]),
-            None,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                actions: Some(vec!["DELETED".to_string(), "DEACTIVATED".to_string()]),
+                ..Default::default()
+            },
         )
         .await;
 
@@ -351,7 +367,66 @@ async fn test_get_history_filter_by_user() {
     let resp = context
         .api
         .histories
-        .list(0, 10, &organisation.id, None, None, None, Some("TestUser"))
+        .list(
+            0,
+            10,
+            QueryParams {
+                organisation_ids: Some(vec![organisation.id]),
+                users: Some(vec!["TestUser".to_string()]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let resp = resp.json_value().await;
+    let values = resp["values"].as_array().unwrap();
+    assert_eq!(2, values.len());
+}
+
+#[tokio::test]
+async fn test_get_history_show_system_history() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    context
+        .db
+        .histories
+        .create(
+            &organisation,
+            TestingHistoryParams {
+                action: Some(HistoryAction::Created),
+                entity_id: Some(Uuid::new_v4().into()),
+                entity_type: Some(HistoryEntityType::Credential),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    context
+        .db
+        .histories
+        .create_without_organisation(TestingHistoryParams {
+            action: Some(HistoryAction::Deactivated),
+            entity_id: Some(Uuid::new_v4().into()),
+            entity_type: Some(HistoryEntityType::Did),
+            ..Default::default()
+        })
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .histories
+        .list(
+            0,
+            10,
+            QueryParams {
+                show_system_history: Some(true),
+                ..Default::default()
+            },
+        )
         .await;
 
     // THEN

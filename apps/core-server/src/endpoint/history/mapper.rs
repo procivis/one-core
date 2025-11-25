@@ -1,16 +1,11 @@
 use one_core::model::history::{HistoryFilterValue, HistorySearchEnum};
-use one_core::model::list_filter::{
-    ComparisonType, ListFilterCondition, ListFilterValue, ValueComparison,
-};
-use one_core::service::error::ServiceError;
+use one_core::model::list_filter::{ComparisonType, ListFilterCondition, ValueComparison};
 use one_dto_mapper::convert_inner;
 
-use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::history::dto::{HistoryFilterQueryParamsRest, HistorySearchEnumRest};
 
-impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
-    type Error = ServiceError;
-    fn try_from(value: HistoryFilterQueryParamsRest) -> Result<Self, Self::Error> {
+impl From<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilterValue> {
+    fn from(value: HistoryFilterQueryParamsRest) -> Self {
         let entity_types = value.entity_types.map(|values| {
             HistoryFilterValue::EntityTypes(
                 values
@@ -19,7 +14,7 @@ impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilter
                     .collect(),
             )
         });
-        let entity_id = value.entity_id.map(HistoryFilterValue::EntityId);
+        let entity_ids = value.entity_ids.map(HistoryFilterValue::EntityIds);
         let actions = value
             .actions
             .map(|values| HistoryFilterValue::Actions(convert_inner(values)));
@@ -43,18 +38,21 @@ impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilter
         let search_query = value
             .search_text
             .map(|search_text| search_query_to_filter_value(search_text, value.search_type));
-        let organisation_id = HistoryFilterValue::OrganisationId(
-            fallback_organisation_id_from_session(value.organisation_id)?,
-        )
-        .condition();
+        let organisation_ids = value
+            .organisation_ids
+            .map(HistoryFilterValue::OrganisationIds);
 
         let proof_schema_id = value.proof_schema_id.map(HistoryFilterValue::ProofSchemaId);
 
-        let user = value.user.map(HistoryFilterValue::User);
+        let users = value.users.map(HistoryFilterValue::Users);
+        let sources = value
+            .sources
+            .map(|values| HistoryFilterValue::Sources(convert_inner(values)));
 
-        Ok(organisation_id
+        Self::default()
+            & organisation_ids
             & entity_types
-            & entity_id
+            & entity_ids
             & actions
             & created_date_after
             & created_date_before
@@ -63,7 +61,8 @@ impl TryFrom<HistoryFilterQueryParamsRest> for ListFilterCondition<HistoryFilter
             & credential_schema_id
             & proof_schema_id
             & search_query
-            & user)
+            & users
+            & sources
     }
 }
 

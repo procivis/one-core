@@ -14,7 +14,7 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 
 use crate::deserialize::deserialize_timestamp;
-use crate::dto::common::ListQueryParamsRest;
+use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::endpoint::credential::dto::{
     CredentialDetailClaimResponseRestDTO, GetCredentialResponseRestDTO,
 };
@@ -209,6 +209,9 @@ pub(crate) enum SortableHistoryColumnRestDTO {
     CreatedDate,
     Action,
     EntityType,
+    Source,
+    User,
+    OrganisationId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
@@ -217,9 +220,9 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// Return only events associated with the specified entity type(s).
     #[param(rename = "entityTypes[]", inline, nullable = false)]
     pub entity_types: Option<Vec<HistoryEntityType>>,
-    /// Return only events associated with the provided entity UUID.
-    #[param(nullable = false)]
-    pub entity_id: Option<EntityId>,
+    /// Return only events associated with the provided entity UUID(s).
+    #[param(rename = "entityIds[]", inline, nullable = false)]
+    pub entity_ids: Option<Vec<EntityId>>,
     /// Return only events of the specified action(s).
     #[param(rename = "actions[]", inline, nullable = false)]
     pub actions: Option<Vec<HistoryAction>>,
@@ -252,11 +255,19 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// that have any field matching `searchText` will be returned.
     #[param(nullable = false)]
     pub search_type: Option<HistorySearchEnumRest>,
-    /// Specify the organizaton from which to return history events.
-    #[param(nullable = false)]
-    pub organisation_id: Option<OrganisationId>,
-    #[param(nullable = false)]
-    pub user: Option<String>,
+    /// Return only events associated with the provided users.
+    #[param(rename = "users[]", nullable = false)]
+    pub users: Option<Vec<String>>,
+    /// Return only events associated with the provided sources.
+    #[param(rename = "sources[]", inline, nullable = false)]
+    pub sources: Option<Vec<HistorySource>>,
+    /// Specify the organizaton(s) from which to return history events.
+    #[param(rename = "organisationIds[]", inline, nullable = false)]
+    pub organisation_ids: Option<Vec<OrganisationId>>,
+    /// When using STS authentication only available together with the `SYSTEM_HISTORY_LIST` permission.
+    /// Disables `organisationIds` checks, meaning `organisationIds` do not have to be set and `organisationId` inside the STS token is ignored.
+    #[param(inline, nullable = false)]
+    pub show_system_history: Option<Boolean>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]

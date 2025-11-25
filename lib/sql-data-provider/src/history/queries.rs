@@ -15,7 +15,7 @@ use crate::entity::{
 };
 use crate::list_query_generic::{
     IntoFilterCondition, IntoJoinRelations, IntoSortingColumn, JoinRelation,
-    get_comparison_condition, get_equals_condition,
+    get_comparison_condition,
 };
 
 impl IntoSortingColumn for SortableHistoryColumn {
@@ -24,6 +24,9 @@ impl IntoSortingColumn for SortableHistoryColumn {
             Self::CreatedDate => history::Column::CreatedDate,
             Self::Action => history::Column::Action,
             Self::EntityType => history::Column::EntityType,
+            Self::Source => history::Column::Source,
+            Self::User => history::Column::User,
+            Self::OrganisationId => history::Column::OrganisationId,
         }
         .into_simple_expr()
     }
@@ -40,7 +43,6 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .collect::<Vec<_>>(),
                 )
                 .into_condition(),
-            Self::EntityId(entity_id) => get_equals_condition(history::Column::EntityId, entity_id),
             Self::EntityIds(entity_ids) => {
                 history::Column::EntityId.is_in(entity_ids).into_condition()
             }
@@ -81,9 +83,9 @@ impl IntoFilterCondition for HistoryFilterValue {
             Self::SearchQuery(search_text, search_type) => {
                 search_query_filter(search_text, search_type)
             }
-            Self::OrganisationId(organisation_id) => {
-                get_equals_condition(history::Column::OrganisationId, organisation_id.to_string())
-            }
+            Self::OrganisationIds(organisation_ids) => history::Column::OrganisationId
+                .is_in(organisation_ids)
+                .into_condition(),
             Self::ProofSchemaId(proof_schema_id) => history::Column::EntityId
                 .eq(proof_schema_id)
                 .and(history::Column::EntityType.eq(history::HistoryEntityType::ProofSchema))
@@ -100,7 +102,10 @@ impl IntoFilterCondition for HistoryFilterValue {
                         .to_owned(),
                 ))
                 .into_condition(),
-            Self::User(user) => get_equals_condition(history::Column::User, user),
+            Self::Users(users) => history::Column::User.is_in(users).into_condition(),
+            Self::Sources(sources) => history::Column::Source
+                .is_in::<history::HistorySource, _>(convert_inner(sources))
+                .into_condition(),
         }
     }
 }

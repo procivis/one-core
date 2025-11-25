@@ -30,6 +30,8 @@ pub enum Permission {
     HistoryDetail,
     HistoryList,
     HistoryCreate,
+    SystemHistoryDetail,
+    SystemHistoryList,
     HolderCredentialList,
     IdentifierCreate,
     IdentifierDelete,

@@ -109,11 +109,11 @@ pub(crate) struct EntityShareResponseRestDTO {
     pub url: String,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum Boolean {
-    True,
     False,
+    True,
 }
 
 impl From<Boolean> for bool {

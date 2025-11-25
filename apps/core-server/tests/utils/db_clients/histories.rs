@@ -107,8 +107,8 @@ impl HistoriesDB {
                 page_size: 10,
             }),
             sorting: None,
-            filtering: Some(ListFilterCondition::Value(HistoryFilterValue::EntityId(
-                *entity_id,
+            filtering: Some(ListFilterCondition::Value(HistoryFilterValue::EntityIds(
+                vec![*entity_id],
             ))),
 
             include: None,

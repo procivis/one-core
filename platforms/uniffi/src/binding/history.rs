@@ -37,12 +37,20 @@ impl OneCoreBinding {
     ) -> Result<HistoryListBindingDTO, BindingError> {
         let core = self.use_core().await?;
 
-        let organisation_id = into_id(&query.organisation_id)?;
+        let mut conditions = vec![
+            HistoryFilterValue::OrganisationIds(vec![into_id(&query.organisation_id)?]).condition(),
+        ];
 
-        let mut conditions = vec![HistoryFilterValue::OrganisationId(organisation_id).condition()];
-
-        if let Some(value) = query.entity_id {
-            conditions.push(HistoryFilterValue::EntityId(into_id(&value)?).condition());
+        if let Some(value) = query.entity_ids {
+            conditions.push(
+                HistoryFilterValue::EntityIds(
+                    value
+                        .into_iter()
+                        .map(|entity_id| into_id(&entity_id))
+                        .collect::<Result<Vec<_>, _>>()?,
+                )
+                .condition(),
+            );
         }
         if let Some(value) = query.entity_types {
             conditions.push(
@@ -95,8 +103,8 @@ impl OneCoreBinding {
                 .push(HistoryFilterValue::ProofSchemaId(into_id(&proof_schema_id)?).condition());
         }
 
-        if let Some(user) = query.user {
-            conditions.push(HistoryFilterValue::User(user).condition());
+        if let Some(users) = query.users {
+            conditions.push(HistoryFilterValue::Users(users).condition());
         }
 
         Ok(core
@@ -178,7 +186,6 @@ pub enum HistoryMetadataBinding {
         value: HistoryErrorMetadataBindingDTO,
     },
     WalletUnitJWT(String),
-    External(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, uniffi::Record)]
@@ -206,7 +213,7 @@ pub struct HistoryListQueryBindingDTO {
     pub page: u32,
     pub page_size: u32,
     pub organisation_id: String,
-    pub entity_id: Option<String>,
+    pub entity_ids: Option<Vec<String>>,
     pub entity_types: Option<Vec<HistoryEntityTypeBindingEnum>>,
     pub actions: Option<Vec<HistoryActionBindingEnum>>,
     pub created_date_after: Option<String>,
@@ -216,7 +223,7 @@ pub struct HistoryListQueryBindingDTO {
     pub credential_schema_id: Option<String>,
     pub proof_schema_id: Option<String>,
     pub search: Option<HistorySearchBindingDTO>,
-    pub user: Option<String>,
+    pub users: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

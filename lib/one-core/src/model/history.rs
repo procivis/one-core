@@ -113,12 +113,14 @@ pub enum SortableHistoryColumn {
     CreatedDate,
     Action,
     EntityType,
+    Source,
+    User,
+    OrganisationId,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum HistoryFilterValue {
     EntityTypes(Vec<HistoryEntityType>),
-    EntityId(EntityId),
     EntityIds(Vec<EntityId>),
     Actions(Vec<HistoryAction>),
     CreatedDate(ValueComparison<OffsetDateTime>),
@@ -126,9 +128,10 @@ pub enum HistoryFilterValue {
     CredentialId(CredentialId),
     CredentialSchemaId(CredentialSchemaId),
     SearchQuery(String, HistorySearchEnum),
-    OrganisationId(OrganisationId),
+    OrganisationIds(Vec<OrganisationId>),
     ProofSchemaId(ProofSchemaId),
-    User(String),
+    Users(Vec<String>),
+    Sources(Vec<HistorySource>),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

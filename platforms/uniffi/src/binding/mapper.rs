@@ -298,21 +298,31 @@ impl TryFrom<DidRequestKeysBindingDTO> for CreateDidRequestKeysDTO {
     }
 }
 
-impl From<HistoryMetadataResponse> for HistoryMetadataBinding {
-    fn from(value: HistoryMetadataResponse) -> Self {
-        match value {
-            HistoryMetadataResponse::UnexportableEntities(value) => Self::UnexportableEntities {
-                value: value.into(),
-            },
-            HistoryMetadataResponse::ErrorMetadata(value) => Self::ErrorMetadata {
-                value: HistoryErrorMetadataBindingDTO {
-                    error_code: Into::<&'static str>::into(value.error_code).to_string(),
-                    message: value.message,
-                },
-            },
-            HistoryMetadataResponse::WalletUnitJWT(value) => Self::WalletUnitJWT(value),
-            HistoryMetadataResponse::External(value) => Self::External(value.to_string()),
-        }
+fn convert_history_metadata(
+    value: Option<HistoryMetadataResponse>,
+) -> Option<HistoryMetadataBinding> {
+    match value {
+        None => None,
+        Some(value) => match value {
+            HistoryMetadataResponse::UnexportableEntities(value) => {
+                Some(HistoryMetadataBinding::UnexportableEntities {
+                    value: value.into(),
+                })
+            }
+            HistoryMetadataResponse::ErrorMetadata(value) => {
+                Some(HistoryMetadataBinding::ErrorMetadata {
+                    value: HistoryErrorMetadataBindingDTO {
+                        error_code: Into::<&'static str>::into(value.error_code).to_string(),
+                        message: value.message,
+                    },
+                })
+            }
+            HistoryMetadataResponse::WalletUnitJWT(value) => {
+                Some(HistoryMetadataBinding::WalletUnitJWT(value))
+            }
+            // external metadata only used in REST API
+            HistoryMetadataResponse::External(_) => None,
+        },
     }
 }
 
@@ -325,7 +335,7 @@ impl From<HistoryResponseDTO> for HistoryListItemBindingDTO {
             name: value.name,
             entity_id: value.entity_id.map(|id| id.to_string()),
             entity_type: value.entity_type.into(),
-            metadata: convert_inner(value.metadata),
+            metadata: convert_history_metadata(value.metadata),
             organisation_id: value.organisation_id.map(|id| id.to_string()),
             target: value.target,
             user: value.user,

@@ -290,7 +290,7 @@ fn history_list_query_with_filter(
         }),
         sorting: None,
         filtering: Some(ListFilterCondition::And(vec![
-            ListFilterCondition::Value(HistoryFilterValue::OrganisationId(organisation_id)),
+            ListFilterCondition::Value(HistoryFilterValue::OrganisationIds(vec![organisation_id])),
             ListFilterCondition::Value(value),
         ])),
         include: None,
@@ -366,7 +366,7 @@ async fn test_get_history_list_simple() {
             }),
             sorting: None,
             filtering: Some(ListFilterCondition::Value(
-                HistoryFilterValue::OrganisationId(organisation.id),
+                HistoryFilterValue::OrganisationIds(vec![organisation.id]),
             )),
             include: None,
         })

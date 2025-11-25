@@ -270,7 +270,7 @@ mod tests {
                 page: 0,
                 page_size: 1,
                 organisation_id,
-                entity_id: None,
+                entity_ids: None,
                 entity_types: Some(vec![HistoryEntityTypeBindingEnum::Backup]),
                 actions: None,
                 created_date_after: None,
@@ -280,7 +280,7 @@ mod tests {
                 credential_schema_id: None,
                 proof_schema_id: None,
                 search: None,
-                user: None,
+                users: None,
             })
             .await
             .unwrap();
