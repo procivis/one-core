@@ -1,15 +1,15 @@
-use core::panic;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use hex_literal::hex;
 use one_core::config::core_config::KeyAlgorithmType;
-use one_core::model::key::{Key, PublicKeyJwk};
+use one_core::model::key::Key;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
-use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use one_core::provider::key_algorithm::key::KeyHandle;
+use one_core::provider::key_algorithm::provider::{KeyAlgorithmProvider, KeyAlgorithmProviderImpl};
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
 use one_core::service::key::dto::PublicKeyJwkDTO;
@@ -23,19 +23,12 @@ use crate::fixtures::TestingKeyParams;
 pub struct TestKey {
     multibase: String,
     pub params: TestingKeyParams,
-    jwk: PublicKeyJwk,
 }
 
 pub fn eddsa_key_2() -> TestKey {
     let multibase = "z6Mki2njTKAL6rctJpMzHEeL35qhnG1wQaTG2knLVSk93Bj5".to_string();
-    let jwk = Eddsa
-        .parse_multibase(&multibase)
-        .unwrap()
-        .public_key_as_jwk()
-        .unwrap();
     TestKey {
         multibase,
-        jwk,
         params: TestingKeyParams {
             key_type: Some("EDDSA".to_string()),
             storage_type: Some("INTERNAL".to_string()),
@@ -59,41 +52,6 @@ pub fn eddsa_key_2() -> TestKey {
 pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let holder_key = eddsa_key_2();
     let holder_key_id = format!("did:key:{}", holder_key.multibase);
-    proof_jwt_for(&holder_key, use_kid.then_some(&holder_key_id), nonce).await
-}
-
-pub(super) async fn proof_jwt_for(
-    key: &TestKey,
-    holder_key_id: Option<&str>,
-    nonce: Option<&str>,
-) -> String {
-    let mut header = json!({
-        "typ": "openid4vci-proof+jwt"
-    });
-    if let Some(holder_key_id) = holder_key_id {
-        header["kid"] = holder_key_id.into();
-    } else {
-        header["jwk"] = serde_json::to_value(PublicKeyJwkDTO::from(key.jwk.clone())).unwrap();
-    }
-
-    let mut payload = json!({
-        "aud": "test123"
-    });
-    if let Some(nonce) = nonce {
-        payload["nonce"] = nonce.into();
-    }
-
-    match key.params.key_type.as_deref() {
-        Some("EDDSA") => {
-            header["alg"] = "EdDSA".into();
-        }
-        Some("ECDSA") => {
-            header["alg"] = "ES256".into();
-        }
-        kty => {
-            panic!("Unsupported key type: {kty:?}");
-        }
-    };
 
     let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
         HashMap::from_iter([
@@ -108,15 +66,8 @@ pub(super) async fn proof_jwt_for(
         ]),
         Default::default(),
     ));
-    let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");
-    let key_provider = InternalKeyProvider::new(
-        key_algorithm_provider,
-        Params {
-            encryption: encryption_key.to_vec().into(),
-        },
-    );
 
-    let params = key.params.clone();
+    let params = holder_key.params.clone();
     let key = Key {
         id: params.id.unwrap_or(Uuid::new_v4().into()),
         created_date: params.created_date.unwrap_or(OffsetDateTime::now_utc()),
@@ -129,13 +80,58 @@ pub(super) async fn proof_jwt_for(
         organisation: None,
     };
 
+    let key_algorithm = key_algorithm_provider
+        .key_algorithm_from_type(key.key_algorithm_type().unwrap())
+        .unwrap();
+
+    let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");
+    let key_provider = InternalKeyProvider::new(
+        key_algorithm_provider,
+        Params {
+            encryption: encryption_key.to_vec().into(),
+        },
+    );
+    let key_handle = key_provider.key_handle(&key).unwrap();
+
+    proof_jwt_for(
+        &key_handle,
+        key_algorithm.issuance_jose_alg_id().unwrap(),
+        use_kid.then_some(&holder_key_id),
+        nonce,
+    )
+    .await
+}
+
+pub async fn proof_jwt_for(
+    key: &KeyHandle,
+    jose_alg: String,
+    holder_key_id: Option<&str>,
+    nonce: Option<&str>,
+) -> String {
+    let mut header = json!({
+        "typ": "openid4vci-proof+jwt"
+    });
+    if let Some(holder_key_id) = holder_key_id {
+        header["kid"] = holder_key_id.into();
+    } else {
+        header["jwk"] =
+            serde_json::to_value(PublicKeyJwkDTO::from(key.public_key_as_jwk().unwrap())).unwrap();
+    }
+
+    let mut payload = json!({
+        "aud": "test123"
+    });
+    if let Some(nonce) = nonce {
+        payload["nonce"] = nonce.into();
+    }
+
+    header["alg"] = jose_alg.into();
+
     let jwt = [header.to_string(), payload.to_string()]
         .map(|s| Base64UrlSafeNoPadding::encode_to_string(s).unwrap())
         .join(".");
 
-    let key_handle = key_provider.key_handle(&key).unwrap();
-
-    let signature = key_handle.sign(jwt.as_bytes()).await.unwrap();
+    let signature = key.sign(jwt.as_bytes()).await.unwrap();
     let signature = Base64UrlSafeNoPadding::encode_to_string(&signature).unwrap();
 
     [jwt, signature].join(".")

@@ -776,6 +776,7 @@ async fn initialize(
                                     formatter_provider.clone(),
                                     certificate_validator.clone(),
                                     data_repository.get_revocation_list_repository(),
+                                    data_repository.get_tx_manager(),
                                     client.clone(),
                                     None,
                                 )) as _

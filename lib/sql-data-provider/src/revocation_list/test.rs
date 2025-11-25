@@ -171,7 +171,7 @@ async fn test_get_max_used_index_empty_list() {
 
     let result = setup
         .provider
-        .get_max_used_index(&setup.list_id)
+        .get_max_used_index(&setup.list_id, None)
         .await
         .unwrap();
     assert_eq!(result, None);
@@ -187,7 +187,7 @@ async fn test_get_max_used_index_list_with_entry() {
 
     let result = setup
         .provider
-        .get_max_used_index(&setup.list_id)
+        .get_max_used_index(&setup.list_id, None)
         .await
         .unwrap();
     assert_eq!(result, Some(0));

@@ -7,6 +7,7 @@ use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{RevocationList, StatusListCredentialFormat};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
@@ -73,7 +74,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         });
     revocation_list_repository
         .expect_get_max_used_index()
-        .returning(|_| Ok(Some(0)));
+        .returning(|_, _| Ok(Some(0)));
     revocation_list_repository
         .expect_create_entry()
         .returning(|_, _, _| Ok(()));
@@ -87,6 +88,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         Arc::new(formatter_provider),
         Arc::new(MockCertificateValidator::default()),
         Arc::new(revocation_list_repository),
+        Arc::new(NoTransactionManager),
         client,
         None,
     );

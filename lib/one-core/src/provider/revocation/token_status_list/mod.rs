@@ -452,7 +452,7 @@ impl TokenStatusList {
         let list_id = if let Some(current_list) = &current_list {
             index_on_status_list = 1 + self
                 .revocation_list_repository
-                .get_max_used_index(&current_list.id)
+                .get_max_used_index(&current_list.id, None)
                 .await?
                 .ok_or(RevocationError::MappingError(format!(
                     "No index found on status-list of identifier: {}",

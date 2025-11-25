@@ -1,6 +1,7 @@
 use shared_types::{IdentifierId, RevocationListId};
 
 use super::error::DataLayerError;
+use crate::model::common::LockType;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
     RevocationListRelations, StatusListType,
@@ -37,6 +38,7 @@ pub trait RevocationListRepository: Send + Sync {
     async fn get_max_used_index(
         &self,
         id: &RevocationListId,
+        lock: Option<LockType>,
     ) -> Result<Option<usize>, DataLayerError>;
 
     async fn create_entry(

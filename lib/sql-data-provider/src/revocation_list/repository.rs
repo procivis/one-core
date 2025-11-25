@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
+use one_core::model::common::LockType;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
     RevocationListPurpose, RevocationListRelations, StatusListType,
@@ -17,7 +18,7 @@ use uuid::Uuid;
 use crate::entity::{
     credential, revocation_list, revocation_list_entry, wallet_unit, wallet_unit_attested_key,
 };
-use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
+use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 use crate::revocation_list::RevocationListProvider;
 
 impl RevocationListProvider {
@@ -164,11 +165,17 @@ impl RevocationListRepository for RevocationListProvider {
     async fn get_max_used_index(
         &self,
         id: &RevocationListId,
+        lock: Option<LockType>,
     ) -> Result<Option<usize>, DataLayerError> {
-        let max: Option<Option<u32>> = revocation_list_entry::Entity::find()
+        let select = revocation_list_entry::Entity::find()
             .select_only()
             .column_as(revocation_list_entry::Column::Index.max(), "index")
-            .filter(revocation_list_entry::Column::RevocationListId.eq(id))
+            .filter(revocation_list_entry::Column::RevocationListId.eq(id));
+        let select = match lock {
+            None => select,
+            Some(lock) => select.lock(map_lock_type(lock)),
+        };
+        let max: Option<Option<u32>> = select
             .into_tuple()
             .one(&self.db)
             .await

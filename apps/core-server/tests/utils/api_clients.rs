@@ -206,11 +206,15 @@ pub struct Client {
     pub wallet_provider: WalletProviderApi,
     pub wallet_units: WalletUnitsApi,
     pub holder_wallet_units: HolderWalletUnitsApi,
+    pub base_url: String,
 }
 
 impl Client {
     pub fn new(base_url: String, token: String) -> Self {
-        let client = HttpClient { base_url, token };
+        let client = HttpClient {
+            base_url: base_url.clone(),
+            token,
+        };
 
         Self {
             organisations: OrganisationsApi::new(client.clone()),
@@ -236,6 +240,7 @@ impl Client {
             wallet_provider: WalletProviderApi::new(client.clone()),
             wallet_units: WalletUnitsApi::new(client.clone()),
             holder_wallet_units: HolderWalletUnitsApi::new(client),
+            base_url,
         }
     }
 }

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListPurpose, RevocationListRelations,
-    StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
+    RevocationListRelations, StatusListCredentialFormat, StatusListType,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use shared_types::{CredentialId, IdentifierId, RevocationListId};
@@ -77,5 +77,9 @@ impl RevocationListsDB {
             )
             .await
             .unwrap()
+    }
+
+    pub async fn get_entries(&self, list_id: RevocationListId) -> Vec<RevocationListEntry> {
+        self.repository.get_entries(list_id).await.unwrap()
     }
 }
