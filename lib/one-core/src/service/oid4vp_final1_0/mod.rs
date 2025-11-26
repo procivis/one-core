@@ -41,7 +41,7 @@ pub struct OID4VPFinal1_0Service {
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 impl OID4VPFinal1_0Service {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,

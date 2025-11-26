@@ -38,7 +38,7 @@ pub struct TrustEntityService {
 }
 
 impl TrustEntityService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
         trust_entity_repository: Arc<dyn TrustEntityRepository>,

@@ -3,7 +3,6 @@ use thiserror::Error;
 use crate::provider::data_type::model::JsonOrCbor;
 
 #[derive(Debug, PartialEq, Error)]
-#[allow(dead_code)]
 pub enum DataTypeProviderError {
     #[error("Data type provider error: `{0}`")]
     DataTypeError(#[from] DataTypeError),
@@ -14,7 +13,6 @@ pub enum DataTypeProviderError {
 }
 
 #[derive(Debug, PartialEq, Error)]
-#[allow(dead_code)]
 pub enum DataTypeError {
     #[error("Failed: `{0}`")]
     Failed(String),

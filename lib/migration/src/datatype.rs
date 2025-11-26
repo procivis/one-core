@@ -78,16 +78,14 @@ impl HasDatabaseBackend for DatabaseTransaction {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) fn uuid_char<T: IntoIden>(ident: T) -> ColumnDef {
     ColumnDef::new(ident).char_len(36).not_null().take()
 }
-#[allow(dead_code)]
+
 pub(crate) fn uuid_char_null<T: IntoIden>(ident: T) -> ColumnDef {
     ColumnDef::new(ident).char_len(36).null().take()
 }
 
-#[allow(dead_code)]
 pub(crate) fn timestamp<T: IntoIden, DB: HasDatabaseBackend>(ident: T, manager: &DB) -> ColumnDef {
     ColumnDef::new(ident)
         .datetime_millisecond_precision(manager)
@@ -95,7 +93,6 @@ pub(crate) fn timestamp<T: IntoIden, DB: HasDatabaseBackend>(ident: T, manager: 
         .take()
 }
 
-#[allow(dead_code)]
 pub(crate) fn timestamp_null<T: IntoIden, DB: HasDatabaseBackend>(
     ident: T,
     manager: &DB,

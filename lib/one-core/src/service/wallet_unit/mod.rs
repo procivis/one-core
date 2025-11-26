@@ -39,7 +39,7 @@ pub struct WalletUnitService {
 }
 
 impl WalletUnitService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
         holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,

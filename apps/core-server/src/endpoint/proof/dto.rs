@@ -141,7 +141,7 @@ pub(crate) struct ScanToVerifyRequestRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyBarcodeTypeEnum)]
 pub(crate) enum ScanToVerifyBarcodeTypeRestEnum {
-    #[allow(clippy::upper_case_acronyms)]
+    #[expect(clippy::upper_case_acronyms)]
     MRZ,
     PDF417,
 }

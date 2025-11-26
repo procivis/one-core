@@ -51,7 +51,6 @@ pub struct ProofService {
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     protocol_provider: Arc<dyn VerificationProtocolProvider>,
-    #[allow(dead_code)]
     did_method_provider: Arc<dyn DidMethodProvider>,
     ble: Option<BleWaiter>,
     config: Arc<core_config::CoreConfig>,
@@ -64,7 +63,7 @@ pub struct ProofService {
 }
 
 impl ProofService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         proof_repository: Arc<dyn ProofRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,

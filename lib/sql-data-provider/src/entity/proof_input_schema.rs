@@ -15,7 +15,7 @@ pub struct Model {
     pub proof_schema: ProofSchemaId,
 }
 
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
     #[sea_orm(

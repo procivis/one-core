@@ -9,7 +9,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn generate_authorization_request_params_draft20(
     proof: &Proof,
     interaction_id: &InteractionId,

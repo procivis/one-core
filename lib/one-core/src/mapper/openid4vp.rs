@@ -14,7 +14,7 @@ use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::error::ServiceError;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,

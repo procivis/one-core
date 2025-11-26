@@ -73,7 +73,7 @@ pub(crate) struct OpenID4VCI13Swiyu {
 }
 
 impl OpenID4VCI13Swiyu {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,

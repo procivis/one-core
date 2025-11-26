@@ -117,7 +117,7 @@ pub(crate) struct NfcHceSession {
 }
 
 /// Waits for verifier connection + reads device request
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn receive_mdl_request(
     ble: &BleWaiter,
     key_pair: KeyAgreement<EDeviceKey>,

@@ -776,7 +776,7 @@ impl CredentialSchemasDB {
         self.get(&id).await
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub async fn create_with_claims(
         &self,
         id: &Uuid,

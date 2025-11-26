@@ -96,7 +96,7 @@ pub struct TokenStatusList {
 }
 
 impl TokenStatusList {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         core_base_url: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -610,7 +610,6 @@ pub(crate) fn credential_status_from_sdjwt_status(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
     issuer_identifier: &Identifier,

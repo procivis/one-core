@@ -489,7 +489,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,
@@ -600,7 +600,7 @@ pub(crate) fn unencrypted_params(
     Ok(map)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn credential_from_proved(
     proved_credential: ProvedCredential,
     organisation: &Organisation,

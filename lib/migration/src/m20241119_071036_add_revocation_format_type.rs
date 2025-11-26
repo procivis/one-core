@@ -49,7 +49,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-#[allow(unused)]
+#[expect(unused)]
 pub enum RevocationList {
     Table,
     Id,

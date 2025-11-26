@@ -211,7 +211,6 @@ enum Proof {
     HolderIdentifierId,
 }
 
-#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden, Clone)]
 enum ProofNew {
     Table,

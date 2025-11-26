@@ -100,7 +100,7 @@ pub struct OpenID4VPProximityDraft00 {
 }
 
 impl OpenID4VPProximityDraft00 {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         mqtt_client: Option<Arc<dyn MqttClient>>,
         config: Arc<CoreConfig>,

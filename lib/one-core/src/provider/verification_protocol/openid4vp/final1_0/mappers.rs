@@ -47,7 +47,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
     Ok(metadata)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     base_url: &str,
     openidvc_params: &Params,

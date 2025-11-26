@@ -33,7 +33,7 @@ pub struct RevocationListService {
 }
 
 impl RevocationListService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         core_base_url: Option<String>,
         credential_repository: Arc<dyn CredentialRepository>,

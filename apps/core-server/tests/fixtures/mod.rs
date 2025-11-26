@@ -660,7 +660,6 @@ pub struct TestingCredentialParams {
     pub wallet_app_attestation_blob_id: Option<BlobId>,
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn create_credential(
     db_conn: &DbConn,
     credential_schema: &CredentialSchema,
@@ -723,7 +722,6 @@ pub async fn create_credential(
     credential
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn create_blob(db_conn: &DbConn, params: TestingBlobParams) -> Blob {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -746,7 +744,7 @@ pub async fn create_blob(db_conn: &DbConn, params: TestingBlobParams) -> Blob {
     blob
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn create_proof(
     db_conn: &DbConn,
     verifier_identifier: &Identifier,

@@ -99,14 +99,14 @@ pub(crate) enum IdentifierRole {
 }
 
 #[derive(Debug)]
-#[allow(dead_code)]
+#[expect(dead_code)]
 pub(crate) enum RemoteIdentifierRelation {
     Did(Did),
     Certificate(Certificate),
     Key(Key),
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn get_or_create_identifier(
     did_method_provider: &dyn DidMethodProvider,
     did_repository: &dyn DidRepository,
@@ -495,7 +495,7 @@ pub(crate) fn value_to_model_claims(
     Ok(model_claims)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn extracted_credential_to_model(
     claim_schemas: &[CredentialSchemaClaim],
     credential_schema: CredentialSchema,

@@ -5,7 +5,6 @@ pub struct Migration;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
-    #[allow(unreachable_code, unused_variables)]
     async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
         if manager.get_database_backend() == sea_orm::DatabaseBackend::Postgres {
             return Ok(());
@@ -54,7 +53,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 enum WalletUnit {
     Table,
     WalletUnitType,

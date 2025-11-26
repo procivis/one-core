@@ -53,7 +53,7 @@ pub(crate) enum SdJwtType {
     SdJwtVc,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn format_credential<T: Serialize>(
     credential: VcdmCredential,
     claims: Value,

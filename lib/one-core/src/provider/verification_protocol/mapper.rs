@@ -40,7 +40,7 @@ pub(crate) fn interaction_from_handle_invitation(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn proof_from_handle_invitation(
     proof_id: &ProofId,
     protocol: &str,

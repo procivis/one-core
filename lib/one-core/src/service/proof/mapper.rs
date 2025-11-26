@@ -676,7 +676,7 @@ pub(super) async fn get_holder_proof_detail(
     })
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn proof_from_create_request(
     request: CreateProofRequestDTO,
     now: OffsetDateTime,

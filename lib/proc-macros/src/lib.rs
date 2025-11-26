@@ -17,14 +17,14 @@ mod permission_check;
 /// use utoipa::{ToSchema};
 /// use serde::Serialize;
 ///
-/// #[allow(dead_code)]
+/// #[expect(dead_code)]
 /// #[options_not_nullable]
 /// #[derive(Serialize, ToSchema)]
 /// struct Data {
 ///     a: Option<String>,
 /// }
 ///
-/// #[allow(dead_code)]
+/// #[expect(dead_code)]
 /// #[options_not_nullable(skip_serializing_none = false)]
 /// #[derive(Serialize, ToSchema)]
 /// struct DataNoSerdeSkip {

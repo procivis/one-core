@@ -95,7 +95,7 @@ struct EncryptionInfo {
 }
 
 impl OpenID4VPFinal1_0 {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         base_url: Option<String>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -259,7 +259,6 @@ impl OpenID4VPFinal1_0 {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 #[async_trait::async_trait]
 impl VerificationProtocol for OpenID4VPFinal1_0 {
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
@@ -736,7 +735,7 @@ async fn encrypted_params(
     Ok(HashMap::from_iter([("response".to_owned(), response)]))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn handle_proof_invitation(
     url: Url,
     allow_insecure_http_transport: bool,

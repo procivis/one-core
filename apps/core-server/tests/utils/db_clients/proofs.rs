@@ -27,7 +27,7 @@ impl ProofsDB {
         Self { repository }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         id: Option<ProofId>,
@@ -55,7 +55,7 @@ impl ProofsDB {
         .await
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub async fn create_with_profile(
         &self,
         id: Option<ProofId>,

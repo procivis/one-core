@@ -275,7 +275,7 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     Ok(())
 }
 
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 #[derive(Clone, DeriveIden)]
 pub enum Credential {
     Table,

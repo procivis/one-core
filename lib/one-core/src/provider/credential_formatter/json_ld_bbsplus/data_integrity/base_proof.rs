@@ -70,7 +70,7 @@ pub fn parse_base_proof_value(proof_value: &str) -> Result<BbsBaseProofComponent
 }
 
 // https://www.w3.org/TR/vc-di-bbs/#create-base-proof-bbs-2023
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn create_base_proof_with_options(
     unsecured_document: &VcdmCredential,
     mandatory_pointers: Vec<String>,

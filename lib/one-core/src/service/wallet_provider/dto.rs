@@ -169,7 +169,6 @@ pub(super) struct IntegrityCheck {
     pub ios: Option<IOSBundle>,
     #[serde(default = "default_enabled")]
     pub enabled: bool,
-    #[allow(unused)]
     #[serde(default = "default_attestation_timeout")]
     pub timeout: usize,
 }
@@ -195,7 +194,6 @@ fn default_attestation_timeout() -> usize {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(unused)]
 pub(super) struct IOSBundle {
     pub bundle_id: String,
     #[serde(rename = "trustedAttestationCAs")]

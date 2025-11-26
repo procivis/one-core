@@ -23,8 +23,8 @@ fn hook(mut file: &File) -> SdResult<()> {
     let app_version = get_app_version_string();
     let ci_pipeline_id = env::var("CI_PIPELINE_ID").unwrap_or("NOT PROVIDED".to_owned());
     let hook_const: &str = &format!(
-        r#"#[allow(dead_code)] pub const APP_VERSION: Option<&str> = {app_version};
-           #[allow(dead_code)] pub const CI_PIPELINE_ID: &str = "{ci_pipeline_id}";"#
+        r#"pub const APP_VERSION: Option<&str> = {app_version};
+           pub const CI_PIPELINE_ID: &str = "{ci_pipeline_id}";"#
     );
     writeln!(file, "{hook_const}")?;
     Ok(())

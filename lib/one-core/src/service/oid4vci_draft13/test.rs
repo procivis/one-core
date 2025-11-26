@@ -68,7 +68,6 @@ struct Mocks {
     pub certificate_validator: MockCertificateValidator,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
     OID4VCIDraft13Service::new(
         Some("http://127.0.0.1:3000".to_string()),

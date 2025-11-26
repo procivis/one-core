@@ -318,7 +318,6 @@ async fn migrate_wua_blobs_to_waa_blobs(manager: &SchemaManager<'_>) -> Result<(
     Ok(())
 }
 
-#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
 enum BlobStorage {
     Table,
@@ -326,7 +325,7 @@ enum BlobStorage {
     Type,
 }
 
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 #[derive(Clone, DeriveIden)]
 enum Credential {
     Table,

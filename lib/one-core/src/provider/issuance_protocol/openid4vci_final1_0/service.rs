@@ -34,7 +34,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
     throw_if_token_request_invalid, validate_refresh_token,
 };
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
     protocol_base_url: &str,
     protocol_id: &str,
@@ -283,7 +283,6 @@ fn jwt_configuration(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn sdjwt_configuration(
     oidc_format: &str,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,

@@ -40,7 +40,7 @@ pub fn get_dummy_date() -> OffsetDateTime {
     datetime!(2005-04-02 21:37 UTC)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn insert_credential(
     db: &DatabaseConnection,
     credential_schema_id: &CredentialSchemaId,
@@ -206,7 +206,6 @@ pub async fn get_proof_by_id(
     proof::Entity::find_by_id(id).one(database).await
 }
 
-#[allow(clippy::too_many_arguments)]
 pub async fn insert_proof_request_to_database(
     database: &DatabaseConnection,
     verifier_identifier_id: IdentifierId,
@@ -428,7 +427,7 @@ pub async fn insert_did_key(
     .await
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub async fn insert_did(
     database: &DatabaseConnection,
     name: &str,

@@ -33,7 +33,7 @@ pub trait Task: Send + Sync {
     async fn run(&self) -> Result<Value, ServiceError>;
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn tasks_from_config(
     config: &TaskConfig,
     claim_repository: Arc<dyn ClaimRepository>,

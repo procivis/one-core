@@ -33,7 +33,6 @@ pub(crate) struct MqttVerifier {
 }
 
 impl MqttVerifier {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(mqtt_client: Arc<dyn MqttClient>, params: ConfigParams) -> MqttVerifier {
         MqttVerifier {
             mqtt_client,
@@ -62,7 +61,6 @@ impl MqttVerifier {
             })
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[tracing::instrument(level = "debug", skip_all, err(Debug))]
     async fn start_detached_subscriber(
         &self,

@@ -72,7 +72,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + Serialize>(
     serde_json::to_vec(&dto).map_err(IssuanceProtocolError::JsonError)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn issuance_protocol_providers_from_config(
     config: Arc<CoreConfig>,
     issuance_config: &mut IssuanceProtocolConfig,
@@ -229,7 +229,6 @@ pub(crate) struct HolderBindingInput {
 /// This trait contains methods for exchanging credentials between issuers and holders
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-#[allow(clippy::too_many_arguments)]
 pub(crate) trait IssuanceProtocol: Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the invitation URL.

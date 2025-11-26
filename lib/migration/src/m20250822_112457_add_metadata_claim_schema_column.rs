@@ -25,7 +25,6 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names, unused)]
 pub enum ClaimSchemaNew {
     Metadata,
 }

@@ -27,7 +27,7 @@ pub struct OID4VCIDraft13SwiyuService {
 }
 
 impl OID4VCIDraft13SwiyuService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         core_base_url: Option<String>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,

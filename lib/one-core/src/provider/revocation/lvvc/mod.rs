@@ -79,7 +79,6 @@ pub struct LvvcProvider {
     params: Params,
 }
 
-#[allow(clippy::too_many_arguments)]
 impl LvvcProvider {
     pub fn new(
         core_base_url: Option<String>,
@@ -389,7 +388,7 @@ impl RevocationMethod for LvvcProvider {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn create_lvvc_with_status(
     credential: &Credential,
     status: LvvcStatus,

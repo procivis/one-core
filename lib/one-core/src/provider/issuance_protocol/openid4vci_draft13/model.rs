@@ -603,7 +603,7 @@ pub struct OpenID4VCICredentialValueDetails {
 /// deserializes from CredentialSchemaResponseRestDTO
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-#[allow(unused)]
+#[expect(unused)]
 pub(crate) struct CredentialSchemaDetailResponseDTO {
     pub id: CredentialSchemaId,
     #[serde(with = "time::serde::rfc3339")]
@@ -646,7 +646,7 @@ pub(crate) struct CredentialClaimSchemaRequestDTO {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialIssuerParams {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub logo: Option<String>,
     pub issuer: String,
     pub client_id: String,

@@ -199,7 +199,6 @@ enum HolderWalletUnit {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
 pub enum WalletUnitAttestation {
     Table,
     Id,

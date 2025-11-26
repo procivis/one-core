@@ -11,7 +11,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::provider::verification_protocol::openid4vp::service::oidc_verifier_presentation_definition;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn generate_authorization_request_params_draft25(
     proof: &Proof,
     interaction_id: &InteractionId,

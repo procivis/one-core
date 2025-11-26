@@ -173,7 +173,7 @@ pub(crate) async fn encryption_info_from_metadata(
     }))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn oid4vp_verifier_process_submission(
     request: SubmissionRequestData,
     proof: Proof,
@@ -247,7 +247,7 @@ pub type FnMapOidcFormatToExternalDetailed =
     fn(&str, Option<&str>) -> Result<String, OpenID4VCError>;
 pub type FnMapExternalFormatToExternalDetailed = fn(&str, &str) -> Result<String, OpenID4VCError>;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn process_proof_submission_dcql_query(
     submission: SubmissionRequestData,
     proof: &Proof,
@@ -475,7 +475,7 @@ async fn process_proof_submission_dcql_query(
     Ok(total_proved_claims)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn process_proof_submission_presentation_exchange(
     submission: SubmissionRequestData,
     proof: &Proof,

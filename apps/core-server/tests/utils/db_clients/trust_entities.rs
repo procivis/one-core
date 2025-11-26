@@ -20,7 +20,7 @@ impl TrustEntityDB {
         Self { repository }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         name: &str,

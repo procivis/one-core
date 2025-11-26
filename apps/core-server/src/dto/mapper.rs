@@ -75,7 +75,7 @@ where
 // only used for generation of swagger-ui params for pagination, sorting and data inclusion
 #[derive(IntoParams)]
 #[into_params(rename_all = "camelCase")]
-#[allow(dead_code)]
+#[expect(dead_code)]
 struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     /// The page number to retrieve (0-based indexing).
     #[param(example = 0, minimum = 0)]

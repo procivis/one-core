@@ -186,7 +186,7 @@ fn jwt_configuration(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn sdjwt_configuration(
     wallet_storage_type: Option<WalletStorageTypeEnum>,
     oidc_format: &str,

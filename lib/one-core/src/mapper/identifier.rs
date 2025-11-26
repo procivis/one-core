@@ -7,7 +7,7 @@ use crate::model::key::Key;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 pub(crate) enum IdentifierEntitySelection<'a> {
-    #[allow(unused)]
+    #[expect(unused)]
     Key(&'a Key),
     Certificate {
         certificate: &'a Certificate,

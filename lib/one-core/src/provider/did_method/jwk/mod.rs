@@ -27,7 +27,6 @@ pub struct JWKDidMethod {
 }
 
 impl JWKDidMethod {
-    #[allow(clippy::new_without_default)]
     pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
         Self {
             key_algorithm_provider,

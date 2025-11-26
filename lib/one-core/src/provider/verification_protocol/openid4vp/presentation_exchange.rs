@@ -29,7 +29,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::provider::verification_protocol::openid4vp::service::encryption_info_from_metadata;
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn pex_submission_data(
     credential_presentations: Vec<FormattedCredentialPresentation>,
     interaction_data: &OpenID4VPHolderInteractionData,

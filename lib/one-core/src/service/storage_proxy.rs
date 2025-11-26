@@ -135,7 +135,7 @@ pub(crate) struct StorageProxyImpl {
 }
 
 impl StorageProxyImpl {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         interactions: Arc<dyn InteractionRepository>,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,

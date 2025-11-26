@@ -142,7 +142,7 @@ pub(super) fn validate_against_redirect_uris(
 
     Ok(())
 }
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) async fn validate_credential(
     holder_details: &IdentifierDetails,
     credential_token: &str,

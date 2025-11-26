@@ -567,7 +567,7 @@ pub enum CredentialNew {
     CredentialBlobId,
 }
 
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 #[derive(DeriveIden, Clone)]
 enum Credential {
     Table,
@@ -576,7 +576,6 @@ enum Credential {
     CreatedDate,
 }
 
-#[allow(clippy::enum_variant_names)]
 #[derive(DeriveIden, Clone)]
 enum ProofNew {
     Table,
@@ -600,7 +599,7 @@ enum ProofNew {
     ProofBlobId,
 }
 
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
 enum Proof {
     Table,

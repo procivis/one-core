@@ -62,9 +62,8 @@ pub struct DbClient {
     pub trust_entities: TrustEntityDB,
     pub blobs: BlobsDB,
     pub wallet_units: WalletUnitsDB,
-    #[allow(unused)]
     pub holder_wallet_units: HolderWalletUnitsDB,
-    #[allow(unused)]
+    #[expect(unused)]
     pub wallet_unit_attestations: WalletUnitAttestationsDB,
     pub db_conn: DbConn,
 }

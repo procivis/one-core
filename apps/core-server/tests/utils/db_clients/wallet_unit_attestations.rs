@@ -10,13 +10,10 @@ use shared_types::{HolderWalletUnitId, WalletUnitAttestationId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-#[allow(unused)]
 pub struct WalletUnitAttestationsDB {
-    #[allow(unused)]
     repository: Arc<dyn WalletUnitAttestationRepository>,
 }
 
-#[allow(unused)]
 #[derive(Default)]
 pub struct TestWalletUnitAttestation {
     pub id: Option<WalletUnitAttestationId>,
@@ -31,7 +28,7 @@ impl WalletUnitAttestationsDB {
         Self { repository }
     }
 
-    #[allow(unused)]
+    #[expect(unused)]
     pub async fn get_by_wallet_unit(
         &self,
         holder_wallet_unit_id: &HolderWalletUnitId,
@@ -45,7 +42,7 @@ impl WalletUnitAttestationsDB {
             .unwrap()
     }
 
-    #[allow(unused)]
+    #[expect(unused)]
     pub async fn create(
         &self,
         test_wallet_unit_attestation: TestWalletUnitAttestation,

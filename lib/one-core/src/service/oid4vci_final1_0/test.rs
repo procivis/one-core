@@ -74,7 +74,6 @@ struct Mocks {
     pub holder_wallet_unit_proto: MockHolderWalletUnitProto,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
     OID4VCIFinal1_0Service::new(
         Some("http://127.0.0.1:3000".to_string()),

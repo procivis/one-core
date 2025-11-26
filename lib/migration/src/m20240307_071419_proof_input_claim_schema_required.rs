@@ -26,7 +26,7 @@ impl MigrationTrait for Migration {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(DeriveIden)]
 pub enum ProofInputClaimSchema {
     Table,

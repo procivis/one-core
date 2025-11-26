@@ -11,7 +11,6 @@ use shared_types::{HolderWalletUnitId, WalletUnitId};
 use uuid::Uuid;
 
 pub struct HolderWalletUnitsDB {
-    #[allow(unused)]
     repository: Arc<dyn HolderWalletUnitRepository>,
 }
 
@@ -69,7 +68,6 @@ impl HolderWalletUnitsDB {
             .unwrap()
     }
 
-    #[allow(unused)]
     pub async fn get(
         &self,
         wallet_unit_id: impl Into<HolderWalletUnitId>,

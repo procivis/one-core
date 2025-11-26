@@ -27,7 +27,7 @@ static APPATEST_PRODUCTION: &[u8] = concat!("appattest", "\0\0\0\0\0\0\0").as_by
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Attestation {
-    #[allow(unused)]
+    #[expect(unused)]
     fmt: String,
     #[serde(rename = "attStmt")]
     attestation_statement: AttestationStatement,
@@ -37,7 +37,7 @@ struct Attestation {
 #[derive(Debug, Deserialize)]
 struct AttestationStatement {
     x5c: Vec<Vec<u8>>,
-    #[allow(unused)]
+    #[expect(unused)]
     receipt: Vec<u8>,
 }
 

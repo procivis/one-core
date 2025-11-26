@@ -80,7 +80,6 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
 }
 
 impl OpenID4VP20Swiyu {
-    #[allow(clippy::too_many_arguments)]
     pub(crate) fn new(
         inner: OpenID4VP20HTTP,
         client: Arc<dyn HttpClient>,
@@ -94,7 +93,6 @@ impl OpenID4VP20Swiyu {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 #[async_trait::async_trait]
 impl VerificationProtocol for OpenID4VP20Swiyu {
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {

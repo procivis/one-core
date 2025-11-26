@@ -20,7 +20,7 @@ use crate::router::AppState;
 #[derive(utoipa::IntoResponses)]
 pub(crate) enum ErrorResponse {
     #[response(status = 401, description = "Unauthorized")]
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     Unauthorized,
     #[response(status = 400, description = "Bad Request")]
     BadRequest(#[to_schema] ErrorResponseRestDTO),
@@ -200,7 +200,7 @@ impl<T: ToSchema> utoipa::IntoResponses for OkOrErrorResponse<VecResponse<T>> {
         #[response(status = 200, description = "OK")]
         struct SuccessResponse<T: ToSchema>(
             #[to_schema]
-            #[allow(dead_code)]
+            #[expect(dead_code)]
             Vec<T>,
         );
 

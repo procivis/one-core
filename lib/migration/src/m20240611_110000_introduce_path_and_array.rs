@@ -65,7 +65,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names, unused)]
+#[expect(clippy::enum_variant_names, unused)]
 pub enum Claim {
     Table,
     Id,
@@ -78,7 +78,7 @@ pub enum Claim {
 }
 
 #[derive(Iden)]
-#[allow(unused)]
+#[expect(unused)]
 pub enum ClaimSchema {
     Table,
     Id,

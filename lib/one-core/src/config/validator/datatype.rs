@@ -147,7 +147,7 @@ fn validate_string(value: &str, params: StringParams) -> Result<(), DatatypeVali
 
     Ok(())
 }
-#[allow(dead_code)]
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct BooleanParams {}
@@ -288,7 +288,7 @@ fn validate_date_params(params: &DateParams) -> Result<(), DateParamsError> {
     Ok(())
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct FileParams {
@@ -366,7 +366,6 @@ pub(crate) fn base64_byte_length(data: &str) -> usize {
     (data.len() * 3 / 4) - num_bytes
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ObjectParams {}
@@ -375,7 +374,6 @@ fn validate_object(_value: &str, _params: ObjectParams) -> Result<(), DatatypeVa
     Err(DatatypeValidationError::ObjectValueShouldNotBeSpecifiedInRequest)
 }
 
-#[allow(dead_code)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct ArrayParams {}

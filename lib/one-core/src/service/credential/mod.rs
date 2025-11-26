@@ -45,7 +45,7 @@ pub struct CredentialService {
 }
 
 impl CredentialService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         repository: Arc<dyn CredentialRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,

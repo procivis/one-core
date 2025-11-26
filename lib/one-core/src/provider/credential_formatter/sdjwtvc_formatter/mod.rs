@@ -445,7 +445,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
 }
 
 impl SDJWTVCFormatter {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         params: Params,
         crypto: Arc<dyn CryptoProvider>,

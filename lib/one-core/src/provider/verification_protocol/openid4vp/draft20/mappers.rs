@@ -20,7 +20,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPHolderInteractionData,
 };
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn create_openidvp20_authorization_request(
     base_url: &str,
     openidvc_params: &OpenID4Vp20Params,
@@ -110,7 +110,6 @@ pub(crate) async fn create_openidvp20_authorization_request(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn format_params_for_redirect_uri(
     base_url: &str,
     openidvc_params: &OpenID4Vp20Params,

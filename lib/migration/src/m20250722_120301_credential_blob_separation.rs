@@ -100,7 +100,7 @@ impl Iden for LengthFunc {
 }
 
 #[derive(DeriveIden, Clone)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 enum Credential {
     Table,
     Id,

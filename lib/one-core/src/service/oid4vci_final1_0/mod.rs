@@ -47,7 +47,7 @@ pub struct OID4VCIFinal1_0Service {
     holder_wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 impl OID4VCIFinal1_0Service {
     pub(crate) fn new(
         core_base_url: Option<String>,

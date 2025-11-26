@@ -89,7 +89,7 @@ pub type DbConn = DatabaseConnection;
 #[derive(Clone)]
 pub struct DataLayer {
     // Used for tests for now
-    #[allow(unused)]
+    #[allow(dead_code)]
     db: DatabaseConnection,
     transaction_manager: TransactionManagerImpl,
     organisation_repository: Arc<dyn OrganisationRepository>,

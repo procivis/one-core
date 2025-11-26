@@ -77,7 +77,6 @@ struct Mocks {
     pub blob_storage_provider: MockBlobStorageProvider,
 }
 
-#[allow(clippy::too_many_arguments)]
 fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
     OID4VPFinal1_0Service::new(
         Arc::new(mocks.credential_repository),

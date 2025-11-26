@@ -185,7 +185,6 @@ impl CredentialFormatter for PhysicalCardFormatter {
     }
 }
 
-#[allow(clippy::new_without_default)]
 impl PhysicalCardFormatter {
     pub fn new(
         crypto: Arc<dyn CryptoProvider>,

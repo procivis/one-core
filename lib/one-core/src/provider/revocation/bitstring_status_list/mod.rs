@@ -87,7 +87,7 @@ pub struct BitstringStatusList {
 }
 
 impl BitstringStatusList {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         core_base_url: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
@@ -612,7 +612,7 @@ impl BitstringStatusList {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
     issuer_identifier: &Identifier,

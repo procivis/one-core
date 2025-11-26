@@ -18,7 +18,7 @@ use crate::provider::revocation::error::RevocationError;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
 /// HOLDER: fetch remote or get locally cached LVVC credential
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn holder_get_lvvc(
     linked_credential: &Credential,
     credential_status: &CredentialStatus,

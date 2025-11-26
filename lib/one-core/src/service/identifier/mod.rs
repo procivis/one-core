@@ -33,7 +33,7 @@ pub struct IdentifierService {
 }
 
 impl IdentifierService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         identifier_repository: Arc<dyn IdentifierRepository>,
         key_repository: Arc<dyn KeyRepository>,

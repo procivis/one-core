@@ -27,7 +27,7 @@ use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::vc_api::model::LdCredential;
 
 impl VCAPIService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,

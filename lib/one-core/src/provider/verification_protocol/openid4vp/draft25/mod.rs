@@ -86,7 +86,7 @@ pub(crate) struct OpenID4VP25HTTP {
 }
 
 impl OpenID4VP25HTTP {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         base_url: Option<String>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -215,7 +215,6 @@ impl OpenID4VP25HTTP {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 #[async_trait::async_trait]
 impl VerificationProtocol for OpenID4VP25HTTP {
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
@@ -358,7 +357,6 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn holder_submit_proof(
         &self,
         proof: &Proof,
@@ -652,7 +650,7 @@ fn format_presentation_context(
     Ok(ctx)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn handle_proof_invitation(
     url: Url,
     allow_insecure_http_transport: bool,

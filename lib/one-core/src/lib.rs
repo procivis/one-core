@@ -453,7 +453,7 @@ impl OneCoreBuilder {
 }
 
 impl OneCore {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         data_provider_creator: DataProviderCreator,
         mut core_config: CoreConfig,

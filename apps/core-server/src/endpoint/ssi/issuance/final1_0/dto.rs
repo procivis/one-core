@@ -240,7 +240,7 @@ pub(crate) enum OpenID4VCICredentialRequestProofsRest {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCINotificationEvent)]
 #[serde(rename_all = "snake_case")]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub(crate) enum OpenID4VCINotificationEventRest {
     CredentialAccepted,
     CredentialFailure,

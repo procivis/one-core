@@ -43,7 +43,7 @@ pub(crate) struct ValidatedProofClaimDTO {
 
 // copied from lib/one-core/src/service/ssi_verifier/validator.rs
 // just adapted to always use MDOC
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn validate_proof(
     proof_schema: &ProofSchema,
     presentation: &str,
@@ -315,7 +315,7 @@ fn extract_matching_requested_claim(
     }))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn accept_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,

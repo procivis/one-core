@@ -50,7 +50,6 @@ pub(crate) struct HandleInvitationOperationsImpl {
 
 /// Interface to be implemented in order to use an exchange protocol.
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-#[allow(clippy::too_many_arguments)]
 #[async_trait::async_trait]
 pub(crate) trait HandleInvitationOperations: Send + Sync {
     /// Allows use of custom logic to create new credential schema for

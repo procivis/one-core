@@ -136,7 +136,7 @@ impl From<credential::Model> for Credential {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(super) fn request_to_active_model(
     request: &Credential,
     schema: CredentialSchema,

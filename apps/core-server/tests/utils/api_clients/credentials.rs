@@ -60,7 +60,7 @@ impl CredentialsApi {
         Self { client }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub async fn create(
         &self,
         credential_schema_id: impl Into<Uuid>,
@@ -89,7 +89,6 @@ impl CredentialsApi {
         self.client.post("/api/credential/v1", body).await
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn list(
         &self,
         page: u64,

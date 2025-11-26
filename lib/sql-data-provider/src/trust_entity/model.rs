@@ -22,7 +22,7 @@ pub(super) struct TrustEntityListItemEntityModel {
     #[sea_orm(from_col = "type")]
     pub r#type: TrustEntityType,
     pub entity_key: String,
-    #[allow(unused)]
+    #[expect(unused)]
     pub content: Option<Vec<u8>>,
     pub organisation_id: Option<OrganisationId>,
 

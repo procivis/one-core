@@ -60,7 +60,7 @@ pub struct SSIHolderService {
     session_provider: Arc<dyn SessionProvider>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 impl SSIHolderService {
     pub(crate) fn new(
         credential_repository: Arc<dyn CredentialRepository>,

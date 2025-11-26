@@ -63,7 +63,7 @@ impl<T: Into<ErrorResponseBindingDTO>> From<T> for BindingError {
 }
 
 impl ErrorResponseBindingDTO {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub(crate) fn hide_cause(mut self, hide: bool) -> ErrorResponseBindingDTO {
         if hide {
             self.cause = None;

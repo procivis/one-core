@@ -138,7 +138,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
 }
 
 impl OpenID4VCIFinal1_0 {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         client: Arc<dyn HttpClient>,
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
@@ -685,7 +685,7 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     async fn holder_request_credential(
         &self,
         interaction_data: &HolderInteractionData,
@@ -1547,7 +1547,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn handle_credential_invitation(
     invitation_url: Url,
     organisation: Organisation,
@@ -1721,7 +1721,7 @@ struct PrepareIssuanceSuccess {
     key_algorithms: Option<Vec<String>>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn prepare_issuance_interaction(
     organisation: Organisation,
     token_endpoint: String,

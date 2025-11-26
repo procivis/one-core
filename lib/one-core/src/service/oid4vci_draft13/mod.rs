@@ -42,7 +42,7 @@ pub struct OID4VCIDraft13Service {
     transaction_manager: Arc<dyn TransactionManager>,
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 impl OID4VCIDraft13Service {
     pub(crate) fn new(
         core_base_url: Option<String>,

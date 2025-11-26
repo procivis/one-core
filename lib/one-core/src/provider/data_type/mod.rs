@@ -113,7 +113,6 @@ pub fn data_type_provider_from_config(
     Ok(Arc::new(DataTypeProviderImpl::new(data_type_provider)?))
 }
 
-#[allow(clippy::too_many_arguments)]
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait DataType: Send + Sync {
     /// Provider attempts to parse the value and determine its data type.

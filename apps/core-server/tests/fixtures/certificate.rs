@@ -142,7 +142,7 @@ pub mod eddsa {
         Box::new(Key)
     }
 
-    #[allow(unused)]
+    #[expect(unused)]
     pub fn signature_provider() -> Box<dyn SignatureProvider> {
         Box::new(Key)
     }

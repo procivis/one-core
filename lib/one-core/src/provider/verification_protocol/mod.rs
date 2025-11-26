@@ -74,7 +74,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
     serde_json::to_vec(&dto).map_err(VerificationProtocolError::JsonError)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn verification_protocol_providers_from_config(
     config: Arc<CoreConfig>,
     exchange_config: &mut VerificationProtocolConfig,
@@ -273,7 +273,7 @@ pub(crate) fn verification_protocol_providers_from_config(
     Ok(providers)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 fn openid4vp_draft20_from_params(
     core_base_url: Option<String>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
@@ -331,7 +331,6 @@ pub(crate) type TypeToDescriptorMapper = Arc<
 /// This trait contains methods for exchanging credentials between holders and verifiers.
 #[cfg_attr(test, mockall::automock)]
 #[async_trait::async_trait]
-#[allow(clippy::too_many_arguments)]
 pub(crate) trait VerificationProtocol: Send + Sync {
     // Holder methods:
     /// Check if the holder can handle the necessary URLs.

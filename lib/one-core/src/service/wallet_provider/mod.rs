@@ -23,7 +23,6 @@ mod mapper;
 #[cfg(test)]
 mod test;
 
-#[allow(dead_code)]
 #[derive(Clone)]
 pub struct WalletProviderService {
     organisation_repository: Arc<dyn OrganisationRepository>,
@@ -42,7 +41,7 @@ pub struct WalletProviderService {
 }
 
 impl WalletProviderService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         organisation_repository: Arc<dyn OrganisationRepository>,
         wallet_unit_repository: Arc<dyn WalletUnitRepository>,

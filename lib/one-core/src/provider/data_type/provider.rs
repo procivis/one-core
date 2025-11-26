@@ -9,7 +9,6 @@ use crate::provider::data_type::model::{
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-#[allow(unused)]
 pub trait DataTypeProvider: Send + Sync {
     /// Returns the data type provider with the given name, if any.
     fn get_by_name(&self, provider_name: &str) -> Option<Arc<dyn DataType>>;

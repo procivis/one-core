@@ -230,7 +230,6 @@ pub(crate) struct OAuthAuthorizationResponse {
     pub code_verifier: Option<String>,
 }
 
-#[allow(dead_code)]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct OAuthPARResponse {
     pub request_uri: String,

@@ -682,7 +682,7 @@ pub struct OpenID4VCICredentialValueDetails {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CredentialIssuerParams {
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub logo: Option<String>,
     pub issuer: String,
     pub client_id: String,

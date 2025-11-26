@@ -929,7 +929,7 @@ pub enum Organisation {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum Credential {
     Table,
     Id,
@@ -976,7 +976,7 @@ pub enum State {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum Did {
     Table,
     Id,
@@ -1000,7 +1000,7 @@ pub enum DidType {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum Proof {
     Table,
     Id,
@@ -1044,7 +1044,7 @@ pub enum ProofRequestState {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum Claim {
     Table,
     Id,
@@ -1056,7 +1056,7 @@ pub enum Claim {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
+#[expect(clippy::enum_variant_names)]
 pub enum Key {
     Table,
     Id,

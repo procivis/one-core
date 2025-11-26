@@ -32,7 +32,7 @@ pub struct DidService {
 }
 
 impl DidService {
-    #[allow(clippy::too_many_arguments)]
+    #[expect(clippy::too_many_arguments)]
     pub fn new(
         did_repository: Arc<dyn DidRepository>,
         key_repository: Arc<dyn KeyRepository>,

@@ -61,7 +61,7 @@ impl TryFrom<PrivateKeyJwk> for AzureHsmJWKRequest {
     }
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize)]
 pub(super) struct AzureHsmKeyResponse {
     pub key: AzureHsmGenerateKeyResponseKey,
@@ -69,7 +69,7 @@ pub(super) struct AzureHsmKeyResponse {
     pub tags: Option<HashMap<String, String>>,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize)]
 pub(super) struct AzureHsmGenerateKeyResponseKey {
     #[serde(rename = "kid")]
@@ -87,7 +87,7 @@ pub(super) struct AzureHsmGenerateKeyResponseKey {
     pub extra: HashMap<String, serde_json::Value>,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct AzureHsmGenerateKeyResponseAttributes {
@@ -120,7 +120,7 @@ pub(super) struct AzureHsmSignRequest {
     pub value: String,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Deserialize)]
 pub(super) struct AzureHsmSignResponse {
     #[serde(rename = "kid")]

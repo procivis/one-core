@@ -88,7 +88,6 @@ async fn sqlite_migration(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
 }
 
 #[derive(Iden)]
-#[allow(clippy::enum_variant_names)]
 pub enum WalletUnitCopy {
     PublicKeyCopy,
 }

@@ -26,7 +26,7 @@ use crate::service::error::ServiceError;
 
 pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) fn credential_data_from_credential_detail_response(
     credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
     credential: &Credential,

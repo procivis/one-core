@@ -254,7 +254,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
     ))
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn interaction_data_from_openid4vp_20_query(
     query: &str,
     client: &Arc<dyn HttpClient>,

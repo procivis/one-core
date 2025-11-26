@@ -108,7 +108,7 @@ pub(crate) fn setup_verifier_session(
 
 /// Main background task on mDL verifier
 /// All from initializing connection to handling response
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 pub(crate) async fn start_client(
     ble: &BleWaiter,
     ble_options: BleOptions,
@@ -201,7 +201,7 @@ pub(crate) async fn start_client(
 ///
 /// It's split into smaller functions to simplify error handling - depending on place of failure
 /// we may need to send End command, disconnect BLE central and set proof state to error
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn verifier_flow(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
@@ -261,7 +261,7 @@ async fn verifier_flow(
     result
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn process_proof(
     ble_options: BleOptions,
     verifier_session: VerifierSession,
@@ -440,7 +440,7 @@ async fn send_end(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[expect(clippy::too_many_arguments)]
 async fn fill_proof_claims_and_credentials(
     device_response: DeviceResponse,
     proof: &Proof,
