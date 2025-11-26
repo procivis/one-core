@@ -7,7 +7,6 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
-use crate::config::core_config::FormatType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
@@ -22,7 +21,7 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation, PresentationFormatterCapabilities,
+    FormattedPresentation,
 };
 
 #[cfg(test)]
@@ -70,7 +69,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
         &self,
         credentials: Vec<CredentialToPresent>,
         _holder_binding_fn: AuthenticationFn,
-        _holder_did: &DidValue,
+        _holder_did: &Option<DidValue>,
         _context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         if credentials.len() != 1 {
@@ -151,12 +150,6 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
 
     fn get_leeway(&self) -> u64 {
         self.params.leeway
-    }
-
-    fn get_capabilities(&self) -> PresentationFormatterCapabilities {
-        PresentationFormatterCapabilities {
-            supported_credential_formats: vec![FormatType::SdJwtVc],
-        }
     }
 }
 

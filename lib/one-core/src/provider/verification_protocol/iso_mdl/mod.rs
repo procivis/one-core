@@ -49,7 +49,6 @@ use crate::provider::presentation_formatter::mso_mdoc::model::{
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::deserialize_interaction_data;
-use crate::provider::verification_protocol::openid4vp::mapper::key_and_did_from_formatted_creds;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
@@ -180,19 +179,26 @@ impl VerificationProtocol for IsoMdl {
             VerificationProtocolError::Failed("invalid interaction data".to_string())
         })?;
 
-        let (key, _, did) = key_and_did_from_formatted_creds(&credential_presentations)?;
-
-        let auth_fn = self
-            .key_provider
-            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
         let credential_presentation =
             credential_presentations
                 .first()
                 .ok_or(VerificationProtocolError::Failed(
                     "no credentials to format".into(),
                 ))?;
+
+        let auth_fn = self
+            .key_provider
+            .get_signature_provider(
+                &credential_presentation.key,
+                credential_presentation.jwk_key_id.to_owned(),
+                self.key_algorithm_provider.clone(),
+            )
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+        let holder_did = credential_presentation
+            .holder_did
+            .as_ref()
+            .map(|did| did.did.to_owned());
 
         let presentation_formatter = self
             .presentation_formatter_provider
@@ -227,7 +233,7 @@ impl VerificationProtocol for IsoMdl {
             .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
 
         let FormattedPresentation { vp_token, .. } = presentation_formatter
-            .format_presentation(presentations, auth_fn, &did.did, ctx)
+            .format_presentation(presentations, auth_fn, &holder_did, ctx)
             .await
             .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
 

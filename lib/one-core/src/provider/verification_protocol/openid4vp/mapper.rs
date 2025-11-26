@@ -30,10 +30,8 @@ use crate::mapper::{
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::model::did::Did;
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
-use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
@@ -1036,22 +1034,4 @@ pub(crate) fn generate_client_metadata_draft(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(create_open_id_for_vp_client_metadata_draft(jwk, vp_formats))
-}
-
-pub(crate) fn key_and_did_from_formatted_creds(
-    credential_presentations: &[FormattedCredentialPresentation],
-) -> Result<(Key, Option<String>, Did), VerificationProtocolError> {
-    let (key, jwk_key_id, did) = credential_presentations
-        .first()
-        .map(|presentation| {
-            (
-                presentation.key.clone(),
-                presentation.jwk_key_id.clone(),
-                presentation.holder_did.clone(),
-            )
-        })
-        .ok_or(VerificationProtocolError::Failed(
-            "Empty credential presentations".to_string(),
-        ))?;
-    Ok((key, jwk_key_id, did))
 }

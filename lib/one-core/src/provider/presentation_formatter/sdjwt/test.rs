@@ -22,8 +22,11 @@ async fn test_extract_presentation() {
 
     let crypto = MockCryptoProvider::default();
 
-    let sd_formatter =
-        SdjwtPresentationFormatter::new(Arc::new(MockHttpClient::new()), Arc::new(crypto));
+    let sd_formatter = SdjwtPresentationFormatter::new(
+        Arc::new(MockHttpClient::new()),
+        Arc::new(crypto),
+        Arc::new(MockKeyAlgorithmProvider::new()),
+    );
 
     let mut verify_mock = MockTokenVerifier::new();
     verify_mock

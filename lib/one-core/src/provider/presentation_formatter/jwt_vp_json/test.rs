@@ -29,6 +29,7 @@ async fn test_extract_presentation() {
 
     let jwt_formatter = JwtVpPresentationFormatter {
         params: Params { leeway },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let mut verify_mock = MockTokenVerifier::new();
@@ -123,6 +124,7 @@ async fn test_format_presentation() {
 
     let jwt_formatter = JwtVpPresentationFormatter {
         params: Params { leeway },
+        key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
     };
 
     let auth_fn = MockAuth(|_| vec![65u8, 66, 67]);
@@ -134,7 +136,7 @@ async fn test_format_presentation() {
                 credential_format: FormatType::Jwt,
             }],
             Box::new(auth_fn),
-            &"did:example:123".parse().unwrap(),
+            &Some("did:example:123".parse().unwrap()),
             Default::default(),
         )
         .await;

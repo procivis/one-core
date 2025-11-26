@@ -399,7 +399,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             forbidden_claim_names: vec!["0".to_string()],
             issuance_identifier_types,
             verification_identifier_types,
-            holder_identifier_types: vec![IdentifierType::Did],
+            holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
             holder_key_algorithms: signing_algorithms,
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }

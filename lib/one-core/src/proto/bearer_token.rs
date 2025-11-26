@@ -8,7 +8,8 @@ use super::jwt::Jwt;
 use super::jwt::model::{JWTHeader, JWTPayload};
 use super::key_verification::KeyVerification;
 use crate::KeyProvider;
-use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
@@ -18,51 +19,81 @@ use crate::validator::validate_expiration_time;
 
 /// JWT authorization token for use of authenticated holder/verifier access (LVVC fetching, remote trust-entity)
 pub(crate) async fn prepare_bearer_token(
-    did: &Did,
+    identifier: &Identifier,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
 ) -> Result<String, ServiceError> {
-    let authentication_key = did
-        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::Authentication))?
-        .ok_or(ValidationError::KeyNotFound)?;
+    let (key, key_id, issuer) = match identifier.r#type {
+        IdentifierType::Key => {
+            let key = identifier.key.to_owned().ok_or(ServiceError::MappingError(
+                "Missing identifier key".to_string(),
+            ))?;
 
-    let key_algorithm = authentication_key
-        .key
+            (key, None, None)
+        }
+        IdentifierType::Did => {
+            let did = identifier.did.as_ref().ok_or(ServiceError::MappingError(
+                "Missing identifier did".to_string(),
+            ))?;
+
+            let authentication_key = did
+                .find_first_matching_key(&KeyFilter::role_filter(KeyRole::Authentication))?
+                .ok_or(ValidationError::KeyNotFound)?;
+
+            let key_id = did.verification_method_id(authentication_key);
+
+            (
+                authentication_key.key.to_owned(),
+                Some(key_id),
+                Some(did.did.to_string()),
+            )
+        }
+        IdentifierType::Certificate => {
+            return Err(ServiceError::MappingError(
+                "Invalid holder identifier".to_string(),
+            ));
+        }
+    };
+
+    let key_algorithm = key
         .key_algorithm_type()
         .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
-        .ok_or(ServiceError::MissingProvider(
-            MissingProviderError::KeyAlgorithmProvider(
-                KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                    authentication_key.key.key_type.to_owned(),
-                ),
-            ),
-        ))?;
+        .ok_or_else(|| {
+            ServiceError::MissingProvider(MissingProviderError::KeyAlgorithmProvider(
+                KeyAlgorithmProviderError::MissingAlgorithmImplementation(key.key_type.to_owned()),
+            ))
+        })?;
 
-    let algorithm = key_algorithm
-        .issuance_jose_alg_id()
-        .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?;
+    let jwk = if issuer.is_none() {
+        Some(
+            key_algorithm
+                .reconstruct_key(&key.public_key, None, None)?
+                .public_key_as_jwk()?
+                .into(),
+        )
+    } else {
+        None
+    };
 
     let payload = JWTPayload {
-        issuer: Some(did.did.to_string()),
+        issuer,
         custom: BearerTokenPayload {
             timestamp: OffsetDateTime::now_utc(),
         },
         ..Default::default()
     };
 
-    let key_id = did.verification_method_id(authentication_key);
+    let algorithm = key_algorithm
+        .issuance_jose_alg_id()
+        .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?;
 
-    let signer = key_provider.get_signature_provider(
-        &authentication_key.key,
-        None,
-        key_algorithm_provider.clone(),
-    )?;
+    let signer = key_provider.get_signature_provider(&key, None, key_algorithm_provider.clone())?;
     let bearer_token = Jwt::<BearerTokenPayload> {
         header: JWTHeader {
             algorithm,
-            key_id: Some(key_id),
+            key_id,
             r#type: None,
-            jwk: None,
+            jwk,
             jwt: None,
             key_attestation: None,
             x5c: None,

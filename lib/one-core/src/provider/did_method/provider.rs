@@ -18,6 +18,11 @@ pub trait DidMethodProvider: Send + Sync {
 
     fn get_did_method_id(&self, did: &DidValue) -> Option<String>;
 
+    fn get_did_method_by_method_name(
+        &self,
+        method_name: &str,
+    ) -> Option<(String, Arc<dyn DidMethod>)>;
+
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError>;
 
     fn supported_method_names(&self) -> Vec<String>;
@@ -63,6 +68,21 @@ impl DidMethodProvider for DidMethodProviderImpl {
                     .any(|v| v == did.method())
             })
             .map(|(id, _)| id.clone())
+    }
+
+    fn get_did_method_by_method_name(
+        &self,
+        method_name: &str,
+    ) -> Option<(String, Arc<dyn DidMethod>)> {
+        self.did_methods
+            .iter()
+            .find(|(_, method)| {
+                method
+                    .get_capabilities()
+                    .method_names
+                    .contains(&method_name.to_string())
+            })
+            .map(|(id, method)| (id.clone(), method.clone()))
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {

@@ -699,17 +699,17 @@ async fn test_holder_accept_credential_success() {
         ..Default::default()
     });
 
+    let key = dummy_key();
     let result = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
-                identifier: dummy_identifier(),
-                did: dummy_did(),
-                key: RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "ref".to_string(),
+                identifier: Identifier {
+                    r#type: IdentifierType::Key,
+                    key: Some(key.clone()),
+                    ..dummy_identifier()
                 },
+                key,
             }),
             &storage_access,
             None,
@@ -908,17 +908,27 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         ..Default::default()
     });
 
+    let key = Key {
+        id: Uuid::new_v4().into(),
+        ..dummy_key()
+    };
     let result = openid_provider
         .holder_accept_credential(
             interaction,
             Some(HolderBindingInput {
-                identifier: dummy_identifier(),
-                did: dummy_did(),
-                key: RelatedKey {
-                    role: KeyRole::Authentication,
-                    key: dummy_key(),
-                    reference: "ref".to_string(),
+                identifier: Identifier {
+                    r#type: IdentifierType::Did,
+                    did: Some(Did {
+                        keys: Some(vec![RelatedKey {
+                            role: KeyRole::Authentication,
+                            key: key.to_owned(),
+                            reference: "ref".to_string(),
+                        }]),
+                        ..dummy_did()
+                    }),
+                    ..dummy_identifier()
                 },
+                key,
             }),
             &storage_access,
             None,
@@ -1150,35 +1160,11 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
             vec![(KeySecurityLevelType::Basic, Arc::new(security))]
         });
 
-    let mut did_method_provider = MockDidMethodProvider::new();
-    did_method_provider
-        .expect_get_did_method()
-        .once()
-        .returning(|_| {
-            let mut did_method = MockDidMethod::new();
-            did_method.expect_create().once().returning(|_, _, _| {
-                Ok(DidCreated {
-                    did: "did:key:123".to_string().try_into().unwrap(),
-                    log: None,
-                })
-            });
-            did_method
-                .expect_get_reference_for_key()
-                .returning(|_| Ok("ref".to_string()));
-            Some(Arc::new(did_method))
-        });
-
     let mut key_repository = MockKeyRepository::new();
     key_repository
         .expect_create_key()
         .once()
         .returning(|key| Ok(key.id));
-
-    let mut did_repository = MockDidRepository::new();
-    did_repository
-        .expect_create_did()
-        .once()
-        .returning(|did| Ok(did.id));
 
     let mut identifier_repository = MockIdentifierRepository::new();
     identifier_repository
@@ -1190,11 +1176,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         formatter_provider,
         key_provider,
         key_repository,
-        did_repository,
         identifier_repository,
         key_algorithm_provider,
         key_security_level_provider,
-        did_method_provider,
         config: dummy_config(),
         ..Default::default()
     });

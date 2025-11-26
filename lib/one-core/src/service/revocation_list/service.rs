@@ -6,11 +6,12 @@ use super::dto::RevocationListResponseDTO;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
-use crate::model::identifier::IdentifierRelations;
+use crate::model::identifier::{IdentifierRelations, IdentifierType};
 use crate::model::key::KeyRelations;
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::validity_credential::{Lvvc, ValidityCredentialType};
 use crate::proto::bearer_token::validate_bearer_token;
+use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::revocation::lvvc::create_lvvc_with_status;
 use crate::provider::revocation::lvvc::dto::{IssuerResponseDTO, LvvcStatus};
 use crate::provider::revocation::lvvc::mapper::status_from_lvvc_claims;
@@ -42,6 +43,7 @@ impl RevocationListService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
+                        key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
                     key: Some(KeyRelations::default()),
@@ -81,29 +83,70 @@ impl RevocationListService {
         )
         .await?;
 
-        // validate JWT token was signed with the holder binding DID
-        let token_issuer = jwt.payload.issuer.ok_or(ServiceError::ValidationError(
-            "Missing token issuer".to_owned(),
-        ))?;
-        let holder_did = credential
-            .holder_identifier
-            .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "holder_identifier is None".to_string(),
-            ))?
-            .did
-            .as_ref()
-            .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
-        if holder_did.did
-            != token_issuer
-                .parse()
-                .context("did parsing error")
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?
-        {
-            return Err(ServiceError::MappingError(
-                "holder_did mismatch".to_string(),
-            ));
-        }
+        let holder_identifier =
+            credential
+                .holder_identifier
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "holder_identifier is None".to_string(),
+                ))?;
+
+        // validate JWT token was signed with the holder identifier
+        match holder_identifier.r#type {
+            IdentifierType::Key => {
+                let holder_key = holder_identifier
+                    .key
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+
+                let token_issuer_key = jwt.header.jwk.ok_or(ServiceError::ValidationError(
+                    "Missing token jwk".to_owned(),
+                ))?;
+
+                let (alg_type, key_algorithm) = self
+                    .key_algorithm_provider
+                    .key_algorithm_from_jose_alg(&jwt.header.algorithm)
+                    .ok_or(MissingProviderError::KeyAlgorithmProvider(
+                        KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                            jwt.header.algorithm,
+                        ),
+                    ))?;
+
+                let token_issuer_key = key_algorithm.parse_jwk(&token_issuer_key.into())?;
+
+                if holder_key.key_type != alg_type.to_string()
+                    || holder_key.public_key != token_issuer_key.public_key_as_raw()
+                {
+                    return Err(ServiceError::MappingError(
+                        "holder_key mismatch".to_string(),
+                    ));
+                }
+            }
+            IdentifierType::Did => {
+                let token_issuer = jwt.payload.issuer.ok_or(ServiceError::ValidationError(
+                    "Missing token issuer".to_owned(),
+                ))?;
+                let holder_did = holder_identifier
+                    .did
+                    .as_ref()
+                    .ok_or(ServiceError::MappingError("holder_did is None".to_string()))?;
+                if holder_did.did
+                    != token_issuer
+                        .parse()
+                        .context("did parsing error")
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                {
+                    return Err(ServiceError::MappingError(
+                        "holder_did mismatch".to_string(),
+                    ));
+                }
+            }
+            IdentifierType::Certificate => {
+                return Err(ServiceError::MappingError(
+                    "Invalid holder identifier".to_string(),
+                ));
+            }
+        };
 
         let format = schema.format.to_string();
         let formatter = self

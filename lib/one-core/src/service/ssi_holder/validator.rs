@@ -1,6 +1,7 @@
 use crate::config::core_config::{self, CoreConfig};
 use crate::config::validator::protocol::validate_protocol_type;
 use crate::model::credential::Credential;
+use crate::model::identifier::IdentifierType;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::HolderBindingInput;
@@ -44,26 +45,31 @@ pub(super) fn validate_holder_capabilities(
 ) -> Result<(), ServiceError> {
     if !capabilities
         .holder_identifier_types
-        .contains(&core_config::IdentifierType::Did)
+        .contains(&holder_binding.identifier.r#type.to_owned().into())
     {
         return Err(BusinessLogicError::IncompatibleHolderIdentifier.into());
     }
 
-    let did_type = config
-        .did
-        .get_fields(&holder_binding.did.did_method)?
-        .r#type;
-    if !capabilities.holder_did_methods.contains(&did_type) {
-        return Err(BusinessLogicError::IncompatibleHolderDidMethod.into());
+    if holder_binding.identifier.r#type == IdentifierType::Did {
+        let did = holder_binding
+            .identifier
+            .did
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "Missing identifier did".to_string(),
+            ))?;
+        let did_type = config.did.get_fields(&did.did_method)?.r#type;
+        if !capabilities.holder_did_methods.contains(&did_type) {
+            return Err(BusinessLogicError::IncompatibleHolderDidMethod.into());
+        }
     }
 
     let key_algorithm = holder_binding
         .key
-        .key
         .key_algorithm_type()
         .and_then(|alg| key_algorithm_provider.key_algorithm_from_type(alg))
         .ok_or(KeyAlgorithmError::NotSupported(
-            holder_binding.key.key.key_type.to_owned(),
+            holder_binding.key.key_type.to_owned(),
         ))?;
     if !capabilities
         .holder_key_algorithms

@@ -18,7 +18,7 @@ use super::model::{
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
     WalletStorageTypeEnum,
 };
-use crate::config::core_config::{CoreConfig, DatatypeType, Params};
+use crate::config::core_config::{CoreConfig, DatatypeType, IdentifierType, Params};
 use crate::config::{ConfigError, ConfigParsingError};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_to_openid4vp_format;
@@ -1092,13 +1092,20 @@ pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSup
 
 pub(crate) fn map_cryptographic_binding_methods_supported(
     supported_did_methods: &[String],
+    holder_identifier_types: &[IdentifierType],
 ) -> Vec<String> {
-    let mut binding_methods: Vec<_> = supported_did_methods
-        .iter()
-        .map(|did_method| format!("did:{did_method}"))
-        .collect();
-    binding_methods.push("jwk".to_string());
-    binding_methods
+    let mut result = vec![];
+    if holder_identifier_types.contains(&IdentifierType::Key) {
+        result.push("jwk".to_string());
+    }
+    if holder_identifier_types.contains(&IdentifierType::Did) {
+        result.extend(
+            supported_did_methods
+                .iter()
+                .map(|did_method| format!("did:{did_method}")),
+        );
+    }
+    result
 }
 
 pub(crate) fn parse_credential_issuer_params(

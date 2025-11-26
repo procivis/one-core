@@ -13,9 +13,9 @@ use url::Url;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
 use crate::model::credential::Credential;
-use crate::model::did::{Did, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -222,8 +222,7 @@ pub(crate) struct BasicSchemaData {
 #[derive(Debug, Clone)]
 pub(crate) struct HolderBindingInput {
     pub identifier: Identifier,
-    pub did: Did,
-    pub key: RelatedKey,
+    pub key: Key,
 }
 
 /// This trait contains methods for exchanging credentials between issuers and holders

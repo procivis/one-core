@@ -232,7 +232,7 @@ impl OpenID4VPFinal1_0 {
                 .format_presentation(
                     credentials,
                     auth_fn,
-                    &credential_presentation.holder_did.did,
+                    &credential_presentation.holder_did.map(|did| did.did),
                     format_presentation_context(interaction_data, presentation_format)?,
                 )
                 .await

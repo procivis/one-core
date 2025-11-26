@@ -690,7 +690,9 @@ async fn initialize(
                             ),
                             (
                                 "JWT".to_owned(),
-                                Arc::new(JwtVpPresentationFormatter::new()) as _,
+                                Arc::new(JwtVpPresentationFormatter::new(
+                                    key_algorithm_provider.clone(),
+                                )) as _,
                             ),
                             // TODO ONE-6774: Remove once productive holders have been updated to release v1.57+
                             (
@@ -698,6 +700,7 @@ async fn initialize(
                                 Arc::new(SdjwtPresentationFormatter::new(
                                     client.clone(),
                                     crypto.clone(),
+                                    key_algorithm_provider.clone(),
                                 )) as _,
                             ),
                             (

@@ -4,6 +4,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
 use crate::model::did::{Did, KeyFilter};
+use crate::model::identifier::IdentifierType;
 use crate::model::key::Key;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
@@ -51,27 +52,42 @@ impl From<CredentialClaimSchemaDTO> for CredentialSchemaClaim {
 
 pub(super) fn holder_did_key_jwk_from_credential(
     credential: &Credential,
-) -> Result<(Did, Key, String), ServiceError> {
-    let holder_did = credential
-        .holder_identifier
-        .as_ref()
-        .and_then(|id| id.did.clone())
-        .ok_or(ServiceError::MappingError(
-            "missing identifier did".to_string(),
-        ))?;
+) -> Result<(Option<Did>, Key, Option<String>), ServiceError> {
     let key = credential
         .key
         .clone()
         .ok_or(ServiceError::MappingError("missing holder key".to_string()))?;
 
-    // There should probably be a nicer error if a key is rotated out from a did
-    let related_key =
-        holder_did
-            .find_key(&key.id, &KeyFilter::default())?
-            .ok_or(ServiceError::MappingError(format!(
+    let holder_identifier =
+        credential
+            .holder_identifier
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "missing holder identifier".to_string(),
+            ))?;
+
+    let (holder_did, holder_jwk_key_id) = if holder_identifier.r#type == IdentifierType::Did {
+        let holder_did = holder_identifier
+            .did
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "missing identifier did".to_string(),
+            ))?
+            .to_owned();
+
+        // There should probably be a nicer error if a key is rotated out from a did
+        let related_key = holder_did.find_key(&key.id, &KeyFilter::default())?.ok_or(
+            ServiceError::MappingError(format!(
                 "Failed to find key `{}` in keys of did `{}`",
                 key.id, holder_did.id
-            )))?;
-    let holder_jwk_key_id = holder_did.verification_method_id(related_key);
+            )),
+        )?;
+        let holder_jwk_key_id = holder_did.verification_method_id(related_key);
+
+        (Some(holder_did), Some(holder_jwk_key_id))
+    } else {
+        (None, None)
+    };
+
     Ok((holder_did, key, holder_jwk_key_id))
 }

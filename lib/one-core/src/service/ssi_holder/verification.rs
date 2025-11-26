@@ -157,6 +157,7 @@ impl SSIHolderService {
                                     keys: Some(KeyRelations::default()),
                                     ..Default::default()
                                 }),
+                                key: Some(KeyRelations::default()),
                                 ..Default::default()
                             }),
                             key: Some(KeyRelations::default()),
@@ -324,7 +325,7 @@ impl SSIHolderService {
                     ),
                     holder_did,
                     key,
-                    jwk_key_id: Some(jwk_key_id),
+                    jwk_key_id,
                 };
                 credential_presentations.push(presented_credential);
             }
@@ -649,6 +650,7 @@ impl SSIHolderService {
                                     keys: Some(Default::default()),
                                     ..Default::default()
                                 }),
+                                key: Some(Default::default()),
                                 ..Default::default()
                             }),
                             schema: Some(Default::default()),
@@ -709,7 +711,7 @@ impl SSIHolderService {
                     },
                     holder_did,
                     key,
-                    jwk_key_id: Some(jwk_key_id),
+                    jwk_key_id,
                 };
                 credential_presentations.push(presented_credential);
                 let mut claims = credential

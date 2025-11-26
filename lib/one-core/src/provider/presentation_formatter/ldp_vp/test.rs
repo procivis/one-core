@@ -70,7 +70,7 @@ static JSONLD_TOKEN: &str = r#"{
 
 #[tokio::test]
 async fn test_format_presentation_multi_tokens() {
-    let issuer_did: DidValue = "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
+    let holder_did: DidValue = "did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y"
         .parse()
         .unwrap();
     let key_algorithm = MockKeyAlgorithm::new();
@@ -167,7 +167,7 @@ async fn test_format_presentation_multi_tokens() {
                 },
             ],
             Box::new(auth_fn),
-            &issuer_did,
+            &Some(holder_did),
             FormatPresentationCtx {
                 ..Default::default()
             },

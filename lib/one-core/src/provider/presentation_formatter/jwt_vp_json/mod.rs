@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use serde::Deserialize;
@@ -6,17 +8,18 @@ use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use crate::config::core_config::FormatType;
-use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
+use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::jwt_vp_json::model::{
     EnvelopedContent, VP, VPContent, VerifiableCredential,
 };
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation, PresentationFormatterCapabilities,
+    FormattedPresentation,
 };
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 
@@ -33,19 +36,15 @@ pub struct Params {
 
 pub struct JwtVpPresentationFormatter {
     params: Params,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl JwtVpPresentationFormatter {
-    pub fn new() -> Self {
+    pub fn new(key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>) -> Self {
         Self {
             params: Params { leeway: 60 },
+            key_algorithm_provider,
         }
-    }
-}
-
-impl Default for JwtVpPresentationFormatter {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -55,10 +54,17 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        let supported_credential_formats = self.get_capabilities().supported_credential_formats;
+        let supported_credential_formats = [
+            FormatType::Jwt,
+            FormatType::SdJwt,
+            FormatType::SdJwtVc,
+            FormatType::JsonLdClassic,
+            FormatType::JsonLdBbsPlus,
+            FormatType::Mdoc,
+        ];
 
         let tokens = credentials_to_present
             .iter()
@@ -81,12 +87,13 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
         let now = OffsetDateTime::now_utc();
         let valid_for = Duration::minutes(5);
 
+        let holder_did = holder_did.as_ref().map(|did| did.to_string());
         let payload = JWTPayload {
             issued_at: Some(now),
             expires_at: now.checked_add(valid_for),
             invalid_before: now.checked_sub(Duration::seconds(self.get_leeway() as i64)),
-            issuer: Some(holder_did.to_string()),
-            subject: Some(holder_did.to_string()),
+            issuer: holder_did.to_owned(),
+            subject: holder_did.to_owned(),
             jwt_id: Some(Uuid::new_v4().to_string()),
             custom: vp,
             ..Default::default()
@@ -98,7 +105,27 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
             .jose_alg()
             .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
 
-        let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, None, payload);
+        let public_key_info = if holder_did.is_none() {
+            let key_algorithm = holder_binding_fn
+                .get_key_algorithm()
+                .map_err(FormatterError::Failed)?;
+            let key_algorithm = self
+                .key_algorithm_provider
+                .key_algorithm_from_type(key_algorithm)
+                .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
+            let key = key_algorithm
+                .reconstruct_key(&holder_binding_fn.get_public_key(), None, None)
+                .map_err(|e| FormatterError::Failed(e.to_string()))?;
+            Some(JwtPublicKeyInfo::Jwk(
+                key.public_key_as_jwk()
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?
+                    .into(),
+            ))
+        } else {
+            None
+        };
+
+        let jwt = Jwt::new("JWT".to_owned(), jose_alg, key_id, public_key_info, payload);
 
         let vp_token = jwt.tokenize(Some(&*holder_binding_fn)).await?;
         Ok(FormattedPresentation {
@@ -131,19 +158,6 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
 
     fn get_leeway(&self) -> u64 {
         self.params.leeway
-    }
-
-    fn get_capabilities(&self) -> PresentationFormatterCapabilities {
-        PresentationFormatterCapabilities {
-            supported_credential_formats: vec![
-                FormatType::Jwt,
-                FormatType::SdJwt,
-                FormatType::SdJwtVc,
-                FormatType::JsonLdClassic,
-                FormatType::JsonLdBbsPlus,
-                FormatType::Mdoc,
-            ],
-        }
     }
 }
 

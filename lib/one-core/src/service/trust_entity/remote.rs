@@ -7,7 +7,8 @@ use super::dto::{
     CreateRemoteTrustEntityRequestDTO, CreateTrustEntityFromDidPublisherRequestDTO,
     GetRemoteTrustEntityResponseDTO, UpdateTrustEntityFromDidRequestDTO,
 };
-use crate::model::did::{Did, DidRelations, DidType};
+use crate::model::did::{Did, DidRelations};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::proto::bearer_token::prepare_bearer_token;
 use crate::service::error::{
@@ -127,19 +128,22 @@ impl TrustEntityService {
         did_id: &DidId,
         local_trust_anchor_id: Option<TrustAnchorId>,
     ) -> Result<RemoteOperationProperties, ServiceError> {
-        let did = self
-            .did_repository
-            .get_did(
-                did_id,
-                &DidRelations {
-                    keys: Some(KeyRelations::default()),
+        let identifier = self
+            .identifier_repository
+            .get_from_did_id(
+                *did_id,
+                &IdentifierRelations {
+                    did: Some(DidRelations {
+                        keys: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                     ..Default::default()
                 },
             )
             .await?
             .ok_or(EntityNotFoundError::Did(did_id.to_owned()))?;
 
-        if did.did_type != DidType::Local {
+        if identifier.is_remote {
             return Err(BusinessLogicError::IncompatibleDidType {
                 reason: "Only local DIDs allowed".to_string(),
             }
@@ -182,11 +186,17 @@ impl TrustEntityService {
         let remote_anchor_id = TrustAnchorId::from_str(remote_anchor_id)
             .map_err(|e| ServiceError::MappingError(format!("Invalid publisher reference: {e}")))?;
 
-        let bearer_token =
-            prepare_bearer_token(&did, &*self.key_provider, &self.key_algorithm_provider).await?;
+        let bearer_token = prepare_bearer_token(
+            &identifier,
+            &*self.key_provider,
+            &self.key_algorithm_provider,
+        )
+        .await?;
 
         Ok(RemoteOperationProperties {
-            did,
+            did: identifier
+                .did
+                .ok_or(ServiceError::MappingError("missing did".to_string()))?,
             remote_anchor_id,
             remote_anchor_base_url,
             bearer_token,

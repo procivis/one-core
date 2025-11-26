@@ -630,6 +630,7 @@ impl CredentialService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
+                        key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
                     schema: Some(CredentialSchemaRelations {
@@ -754,6 +755,7 @@ impl CredentialService {
                             keys: Some(KeyRelations::default()),
                             ..Default::default()
                         }),
+                        key: Some(KeyRelations::default()),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations {

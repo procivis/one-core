@@ -771,7 +771,10 @@ pub(super) async fn create_presentation(
             .format_presentation(
                 credentials,
                 auth_fn,
-                &credential_presentation.holder_did.did,
+                &credential_presentation
+                    .holder_did
+                    .as_ref()
+                    .map(|did| did.did.to_owned()),
                 format_presentation_context(&params, presentation_format)?,
             )
             .await

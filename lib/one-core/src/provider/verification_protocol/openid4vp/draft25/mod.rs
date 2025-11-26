@@ -174,7 +174,7 @@ impl OpenID4VP25HTTP {
                 .format_presentation(
                     credentials,
                     auth_fn,
-                    &credential_presentation.holder_did.did,
+                    &credential_presentation.holder_did.map(|did| did.did),
                     format_presentation_context(
                         interaction_data,
                         &holder_nonce,

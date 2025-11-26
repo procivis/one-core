@@ -30,7 +30,7 @@ use crate::provider::presentation_formatter::ldp_vp::model::{
 };
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation, PresentationFormatterCapabilities,
+    FormattedPresentation,
 };
 use crate::util::rdf_canonization::json_ld_processor_options;
 use crate::util::vcdm_jsonld_contexts::{DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid};
@@ -71,7 +71,7 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let json_ld_context = indexset![ContextType::Url(Context::CredentialsV2.to_url())];
@@ -107,13 +107,19 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
             })
             .collect::<Result<Vec<_>, FormatterError>>()?;
 
+        let holder = holder_did
+            .as_ref()
+            .ok_or_else(|| FormatterError::CouldNotFormat("Holder DID not specified".to_string()))?
+            .as_str()
+            .parse()
+            .map(Issuer::Url)
+            .map_err(|_| FormatterError::CouldNotFormat("Holder DID is not a URL".to_string()))?;
+
         let mut presentation = LdPresentation {
             context: json_ld_context.clone(),
             r#type: vec!["VerifiablePresentation".to_string()],
             verifiable_credential,
-            holder: holder_did.as_str().parse().map(Issuer::Url).map_err(|_| {
-                FormatterError::CouldNotFormat("Holder DID is not a URL".to_string())
-            })?,
+            holder,
             proof: None,
         };
 
@@ -191,19 +197,6 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
 
     fn get_leeway(&self) -> u64 {
         60
-    }
-
-    fn get_capabilities(&self) -> PresentationFormatterCapabilities {
-        PresentationFormatterCapabilities {
-            supported_credential_formats: vec![
-                FormatType::JsonLdClassic,
-                FormatType::JsonLdBbsPlus,
-                FormatType::Mdoc,
-                FormatType::Jwt,
-                FormatType::SdJwt,
-                FormatType::SdJwtVc,
-            ],
-        }
     }
 }
 

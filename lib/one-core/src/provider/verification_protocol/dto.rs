@@ -119,7 +119,7 @@ pub(crate) struct FormattedCredentialPresentation {
     pub validity_credential_presentation: Option<String>,
     pub credential_schema: CredentialSchema,
     pub reference: PresentationReference,
-    pub holder_did: Did,
+    pub holder_did: Option<Did>,
     pub key: Key,
     pub jwk_key_id: Option<String>,
 }

@@ -1,5 +1,3 @@
-use anyhow::Context;
-
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::IdentifierDetails;
@@ -29,17 +27,28 @@ impl TryFrom<Jwt<VP>> for ExtractedPresentation {
             })
             .collect::<Result<Vec<_>, FormatterError>>()?;
 
+        let issuer = Some(match (jwt.payload.issuer, jwt.header.jwk) {
+            (None, Some(jwk)) => IdentifierDetails::Key(jwk.into()),
+            (Some(issuer), None) => IdentifierDetails::Did(
+                issuer
+                    .parse()
+                    .map_err(|e: anyhow::Error| Self::Error::CouldNotVerify(e.to_string()))?,
+            ),
+            (None, None) => {
+                return Err(FormatterError::MissingIssuer);
+            }
+            (Some(_), Some(_)) => {
+                return Err(FormatterError::CouldNotVerify(
+                    "Both jwk and issuer defined".to_string(),
+                ));
+            }
+        });
+
         Ok(ExtractedPresentation {
             id: jwt.payload.jwt_id,
             issued_at: jwt.payload.issued_at,
             expires_at: jwt.payload.expires_at,
-            issuer: jwt
-                .payload
-                .issuer
-                .map(|did| did.parse().context("did parsing error"))
-                .transpose()
-                .map_err(|e| Self::Error::Failed(e.to_string()))?
-                .map(IdentifierDetails::Did),
+            issuer,
             nonce: jwt.payload.custom.nonce,
             credentials,
         })

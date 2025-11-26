@@ -6,7 +6,6 @@ use hex_literal::hex;
 use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::key::Key;
 use one_core::provider::key_algorithm::KeyAlgorithm;
-use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::key::KeyHandle;
 use one_core::provider::key_algorithm::provider::{KeyAlgorithmProvider, KeyAlgorithmProviderImpl};
@@ -51,19 +50,13 @@ pub fn eddsa_key_2() -> TestKey {
 
 pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let holder_key = eddsa_key_2();
-    let holder_key_id = format!("did:key:{}", holder_key.multibase);
+    let holder_key_id = format!("did:key:{}#{}", holder_key.multibase, holder_key.multibase);
 
     let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter([
-            (
-                KeyAlgorithmType::Eddsa,
-                Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
-            ),
-            (
-                KeyAlgorithmType::Ecdsa,
-                Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
-            ),
-        ]),
+        HashMap::from_iter([(
+            KeyAlgorithmType::Eddsa,
+            Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
+        )]),
         Default::default(),
     ));
 

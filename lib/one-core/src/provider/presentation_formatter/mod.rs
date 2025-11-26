@@ -5,7 +5,7 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation, PresentationFormatterCapabilities,
+    FormattedPresentation,
 };
 
 pub mod jwt_vp_json;
@@ -25,7 +25,7 @@ pub trait PresentationFormatter: Send + Sync {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError>;
 
@@ -46,6 +46,4 @@ pub trait PresentationFormatter: Send + Sync {
     ) -> Result<ExtractedPresentation, FormatterError>;
 
     fn get_leeway(&self) -> u64;
-
-    fn get_capabilities(&self) -> PresentationFormatterCapabilities;
 }

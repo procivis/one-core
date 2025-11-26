@@ -38,7 +38,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation, PresentationFormatterCapabilities,
+    FormattedPresentation,
 };
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::openid4vp_final1_0::OID4VPFinal1_0Handover;
 
@@ -76,7 +76,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         &self,
         credentials_to_present: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        _holder_did: &DidValue,
+        _holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let FormatPresentationCtx {
@@ -92,11 +92,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
         let tokens: Vec<String> = credentials_to_present
             .iter()
             .map(|cred| {
-                if !self
-                    .get_capabilities()
-                    .supported_credential_formats
-                    .contains(&cred.credential_format)
-                {
+                if cred.credential_format != FormatType::Mdoc {
                     return Err(FormatterError::CouldNotFormat(format!(
                         "Unsupported credential format: {}",
                         cred.credential_format
@@ -253,12 +249,6 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
 
     fn get_leeway(&self) -> u64 {
         self.params.leeway
-    }
-
-    fn get_capabilities(&self) -> PresentationFormatterCapabilities {
-        PresentationFormatterCapabilities {
-            supported_credential_formats: vec![FormatType::Mdoc],
-        }
     }
 }
 

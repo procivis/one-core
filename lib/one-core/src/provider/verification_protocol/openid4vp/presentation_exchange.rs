@@ -125,7 +125,7 @@ pub(crate) async fn pex_submission_data(
             .format_presentation(
                 credentials_to_present,
                 auth_fn,
-                &credential.holder_did.did,
+                &credential.holder_did.map(|did| did.did),
                 ctx,
             )
             .await

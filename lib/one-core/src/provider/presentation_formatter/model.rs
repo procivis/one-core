@@ -6,12 +6,6 @@ use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 
-#[derive(Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PresentationFormatterCapabilities {
-    pub supported_credential_formats: Vec<FormatType>,
-}
-
 pub struct CredentialToPresent {
     pub raw_credential: String,
     pub credential_format: FormatType,

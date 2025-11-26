@@ -6,7 +6,6 @@ use serde::Deserialize;
 use shared_types::DidValue;
 use time::Duration;
 
-use crate::config::core_config::FormatType;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -14,11 +13,12 @@ use crate::provider::credential_formatter::model::{AuthenticationFn, Verificatio
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::model::DecomposedToken;
 use crate::provider::credential_formatter::sdjwt_formatter::extract_credentials_internal;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::jwt_vp_json::JwtVpPresentationFormatter;
 use crate::provider::presentation_formatter::model::{
     CredentialToPresent, ExtractPresentationCtx, ExtractedPresentation, FormatPresentationCtx,
-    FormattedPresentation, PresentationFormatterCapabilities,
+    FormattedPresentation,
 };
 use crate::provider::presentation_formatter::sdjwt::model::Sdvp;
 
@@ -37,14 +37,20 @@ pub struct Params {
 pub struct SdjwtPresentationFormatter {
     client: Arc<dyn HttpClient>,
     crypto: Arc<dyn CryptoProvider>,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     params: Params,
 }
 
 impl SdjwtPresentationFormatter {
-    pub fn new(client: Arc<dyn HttpClient>, crypto: Arc<dyn CryptoProvider>) -> Self {
+    pub fn new(
+        client: Arc<dyn HttpClient>,
+        crypto: Arc<dyn CryptoProvider>,
+        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    ) -> Self {
         Self {
             client,
             crypto,
+            key_algorithm_provider,
             params: Params { leeway: 60 },
         }
     }
@@ -56,7 +62,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         &self,
         credentials: Vec<CredentialToPresent>,
         holder_binding_fn: AuthenticationFn,
-        holder_did: &DidValue,
+        holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         if credentials.len() != 1 {
@@ -89,7 +95,7 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         // claim referring to a holder did. For legacy compatibility, wrap in W3C verifiable presentation
         // signed by a key matching the holder did.
         // Remove once legacy credential compatibility is no longer needed.
-        let jwt_formatter = JwtVpPresentationFormatter::new();
+        let jwt_formatter = JwtVpPresentationFormatter::new(self.key_algorithm_provider.to_owned());
         jwt_formatter
             .format_presentation(credentials, holder_binding_fn, holder_did, context)
             .await
@@ -116,12 +122,6 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
 
     fn get_leeway(&self) -> u64 {
         self.params.leeway
-    }
-
-    fn get_capabilities(&self) -> PresentationFormatterCapabilities {
-        PresentationFormatterCapabilities {
-            supported_credential_formats: vec![FormatType::SdJwtVc, FormatType::SdJwt],
-        }
     }
 }
 
