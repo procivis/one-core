@@ -74,8 +74,9 @@ pub(crate) async fn handle_invitation(
     ),
     summary = "Accept issuance",
     description = indoc::formatdoc! {"
-        Accepts an offered credential. The chosen identifier will be listed
-        as the subject of the issued credential.
+        Accepts an offered credential. The system will generate a new
+        identifier that matches issuer's restrictions. Alternatively,
+        you can specify an existing identifier.
 
         `didId` is deprecated.
     "},
@@ -171,7 +172,9 @@ pub(crate) async fn presentation_reject(
     summary = "Submit presentation",
     description = indoc::formatdoc! {"
         Submits a presentation in response to a request. Choose the
-        identifier used to accept the credentials.
+        identifier used to accept the credentials. This endpoint uses
+          Presentation Exchange as the query language and should be used
+          after \"Presentation Definition (V1)\".
 
         `didId` is deprecated.
     "},
@@ -203,7 +206,8 @@ pub(crate) async fn presentation_submit(
     ),
     summary = "Submit presentation",
     description = indoc::formatdoc! {"
-        Submits a presentation in response to a request.
+        Submits a presentation in response to a request. This endpoint uses DCQL
+        as a query language and should be used after \"Presentation Definition (V2)\".
     "},
 )]
 #[require_permissions(Permission::InteractionProof)]

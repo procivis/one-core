@@ -68,7 +68,7 @@ pub(crate) async fn delete_credential(
         ("bearer" = [])
     ),
     summary = "Retrieve a credential",
-    description = "Returns detailed information about a credential.",
+    description = "Returns detailed information about a credential in the system.",
 )]
 #[require_permissions(Permission::CredentialDetail)]
 pub(crate) async fn get_credential(

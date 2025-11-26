@@ -96,44 +96,58 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
 
+    /// Schema of the credential.
     pub schema: CredentialDetailSchemaResponseRestDTO,
 
-    /// Identifier ID of the issuer.
+    /// Issuer metadata.
     pub issuer: Option<GetIdentifierListItemResponseRestDTO>,
 
-    /// Certificate details if issuer is using an X.509.
+    /// Certificate details if issuer used an X.509 to issue credential.
     pub issuer_certificate: Option<CertificateResponseRestDTO>,
 
-    /// Claims made by issuer. During the credential offer phase this
-    /// will be empty unless the issuer has provided preview values.
+    /// Claims made by the credential issuer.
     pub claims: Vec<T>,
 
+    /// URI holder is redirected to after credential issuance.
     pub redirect_uri: Option<String>,
 
-    /// The role the system has in relation to the credential.
+    /// The role the system has in relation to the credential. For example,
+    /// if the system issued the credential this value will be `ISSUER`. If
+    /// the system received the credential as a wallet this value will be
+    /// `HOLDER`.
     pub role: CredentialRoleRestEnum,
 
-    /// When the current LVVC was issued.
+    /// For credentials issued with LVVC revocation.
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub lvvc_issuance_date: Option<OffsetDateTime>,
 
+    /// Scheduled date for credential reactivation.
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub suspend_end_date: Option<OffsetDateTime>,
+    /// Validity details for ISO mdocs.
     pub mdoc_mso_validity: Option<MdocMsoValidityResponseRestDTO>,
+    /// Credential holder metadata.
     pub holder: Option<GetIdentifierListItemResponseRestDTO>,
+    /// Issuance protocol used to issue this credential.
     pub protocol: String,
-    /// Profile associated with this credential
+    /// Country profile associated with this credential.
     pub profile: Option<String>,
 
-    /// The wallet unit attestation that was provided by the holder's wallet
+    /// The wallet app attestation that was provided by the holder's wallet
     /// during credential issuance. This field is only present if the wallet
     /// provided a valid attestation when the credential was issued. The
     /// attestation serves as proof that the wallet app instance is a
-    /// legitimate installation and may be required by some credential schemas.
+    /// legitimate installation and may be required for the issuance of certain
+    /// credentials.
     pub wallet_app_attestation: Option<WalletAppAttestationRestDTO>,
 
+    /// The wallet unit attestation, or "key attestation", that was provided
+    /// by the holder's wallet during credential issuance. This field is
+    /// only present if the wallet provided a valid attestation when the
+    /// credential was issued, a requirement for the issuance of certain
+    /// credentials such as EU PIDs.
     pub wallet_unit_attestation: Option<WalletUnitAttestationRestDTO>,
 }
 
@@ -164,7 +178,7 @@ pub(crate) enum CredentialRoleRestEnum {
     Verifier,
 }
 
-/// Credential schema being used to issue the credential.
+/// Credential schema used to issue the credential.
 #[options_not_nullable]
 #[derive(Clone, Debug, Serialize, ToSchema, From)]
 #[serde(rename_all = "camelCase")]

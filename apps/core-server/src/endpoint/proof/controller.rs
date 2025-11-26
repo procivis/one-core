@@ -31,10 +31,14 @@ use crate::router::AppState;
     security(
         ("bearer" = [])
     ),
-    summary = "Retrieve presentation definition",
+    summary = "Presentation definition (V1)",
     description = indoc::formatdoc! {"
-        For wallets; after a wallet connects to a verifier's request for proof via the [Handle Invitation](../core/handle-invitation.api.mdx)
-        endpoint, the presentation definition endpoint takes the resulting `proofId` and filters the wallet, returning credentials which match the verifier's request.
+        For wallets; after a wallet connects to a verifier's request for proof via the
+        [Handle Invitation](../core/handle-invitation.api.mdx) endpoint, the presentation
+        definition endpoint takes the resulting `proofId` and filters the wallet, returning
+        credentials which match the verifier's request.
+
+        This version uses Presentation Exchange as the query language.
     "},
 )]
 #[require_permissions(Permission::ProofDetail)]
@@ -61,10 +65,14 @@ pub(crate) async fn get_proof_presentation_definition(
     security(
         ("bearer" = [])
     ),
-    summary = "Retrieve presentation definition",
+    summary = "Presentation definition (V2)",
     description = indoc::formatdoc! {"
-        For wallets; after a wallet connects to a verifier's request for proof via the [Handle Invitation](../core/handle-invitation.api.mdx)
-        endpoint, the presentation definition endpoint takes the resulting `proofId` and filters the wallet, returning credentials which match the verifier's request.
+        For wallets; after a wallet connects to a verifier's request for proof via the
+        [Handle Invitation](../core/handle-invitation.api.mdx) endpoint, the presentation
+        definition endpoint takes the resulting `proofId` and filters the wallet,
+        returning credentials which match the verifier's request.
+
+        This version uses DCQL as the query language.
     "},
 )]
 #[require_permissions(Permission::ProofDetail)]

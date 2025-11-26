@@ -366,7 +366,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                        .extensions(Some(
                            Extensions::builder()
-                               .add("x-displayName", "Wallet units")
+                               .add("x-displayName", "Wallet units (Provider)")
                                .build(),
                        ))
                        .build(),
@@ -377,7 +377,7 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
             "}))
                        .extensions(Some(
                            Extensions::builder()
-                               .add("x-displayName", "Holder wallet units")
+                               .add("x-displayName", "Wallet units (Holder)")
                                .build(),
                        ))
                        .build(),
@@ -450,6 +450,24 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                 .extensions(Some(
                     Extensions::builder()
                         .add("x-displayName", "(Advanced) OID4VCI Draft 13")
+                        .build(),
+                ))
+                .build(),
+            Tag::builder()
+                .name("openid4vci-final1_0")
+                .description(Some(indoc::formatdoc! {"
+
+                :::warning
+
+                These endpoints handle low-level mechanisms in interactions between agents.
+                Deep understanding of the involved protocols is recommended.
+
+                :::
+
+            "}))
+                .extensions(Some(
+                    Extensions::builder()
+                        .add("x-displayName", "(Advanced) OID4VCI Final 1.0")
                         .build(),
                 ))
                 .build(),

@@ -45,8 +45,9 @@ impl OneCoreBinding {
         Ok(invitation_response.into())
     }
 
-    /// Accepts an offered credential. The chosen identifier will be listed as
-    /// the subject of the issued credential.
+    /// Accepts an offered credential. The system will generate a new
+    /// identifier that matches issuer's restrictions. Alternatively,
+    /// you can specify an existing identifier.
     #[uniffi::method]
     pub async fn holder_accept_credential(
         &self,
