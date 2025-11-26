@@ -652,7 +652,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                         method = context.method,
                         path = context.path,
                         service = "one-core",
-                        requestId = context.request_id,
+                        requestId = context.request_id.as_ref(),
                         sessionId = context.session_id, // Derived from x-session-id header
                     )
                 })

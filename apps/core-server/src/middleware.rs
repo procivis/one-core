@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -13,6 +14,7 @@ use one_core::proto::session_provider::Session;
 use sentry::{Hub, SentryFutureExt};
 use serde::Deserialize;
 use shared_types::OrganisationId;
+use uuid::Uuid;
 
 use crate::ServerConfig;
 use crate::authentication::Authentication;
@@ -35,7 +37,7 @@ pub struct Authorized {
 pub struct HttpRequestContext<'a> {
     pub path: &'a str,
     pub method: &'a str,
-    pub request_id: Option<&'a str>,
+    pub request_id: Cow<'a, str>,
     pub session_id: Option<&'a str>,
 }
 
@@ -59,10 +61,7 @@ pub async fn sentry_layer(
 
         sentry::configure_scope(|scope| {
             scope.set_tag("http-request", method_path.to_owned());
-
-            if let Some(request_id) = request_id {
-                scope.set_tag("ONE-request-id", request_id);
-            }
+            scope.set_tag("ONE-request-id", request_id);
 
             if let Some(session_id) = session_id {
                 scope.set_tag("ONE-session-id", session_id);
@@ -165,7 +164,9 @@ pub fn get_http_request_context<T>(request: &Request<T>) -> HttpRequestContext<'
     let request_id = headers
         .get("x-request-id")
         .and_then(|header| header.to_str().ok())
-        .filter(|value| !value.is_empty());
+        .filter(|value| !value.is_empty())
+        .map(Cow::Borrowed)
+        .unwrap_or(Cow::Owned(Uuid::new_v4().to_string()));
 
     let session_id = headers
         .get("x-session-id")
