@@ -38,7 +38,6 @@ pub(crate) struct CreateHistoryRequestRestDTO {
     pub organisation_id: Option<OrganisationId>,
     pub source: ExternalHistorySource,
     pub target: Option<String>,
-    pub user: Option<String>,
     pub metadata: Option<Value>,
 }
 
@@ -186,6 +185,7 @@ pub enum HistoryEntityType {
     TrustEntity,
     WalletUnit,
     User,
+    Provider,
     StsRole,
     StsOrganisation,
     StsIamRole,

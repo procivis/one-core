@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use super::HistoryService;
 use crate::model::history::{GetHistoryList, HistoryAction, HistoryEntityType, HistorySource};
+use crate::proto::session_provider::NoSessionProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::history::dto::CreateHistoryRequestDTO;
 
 fn setup_service(history_repository: MockHistoryRepository) -> HistoryService {
-    HistoryService::new(Arc::new(history_repository))
+    HistoryService::new(Arc::new(history_repository), Arc::new(NoSessionProvider))
 }
 
 #[tokio::test]
@@ -44,7 +45,6 @@ async fn test_create_history_invalid_source() {
                 organisation_id: None,
                 metadata: None,
                 target: None,
-                user: None,
             })
             .await,
         Err(ServiceError::BusinessLogic(

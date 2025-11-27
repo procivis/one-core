@@ -1,7 +1,8 @@
 use shared_types::HistoryId;
 
 use super::dto::HistoryResponseDTO;
-use crate::model::history::{HistoryListQuery, HistorySource};
+use crate::model::history::{History, HistoryListQuery, HistorySource};
+use crate::proto::session_provider::SessionExt;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::history::HistoryService;
 use crate::service::history::dto::{CreateHistoryRequestDTO, GetHistoryListResponseDTO};
@@ -42,10 +43,10 @@ impl HistoryService {
             return Err(BusinessLogicError::InvalidHistorySource.into());
         }
 
-        let history = self
-            .history_repository
-            .create_history(request.into())
-            .await?;
+        let mut request: History = request.into();
+        request.user = self.session_provider.session().user();
+
+        let history = self.history_repository.create_history(request).await?;
         Ok(history)
     }
 }

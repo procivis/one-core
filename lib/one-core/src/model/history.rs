@@ -94,6 +94,7 @@ pub enum HistoryEntityType {
     TrustEntity,
     WalletUnit,
     User,
+    Provider,
     StsRole,
     StsOrganisation,
     StsIamRole,

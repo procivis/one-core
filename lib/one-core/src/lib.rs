@@ -935,7 +935,10 @@ impl OneCore {
                 credential_schema_import_parser.clone(),
                 credential_schema_importer_proto.clone(),
             ),
-            history_service: HistoryService::new(data_provider.get_history_repository()),
+            history_service: HistoryService::new(
+                data_provider.get_history_repository(),
+                providers.session_provider.clone(),
+            ),
             key_service: KeyService::new(
                 key_repository.clone(),
                 organisation_repository.clone(),

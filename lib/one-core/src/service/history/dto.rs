@@ -55,5 +55,4 @@ pub struct CreateHistoryRequestDTO {
     pub metadata: Option<serde_json::Value>,
     pub source: HistorySource,
     pub target: Option<String>,
-    pub user: Option<String>,
 }

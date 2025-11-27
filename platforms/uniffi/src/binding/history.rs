@@ -173,6 +173,7 @@ pub enum HistoryEntityTypeBindingEnum {
     TrustEntity,
     WalletUnit,
     User,
+    Provider,
     StsRole,
     StsOrganisation,
     StsIamRole,

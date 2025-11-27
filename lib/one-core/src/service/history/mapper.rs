@@ -28,7 +28,7 @@ impl From<CreateHistoryRequestDTO> for History {
             entity_type: value.entity_type,
             metadata: value.metadata.map(HistoryMetadata::External),
             organisation_id: value.organisation_id,
-            user: value.user,
+            user: None,
         }
     }
 }
