@@ -36,7 +36,7 @@ pub(crate) struct CreateHistoryRequestRestDTO {
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: Option<OrganisationId>,
-    pub source: HistorySource,
+    pub source: ExternalHistorySource,
     pub target: Option<String>,
     pub user: Option<String>,
     pub metadata: Option<Value>,
@@ -164,6 +164,7 @@ pub enum HistoryAction {
     Reactivated,
     Expired,
     InteractionCreated,
+    InteractionErrored,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
@@ -196,6 +197,16 @@ pub enum HistoryEntityType {
 #[into("one_core::model::history::HistorySource")]
 pub enum HistorySource {
     Core,
+    Bridge,
+    Sts,
+    Wrpr,
+    Bff,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into("one_core::model::history::HistorySource")]
+pub(crate) enum ExternalHistorySource {
     Bridge,
     Sts,
     Wrpr,

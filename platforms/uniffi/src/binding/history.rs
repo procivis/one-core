@@ -152,6 +152,7 @@ pub enum HistoryActionBindingEnum {
     Reactivated,
     Expired,
     InteractionCreated,
+    InteractionErrored,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
