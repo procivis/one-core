@@ -8,4 +8,21 @@ keyStorage:
         clientId: "9b645db1-39eb-485c-af62-47b3a498bec2"
 walletProvider:
   PROCIVIS_ONE:
-    enabled: false
+    params:
+      public:
+        walletName: "Procivis One Wallet"
+        walletAppAttestation:
+          integrityCheck:
+            android:
+              bundleId: ch.procivis.one.wallet.trial
+              signingCertificateFingerprints: [
+                "3C:54:08:A0:AB:59:9A:5B:51:72:3F:DA:58:8E:81:DB:4F:A0:65:41:0E:7D:C2:65:4D:F1:A5:67:5B:47:13:52", # bitrise
+                "C2:8C:32:0A:81:C7:D9:93:FE:3F:77:3F:E2:D3:6E:51:B2:78:A9:97:43:98:40:A5:59:AD:5B:D4:9C:FF:1F:81", # google-play
+              ]
+            ios:
+              bundleId: AGG3V6QN4G.ch.procivis.one.wallet.trial
+              enforceProductionBuild: true
+        appVersion:
+          minimum: "v1.50.0"
+        eudiWalletInfo:
+          providerName: "Procivis One Trial"
