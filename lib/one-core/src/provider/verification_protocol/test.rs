@@ -26,7 +26,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_jwt() {
 
     let credential_copy = credential.to_owned();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
@@ -86,7 +86,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_empty_missing_requi
 
     let credential_copy = credential.to_owned();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
@@ -129,7 +129,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_wrong_state(
 
     let credential_copy = credential.to_owned();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
@@ -166,7 +166,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_failed_format_not_a
 
     let credential_copy = credential.to_owned();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
@@ -253,7 +253,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_success_mdoc() {
 
     let credential_copy = credential.to_owned();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, _result_group) = get_relevant_credentials_to_credential_schemas(
@@ -289,7 +289,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_first_level_se
 
     let credential_copy = credential.to_owned();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential_copy]));
 
     let (result_credentials, result_group) = get_relevant_credentials_to_credential_schemas(
@@ -399,7 +399,7 @@ async fn test_get_relevant_credentials_to_credential_schemas_when_missing_object
     let mut storage = MockStorageProxy::new();
     let credential = mdoc_credential_with_optional_namespace();
     storage
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .return_once(|_, _| Ok(vec![credential]));
 
     let (result_credentials, result_group) = get_relevant_credentials_to_credential_schemas(

@@ -113,7 +113,10 @@ pub(crate) async fn get_relevant_credentials_to_credential_schemas(
         )?;
 
         let relevant_credentials_inner = storage_access
-            .get_credentials_by_credential_schema_id(credential_schema_id, organisation_id)
+            .get_presentation_credentials_by_schema_id(
+                credential_schema_id.to_string(),
+                organisation_id,
+            )
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

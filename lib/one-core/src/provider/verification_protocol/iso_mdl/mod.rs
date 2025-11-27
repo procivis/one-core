@@ -326,23 +326,13 @@ impl VerificationProtocol for IsoMdl {
             let namespaces = items_request.name_spaces;
 
             let credentials: Vec<_> = storage_access
-                .get_credentials_by_credential_schema_id(&schema_id, organisation_id)
+                .get_presentation_credentials_by_schema_id(schema_id.to_owned(), organisation_id)
                 .await
                 .map_err(|err| {
                     VerificationProtocolError::Failed(format!(
                         "Failed loading credentials for schema: {err}"
                     ))
-                })?
-                .into_iter()
-                .filter(|credential| {
-                    credential
-                        .schema
-                        .as_ref()
-                        .and_then(|schema| schema.organisation.as_ref())
-                        .filter(|organisation| organisation.id == organisation_id)
-                        .is_some()
-                })
-                .collect();
+                })?;
 
             let mut fields: Vec<PresentationDefinitionFieldDTO> = namespaces
                 .into_iter()

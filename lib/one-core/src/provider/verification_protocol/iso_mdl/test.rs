@@ -426,7 +426,7 @@ async fn test_get_presentation_definition_ok() {
 
     let mut storage_access = MockStorageProxy::new();
     storage_access
-        .expect_get_credentials_by_credential_schema_id()
+        .expect_get_presentation_credentials_by_schema_id()
         .with(eq(schema_id), eq(organisation_id))
         .return_once(move |_, _| {
             Ok(vec![Credential {

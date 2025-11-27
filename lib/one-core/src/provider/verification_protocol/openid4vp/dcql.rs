@@ -80,8 +80,7 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
                 )))?;
 
         // This is very inefficient. We would have the information here to also filter by the claims
-        // required, appropriate state / role, etc. but so far this was not a problem so it is not
-        // optimized.
+        // required, etc. but so far this was not a problem so it is not optimized.
         let mut credential_candidates =
             fetch_credentials_for_schema_ids(storage_access, organisation.id, credential_filters)
                 .await?;
@@ -171,8 +170,7 @@ pub(crate) async fn get_presentation_definition_v2(
                 )))?;
 
         // This is very inefficient. We would have the information here to also filter by the claims
-        // required, appropriate state / role, etc. but so far this was not a problem so it is not
-        // optimized.
+        // required, etc. but so far this was not a problem so it is not optimized.
         let mut credential_candidates =
             fetch_credentials_for_schema_ids(storage_access, organisation.id, credential_filters)
                 .await?;
@@ -1007,7 +1005,7 @@ async fn fetch_credentials_for_schema_ids(
 
         credentials.append(
             &mut storage_access
-                .get_credentials_by_credential_schema_id(&schema_id, organisation_id)
+                .get_presentation_credentials_by_schema_id(schema_id, organisation_id)
                 .await
                 .map_err(VerificationProtocolError::StorageAccessError)?,
         );

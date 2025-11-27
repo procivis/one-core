@@ -237,16 +237,6 @@ impl CredentialRepository for CredentialHistoryDecorator {
             .get_credential_by_claim_id(claim_id, relations)
             .await
     }
-
-    async fn get_credentials_by_credential_schema_id(
-        &self,
-        schema_id: String,
-        relations: &CredentialRelations,
-    ) -> Result<Vec<Credential>, DataLayerError> {
-        self.inner
-            .get_credentials_by_credential_schema_id(schema_id, relations)
-            .await
-    }
 }
 
 fn target_from_credential(credential: &Credential) -> Option<String> {

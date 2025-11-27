@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
+use futures::future::join_all;
 use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
 
 use crate::config::core_config::KeyAlgorithmType;
@@ -8,7 +9,10 @@ use crate::mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_iden
 use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::credential::{Credential, CredentialRelations, CredentialRole};
+use crate::model::credential::{
+    Credential, CredentialFilterValue, CredentialRelations, CredentialRole, CredentialStateEnum,
+    GetCredentialQuery,
+};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
 };
@@ -65,10 +69,10 @@ pub(crate) trait StorageProxy: Send + Sync {
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<CredentialSchema>>;
 
-    /// Get credentials from a specified schema ID, from a chosen storage layer.
-    async fn get_credentials_by_credential_schema_id(
+    /// Get holder credentials with a specified schema ID, usable for presentation.
+    async fn get_presentation_credentials_by_schema_id(
         &self,
-        schema_id: &str,
+        schema_id: String,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Vec<Credential>>;
 
@@ -237,47 +241,61 @@ impl StorageProxy for StorageProxyImpl {
         Ok(candidates.values.into_iter().next())
     }
 
-    async fn get_credentials_by_credential_schema_id(
+    async fn get_presentation_credentials_by_schema_id(
         &self,
-        schema_id: &str,
+        schema_id: String,
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Vec<Credential>> {
-        Ok(self
+        let credentials = self
             .credentials
-            .get_credentials_by_credential_schema_id(
-                schema_id.to_owned(),
-                &CredentialRelations {
-                    holder_identifier: Some(IdentifierRelations {
-                        ..Default::default()
-                    }),
-                    issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
-                    claims: Some(ClaimRelations {
-                        schema: Some(Default::default()),
-                    }),
-                    schema: Some(CredentialSchemaRelations {
-                        claim_schemas: Some(Default::default()),
-                        organisation: Some(Default::default()),
-                    }),
-                    ..Default::default()
-                },
-            )
-            .await
-            .context("Error while fetching credential by credential schema id")?
-            .into_iter()
-            .filter(|cred| cred.deleted_at.is_none())
-            .filter(|cred| cred.role == CredentialRole::Holder)
-            .filter(|cred| {
-                cred.schema.as_ref().is_some_and(|schema| {
-                    schema
-                        .organisation
-                        .as_ref()
-                        .is_some_and(|o| o.id == organisation_id)
-                })
+            .get_credential_list(GetCredentialQuery {
+                filtering: Some(
+                    CredentialFilterValue::SchemaId(schema_id).condition()
+                        & CredentialFilterValue::OrganisationId(organisation_id)
+                        & CredentialFilterValue::States(vec![
+                            CredentialStateEnum::Accepted,
+                            CredentialStateEnum::Suspended,
+                            CredentialStateEnum::Revoked,
+                        ])
+                        & CredentialFilterValue::Roles(vec![CredentialRole::Holder]),
+                ),
+                ..Default::default()
             })
-            .collect::<Vec<_>>())
+            .await?
+            .values;
+
+        Ok(
+            join_all(credentials.into_iter().map(|credential| async move {
+                self.credentials
+                    .get_credential(
+                        &credential.id,
+                        &CredentialRelations {
+                            holder_identifier: Some(IdentifierRelations {
+                                ..Default::default()
+                            }),
+                            issuer_identifier: Some(IdentifierRelations {
+                                did: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                            claims: Some(ClaimRelations {
+                                schema: Some(Default::default()),
+                            }),
+                            schema: Some(CredentialSchemaRelations {
+                                claim_schemas: Some(Default::default()),
+                                organisation: Some(Default::default()),
+                            }),
+                            ..Default::default()
+                        },
+                    )
+                    .await
+            }))
+            .await
+            .into_iter()
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .flatten()
+            .collect(),
+        )
     }
 
     async fn get_credential_by_interaction_id(

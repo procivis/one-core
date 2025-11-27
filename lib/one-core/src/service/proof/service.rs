@@ -197,7 +197,7 @@ impl ProofService {
         &self,
         id: &ProofId,
     ) -> Result<PresentationDefinitionResponseDTO, ServiceError> {
-        let proof = self.load_proof_for_proof_definition(id).await?;
+        let proof = self.load_proof_for_presentation_definition(id).await?;
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
             MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
         )?;
@@ -221,7 +221,7 @@ impl ProofService {
         &self,
         id: &ProofId,
     ) -> Result<PresentationDefinitionV2ResponseDTO, ServiceError> {
-        let proof = self.load_proof_for_proof_definition(id).await?;
+        let proof = self.load_proof_for_presentation_definition(id).await?;
         let exchange = self.protocol_provider.get_protocol(&proof.protocol).ok_or(
             MissingProviderError::ExchangeProtocol(proof.protocol.clone()),
         )?;
@@ -241,7 +241,10 @@ impl ProofService {
             .map_err(Into::into)
     }
 
-    async fn load_proof_for_proof_definition(&self, id: &ProofId) -> Result<Proof, ServiceError> {
+    async fn load_proof_for_presentation_definition(
+        &self,
+        id: &ProofId,
+    ) -> Result<Proof, ServiceError> {
         self.proof_repository
             .get_proof(
                 id,

@@ -117,6 +117,7 @@ pub enum CredentialFilterValue {
     Roles(Vec<CredentialRole>),
     CredentialIds(Vec<CredentialId>),
     CredentialSchemaIds(Vec<CredentialSchemaId>),
+    SchemaId(String),
     IssuerIds(Vec<IdentifierId>),
     States(Vec<CredentialStateEnum>),
     SuspendEndDate(ValueComparison<OffsetDateTime>),
