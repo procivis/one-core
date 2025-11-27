@@ -189,6 +189,7 @@ pub enum HistoryEntityType {
     StsRole,
     StsOrganisation,
     StsIamRole,
+    StsToken,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, ToSchema, Into, From)]
