@@ -26,6 +26,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
@@ -1613,6 +1614,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         config: Arc::new(generic_config().core),
         client,
         session_provider: Arc::new(NoSessionProvider),
+        credential_schema_importer: Arc::new(MockCredentialSchemaImporter::new()),
     }
 }
 

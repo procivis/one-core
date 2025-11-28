@@ -28,6 +28,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
+use crate::utils::field_match::FieldHelpers;
 
 async fn random_document() -> String {
     let key = Ecdsa.generate_key().unwrap();
@@ -266,6 +267,198 @@ async fn test_issuance_accept_openid4vc() {
         actions,
         HashSet::from([HistoryAction::Accepted, HistoryAction::Issued])
     );
+}
+
+#[tokio::test]
+async fn test_issuance_accept_schema_name_already_exists() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key,
+                    reference: "1".to_string(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let schema_id = Uuid::new_v4();
+    let metadata_schema_id = Uuid::new_v4();
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                claim_schemas: Some(vec![
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: schema_id.into(),
+                            key: "string".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: datetime!(2024-10-20 12:00 +1),
+                            last_modified: datetime!(2024-10-20 12:00 +1),
+                            array: false,
+                            metadata: false,
+                        },
+                        required: true,
+                    },
+                    CredentialSchemaClaim {
+                        schema: ClaimSchema {
+                            id: metadata_schema_id.into(),
+                            key: "iss".to_string(),
+                            data_type: "STRING".to_string(),
+                            created_date: datetime!(2024-10-20 12:00 +1),
+                            last_modified: datetime!(2024-10-20 12:00 +1),
+                            array: false,
+                            metadata: true,
+                        },
+                        required: false,
+                    },
+                ]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": "http://127.0.0.1",
+        "credential_endpoint": format!("{}/ssi/openid4vci/final-1.0/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": null,
+        "token_endpoint": format!("{}/ssi/openid4vci/draft-13/{}/token", context.server_mock.uri(), credential_schema.id),
+        "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+        "credential_metadata": {
+            "display": [
+                {
+                    "lang": "en",
+                    "name": "test"
+                }
+            ]
+        },
+        "credential_configuration_id": "dummy-config-id",
+        "protocol": "OPENID4VCI_FINAL1",
+        "format": "jwt_vc_json"
+    }))
+        .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+        )
+        .await;
+
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"string"}),
+    )
+    .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint_final1(credential_schema.id, "123", jwt_credential, 1, None)
+        .await;
+
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "123", 1)
+        .await;
+
+    context
+        .server_mock
+        .token_endpoint(credential_schema.schema_id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let credential_id = resp.json::<serde_json::Value>().await["id"].parse();
+    let credential = context.db.credentials.get(&credential_id).await;
+    let credential_schema = credential.schema.as_ref().unwrap();
+
+    // Assert credential schema has been automatically renamed due to clash with existing schema
+    // also named "test".
+    assert_ne!(credential_schema.name, "test");
+    assert!(credential_schema.name.starts_with("test_"));
 }
 
 #[tokio::test]

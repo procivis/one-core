@@ -958,7 +958,7 @@ impl OneCore {
                 client.clone(),
                 providers.session_provider.clone(),
                 credential_schema_import_parser,
-                credential_schema_importer_proto,
+                credential_schema_importer_proto.clone(),
             ),
             proof_service: ProofService::new(
                 proof_repository.clone(),
@@ -1029,6 +1029,7 @@ impl OneCore {
                 client.clone(),
                 blob_storage_provider,
                 providers.session_provider.clone(),
+                credential_schema_importer_proto,
             ),
             wallet_provider_service: WalletProviderService::new(
                 organisation_repository.clone(),

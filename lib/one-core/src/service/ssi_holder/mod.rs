@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
@@ -58,6 +59,7 @@ pub struct SSIHolderService {
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
+    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -85,6 +87,7 @@ impl SSIHolderService {
         client: Arc<dyn HttpClient>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
+        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     ) -> Self {
         Self {
             credential_repository,
@@ -109,6 +112,7 @@ impl SSIHolderService {
             blob_storage_provider,
             session_provider,
             key_security_level_provider,
+            credential_schema_importer,
         }
     }
 }

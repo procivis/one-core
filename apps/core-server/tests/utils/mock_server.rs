@@ -100,6 +100,46 @@ impl MockServer {
             .await;
     }
 
+    pub async fn ssi_credential_endpoint_final1(
+        &self,
+        schema_id: impl Display,
+        bearer_auth: impl Display,
+        credential: impl Display,
+        expected_calls: u64,
+        notification_id: Option<&str>,
+    ) {
+        Mock::given(method(Method::POST))
+            .and(path(format!(
+                "/ssi/openid4vci/final-1.0/{schema_id}/credential"
+            )))
+            .and(header(AUTHORIZATION, format!("Bearer {bearer_auth}")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "credentials": [{"credential": credential.to_string()}],
+                "notification_id": notification_id
+            })))
+            .expect(expected_calls)
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn ssi_nonce_endpoint(
+        &self,
+        protocol_name: impl Display,
+        c_nonce: impl Display,
+        expected_calls: u64,
+    ) {
+        Mock::given(method(Method::POST))
+            .and(path(format!(
+                "/ssi/openid4vci/final-1.0/{protocol_name}/nonce"
+            )))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "c_nonce": c_nonce.to_string(),
+            })))
+            .expect(expected_calls)
+            .mount(&self.mock)
+            .await;
+    }
+
     pub async fn ssi_notification_endpoint(
         &self,
         schema_id: impl Display,

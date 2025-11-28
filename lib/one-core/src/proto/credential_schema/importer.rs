@@ -153,9 +153,21 @@ impl CredentialSchemaImporterProto {
                 credential_schema.format.to_owned(),
             ))?;
 
+        let claim_schemas =
+            credential_schema
+                .claim_schemas
+                .as_mut()
+                .ok_or(ServiceError::MappingError(
+                    "Missing claim schemas".to_string(),
+                ))?;
         let metadata_claims = formatter
             .get_metadata_claims()
             .into_iter()
+            .filter(|metadata_claim| {
+                !claim_schemas
+                    .iter()
+                    .any(|cs| cs.schema.key == metadata_claim.key)
+            })
             .map(|metadata_claim| {
                 claim_schema_from_metadata_claim_schema(
                     metadata_claim,
@@ -163,13 +175,7 @@ impl CredentialSchemaImporterProto {
                 )
             })
             .collect::<Vec<_>>();
-        credential_schema
-            .claim_schemas
-            .as_mut()
-            .ok_or(ServiceError::MappingError(
-                "Missing claim schemas".to_string(),
-            ))?
-            .extend(metadata_claims);
+        claim_schemas.extend(metadata_claims);
         Ok(credential_schema)
     }
 }
