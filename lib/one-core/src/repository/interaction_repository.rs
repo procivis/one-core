@@ -1,4 +1,4 @@
-use uuid::Uuid;
+use shared_types::NonceId;
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
@@ -30,10 +30,11 @@ pub trait InteractionRepository: Send + Sync {
         lock: Option<LockType>,
     ) -> Result<Option<Interaction>, DataLayerError>;
 
-    async fn get_interaction_by_nonce_id(
+    async fn mark_nonce_as_used(
         &self,
-        nonce_id: Uuid,
-    ) -> Result<Option<Interaction>, DataLayerError>;
+        interaction_id: &InteractionId,
+        nonce_id: NonceId,
+    ) -> Result<(), DataLayerError>;
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;
 }

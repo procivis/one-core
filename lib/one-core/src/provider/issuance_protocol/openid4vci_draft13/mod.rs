@@ -503,7 +503,6 @@ impl OpenID4VCI13 {
                 interaction_id,
                 UpdateInteractionRequest {
                     data: Some(Some(serialize_interaction_data(&interaction_data)?)),
-                    ..Default::default()
                 },
             )
             .await

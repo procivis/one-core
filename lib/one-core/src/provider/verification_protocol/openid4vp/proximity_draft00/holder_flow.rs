@@ -119,7 +119,6 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
             interaction_id,
             UpdateInteractionRequest {
                 data: Some(Some(interaction_data)),
-                ..Default::default()
             },
         )
         .await

@@ -83,7 +83,7 @@ async fn test_post_issuer_credential_with_nonce() {
 }
 
 #[tokio::test]
-async fn test_post_issuer_credential_with_collision() {
+async fn test_post_issuer_credential_in_parallel() {
     let params = PostCredentialTestParams {
         use_kid_in_proof: true,
         schema_id: Some("some-schema-id".to_string()),
@@ -168,7 +168,8 @@ async fn test_post_issuer_credential_with_collision() {
     let nonce = value["c_nonce"].as_str().unwrap();
     let jwt = proof_jwt(use_kid_in_proof, Some(nonce)).await;
     let mut multiple_attempts = vec![];
-    for _ in 0..2 {
+    let num_credentials = 10;
+    for _ in 0..num_credentials {
         multiple_attempts.push(context.api.ssi.issuer_create_credential_vci_final(
             credential_schema.id,
             schema_id.as_ref().unwrap(),
@@ -177,9 +178,11 @@ async fn test_post_issuer_credential_with_collision() {
     }
     let results = join_all(multiple_attempts).await;
     // one attempt must succeed
-    assert!(results.iter().any(|resp| resp.status() == 200));
+    let num_successful = results.iter().filter(|resp| resp.status() == 200).count();
+    assert_eq!(num_successful, 1);
     // one attempt must fail
-    assert!(results.iter().any(|resp| resp.status() == 400));
+    let num_failed = results.iter().filter(|resp| resp.status() == 400).count();
+    assert_eq!(num_failed, num_credentials - 1);
 }
 
 #[tokio::test]

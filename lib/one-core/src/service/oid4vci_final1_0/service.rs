@@ -43,7 +43,6 @@ use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInter
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
-use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::error::{
@@ -66,6 +65,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     parse_access_token, parse_refresh_token,
 };
 use crate::provider::revocation::model::{CredentialRevocationState, Operation};
+use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{WalletAppAttestationDTO, WalletUnitAttestationDTO};
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -441,39 +441,15 @@ impl OID4VCIFinal1_0Service {
                 OpenID4VCIError::InvalidNonce
             })?;
 
-        // _Serializable_ transaction to update nonce: If multiple threads try to write the same
-        // nonce value to the same interaction, only one will succeed.
-        self.transaction_manager
-            .transaction_with_config(
-                async {
-                    if self
-                        .interaction_repository
-                        .get_interaction_by_nonce_id(nonce_id)
-                        .await?
-                        .is_some()
-                    {
-                        // nonce is reused
-                        return Err(OpenID4VCIError::InvalidNonce.into());
-                    }
-                    self.interaction_repository
-                        .update_interaction(
-                            interaction.id,
-                            UpdateInteractionRequest {
-                                nonce_id: Some(Some(nonce_id)),
-                                ..Default::default()
-                            },
-                        )
-                        .await?;
-                    Ok(())
-                }
-                .boxed(),
-                Some(IsolationLevel::Serializable),
-                None,
-            )
+        self.interaction_repository
+            .mark_nonce_as_used(&interaction.id, nonce_id.into())
             .await
-            // A conflict in this transaction indicates that the nonce has already been used
-            .map_err(|_| OpenID4VCIError::InvalidNonce)?
-            .map_err(|_| OpenID4VCIError::InvalidNonce)?;
+            .map_err(|e| match e {
+                DataLayerError::RecordNotUpdated | DataLayerError::AlreadyExists => {
+                    ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidNonce)
+                }
+                e => ServiceError::Repository(e),
+            })?;
 
         // Key attestation is expected if wallet storage type is set
         if let Some(key_storage_security) = schema.key_storage_security {
@@ -662,19 +638,7 @@ impl OID4VCIFinal1_0Service {
         } else {
             None
         };
-
-        self.credential_repository
-            .update_credential(
-                credential.id,
-                UpdateCredentialRequest {
-                    issuance_date: Some(OffsetDateTime::now_utc()),
-                    holder_identifier_id: Some(holder_identifier.id),
-                    wallet_unit_attestation_blob_id: wua_blob_id,
-                    ..Default::default()
-                },
-            )
-            .await?;
-
+        let holder_identifier_id = holder_identifier.id;
         let issued_credential = self
             .protocol_provider
             .get_protocol(&credential.protocol)
@@ -686,6 +650,17 @@ impl OID4VCIFinal1_0Service {
 
         match issued_credential {
             Ok(issued_credential) => {
+                self.credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            issuance_date: Some(OffsetDateTime::now_utc()),
+                            holder_identifier_id: Some(holder_identifier_id),
+                            wallet_unit_attestation_blob_id: wua_blob_id,
+                            ..Default::default()
+                        },
+                    )
+                    .await?;
                 if let Some(notification_id) = &issued_credential.notification_id {
                     interaction_data.notification_id = Some(notification_id.to_owned());
 
@@ -697,7 +672,6 @@ impl OID4VCIFinal1_0Service {
                             interaction.id,
                             UpdateInteractionRequest {
                                 data: Some(Some(data)),
-                                ..Default::default()
                             },
                         )
                         .await?;

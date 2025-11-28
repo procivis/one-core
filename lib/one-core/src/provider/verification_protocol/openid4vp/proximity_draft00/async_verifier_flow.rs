@@ -254,7 +254,6 @@ async fn verifier_flow_internal<C: WithProtocolVersion>(
             params.interaction_id,
             UpdateInteractionRequest {
                 data: Some(Some(interaction_data)),
-                ..Default::default()
             },
         )
         .await

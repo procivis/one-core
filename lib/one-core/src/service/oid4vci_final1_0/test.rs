@@ -49,6 +49,7 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
 use crate::repository::did_repository::MockDidRepository;
+use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -850,12 +851,12 @@ async fn test_create_credential_success() {
                 )))
             });
         interaction_repository
-            .expect_get_interaction_by_nonce_id()
-            .return_once(|_| Ok(None));
+            .expect_mark_nonce_as_used()
+            .return_once(|_, _| Ok(()));
 
         interaction_repository
             .expect_update_interaction()
-            .times(2)
+            .once()
             .withf(move |id, _| *id == interaction_id)
             .returning(|_, _| Ok(()));
 
@@ -1057,13 +1058,8 @@ async fn test_create_credential_success_sd_jwt_vc() {
                 )))
             });
         interaction_repository
-            .expect_get_interaction_by_nonce_id()
-            .return_once(|_| Ok(None));
-        interaction_repository
-            .expect_update_interaction()
-            .times(1)
-            .withf(move |id, _| *id == interaction_id)
-            .returning(|_, _| Ok(()));
+            .expect_mark_nonce_as_used()
+            .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1265,8 +1261,8 @@ async fn test_create_credential_success_mdoc() {
                 )))
             });
         interaction_repository
-            .expect_get_interaction_by_nonce_id()
-            .return_once(|_| Ok(None));
+            .expect_mark_nonce_as_used()
+            .return_once(|_, _| Ok(()));
         interaction_repository
             .expect_update_interaction()
             .return_once(|_, _| Ok(()));
@@ -1717,13 +1713,8 @@ async fn test_create_credential_issuer_failed() {
                 )))
             });
         interaction_repository
-            .expect_get_interaction_by_nonce_id()
-            .returning(|_| Ok(None));
-        interaction_repository
-            .expect_update_interaction()
-            .times(1)
-            .withf(move |id, _| *id == interaction_id)
-            .returning(|_, _| Ok(()));
+            .expect_mark_nonce_as_used()
+            .return_once(|_, _| Ok(()));
 
         let mut issuance_protocol = MockIssuanceProtocol::default();
         issuance_protocol
@@ -1775,15 +1766,6 @@ async fn test_create_credential_issuer_failed() {
                     deleted_at: None,
                 }))
             });
-
-        credential_repository
-            .expect_update_credential()
-            .once()
-            .withf(move |id, request| {
-                *id == credential.id
-                    && request.holder_identifier_id == Some(Uuid::from(holder_did_id).into())
-            })
-            .returning(move |_, _| Ok(()));
 
         credential_repository
             .expect_update_credential()
@@ -1919,8 +1901,8 @@ async fn test_create_credential_nonce_reused() {
                 )))
             });
         interaction_repository
-            .expect_get_interaction_by_nonce_id()
-            .returning(|_| Ok(Some(dummy_interaction(None, false, None, None, None))));
+            .expect_mark_nonce_as_used()
+            .return_once(|_, _| Err(DataLayerError::RecordNotUpdated));
     }
 
     let key_algorithm = mock_key_algorithm();

@@ -21,7 +21,6 @@ pub struct Interaction {
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct UpdateInteractionRequest {
     pub data: Option<Option<Vec<u8>>>,
-    pub nonce_id: Option<Option<Uuid>>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
@@ -41,7 +40,6 @@ impl From<Interaction> for UpdateInteractionRequest {
     fn from(value: Interaction) -> Self {
         Self {
             data: Some(value.data),
-            nonce_id: Some(value.nonce_id),
         }
     }
 }

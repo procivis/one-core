@@ -537,7 +537,6 @@ impl OID4VCIDraft13Service {
                             interaction.id,
                             UpdateInteractionRequest {
                                 data: Some(Some(data)),
-                                ..Default::default()
                             },
                         )
                         .await?;

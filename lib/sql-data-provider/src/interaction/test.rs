@@ -5,6 +5,7 @@ use std::vec;
 use one_core::model::interaction::{
     Interaction, InteractionRelations, InteractionType, UpdateInteractionRequest,
 };
+use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
@@ -129,15 +130,43 @@ async fn test_get_interaction() {
 }
 
 #[tokio::test]
-async fn test_get_interaction_by_nonce_id() {
+async fn test_mark_nonce_as_used() {
     let setup = setup(Repositories::default()).await;
 
-    let result = setup
-        .provider
-        .get_interaction_by_nonce_id(Uuid::new_v4())
+    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
         .await
         .unwrap();
-    assert_eq!(result, None);
+    let interaction_id = insert_interaction(
+        &setup.db,
+        &[],
+        organisation_id,
+        None,
+        crate::entity::interaction::InteractionType::Issuance,
+    )
+    .await
+    .unwrap()
+    .parse()
+    .unwrap();
+
+    let nonce_id = Uuid::new_v4();
+    setup
+        .provider
+        .mark_nonce_as_used(&interaction_id, nonce_id.into())
+        .await
+        .unwrap();
+
+    let interaction = setup
+        .provider
+        .get_interaction(&interaction_id, &InteractionRelations::default(), None)
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(interaction.nonce_id, Some(nonce_id));
+}
+
+#[tokio::test]
+async fn test_mark_nonce_as_used_already_used() {
+    let setup = setup(Repositories::default()).await;
 
     let organisation_id = insert_organisation_to_database(&setup.db, None, None)
         .await
@@ -155,24 +184,56 @@ async fn test_get_interaction_by_nonce_id() {
 
     let result = setup
         .provider
-        .get_interaction_by_nonce_id(nonce_id)
+        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id.into())
+        .await;
+    assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
+}
+
+#[tokio::test]
+async fn test_mark_nonce_as_used_already_used_different_interaction() {
+    let setup = setup(Repositories::default()).await;
+
+    let organisation_id = insert_organisation_to_database(&setup.db, None, None)
         .await
         .unwrap();
-    assert_eq!(result.unwrap().id.to_string(), interaction_id);
+    let nonce_id = Uuid::new_v4();
+    insert_interaction(
+        &setup.db,
+        &[],
+        organisation_id,
+        Some(nonce_id),
+        crate::entity::interaction::InteractionType::Issuance,
+    )
+    .await
+    .unwrap();
+    let interaction_id = insert_interaction(
+        &setup.db,
+        &[],
+        organisation_id,
+        None,
+        crate::entity::interaction::InteractionType::Issuance,
+    )
+    .await
+    .unwrap();
+
+    let result = setup
+        .provider
+        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id.into())
+        .await;
+    assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
 }
 
 #[tokio::test]
 async fn test_update_interaction() {
     let setup = setup_with_interaction().await;
 
-    let nonce_id = Uuid::new_v4();
+    let data = "foo".as_bytes().to_vec();
     setup
         .provider
         .update_interaction(
             setup.interaction_id,
             UpdateInteractionRequest {
-                nonce_id: Some(Some(nonce_id)),
-                ..Default::default()
+                data: Some(Some(data.clone())),
             },
         )
         .await
@@ -181,7 +242,7 @@ async fn test_update_interaction() {
     let result = get_interaction(&setup.db, &setup.interaction_id)
         .await
         .unwrap();
-    assert_eq!(result.nonce_id, Some(NonceId::from(nonce_id)));
+    assert_eq!(result.data, Some(data));
 }
 
 #[tokio::test]

@@ -454,7 +454,6 @@ impl OpenID4VCIFinal1_0 {
                 interaction_id,
                 UpdateInteractionRequest {
                     data: Some(Some(serialize_interaction_data(&interaction_data)?)),
-                    ..Default::default()
                 },
             )
             .await
@@ -1144,7 +1143,6 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 interaction.id,
                 UpdateInteractionRequest {
                     data: Some(Some(serialize_interaction_data(&interaction_data)?)),
-                    ..Default::default()
                 },
             )
             .await

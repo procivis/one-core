@@ -8,7 +8,10 @@ use one_core::model::interaction::{
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::ActiveValue::Unchanged;
-use sea_orm::{ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::prelude::Expr;
+use sea_orm::sea_query::Query;
+use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QuerySelect};
+use shared_types::NonceId;
 use uuid::Uuid;
 
 use super::InteractionProvider;
@@ -85,23 +88,27 @@ impl InteractionRepository for InteractionProvider {
         Ok(Some(interaction))
     }
 
-    async fn get_interaction_by_nonce_id(
+    async fn mark_nonce_as_used(
         &self,
-        nonce_id: Uuid,
-    ) -> Result<Option<Interaction>, DataLayerError> {
-        let interaction = interaction::Entity::find()
-            .filter(interaction::Column::NonceId.eq(shared_types::NonceId::from(nonce_id)))
-            .one(&self.db)
-            .await
-            .map_err(|e| DataLayerError::Db(e.into()))?;
-
-        interaction
-            .map(|model| interaction_from_models(model, None))
-            .transpose()
+        interaction_id: &InteractionId,
+        nonce_id: NonceId,
+    ) -> Result<(), DataLayerError> {
+        let stmt = self.db.get_database_backend().build(
+            Query::update()
+                .table(interaction::Entity)
+                .value(interaction::Column::NonceId, nonce_id)
+                .and_where(Expr::col(interaction::Column::Id).eq(interaction_id.to_string()))
+                .and_where(Expr::col(interaction::Column::NonceId).is_null()),
+        );
+        let result = self.db.execute(stmt).await.map_err(to_data_layer_error)?;
+        if result.rows_affected() == 0 {
+            return Err(DataLayerError::RecordNotUpdated);
+        }
+        Ok(())
     }
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError> {
-        interaction::Entity::delete_by_id(id.to_string())
+        interaction::Entity::delete_by_id(*id)
             .exec(&self.db)
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;

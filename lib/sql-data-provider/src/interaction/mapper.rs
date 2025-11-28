@@ -30,10 +30,6 @@ impl From<UpdateInteractionRequest> for interaction::ActiveModel {
     fn from(value: UpdateInteractionRequest) -> Self {
         Self {
             data: value.data.map(Set).unwrap_or_default(),
-            nonce_id: value
-                .nonce_id
-                .map(|id| Set(id.map(NonceId::from)))
-                .unwrap_or_default(),
             ..Default::default()
         }
     }
