@@ -47,6 +47,7 @@ pub(crate) fn gen_openapi_documentation(
     }
 
     impl Modify for SecurityAddon {
+        #[expect(clippy::expect_used)]
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
             let components = openapi.components.as_mut().expect("OpenAPI Components");
             match self.config.auth {

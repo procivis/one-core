@@ -5,6 +5,8 @@ use one_core::proto::http_client::reqwest_client::ReqwestClient;
 use one_dev_services::OneDevCore;
 use one_dev_services::model::KeyAlgorithmType;
 
+#[expect(clippy::expect_used)]
+#[expect(clippy::unwrap_used)]
 fn main() {
     let core = OneDevCore::new(None, Arc::new(ReqwestClient::default())).unwrap();
 

@@ -10,6 +10,7 @@ pub(crate) enum Authentication {
     SecurityTokenService(StsTokenValidator),
 }
 
+#[expect(clippy::expect_used)]
 pub(crate) async fn authentication(
     config: &Arc<ServerConfig>,
 ) -> Result<Authentication, StsJwksFetcherError> {

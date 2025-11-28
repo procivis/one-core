@@ -1,3 +1,6 @@
+#![allow(clippy::expect_used)]
+#![allow(clippy::unwrap_used)]
+
 #[cfg(test)]
 mod fixtures;
 #[cfg(test)]

@@ -16,7 +16,9 @@ use secrecy::ExposeSecret;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
-#[allow(clippy::disallowed_macros)]
+#[expect(clippy::disallowed_macros)]
+#[expect(clippy::expect_used)]
+#[expect(clippy::unwrap_used)]
 #[tokio::main]
 async fn main() -> Result<(), CredentialServiceError> {
     let core = OneDevCore::new(None, Arc::new(ReqwestClient::default())).unwrap();

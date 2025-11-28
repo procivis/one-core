@@ -39,13 +39,27 @@ pub(super) fn modify_schema_autodetect(
 
     for file in rust_files {
         let path = file.path();
-        let mut file = File::open(path).expect("Unable to open file");
+        let path_str = path.to_str().ok_or(Error::custom(format!(
+            "File path \"{:?}\" is not valid UTF-8",
+            path
+        )))?;
+
+        let mut file = File::open(path).map_err(|e| {
+            Error::custom(format!("Failed to open file \"{}\": {}", path.display(), e))
+        })?;
+
         let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .expect("Unable to read file");
+        file.read_to_string(&mut contents).map_err(|e| {
+            Error::custom(format!(
+                "Failed to read from file \"{}\": {}",
+                path.display(),
+                e
+            ))
+        })?;
         let syntax_tree = syn::parse_file(&contents)?;
         let structs_with_attr = find_idents_with_attr(syntax_tree, "ModifySchema")?;
-        let module_path = path_to_module_path(path.to_str().expect("Unable to parse file path"));
+        let module_path = path_to_module_path(path_str);
+
         for struct_with_attr in structs_with_attr {
             let module = syn::Path::from_string(&module_path)?;
             let ident = &struct_with_attr.ident;

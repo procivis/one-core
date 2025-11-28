@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 mod fixtures;
 
 #[path = "test/credential.rs"]

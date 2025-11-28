@@ -157,6 +157,7 @@ pub struct OneDevCore {
 }
 
 impl Default for OneDevCore {
+    #[allow(clippy::unwrap_used)]
     fn default() -> Self {
         Self::new(None, Arc::new(ReqwestClient::default())).unwrap()
     }
@@ -322,7 +323,7 @@ impl OneDevCore {
                     Arc::new(JsonLdBbsplus::new(
                         JsonLdParams {
                             leeway: time::Duration::seconds(
-                                config.formatter_config.leeway.try_into().unwrap(),
+                                config.formatter_config.leeway.try_into()?,
                             ),
                             embed_layout_properties: false,
                             allowed_contexts: None,

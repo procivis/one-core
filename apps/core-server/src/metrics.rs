@@ -3,6 +3,7 @@ use std::sync::OnceLock;
 use prometheus::{CounterVec, HistogramOpts, HistogramVec, IntCounter, Opts, Registry};
 
 // creates the custom registry and registers the custom metrics
+#[expect(clippy::expect_used)]
 pub fn setup() {
     let registry = registry();
     registry
@@ -24,6 +25,7 @@ fn registry() -> &'static Registry {
     REGISTRY.get_or_init(Registry::new)
 }
 
+#[expect(clippy::expect_used)]
 fn incoming_requests_counter() -> &'static IntCounter {
     static INCOMING_REQUESTS: OnceLock<IntCounter> = OnceLock::new();
 
@@ -32,6 +34,7 @@ fn incoming_requests_counter() -> &'static IntCounter {
     })
 }
 
+#[expect(clippy::expect_used)]
 fn response_status_counter() -> &'static CounterVec {
     static INCOMING_REQUESTS_COUNTER: OnceLock<CounterVec> = OnceLock::new();
 
@@ -44,6 +47,7 @@ fn response_status_counter() -> &'static CounterVec {
     })
 }
 
+#[expect(clippy::expect_used)]
 fn response_time_hist() -> &'static HistogramVec {
     static RESPONSE_TIME_COLLECTOR: OnceLock<HistogramVec> = OnceLock::new();
 

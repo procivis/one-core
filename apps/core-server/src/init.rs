@@ -96,6 +96,7 @@ use crate::did_config::{DidUniversalParams, DidWebParams, DidWebVhParams};
 use crate::session::CoreServerSessionProvider;
 use crate::{ServerConfig, build_info, did_config};
 
+#[expect(clippy::expect_used)]
 pub async fn initialize_core(
     app_config: &AppConfig<ServerConfig>,
     db_conn: DbConn,
@@ -815,6 +816,7 @@ pub fn initialize_sentry(config: &ServerConfig) -> Option<sentry::ClientInitGuar
     }
 }
 
+#[expect(clippy::expect_used)]
 pub fn initialize_tracing(config: &ServerConfig) {
     // Create a filter based on the log level
     let filter = tracing_subscriber::EnvFilter::try_from_default_env()
@@ -942,6 +944,7 @@ pub fn initialize_statuslist_loader(
     )
 }
 
+#[expect(clippy::expect_used)]
 pub async fn initialize_vct_type_metadata_cache(
     cache_entities_config: &CacheEntitiesConfig,
     repo: Arc<dyn RemoteEntityCacheRepository>,
@@ -979,6 +982,7 @@ pub async fn initialize_vct_type_metadata_cache(
     cache
 }
 
+#[expect(clippy::expect_used)]
 pub async fn initialize_json_schema_loader(
     cache_entities_config: &CacheEntitiesConfig,
     repo: Arc<dyn RemoteEntityCacheRepository>,
@@ -1046,6 +1050,7 @@ pub async fn initialize_openid_metadata_cache(
     )
 }
 
+#[expect(clippy::expect_used)]
 fn initialize_x509_crl_cache(
     cache_entities_config: &CacheEntitiesConfig,
     data_provider: Arc<dyn DataRepository>,
@@ -1085,6 +1090,7 @@ fn initialize_x509_crl_cache(
     ))
 }
 
+#[expect(clippy::expect_used)]
 fn initialize_android_key_attestation_crl_cache()
 -> Result<AndroidAttestationCrlCache, OneCoreBuildError> {
     let client: Arc<dyn HttpClient> = {

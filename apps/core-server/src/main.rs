@@ -42,6 +42,8 @@ struct Cli {
     backup_to: Option<PathBuf>,
 }
 
+#[expect(clippy::expect_used)]
+#[expect(clippy::panic)]
 fn main() {
     let cli = Cli::parse();
 
@@ -95,6 +97,7 @@ fn main() {
         })
 }
 
+#[expect(clippy::expect_used)]
 async fn run_server(config: ServerConfig, core: OneCore) {
     let addr = SocketAddr::new(
         config
@@ -108,6 +111,7 @@ async fn run_server(config: ServerConfig, core: OneCore) {
     start_server(listener, config, core).await
 }
 
+#[expect(clippy::expect_used)]
 async fn run_task(task: String, core: OneCore) {
     match core.task_service.run(&task).await {
         Ok(result) => {

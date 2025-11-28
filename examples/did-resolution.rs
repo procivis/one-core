@@ -8,6 +8,7 @@ use one_core::provider::did_method::universal::{
 };
 use one_dev_services::OneDevCore;
 
+#[expect(clippy::unwrap_used)]
 #[tokio::main]
 async fn main() -> Result<(), DidMethodError> {
     let client = Arc::new(ReqwestClient::default());

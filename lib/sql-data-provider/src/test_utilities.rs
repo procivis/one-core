@@ -1,3 +1,5 @@
+#![expect(clippy::unwrap_used)]
+
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::hash::Hash;
@@ -174,7 +176,6 @@ pub async fn insert_many_claims_to_database(
     Ok(())
 }
 
-#[allow(clippy::ptr_arg)]
 pub async fn insert_many_claims_schema_to_database<'a>(
     database: &DatabaseConnection,
     claim_input: &'a ProofInput<'a>,
@@ -400,7 +401,6 @@ pub async fn get_proof_schema_with_id(
     proof_schema::Entity::find_by_id(id).one(database).await
 }
 
-#[allow(clippy::unwrap_used)]
 pub async fn setup_test_data_layer_and_connection_with_custom_url(database_url: &str) -> DataLayer {
     let db_conn = db_conn(database_url, true).await.unwrap();
     DataLayer::build(db_conn, vec![])

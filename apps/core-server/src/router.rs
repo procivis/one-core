@@ -36,6 +36,8 @@ pub(crate) struct InternalAppState {
 
 pub(crate) type AppState = Arc<InternalAppState>;
 
+#[expect(clippy::expect_used)]
+#[expect(clippy::unwrap_used)]
 pub async fn start_server(listener: TcpListener, config: ServerConfig, core: OneCore) {
     listener.set_nonblocking(true).unwrap();
 

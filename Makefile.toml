@@ -17,11 +17,11 @@ args    = ["build", "-p", "core-server"]
 command = "cargo"
 
 [tasks.clippy]
-args    = ["clippy", "--all-targets", "${@}"]
+args    = ["clippy", "--all-targets", "--", "-D", "clippy::expect_used", "-D", "clippy::panic", "-D", "clippy::unwrap_used", "${@}"]
 command = "cargo"
 
 [tasks.clippy_warn]
-args    = ["clippy", "--all-targets", "--", "-D", "warnings"]
+args    = ["clippy", "--all-targets", "--", "-D", "warnings", "-D", "clippy::expect_used", "-D", "clippy::panic", "-D", "clippy::unwrap_used"]
 command = "cargo"
 
 [tasks.format]
