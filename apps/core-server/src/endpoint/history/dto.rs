@@ -186,6 +186,7 @@ pub enum HistoryEntityType {
     WalletUnit,
     User,
     Provider,
+    WalletRelyingParty,
     StsRole,
     StsOrganisation,
     StsIamRole,

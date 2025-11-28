@@ -174,6 +174,7 @@ pub enum HistoryEntityTypeBindingEnum {
     WalletUnit,
     User,
     Provider,
+    WalletRelyingParty,
     StsRole,
     StsOrganisation,
     StsIamRole,

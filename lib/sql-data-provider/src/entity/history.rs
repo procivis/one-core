@@ -154,6 +154,8 @@ pub enum HistoryEntityType {
     User,
     #[sea_orm(string_value = "PROVIDER")]
     Provider,
+    #[sea_orm(string_value = "WALLET_RELYING_PARTY")]
+    WalletRelyingParty,
     #[sea_orm(string_value = "STS_ROLE")]
     StsRole,
     #[sea_orm(string_value = "STS_ORGANISATION")]
