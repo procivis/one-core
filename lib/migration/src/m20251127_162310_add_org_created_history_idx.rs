@@ -19,6 +19,7 @@ impl MigrationTrait for Migration {
                 Index::create()
                     .name(HISTORY_ORG_CREATED_DATE_INDEX)
                     .table(History::Table)
+                    .col(History::OrganisationId)
                     .col(History::CreatedDate)
                     .if_not_exists()
                     .to_owned(),
