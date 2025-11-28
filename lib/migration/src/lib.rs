@@ -178,6 +178,7 @@ mod m20251125_104708_history_source;
 mod m20251126_134434_add_history_created_date_index;
 mod m20251127_092659_add_drop_wallet_unit_attestation_history;
 mod m20251127_162310_add_org_created_history_idx;
+mod m20251128_080107_credential_columns_not_null;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -358,6 +359,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251126_134434_add_history_created_date_index::Migration),
             Box::new(m20251127_092659_add_drop_wallet_unit_attestation_history::Migration),
             Box::new(m20251127_162310_add_org_created_history_idx::Migration),
+            Box::new(m20251128_080107_credential_columns_not_null::Migration),
         ]
     }
 }

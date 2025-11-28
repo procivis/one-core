@@ -319,7 +319,7 @@ async fn migrate_wua_blobs_to_waa_blobs(manager: &SchemaManager<'_>) -> Result<(
 }
 
 #[derive(DeriveIden)]
-enum BlobStorage {
+pub enum BlobStorage {
     Table,
     Id,
     Type,
@@ -327,7 +327,7 @@ enum BlobStorage {
 
 #[expect(clippy::enum_variant_names)]
 #[derive(Clone, DeriveIden)]
-enum Credential {
+pub enum Credential {
     Table,
     Id,
     CreatedDate,
@@ -358,29 +358,29 @@ enum CredentialNew {
 }
 
 #[derive(DeriveIden)]
-enum Identifier {
+pub enum Identifier {
     Table,
     Id,
 }
 
 #[derive(DeriveIden)]
-enum Certificate {
+pub enum Certificate {
     Table,
     Id,
 }
 
 #[derive(DeriveIden)]
-enum CredentialSchema {
+pub enum CredentialSchema {
     Table,
     Id,
 }
 #[derive(DeriveIden)]
-enum Interaction {
+pub enum Interaction {
     Table,
     Id,
 }
 #[derive(DeriveIden)]
-enum Key {
+pub enum Key {
     Table,
     Id,
 }

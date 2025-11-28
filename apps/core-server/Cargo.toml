@@ -85,7 +85,7 @@ serde_json_path.workspace  = true
 serde_urlencoded.workspace = true
 similar-asserts.workspace  = true
 sql-data-provider          = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
-ulid                       = { version = "1.2.0" }
+ulid.workspace             = true
 wiremock.workspace         = true
 
 [lints]

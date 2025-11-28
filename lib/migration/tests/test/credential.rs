@@ -1,0 +1,149 @@
+use crate::fixtures::{ColumnType, fetch_schema};
+
+#[tokio::test]
+async fn test_db_schema_credential() {
+    let schema = fetch_schema().await;
+
+    let credential = schema
+        .table("credential")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "issuance_date",
+            "deleted_at",
+            "protocol",
+            "credential_schema_id",
+            "interaction_id",
+            "key_id",
+            "role",
+            "redirect_uri",
+            "state",
+            "suspend_end_date",
+            "holder_identifier_id",
+            "issuer_identifier_id",
+            "issuer_certificate_id",
+            "profile",
+            "credential_blob_id",
+            "wallet_unit_attestation_blob_id",
+            "wallet_app_attestation_blob_id",
+        ])
+        .index("index-Credential-CreatedDate", false, &["created_date"])
+        .index("index-Credential-Role", false, &["role"])
+        .index("index-Credential-DeletedAt", false, &["deleted_at"])
+        .index("index-Credential-State", false, &["state"])
+        .index(
+            "index-Credential-SuspendEndDate",
+            false,
+            &["suspend_end_date"],
+        );
+    credential
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    credential
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    credential
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    credential
+        .column("issuance_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    credential
+        .column("deleted_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    credential
+        .column("protocol")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential
+        .column("credential_schema_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-Credential-CredentialSchemaId",
+            "credential_schema",
+            "id",
+        );
+    credential
+        .column("interaction_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-Credential-InteractionId", "interaction", "id");
+    credential
+        .column("key_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-Credential-KeyId", "key", "id");
+    credential
+        .column("role")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential
+        .column("redirect_uri")
+        .r#type(ColumnType::String(Some(1000)))
+        .nullable(true);
+    credential
+        .column("state")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential
+        .column("suspend_end_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    credential
+        .column("holder_identifier_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk_credential_holder_identifier", "identifier", "id");
+    credential
+        .column("issuer_identifier_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk_credential_issuer_identifier", "identifier", "id");
+    credential
+        .column("issuer_certificate_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk-credential-issuer_certificate", "certificate", "id");
+    credential
+        .column("profile")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
+    credential
+        .column("credential_blob_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key("fk_credential_credential_blob_id", "blob_storage", "id");
+    credential
+        .column("wallet_unit_attestation_blob_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key(
+            "fk_credential_wallet_unit_attestation_blob_id",
+            "blob_storage",
+            "id",
+        );
+    credential
+        .column("wallet_app_attestation_blob_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key(
+            "fk_credential_wallet_app_attestation_blob_id",
+            "blob_storage",
+            "id",
+        );
+}
