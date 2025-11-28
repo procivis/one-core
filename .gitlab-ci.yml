@@ -22,6 +22,7 @@ variables:
   CARGO_UNSTABLE_GC: "true"
   BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.90.0-0.1
   RUST_CONTAINER_NAME: rust
+  NETWORK_NAME: my_network
 
   # Required variables in GitLab config:
   # - AAD_SERVICE_PRINCIPAL_CLIENT_ID: Azure Active directory Application id. Use for RBAC SP kubelogin
@@ -68,12 +69,19 @@ stages:
   - export D_TRACK_PROJECT_VERSION=${CI_COMMIT_TAG:-$CI_COMMIT_REF_SLUG}
   - export DEPLOY_IMAGE_TAG=$APP_VERSION
 
+.setup_network: &setup_network
+  - docker network inspect $NETWORK_NAME >/dev/null 2>&1 || docker network create -d bridge $NETWORK_NAME
+
+.delete_network: &delete_network
+  - docker network remove $NETWORK_NAME
+
 .setup_mariadb: &setup_mariadb
   - >
     docker run -d --name $DB_CONTAINER_NAME
     -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
     -e MYSQL_DATABASE=$MYSQL_DATABASE
     --tmpfs /var/lib/mysql
+    --network=$NETWORK_NAME
     -p 3306:3306
     mariadb:10.9
   - |
@@ -96,7 +104,7 @@ stages:
   - docker exec $DB_CONTAINER_NAME mysql --user=root --password=$MYSQL_ROOT_PASSWORD -e "SET GLOBAL max_connections = 1000;"
 
 .setup_rust_container: &setup_rust_container
-  - docker run -d --name $RUST_CONTAINER_NAME $BUILD_IMAGE sleep infinity
+  - docker run --network=$NETWORK_NAME -d --name $RUST_CONTAINER_NAME $BUILD_IMAGE sleep infinity
   - sleep 3
   # Copy project files in (can't use volumes in dind)
   - docker cp . $RUST_CONTAINER_NAME:/project
@@ -111,7 +119,12 @@ before_script:
   tags:
     - rust
   script:
-    - docker exec $RUST_CONTAINER_NAME cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+    - |
+      if [ -z "$ONE_app__databaseUrl" ]; then
+        docker exec $RUST_CONTAINER_NAME cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+      else
+        docker exec -e ONE_app__databaseUrl=${ONE_app__databaseUrl} $RUST_CONTAINER_NAME cargo llvm-cov --workspace --lcov --ignore-filename-regex=".*test.*\.rs$|tests/.*\.rs$|migration/.*\.rs$" --output-path lcov.info
+      fi
     - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report --cobertura --output-path cobertura.xml
     - docker exec $RUST_CONTAINER_NAME cargo llvm-cov report
     # Copy files out
@@ -150,6 +163,7 @@ tests:mariadb:
     MYSQL_ROOT_PASSWORD: root_password
     ONE_app__databaseUrl: "mysql://root:${MYSQL_ROOT_PASSWORD}@${DB_CONTAINER_NAME}:3306/${MYSQL_DATABASE}"
   before_script:
+    - *setup_network
     - *setup_mariadb
     - *setup_rust_container
   after_script:
@@ -157,16 +171,19 @@ tests:mariadb:
     - docker rm $DB_CONTAINER_NAME
     - docker stop $RUST_CONTAINER_NAME
     - docker rm $RUST_CONTAINER_NAME
+    - *delete_network
 
 tests:sqlite:
   needs: []
   extends:
     - .cargo_tests
   before_script:
+    - *setup_network
     - *setup_rust_container
   after_script:
     - docker stop $RUST_CONTAINER_NAME
     - docker rm $RUST_CONTAINER_NAME
+    - *delete_network
 
 linter:clippy:
   interruptible: true
