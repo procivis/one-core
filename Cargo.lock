@@ -1777,21 +1777,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "examples"
-version = "0.1.0"
-dependencies = [
- "hex-literal",
- "one-core",
- "one-dev-services",
- "reqwest",
- "secrecy",
- "shared-types",
- "time",
- "tokio",
- "uuid",
-]
-
-[[package]]
 name = "fancy-regex"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3801,20 +3786,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "one-dev-services"
-version = "0.1.0"
-dependencies = [
- "indexmap 2.6.0",
- "one-core",
- "one-crypto",
- "secrecy",
- "shared-types",
- "strum",
- "thiserror 2.0.12",
- "time",
-]
-
-[[package]]
 name = "one-dto-mapper"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5625,15 +5596,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
-name = "signal-hook-registry"
-version = "1.4.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
-dependencies = [
- "libc",
-]
-
-[[package]]
 name = "signature"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6337,9 +6299,7 @@ dependencies = [
  "bytes",
  "libc",
  "mio",
- "parking_lot",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.52.0",
