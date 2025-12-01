@@ -53,11 +53,6 @@ async fn test_db_schema_random_checks() {
         .nullable(false)
         .default(None);
 
-    let revocation_list = schema.table("revocation_list");
-    revocation_list
-        .column("credentials")
-        .r#type(ColumnType::Blob);
-
     let history = schema.table("history");
     history
         .column("source")

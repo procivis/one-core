@@ -8,5 +8,8 @@ mod credential_tests;
 #[path = "test/interaction.rs"]
 mod interaction_tests;
 
+#[path = "test/revocation_list.rs"]
+mod revocation_list_tests;
+
 #[path = "test/random_checks.rs"]
 mod random_checks;
