@@ -24,9 +24,10 @@ use crate::model::interaction::{Interaction, InteractionId};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialMetadataClaimResponseDTO,
-    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCIFinal1CredentialOfferDTO,
-    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    CredentialSigningAlgValue, OpenID4VCICredentialConfigurationData,
+    OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIIssuerMetadataClaimDisplay,
+    OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign, OpenID4VCIIssuerMetadataLogoDTO,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
@@ -276,7 +277,12 @@ fn jwt_configuration(
         cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
         credential_metadata: Some(credential_metadata),
         proof_types_supported,
-        credential_signing_alg_values_supported: Some(credential_signing_alg_values_supported),
+        credential_signing_alg_values_supported: Some(
+            credential_signing_alg_values_supported
+                .into_iter()
+                .map(CredentialSigningAlgValue::String)
+                .collect(),
+        ),
         ..Default::default()
     }
 }
@@ -296,7 +302,12 @@ fn sdjwt_configuration(
         vct: vct.clone(),
         scope: vct,
         proof_types_supported,
-        credential_signing_alg_values_supported: Some(credential_signing_alg_values_supported),
+        credential_signing_alg_values_supported: Some(
+            credential_signing_alg_values_supported
+                .into_iter()
+                .map(CredentialSigningAlgValue::String)
+                .collect(),
+        ),
         ..Default::default()
     }
 }

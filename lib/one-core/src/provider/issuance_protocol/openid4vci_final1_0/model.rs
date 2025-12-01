@@ -129,7 +129,7 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(default)]
-    pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    pub credential_signing_alg_values_supported: Option<Vec<CredentialSigningAlgValue>>,
     #[serde(default)]
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     #[serde(default)]
@@ -181,7 +181,7 @@ pub struct OpenID4VCICredentialConfigurationData {
     pub format: String,
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    pub credential_signing_alg_values_supported: Option<Vec<CredentialSigningAlgValue>>,
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     pub scope: Option<String>,
 
@@ -259,6 +259,14 @@ pub struct OpenID4VCICredentialMetadataClaimResponseDTO {
 pub struct OpenID4VCIIssuerMetadataClaimDisplay {
     pub name: Option<String>,
     pub locale: Option<String>,
+}
+
+/// Credential signing algorithm value - can be a string (e.g., "ES256") or a COSE algorithm ID (e.g., -7)
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CredentialSigningAlgValue {
+    String(String),
+    Integer(i64),
 }
 
 #[derive(Clone, Debug, Deserialize)]

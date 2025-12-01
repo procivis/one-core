@@ -329,7 +329,7 @@ async fn test_get_issuer_metadata_jwt() {
         credential_configuration
             .credential_signing_alg_values_supported
             .unwrap(),
-        vec!["ES256".to_string()]
+        vec![CredentialSigningAlgValue::String("ES256".to_string())]
     );
 
     assert!(credential_configuration.vct.is_none());
@@ -432,7 +432,7 @@ async fn test_get_issuer_metadata_sd_jwt() {
     );
     assert_eq!(
         credential.credential_signing_alg_values_supported.unwrap(),
-        vec!["ES256".to_string()]
+        vec![CredentialSigningAlgValue::String("ES256".to_string())]
     );
     // For SD-JWT, check vct field instead of credential_definition
     assert!(credential.vct.is_some());

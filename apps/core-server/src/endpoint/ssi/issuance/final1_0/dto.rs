@@ -4,13 +4,14 @@ use one_core::provider::credential_formatter::vcdm::ContextType;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
-    ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
-    OpenID4VCICredentialDefinition, OpenID4VCICredentialDefinitionRequestDTO,
-    OpenID4VCICredentialMetadataClaimResponseDTO, OpenID4VCICredentialMetadataResponseDTO,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestIdentifier,
-    OpenID4VCICredentialRequestProofs, OpenID4VCICredentialSubjectItem,
-    OpenID4VCICredentialValueDetails, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
-    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    CredentialSigningAlgValue, ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant,
+    OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinition,
+    OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialMetadataClaimResponseDTO,
+    OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
+    OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
+    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants, OpenID4VCIIssuerMetadataClaimDisplay,
+    OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataLogoDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
@@ -63,11 +64,20 @@ pub(crate) struct OpenID4VCIIssuerMetadataCredentialSupportedResponseRestDTO {
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseRestDTO>,
     pub scope: Option<String>,
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
-    pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    #[from(with_fn = convert_inner_of_inner)]
+    pub credential_signing_alg_values_supported: Option<Vec<CredentialSigningAlgValueRestEnum>>,
     #[schema(value_type = Object)]
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     #[from(with_fn = convert_inner)]
     pub credential_definition: Option<OpenID4VCICredentialDefinitionRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialSigningAlgValue)]
+#[serde(untagged)]
+pub(crate) enum CredentialSigningAlgValueRestEnum {
+    String(String),
+    Integer(i64),
 }
 
 #[options_not_nullable]

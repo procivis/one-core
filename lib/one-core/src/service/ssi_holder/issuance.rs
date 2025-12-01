@@ -39,6 +39,7 @@ use crate::provider::issuance_protocol::model::{
     InvitationResponseEnum, SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::interaction_data_to_accepted_key_storage_security;
+use crate::provider::issuance_protocol::openid4vci_final1_0::model::CredentialSigningAlgValue;
 use crate::provider::issuance_protocol::{
     self, HolderBindingInput, IssuanceProtocol, deserialize_interaction_data,
     serialize_interaction_data,
@@ -285,7 +286,11 @@ impl SSIHolderService {
             "ldp_vc" => {
                 if data
                     .credential_signing_alg_values_supported
-                    .is_some_and(|values| values.contains(&"ES256".to_string()))
+                    .is_some_and(|values| {
+                        values
+                            .iter()
+                            .any(|v| matches!(v, CredentialSigningAlgValue::String(alg) if alg == "ES256"))
+                    })
                 {
                     FormatType::JsonLdClassic
                 } else {
