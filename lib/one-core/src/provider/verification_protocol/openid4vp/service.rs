@@ -303,6 +303,7 @@ async fn process_proof_submission_dcql_query(
         let multiple_presentations_allowed = credential_query.multiple;
         let dcql_credential_format = &credential_query.format;
         let query_id = credential_query.id.to_string();
+        let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
         let proof_input_schema = proof_input_schemas
             .iter()
@@ -448,6 +449,7 @@ async fn process_proof_submission_dcql_query(
                         nonce: interaction_data.nonce.clone(),
                         audience: interaction_data.client_id.clone(),
                     },
+                    trusted_authorities,
                 )
                 .await?;
 
@@ -722,6 +724,7 @@ async fn process_proof_submission_presentation_exchange(
             did_method_provider,
             revocation_method_provider,
             holder_binding_ctx,
+            None,
         )
         .await?;
 

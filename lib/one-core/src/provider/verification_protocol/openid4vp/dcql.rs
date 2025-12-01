@@ -1,8 +1,12 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dcql::matching::{ClaimFilter, CredentialFilter};
-use dcql::{ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment};
+use dcql::{
+    ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment,
+    TrustedAuthority,
+};
 use itertools::Itertools;
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use shared_types::{CredentialId, OrganisationId};
@@ -34,13 +38,13 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 use crate::service::storage_proxy::StorageAccess;
+use crate::util::authority_key_identifier::get_aki_for_pem_chain;
 
 /// Retrieve the "presentation definition" for the given DCQL query.
 ///
 /// Limitations:
 ///   - No DCQL support for:
 ///     - credential_sets
-///     - trusted authorities
 ///   - Some metadata claims such as `@context` or `_sd` cannot be queried
 ///   - No support for `vct` inheritance
 ///   - W3C VCs have proprietary lookup logic based on the JSON-LD context
@@ -100,6 +104,14 @@ pub(crate) async fn get_presentation_definition_for_dcql_query(
                     | CredentialStateEnum::Suspended
             ) && credential.role == CredentialRole::Holder
         });
+
+        if let Some(authorities) = &query.trusted_authorities {
+            filter_credentials_by_trusted_authorities(
+                &mut credential_candidates,
+                authorities.as_slice(),
+            )
+            .await;
+        }
 
         let match_result = first_applicable_claim_set(
             &credential_candidates,
@@ -300,6 +312,72 @@ pub(crate) async fn get_presentation_definition_v2(
         credential_queries,
         credential_sets,
     })
+}
+
+pub(super) async fn filter_credentials_by_trusted_authorities(
+    credentials: &mut Vec<Credential>,
+    authorities: &[TrustedAuthority],
+) {
+    // Bail out early if credential set is empty
+    if credentials.is_empty() {
+        return;
+    }
+
+    // DCQL spec says that AKI values should be provided as base64-encoded strings.
+    // We need to decode those before we can match them against stored AKIs.
+    let trusted_akis = {
+        let mut akis: Vec<Vec<u8>> = Vec::new();
+        for authority in authorities {
+            if let TrustedAuthority::AuthorityKeyId { values } = &authority {
+                for value in values {
+                    match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
+                        Ok(bytes) => akis.push(bytes),
+                        Err(_) => { /* Discard invalid values */ }
+                    }
+                }
+            }
+        }
+        akis
+    };
+
+    /*
+     * The OpenID4VP spec says (in pt 6.1.1):
+     * > "A Credential is identified as a match to a Trusted Authorities Query
+     * > if it matches with one of the provided values in one of the provided types."
+     *
+     * Start by marking all credentials as not matching anything,
+     * and only change this if a value-match is found.
+     */
+    let mut keep = vec![false; credentials.len()];
+
+    'cred: for (idx, credential) in credentials.iter().enumerate() {
+        let credential_aki = match credential
+            .issuer_certificate
+            .as_ref()
+            .and_then(|cert| get_aki_for_pem_chain(cert.chain.as_bytes()))
+        {
+            Some(value) => value,
+            None => continue 'cred,
+        };
+
+        // Currently, we support only filtering on AKIs.
+        // Iterate directly over `trusted_akis` instead of going over `authorities` again.
+        for trusted_aki in &trusted_akis {
+            // This is very inefficient.
+            // We could use something like `bstr::ByteSlice::contains_str()`,
+            // or maybe `.contains_bytes()` once the following gets implemented:
+            // https://github.com/rust-lang/rust/issues/134149
+            for window in credential_aki.windows(trusted_aki.len()) {
+                if window.iter().eq(trusted_aki.iter()) {
+                    keep[idx] = true;
+                    continue 'cred;
+                }
+            }
+        }
+    }
+
+    let mut keep_iter = keep.into_iter();
+    credentials.retain(|_| keep_iter.next().unwrap_or_default());
 }
 
 fn failure_hint(

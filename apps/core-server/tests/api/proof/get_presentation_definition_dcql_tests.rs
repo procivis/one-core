@@ -1,18 +1,24 @@
 use std::collections::HashMap;
 
 use core_server::endpoint::proof::dto::PresentationDefinitionFieldRestDTO;
-use dcql::{ClaimQuery, ClaimQueryId, ClaimValue, CredentialQuery, DcqlQuery, PathSegment};
+use dcql::{
+    ClaimQuery, ClaimQueryId, ClaimValue, CredentialQuery, DcqlQuery, PathSegment, TrustedAuthority,
+};
+use one_core::model::certificate::CertificateState;
 use one_core::model::claim_schema::ClaimSchema;
 use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::credential_schema::CredentialSchemaClaim;
+use one_core::model::identifier::IdentifierType;
+use rcgen::{CertificateParams, KeyUsagePurpose};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
 use crate::fixtures::dcql::proof_for_dcql_query;
-use crate::fixtures::{ClaimData, TestingCredentialParams};
+use crate::fixtures::{ClaimData, TestingCredentialParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::field_match::FieldHelpers;
 
@@ -2344,4 +2350,484 @@ async fn test_get_presentation_definition_dcql_using_multiple_flag() {
         "id": "test_id"
     });
     body["requestGroups"][0]["requestedCredentials"][0].assert_eq(&expected_requested_credentials);
+}
+
+mod trusted_authorities {
+    use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
+    use one_core::model::certificate::Certificate;
+    use one_core::model::organisation::Organisation;
+    use one_core::util::authority_key_identifier::get_aki_for_pem_chain;
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::fixtures::certificate::{
+        create_ca_cert, create_intermediate_ca_cert, ecdsa, eddsa, fingerprint,
+    };
+
+    struct CertificateInfo {
+        pub raw_cert: rcgen::Certificate,
+        pub cert: Certificate,
+        pub aki_b64: String,
+    }
+
+    async fn create_cert_chain(
+        context: &TestContext,
+        organisation: &Organisation,
+    ) -> (CertificateInfo, CertificateInfo) {
+        let mut root = Option::<CertificateInfo>::None;
+        let mut leaf = Option::<CertificateInfo>::None;
+
+        while leaf.is_none() {
+            let cert_params = {
+                let mut params = CertificateParams::default();
+                params.key_usages = vec![
+                    KeyUsagePurpose::DigitalSignature,
+                    KeyUsagePurpose::KeyCertSign,
+                ];
+                params.use_authority_key_identifier_extension = true;
+                params
+            };
+            let raw_cert = match &root {
+                Some(issuer) => create_intermediate_ca_cert(
+                    cert_params,
+                    ecdsa::key(),
+                    &issuer.raw_cert,
+                    eddsa::key(),
+                ),
+                None => create_ca_cert(cert_params.clone(), eddsa::key()),
+            };
+
+            let identifier = context
+                .db
+                .identifiers
+                .create(
+                    organisation,
+                    TestingIdentifierParams {
+                        r#type: Some(IdentifierType::Certificate),
+                        is_remote: Some(true),
+                        ..Default::default()
+                    },
+                )
+                .await;
+
+            let cert = context
+                .db
+                .certificates
+                .create(
+                    identifier.id,
+                    TestingCertificateParams {
+                        name: Some("issuer certificate".to_string()),
+                        chain: Some(raw_cert.pem()),
+                        fingerprint: Some(fingerprint(&raw_cert)),
+                        state: Some(CertificateState::Active),
+                        organisation_id: Some(organisation.id),
+                        ..Default::default()
+                    },
+                )
+                .await;
+
+            let aki = get_aki_for_pem_chain(cert.chain.as_bytes()).unwrap();
+            let aki_b64 = Base64UrlSafeNoPadding::encode_to_string(aki).unwrap();
+
+            let info = CertificateInfo {
+                raw_cert,
+                cert,
+                aki_b64,
+            };
+            if root.is_none() {
+                root = Some(info)
+            } else {
+                leaf = Some(info)
+            }
+        }
+        (root.unwrap(), leaf.unwrap())
+    }
+
+    #[tokio::test]
+    async fn credential_found_when_aki_matches_root_ca() {
+        // GIVEN
+        let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+        let (root_ca_aki, intermediate_ca_cert) = {
+            let certs = create_cert_chain(&context, &org).await;
+            (certs.0.aki_b64, certs.1.cert)
+        };
+
+        let vct = "https://example.org/foo";
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create(
+                "Simple test schema",
+                &org,
+                "NONE",
+                TestingCreateSchemaParams {
+                    schema_id: Some(vct.to_string()),
+                    format: Some("SD_JWT_VC".to_owned()),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    issuer_certificate: Some(intermediate_ca_cert),
+                    role: Some(CredentialRole::Holder),
+                    claims_data: Some(vec![
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                                .schema
+                                .id,
+                            path: "firstName".to_string(),
+                            value: Some("name".to_string()),
+                            selectively_disclosable: true,
+                        },
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                                .schema
+                                .id,
+                            path: "isOver18".to_string(),
+                            value: Some("true".to_string()),
+                            selectively_disclosable: true,
+                        },
+                    ]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+            .id("test_id")
+            .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
+                values: vec![root_ca_aki],
+            }])
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+        let dcql_query = DcqlQuery::builder()
+            .credentials(vec![credential_query])
+            .build();
+        let proof = proof_for_dcql_query(
+            &context,
+            &org,
+            &identifier,
+            key,
+            &dcql_query,
+            "OPENID4VP_DRAFT25",
+        )
+        .await;
+
+        // WHEN
+        let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+        // THEN
+        assert_eq!(resp.status(), 200);
+        let body = resp.json_value().await;
+        assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+        body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+            .assert_eq(&vec![credential.id.to_string()]);
+        let field = json!({
+            "id": "test_id:firstName",
+            "keyMap": {
+                credential.id.to_string(): "firstName"
+            },
+            "name": "firstName",
+            "required": true
+        });
+        body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+    }
+
+    #[tokio::test]
+    async fn credential_found_when_aki_matches_issuer() {
+        // GIVEN
+        let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+        let (intermediate_ca_cert, intermediate_ca_aki) = {
+            let certs = create_cert_chain(&context, &org).await;
+            (certs.1.cert, certs.1.aki_b64)
+        };
+
+        let vct = "https://example.org/foo";
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create(
+                "Simple test schema",
+                &org,
+                "NONE",
+                TestingCreateSchemaParams {
+                    schema_id: Some(vct.to_string()),
+                    format: Some("SD_JWT_VC".to_owned()),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    issuer_certificate: Some(intermediate_ca_cert),
+                    role: Some(CredentialRole::Holder),
+                    claims_data: Some(vec![
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                                .schema
+                                .id,
+                            path: "firstName".to_string(),
+                            value: Some("name".to_string()),
+                            selectively_disclosable: true,
+                        },
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                                .schema
+                                .id,
+                            path: "isOver18".to_string(),
+                            value: Some("true".to_string()),
+                            selectively_disclosable: true,
+                        },
+                    ]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+            .id("test_id")
+            .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
+                values: vec![intermediate_ca_aki],
+            }])
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+        let dcql_query = DcqlQuery::builder()
+            .credentials(vec![credential_query])
+            .build();
+        let proof = proof_for_dcql_query(
+            &context,
+            &org,
+            &identifier,
+            key,
+            &dcql_query,
+            "OPENID4VP_DRAFT25",
+        )
+        .await;
+
+        // WHEN
+        let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+        // THEN
+        assert_eq!(resp.status(), 200);
+        let body = resp.json_value().await;
+        assert_eq!(body["credentials"][0]["id"], credential.id.to_string());
+        body["requestGroups"][0]["requestedCredentials"][0]["applicableCredentials"]
+            .assert_eq(&vec![credential.id.to_string()]);
+        let field = json!({
+            "id": "test_id:firstName",
+            "keyMap": {
+                credential.id.to_string(): "firstName"
+            },
+            "name": "firstName",
+            "required": true
+        });
+        body["requestGroups"][0]["requestedCredentials"][0]["fields"].assert_eq(&vec![field]);
+    }
+
+    #[tokio::test]
+    async fn empty_result_on_aki_mismatch() {
+        // GIVEN
+        let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+        let ca_cert = create_cert_chain(&context, &org).await.0.cert;
+
+        let vct = "https://example.org/foo";
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create(
+                "Simple test schema",
+                &org,
+                "NONE",
+                TestingCreateSchemaParams {
+                    schema_id: Some(vct.to_string()),
+                    format: Some("SD_JWT_VC".to_owned()),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let _credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    issuer_certificate: Some(ca_cert),
+                    role: Some(CredentialRole::Holder),
+                    claims_data: Some(vec![
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                                .schema
+                                .id,
+                            path: "firstName".to_string(),
+                            value: Some("name".to_string()),
+                            selectively_disclosable: true,
+                        },
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                                .schema
+                                .id,
+                            path: "isOver18".to_string(),
+                            value: Some("true".to_string()),
+                            selectively_disclosable: true,
+                        },
+                    ]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+            .id("test_id")
+            .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
+                values: vec![Base64UrlSafeNoPadding::encode_to_string("whatever").unwrap()],
+            }])
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+        let dcql_query = DcqlQuery::builder()
+            .credentials(vec![credential_query])
+            .build();
+        let proof = proof_for_dcql_query(
+            &context,
+            &org,
+            &identifier,
+            key,
+            &dcql_query,
+            "OPENID4VP_DRAFT25",
+        )
+        .await;
+
+        // WHEN
+        let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+        // THEN
+        assert_eq!(resp.status(), 200);
+        let resp_body = resp.json_value().await;
+        let resp_credentials = resp_body["credentials"].as_array().unwrap();
+        assert!(resp_credentials.is_empty());
+    }
+
+    #[tokio::test]
+    async fn empty_result_on_empty_authority_list() {
+        // GIVEN
+        let (context, org, _, identifier, key) = TestContext::new_with_did(None).await;
+
+        let ca_cert = create_cert_chain(&context, &org).await.0.cert;
+
+        let vct = "https://example.org/foo";
+        let credential_schema = context
+            .db
+            .credential_schemas
+            .create(
+                "Simple test schema",
+                &org,
+                "NONE",
+                TestingCreateSchemaParams {
+                    schema_id: Some(vct.to_string()),
+                    format: Some("SD_JWT_VC".to_owned()),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let _credential = context
+            .db
+            .credentials
+            .create(
+                &credential_schema,
+                CredentialStateEnum::Accepted,
+                &identifier,
+                "OPENID4VCI_DRAFT13",
+                TestingCredentialParams {
+                    issuer_certificate: Some(ca_cert),
+                    role: Some(CredentialRole::Holder),
+                    claims_data: Some(vec![
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[0]
+                                .schema
+                                .id,
+                            path: "firstName".to_string(),
+                            value: Some("name".to_string()),
+                            selectively_disclosable: true,
+                        },
+                        ClaimData {
+                            schema_id: credential_schema.claim_schemas.as_ref().unwrap()[1]
+                                .schema
+                                .id,
+                            path: "isOver18".to_string(),
+                            value: Some("true".to_string()),
+                            selectively_disclosable: true,
+                        },
+                    ]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
+            .id("test_id")
+            .trusted_authorities(vec![])
+            .claims(vec![
+                ClaimQuery::builder()
+                    .path(vec!["firstName".to_string()])
+                    .build(),
+            ])
+            .build();
+        let dcql_query = DcqlQuery::builder()
+            .credentials(vec![credential_query])
+            .build();
+        let proof = proof_for_dcql_query(
+            &context,
+            &org,
+            &identifier,
+            key,
+            &dcql_query,
+            "OPENID4VP_DRAFT25",
+        )
+        .await;
+
+        // WHEN
+        let resp = context.api.proofs.presentation_definition(proof.id).await;
+
+        // THEN
+        assert_eq!(resp.status(), 200);
+        let resp_body = resp.json_value().await;
+        let resp_credentials = resp_body["credentials"].as_array().unwrap();
+        assert!(resp_credentials.is_empty());
+    }
 }

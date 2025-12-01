@@ -4,6 +4,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
+use dcql::TrustedAuthority;
 use shared_types::DidValue;
 use time::OffsetDateTime;
 
@@ -35,6 +37,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::ValidatedProofClaimDTO;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
+use crate::util::authority_key_identifier::get_aki_for_pem_chain;
 use crate::validator::x509::is_dns_name_matching;
 
 pub(super) async fn peek_presentation(
@@ -153,6 +156,7 @@ pub(super) async fn validate_credential(
     did_method_provider: &Arc<dyn DidMethodProvider>,
     revocation_method_provider: &Arc<dyn RevocationMethodProvider>,
     holder_binding_ctx: HolderBindingCtx,
+    trusted_authorities: Option<&[TrustedAuthority]>,
 ) -> Result<(DetailCredential, Option<MobileSecurityObject>), OpenID4VCError> {
     let format = proof_schema_input
         .credential_schema
@@ -230,6 +234,10 @@ pub(super) async fn validate_credential(
     )
     .await?;
 
+    if let Some(authorities) = trusted_authorities {
+        check_issuer_is_trusted_authority(&credential.issuer, authorities)?;
+    }
+
     let mut mso = None;
     if format == "MDOC" {
         mso = Some(
@@ -273,6 +281,65 @@ async fn check_matching_identifiers(
     };
 
     Ok(())
+}
+
+fn check_issuer_is_trusted_authority(
+    issuer: &IdentifierDetails,
+    authorities: &[TrustedAuthority],
+) -> Result<(), OpenID4VCError> {
+    let issuer_aki = match issuer {
+        IdentifierDetails::Certificate(cert) => {
+            match get_aki_for_pem_chain(cert.chain.as_bytes()) {
+                Some(value) => value,
+                None => {
+                    return Err(OpenID4VCError::ValidationError(
+                        "Failed to retrieve Authority Key Identifier for credential issuer"
+                            .to_owned(),
+                    ));
+                }
+            }
+        }
+        // Currently, we support only AuthorityKeyId trusted authorities.
+        // Non-certificate issuers cannot pass an AKI check, so the code can bail out early here.
+        _ => {
+            return Err(OpenID4VCError::ValidationError(
+                "Issuer is not in Trusted Authorities list".to_owned(),
+            ));
+        }
+    };
+
+    // DCQL spec says that AKI values should be provided as base64-encoded strings.
+    // We need to decode those before we can match them against stored AKIs.
+    let trusted_akis = {
+        let mut akis: Vec<Vec<u8>> = Vec::new();
+        for authority in authorities {
+            if let TrustedAuthority::AuthorityKeyId { values } = &authority {
+                for value in values {
+                    match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
+                        Ok(bytes) => akis.push(bytes),
+                        Err(_) => { /* Discard invalid values */ }
+                    }
+                }
+            }
+        }
+        akis
+    };
+
+    for trusted_aki in &trusted_akis {
+        // This is very inefficient.
+        // We could use something like `bstr::ByteSlice::contains_str()`,
+        // or maybe `.contains_bytes()` once the following gets implemented:
+        // https://github.com/rust-lang/rust/issues/134149
+        for window in issuer_aki.windows(trusted_aki.len()) {
+            if window.iter().eq(trusted_aki.iter()) {
+                return Ok(());
+            }
+        }
+    }
+
+    Err(OpenID4VCError::ValidationError(
+        "Issuer is not in Trusted Authorities list".to_owned(),
+    ))
 }
 
 fn check_did_method_allowed(

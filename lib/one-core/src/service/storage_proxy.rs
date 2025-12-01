@@ -6,7 +6,9 @@ use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
-use crate::model::certificate::{Certificate, CertificateFilterValue, CertificateListQuery};
+use crate::model::certificate::{
+    Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
+};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -283,6 +285,9 @@ impl StorageProxy for StorageProxyImpl {
                             schema: Some(CredentialSchemaRelations {
                                 claim_schemas: Some(Default::default()),
                                 organisation: Some(Default::default()),
+                            }),
+                            issuer_certificate: Some(CertificateRelations {
+                                ..Default::default()
                             }),
                             ..Default::default()
                         },
