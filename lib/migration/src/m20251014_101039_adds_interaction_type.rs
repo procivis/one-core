@@ -70,7 +70,7 @@ impl MigrationTrait for Migration {
 
 #[expect(clippy::enum_variant_names)]
 #[derive(DeriveIden)]
-enum Interaction {
+pub enum Interaction {
     Table,
     Id,
     InteractionType,
