@@ -230,7 +230,6 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method() {
 }
 
 #[tokio::test]
-#[ignore] // TODO: ONE-7782
 async fn test_post_issuer_credential_with_bitstring_in_parallel() {
     let TestIssuerSetup {
         organisation,
@@ -338,7 +337,6 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
 }
 
 #[tokio::test]
-#[ignore] // TODO: ONE-7782
 async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
     let TestIssuerSetup {
         organisation,

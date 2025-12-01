@@ -35,6 +35,7 @@ use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::key_verification::KeyVerification;
+use crate::proto::transaction_manager::IsolationLevel;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -474,9 +475,12 @@ impl OID4VCIDraft13Service {
         }?;
 
         self.transaction_manager
-            .tx(self
-                .issue_tx(interaction_id, holder_identifier, holder_key_id, credential)
-                .boxed())
+            .tx_with_config(
+                self.issue_tx(interaction_id, holder_identifier, holder_key_id, credential)
+                    .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
             .await?
     }
 

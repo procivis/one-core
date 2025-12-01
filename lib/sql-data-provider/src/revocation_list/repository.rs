@@ -162,26 +162,44 @@ impl RevocationListRepository for RevocationListProvider {
         Ok(())
     }
 
-    async fn get_max_used_index(
+    async fn next_free_index(
         &self,
         id: &RevocationListId,
         lock: Option<LockType>,
-    ) -> Result<Option<usize>, DataLayerError> {
-        let select = revocation_list_entry::Entity::find()
+    ) -> Result<usize, DataLayerError> {
+        let mut select = revocation_list_entry::Entity::find()
             .select_only()
-            .column_as(revocation_list_entry::Column::Index.max(), "index")
-            .filter(revocation_list_entry::Column::RevocationListId.eq(id));
-        let select = match lock {
-            None => select,
-            Some(lock) => select.lock(map_lock_type(lock)),
+            .column(revocation_list_entry::Column::Index)
+            .filter(revocation_list_entry::Column::RevocationListId.eq(id))
+            .order_by_desc(revocation_list_entry::Column::Index);
+
+        if let Some(lock) = lock {
+            select = select.lock(map_lock_type(lock));
         };
+
         let max: Option<Option<u32>> = select
             .into_tuple()
             .one(&self.db)
             .await
             .map_err(to_data_layer_error)?;
 
-        Ok(max.flatten().map(|index| index as _))
+        let free_index = max.flatten().map(|index| index + 1);
+        if free_index.is_none() {
+            // we must check that the list actually exists
+            if revocation_list::Entity::find_by_id(id)
+                .one(&self.db)
+                .await
+                .map_err(to_data_layer_error)?
+                .is_none()
+            {
+                return Err(DataLayerError::MissingRequiredRelation {
+                    relation: "revocation_list",
+                    id: id.to_string(),
+                });
+            }
+        }
+
+        Ok(free_index.unwrap_or(0) as _)
     }
 
     async fn create_entry(

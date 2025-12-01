@@ -73,8 +73,8 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
             }))
         });
     revocation_list_repository
-        .expect_get_max_used_index()
-        .returning(|_, _| Ok(Some(0)));
+        .expect_next_free_index()
+        .returning(|_, _| Ok(0));
     revocation_list_repository
         .expect_create_entry()
         .returning(|_, _, _| Ok(()));

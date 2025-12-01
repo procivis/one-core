@@ -8,6 +8,7 @@ use one_core::model::revocation_list::{
     RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use one_core::model::wallet_unit::WalletUnitStatus;
+use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use shared_types::{CredentialId, RevocationListId};
@@ -166,19 +167,19 @@ async fn test_update_credentials() {
 }
 
 #[tokio::test]
-async fn test_get_max_used_index_empty_list() {
+async fn test_next_free_index_empty_list() {
     let setup = setup_with_list().await;
 
     let result = setup
         .provider
-        .get_max_used_index(&setup.list_id, None)
+        .next_free_index(&setup.list_id, None)
         .await
         .unwrap();
-    assert_eq!(result, None);
+    assert_eq!(result, 0);
 }
 
 #[tokio::test]
-async fn test_get_max_used_index_list_with_entry() {
+async fn test_next_free_index_list_with_entry() {
     let setup = setup_with_list().await;
 
     insert_revocation_list_entry(&setup.db, setup.list_id, 0, None)
@@ -187,10 +188,28 @@ async fn test_get_max_used_index_list_with_entry() {
 
     let result = setup
         .provider
-        .get_max_used_index(&setup.list_id, None)
+        .next_free_index(&setup.list_id, None)
         .await
         .unwrap();
-    assert_eq!(result, Some(0));
+    assert_eq!(result, 1);
+}
+
+#[tokio::test]
+async fn test_next_free_index_wrong_list_id() {
+    let setup = setup_with_list().await;
+
+    let result = setup
+        .provider
+        .next_free_index(&Uuid::new_v4().into(), None)
+        .await;
+
+    assert!(matches!(
+        result,
+        Err(DataLayerError::MissingRequiredRelation {
+            relation: "revocation_list",
+            ..
+        })
+    ));
 }
 
 #[tokio::test]

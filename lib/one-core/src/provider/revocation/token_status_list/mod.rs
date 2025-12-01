@@ -496,27 +496,47 @@ impl TokenStatusList {
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
     ) -> Result<usize, RevocationError> {
-        Ok(self
-            .transaction_manager
-            .tx(async {
-                let max_index = self
-                    .revocation_list_repository
-                    .get_max_used_index(&list_id, Some(LockType::Update))
-                    .await?
-                    .ok_or(DataLayerError::TransactionError(format!(
-                        "Cannot get current index for list: {list_id}"
-                    )))?;
+        let mut retry_counter = 0;
+        loop {
+            let result = self
+                .transaction_manager
+                .tx(async {
+                    let index = self
+                        .revocation_list_repository
+                        .next_free_index(&list_id, Some(LockType::Update))
+                        .await?;
 
-                let index = max_index + 1;
+                    match self
+                        .revocation_list_repository
+                        .create_entry(list_id, entity_id.to_owned(), index)
+                        .await
+                    {
+                        Ok(_) => Ok(Some(index)),
+                        Err(DataLayerError::AlreadyExists) => {
+                            tracing::info!(
+                                "Retrying adding entity to list({list_id}), occupied index({index}), retry({retry_counter})"
+                            );
+                            Ok(None)
+                        }
+                        Err(e) => Err(e),
+                    }
+                }
+                .boxed())
+                .await??;
 
-                self.revocation_list_repository
-                    .create_entry(list_id, entity_id, index)
-                    .await?;
-
-                Ok::<_, DataLayerError>(index)
+            if let Some(index) = result {
+                return Ok(index);
             }
-            .boxed())
-            .await??)
+
+            if retry_counter > 100 {
+                tracing::error!("Too many retries on revocation list: {list_id}");
+                return Err(
+                    DataLayerError::TransactionError("Too many retries".to_string()).into(),
+                );
+            }
+
+            retry_counter += 1;
+        }
     }
 
     async fn start_new_list_for_entity(

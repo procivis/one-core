@@ -35,11 +35,11 @@ pub trait RevocationListRepository: Send + Sync {
         credentials: Vec<u8>,
     ) -> Result<(), DataLayerError>;
 
-    async fn get_max_used_index(
+    async fn next_free_index(
         &self,
         id: &RevocationListId,
         lock: Option<LockType>,
-    ) -> Result<Option<usize>, DataLayerError>;
+    ) -> Result<usize, DataLayerError>;
 
     async fn create_entry(
         &self,

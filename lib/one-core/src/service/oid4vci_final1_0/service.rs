@@ -43,6 +43,7 @@ use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInter
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
+use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::error::{
@@ -583,15 +584,18 @@ impl OID4VCIFinal1_0Service {
         };
 
         self.transaction_manager
-            .tx(self
-                .issue_tx(
+            .tx_with_config(
+                self.issue_tx(
                     interaction_id,
                     holder_identifier,
                     holder_key_id,
                     credential,
                     key_attestation,
                 )
-                .boxed())
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
             .await?
     }
 
