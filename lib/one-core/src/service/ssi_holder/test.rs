@@ -27,7 +27,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
-use crate::proto::identifier::creator::MockIdentifierCreator;
+use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};

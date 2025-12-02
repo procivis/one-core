@@ -1,5 +1,4 @@
-use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
+use std::collections::HashMap;
 
 use shared_types::{DidId, DidValue, KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -10,27 +9,23 @@ use super::dto::{
     CreateDidRequestDTO, CreateDidRequestKeysDTO, DidPatchRequestDTO, DidResponseDTO,
     GetDidListResponseDTO,
 };
-use super::mapper::{
-    did_from_did_request, did_update_to_update_request, identifier_from_did, map_did_to_did_keys,
-};
+use super::mapper::{did_update_to_update_request, map_did_to_did_keys};
 use super::validator::validate_deactivation_request;
 use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
-use crate::config::validator::did::validate_did_method;
-use crate::model::did::{Did, DidListQuery, DidRelations, RelatedKey};
+use crate::model::did::{DidListQuery, DidRelations, RelatedKey};
 use crate::model::identifier::{IdentifierState, UpdateIdentifierRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
+use crate::proto::identifier_creator::CreateLocalIdentifierRequest;
 use crate::provider::did_method::DidKeys;
 use crate::provider::did_method::common::jwk_verification_method;
 use crate::provider::did_method::dto::DidDocumentDTO;
 use crate::provider::did_method::error::{DidMethodError, DidMethodProviderError};
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::repository::error::DataLayerError;
 use crate::service::did::mapper::map_did_model_to_did_web_response;
-use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
@@ -176,37 +171,12 @@ impl DidService {
     ///
     /// * `request` - did data
     pub async fn create_did(&self, request: CreateDidRequestDTO) -> Result<DidId, ServiceError> {
-        let (did, now) = self.create_did_without_identifier(request).await?;
-        let did_id = did.id;
-        self.identifier_repository
-            .create(identifier_from_did(did, now))
-            .await?;
-
-        Ok(did_id)
-    }
-
-    pub async fn create_did_without_identifier(
-        &self,
-        request: CreateDidRequestDTO,
-    ) -> Result<(Did, OffsetDateTime), ServiceError> {
         throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
-        validate_did_method(&request.did_method, &self.config.did)?;
-
-        let did_method_key = &request.did_method;
-        let did_method = self
-            .did_method_provider
-            .get_did_method(did_method_key)
-            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
-
-        validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())?;
-
-        let Some(organisation) = self
+        let organisation = self
             .organisation_repository
-            .get_organisation(&request.organisation_id, &OrganisationRelations::default())
+            .get_organisation(&request.organisation_id, &Default::default())
             .await?
-        else {
-            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
-        };
+            .ok_or(EntityNotFoundError::Organisation(request.organisation_id))?;
 
         if organisation.deactivated_at.is_some() {
             return Err(
@@ -214,105 +184,20 @@ impl DidService {
             );
         }
 
-        let keys = request.keys.to_owned();
-
-        let key_ids = HashSet::<KeyId>::from_iter(
-            [
-                keys.authentication,
-                keys.assertion_method,
-                keys.key_agreement,
-                keys.capability_invocation,
-                keys.capability_delegation,
-            ]
-            .concat(),
-        );
-
-        let key_ids = key_ids.into_iter().collect::<Vec<_>>();
-        let mut all_keys = self.key_repository.get_keys(&key_ids).await?;
-
-        let new_id = Uuid::new_v4();
-        let new_did_id = DidId::from(new_id);
-
-        let capabilities = did_method.get_capabilities();
-        for key in &all_keys {
-            if key.is_remote() {
-                return Err(ValidationError::KeyMustNotBeRemote(key.name.clone()).into());
-            }
-            let key_algorithm = key
-                .key_algorithm_type()
-                .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-                .ok_or(ValidationError::InvalidKeyAlgorithm(
-                    key.key_type.to_owned(),
-                ))?;
-
-            if !capabilities
-                .key_algorithms
-                .contains(&key_algorithm.algorithm_type())
-            {
-                return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
-                    key_algorithm: key.key_type.to_owned(),
-                }
-                .into());
-            }
-        }
-
-        let mut keys = build_keys_request(&request.keys, all_keys.clone())?;
-
-        let mut update_keys = None;
-        if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
-            let update_key = generate_update_key(
-                &request.name,
-                new_did_id,
-                organisation.clone(),
-                *update_key_type,
-                &*self.key_provider,
+        let identifier = self
+            .identifier_creator
+            .create_local_identifier(
+                request.name.to_owned(),
+                CreateLocalIdentifierRequest::Did(request),
+                organisation,
             )
             .await?;
 
-            update_keys = Some(vec![update_key]);
-            keys.update_keys = update_keys.clone();
-        }
+        let did = identifier
+            .did
+            .ok_or(ServiceError::MappingError("Did not found".to_string()))?;
 
-        let did_value = did_method
-            .create(Some(new_did_id), &request.params, Some(keys.clone()))
-            .await?;
-
-        if let Some(update_keys) = update_keys {
-            for key in update_keys {
-                self.key_repository.create_key(key.clone()).await?;
-                all_keys.push(key);
-            }
-        }
-
-        let mut key_reference_mapping: HashMap<KeyId, String> = HashMap::new();
-        for key in all_keys {
-            let reference = did_method.get_reference_for_key(&key)?;
-            key_reference_mapping.insert(key.id, reference);
-        }
-
-        let now = OffsetDateTime::now_utc();
-        let did = did_from_did_request(
-            new_did_id,
-            request,
-            organisation,
-            did_value,
-            keys,
-            now,
-            key_reference_mapping,
-        )?;
-        let did_value = did.did.clone();
-
-        self.did_repository
-            .create_did(did.to_owned())
-            .await
-            .map_err(|err| match err {
-                DataLayerError::AlreadyExists => {
-                    ServiceError::from(BusinessLogicError::DidValueAlreadyExists(did_value))
-                }
-                err => ServiceError::from(err),
-            })?;
-
-        Ok((did, now))
+        Ok(did.id)
     }
 
     pub async fn update_did(
@@ -387,7 +272,7 @@ impl DidService {
     }
 }
 
-fn build_keys_request(
+pub(crate) fn build_keys_request(
     request: &CreateDidRequestKeysDTO,
     keys: Vec<Key>,
 ) -> Result<DidKeys, ServiceError> {
@@ -438,7 +323,7 @@ fn build_keys_request(
     Ok(create_keys)
 }
 
-async fn generate_update_key(
+pub(crate) async fn generate_update_key(
     did_name: &str,
     did_id: DidId,
     organisation: Organisation,

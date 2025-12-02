@@ -29,7 +29,7 @@ use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
-use crate::proto::identifier::creator::{IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialPresentation, HolderBindingCtx};

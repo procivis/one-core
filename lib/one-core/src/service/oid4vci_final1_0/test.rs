@@ -25,7 +25,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;

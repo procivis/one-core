@@ -6,15 +6,15 @@ use super::dto::{
     GetIdentifierResponseDTO,
 };
 use crate::model::identifier::{GetIdentifierList, Identifier, IdentifierType};
-use crate::repository::error::DataLayerError;
 use crate::service::did::dto::CreateDidRequestDTO;
-use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::service::error::ServiceError;
 
 impl TryFrom<Identifier> for GetIdentifierResponseDTO {
     type Error = ServiceError;
     fn try_from(value: Identifier) -> Result<Self, Self::Error> {
         let organisation_id = value.organisation.map(|org| org.id);
 
+        let mut certificates = None;
         match value.r#type {
             IdentifierType::Did => {
                 if value.did.is_none() {
@@ -30,7 +30,15 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
                     ));
                 }
             }
-            IdentifierType::Certificate => {}
+            IdentifierType::Certificate => {
+                let mut certs = vec![];
+                for certificate in value.certificates.ok_or(ServiceError::MappingError(
+                    "Certificates required for identifier type Certificate".to_string(),
+                ))? {
+                    certs.push(certificate.try_into()?);
+                }
+                certificates = Some(certs);
+            }
         }
 
         Ok(Self {
@@ -44,7 +52,7 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
             state: value.state,
             did: value.did.map(TryInto::try_into).transpose()?,
             key: value.key.map(TryInto::try_into).transpose()?,
-            certificates: None,
+            certificates,
         })
     }
 }
@@ -85,14 +93,5 @@ pub(super) fn to_create_did_request(
         did_method: request.method,
         keys: request.keys,
         params: request.params,
-    }
-}
-
-pub(super) fn map_already_exists_error(error: DataLayerError) -> ServiceError {
-    match error {
-        DataLayerError::AlreadyExists => {
-            ServiceError::BusinessLogic(BusinessLogicError::IdentifierAlreadyExists)
-        }
-        e => e.into(),
     }
 }

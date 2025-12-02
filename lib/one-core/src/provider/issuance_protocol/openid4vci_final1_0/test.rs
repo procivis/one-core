@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
+use assert2::let_assert;
 use mockall::predicate;
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
@@ -29,6 +30,7 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::identifier_creator::{CreateLocalIdentifierRequest, MockIdentifierCreator};
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
@@ -64,8 +66,6 @@ use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGenerat
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::did_repository::MockDidRepository;
-use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
@@ -78,8 +78,7 @@ use crate::service::test_utilities::{
 struct TestInputs {
     pub credential_repository: MockCredentialRepository,
     pub key_repository: MockKeyRepository,
-    pub did_repository: MockDidRepository,
-    pub identifier_repository: MockIdentifierRepository,
+    pub identifier_creator: MockIdentifierCreator,
     pub metadata_cache: MockOpenIDMetadataFetcher,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub formatter_provider: MockCredentialFormatterProvider,
@@ -99,8 +98,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.metadata_cache),
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.key_repository),
-        Arc::new(inputs.did_repository),
-        Arc::new(inputs.identifier_repository),
+        Arc::new(inputs.identifier_creator),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),
@@ -1166,17 +1164,24 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .once()
         .returning(|key| Ok(key.id));
 
-    let mut identifier_repository = MockIdentifierRepository::new();
-    identifier_repository
-        .expect_create()
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_create_local_identifier()
         .once()
-        .returning(|identifier| Ok(identifier.id));
+        .returning(|_, request, _| {
+            let_assert!(CreateLocalIdentifierRequest::Key(key) = request);
+            Ok(Identifier {
+                r#type: IdentifierType::Key,
+                key: Some(key),
+                ..dummy_identifier()
+            })
+        });
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
         key_repository,
-        identifier_repository,
+        identifier_creator,
         key_algorithm_provider,
         key_security_level_provider,
         config: dummy_config(),

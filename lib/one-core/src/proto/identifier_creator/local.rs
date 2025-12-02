@@ -1,0 +1,354 @@
+use std::collections::{HashMap, HashSet};
+use std::ops::Deref;
+
+use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
+use time::OffsetDateTime;
+use uuid::Uuid;
+
+use super::creator::IdentifierCreatorProto;
+use crate::config::validator::did::validate_did_method;
+use crate::model::certificate::{Certificate, CertificateState};
+use crate::model::did::Did;
+use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
+use crate::model::key::Key;
+use crate::model::organisation::Organisation;
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, EnforceKeyUsage, ParsedCertificate,
+};
+use crate::provider::key_algorithm::key::KeyHandle;
+use crate::repository::error::DataLayerError;
+use crate::service::certificate::dto::CreateCertificateRequestDTO;
+use crate::service::did::dto::CreateDidRequestDTO;
+use crate::service::did::mapper::did_from_did_request;
+use crate::service::did::service::{build_keys_request, generate_update_key};
+use crate::service::did::validator::validate_request_amount_of_keys;
+use crate::service::error::{
+    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
+};
+
+impl IdentifierCreatorProto {
+    pub(super) async fn create_local_did_identifier(
+        &self,
+        name: String,
+        request: CreateDidRequestDTO,
+        organisation: Organisation,
+    ) -> Result<Identifier, ServiceError> {
+        let did = self
+            .create_did_without_identifier(request, organisation.to_owned())
+            .await?;
+
+        let now = OffsetDateTime::now_utc();
+        let identifier = Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name,
+            organisation: Some(organisation),
+            r#type: IdentifierType::Did,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            did: Some(did),
+            key: None,
+            certificates: None,
+        };
+        self.identifier_repository
+            .create(identifier.to_owned())
+            .await
+            .map_err(map_already_exists_error)?;
+
+        Ok(identifier)
+    }
+
+    pub(super) async fn create_local_key_identifier(
+        &self,
+        name: String,
+        key: Key,
+        organisation: Organisation,
+    ) -> Result<Identifier, ServiceError> {
+        if key.is_remote() {
+            return Err(ValidationError::KeyMustNotBeRemote(key.name).into());
+        }
+
+        if key
+            .organisation
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "missing organisation".to_string(),
+            ))?
+            .id
+            != organisation.id
+        {
+            return Err(ServiceError::MappingError(
+                "Organisation ID mismatch".to_string(),
+            ));
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let identifier = Identifier {
+            id: Uuid::new_v4().into(),
+            created_date: now,
+            last_modified: now,
+            name,
+            organisation: Some(organisation),
+            r#type: IdentifierType::Key,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            did: None,
+            key: Some(key),
+            certificates: None,
+        };
+        self.identifier_repository
+            .create(identifier.to_owned())
+            .await
+            .map_err(map_already_exists_error)?;
+
+        Ok(identifier)
+    }
+
+    pub(super) async fn create_local_certificate_identifier(
+        &self,
+        name: String,
+        requests: Vec<CreateCertificateRequestDTO>,
+        organisation: Organisation,
+    ) -> Result<Identifier, ServiceError> {
+        let id = Uuid::new_v4().into();
+
+        let mut certificates = vec![];
+        for request in requests {
+            certificates.push(
+                self.validate_and_prepare_certificate(id, organisation.id, request)
+                    .await?,
+            );
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let identifier = Identifier {
+            id,
+            created_date: now,
+            last_modified: now,
+            name,
+            organisation: Some(organisation),
+            r#type: IdentifierType::Certificate,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            did: None,
+            key: None,
+            certificates: None,
+        };
+        self.identifier_repository
+            .create(identifier.to_owned())
+            .await
+            .map_err(map_already_exists_error)?;
+
+        for certificate in certificates {
+            self.certificate_repository
+                .create(certificate)
+                .await
+                .map_err(|err| match err {
+                    DataLayerError::AlreadyExists => {
+                        ServiceError::BusinessLogic(BusinessLogicError::CertificateAlreadyExists)
+                    }
+                    e => e.into(),
+                })?;
+        }
+
+        Ok(identifier)
+    }
+
+    async fn create_did_without_identifier(
+        &self,
+        request: CreateDidRequestDTO,
+        organisation: Organisation,
+    ) -> Result<Did, ServiceError> {
+        if request.organisation_id != organisation.id {
+            return Err(ServiceError::MappingError(
+                "Organisation ID mismatch".to_string(),
+            ));
+        }
+
+        validate_did_method(&request.did_method, &self.config.did)?;
+
+        let did_method_key = &request.did_method;
+        let did_method = self
+            .did_method_provider
+            .get_did_method(did_method_key)
+            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
+
+        validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())?;
+
+        let keys = request.keys.to_owned();
+
+        let key_ids = HashSet::<KeyId>::from_iter(
+            [
+                keys.authentication,
+                keys.assertion_method,
+                keys.key_agreement,
+                keys.capability_invocation,
+                keys.capability_delegation,
+            ]
+            .concat(),
+        );
+
+        let key_ids = key_ids.into_iter().collect::<Vec<_>>();
+        let mut all_keys = self.key_repository.get_keys(&key_ids).await?;
+
+        let new_id = Uuid::new_v4();
+        let new_did_id = DidId::from(new_id);
+
+        let capabilities = did_method.get_capabilities();
+        for key in &all_keys {
+            if key.is_remote() {
+                return Err(ValidationError::KeyMustNotBeRemote(key.name.clone()).into());
+            }
+            let key_algorithm = key
+                .key_algorithm_type()
+                .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
+                .ok_or(ValidationError::InvalidKeyAlgorithm(
+                    key.key_type.to_owned(),
+                ))?;
+
+            if !capabilities
+                .key_algorithms
+                .contains(&key_algorithm.algorithm_type())
+            {
+                return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
+                    key_algorithm: key.key_type.to_owned(),
+                }
+                .into());
+            }
+        }
+
+        let mut keys = build_keys_request(&request.keys, all_keys.clone())?;
+
+        let mut update_keys = None;
+        if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
+            let update_key = generate_update_key(
+                &request.name,
+                new_did_id,
+                organisation.clone(),
+                *update_key_type,
+                &*self.key_provider,
+            )
+            .await?;
+
+            update_keys = Some(vec![update_key]);
+            keys.update_keys = update_keys.clone();
+        }
+
+        let did_value = did_method
+            .create(Some(new_did_id), &request.params, Some(keys.clone()))
+            .await?;
+
+        if let Some(update_keys) = update_keys {
+            for key in update_keys {
+                self.key_repository.create_key(key.clone()).await?;
+                all_keys.push(key);
+            }
+        }
+
+        let mut key_reference_mapping: HashMap<KeyId, String> = HashMap::new();
+        for key in all_keys {
+            let reference = did_method.get_reference_for_key(&key)?;
+            key_reference_mapping.insert(key.id, reference);
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let did = did_from_did_request(
+            new_did_id,
+            request,
+            organisation,
+            did_value,
+            keys,
+            now,
+            key_reference_mapping,
+        )?;
+        let did_value = did.did.clone();
+
+        self.did_repository
+            .create_did(did.to_owned())
+            .await
+            .map_err(|err| match err {
+                DataLayerError::AlreadyExists => {
+                    ServiceError::from(BusinessLogicError::DidValueAlreadyExists(did_value))
+                }
+                err => ServiceError::from(err),
+            })?;
+
+        Ok(did)
+    }
+
+    async fn validate_and_prepare_certificate(
+        &self,
+        identifier_id: IdentifierId,
+        organisation_id: OrganisationId,
+        request: CreateCertificateRequestDTO,
+    ) -> Result<Certificate, ServiceError> {
+        let key = self
+            .key_repository
+            .get_key(&request.key_id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::Key(request.key_id))?;
+
+        let ParsedCertificate {
+            attributes,
+            subject_common_name,
+            public_key,
+            ..
+        } = self
+            .certificate_validator
+            .parse_pem_chain(
+                &request.chain,
+                CertificateValidationOptions::signature_and_revocation(Some(vec![
+                    EnforceKeyUsage::DigitalSignature,
+                ])),
+            )
+            .await?;
+
+        validate_subject_public_key(&public_key, &key)?;
+
+        let name = match request.name {
+            Some(name) => name,
+            None => subject_common_name.ok_or_else(|| {
+                ValidationError::CertificateParsingFailed("missing common-name".to_string())
+            })?,
+        };
+
+        Ok(Certificate {
+            id: Uuid::new_v4().into(),
+            identifier_id,
+            organisation_id: Some(organisation_id),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            expiry_date: attributes.not_after,
+            name,
+            chain: request.chain,
+            fingerprint: attributes.fingerprint,
+            state: CertificateState::Active,
+            key: Some(key),
+        })
+    }
+}
+
+fn map_already_exists_error(error: DataLayerError) -> ServiceError {
+    match error {
+        DataLayerError::AlreadyExists => {
+            ServiceError::BusinessLogic(BusinessLogicError::IdentifierAlreadyExists)
+        }
+        e => e.into(),
+    }
+}
+
+fn validate_subject_public_key(
+    subject_public_key: &KeyHandle,
+    expected_key: &Key,
+) -> Result<(), ServiceError> {
+    let subject_raw_public_key = subject_public_key.public_key_as_raw();
+    if expected_key.public_key != subject_raw_public_key {
+        return Err(ValidationError::CertificateKeyNotMatching.into());
+    }
+
+    Ok(())
+}

@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;

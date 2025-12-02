@@ -10,7 +10,7 @@ use crate::model::common::LockType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::validity_credential::Mdoc;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::AcceptProofResult;

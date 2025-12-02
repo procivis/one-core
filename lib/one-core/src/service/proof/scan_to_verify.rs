@@ -11,7 +11,7 @@ use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
-use crate::proto::identifier::creator::IdentifierRole;
+use crate::proto::identifier_creator::IdentifierRole;
 use crate::provider::credential_formatter::model::CredentialClaim;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,

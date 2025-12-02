@@ -28,7 +28,7 @@ use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::history_decorator::proof::ProofHistoryDecorator;
 use crate::proto::http_client::HttpClient;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::session_provider::SessionProvider;

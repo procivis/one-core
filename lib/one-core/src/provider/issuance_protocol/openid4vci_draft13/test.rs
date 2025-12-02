@@ -30,7 +30,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
-use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::caching_loader::{CacheError, ResolverError};
@@ -71,8 +71,6 @@ use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::did_repository::MockDidRepository;
-use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::oid4vci_draft13::service::credentials_format;
@@ -105,8 +103,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(inputs.metadata_cache),
         Arc::new(inputs.credential_repository),
         Arc::new(MockKeyRepository::new()),
-        Arc::new(MockDidRepository::new()),
-        Arc::new(MockIdentifierRepository::new()),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),

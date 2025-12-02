@@ -12,7 +12,7 @@ fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
     vec.into_iter().collect::<HashSet<_>>().len()
 }
 
-pub(super) fn validate_request_amount_of_keys(
+pub(crate) fn validate_request_amount_of_keys(
     did_method: &dyn DidMethod,
     keys: CreateDidRequestKeysDTO,
 ) -> Result<(), ServiceError> {

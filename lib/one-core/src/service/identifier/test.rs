@@ -3,19 +3,11 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::model::identifier::{Identifier, IdentifierListQuery};
-use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
-use crate::proto::transaction_manager::NoTransactionManager;
-use crate::provider::did_method::provider::MockDidMethodProvider;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::repository::certificate_repository::MockCertificateRepository;
-use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::certificate::CertificateService;
-use crate::service::did::DidService;
 use crate::service::error::{ServiceError, ValidationError};
 use crate::service::identifier::IdentifierService;
 use crate::service::identifier::dto::CreateIdentifierRequestDTO;
@@ -84,8 +76,6 @@ async fn test_identifier_ops_session_org_mismatch() {
 
 fn setup_service(identifier: Option<Identifier>) -> IdentifierService {
     let key_repository = Arc::new(MockKeyRepository::default());
-    let did_repository = Arc::new(MockDidRepository::default());
-    let certificate_repository = Arc::new(MockCertificateRepository::default());
     let mut identifier_repository = MockIdentifierRepository::default();
     identifier_repository
         .expect_get()
@@ -94,33 +84,13 @@ fn setup_service(identifier: Option<Identifier>) -> IdentifierService {
     let organisation_repository = Arc::new(MockOrganisationRepository::default());
     let config = Arc::new(generic_config().core);
     let session_provider = Arc::new(StaticSessionProvider::new_random());
-    let did_service = DidService::new(
-        did_repository,
-        key_repository.clone(),
-        identifier_repository.clone(),
-        organisation_repository.clone(),
-        Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(MockKeyProvider::new()),
-        config.clone(),
-        session_provider.clone(),
-    );
-    let certificate_service = CertificateService::new(
-        certificate_repository.clone(),
-        key_repository.clone(),
-        Arc::new(MockCertificateValidator::new()),
-        session_provider.clone(),
-    );
 
     IdentifierService {
         identifier_repository,
         key_repository,
-        certificate_repository,
         organisation_repository,
         config,
-        did_service,
-        certificate_service,
+        identifier_creator: Arc::new(MockIdentifierCreator::default()),
         session_provider,
-        tx_manager: Arc::new(NoTransactionManager),
     }
 }

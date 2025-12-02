@@ -32,7 +32,7 @@ use crate::proto::bearer_token::validate_bearer_token;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
 };
-use crate::proto::identifier::creator::IdentifierRole;
+use crate::proto::identifier_creator::IdentifierRole;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::{TrustEntityKeyBatch, TrustOperation};

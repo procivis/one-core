@@ -4,7 +4,7 @@ use crate::mapper::RemoteIdentifierRelation;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::organisation::Organisation;
-use crate::proto::identifier::creator::{IdentifierCreator, IdentifierRole};
+use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
 use crate::provider::verification_protocol::openid4vp::model::ProvedCredential;
 use crate::service::error::ServiceError;
 

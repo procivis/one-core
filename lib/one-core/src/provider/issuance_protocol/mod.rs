@@ -19,7 +19,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
@@ -38,8 +38,6 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
@@ -80,8 +78,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
     core_base_url: Option<String>,
     credential_repository: Arc<dyn CredentialRepository>,
     key_repository: Arc<dyn KeyRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
@@ -116,8 +112,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     metadata_cache.clone(),
                     credential_repository.clone(),
                     key_repository.clone(),
-                    did_repository.clone(),
-                    identifier_repository.clone(),
+                    identifier_creator.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
@@ -153,8 +148,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     metadata_cache.clone(),
                     credential_repository.clone(),
                     key_repository.clone(),
-                    did_repository.clone(),
-                    identifier_repository.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),
@@ -191,8 +184,6 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     metadata_cache.clone(),
                     credential_repository.clone(),
                     key_repository.clone(),
-                    did_repository.clone(),
-                    identifier_repository.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
                     revocation_method_provider.clone(),

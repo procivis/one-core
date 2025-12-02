@@ -15,7 +15,7 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -35,8 +35,6 @@ use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::storage_proxy::StorageAccess;
@@ -80,8 +78,6 @@ impl OpenID4VCI13Swiyu {
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
         key_repository: Arc<dyn KeyRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -103,8 +99,6 @@ impl OpenID4VCI13Swiyu {
                 metadata_cache,
                 credential_repository,
                 key_repository,
-                did_repository,
-                identifier_repository,
                 validity_credential_repository,
                 formatter_provider,
                 revocation_provider,

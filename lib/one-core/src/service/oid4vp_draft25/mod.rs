@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;

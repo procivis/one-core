@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::config::core_config::IssuanceProtocolType;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;

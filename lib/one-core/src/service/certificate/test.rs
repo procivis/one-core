@@ -3,10 +3,8 @@ use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::model::certificate::{Certificate, CertificateState};
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::repository::certificate_repository::MockCertificateRepository;
-use crate::repository::key_repository::MockKeyRepository;
 use crate::service::certificate::CertificateService;
 use crate::service::error::{ServiceError, ValidationError};
 use crate::service::test_utilities::get_dummy_date;
@@ -31,8 +29,6 @@ async fn test_get_cert_fail_session_org_mismatch() {
     });
     let service = CertificateService {
         certificate_repository: Arc::new(cert_repo),
-        key_repository: Arc::new(MockKeyRepository::new()),
-        validator: Arc::new(MockCertificateValidator::new()),
         session_provider: Arc::new(StaticSessionProvider::new_random()),
     };
 

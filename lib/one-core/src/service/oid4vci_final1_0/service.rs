@@ -38,7 +38,7 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
-use crate::proto::identifier::creator::{IdentifierRole, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;

@@ -6,7 +6,7 @@ use url::Url;
 use crate::config::core_config::{TransportType, VerificationProtocolType};
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
-use crate::proto::identifier::creator::{IdentifierCreator, IdentifierRole};
+use crate::proto::identifier_creator::{IdentifierCreator, IdentifierRole};
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::{IdentifierDetails, VerificationFn};
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};

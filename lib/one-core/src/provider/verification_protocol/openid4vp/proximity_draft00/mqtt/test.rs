@@ -17,7 +17,7 @@ use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
-use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};

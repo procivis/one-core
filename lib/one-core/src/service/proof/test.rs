@@ -52,7 +52,7 @@ use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::identifier::creator::MockIdentifierCreator;
+use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};

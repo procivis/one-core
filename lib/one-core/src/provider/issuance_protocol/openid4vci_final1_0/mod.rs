@@ -64,6 +64,7 @@ use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::wallet_unit::{HolderWalletUnitProto, IssueWalletAttestationRequest};
@@ -85,8 +86,6 @@ use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
@@ -119,8 +118,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     credential_repository: Arc<dyn CredentialRepository>,
     key_repository: Arc<dyn KeyRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -144,8 +142,7 @@ impl OpenID4VCIFinal1_0 {
         metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
         credential_repository: Arc<dyn CredentialRepository>,
         key_repository: Arc<dyn KeyRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -166,8 +163,7 @@ impl OpenID4VCIFinal1_0 {
             metadata_cache,
             credential_repository,
             key_repository,
-            did_repository,
-            identifier_repository,
+            identifier_creator,
             validity_credential_repository,
             formatter_provider,
             revocation_provider,
@@ -821,8 +817,7 @@ impl OpenID4VCIFinal1_0 {
             self.key_security_level_provider.as_ref(),
             self.did_method_provider.as_ref(),
             self.key_repository.as_ref(),
-            self.did_repository.as_ref(),
-            self.identifier_repository.as_ref(),
+            self.identifier_creator.as_ref(),
         )
         .await
     }

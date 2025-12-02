@@ -24,7 +24,7 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::identifier::creator::IdentifierCreator;
+use crate::proto::identifier_creator::IdentifierCreator;
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;

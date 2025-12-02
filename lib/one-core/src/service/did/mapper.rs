@@ -3,14 +3,12 @@ use std::collections::HashMap;
 use one_dto_mapper::convert_inner;
 use shared_types::{DidId, DidValue, KeyId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::dto::{
     CreateDidRequestDTO, DidListItemResponseDTO, DidResponseDTO, DidResponseKeysDTO,
     GetDidListResponseDTO,
 };
 use crate::model::did::{Did, DidType, GetDidList, KeyRole, RelatedKey, UpdateDidRequest};
-use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::provider::did_method::dto::{DidDocumentDTO, DidVerificationMethodDTO};
@@ -64,7 +62,7 @@ impl From<GetDidList> for GetDidListResponseDTO {
     }
 }
 
-pub(super) fn did_from_did_request(
+pub(crate) fn did_from_did_request(
     did_id: DidId,
     request: CreateDidRequestDTO,
     organisation: Organisation,
@@ -137,23 +135,6 @@ pub(super) fn did_from_did_request(
         deactivated: false,
         log: did_create.log,
     })
-}
-
-pub(super) fn identifier_from_did(did: Did, now: OffsetDateTime) -> Identifier {
-    Identifier {
-        did: Some(did.to_owned()),
-        id: Uuid::new_v4().into(),
-        created_date: now,
-        last_modified: now,
-        name: did.name,
-        organisation: did.organisation,
-        r#type: IdentifierType::Did,
-        is_remote: false,
-        state: IdentifierState::Active,
-        deleted_at: None,
-        key: None,
-        certificates: None,
-    }
 }
 
 pub(super) fn map_did_model_to_did_web_response(

@@ -21,7 +21,7 @@ use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::identifier::creator::MockIdentifierCreator;
+use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;

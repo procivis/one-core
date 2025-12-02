@@ -22,7 +22,7 @@ use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::{JwkUse, PublicKeyJwk};
 use crate::model::proof::Proof;
-use crate::proto::identifier::creator::RemoteIdentifierRelation;
+use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;

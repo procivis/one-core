@@ -1,16 +1,9 @@
-use shared_types::{CertificateId, IdentifierId, OrganisationId};
-use time::OffsetDateTime;
-use uuid::Uuid;
+use shared_types::CertificateId;
 
 use super::CertificateService;
-use super::dto::{CertificateResponseDTO, CreateCertificateRequestDTO};
-use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
-use crate::model::key::Key;
-use crate::proto::certificate_validator::{
-    CertificateValidationOptions, EnforceKeyUsage, ParsedCertificate,
-};
-use crate::provider::key_algorithm::key::KeyHandle;
-use crate::service::error::{EntityNotFoundError, ServiceError, ValidationError};
+use super::dto::CertificateResponseDTO;
+use crate::model::certificate::CertificateRelations;
+use crate::service::error::{EntityNotFoundError, ServiceError};
 use crate::validator::throw_if_org_not_matching_session;
 
 impl CertificateService {
@@ -43,67 +36,4 @@ impl CertificateService {
 
         Ok(certificate.try_into()?)
     }
-
-    pub(crate) async fn validate_and_prepare_certificate(
-        &self,
-        identifier_id: IdentifierId,
-        organisation_id: OrganisationId,
-        request: CreateCertificateRequestDTO,
-    ) -> Result<Certificate, ServiceError> {
-        let key = self
-            .key_repository
-            .get_key(&request.key_id, &Default::default())
-            .await?
-            .ok_or(EntityNotFoundError::Key(request.key_id))?;
-
-        let ParsedCertificate {
-            attributes,
-            subject_common_name,
-            public_key,
-            ..
-        } = self
-            .validator
-            .parse_pem_chain(
-                &request.chain,
-                CertificateValidationOptions::signature_and_revocation(Some(vec![
-                    EnforceKeyUsage::DigitalSignature,
-                ])),
-            )
-            .await?;
-
-        validate_subject_public_key(&public_key, &key)?;
-
-        let name = match request.name {
-            Some(name) => name,
-            None => subject_common_name.ok_or_else(|| {
-                ValidationError::CertificateParsingFailed("missing common-name".to_string())
-            })?,
-        };
-
-        Ok(Certificate {
-            id: Uuid::new_v4().into(),
-            identifier_id,
-            organisation_id: Some(organisation_id),
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            expiry_date: attributes.not_after,
-            name,
-            chain: request.chain,
-            fingerprint: attributes.fingerprint,
-            state: CertificateState::Active,
-            key: Some(key),
-        })
-    }
-}
-
-fn validate_subject_public_key(
-    subject_public_key: &KeyHandle,
-    expected_key: &Key,
-) -> Result<(), ServiceError> {
-    let subject_raw_public_key = subject_public_key.public_key_as_raw();
-    if expected_key.public_key != subject_raw_public_key {
-        return Err(ValidationError::CertificateKeyNotMatching.into());
-    }
-
-    Ok(())
 }
