@@ -887,6 +887,7 @@ impl OneCore {
                 certificate_validator.clone(),
                 certificate_repository.clone(),
                 blob_storage_provider.clone(),
+                data_provider.get_tx_manager(),
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
                 credential_repository.clone(),
@@ -905,6 +906,7 @@ impl OneCore {
                 certificate_validator.clone(),
                 certificate_repository.clone(),
                 blob_storage_provider.clone(),
+                data_provider.get_tx_manager(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
                 credential_repository.clone(),
@@ -923,6 +925,7 @@ impl OneCore {
                 certificate_validator.clone(),
                 certificate_repository.clone(),
                 blob_storage_provider.clone(),
+                data_provider.get_tx_manager(),
             ),
             credential_schema_service: CredentialSchemaService::new(
                 providers.core_base_url.clone(),
@@ -986,6 +989,7 @@ impl OneCore {
                 blob_storage_provider.clone(),
                 nfc_hce,
                 providers.session_provider.clone(),
+                data_provider.get_tx_manager(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
                 credential_schema_repository.clone(),

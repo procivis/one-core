@@ -85,7 +85,17 @@ pub(crate) fn throw_if_state_not_in(
     Ok(())
 }
 
-pub(crate) fn throw_if_latest_proof_state_not_eq(
+pub(crate) fn throw_if_proof_state_not_in(
+    proof: &Proof,
+    valid_states: &[ProofStateEnum],
+) -> Result<(), ServiceError> {
+    if !valid_states.contains(&proof.state) {
+        return Err(BusinessLogicError::InvalidProofState { state: proof.state }.into());
+    }
+    Ok(())
+}
+
+pub(crate) fn throw_if_proof_state_not_eq(
     proof: &Proof,
     state: ProofStateEnum,
 ) -> Result<(), ServiceError> {

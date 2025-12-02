@@ -832,6 +832,7 @@ pub async fn get_proof(db_conn: &DbConn, proof_id: &ProofId) -> Proof {
                 verifier_certificate: Some(Default::default()),
                 interaction: Some(InteractionRelations { organisation: None }),
             },
+            None,
         )
         .await
         .unwrap()

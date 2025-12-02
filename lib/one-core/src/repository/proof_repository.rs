@@ -2,6 +2,7 @@ use shared_types::ProofId;
 
 use super::error::DataLayerError;
 use crate::model::claim::Claim;
+use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::interaction::InteractionId;
 use crate::model::proof::{GetProofList, GetProofQuery, Proof, ProofRelations, UpdateProofRequest};
@@ -15,6 +16,7 @@ pub trait ProofRepository: Send + Sync {
         &self,
         id: &ProofId,
         relations: &ProofRelations,
+        lock: Option<LockType>,
     ) -> Result<Option<Proof>, DataLayerError>;
 
     async fn get_proof_by_interaction_id(

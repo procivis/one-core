@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use futures::future::join_all;
 use one_core::model::blob::BlobType;
 use one_core::model::did::{KeyRole, RelatedKey};
 use one_core::model::interaction::InteractionType;
@@ -711,7 +712,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
         Some(&proof_schema),
         ProofStateEnum::Pending,
         ProofRole::Verifier,
-        "OPENID4VP_FINAL1_0",
+        "OPENID4VP_FINAL1",
         Some(&interaction),
         Some(&verifier_key),
         None,
@@ -764,6 +765,123 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
     let blob = get_blob(&context.db.db_conn, &proof.proof_blob_id.unwrap()).await;
     assert!(str::from_utf8(&blob.value).unwrap().contains("vp_token"));
     assert_eq!(blob.r#type, BlobType::Proof);
+}
+
+#[tokio::test]
+async fn test_direct_post_dcql_parallel_success() {
+    // GIVEN
+    let (context, organisation, _, verifier_identifier, verifier_key) =
+        TestContext::new_with_did(None).await;
+    let nonce = "nonce123";
+
+    let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
+        (Uuid::new_v4(), "cat1", true, "STRING", false), // Presentation 2 token 1
+        (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
+    ];
+
+    let credential_schema = create_credential_schema_with_claims(
+        &context.db.db_conn,
+        "NewCredentialSchema",
+        &organisation,
+        "NONE",
+        &new_claim_schemas,
+    )
+    .await;
+
+    let proof_schema = create_proof_schema(
+        &context.db.db_conn,
+        "Schema1",
+        &organisation,
+        &[CreateProofInputSchema::from((
+            &new_claim_schemas[..],
+            &credential_schema,
+        ))],
+    )
+    .await;
+
+    let interaction_data = json!({
+        "nonce": nonce,
+        "dcql_query": {
+            "credentials": [{
+                "claims": [{
+                    "id": new_claim_schemas[0].0,
+                    "path": ["credentialSubject", "cat1"],
+                    "required": true
+                },
+                {
+                    "id": new_claim_schemas[1].0,
+                    "path": ["credentialSubject", "cat2"],
+                    "required": false
+                }
+                ],
+                "id": credential_schema.schema_id,
+                "format": "jwt_vc_json",
+                "meta": {
+                    "type_values": [["https://www.w3.org/2018/credentials#VerifiableCredential"]],
+                }
+            }]
+        },
+        "client_id": "client_id",
+        "client_id_scheme": "redirect_uri",
+        "response_uri": "response_uri"
+    });
+
+    let interaction = fixtures::create_interaction(
+        &context.db.db_conn,
+        interaction_data.to_string().as_bytes(),
+        &organisation,
+        InteractionType::Verification,
+    )
+    .await;
+
+    create_proof(
+        &context.db.db_conn,
+        &verifier_identifier,
+        Some(&proof_schema),
+        ProofStateEnum::Pending,
+        ProofRole::Verifier,
+        "OPENID4VP_FINAL1",
+        Some(&interaction),
+        Some(&verifier_key),
+        None,
+        None,
+    )
+    .await;
+
+    let (_, token2) = dummy_presentations().await;
+    let vp_token = json!({
+        credential_schema.schema_id: [token2]
+    });
+
+    let params = [
+        ("vp_token", vp_token.to_string()),
+        ("state", interaction.id.to_string()),
+    ];
+
+    // WHEN
+    let url = format!(
+        "{}/ssi/openid4vp/final-1.0/response",
+        context.config.app.core_base_url
+    );
+    let num_requests = 10;
+    let mut multiple_attempts = vec![];
+    for _ in 0..num_requests {
+        multiple_attempts.push(utils::client().post(url.clone()).form(&params).send());
+    }
+    // THEN
+    let results = join_all(multiple_attempts).await;
+    // one attempt must succeed
+    let num_successful = results
+        .iter()
+        .filter(|resp| resp.as_ref().unwrap().status() == 200)
+        .count();
+    assert_eq!(num_successful, 1);
+    // other attempts must fail
+    let num_failed = results
+        .iter()
+        .filter(|resp| resp.as_ref().unwrap().status() == 400)
+        .count();
+    assert_eq!(num_failed, num_requests - 1);
 }
 
 #[tokio::test]

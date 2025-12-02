@@ -117,6 +117,7 @@ impl Task for RetainProofCheck {
                             }),
                             ..Default::default()
                         },
+                        None,
                     )
                     .await?
                     .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(

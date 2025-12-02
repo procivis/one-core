@@ -3,6 +3,7 @@ use std::str::FromStr;
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimId};
+use one_core::model::common::LockType;
 use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
@@ -26,7 +27,7 @@ use super::mapper::{
 use super::model::ProofListItemModel;
 use crate::entity::{identifier, proof, proof_claim, proof_schema};
 use crate::list_query_generic::SelectWithListQuery;
-use crate::mapper::to_update_data_layer_error;
+use crate::mapper::{map_lock_type, to_update_data_layer_error};
 
 #[autometrics]
 #[async_trait::async_trait]
@@ -48,14 +49,17 @@ impl ProofRepository for ProofProvider {
         &self,
         proof_id: &ProofId,
         relations: &ProofRelations,
+        lock: Option<LockType>,
     ) -> Result<Option<Proof>, DataLayerError> {
-        let proof_model = crate::entity::proof::Entity::find_by_id(proof_id)
-            .one(&self.db)
-            .await
-            .map_err(|error| {
-                tracing::error!(%error, %proof_id, "Error while fetching proof");
-                DataLayerError::Db(error.into())
-            })?;
+        let select = proof::Entity::find_by_id(proof_id);
+        let select = match lock {
+            None => select,
+            Some(lock) => select.lock(map_lock_type(lock)),
+        };
+        let proof_model = select.one(&self.db).await.map_err(|error| {
+            tracing::error!(%error, %proof_id, "Error while fetching proof");
+            DataLayerError::Db(error.into())
+        })?;
 
         let Some(proof_model) = proof_model else {
             return Ok(None);

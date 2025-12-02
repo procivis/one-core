@@ -24,8 +24,8 @@ use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
 use crate::validator::{
-    throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
-    throw_if_org_relation_not_matching_session,
+    throw_if_endpoint_version_incompatible, throw_if_org_relation_not_matching_session,
+    throw_if_proof_state_not_eq,
 };
 
 pub(super) fn throw_if_proof_not_in_session_org(
@@ -351,7 +351,7 @@ pub(super) fn validate_proof_for_proof_definition(
         return Err(BusinessLogicError::InvalidProofRole { role: proof.role }.into());
     }
 
-    throw_if_latest_proof_state_not_eq(proof, Requested)?;
+    throw_if_proof_state_not_eq(proof, Requested)?;
     throw_if_endpoint_version_incompatible(verification_protocol, endpoint_version)
 }
 

@@ -53,7 +53,7 @@ use crate::provider::verification_protocol::openid4vp::validator::{
     peek_presentation, validate_claims, validate_credential, validate_presentation,
     validate_proof_completeness,
 };
-use crate::validator::throw_if_latest_proof_state_not_eq;
+use crate::validator::throw_if_proof_state_not_in;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_draft(
     jwk: Option<PublicKeyWithJwk>,
@@ -186,12 +186,11 @@ pub(crate) async fn oid4vp_verifier_process_submission(
     certificate_validator: &Arc<dyn CertificateValidator>,
     protocol_type: VerificationProtocolType,
 ) -> Result<(AcceptProofResult, OpenID4VPDirectPostResponseDTO), OpenID4VCError> {
-    throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)
-        .or(throw_if_latest_proof_state_not_eq(
-            &proof,
-            ProofStateEnum::Requested,
-        ))
-        .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
+    throw_if_proof_state_not_in(
+        &proof,
+        &[ProofStateEnum::Pending, ProofStateEnum::Requested],
+    )
+    .map_err(|e| OpenID4VCError::ValidationError(e.to_string()))?;
 
     let proved_claims = match (
         &interaction_data.dcql_query,

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::ops::Add;
 use std::sync::Arc;
 
-use one_dto_mapper::{convert_inner, convert_inner_of_inner};
+use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use shared_types::ProofId;
@@ -24,24 +24,20 @@ use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolTyp
 use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{
-    IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation,
-    get_encryption_key_jwk_from_proof, get_or_create_identifier, value_to_model_claims,
+    NESTED_CLAIM_MARKER, get_encryption_key_jwk_from_proof, value_to_model_claims,
 };
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::InteractionId;
-use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
-use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
@@ -63,10 +59,6 @@ use crate::provider::verification_protocol::openid4vp::service::create_open_id_f
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocolError,
 };
-use crate::repository::certificate_repository::CertificateRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(super) fn presentation_definition_from_interaction_data(
@@ -596,105 +588,6 @@ pub(crate) fn unencrypted_params(
         .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
     let map = HashMap::from_iter(params);
     Ok(map)
-}
-
-#[expect(clippy::too_many_arguments)]
-pub(crate) async fn credential_from_proved(
-    proved_credential: ProvedCredential,
-    organisation: &Organisation,
-    did_repository: &dyn DidRepository,
-    certificate_repository: &dyn CertificateRepository,
-    identifier_repository: &dyn IdentifierRepository,
-    certificate_validator: &dyn CertificateValidator,
-    did_method_provider: &dyn DidMethodProvider,
-    key_repository: &dyn KeyRepository,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<Credential, ServiceError> {
-    let (issuer_identifier, issuer_relation) = get_or_create_identifier(
-        did_method_provider,
-        did_repository,
-        certificate_repository,
-        certificate_validator,
-        key_repository,
-        key_algorithm_provider,
-        identifier_repository,
-        &Some(organisation.to_owned()),
-        &proved_credential.issuer_details,
-        IdentifierRole::Issuer,
-    )
-    .await?;
-
-    let issuer_certificate =
-        if let RemoteIdentifierRelation::Certificate(certificate) = issuer_relation {
-            Some(certificate)
-        } else {
-            None
-        };
-
-    let (holder_identifier, ..) = get_or_create_identifier(
-        did_method_provider,
-        did_repository,
-        certificate_repository,
-        certificate_validator,
-        key_repository,
-        key_algorithm_provider,
-        identifier_repository,
-        &Some(organisation.to_owned()),
-        &proved_credential.holder_details,
-        IdentifierRole::Holder,
-    )
-    .await?;
-
-    Ok(Credential {
-        id: proved_credential.credential.id,
-        created_date: proved_credential.credential.created_date,
-        issuance_date: proved_credential.credential.issuance_date,
-        last_modified: proved_credential.credential.last_modified,
-        deleted_at: proved_credential.credential.deleted_at,
-        protocol: proved_credential.credential.protocol,
-        redirect_uri: proved_credential.credential.redirect_uri,
-        role: proved_credential.credential.role,
-        state: proved_credential.credential.state,
-        claims: convert_inner_of_inner(proved_credential.credential.claims),
-        issuer_identifier: Some(issuer_identifier),
-        issuer_certificate,
-        holder_identifier: Some(holder_identifier),
-        schema: proved_credential
-            .credential
-            .schema
-            // TODO ONE-7859: Inline and clean up
-            .map(|schema| from_provider_schema(schema, organisation.to_owned())),
-        interaction: None,
-        key: proved_credential.credential.key,
-        suspend_end_date: convert_inner(proved_credential.credential.suspend_end_date),
-        profile: proved_credential.credential.profile,
-        credential_blob_id: proved_credential.credential.credential_blob_id,
-        wallet_unit_attestation_blob_id: proved_credential
-            .credential
-            .wallet_unit_attestation_blob_id,
-        wallet_app_attestation_blob_id: proved_credential.credential.wallet_app_attestation_blob_id,
-    })
-}
-
-fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) -> CredentialSchema {
-    CredentialSchema {
-        id: schema.id,
-        deleted_at: schema.deleted_at,
-        created_date: schema.created_date,
-        last_modified: schema.last_modified,
-        name: schema.name,
-        format: schema.format,
-        revocation_method: schema.revocation_method,
-        key_storage_security: schema.key_storage_security,
-        layout_type: schema.layout_type,
-        layout_properties: schema.layout_properties,
-        imported_source_url: schema.imported_source_url,
-        schema_id: schema.schema_id,
-        claim_schemas: schema.claim_schemas,
-        organisation: organisation.into(),
-        allow_suspension: schema.allow_suspension,
-        requires_app_attestation: schema.requires_app_attestation,
-    }
 }
 
 pub(super) mod unix_timestamp_option {

@@ -141,6 +141,7 @@ impl ProofService {
                     }),
                     ..Default::default()
                 },
+                None,
             )
             .await?;
 
@@ -255,6 +256,7 @@ impl ProofService {
                     verifier_certificate: Some(CertificateRelations::default()),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .ok_or(EntityNotFoundError::Proof(*id).into())
@@ -673,6 +675,7 @@ impl ProofService {
                     }),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(
@@ -934,6 +937,7 @@ impl ProofService {
                     }),
                     ..Default::default()
                 },
+                None,
             )
             .await?
         else {
@@ -1031,6 +1035,7 @@ impl ProofService {
                     }),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .ok_or(EntityNotFoundError::Proof(*id))?;

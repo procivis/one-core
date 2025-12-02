@@ -55,6 +55,7 @@ use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -163,6 +164,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         repositories
             .session_provider
             .unwrap_or(Arc::new(NoSessionProvider)),
+        Arc::new(NoTransactionManager),
     )
 }
 
@@ -363,8 +365,8 @@ async fn test_get_presentation_definition_proof_role_verifier() {
         proof_repository
             .expect_get_proof()
             .once()
-            .withf(move |id, _| id == &proof_id)
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .withf(move |id, _, _| id == &proof_id)
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -533,8 +535,9 @@ async fn test_get_proof_exists() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -759,8 +762,9 @@ async fn test_get_proof_with_array_holder() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1023,8 +1027,9 @@ async fn test_get_proof_with_array_in_object_holder() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1302,8 +1307,9 @@ async fn test_get_proof_with_object_array_holder() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1564,8 +1570,9 @@ async fn test_get_proof_with_array() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -1837,8 +1844,9 @@ async fn test_get_proof_with_array_in_object() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -2126,8 +2134,9 @@ async fn test_get_proof_with_object_array() {
                     }),
                     ..Default::default()
                 }),
+                eq(None),
             )
-            .returning(move |_, _| Ok(Some(res_clone.clone())));
+            .returning(move |_, _, _| Ok(Some(res_clone.clone())));
     }
 
     history_repository.expect_get_history_list().returning(|_| {
@@ -2186,7 +2195,7 @@ async fn test_get_proof_missing() {
     proof_repository
         .expect_get_proof()
         .once()
-        .returning(|_, _| Ok(None));
+        .returning(|_, _, _| Ok(None));
 
     let service = setup_service(Repositories {
         proof_repository,
@@ -3686,8 +3695,8 @@ async fn test_share_proof_created_success() {
             .expect_get_proof()
             .once()
             .in_sequence(&mut seq)
-            .withf(move |id, _| id == &proof_id)
-            .returning(move |_, _| Ok(Some(res_clone.to_owned())));
+            .withf(move |id, _, _| id == &proof_id)
+            .returning(move |_, _, _| Ok(Some(res_clone.to_owned())));
     }
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -3784,8 +3793,8 @@ async fn test_share_proof_pending_success() {
         proof_repository
             .expect_get_proof()
             .once()
-            .withf(move |id, _| id == &proof_id)
-            .returning(move |_, _| Ok(Some(res_clone.to_owned())));
+            .withf(move |id, _, _| id == &proof_id)
+            .returning(move |_, _, _| Ok(Some(res_clone.to_owned())));
     }
 
     let mut interaction_repository = MockInteractionRepository::new();
@@ -3842,7 +3851,7 @@ async fn test_share_proof_invalid_state() {
     proof_repository
         .expect_get_proof()
         .once()
-        .returning(move |_, _| {
+        .returning(move |_, _, _| {
             Ok(Some(construct_proof_with_state(
                 &proof_id,
                 ProofStateEnum::Rejected,
@@ -3877,8 +3886,8 @@ async fn test_share_proof_fails_when_engagement_is_present() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, _| id == &proof_id)
-        .returning(move |_, _| Ok(Some(proof.to_owned())));
+        .withf(move |id, _, _| id == &proof_id)
+        .returning(move |_, _, _| Ok(Some(proof.to_owned())));
 
     let service = setup_service(Repositories {
         proof_repository,
@@ -3935,7 +3944,7 @@ async fn test_delete_proof_ok_for_allowed_state(
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations| {
+        .withf(move |id, relations, _| {
             id == &proof_id
                 && relations
                     == &ProofRelations {
@@ -3951,7 +3960,7 @@ async fn test_delete_proof_ok_for_allowed_state(
         })
         .returning({
             let proof = proof.clone();
-            move |_, _| Ok(Some(proof.clone()))
+            move |_, _, _| Ok(Some(proof.clone()))
         });
 
     proof_repository
@@ -4013,7 +4022,7 @@ async fn test_delete_proof_ok_for_requested_state() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations| {
+        .withf(move |id, relations, _| {
             id == &proof_id
                 && relations
                     == &ProofRelations {
@@ -4029,7 +4038,7 @@ async fn test_delete_proof_ok_for_requested_state() {
         })
         .returning({
             let proof = proof.clone();
-            move |_, _| Ok(Some(proof.clone()))
+            move |_, _, _| Ok(Some(proof.clone()))
         });
 
     proof_repository
@@ -4084,7 +4093,7 @@ async fn test_delete_proof_fails_for_invalid_state(
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations| {
+        .withf(move |id, relations, _| {
             id == &proof_id
                 && relations
                     == &ProofRelations {
@@ -4100,7 +4109,7 @@ async fn test_delete_proof_fails_for_invalid_state(
         })
         .returning({
             let proof = proof.clone();
-            move |_, _| Ok(Some(proof.clone()))
+            move |_, _, _| Ok(Some(proof.clone()))
         });
 
     let service = setup_service(Repositories {
@@ -4189,7 +4198,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations| {
+        .withf(move |id, relations, _| {
             id == &proof_id
                 && relations
                     == &ProofRelations {
@@ -4205,7 +4214,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         })
         .returning({
             let proof = proof.clone();
-            move |_, _| Ok(Some(proof.clone()))
+            move |_, _, _| Ok(Some(proof.clone()))
         });
     proof_repository
         .expect_delete_proof()
@@ -4280,7 +4289,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
     proof_repository
         .expect_get_proof()
         .once()
-        .withf(move |id, relations| {
+        .withf(move |id, relations, _| {
             id == &proof_id
                 && relations
                     == &ProofRelations {
@@ -4296,7 +4305,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         })
         .returning({
             let proof = proof.clone();
-            move |_, _| Ok(Some(proof.clone()))
+            move |_, _, _| Ok(Some(proof.clone()))
         });
     proof_repository
         .expect_delete_proof()
@@ -4405,7 +4414,7 @@ async fn test_proof_ops_session_org_mismatch() {
     let mut proof_repository = MockProofRepository::default();
     proof_repository
         .expect_get_proof()
-        .returning(move |_, _| Ok(Some(proof.clone())));
+        .returning(move |_, _, _| Ok(Some(proof.clone())));
     let mut protocol_provider = MockVerificationProtocolProvider::default();
     protocol_provider
         .expect_get_protocol()

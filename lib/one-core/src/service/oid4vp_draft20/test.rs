@@ -20,6 +20,7 @@ use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
@@ -92,6 +93,7 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
         Arc::new(mocks.certificate_validator),
         Arc::new(mocks.certificate_repository),
         Arc::new(mocks.blob_storage_provider),
+        Arc::new(NoTransactionManager),
     )
 }
 
@@ -147,7 +149,7 @@ async fn test_presentation_definition_success() {
         proof_repository
             .expect_get_proof()
             .once()
-            .return_once(move |_, _| {
+            .return_once(move |_, _, _| {
                 Ok(Some(Proof {
                     id: proof_id.to_owned(),
                     created_date: get_dummy_date(),
@@ -620,7 +622,7 @@ async fn test_get_client_metadata_success() {
         proof_repository
             .expect_get_proof()
             .times(1)
-            .return_once(move |_, _| Ok(Some(proof)));
+            .return_once(move |_, _, _| Ok(Some(proof)));
 
         key_algorithm
             .expect_reconstruct_key()
@@ -800,7 +802,7 @@ async fn test_get_client_metadata_success_no_encryption() {
         proof_repository
             .expect_get_proof()
             .times(1)
-            .return_once(move |_, _| Ok(Some(proof)));
+            .return_once(move |_, _, _| Ok(Some(proof)));
     }
     let service = setup_service(Mocks {
         proof_repository,

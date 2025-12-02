@@ -1,18 +1,15 @@
 use std::str::FromStr;
 
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
-use one_dto_mapper::convert_inner;
 use shared_types::{BlobId, KeyId, ProofId};
-use time::OffsetDateTime;
 use tracing::warn;
-use uuid::Uuid;
 
 use super::OID4VPDraft20Service;
 use super::proof_request::generate_authorization_request_params_draft20;
 use crate::config::core_config::VerificationProtocolType::{
     OpenId4VpDraft20, OpenId4VpDraft20Swiyu,
 };
-use crate::mapper::{encode_cbor_base64, get_encryption_key_jwk_from_proof};
+use crate::mapper::get_encryption_key_jwk_from_proof;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
@@ -26,14 +23,12 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::model::proof_schema::{
     ProofInputSchemaRelations, ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use crate::model::validity_credential::Mdoc;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
-    create_open_id_for_vp_formats, credential_from_proved,
-    format_authorization_request_client_id_scheme_did,
+    create_open_id_for_vp_formats, format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_redirect_uri,
     format_authorization_request_client_id_scheme_verifier_attestation,
     format_authorization_request_client_id_scheme_x509_san_dns,
@@ -53,9 +48,8 @@ use crate::service::error::{
 };
 use crate::service::oid4vp_draft20::mapper::parse_interaction_content;
 use crate::service::ssi_validator::validate_verification_protocol_type;
-use crate::validator::{
-    throw_if_latest_proof_state_not_eq, validate_verification_protocol_config_exists,
-};
+use crate::util::openid4vp::persist_accepted_proof;
+use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protocol_config_exists};
 
 impl OID4VPDraft20Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
@@ -85,11 +79,12 @@ impl OID4VPDraft20Service {
                     }),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(
             &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
             &self.config,
@@ -203,11 +198,12 @@ impl OID4VPDraft20Service {
                     verifier_key: Some(Default::default()),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
         validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)?;
 
         let formats = create_open_id_for_vp_formats();
@@ -329,61 +325,24 @@ impl OID4VPDraft20Service {
         .await
         {
             Ok((accept_proof_result, response)) => {
-                for proved_credential in accept_proof_result.proved_credentials {
-                    let credential_id = proved_credential.credential.id;
-                    let mdoc_mso = proved_credential.mdoc_mso.to_owned();
-
-                    let credential = credential_from_proved(
-                        proved_credential,
-                        organisation,
-                        self.did_repository.as_ref(),
-                        self.certificate_repository.as_ref(),
-                        self.identifier_repository.as_ref(),
-                        self.certificate_validator.as_ref(),
-                        self.did_method_provider.as_ref(),
-                        self.key_repository.as_ref(),
-                        self.key_algorithm_provider.as_ref(),
-                    )
-                    .await?;
-
-                    self.credential_repository
-                        .create_credential(credential)
-                        .await?;
-
-                    if let Some(mso) = mdoc_mso {
-                        let mso_cbor = encode_cbor_base64(mso)
-                            .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
-
-                        self.validity_credential_repository
-                            .insert(
-                                Mdoc {
-                                    id: Uuid::new_v4(),
-                                    created_date: OffsetDateTime::now_utc(),
-                                    credential: mso_cbor.into_bytes(),
-                                    linked_credential_id: credential_id,
-                                }
-                                .into(),
-                            )
-                            .await?;
-                    }
-                }
-
-                self.proof_repository
-                    .set_proof_claims(&proof.id, convert_inner(accept_proof_result.proved_claims))
-                    .await?;
-
-                self.proof_repository
-                    .update_proof(
-                        &proof.id,
-                        UpdateProofRequest {
-                            state: Some(ProofStateEnum::Accepted),
-                            proof_blob_id: Some(Some(proof_blob_id)),
-                            ..Default::default()
-                        },
-                        None,
-                    )
-                    .await?;
-
+                persist_accepted_proof(
+                    &proof,
+                    accept_proof_result,
+                    organisation,
+                    proof_blob_id,
+                    &*self.proof_repository,
+                    &*self.did_repository,
+                    &*self.certificate_repository,
+                    &*self.identifier_repository,
+                    &*self.certificate_validator,
+                    &*self.did_method_provider,
+                    &*self.key_repository,
+                    &*self.credential_repository,
+                    &*self.validity_credential_repository,
+                    &*self.key_algorithm_provider,
+                    &*self.transaction_manager,
+                )
+                .await?;
                 Ok(response)
             }
             Err(err) => {
@@ -420,12 +379,13 @@ impl OID4VPDraft20Service {
                     }),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .ok_or(ServiceError::EntityNotFound(EntityNotFoundError::Proof(id)))?;
 
         validate_verification_protocol_type(&[OpenId4VpDraft20], &self.config, &proof.protocol)?;
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Pending)?;
 
         let interaction = proof
             .interaction

@@ -53,9 +53,7 @@ use crate::service::error::{
 };
 use crate::service::ssi_holder::mapper::holder_did_key_jwk_from_credential;
 use crate::service::storage_proxy::StorageProxyImpl;
-use crate::validator::{
-    throw_if_endpoint_version_incompatible, throw_if_latest_proof_state_not_eq,
-};
+use crate::validator::{throw_if_endpoint_version_incompatible, throw_if_proof_state_not_eq};
 
 impl SSIHolderService {
     pub async fn reject_proof_request(
@@ -82,7 +80,7 @@ impl SSIHolderService {
             return Err(BusinessLogicError::MissingProofForInteraction(*interaction_id).into());
         };
 
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let (state, error_metadata) = if let Err(err) = self
             .verification_protocol_provider
@@ -184,7 +182,7 @@ impl SSIHolderService {
             &*verification_protocol,
             &PresentationDefinitionVersion::V1,
         )?;
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let interaction_data: serde_json::Value = proof
             .interaction
@@ -518,7 +516,7 @@ impl SSIHolderService {
             &*verification_protocol,
             &PresentationDefinitionVersion::V2,
         )?;
-        throw_if_latest_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
+        throw_if_proof_state_not_eq(&proof, ProofStateEnum::Requested)?;
 
         let interaction_data: serde_json::Value = proof
             .interaction

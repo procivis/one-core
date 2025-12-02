@@ -444,7 +444,7 @@ async fn test_get_proof_missing() {
     .await;
 
     let result = repository
-        .get_proof(&Uuid::new_v4().into(), &ProofRelations::default())
+        .get_proof(&Uuid::new_v4().into(), &ProofRelations::default(), None)
         .await;
     assert!(matches!(result, Ok(None)));
 }
@@ -467,7 +467,7 @@ async fn test_get_proof_no_relations() {
     .await;
 
     let proof = repository
-        .get_proof(&proof_id, &ProofRelations::default())
+        .get_proof(&proof_id, &ProofRelations::default(), None)
         .await
         .unwrap()
         .unwrap();
@@ -715,6 +715,7 @@ async fn test_get_proof_with_relations() {
                 interaction: Some(InteractionRelations::default()),
                 ..Default::default()
             },
+            None,
         )
         .await
         .unwrap()

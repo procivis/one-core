@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model::claim::Claim;
+use crate::model::common::LockType;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
@@ -43,6 +44,7 @@ impl ProofHistoryDecorator {
                     verifier_identifier: Some(Default::default()),
                     ..Default::default()
                 },
+                None,
             )
             .await?
             .context("proof is missing")?;
@@ -171,8 +173,9 @@ impl ProofRepository for ProofHistoryDecorator {
         &self,
         id: &ProofId,
         relations: &ProofRelations,
+        lock: Option<LockType>,
     ) -> Result<Option<Proof>, DataLayerError> {
-        self.inner.get_proof(id, relations).await
+        self.inner.get_proof(id, relations, lock).await
     }
 
     async fn get_proof_by_interaction_id(

@@ -163,6 +163,7 @@ impl ProofsDB {
                     verifier_key: Some(KeyRelations::default()),
                     ..Default::default()
                 },
+                None,
             )
             .await
             .unwrap()

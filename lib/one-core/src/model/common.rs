@@ -43,7 +43,7 @@ pub struct EntityShareResponseDTO {
     pub url: String,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum LockType {
     /// Exclusive lock
     Update,

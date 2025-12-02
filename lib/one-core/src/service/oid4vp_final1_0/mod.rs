@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -39,6 +40,7 @@ pub struct OID4VPFinal1_0Service {
     certificate_validator: Arc<dyn CertificateValidator>,
     certificate_repository: Arc<dyn CertificateRepository>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    transaction_manager: Arc<dyn TransactionManager>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -60,6 +62,7 @@ impl OID4VPFinal1_0Service {
         certificate_validator: Arc<dyn CertificateValidator>,
         certificate_repository: Arc<dyn CertificateRepository>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
+        transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         Self {
             credential_repository,
@@ -78,6 +81,7 @@ impl OID4VPFinal1_0Service {
             certificate_validator,
             certificate_repository,
             blob_storage_provider,
+            transaction_manager,
         }
     }
 }
