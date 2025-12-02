@@ -6,6 +6,7 @@ pub(crate) mod cose;
 pub(crate) mod credential_schema;
 pub(crate) mod history_decorator;
 pub mod http_client;
+pub(crate) mod identifier;
 pub mod jwt;
 pub mod key_verification;
 pub mod mqtt_client;

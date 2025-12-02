@@ -25,9 +25,6 @@ use crate::mapper::exchange::{
     get_exchange_param_pre_authorization_expires_in, get_exchange_param_refresh_token_expires_in,
     get_exchange_param_token_expires_in,
 };
-use crate::mapper::{
-    IdentifierRole, get_or_create_did_and_identifier, get_or_create_key_identifier,
-};
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::{Claim, ClaimRelations};
@@ -41,11 +38,13 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
+use crate::proto::identifier::creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::IsolationLevel;
 use crate::proto::wallet_unit::WalletUnitStatusCheckResponse;
 use crate::provider::blob_storage_provider::BlobStorageType;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::issuance_protocol::error::{
     IssuanceProtocolError, OpenID4VCIError, OpenIDIssuanceError,
 };
@@ -557,27 +556,30 @@ impl OID4VCIFinal1_0Service {
 
         let (holder_identifier, holder_key_id) = match verified_proof {
             Either::Left((holder_did_value, holder_key_id)) => {
-                let (_, identifier) = get_or_create_did_and_identifier(
-                    &*self.did_method_provider,
-                    &*self.did_repository,
-                    &*self.identifier_repository,
-                    &schema.organisation,
-                    &holder_did_value,
-                    IdentifierRole::Holder,
-                )
-                .await?;
+                let (identifier, _) = self
+                    .identifier_creator
+                    .get_or_create_remote_identifier(
+                        &schema.organisation,
+                        &IdentifierDetails::Did(holder_did_value),
+                        IdentifierRole::Holder,
+                    )
+                    .await?;
                 (identifier, holder_key_id)
             }
             Either::Right(jwk) => {
-                let (key, identifier) = get_or_create_key_identifier(
-                    self.key_repository.as_ref(),
-                    self.key_algorithm_provider.as_ref(),
-                    self.identifier_repository.as_ref(),
-                    schema.organisation.as_ref(),
-                    &jwk,
-                    IdentifierRole::Holder,
-                )
-                .await?;
+                let (identifier, RemoteIdentifierRelation::Key(key)) = self
+                    .identifier_creator
+                    .get_or_create_remote_identifier(
+                        &schema.organisation,
+                        &IdentifierDetails::Key(jwk),
+                        IdentifierRole::Holder,
+                    )
+                    .await?
+                else {
+                    return Err(ServiceError::MappingError(
+                        "Invalid identifier type".to_string(),
+                    ));
+                };
 
                 (identifier, key.id.to_string())
             }

@@ -4,9 +4,9 @@ use shared_types::DidValue;
 use url::Url;
 
 use crate::config::core_config::{TransportType, VerificationProtocolType};
-use crate::mapper::IdentifierRole;
 use crate::model::interaction::UpdateInteractionRequest;
 use crate::model::organisation::Organisation;
+use crate::proto::identifier::creator::{IdentifierCreator, IdentifierRole};
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::model::{IdentifierDetails, VerificationFn};
 use crate::provider::verification_protocol::dto::{InvitationResponseDTO, UpdateResponse};
@@ -61,6 +61,7 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
     url: Url,
     organisation: Organisation,
     storage_access: &StorageAccess,
+    identifier_creator: &dyn IdentifierCreator,
     transport: &dyn ProximityHolderTransport<Context = T>,
     verification_fn: VerificationFn,
 ) -> Result<InvitationResponseDTO, VerificationProtocolError> {
@@ -96,9 +97,9 @@ pub(crate) async fn handle_invitation_with_transport<T: Send + Sync + 'static>(
         VerificationProtocolError::InvalidRequest(format!("invalid client_id did: {did_value}"))
     })?;
 
-    let (verifier_identifier, ..) = storage_access
-        .get_or_create_identifier(
-            &Some(organisation.clone()),
+    let (verifier_identifier, ..) = identifier_creator
+        .get_or_create_remote_identifier(
+            &Some(organisation),
             &IdentifierDetails::Did(did_value),
             IdentifierRole::Verifier,
         )

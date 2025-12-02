@@ -244,16 +244,10 @@ impl ProofService {
                     organisation,
                     proof_blob_id,
                     &*self.proof_repository,
-                    &*self.did_repository,
-                    &*self.certificate_repository,
-                    &*self.identifier_repository,
-                    &*self.certificate_validator,
-                    &*self.did_method_provider,
-                    &*self.key_repository,
                     &*self.credential_repository,
                     &*self.validity_credential_repository,
-                    &*self.key_algorithm_provider,
                     &*self.transaction_manager,
+                    &*self.identifier_creator,
                 )
                 .await?;
                 Ok(response)

@@ -17,7 +17,6 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
-use crate::mapper::RemoteIdentifierRelation;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -31,6 +30,7 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::caching_loader::{CacheError, ResolverError};
@@ -92,6 +92,7 @@ struct TestInputs {
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub identifier_creator: MockIdentifierCreator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub config: CoreConfig,
     pub params: Option<OpenID4VCIDraft13Params>,
@@ -114,6 +115,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCI13 {
         Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
+        Arc::new(inputs.identifier_creator),
         Arc::new(inputs.blob_storage_provider),
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
@@ -531,10 +533,10 @@ async fn test_generate_share_credentials_offer_by_value() {
 async fn test_handle_invitation_credential_by_ref_with_did_success() {
     let credential = generic_credential_did();
 
-    let mut storage_proxy = MockStorageProxy::default();
+    let mut identifier_creator = MockIdentifierCreator::default();
     let credential_clone = credential.clone();
-    storage_proxy
-        .expect_get_or_create_identifier()
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
         .times(1)
         .returning(move |_, _, _| {
             let did = credential_clone
@@ -568,7 +570,8 @@ async fn test_handle_invitation_credential_by_ref_with_did_success() {
         });
 
     inner_test_handle_invitation_credential_by_ref_success(
-        storage_proxy,
+        identifier_creator,
+        MockStorageProxy::default(),
         credential,
         Some("did:example:123".to_string()),
         true,
@@ -1397,6 +1400,7 @@ async fn test_holder_reject_credential() {
 #[tokio::test]
 async fn test_handle_invitation_credential_by_ref_without_did_success() {
     inner_test_handle_invitation_credential_by_ref_success(
+        MockIdentifierCreator::default(),
         MockStorageProxy::default(),
         generic_credential_did(),
         None,
@@ -1408,6 +1412,7 @@ async fn test_handle_invitation_credential_by_ref_without_did_success() {
 #[tokio::test]
 async fn test_handle_invitation_credential_no_openid_configuration_success() {
     inner_test_handle_invitation_credential_by_ref_success(
+        MockIdentifierCreator::default(),
         MockStorageProxy::default(),
         generic_credential_did(),
         None,
@@ -1417,6 +1422,7 @@ async fn test_handle_invitation_credential_no_openid_configuration_success() {
 }
 
 async fn inner_test_handle_invitation_credential_by_ref_success(
+    identifier_creator: MockIdentifierCreator,
     mut storage_proxy: MockStorageProxy,
     credential: Credential,
     issuer_did: Option<String>,
@@ -1575,6 +1581,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let protocol = setup_protocol(TestInputs {
         handle_invitation_operations: operations,
         metadata_cache,
+        identifier_creator,
         ..Default::default()
     });
     let result = protocol

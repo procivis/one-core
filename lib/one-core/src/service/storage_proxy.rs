@@ -5,7 +5,6 @@ use futures::future::join_all;
 use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::mapper::{IdentifierRole, RemoteIdentifierRelation, get_or_create_identifier};
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
 };
@@ -28,11 +27,7 @@ use crate::model::interaction::{
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
-use crate::model::organisation::{Organisation, OrganisationRelations};
-use crate::proto::certificate_validator::CertificateValidator;
-use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::model::organisation::OrganisationRelations;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -117,13 +112,6 @@ pub(crate) trait StorageProxy: Send + Sync {
     ) -> anyhow::Result<Option<Identifier>>;
 
     async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
-
-    async fn get_or_create_identifier(
-        &self,
-        organisation: &Option<Organisation>,
-        details: &IdentifierDetails,
-        role: IdentifierRole,
-    ) -> anyhow::Result<(Identifier, RemoteIdentifierRelation)>;
 }
 pub(crate) type StorageAccess = dyn StorageProxy;
 
@@ -133,26 +121,19 @@ pub(crate) struct StorageProxyImpl {
     pub credentials: Arc<dyn CredentialRepository>,
     pub dids: Arc<dyn DidRepository>,
     pub certificates: Arc<dyn CertificateRepository>,
-    pub certificate_validator: Arc<dyn CertificateValidator>,
     pub keys: Arc<dyn KeyRepository>,
     pub identifiers: Arc<dyn IdentifierRepository>,
-    pub did_method_provider: Arc<dyn DidMethodProvider>,
-    pub key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
 }
 
 impl StorageProxyImpl {
-    #[expect(clippy::too_many_arguments)]
     pub(crate) fn new(
         interactions: Arc<dyn InteractionRepository>,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
         dids: Arc<dyn DidRepository>,
         certificates: Arc<dyn CertificateRepository>,
-        certificate_validator: Arc<dyn CertificateValidator>,
         keys: Arc<dyn KeyRepository>,
         identifiers: Arc<dyn IdentifierRepository>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     ) -> Self {
         Self {
             interactions,
@@ -160,11 +141,8 @@ impl StorageProxyImpl {
             credentials,
             dids,
             certificates,
-            certificate_validator,
             keys,
             identifiers,
-            did_method_provider,
-            key_algorithm_provider,
         }
     }
 }
@@ -424,27 +402,5 @@ impl StorageProxy for StorageProxyImpl {
             .create_credential(credential)
             .await
             .context("Create credential error")
-    }
-
-    async fn get_or_create_identifier(
-        &self,
-        organisation: &Option<Organisation>,
-        details: &IdentifierDetails,
-        role: IdentifierRole,
-    ) -> anyhow::Result<(Identifier, RemoteIdentifierRelation)> {
-        get_or_create_identifier(
-            &*self.did_method_provider,
-            &*self.dids,
-            &*self.certificates,
-            &*self.certificate_validator,
-            &*self.keys,
-            &*self.key_algorithm_provider,
-            &*self.identifiers,
-            organisation,
-            details,
-            role,
-        )
-        .await
-        .context("get or create identifier")
     }
 }

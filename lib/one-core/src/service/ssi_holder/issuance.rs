@@ -48,7 +48,7 @@ use crate::service::error::ServiceError::BusinessLogic;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
-use crate::service::storage_proxy::{StorageAccess, StorageProxyImpl};
+use crate::service::storage_proxy::StorageAccess;
 use crate::validator::key_security::{
     match_key_security_level, validate_key_storage_supports_security_requirement,
 };
@@ -327,12 +327,11 @@ impl SSIHolderService {
             .get_protocol(&data.protocol)
             .ok_or(MissingProviderError::ExchangeProtocol(data.protocol))?;
 
-        let storage_proxy = self.create_storage_proxy();
         let issuer_response = protocol
             .holder_accept_credential(
                 interaction,
                 holder_binding,
-                storage_proxy.as_ref(),
+                &self.storage_proxy(),
                 tx_code,
                 holder_wallet_unit_id,
             )
@@ -419,7 +418,6 @@ impl SSIHolderService {
             ))?
             .to_owned();
 
-        let storage_proxy = self.create_storage_proxy();
         let issuer_response = self
             .issuance_protocol_provider
             .get_protocol(&credential.protocol)
@@ -429,7 +427,7 @@ impl SSIHolderService {
             .holder_accept_credential(
                 interaction,
                 holder_binding,
-                storage_proxy.as_ref(),
+                &self.storage_proxy(),
                 tx_code,
                 None,
             )
@@ -590,12 +588,11 @@ impl SSIHolderService {
             })
             .collect::<Result<Vec<_>, ServiceError>>()?;
 
-        let storage_proxy = self.create_storage_proxy();
-
+        let storage_proxy = self.storage_proxy();
         let mut result: Result<(), ServiceError> = Ok(());
         for (credential, protocol) in credential_protocol_pairs {
             if let Err(err) = self
-                .reject_single_credential(credential, &*protocol, &*storage_proxy)
+                .reject_single_credential(credential, &*protocol, &storage_proxy)
                 .await
             {
                 result = Err(err);
@@ -637,21 +634,8 @@ impl SSIHolderService {
         issuance_protocol: Arc<dyn IssuanceProtocol>,
         redirect_uri: Option<String>,
     ) -> Result<HandleInvitationResultDTO, ServiceError> {
-        let storage_access = StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema_repository.clone(),
-            self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.certificate_repository.clone(),
-            self.certificate_validator.clone(),
-            self.key_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            self.key_algorithm_provider.clone(),
-        );
-
         let result = issuance_protocol
-            .holder_handle_invitation(url, organisation, &storage_access, redirect_uri)
+            .holder_handle_invitation(url, organisation, &self.storage_proxy(), redirect_uri)
             .await?;
 
         match result {
@@ -869,19 +853,6 @@ impl SSIHolderService {
             return Err(IssuanceProtocolError::Failed("Either `scope` or `authorization_details` has to be specified for credential issuance".to_string()).into());
         }
 
-        let storage_access = StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema_repository.clone(),
-            self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.certificate_repository.clone(),
-            self.certificate_validator.clone(),
-            self.key_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            self.key_algorithm_provider.clone(),
-        );
-
         let issuance_protocol::model::ContinueIssuanceResponseDTO {
             interaction_id,
             key_storage_security_levels: key_storage_security,
@@ -910,7 +881,7 @@ impl SSIHolderService {
                     authorization_server: issuance.request.authorization_server,
                 },
                 organisation,
-                &storage_access,
+                &self.storage_proxy(),
             )
             .await?;
 
@@ -920,20 +891,5 @@ impl SSIHolderService {
             key_storage_security_levels: key_storage_security,
             key_algorithms,
         })
-    }
-
-    fn create_storage_proxy(&self) -> Arc<StorageAccess> {
-        Arc::new(StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema_repository.clone(),
-            self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.certificate_repository.clone(),
-            self.certificate_validator.clone(),
-            self.key_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            self.key_algorithm_provider.clone(),
-        ))
     }
 }

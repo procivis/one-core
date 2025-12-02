@@ -52,6 +52,7 @@ use crate::proto::bluetooth_low_energy::low_level::ble_central::MockBleCentral;
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::MockBlePeripheral;
 use crate::proto::bluetooth_low_energy::low_level::dto::DeviceInfo;
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::identifier::creator::MockIdentifierCreator;
 use crate::proto::nfc::hce::{MockNfcHce, NfcHce};
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, SessionProvider};
@@ -128,6 +129,7 @@ struct Repositories {
     pub blob_storage_provider: MockBlobStorageProvider,
     pub nfc_hce_provider: Option<MockNfcHce>,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
+    pub identifier_creator: MockIdentifierCreator,
 }
 
 fn setup_service(repositories: Repositories) -> ProofService {
@@ -164,6 +166,7 @@ fn setup_service(repositories: Repositories) -> ProofService {
         repositories
             .session_provider
             .unwrap_or(Arc::new(NoSessionProvider)),
+        Arc::new(repositories.identifier_creator),
         Arc::new(NoTransactionManager),
     )
 }

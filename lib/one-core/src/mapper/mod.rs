@@ -5,15 +5,11 @@ use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use shared_types::{CredentialId, DidId, DidValue, KeyId};
-use strum::Display;
+use shared_types::{CredentialId, KeyId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
-use crate::model::certificate::{
-    Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
-};
 use crate::model::claim::{Claim, ClaimId};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
@@ -22,31 +18,17 @@ use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
-use crate::model::identifier::{
-    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierState,
-    IdentifierType,
-};
-use crate::model::key::{JwkUse, Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
-use crate::model::list_filter::ListFilterValue;
-use crate::model::organisation::Organisation;
+use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::identifier::{Identifier, IdentifierType};
+use crate::model::key::{JwkUse, PublicKeyJwk};
 use crate::model::proof::Proof;
-use crate::proto::certificate_validator::{
-    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
-};
+use crate::proto::identifier::creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{
-    CertificateDetails, CredentialClaim, CredentialClaimValue, IdentifierDetails,
-};
-use crate::provider::did_method::provider::DidMethodProvider;
+use crate::provider::credential_formatter::model::{CredentialClaim, CredentialClaimValue};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::repository::certificate_repository::CertificateRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::key_repository::KeyRepository;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::service::error::{BusinessLogicError, ServiceError};
 
 pub(crate) mod credential_schema_claim;
 pub(crate) mod exchange;
@@ -86,329 +68,6 @@ pub(crate) fn list_response_try_into<T, F: TryInto<T>>(
         total_pages: input.total_pages,
         total_items: input.total_items,
     })
-}
-
-#[derive(Debug, Display)]
-pub(crate) enum IdentifierRole {
-    #[strum(to_string = "holder")]
-    Holder,
-    #[strum(to_string = "issuer")]
-    Issuer,
-    #[strum(to_string = "verifier")]
-    Verifier,
-}
-
-#[derive(Debug)]
-#[expect(dead_code)]
-pub(crate) enum RemoteIdentifierRelation {
-    Did(Did),
-    Certificate(Certificate),
-    Key(Key),
-}
-
-#[expect(clippy::too_many_arguments)]
-pub(crate) async fn get_or_create_identifier(
-    did_method_provider: &dyn DidMethodProvider,
-    did_repository: &dyn DidRepository,
-    certificate_repository: &dyn CertificateRepository,
-    certificate_validator: &dyn CertificateValidator,
-    key_repository: &dyn KeyRepository,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    identifier_repository: &dyn IdentifierRepository,
-    organisation: &Option<Organisation>,
-    details: &IdentifierDetails,
-    role: IdentifierRole,
-) -> Result<(Identifier, RemoteIdentifierRelation), ServiceError> {
-    Ok(match details {
-        IdentifierDetails::Did(did_value) => {
-            let (did, identifier) = get_or_create_did_and_identifier(
-                did_method_provider,
-                did_repository,
-                identifier_repository,
-                organisation,
-                did_value,
-                role,
-            )
-            .await?;
-
-            (identifier, RemoteIdentifierRelation::Did(did))
-        }
-        IdentifierDetails::Certificate(CertificateDetails {
-            chain, fingerprint, ..
-        }) => {
-            let (certificate, identifier) = get_or_create_certificate_identifier(
-                certificate_repository,
-                certificate_validator,
-                identifier_repository,
-                organisation,
-                chain.to_owned(),
-                fingerprint.to_owned(),
-                role,
-            )
-            .await?;
-
-            (
-                identifier,
-                RemoteIdentifierRelation::Certificate(certificate),
-            )
-        }
-        IdentifierDetails::Key(public_key_jwk) => {
-            let (key, identifier) = get_or_create_key_identifier(
-                key_repository,
-                key_algorithm_provider,
-                identifier_repository,
-                organisation.as_ref(),
-                public_key_jwk,
-                role,
-            )
-            .await?;
-
-            (identifier, RemoteIdentifierRelation::Key(key))
-        }
-    })
-}
-
-pub(crate) async fn get_or_create_did_and_identifier(
-    did_method_provider: &dyn DidMethodProvider,
-    did_repository: &dyn DidRepository,
-    identifier_repository: &dyn IdentifierRepository,
-    organisation: &Option<Organisation>,
-    did_value: &DidValue,
-    role: IdentifierRole,
-) -> Result<(Did, Identifier), ServiceError> {
-    let did = match did_repository
-        .get_did_by_value(
-            did_value,
-            organisation.as_ref().map(|org| Some(org.id)),
-            &DidRelations::default(),
-        )
-        .await?
-    {
-        Some(did) => did,
-        None => {
-            let id = Uuid::new_v4();
-            let did_method = did_method_provider.get_did_method_id(did_value).ok_or(
-                ServiceError::MissingProvider(MissingProviderError::DidMethod(
-                    did_value.method().to_string(),
-                )),
-            )?;
-            let did = Did {
-                id: DidId::from(id),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                name: format!("{role} {id}"),
-                organisation: organisation.to_owned(),
-                did: did_value.to_owned(),
-                did_method,
-                did_type: DidType::Remote,
-                keys: None,
-                deactivated: false,
-                log: None,
-            };
-            did_repository.create_did(did.clone()).await?;
-            did
-        }
-    };
-
-    let identifier = match identifier_repository
-        .get_from_did_id(
-            did.id,
-            &IdentifierRelations {
-                did: Some(Default::default()),
-                key: Some(Default::default()),
-                certificates: Some(Default::default()),
-                ..Default::default()
-            },
-        )
-        .await?
-    {
-        Some(identifier) => identifier,
-        None => {
-            let identifier = Identifier {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                last_modified: OffsetDateTime::now_utc(),
-                name: did.name.to_owned(),
-                r#type: IdentifierType::Did,
-                is_remote: did.did_type == DidType::Remote,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                organisation: organisation.to_owned(),
-                did: Some(did.to_owned()),
-                key: None,
-                certificates: None,
-            };
-            identifier_repository.create(identifier.clone()).await?;
-            identifier
-        }
-    };
-
-    Ok((did, identifier))
-}
-
-pub(crate) async fn get_or_create_certificate_identifier(
-    certificate_repository: &dyn CertificateRepository,
-    certificate_validator: &dyn CertificateValidator,
-    identifier_repository: &dyn IdentifierRepository,
-    organisation: &Option<Organisation>,
-    chain: String,
-    fingerprint: String,
-    role: IdentifierRole,
-) -> Result<(Certificate, Identifier), ServiceError> {
-    let organisation_id = organisation
-        .as_ref()
-        .map(|org| CertificateFilterValue::OrganisationId(org.id));
-    let list = certificate_repository
-        .list(CertificateListQuery {
-            filtering: Some(
-                CertificateFilterValue::Fingerprint(fingerprint.to_owned()).condition()
-                    & organisation_id,
-            ),
-            ..Default::default()
-        })
-        .await?;
-
-    if let Some(certificate) = list.values.into_iter().next() {
-        let identifier = identifier_repository
-            .get(certificate.identifier_id, &Default::default())
-            .await?
-            .ok_or(ServiceError::MappingError(
-                "Certificate identifier not found".to_string(),
-            ))?;
-
-        return Ok((certificate, identifier));
-    }
-
-    let ParsedCertificate {
-        attributes,
-        subject_common_name,
-        ..
-    } = certificate_validator
-        .parse_pem_chain(&chain, CertificateValidationOptions::no_validation())
-        .await?;
-
-    if attributes.fingerprint != fingerprint {
-        return Err(ServiceError::MappingError(format!(
-            "Fingerprint {fingerprint} doesn't match provided certificate"
-        )));
-    }
-
-    let identifier_id = Uuid::new_v4().into();
-    let name = format!("{role} {identifier_id}");
-
-    let identifier = Identifier {
-        id: identifier_id,
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        name: name.to_owned(),
-        r#type: IdentifierType::Certificate,
-        is_remote: true,
-        state: IdentifierState::Active,
-        deleted_at: None,
-        organisation: organisation.to_owned(),
-        did: None,
-        key: None,
-        certificates: None,
-    };
-    identifier_repository.create(identifier.clone()).await?;
-
-    let certificate = Certificate {
-        id: Uuid::new_v4().into(),
-        identifier_id,
-        organisation_id: organisation.as_ref().map(|o| o.id),
-        created_date: OffsetDateTime::now_utc(),
-        last_modified: OffsetDateTime::now_utc(),
-        expiry_date: attributes.not_after,
-        name: subject_common_name.unwrap_or(name),
-        chain,
-        fingerprint,
-        state: CertificateState::Active,
-        key: None,
-    };
-    certificate_repository.create(certificate.clone()).await?;
-
-    Ok((certificate, identifier))
-}
-
-pub(crate) async fn get_or_create_key_identifier(
-    key_repository: &dyn KeyRepository,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-    identifier_repository: &dyn IdentifierRepository,
-    organisation: Option<&Organisation>,
-    public_key: &PublicKeyJwk,
-    role: IdentifierRole,
-) -> Result<(Key, Identifier), ServiceError> {
-    let parsed_key = key_algorithm_provider.parse_jwk(public_key)?;
-    let organisation_id = organisation.as_ref().map(|org| org.id);
-    let now = OffsetDateTime::now_utc();
-
-    let list = key_repository
-        .get_key_list(KeyListQuery {
-            filtering: Some(
-                KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw()).condition()
-                    & KeyFilterValue::KeyTypes(vec![parsed_key.algorithm_type.to_string()])
-                    & organisation_id.map(KeyFilterValue::OrganisationId),
-            ),
-            ..Default::default()
-        })
-        .await?;
-
-    let key = if let Some(key) = list.values.into_iter().next() {
-        let identifier = identifier_repository
-            .get_identifier_list(IdentifierListQuery {
-                filtering: Some(
-                    IdentifierFilterValue::KeyIds(vec![key.id]).condition()
-                        & IdentifierFilterValue::Types(vec![IdentifierType::Key])
-                        & organisation_id.map(IdentifierFilterValue::OrganisationId),
-                ),
-                ..Default::default()
-            })
-            .await?
-            .values
-            .into_iter()
-            .next();
-
-        if let Some(identifier) = identifier {
-            return Ok((key, identifier));
-        };
-
-        key
-    } else {
-        let key_id = Uuid::new_v4().into();
-        let key = Key {
-            id: key_id,
-            created_date: now,
-            last_modified: now,
-            name: format!("{role} {key_id}"),
-            organisation: organisation.cloned(),
-            public_key: parsed_key.key.public_key_as_raw(),
-            key_reference: None,
-            storage_type: "INTERNAL".to_string(),
-            key_type: parsed_key.algorithm_type.to_string(),
-        };
-
-        key_repository.create_key(key.clone()).await?;
-        key
-    };
-
-    let identifier_id = Uuid::new_v4().into();
-    let identifier = Identifier {
-        id: identifier_id,
-        created_date: now,
-        last_modified: now,
-        name: format!("{role} {identifier_id}"),
-        r#type: IdentifierType::Key,
-        is_remote: true,
-        state: IdentifierState::Active,
-        deleted_at: None,
-        organisation: organisation.cloned(),
-        did: None,
-        key: Some(key.clone()),
-        certificates: None,
-    };
-    identifier_repository.create(identifier.clone()).await?;
-
-    Ok((key, identifier))
 }
 
 pub(crate) fn value_to_model_claims(
@@ -870,6 +529,8 @@ mod tests {
 
     use super::*;
     use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
+    use crate::model::did::{Did, DidType};
+    use crate::model::identifier::IdentifierState;
 
     #[test]
     fn test_extracted_credential_to_model_mdoc() {

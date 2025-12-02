@@ -27,8 +27,8 @@ use super::{
 use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, IssuanceProtocolType,
 };
+use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
-use crate::mapper::{IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::ClaimRelations;
@@ -49,6 +49,9 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier::creator::{
+    IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
+};
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::{BlobStorageProvider, BlobStorageType};
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
@@ -141,6 +144,7 @@ pub(crate) struct OpenID4VCI13 {
     key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
     key_provider: Arc<dyn KeyProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
     base_url: Option<String>,
     protocol_base_url: Option<String>,
     config: Arc<CoreConfig>,
@@ -166,6 +170,7 @@ impl OpenID4VCI13 {
         key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
@@ -192,6 +197,7 @@ impl OpenID4VCI13 {
             config,
             params,
             certificate_validator,
+            identifier_creator,
             blob_storage_provider,
             handle_invitation_operations,
         }
@@ -213,6 +219,7 @@ impl OpenID4VCI13 {
         key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
@@ -242,6 +249,7 @@ impl OpenID4VCI13 {
             config,
             params,
             certificate_validator,
+            identifier_creator,
             blob_storage_provider,
             handle_invitation_operations,
         }
@@ -1499,6 +1507,7 @@ impl OpenID4VCI13 {
             &*self.client,
             &*self.metadata_cache,
             &*self.certificate_validator,
+            &*self.identifier_creator,
             storage_access,
             &*self.handle_invitation_operations,
             redirect_uri,
@@ -1537,6 +1546,7 @@ async fn handle_credential_invitation(
     client: &dyn HttpClient,
     fetcher: &dyn OpenIDMetadataFetcher,
     certificate_validator: &dyn CertificateValidator,
+    identifier_creator: &dyn IdentifierCreator,
     storage_access: &StorageAccess,
     handle_invitation_operations: &HandleInvitationOperationsAccess,
     redirect_uri: Option<String>,
@@ -1613,8 +1623,8 @@ async fn handle_credential_invitation(
         credential_offer.issuer_certificate,
     ) {
         (Some(issuer_did), None) => Some(
-            storage_access
-                .get_or_create_identifier(
+            identifier_creator
+                .get_or_create_remote_identifier(
                     &Some(organisation.clone()),
                     &IdentifierDetails::Did(issuer_did),
                     IdentifierRole::Issuer,
@@ -1643,8 +1653,8 @@ async fn handle_credential_invitation(
                 })?;
 
             Some(
-                storage_access
-                    .get_or_create_identifier(
+                identifier_creator
+                    .get_or_create_remote_identifier(
                         &Some(organisation.clone()),
                         &IdentifierDetails::Certificate(CertificateDetails {
                             chain: issuer_certificate,

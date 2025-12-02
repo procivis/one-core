@@ -9,12 +9,13 @@ use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::did::{Did, DidType};
-use crate::model::identifier::IdentifierType;
 use crate::model::organisation::Organisation;
 use crate::model::trust_anchor::TrustAnchor;
 use crate::model::trust_entity::{TrustEntity, TrustEntityRole, TrustEntityState, TrustEntityType};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
+use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
@@ -32,7 +33,7 @@ use crate::repository::trust_anchor_repository::MockTrustAnchorRepository;
 use crate::repository::trust_entity_repository::MockTrustEntityRepository;
 use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::test_utilities::{
-    dummy_did, dummy_did_document, generic_config, get_dummy_date,
+    dummy_did, dummy_did_document, dummy_identifier, generic_config, get_dummy_date,
 };
 use crate::service::trust_entity::TrustEntityService;
 use crate::service::trust_entity::dto::{
@@ -52,6 +53,7 @@ struct TestData {
     pub key_provider: MockKeyProvider,
     pub client: MockHttpClient,
     pub certificate_validator: MockCertificateValidator,
+    pub identifier_creator: MockIdentifierCreator,
 }
 
 fn setup_service(test_data: TestData) -> TrustEntityService {
@@ -67,6 +69,7 @@ fn setup_service(test_data: TestData) -> TrustEntityService {
         Arc::new(test_data.key_provider),
         Arc::new(test_data.client),
         Arc::new(test_data.certificate_validator),
+        Arc::new(test_data.identifier_creator),
         Arc::new(generic_config().core),
     )
 }
@@ -284,7 +287,7 @@ async fn test_publisher_create_remote_trust_entity_success() {
     let trust_anchor_id = Uuid::new_v4().into();
     let did_value =
         DidValue::from_str("did:key:z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK").unwrap();
-    let did_id = Uuid::new_v4().into();
+
     let trust_entity_id = Uuid::new_v4().into();
 
     let bearer_token = format!(
@@ -326,14 +329,6 @@ async fn test_publisher_create_remote_trust_entity_success() {
         .return_once(move |_| Ok(trust_entity_id));
 
     // DID method provider for bearer token validation
-    test_data
-        .did_method_provider
-        .expect_get_did_method_id()
-        .with(eq(did_value.clone()))
-        .once()
-        .return_once(|_| Some("KEY".to_string()));
-
-    // DID method provider for bearer token validation
     let mut did_document = dummy_did_document(&did_value);
     did_document.verification_method[0].id = did_value.to_string();
     did_document.authentication = Some(vec![did_value.to_string()]);
@@ -346,41 +341,18 @@ async fn test_publisher_create_remote_trust_entity_success() {
         .return_once(move |_| Ok(did_document));
 
     // DID, Identifier creation
-    test_data
-        .did_repository
-        .expect_get_did_by_value()
-        .with(eq(did_value.clone()), eq(None), always())
-        .once()
-        .return_once(|_, _, _| Ok(None));
-
     let did_value_for_create = did_value.clone();
     test_data
-        .did_repository
-        .expect_create_did()
-        .withf(move |did| {
-            did.did == did_value_for_create
-                && did.did_method == "KEY"
-                && did.did_type == DidType::Remote
-        })
+        .identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .withf(move |_, detail, _| detail == &IdentifierDetails::Did(did_value_for_create.clone()))
         .once()
-        .return_once(move |_| Ok(did_id));
-
-    test_data
-        .identifier_repository
-        .expect_get_from_did_id()
-        .once()
-        .return_once(|_, _| Ok(None));
-
-    let did_value_for_identifier = did_value.clone();
-    test_data
-        .identifier_repository
-        .expect_create()
-        .withf(move |identifier| {
-            identifier.did.as_ref().unwrap().did == did_value_for_identifier
-                && identifier.r#type == IdentifierType::Did
-        })
-        .once()
-        .return_once(|_| Ok(Uuid::new_v4().into()));
+        .returning(|_, _, _| {
+            Ok((
+                dummy_identifier(),
+                RemoteIdentifierRelation::Did(dummy_did()),
+            ))
+        });
 
     // Trust management setup
     let mut trust_management = MockTrustManagement::default();

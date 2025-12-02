@@ -10,17 +10,11 @@ use crate::model::common::LockType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
 use crate::model::validity_credential::Mdoc;
-use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::AcceptProofResult;
-use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::error::{EntityNotFoundError, ServiceError};
@@ -33,16 +27,10 @@ pub(crate) async fn persist_accepted_proof(
     organisation: &Organisation,
     proof_blob_id: BlobId,
     proof_repository: &dyn ProofRepository,
-    did_repository: &dyn DidRepository,
-    certificate_repository: &dyn CertificateRepository,
-    identifier_repository: &dyn IdentifierRepository,
-    certificate_validator: &dyn CertificateValidator,
-    did_method_provider: &dyn DidMethodProvider,
-    key_repository: &dyn KeyRepository,
     credential_repository: &dyn CredentialRepository,
     validity_credential_repository: &dyn ValidityCredentialRepository,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     transaction_manager: &dyn TransactionManager,
+    identifier_creator: &dyn IdentifierCreator,
 ) -> Result<(), ServiceError> {
     transaction_manager
         .tx(async {
@@ -68,18 +56,9 @@ pub(crate) async fn persist_accepted_proof(
                 let credential_id = proved_credential.credential.id;
                 let mdoc_mso = proved_credential.mdoc_mso.to_owned();
 
-                let credential = credential_from_proved(
-                    proved_credential,
-                    organisation,
-                    did_repository,
-                    certificate_repository,
-                    identifier_repository,
-                    certificate_validator,
-                    did_method_provider,
-                    key_repository,
-                    key_algorithm_provider,
-                )
-                .await?;
+                let credential =
+                    credential_from_proved(identifier_creator, proved_credential, organisation)
+                        .await?;
 
                 credential_repository.create_credential(credential).await?;
 

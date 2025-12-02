@@ -28,6 +28,7 @@ use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::history_decorator::proof::ProofHistoryDecorator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::session_provider::SessionProvider;
@@ -86,6 +87,7 @@ pub(crate) fn verification_protocol_providers_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
     session_provider: Arc<dyn SessionProvider>,
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
@@ -250,6 +252,7 @@ pub(crate) fn verification_protocol_providers_from_config(
                     did_method_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    identifier_creator.clone(),
                     ble.clone(),
                 );
                 fields.capabilities = Some(json!(protocol.get_capabilities()));

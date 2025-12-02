@@ -21,6 +21,7 @@ use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::identifier::creator::MockIdentifierCreator;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -46,10 +47,7 @@ use crate::provider::revocation::model::CredentialRevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
-use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
-use crate::repository::did_repository::MockDidRepository;
-use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -64,8 +62,6 @@ struct Mocks {
     pub key_repository: MockKeyRepository,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
-    pub did_repository: MockDidRepository,
-    pub identifier_repository: MockIdentifierRepository,
     pub credential_formatter_provider: MockCredentialFormatterProvider,
     pub presentation_formatter_provider: MockPresentationFormatterProvider,
     pub did_method_provider: MockDidMethodProvider,
@@ -73,8 +69,8 @@ struct Mocks {
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
-    pub certificate_repository: MockCertificateRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
+    pub identifier_creator: MockIdentifierCreator,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VPDraft25Service {
@@ -84,8 +80,6 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft25Service {
         Arc::new(mocks.key_repository),
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
-        Arc::new(mocks.did_repository),
-        Arc::new(mocks.identifier_repository),
         Arc::new(mocks.credential_formatter_provider),
         Arc::new(mocks.presentation_formatter_provider),
         Arc::new(mocks.did_method_provider),
@@ -93,8 +87,8 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft25Service {
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.validity_credential_repository),
         Arc::new(mocks.certificate_validator),
-        Arc::new(mocks.certificate_repository),
         Arc::new(mocks.blob_storage_provider),
+        Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
     )
 }

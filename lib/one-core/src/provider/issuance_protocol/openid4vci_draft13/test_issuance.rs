@@ -25,6 +25,7 @@ use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::MockHttpClient;
+use crate::proto::identifier::creator::MockIdentifierCreator;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
@@ -182,6 +183,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockIdentifierCreator::new()),
         Arc::new(blob_storage_provider),
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
@@ -335,6 +337,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockIdentifierCreator::new()),
         Arc::new(blob_storage_provider),
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
@@ -476,6 +479,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(key_provider),
         Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
@@ -574,6 +578,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(MockKeySecurityLevelProvider::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(MockCertificateValidator::new()),
+        Arc::new(MockIdentifierCreator::new()),
         Arc::new(MockBlobStorageProvider::new()),
         Some("base_url".to_string()),
         Arc::new(config),

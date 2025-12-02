@@ -27,6 +27,7 @@ use crate::proto::history_decorator::proof_schema::ProofSchemaHistoryDecorator;
 use crate::proto::history_decorator::trust_entity::TrustEntityHistoryDecorator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::identifier::creator::IdentifierCreatorProto;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
 use crate::proto::nfc::scanner::NfcScanner;
@@ -640,6 +641,17 @@ impl OneCore {
             data_provider.get_holder_wallet_unit_repository(),
         ));
 
+        let identifier_creator = Arc::new(IdentifierCreatorProto::new(
+            did_method_provider.clone(),
+            did_repository.clone(),
+            certificate_repository.clone(),
+            certificate_validator.clone(),
+            key_repository.clone(),
+            key_algorithm_provider.clone(),
+            identifier_repository.clone(),
+            data_provider.get_tx_manager(),
+        ));
+
         let key_security_levels = key_security_levels_from_config(
             &mut core_config.key_security_level,
             &core_config.key_storage,
@@ -665,6 +677,7 @@ impl OneCore {
             revocation_method_provider.clone(),
             did_method_provider.clone(),
             certificate_validator.clone(),
+            identifier_creator.clone(),
             client.clone(),
             openid_metadata_cache.clone(),
             blob_storage_provider.clone(),
@@ -685,6 +698,7 @@ impl OneCore {
             certificate_validator.clone(),
             key_algorithm_provider.clone(),
             did_method_provider.clone(),
+            identifier_creator.clone(),
             providers.session_provider.clone(),
             ble_waiter.clone(),
             client.clone(),
@@ -787,6 +801,7 @@ impl OneCore {
                 key_provider.clone(),
                 client.clone(),
                 certificate_validator.clone(),
+                identifier_creator.clone(),
                 config.clone(),
             ),
             backup_service: BackupService::new(
@@ -821,16 +836,14 @@ impl OneCore {
                 credential_schema_repository.clone(),
                 credential_repository.clone(),
                 data_provider.get_interaction_repository(),
-                key_repository.clone(),
                 config.clone(),
                 issuance_provider.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
+                identifier_creator.clone(),
                 data_provider.get_tx_manager(),
             ),
             oid4vci_final1_0_service: OID4VCIFinal1_0Service::new(
@@ -839,11 +852,8 @@ impl OneCore {
                 credential_schema_repository.clone(),
                 credential_repository.clone(),
                 data_provider.get_interaction_repository(),
-                key_repository.clone(),
                 config.clone(),
                 issuance_provider.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_formatter_provider.clone(),
@@ -852,22 +862,21 @@ impl OneCore {
                 blob_storage_provider.clone(),
                 data_provider.get_tx_manager(),
                 wallet_unit_proto.clone(),
+                identifier_creator.clone(),
             ),
             oid4vci_draft13_swiyu_service: OID4VCIDraft13SwiyuService::new(
                 providers.core_base_url.clone(),
                 credential_schema_repository.clone(),
                 credential_repository.clone(),
                 data_provider.get_interaction_repository(),
-                key_repository.clone(),
                 config.clone(),
                 issuance_provider.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
                 did_method_provider.clone(),
                 key_algorithm_provider.clone(),
                 credential_formatter_provider.clone(),
                 revocation_method_provider.clone(),
                 certificate_validator.clone(),
+                identifier_creator.clone(),
                 data_provider.get_tx_manager(),
             ),
             oid4vp_draft20_service: OID4VPDraft20Service::new(
@@ -876,8 +885,6 @@ impl OneCore {
                 key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -885,8 +892,8 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
-                certificate_repository.clone(),
                 blob_storage_provider.clone(),
+                identifier_creator.clone(),
                 data_provider.get_tx_manager(),
             ),
             oid4vp_draft25_service: OID4VPDraft25Service::new(
@@ -895,8 +902,6 @@ impl OneCore {
                 key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -904,8 +909,8 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
-                certificate_repository.clone(),
                 blob_storage_provider.clone(),
+                identifier_creator.clone(),
                 data_provider.get_tx_manager(),
             ),
             oid4vp_final1_0_service: OID4VPFinal1_0Service::new(
@@ -914,8 +919,6 @@ impl OneCore {
                 key_repository.clone(),
                 key_provider.clone(),
                 config.clone(),
-                did_repository.clone(),
-                identifier_repository.clone(),
                 credential_formatter_provider.clone(),
                 presentation_formatter_provider.clone(),
                 did_method_provider.clone(),
@@ -923,8 +926,8 @@ impl OneCore {
                 revocation_method_provider.clone(),
                 data_provider.get_validity_credential_repository(),
                 certificate_validator.clone(),
-                certificate_repository.clone(),
                 blob_storage_provider.clone(),
+                identifier_creator.clone(),
                 data_provider.get_tx_manager(),
             ),
             credential_schema_service: CredentialSchemaService::new(
@@ -989,6 +992,7 @@ impl OneCore {
                 blob_storage_provider.clone(),
                 nfc_hce,
                 providers.session_provider.clone(),
+                identifier_creator.clone(),
                 data_provider.get_tx_manager(),
             ),
             ssi_issuer_service: SSIIssuerService::new(
@@ -1027,13 +1031,12 @@ impl OneCore {
                 credential_formatter_provider,
                 issuance_provider,
                 verification_provider,
-                did_method_provider.clone(),
-                certificate_validator.clone(),
                 config.clone(),
                 client.clone(),
                 blob_storage_provider,
                 providers.session_provider.clone(),
                 credential_schema_importer_proto,
+                identifier_creator,
             ),
             wallet_provider_service: WalletProviderService::new(
                 organisation_repository.clone(),

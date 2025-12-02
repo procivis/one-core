@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
-use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
-use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::provider::IssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
@@ -53,13 +52,12 @@ pub struct SSIHolderService {
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
     verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
-    did_method_provider: Arc<dyn DidMethodProvider>,
-    certificate_validator: Arc<dyn CertificateValidator>,
     config: Arc<core_config::CoreConfig>,
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
     credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
 }
 
 #[expect(clippy::too_many_arguments)]
@@ -81,13 +79,12 @@ impl SSIHolderService {
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         issuance_protocol_provider: Arc<dyn IssuanceProtocolProvider>,
         verification_protocol_provider: Arc<dyn VerificationProtocolProvider>,
-        did_method_provider: Arc<dyn DidMethodProvider>,
-        certificate_validator: Arc<dyn CertificateValidator>,
         config: Arc<core_config::CoreConfig>,
         client: Arc<dyn HttpClient>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
     ) -> Self {
         Self {
             credential_repository,
@@ -105,14 +102,13 @@ impl SSIHolderService {
             formatter_provider,
             issuance_protocol_provider,
             verification_protocol_provider,
-            did_method_provider,
-            certificate_validator,
             config,
             client,
             blob_storage_provider,
             session_provider,
             key_security_level_provider,
             credential_schema_importer,
+            identifier_creator,
         }
     }
 }

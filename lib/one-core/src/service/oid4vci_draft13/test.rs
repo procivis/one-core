@@ -19,12 +19,13 @@ use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, LayoutType,
 };
-use crate::model::did::{Did, DidType};
-use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
+use crate::model::did::Did;
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::certificate_validator::MockCertificateValidator;
+use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::FormatterCapabilities;
@@ -44,10 +45,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::did_repository::MockDidRepository;
-use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::key_repository::MockKeyRepository;
 use crate::service::error::ServiceError;
 use crate::service::test_utilities::*;
 
@@ -56,16 +54,14 @@ struct Mocks {
     pub credential_schema_repository: MockCredentialSchemaRepository,
     pub credential_repository: MockCredentialRepository,
     pub interaction_repository: MockInteractionRepository,
-    pub key_repository: MockKeyRepository,
     pub config: CoreConfig,
     pub exchange_provider: MockIssuanceProtocolProvider,
-    pub did_repository: MockDidRepository,
-    pub identifier_repository: MockIdentifierRepository,
     pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub formatter_provider: MockCredentialFormatterProvider,
     pub revocation_method_provider: MockRevocationMethodProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub identifier_creator: MockIdentifierCreator,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
@@ -74,16 +70,14 @@ fn setup_service(mocks: Mocks) -> OID4VCIDraft13Service {
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.interaction_repository),
-        Arc::new(mocks.key_repository),
         Arc::new(mocks.config),
         Arc::new(mocks.exchange_provider),
-        Arc::new(mocks.did_repository),
-        Arc::new(mocks.identifier_repository),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
         Arc::new(mocks.formatter_provider),
         Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.certificate_validator),
+        Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
     )
 }
@@ -818,9 +812,6 @@ async fn test_create_credential_success() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-    let now = OffsetDateTime::now_utc();
 
     let schema = generic_credential_schema();
     let credential = dummy_credential(
@@ -880,45 +871,6 @@ async fn test_create_credential_success() {
             .once()
             .return_once(move |_| Some(Arc::new(issuance_protocol)));
 
-        did_repository
-            .expect_get_did_by_value()
-            .times(1)
-            .returning(move |did_value, _, _| {
-                Ok(Some(Did {
-                    id: holder_did_id,
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    did: did_value.clone(),
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    organisation: None,
-                    keys: None,
-                    deactivated: false,
-                    log: None,
-                }))
-            });
-
-        identifier_repository
-            .expect_get_from_did_id()
-            .once()
-            .returning(move |did_id, _| {
-                Ok(Some(Identifier {
-                    id: Uuid::from(did_id).into(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    organisation: None,
-                    did: None,
-                    key: None,
-                    certificates: None,
-                    r#type: IdentifierType::Did,
-                    is_remote: true,
-                    state: IdentifierState::Active,
-                    deleted_at: None,
-                }))
-            });
-
         credential_repository
             .expect_update_credential()
             .once()
@@ -979,16 +931,33 @@ async fn test_create_credential_success() {
             })
         });
 
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                Identifier {
+                    id: Uuid::from(holder_did_id).into(),
+                    r#type: IdentifierType::Did,
+                    ..dummy_identifier()
+                },
+                RemoteIdentifierRelation::Did(Did {
+                    id: holder_did_id,
+                    ..dummy_did()
+                }),
+            ))
+        });
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
         config: generic_config().core,
         exchange_provider,
-        did_repository,
-        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
+        identifier_creator,
         ..Default::default()
     });
 
@@ -1022,9 +991,6 @@ async fn test_create_credential_success_sd_jwt_vc() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-    let now = OffsetDateTime::now_utc();
 
     let mut schema = generic_credential_schema();
     schema.format = "SD_JWT_VC".to_string();
@@ -1078,45 +1044,6 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .once()
             .return_once(move |_| Some(Arc::new(issuance_protocol)));
 
-        did_repository
-            .expect_get_did_by_value()
-            .times(1)
-            .returning(move |did_value, _, _| {
-                Ok(Some(Did {
-                    id: holder_did_id,
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    did: did_value.clone(),
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    organisation: None,
-                    keys: None,
-                    deactivated: false,
-                    log: None,
-                }))
-            });
-
-        identifier_repository
-            .expect_get_from_did_id()
-            .once()
-            .returning(move |did_id, _| {
-                Ok(Some(Identifier {
-                    id: Uuid::from(did_id).into(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    organisation: None,
-                    did: None,
-                    key: None,
-                    certificates: None,
-                    r#type: IdentifierType::Did,
-                    is_remote: true,
-                    state: IdentifierState::Active,
-                    deleted_at: None,
-                }))
-            });
-
         credential_repository
             .expect_update_credential()
             .once()
@@ -1177,16 +1104,33 @@ async fn test_create_credential_success_sd_jwt_vc() {
             })
         });
 
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                Identifier {
+                    id: Uuid::from(holder_did_id).into(),
+                    r#type: IdentifierType::Did,
+                    ..dummy_identifier()
+                },
+                RemoteIdentifierRelation::Did(Did {
+                    id: holder_did_id,
+                    ..dummy_did()
+                }),
+            ))
+        });
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
         config: generic_config().core,
         exchange_provider,
-        did_repository,
-        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
+        identifier_creator,
         ..Default::default()
     });
 
@@ -1218,9 +1162,6 @@ async fn test_create_credential_success_mdoc() {
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-    let now = OffsetDateTime::now_utc();
 
     let schema = CredentialSchema {
         format: "MDOC".to_string(),
@@ -1277,45 +1218,6 @@ async fn test_create_credential_success_mdoc() {
             .once()
             .return_once(move |_| Some(Arc::new(issuance_protocol)));
 
-        did_repository
-            .expect_get_did_by_value()
-            .times(1)
-            .returning(move |did_value, _, _| {
-                Ok(Some(Did {
-                    id: holder_did_id,
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    did: did_value.clone(),
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    organisation: None,
-                    keys: None,
-                    deactivated: false,
-                    log: None,
-                }))
-            });
-
-        identifier_repository
-            .expect_get_from_did_id()
-            .once()
-            .returning(move |did_id, _| {
-                Ok(Some(Identifier {
-                    id: Uuid::from(did_id).into(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    organisation: None,
-                    did: None,
-                    key: None,
-                    certificates: None,
-                    r#type: IdentifierType::Did,
-                    is_remote: true,
-                    state: IdentifierState::Active,
-                    deleted_at: None,
-                }))
-            });
-
         credential_repository
             .expect_update_credential()
             .once()
@@ -1376,16 +1278,33 @@ async fn test_create_credential_success_mdoc() {
             })
         });
 
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                Identifier {
+                    id: Uuid::from(holder_did_id).into(),
+                    r#type: IdentifierType::Did,
+                    ..dummy_identifier()
+                },
+                RemoteIdentifierRelation::Did(Did {
+                    id: holder_did_id,
+                    ..dummy_did()
+                }),
+            ))
+        });
+
     let service = setup_service(Mocks {
         credential_schema_repository: repository,
         credential_repository,
         interaction_repository,
         config: generic_config().core,
         exchange_provider,
-        did_repository,
-        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
+        identifier_creator,
         ..Default::default()
     });
 
@@ -1827,13 +1746,10 @@ async fn test_create_credential_access_token_expired() {
 
 #[tokio::test]
 async fn test_create_credential_issuer_failed() {
-    let mut repository = MockCredentialSchemaRepository::default();
+    let mut credential_schema_repository = MockCredentialSchemaRepository::default();
     let mut credential_repository = MockCredentialRepository::default();
     let mut interaction_repository = MockInteractionRepository::default();
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
-    let mut did_repository = MockDidRepository::default();
-    let mut identifier_repository = MockIdentifierRepository::default();
-    let now = OffsetDateTime::now_utc();
 
     let schema = generic_credential_schema();
     let credential = dummy_credential(
@@ -1845,7 +1761,7 @@ async fn test_create_credential_issuer_failed() {
     let holder_did_id: DidId = Uuid::new_v4().into();
     {
         let clone = schema.clone();
-        repository
+        credential_schema_repository
             .expect_get_credential_schema()
             .times(1)
             .with(eq(schema.id.to_owned()), always())
@@ -1881,45 +1797,6 @@ async fn test_create_credential_issuer_failed() {
             .expect_get_protocol()
             .once()
             .return_once(move |_| Some(Arc::new(issuance_protocol)));
-
-        did_repository
-            .expect_get_did_by_value()
-            .times(1)
-            .returning(move |did_value, _, _| {
-                Ok(Some(Did {
-                    id: holder_did_id,
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    did: did_value.clone(),
-                    did_type: DidType::Remote,
-                    did_method: "KEY".to_string(),
-                    organisation: None,
-                    keys: None,
-                    deactivated: false,
-                    log: None,
-                }))
-            });
-
-        identifier_repository
-            .expect_get_from_did_id()
-            .once()
-            .returning(move |did_id, _| {
-                Ok(Some(Identifier {
-                    id: Uuid::from(did_id).into(),
-                    created_date: now,
-                    last_modified: now,
-                    name: "verifier".to_string(),
-                    organisation: None,
-                    did: None,
-                    key: None,
-                    certificates: None,
-                    r#type: IdentifierType::Did,
-                    is_remote: true,
-                    state: IdentifierState::Active,
-                    deleted_at: None,
-                }))
-            });
 
         credential_repository
             .expect_update_credential()
@@ -1989,16 +1866,33 @@ async fn test_create_credential_issuer_failed() {
             })
         });
 
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .returning(move |_, _, _| {
+            Ok((
+                Identifier {
+                    id: Uuid::from(holder_did_id).into(),
+                    r#type: IdentifierType::Did,
+                    ..dummy_identifier()
+                },
+                RemoteIdentifierRelation::Did(Did {
+                    id: holder_did_id,
+                    ..dummy_did()
+                }),
+            ))
+        });
+
     let service = setup_service(Mocks {
-        credential_schema_repository: repository,
+        credential_schema_repository,
         credential_repository,
         interaction_repository,
         config: generic_config().core,
         exchange_provider,
-        did_repository,
-        identifier_repository,
         key_algorithm_provider,
         did_method_provider,
+        identifier_creator,
         ..Default::default()
     });
 

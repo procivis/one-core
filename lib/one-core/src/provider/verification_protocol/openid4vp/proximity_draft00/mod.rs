@@ -39,6 +39,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
 use crate::provider::credential_formatter::model::{
@@ -95,6 +96,7 @@ pub struct OpenID4VPProximityDraft00 {
     interaction_repository: Arc<dyn InteractionRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
     config: Arc<CoreConfig>,
     params: OpenID4VPProximityDraft00Params,
 }
@@ -113,6 +115,7 @@ impl OpenID4VPProximityDraft00 {
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         ble: Option<BleWaiter>,
     ) -> Self {
         let url_scheme = params.url_scheme.clone();
@@ -145,6 +148,7 @@ impl OpenID4VPProximityDraft00 {
             interaction_repository,
             proof_repository,
             certificate_validator,
+            identifier_creator,
             config,
             params,
         }
@@ -172,6 +176,7 @@ impl OpenID4VPProximityDraft00 {
             url,
             organisation,
             storage_access,
+            self.identifier_creator.as_ref(),
             holder_transport,
             verification_fn,
         )

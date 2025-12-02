@@ -15,6 +15,7 @@ use crate::model::interaction::Interaction;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -89,6 +90,7 @@ impl OpenID4VCI13Swiyu {
         key_security_level_provider: Arc<dyn KeySecurityLevelProvider>,
         key_provider: Arc<dyn KeyProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         base_url: Option<String>,
         config: Arc<CoreConfig>,
@@ -111,6 +113,7 @@ impl OpenID4VCI13Swiyu {
                 key_security_level_provider,
                 key_provider,
                 certificate_validator,
+                identifier_creator,
                 blob_storage_provider,
                 base_url,
                 config,

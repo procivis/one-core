@@ -5,9 +5,7 @@ use shared_types::{ClaimSchemaId, CredentialSchemaId};
 
 use super::common::to_cbor;
 use crate::config::core_config::VerificationProtocolType;
-use crate::mapper::{
-    IdentifierRole, NESTED_CLAIM_MARKER, extracted_credential_to_model, get_or_create_identifier,
-};
+use crate::mapper::{NESTED_CLAIM_MARKER, extracted_credential_to_model};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchema;
@@ -15,6 +13,7 @@ use crate::model::did::KeyRole;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::identifier::creator::{IdentifierCreator, IdentifierRole};
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, DetailCredential, IdentifierDetails,
@@ -25,11 +24,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::model::ExtractPresentationCtx;
 use crate::provider::presentation_formatter::mso_mdoc::session_transcript::SessionTranscript;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
-use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::validator::{validate_expiration_time, validate_issuance_time};
@@ -315,19 +310,12 @@ fn extract_matching_requested_claim(
     }))
 }
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) async fn accept_proof(
     proof: Proof,
     proved_claims: Vec<ValidatedProofClaimDTO>,
-    did_repository: &dyn DidRepository,
-    identifier_repository: &dyn IdentifierRepository,
-    did_method_provider: &dyn DidMethodProvider,
     credential_repository: &dyn CredentialRepository,
     proof_repository: &dyn ProofRepository,
-    certificate_validator: &dyn CertificateValidator,
-    certificate_repository: &dyn CertificateRepository,
-    key_repository: &dyn KeyRepository,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+    identifier_creator: Arc<dyn IdentifierCreator>,
 ) -> Result<(), ServiceError> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof schema is None".to_string(),
@@ -415,19 +403,13 @@ pub(crate) async fn accept_proof(
             .first()
             .ok_or(ServiceError::MappingError("claims are empty".to_string()))?;
 
-        let (issuer_identifier, issuer_identifier_relation) = get_or_create_identifier(
-            did_method_provider,
-            did_repository,
-            certificate_repository,
-            certificate_validator,
-            key_repository,
-            key_algorithm_provider,
-            identifier_repository,
-            &proof_schema.organisation,
-            &first_claim.credential.issuer,
-            IdentifierRole::Issuer,
-        )
-        .await?;
+        let (issuer_identifier, issuer_identifier_relation) = identifier_creator
+            .get_or_create_remote_identifier(
+                &proof_schema.organisation,
+                &first_claim.credential.issuer,
+                IdentifierRole::Issuer,
+            )
+            .await?;
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas =

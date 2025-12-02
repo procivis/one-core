@@ -18,7 +18,6 @@ use super::mapper::{
 };
 use crate::config::core_config::TrustManagementType::SimpleTrustList;
 use crate::mapper::x509::pem_chain_to_authority_key_identifiers;
-use crate::mapper::{IdentifierRole, get_or_create_did_and_identifier};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, DidType};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
@@ -33,6 +32,8 @@ use crate::proto::bearer_token::validate_bearer_token;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CrlMode, ParsedCertificate,
 };
+use crate::proto::identifier::creator::IdentifierRole;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::trust_management::model::TrustEntityByEntityKey;
 use crate::provider::trust_management::{TrustEntityKeyBatch, TrustOperation};
 use crate::repository::error::DataLayerError;
@@ -278,15 +279,14 @@ impl TrustEntityService {
         };
 
         // See: ONE-6304, we expect the remote DID to be available at a later stage
-        let (_did, _identifier) = get_or_create_did_and_identifier(
-            &*self.did_method_provider,
-            &*self.did_repository,
-            &*self.identifier_repository,
-            &None,
-            &did_value,
-            did_role,
-        )
-        .await?;
+        let _unused = self
+            .identifier_creator
+            .get_or_create_remote_identifier(
+                &None,
+                &IdentifierDetails::Did(did_value.to_owned()),
+                did_role,
+            )
+            .await?;
 
         let entity = trust_entity_from_did_request(request, trust_anchor.clone(), did_value);
 

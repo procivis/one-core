@@ -4,13 +4,14 @@ use super::ProofService;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use crate::config::validator::transport::get_first_available_transport;
-use crate::mapper::{IdentifierRole, extracted_credential_to_model, get_or_create_identifier};
+use crate::mapper::extracted_credential_to_model;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::model::proof_schema::ProofSchema;
+use crate::proto::identifier::creator::IdentifierRole;
 use crate::provider::credential_formatter::model::CredentialClaim;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
@@ -208,19 +209,14 @@ impl ProofService {
             claim_schemas.push(claim_schema.to_owned());
         }
 
-        let (issuer_identifier, issuer_identifier_relation) = get_or_create_identifier(
-            &*self.did_method_provider,
-            &*self.did_repository,
-            &*self.certificate_repository,
-            &*self.certificate_validator,
-            &*self.key_repository,
-            &*self.key_algorithm_provider,
-            &*self.identifier_repository,
-            &proof_schema.organisation,
-            &credential.issuer,
-            IdentifierRole::Issuer,
-        )
-        .await?;
+        let (issuer_identifier, issuer_identifier_relation) = self
+            .identifier_creator
+            .get_or_create_remote_identifier(
+                &proof_schema.organisation,
+                &credential.issuer,
+                IdentifierRole::Issuer,
+            )
+            .await?;
 
         let credential = extracted_credential_to_model(
             &claim_schemas,

@@ -19,6 +19,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::proto::wallet_unit::HolderWalletUnitProto;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
@@ -90,6 +91,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
     client: Arc<dyn HttpClient>,
     metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
@@ -161,6 +163,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     key_security_level_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    identifier_creator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),
@@ -198,6 +201,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     key_security_level_provider.clone(),
                     key_provider.clone(),
                     certificate_validator.clone(),
+                    identifier_creator.clone(),
                     blob_storage_provider.clone(),
                     core_base_url.clone(),
                     config.clone(),

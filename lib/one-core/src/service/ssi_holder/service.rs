@@ -4,6 +4,7 @@ use url::Url;
 use super::SSIHolderService;
 use super::dto::HandleInvitationResultDTO;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
+use crate::service::storage_proxy::StorageProxyImpl;
 use crate::validator::throw_if_org_not_matching_session;
 
 impl SSIHolderService {
@@ -41,5 +42,17 @@ impl SSIHolderService {
 
         self.handle_verification_invitation(url, organisation, transport)
             .await
+    }
+
+    pub(super) fn storage_proxy(&self) -> StorageProxyImpl {
+        StorageProxyImpl::new(
+            self.interaction_repository.clone(),
+            self.credential_schema_repository.clone(),
+            self.credential_repository.clone(),
+            self.did_repository.clone(),
+            self.certificate_repository.clone(),
+            self.key_repository.clone(),
+            self.identifier_repository.clone(),
+        )
     }
 }

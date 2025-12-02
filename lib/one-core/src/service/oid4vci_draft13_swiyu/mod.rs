@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::config::core_config::IssuanceProtocolType;
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -15,10 +16,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::service::oid4vci_draft13::OID4VCIDraft13Service;
 
 #[derive(Clone)]
@@ -33,16 +31,14 @@ impl OID4VCIDraft13SwiyuService {
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
         interaction_repository: Arc<dyn InteractionRepository>,
-        key_repository: Arc<dyn KeyRepository>,
         config: Arc<core_config::CoreConfig>,
         protocol_provider: Arc<dyn IssuanceProtocolProvider>,
-        did_repository: Arc<dyn DidRepository>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         transaction_manager: Arc<dyn TransactionManager>,
     ) -> Self {
         let protocol_base_url = core_base_url
@@ -55,16 +51,14 @@ impl OID4VCIDraft13SwiyuService {
                 credential_schema_repository,
                 credential_repository,
                 interaction_repository,
-                key_repository,
                 config,
                 protocol_provider,
-                did_repository,
-                identifier_repository,
                 did_method_provider,
                 key_algorithm_provider,
                 formatter_provider,
                 revocation_method_provider,
                 certificate_validator,
+                identifier_creator,
                 transaction_manager,
             ),
         }

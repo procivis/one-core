@@ -14,10 +14,10 @@ use super::model::{MQTTOpenID4VPInteractionDataHolder, MQTTSessionKeys};
 use super::oidc_mqtt_verifier::MqttVerifier;
 use super::{ConfigParams, MqttHolderTransport, generate_session_keys};
 use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
-use crate::mapper::RemoteIdentifierRelation;
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::proto::identifier::creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -138,9 +138,9 @@ fn test_encryption_verifier_to_holder() {
 async fn test_handle_invitation_success() {
     let verifier_did =
         DidValue::from_str("did:key:z6Mkw7WbDmMJ5X8w1V7D4eFFJoVqMdkaGZQuFkp5ZZ4r1W3y").unwrap();
-    let mut mock_storage_access = MockStorageProxy::default();
-    mock_storage_access
-        .expect_get_or_create_identifier()
+    let mut identifier_creator = MockIdentifierCreator::default();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
         .once()
         .returning(|_, did, _| {
             Ok((
@@ -174,6 +174,7 @@ async fn test_handle_invitation_success() {
             ))
         });
     let interaction_id = Uuid::new_v4();
+    let mut mock_storage_access = MockStorageProxy::default();
     mock_storage_access
         .expect_create_interaction()
         .once()
@@ -309,6 +310,7 @@ async fn test_handle_invitation_success() {
         valid,
         dummy_organisation(None),
         &mock_storage_access,
+        &identifier_creator,
         &setup_holder_transport(None, Some(Arc::new(mqtt_client))),
         Box::new(verifier),
     )

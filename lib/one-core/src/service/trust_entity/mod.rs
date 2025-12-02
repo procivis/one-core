@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::config::core_config;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -34,12 +35,13 @@ pub struct TrustEntityService {
     key_provider: Arc<dyn KeyProvider>,
     client: Arc<dyn HttpClient>,
     certificate_validator: Arc<dyn CertificateValidator>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
     config: Arc<core_config::CoreConfig>,
 }
 
 impl TrustEntityService {
     #[expect(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         trust_anchor_repository: Arc<dyn TrustAnchorRepository>,
         trust_entity_repository: Arc<dyn TrustEntityRepository>,
         did_repository: Arc<dyn DidRepository>,
@@ -51,6 +53,7 @@ impl TrustEntityService {
         key_provider: Arc<dyn KeyProvider>,
         client: Arc<dyn HttpClient>,
         certificate_validator: Arc<dyn CertificateValidator>,
+        identifier_creator: Arc<dyn IdentifierCreator>,
         config: Arc<core_config::CoreConfig>,
     ) -> Self {
         Self {
@@ -64,6 +67,7 @@ impl TrustEntityService {
             trust_provider,
             key_provider,
             certificate_validator,
+            identifier_creator,
             client,
             config,
         }

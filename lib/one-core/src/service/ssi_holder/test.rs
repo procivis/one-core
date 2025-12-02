@@ -25,9 +25,9 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::proof::{Proof, ProofStateEnum};
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::identifier::creator::MockIdentifierCreator;
 use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::proto::session_provider::{NoSessionProvider, Session};
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
@@ -36,7 +36,6 @@ use crate::provider::credential_formatter::model::{
     CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
 };
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::issuance_protocol::MockIssuanceProtocol;
 use crate::provider::issuance_protocol::dto::{Features, IssuanceProtocolCapabilities};
 use crate::provider::issuance_protocol::model::{
@@ -1608,13 +1607,12 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         formatter_provider: Arc::new(MockCredentialFormatterProvider::new()),
         issuance_protocol_provider: Arc::new(MockIssuanceProtocolProvider::new()),
         verification_protocol_provider: Arc::new(MockVerificationProtocolProvider::new()),
-        did_method_provider: Arc::new(MockDidMethodProvider::new()),
         blob_storage_provider: Arc::new(MockBlobStorageProvider::new()),
-        certificate_validator: Arc::new(MockCertificateValidator::new()),
         config: Arc::new(generic_config().core),
         client,
         session_provider: Arc::new(NoSessionProvider),
         credential_schema_importer: Arc::new(MockCredentialSchemaImporter::new()),
+        identifier_creator: Arc::new(MockIdentifierCreator::new()),
     }
 }
 

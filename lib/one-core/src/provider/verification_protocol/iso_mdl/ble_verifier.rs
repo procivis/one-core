@@ -24,6 +24,7 @@ use crate::proto::bluetooth_low_energy::low_level::dto::{
     CharacteristicWriteType, DeviceAddress, PeripheralDiscoveryData,
 };
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::identifier::creator::IdentifierCreator;
 use crate::provider::credential_formatter::mdoc_formatter::util::{Bstr, EmbeddedCbor};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
@@ -34,11 +35,7 @@ use crate::provider::presentation_formatter::mso_mdoc::session_transcript::{
 };
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
@@ -119,12 +116,9 @@ pub(crate) async fn start_client(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
-    certificate_repository: Arc<dyn CertificateRepository>,
-    key_repository: Arc<dyn KeyRepository>,
+    identifier_creator: Arc<dyn IdentifierCreator>,
 ) -> Result<(), ServiceError> {
     let peripheral_server_uuid = ble_options.peripheral_server_uuid.to_owned();
 
@@ -145,12 +139,9 @@ pub(crate) async fn start_client(
                     did_method_provider.clone(),
                     key_algorithm_provider.clone(),
                     credential_repository.clone(),
-                    did_repository.clone(),
-                    identifier_repository.clone(),
                     proof_repository.clone(),
                     certificate_validator.clone(),
-                    certificate_repository.clone(),
-                    &*key_repository,
+                    identifier_creator.clone(),
                 )
                 .await;
 
@@ -213,12 +204,9 @@ async fn verifier_flow(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
-    certificate_repository: Arc<dyn CertificateRepository>,
-    key_repository: &dyn KeyRepository,
+    identifier_creator: Arc<dyn IdentifierCreator>,
 ) -> Result<(), anyhow::Error> {
     let (device, mtu_size) =
         connect_to_server(central, ble_options.peripheral_server_uuid.to_string()).await?;
@@ -241,12 +229,9 @@ async fn verifier_flow(
         did_method_provider,
         key_algorithm_provider,
         credential_repository,
-        did_repository,
-        identifier_repository,
         proof_repository,
         certificate_validator,
-        certificate_repository,
-        key_repository,
+        identifier_creator,
     )
     .await;
     if let Err(_error) = &result {
@@ -274,12 +259,9 @@ async fn process_proof(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: Arc<dyn ProofRepository>,
     certificate_validator: Arc<dyn CertificateValidator>,
-    certificate_repository: Arc<dyn CertificateRepository>,
-    key_repository: &dyn KeyRepository,
+    identifier_creator: Arc<dyn IdentifierCreator>,
 ) -> Result<(), anyhow::Error> {
     send_session_establishment(
         central,
@@ -382,12 +364,9 @@ async fn process_proof(
         did_method_provider,
         key_algorithm_provider,
         credential_repository,
-        did_repository,
-        identifier_repository,
         &*proof_repository,
         certificate_validator,
-        certificate_repository,
-        key_repository,
+        identifier_creator,
     )
     .await
     {
@@ -450,12 +429,9 @@ async fn fill_proof_claims_and_credentials(
     did_method_provider: Arc<dyn DidMethodProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     credential_repository: Arc<dyn CredentialRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
     proof_repository: &dyn ProofRepository,
     certificate_validator: Arc<dyn CertificateValidator>,
-    certificate_repository: Arc<dyn CertificateRepository>,
-    key_repository: &dyn KeyRepository,
+    identifier_creator: Arc<dyn IdentifierCreator>,
 ) -> Result<(), anyhow::Error> {
     let proof_schema = proof.schema.as_ref().ok_or(ServiceError::MappingError(
         "proof_schema is None".to_string(),
@@ -478,15 +454,9 @@ async fn fill_proof_claims_and_credentials(
     super::verify_proof::accept_proof(
         proof.clone(),
         proved_claims,
-        &*did_repository,
-        &*identifier_repository,
-        &*did_method_provider,
         &*credential_repository,
         proof_repository,
-        &*certificate_validator,
-        &*certificate_repository,
-        key_repository,
-        &*key_algorithm_provider,
+        identifier_creator,
     )
     .await?;
 

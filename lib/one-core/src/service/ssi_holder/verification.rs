@@ -17,10 +17,7 @@ use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
 use crate::mapper::oidc::detect_format_with_crypto_suite;
-use crate::mapper::{
-    IdentifierRole, NESTED_CLAIM_MARKER, RemoteIdentifierRelation, get_or_create_identifier,
-    paths_to_leafs,
-};
+use crate::mapper::{NESTED_CLAIM_MARKER, paths_to_leafs};
 use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{Credential, CredentialRelations};
@@ -32,6 +29,7 @@ use crate::model::interaction::{InteractionId, InteractionRelations};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};
+use crate::proto::identifier::creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{CredentialPresentation, HolderBindingCtx};
@@ -52,7 +50,6 @@ use crate::service::error::{
     ValidationError,
 };
 use crate::service::ssi_holder::mapper::holder_did_key_jwk_from_credential;
-use crate::service::storage_proxy::StorageProxyImpl;
 use crate::validator::{throw_if_endpoint_version_incompatible, throw_if_proof_state_not_eq};
 
 impl SSIHolderService {
@@ -196,7 +193,7 @@ impl SSIHolderService {
             .holder_get_presentation_definition(
                 &proof,
                 interaction_data.clone(),
-                &self.storage_access(),
+                &self.storage_proxy(),
             )
             .await?;
 
@@ -528,7 +525,7 @@ impl SSIHolderService {
         let holder_binding_ctx = verification_protocol
             .holder_get_holder_binding_context(&proof, interaction_data.clone())?;
         let presentation_definition = verification_protocol
-            .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_access())
+            .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_proxy())
             .await?;
 
         struct CredentialPathsToPresent {
@@ -762,7 +759,7 @@ impl SSIHolderService {
             mut proof,
             interaction_id,
         } = verification_protocol
-            .holder_handle_invitation(url, organisation, &self.storage_access(), transport)
+            .holder_handle_invitation(url, organisation, &self.storage_proxy(), transport)
             .await?;
 
         proof.protocol = verification_exchange;
@@ -784,19 +781,14 @@ impl SSIHolderService {
             if let Ok(data) = deserialized
                 && let Some(details) = data.verifier_details
             {
-                let (identifier, verifier_identifier_relation) = get_or_create_identifier(
-                    &*self.did_method_provider,
-                    &*self.did_repository,
-                    &*self.certificate_repository,
-                    &*self.certificate_validator,
-                    &*self.key_repository,
-                    &*self.key_algorithm_provider,
-                    &*self.identifier_repository,
-                    &interaction.organisation,
-                    &details,
-                    IdentifierRole::Verifier,
-                )
-                .await?;
+                let (identifier, verifier_identifier_relation) = self
+                    .identifier_creator
+                    .get_or_create_remote_identifier(
+                        &interaction.organisation,
+                        &details,
+                        IdentifierRole::Verifier,
+                    )
+                    .await?;
                 proof.verifier_identifier = Some(identifier);
                 match verifier_identifier_relation {
                     RemoteIdentifierRelation::Certificate(certificate) => {
@@ -821,21 +813,6 @@ impl SSIHolderService {
                 .await?;
         }
         Ok(())
-    }
-
-    fn storage_access(&self) -> StorageProxyImpl {
-        StorageProxyImpl::new(
-            self.interaction_repository.clone(),
-            self.credential_schema_repository.clone(),
-            self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.certificate_repository.clone(),
-            self.certificate_validator.clone(),
-            self.key_repository.clone(),
-            self.identifier_repository.clone(),
-            self.did_method_provider.clone(),
-            self.key_algorithm_provider.clone(),
-        )
     }
 }
 
