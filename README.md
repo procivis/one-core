@@ -399,6 +399,7 @@ Support for the recently published [FIPS-204][fips] is planned for the near futu
 ### Exchange and transport
 
 - OpenID4VCI (Issuance)
+  - [v1.0][vci1]
   - [ID-1][vci]
 - OpenID4VP (Verification)
   - [v1.0][vp1.0]
@@ -500,6 +501,7 @@ Version 2.0](./LICENSE).
 [vcdi]: https://www.w3.org/TR/vc-data-integrity/
 [vcdm]: https://www.w3.org/TR/vc-data-model-2.0/
 [vci]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-ID1.html
+[vci1]: https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html
 [vp1.0]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-final.html
 [vp20]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-20.html
 [vp25]: https://openid.net/specs/openid-4-verifiable-presentations-1_0-25.html
