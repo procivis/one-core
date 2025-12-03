@@ -512,6 +512,7 @@ pub enum ClientIdSchemeRestEnum {
     #[serde(rename = "decentralized_identifier", alias = "did")]
     Did,
     X509SanDns,
+    X509Hash,
 }
 
 #[derive(Debug, Serialize, ToSchema, TryFrom)]

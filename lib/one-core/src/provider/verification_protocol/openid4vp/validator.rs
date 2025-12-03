@@ -593,6 +593,24 @@ pub(crate) fn validate_san_dns_matching_client_id(
     Ok(())
 }
 
+pub(crate) fn validate_x509_hash_matching_client_id(
+    certificate_attributes: &CertificateX509AttributesDTO,
+    client_id: &str,
+) -> Result<(), VerificationProtocolError> {
+    let hash = Base64UrlSafeNoPadding::decode_to_vec(client_id, None)
+        .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))?;
+    let fingerprint = hex::decode(&certificate_attributes.fingerprint)
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+    if hash != fingerprint {
+        tracing::debug!("Mismatch x509_hash x5c:{fingerprint:?}, client_id:{hash:?}");
+        return Err(VerificationProtocolError::InvalidRequest(
+            "Invalid client_id hash".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
 pub(super) fn validate_proof_completeness(
     proof: &Proof,
     proved_claims: &[ValidatedProofClaimDTO],

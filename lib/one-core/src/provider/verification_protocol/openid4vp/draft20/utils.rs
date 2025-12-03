@@ -388,6 +388,11 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
                 .await?;
                 (params, Some(IdentifierDetails::Certificate(certificate)))
             }
+            ClientIdScheme::X509Hash => {
+                return Err(VerificationProtocolError::Failed(
+                    "Unsupported client_id_scheme".to_string(),
+                ));
+            }
         };
 
         // client_id from the query params must match client_id inside the token

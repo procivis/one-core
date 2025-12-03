@@ -32,6 +32,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
+    validate_x509_hash_matching_client_id,
 };
 use crate::validator::x509::is_dns_name_matching;
 
@@ -95,6 +96,59 @@ async fn parse_referenced_data_from_x509_san_dns_token(
             "response_uri client_id mismatch".to_string(),
         ));
     }
+
+    Ok((
+        request_token.payload.custom,
+        CertificateDetails {
+            chain: pem_chain,
+            fingerprint: attributes.fingerprint,
+            expiry: attributes.not_after,
+            subject_common_name,
+        },
+    ))
+}
+
+async fn parse_referenced_data_from_x509_hash_token(
+    request_token: DecomposedToken<AuthorizationRequest>,
+    certificate_validator: &Arc<dyn CertificateValidator>,
+) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
+    let x5c = request_token
+        .header
+        .x5c
+        .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
+
+    let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
+
+    let pem_chain = x5c_into_pem_chain(&x5c)
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+
+    let ParsedCertificate {
+        public_key,
+        attributes,
+        subject_common_name,
+        ..
+    } = certificate_validator
+        .parse_pem_chain(
+            &pem_chain,
+            CertificateValidationOptions::signature_and_revocation(None),
+        )
+        .await
+        .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
+
+    public_key
+        .signature()
+        .ok_or(VerificationProtocolError::Failed(
+            "Signature key missing".to_string(),
+        ))?
+        .public()
+        .verify(
+            request_token.unverified_jwt.as_bytes(),
+            &request_token.signature,
+        )
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+    // client_id hash must match certificate fingerprint
+    validate_x509_hash_matching_client_id(&attributes, &client_id)?;
 
     Ok((
         request_token.payload.custom,
@@ -327,6 +381,14 @@ async fn retrieve_authorization_params_by_reference(
             ClientIdScheme::RedirectUri => (request_token.payload.custom, None),
             ClientIdScheme::X509SanDns => {
                 let (params, certificate) = parse_referenced_data_from_x509_san_dns_token(
+                    request_token,
+                    certificate_validator,
+                )
+                .await?;
+                (params, Some(IdentifierDetails::Certificate(certificate)))
+            }
+            ClientIdScheme::X509Hash => {
+                let (params, certificate) = parse_referenced_data_from_x509_hash_token(
                     request_token,
                     certificate_validator,
                 )

@@ -14,7 +14,7 @@ use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_verifier_attestation,
-    format_authorization_request_client_id_scheme_x509_san_dns,
+    format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPHolderInteractionData,
@@ -50,7 +50,7 @@ pub(crate) async fn create_openidvp20_authorization_request(
                 authorization_request,
             ),
             ClientIdScheme::X509SanDns => {
-                let token = format_authorization_request_client_id_scheme_x509_san_dns(
+                let token = format_authorization_request_client_id_scheme_x509(
                     proof,
                     key_algorithm_provider,
                     key_provider,
@@ -106,6 +106,9 @@ pub(crate) async fn create_openidvp20_authorization_request(
                     ..Default::default()
                 })
             }
+            ClientIdScheme::X509Hash => Err(VerificationProtocolError::Failed(
+                "Unsupported clientId scheme".to_string(),
+            )),
         }
     }
 }

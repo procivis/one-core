@@ -77,7 +77,7 @@ fn get_supported_client_id_scheme_for_identifier(
             ClientIdScheme::VerifierAttestation,
             ClientIdScheme::RedirectUri,
         ],
-        IdentifierType::Certificate => vec![ClientIdScheme::X509SanDns],
+        IdentifierType::Certificate => vec![ClientIdScheme::X509SanDns, ClientIdScheme::X509Hash],
     }
 }
 

@@ -74,9 +74,9 @@ pub struct CertificateValidationOptions {
     pub integrity_check: bool,
     /// if specified, perform revocation/expiration checks
     pub validity_check: Option<CrlMode>,
-    /// will fail if the leaf certificate_validator does not declare an enforced key-usage
+    /// will fail if the leaf certificate does not declare an enforced key-usage
     pub required_leaf_cert_key_usage: Vec<EnforceKeyUsage>,
-    /// OID of extensions that cannot be present outside of the leaf certificate_validator.
+    /// OID of extensions that cannot be present outside of the leaf certificate.
     /// This is specifically used in the Android App integrity check.
     pub leaf_only_extensions: Vec<String>,
 }
@@ -93,7 +93,7 @@ impl CertificateValidationOptions {
         }
     }
 
-    /// Full validation is performed, each certificate_validator must be:
+    /// Full validation is performed, each certificate must be:
     /// * not expired
     /// * not revoked
     /// * correctly signed by the parent cert in the chain

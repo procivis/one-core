@@ -31,6 +31,12 @@ impl CertificateValidator for CertificateValidatorImpl {
             .collect::<Result<Vec<_>, _>>()
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
+        let leaf_pem = items
+            .first()
+            .ok_or(ValidationError::CertificateParsingFailed(
+                "No certificates specified".to_string(),
+            ))?;
+
         let certs = items
             .iter()
             .map(|pem| pem.parse_x509())
@@ -38,7 +44,7 @@ impl CertificateValidator for CertificateValidatorImpl {
             .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
         let leaf_certificate = self.parse_chain(&certs, validation).await?;
-        self.to_parsed_certificate(leaf_certificate)
+        self.to_parsed_certificate(leaf_certificate, &leaf_pem.contents)
     }
 
     async fn validate_chain_against_ca_chain(
@@ -70,17 +76,28 @@ impl CertificateValidator for CertificateValidatorImpl {
         let connected = connect_chains(&certs, &ca_certs)?;
         let parsed = self.parse_chain(&connected, validation).await?;
 
-        let selected_cert = match cert_selection {
-            CertSelection::LowestCaChain => {
+        let (selected_cert, pem) = match cert_selection {
+            CertSelection::LowestCaChain => (
                 ca_certs
                     .first()
                     .ok_or(ValidationError::CertificateParsingFailed(
                         "empty chain".to_string(),
-                    ))?
-            }
-            CertSelection::Leaf => parsed,
+                    ))?,
+                ca_pems
+                    .first()
+                    .ok_or(ValidationError::CertificateParsingFailed(
+                        "empty chain".to_string(),
+                    ))?,
+            ),
+            CertSelection::Leaf => (
+                parsed,
+                pems.first()
+                    .ok_or(ValidationError::CertificateParsingFailed(
+                        "empty chain".to_string(),
+                    ))?,
+            ),
         };
-        self.to_parsed_certificate(selected_cert)
+        self.to_parsed_certificate(selected_cert, &pem.contents)
     }
 }
 
@@ -173,6 +190,7 @@ impl CertificateValidatorImpl {
     fn to_parsed_certificate(
         &self,
         certificate: &X509Certificate,
+        der_representation: &[u8],
     ) -> Result<ParsedCertificate, ServiceError> {
         let subject_common_name = certificate
             .subject
@@ -182,7 +200,7 @@ impl CertificateValidatorImpl {
             .map(ToString::to_string);
 
         Ok(ParsedCertificate {
-            attributes: parse_x509_attributes(certificate)?,
+            attributes: parse_x509_attributes(certificate, der_representation)?,
             subject_common_name,
             subject_key_identifier: subject_key_identifier(certificate)?,
             public_key: self.extract_public_key(certificate)?,
@@ -335,16 +353,17 @@ pub fn parse_chain_to_x509_attributes(
     let x509_cert = pem
         .parse_x509()
         .map_err(|e| ValidationError::CertificateParsingFailed(e.to_string()))?;
-    parse_x509_attributes(&x509_cert)
+    parse_x509_attributes(&x509_cert, &pem.contents)
 }
 
 fn parse_x509_attributes(
     certificate: &X509Certificate,
+    der_representation: &[u8],
 ) -> Result<CertificateX509AttributesDTO, ValidationError> {
     let validity = certificate.validity();
 
     let fingerprint = SHA256
-        .hash(certificate.as_ref())
+        .hash(der_representation)
         .map_err(|err| ValidationError::CertificateParsingFailed(err.to_string()))?;
 
     let extensions = certificate

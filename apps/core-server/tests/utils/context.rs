@@ -189,7 +189,7 @@ impl TestContext {
             expiry_date: now.add(Duration::minutes(10)),
             name: "test cert".to_string(),
             chain: format!("{}{}", cert.pem(), ca_cert.pem()),
-            fingerprint: "fingerprint".to_string(),
+            fingerprint: "ffffaaaa".to_string(),
             state: CertificateState::Active,
             key: Some(key.clone()),
         };

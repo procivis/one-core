@@ -166,10 +166,10 @@ verificationProtocol:
         verifier:
           useDcql: false
           supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
+            [verifier_attestation, redirect_uri, did, x509_san_dns, x509_hash]
         holder:
           supportedClientIdSchemes:
-            [verifier_attestation, redirect_uri, did, x509_san_dns]
+            [verifier_attestation, redirect_uri, did, x509_san_dns, x509_hash]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -190,6 +190,7 @@ verificationProtocol:
               redirect_uri,
               decentralized_identifier,
               x509_san_dns,
+              x509_hash,
             ]
         holder:
           supportedClientIdSchemes:
@@ -198,6 +199,7 @@ verificationProtocol:
               redirect_uri,
               decentralized_identifier,
               x509_san_dns,
+              x509_hash,
             ]
           # EUDI compatibility flag for non-standard compliant vp_token formatting
           dcqlVpTokenSinglePresentation: true
@@ -218,6 +220,7 @@ verificationProtocol:
               redirect_uri,
               decentralized_identifier,
               x509_san_dns,
+              x509_hash,
             ]
         holder:
           supportedClientIdSchemes:
@@ -226,6 +229,7 @@ verificationProtocol:
               redirect_uri,
               decentralized_identifier,
               x509_san_dns,
+              x509_hash,
             ]
         redirectUri:
           enabled: true

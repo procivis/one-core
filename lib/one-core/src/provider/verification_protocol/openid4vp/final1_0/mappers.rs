@@ -13,7 +13,7 @@ use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4V
 use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_verifier_attestation,
-    format_authorization_request_client_id_scheme_x509_san_dns,
+    format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
@@ -70,8 +70,8 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
     } else {
         match client_id_scheme {
             ClientIdScheme::RedirectUri => format_params_for_redirect_uri(authorization_request)?,
-            ClientIdScheme::X509SanDns => {
-                let token = format_authorization_request_client_id_scheme_x509_san_dns(
+            ClientIdScheme::X509SanDns | ClientIdScheme::X509Hash => {
+                let token = format_authorization_request_client_id_scheme_x509(
                     proof,
                     key_algorithm_provider,
                     key_provider,
@@ -81,7 +81,7 @@ pub(crate) async fn create_openid4vp_final1_0_authorization_request(
                 return Ok(AuthorizationRequestQueryParams {
                     client_id: encode_client_id_with_scheme(
                         client_id_without_prefix,
-                        ClientIdScheme::X509SanDns,
+                        client_id_scheme,
                     ),
                     request: Some(token),
                     ..Default::default()

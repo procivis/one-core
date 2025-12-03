@@ -627,7 +627,7 @@ impl From<OpenID4VPFinal1_0ClientMetadata> for OpenID4VPClientMetadata {
     }
 }
 
-pub(crate) async fn format_authorization_request_client_id_scheme_x509_san_dns<T: Serialize>(
+pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serialize>(
     proof: &Proof,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     key_provider: &dyn KeyProvider,
@@ -647,24 +647,17 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509_san_dns<T
                 "verifier_identifier is None".to_string(),
             ))?;
 
-    let (x5c, issuer) =
+    let x5c =
         match verifier_identifier.r#type {
-            IdentifierType::Did => {
-                return Err(VerificationProtocolError::Failed(
-                    "invalid verifier identifier type".to_string(),
-                ));
-            }
             IdentifierType::Certificate => {
                 let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
                     VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
                 )?;
 
-                let x5c = pem_chain_into_x5c(&verifier_certificate.chain)
-                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-                (x5c, None)
+                pem_chain_into_x5c(&verifier_certificate.chain)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
             }
-            IdentifierType::Key => {
+            IdentifierType::Did | IdentifierType::Key => {
                 return Err(VerificationProtocolError::Failed(
                     "invalid verifier identifier type".to_string(),
                 ));
@@ -687,9 +680,9 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509_san_dns<T
             issued_at: None,
             expires_at,
             invalid_before: None,
-            issuer,
-            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
+            issuer: None,
             subject: None,
+            // https://openid.net/specs/openid-4-verifiable-presentations-1_0-ID2.html#name-aud-of-a-request-object
             audience: Some(vec!["https://self-issued.me/v2".to_string()]),
             jwt_id: None,
             proof_of_possession_key: None,

@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use anyhow::Context;
+use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use dcql::create_dcql_query;
 use futures::future::BoxFuture;
 use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_with_scheme};
@@ -338,7 +339,9 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
             verifier_identifier_types.insert(IdentifierType::Did);
         }
 
-        if schemes.contains(&ClientIdScheme::X509SanDns) {
+        if schemes.contains(&ClientIdScheme::X509SanDns)
+            || schemes.contains(&ClientIdScheme::X509Hash)
+        {
             verifier_identifier_types.insert(IdentifierType::Certificate);
         }
 
@@ -519,6 +522,17 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
                         "Invalid base_url".to_string(),
                     ))?
                     .to_string()
+            }
+            ClientIdScheme::X509Hash => {
+                let verifier_certificate = proof.verifier_certificate.as_ref().ok_or(
+                    VerificationProtocolError::Failed("verifier_certificate is None".to_string()),
+                )?;
+
+                let fingerprint = hex::decode(&verifier_certificate.fingerprint)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+                Base64UrlSafeNoPadding::encode_to_string(fingerprint)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
             }
             ClientIdScheme::Did => proof
                 .verifier_identifier

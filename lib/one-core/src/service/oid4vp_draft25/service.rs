@@ -30,7 +30,7 @@ use crate::provider::verification_protocol::openid4vp::mapper::{
     create_open_id_for_vp_formats, format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_redirect_uri,
     format_authorization_request_client_id_scheme_verifier_attestation,
-    format_authorization_request_client_id_scheme_x509_san_dns,
+    format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, JwePayload, OpenID4VPDirectPostRequestDTO, OpenID4VPDirectPostResponseDTO,
@@ -161,8 +161,8 @@ impl OID4VPDraft25Service {
                 )
                 .await?
             }
-            ClientIdScheme::X509SanDns => {
-                format_authorization_request_client_id_scheme_x509_san_dns(
+            ClientIdScheme::X509SanDns | ClientIdScheme::X509Hash => {
+                format_authorization_request_client_id_scheme_x509(
                     &proof,
                     &self.key_algorithm_provider,
                     &*self.key_provider,

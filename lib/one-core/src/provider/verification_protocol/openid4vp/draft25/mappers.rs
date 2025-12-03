@@ -14,7 +14,7 @@ use crate::provider::verification_protocol::openid4vp::VerificationProtocolError
 use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_verifier_attestation,
-    format_authorization_request_client_id_scheme_x509_san_dns,
+    format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VPHolderInteractionData,
@@ -46,8 +46,8 @@ pub(crate) async fn create_openid4vp25_authorization_request(
             ClientIdScheme::RedirectUri => {
                 format_params_for_redirect_uri(client_id, interaction_id, authorization_request)
             }?,
-            ClientIdScheme::X509SanDns => {
-                let token = format_authorization_request_client_id_scheme_x509_san_dns(
+            ClientIdScheme::X509SanDns | ClientIdScheme::X509Hash => {
+                let token = format_authorization_request_client_id_scheme_x509(
                     proof,
                     key_algorithm_provider,
                     key_provider,
@@ -55,7 +55,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
                 )
                 .await?;
                 return Ok(OpenID4VP25AuthorizationRequestQueryParams {
-                    client_id: encode_client_id_with_scheme(client_id, ClientIdScheme::X509SanDns),
+                    client_id: encode_client_id_with_scheme(client_id, client_id_scheme),
                     request: Some(token),
                     ..Default::default()
                 });

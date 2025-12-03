@@ -750,6 +750,70 @@ async fn test_share_proof_client_id_scheme_did_openid4vp_final1_0() {
 }
 
 #[tokio::test]
+async fn test_share_proof_client_id_scheme_x509_hash_openid4vp_final1_0() {
+    // GIVEN
+    let (context, organisation, identifier, _, key) =
+        TestContext::new_with_certificate_identifier(None).await;
+    let credential_schema =
+        fixtures::create_credential_schema(&context.db.db_conn, &organisation, None).await;
+    let claim_schema = credential_schema
+        .claim_schemas
+        .as_ref()
+        .unwrap()
+        .first()
+        .unwrap()
+        .schema
+        .to_owned();
+
+    let proof_schema = fixtures::create_proof_schema(
+        &context.db.db_conn,
+        "test",
+        &organisation,
+        &[CreateProofInputSchema {
+            claims: vec![CreateProofClaim {
+                id: claim_schema.id,
+                key: &claim_schema.key,
+                required: true,
+                data_type: &claim_schema.data_type,
+                array: false,
+            }],
+            credential_schema: &credential_schema,
+            validity_constraint: None,
+        }],
+    )
+    .await;
+
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            Some(&proof_schema),
+            ProofStateEnum::Created,
+            "OPENID4VP_FINAL1",
+            None,
+            key,
+            None,
+            None,
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .proofs
+        .share(proof.id, Some(ClientIdSchemeRestEnum::X509Hash))
+        .await;
+
+    // THEN
+    let client_id = extract_client_id(resp).await;
+    assert_eq!(client_id, format!("x509_hash:__-qqg"));
+
+    assert_history_count(&context, &proof.id.into(), HistoryAction::Shared, 1).await;
+}
+
+#[tokio::test]
 async fn test_share_proof_fails_when_nfc_engagement_is_set_on_proof() {
     // GIVEN
     let (context, organisation, _, identifier, key) = TestContext::new_with_did(None).await;

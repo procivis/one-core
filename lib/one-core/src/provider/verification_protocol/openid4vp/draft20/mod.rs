@@ -404,6 +404,11 @@ impl VerificationProtocol for OpenID4VP20HTTP {
                 ))?
                 .did
                 .to_string(),
+            ClientIdScheme::X509Hash => {
+                return Err(VerificationProtocolError::Failed(
+                    "Unsupported client_id_scheme".to_string(),
+                ));
+            }
         };
 
         let client_metadata =

@@ -566,7 +566,7 @@ impl ProofService {
         id: &ProofId,
         request: ShareProofRequestDTO,
     ) -> Result<EntityShareResponseDTO, ServiceError> {
-        let proof = self.get_proof_with_state(id).await?;
+        let proof = self.load_proof(id).await?;
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         let previous_state = proof.state;
@@ -997,8 +997,8 @@ impl ProofService {
         Ok(())
     }
 
-    /// Get latest proof state
-    async fn get_proof_with_state(&self, id: &ProofId) -> Result<Proof, ServiceError> {
+    /// Get proof with relations
+    async fn load_proof(&self, id: &ProofId) -> Result<Proof, ServiceError> {
         let proof = self
             .proof_repository
             .get_proof(
@@ -1030,7 +1030,10 @@ impl ProofService {
                         }),
                         ..Default::default()
                     }),
-                    ..Default::default()
+                    verifier_certificate: Some(CertificateRelations {
+                        key: Some(KeyRelations::default()),
+                        ..Default::default()
+                    }),
                 },
                 None,
             )
