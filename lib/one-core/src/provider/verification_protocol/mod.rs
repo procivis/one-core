@@ -26,12 +26,10 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
-use crate::proto::history_decorator::proof::ProofHistoryDecorator;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::mqtt_client::MqttClient;
 use crate::proto::nfc::hce::NfcHce;
-use crate::proto::session_provider::SessionProvider;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -44,7 +42,8 @@ use crate::provider::verification_protocol::iso_mdl::IsoMdl;
 use crate::provider::verification_protocol::openid4vp::draft20_swiyu::OpenID4Vp20SwiyuParams;
 use crate::provider::verification_protocol::openid4vp::final1_0::OpenID4VPFinal1_0;
 use crate::provider::verification_protocol::scan_to_verify::ScanToVerify;
-use crate::repository::DataRepository;
+use crate::repository::interaction_repository::InteractionRepository;
+use crate::repository::proof_repository::ProofRepository;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
 
@@ -80,7 +79,8 @@ pub(crate) fn verification_protocol_providers_from_config(
     config: Arc<CoreConfig>,
     exchange_config: &mut VerificationProtocolConfig,
     core_base_url: Option<String>,
-    data_provider: Arc<dyn DataRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
+    proof_repository: Arc<dyn ProofRepository>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
     key_provider: Arc<dyn KeyProvider>,
@@ -88,7 +88,6 @@ pub(crate) fn verification_protocol_providers_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     identifier_creator: Arc<dyn IdentifierCreator>,
-    session_provider: Arc<dyn SessionProvider>,
     ble: Option<BleWaiter>,
     client: Arc<dyn HttpClient>,
     openid_metadata_cache: Arc<dyn OpenIDMetadataFetcher>,
@@ -234,18 +233,12 @@ pub(crate) fn verification_protocol_providers_from_config(
                         source,
                     })?;
 
-                let proof_repository = Arc::new(ProofHistoryDecorator {
-                    inner: data_provider.get_proof_repository(),
-                    history_repository: data_provider.get_history_repository(),
-                    session_provider: session_provider.clone(),
-                });
-
                 let protocol = OpenID4VPProximityDraft00::new(
                     mqtt_client.clone(),
                     config.clone(),
                     params.clone(),
-                    data_provider.get_interaction_repository(),
-                    proof_repository,
+                    interaction_repository.clone(),
+                    proof_repository.clone(),
                     key_algorithm_provider.clone(),
                     credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),
