@@ -32,7 +32,7 @@ pub(crate) fn gen_openapi_documentation(
         fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
             if !self.config.enable_management_endpoints || !self.config.enable_external_endpoints {
                 openapi.paths.paths.retain(|path, _| {
-                    if path.starts_with("/ssi") {
+                    if path.starts_with("/ssi") || path.starts_with("/.well-known") {
                         return self.config.enable_external_endpoints;
                     }
 
