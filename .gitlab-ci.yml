@@ -430,12 +430,7 @@ sdk:update_doc_sdk_version:
       --move sdk_version.json:sdk_version.json
       --no-assign
   before_script:
-    - |
-      cat > sdk_version.json <<EOF
-      {
-        "sdk": ${CI_PIPELINE_ID}
-      }
-      EOF
+    - jq --arg id "$CI_PIPELINE_ID" '.current = ($id|tonumber)' sdk_version.json > tmp.json && mv tmp.json sdk_version.json
 
 
 tests:api:
