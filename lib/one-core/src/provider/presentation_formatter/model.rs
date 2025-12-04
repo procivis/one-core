@@ -12,7 +12,7 @@ pub struct CredentialToPresent {
 }
 
 #[skip_serializing_none]
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExtractedPresentation {
     pub id: Option<String>,
     pub issued_at: Option<OffsetDateTime>,

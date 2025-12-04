@@ -5,6 +5,7 @@ use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::nfc::hce::NfcHce;
+use crate::proto::openid4vp_proof_validator::OpenId4VpProofValidator;
 use crate::proto::session_provider::SessionProvider;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
@@ -64,6 +65,7 @@ pub struct ProofService {
     session_provider: Arc<dyn SessionProvider>,
     identifier_creator: Arc<dyn IdentifierCreator>,
     transaction_manager: Arc<dyn TransactionManager>,
+    proof_validator: Arc<dyn OpenId4VpProofValidator>,
 }
 
 impl ProofService {
@@ -96,6 +98,7 @@ impl ProofService {
         session_provider: Arc<dyn SessionProvider>,
         identifier_creator: Arc<dyn IdentifierCreator>,
         transaction_manager: Arc<dyn TransactionManager>,
+        proof_validator: Arc<dyn OpenId4VpProofValidator>,
     ) -> Self {
         Self {
             proof_repository,
@@ -125,6 +128,7 @@ impl ProofService {
             session_provider,
             identifier_creator,
             transaction_manager,
+            proof_validator,
         }
     }
 }

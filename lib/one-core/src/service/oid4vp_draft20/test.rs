@@ -2,11 +2,9 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use one_dto_mapper::try_convert_inner;
-use serde_json::json;
-use shared_types::{DidValue, ProofId};
+use shared_types::ProofId;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::OID4VPDraft20Service;
@@ -19,16 +17,10 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
-use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::identifier_creator::MockIdentifierCreator;
+use crate::proto::openid4vp_proof_validator::MockOpenId4VpProofValidator;
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::blob_storage_provider::{MockBlobStorage, MockBlobStorageProvider};
-use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::{
-    CredentialStatus, CredentialSubject, DetailCredential, IdentifierDetails,
-};
-use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
-use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -37,12 +29,6 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
-use crate::provider::presentation_formatter::MockPresentationFormatter;
-use crate::provider::presentation_formatter::model::ExtractedPresentation;
-use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
-use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::CredentialRevocationState;
-use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -60,15 +46,11 @@ struct Mocks {
     pub key_repository: MockKeyRepository,
     pub key_provider: MockKeyProvider,
     pub config: CoreConfig,
-    pub credential_formatter_provider: MockCredentialFormatterProvider,
-    pub presentation_formatter_provider: MockPresentationFormatterProvider,
-    pub did_method_provider: MockDidMethodProvider,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
-    pub revocation_method_provider: MockRevocationMethodProvider,
     pub validity_credential_repository: MockValidityCredentialRepository,
-    pub certificate_validator: MockCertificateValidator,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub identifier_creator: MockIdentifierCreator,
+    pub proof_validator: MockOpenId4VpProofValidator,
 }
 
 fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
@@ -78,16 +60,12 @@ fn setup_service(mocks: Mocks) -> OID4VPDraft20Service {
         Arc::new(mocks.key_repository),
         Arc::new(mocks.key_provider),
         Arc::new(mocks.config),
-        Arc::new(mocks.credential_formatter_provider),
-        Arc::new(mocks.presentation_formatter_provider),
-        Arc::new(mocks.did_method_provider),
         Arc::new(mocks.key_algorithm_provider),
-        Arc::new(mocks.revocation_method_provider),
         Arc::new(mocks.validity_credential_repository),
-        Arc::new(mocks.certificate_validator),
         Arc::new(mocks.blob_storage_provider),
         Arc::new(mocks.identifier_creator),
         Arc::new(NoTransactionManager),
+        Arc::new(mocks.proof_validator),
     )
 }
 
@@ -238,13 +216,8 @@ async fn test_presentation_definition_success() {
 async fn test_submit_proof_failed_credential_suspended() {
     let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "did:verifier:123".parse().unwrap();
-    let holder_did: DidValue = "did:holder:123".parse().unwrap();
-    let issuer_did: DidValue = "did:issuer:123".parse().unwrap();
-
     let mut proof_repository = MockProofRepository::new();
-
     let interaction_id = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36").unwrap();
-
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
 
     let claim_id = Uuid::new_v4().into();
@@ -366,135 +339,6 @@ async fn test_submit_proof_failed_credential_suspended() {
         })
         .once()
         .returning(|_, _, _| Ok(()));
-
-    let mut credential_formatter = MockCredentialFormatter::new();
-    let mut presentation_formatter = MockPresentationFormatter::new();
-
-    let holder_did_clone = holder_did.clone();
-    let issuer_did_clone = issuer_did.clone();
-    credential_formatter
-        .expect_extract_credentials_unverified()
-        .once()
-        .returning(move |_, _| {
-            Ok(DetailCredential {
-                id: None,
-                issuance_date: None,
-                valid_from: Some(OffsetDateTime::now_utc()),
-                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                update_at: None,
-                invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
-                claims: CredentialSubject {
-                    claims: try_convert_inner(HashMap::from([
-                        ("unknown_key".to_string(), json!("unknown_key_value")),
-                        ("required_key".to_string(), json!("required_key_value")),
-                    ]))
-                    .unwrap(),
-                    id: None,
-                },
-                status: vec![],
-                credential_schema: None,
-            })
-        });
-
-    let holder_did_clone = holder_did.clone();
-    let nonce_clone = nonce.clone();
-    presentation_formatter
-        .expect_extract_presentation_unverified()
-        .once()
-        .returning(move |_, _| {
-            Ok(ExtractedPresentation {
-                id: Some("presentation id".to_string()),
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
-                nonce: Some(nonce_clone.to_owned()),
-                credentials: vec!["credential".to_string()],
-            })
-        });
-
-    let holder_did_clone = holder_did.clone();
-    let nonce_clone = nonce.clone();
-    presentation_formatter
-        .expect_extract_presentation()
-        .once()
-        .returning(move |_, _, _| {
-            Ok(ExtractedPresentation {
-                id: Some("presentation id".to_string()),
-                issued_at: Some(OffsetDateTime::now_utc()),
-                expires_at: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                issuer: Some(IdentifierDetails::Did(holder_did_clone.to_owned())),
-                nonce: Some(nonce_clone.to_owned()),
-                credentials: vec!["credential".to_string()],
-            })
-        });
-    credential_formatter.expect_get_leeway().returning(|| 10);
-    presentation_formatter.expect_get_leeway().returning(|| 10);
-    let issuer_did_clone = issuer_did.clone();
-    credential_formatter
-        .expect_extract_credentials()
-        .once()
-        .returning(move |_, _, _, _| {
-            Ok(DetailCredential {
-                id: None,
-                issuance_date: None,
-                valid_from: Some(OffsetDateTime::now_utc()),
-                valid_until: Some(OffsetDateTime::now_utc() + Duration::days(10)),
-                update_at: None,
-                invalid_before: Some(OffsetDateTime::now_utc()),
-                issuer: IdentifierDetails::Did(issuer_did_clone.to_owned()),
-                subject: Some(IdentifierDetails::Did(holder_did.to_owned())),
-                claims: CredentialSubject {
-                    claims: try_convert_inner(HashMap::from([
-                        ("unknown_key".to_string(), json!("unknown_key_value")),
-                        ("required_key".to_string(), json!("required_key_value")),
-                    ]))
-                    .unwrap(),
-                    id: None,
-                },
-                status: vec![CredentialStatus {
-                    id: Some("did:status:test".parse().unwrap()),
-                    r#type: "".to_string(),
-                    status_purpose: None,
-                    additional_fields: Default::default(),
-                }],
-                credential_schema: None,
-            })
-        });
-
-    let credential_formatter = Arc::new(credential_formatter);
-    let presentation_formatter = Arc::new(presentation_formatter);
-
-    let mut credential_formatter_provider = MockCredentialFormatterProvider::new();
-    let mut presentation_formatter_provider = MockPresentationFormatterProvider::new();
-
-    presentation_formatter_provider
-        .expect_get_presentation_formatter()
-        .times(2)
-        .returning(move |_| Some(presentation_formatter.clone()));
-
-    credential_formatter_provider
-        .expect_get_credential_formatter()
-        .times(2)
-        .returning(move |_| Some(credential_formatter.clone()));
-
-    let mut revocation_method = MockRevocationMethod::new();
-    revocation_method
-        .expect_check_credential_revocation_status()
-        .once()
-        .return_once(|_, _, _, _| {
-            Ok(CredentialRevocationState::Suspended {
-                suspend_end_date: None,
-            })
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method_by_status_type()
-        .once()
-        .return_once(|_| Some((Arc::new(revocation_method), "".to_string())));
-
     let mut blob_storage = MockBlobStorage::new();
     blob_storage.expect_create().returning(|_| Ok(()));
 
@@ -504,12 +348,15 @@ async fn test_submit_proof_failed_credential_suspended() {
         .expect_get_blob_storage()
         .returning(move |_| Some(blob_storage.clone()));
 
+    let mut proof_validator = MockOpenId4VpProofValidator::new();
+    proof_validator
+        .expect_validate_submission()
+        .returning(|_, _, _, _| Err(OpenID4VCError::CredentialIsRevokedOrSuspended));
+
     let service = setup_service(Mocks {
         proof_repository,
-        credential_formatter_provider,
-        presentation_formatter_provider,
-        revocation_method_provider,
         blob_storage_provider,
+        proof_validator,
         config: generic_config().core,
         ..Default::default()
     });

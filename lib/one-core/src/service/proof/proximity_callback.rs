@@ -31,7 +31,6 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::m
 use crate::provider::verification_protocol::openid4vp::proximity_draft00::mqtt::model::{
     MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData,
 };
-use crate::provider::verification_protocol::openid4vp::service::oid4vp_verifier_process_submission;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::util::openid4vp::persist_accepted_proof;
@@ -223,19 +222,15 @@ impl ProofService {
         let proof_blob_id = blob.id;
         blob_storage.create(blob).await?;
 
-        match oid4vp_verifier_process_submission(
-            unpacked_request,
-            proof.to_owned(),
-            interaction_data,
-            &self.did_method_provider,
-            &self.credential_formatter_provider,
-            &self.presentation_formatter_provider,
-            &self.key_algorithm_provider,
-            &self.revocation_method_provider,
-            &self.certificate_validator,
-            VerificationProtocolType::OpenId4VpProximityDraft00,
-        )
-        .await
+        match self
+            .proof_validator
+            .validate_submission(
+                unpacked_request,
+                proof.to_owned(),
+                interaction_data,
+                VerificationProtocolType::OpenId4VpProximityDraft00,
+            )
+            .await
         {
             Ok((accept_proof_result, response)) => {
                 persist_accepted_proof(

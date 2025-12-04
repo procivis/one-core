@@ -13,14 +13,9 @@ use url::Url;
 use uuid::Uuid;
 
 use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
-use crate::model::claim::Claim;
 use crate::model::credential::Credential;
-use crate::model::credential_schema::CredentialSchema;
-use crate::model::proof_schema::ProofInputClaimSchema;
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
-use crate::provider::credential_formatter::model::{
-    CredentialClaim, DetailCredential, IdentifierDetails,
-};
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::service::key::dto::PublicKeyJwkDTO;
 
@@ -174,14 +169,6 @@ pub(crate) enum OpenID4VPClientMetadata {
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct OpenID4VPClientMetadataJwks {
     pub keys: Vec<OpenID4VPClientMetadataJwkDTO>,
-}
-#[derive(Clone, Debug)]
-pub(super) struct ValidatedProofClaimDTO {
-    pub proof_input_claim: ProofInputClaimSchema,
-    pub credential: DetailCredential,
-    pub credential_schema: CredentialSchema,
-    pub value: CredentialClaim,
-    pub mdoc_mso: Option<MobileSecurityObject>,
 }
 
 /// Interaction data used for OpenID4VP on verifier side
@@ -356,12 +343,6 @@ pub(crate) struct ProvedCredential {
     pub issuer_details: IdentifierDetails,
     pub holder_details: IdentifierDetails,
     pub mdoc_mso: Option<MobileSecurityObject>,
-}
-
-#[derive(Debug)]
-pub(crate) struct AcceptProofResult {
-    pub proved_credentials: Vec<ProvedCredential>,
-    pub proved_claims: Vec<Claim>,
 }
 
 /// Interaction data used for OpenID4VP (HTTP) on holder side

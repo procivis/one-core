@@ -40,7 +40,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPVerifierInteractionContent, ResponseSubmission, SubmissionRequestData,
     VpSubmissionData,
 };
-use crate::provider::verification_protocol::openid4vp::service::oid4vp_verifier_process_submission;
 use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -319,19 +318,15 @@ impl OID4VPFinal1_0Service {
         let proof_blob_id = blob.id;
         blob_storage.create(blob).await?;
 
-        match oid4vp_verifier_process_submission(
-            unpacked_request.clone(),
-            proof.to_owned(),
-            interaction_data,
-            &self.did_method_provider,
-            &self.credential_formatter_provider,
-            &self.presentation_formatter_provider,
-            &self.key_algorithm_provider,
-            &self.revocation_method_provider,
-            &self.certificate_validator,
-            VerificationProtocolType::OpenId4VpFinal1_0,
-        )
-        .await
+        match self
+            .proof_validator
+            .validate_submission(
+                unpacked_request.clone(),
+                proof.to_owned(),
+                interaction_data,
+                VerificationProtocolType::OpenId4VpFinal1_0,
+            )
+            .await
         {
             Ok((accept_proof_result, response)) => {
                 persist_accepted_proof(
