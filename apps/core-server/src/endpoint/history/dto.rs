@@ -268,7 +268,8 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// that have any field matching `searchText` will be returned.
     #[param(nullable = false)]
     pub search_type: Option<HistorySearchEnumRest>,
-    /// Return only events associated with the provided users.
+    /// Return only events associated with the provided users. Only applicable
+    /// in STS authentication mode.
     #[param(rename = "users[]", nullable = false)]
     pub users: Option<Vec<String>>,
     /// Return only events associated with the provided sources.
@@ -277,8 +278,11 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// Specify the organizaton(s) from which to return history events.
     #[param(rename = "organisationIds[]", inline, nullable = false)]
     pub organisation_ids: Option<Vec<OrganisationId>>,
-    /// When using STS authentication only available together with the `SYSTEM_HISTORY_LIST` permission.
-    /// Disables `organisationIds` checks, meaning `organisationIds` do not have to be set and `organisationId` inside the STS token is ignored.
+    /// Controls cross-organization access. When `false` (default), returns
+    /// events from the organization in your STS token, or requires at least
+    /// one value in `organisationIds[]` if not using STS authentication.
+    /// When `true`, returns events from all organizations; requires
+    /// `SYSTEM_HISTORY_LIST` permission in STS authentication mode.
     #[param(inline, nullable = false)]
     pub show_system_history: Option<Boolean>,
 }
