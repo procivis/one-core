@@ -331,36 +331,39 @@ impl CredentialFormatter for MdocFormatter {
             disclosed_keys.insert(LAYOUT_NAMESPACE);
         }
 
-        let mut paths_for_namespace = IndexMap::new();
+        let mut elements_for_namespace = IndexMap::new();
         for disclosed_key in disclosed_keys {
-            if let Some((namespace, path)) = disclosed_key.split_once('/') {
-                paths_for_namespace
-                    .entry(namespace)
-                    .or_insert(vec![])
-                    .push(path);
-            } else {
-                // we ask for the entire namespace
-                paths_for_namespace.insert(disclosed_key, vec![]);
+            match disclosed_key.split_once(NESTED_CLAIM_MARKER) {
+                Some((namespace, path)) => {
+                    let element = match path.split_once(NESTED_CLAIM_MARKER) {
+                        Some((element, _)) => element,
+                        None => path,
+                    };
+
+                    elements_for_namespace
+                        .entry(namespace)
+                        .or_insert(vec![])
+                        .push(element);
+                }
+                None => {
+                    // the entire namespace is requested
+                    elements_for_namespace.insert(disclosed_key, vec![]);
+                }
             }
         }
 
-        // keep only the claims that we were asked for
+        // keep only the namespaces/claims that we were asked for
         namespaces.retain(|namespace, claims| {
-            let Some(related_paths) = paths_for_namespace.get(namespace.as_str()) else {
+            let Some(elements) = elements_for_namespace.get(namespace.as_str()) else {
                 return false;
             };
 
-            // we're going to keep the whole namespace
-            if related_paths.is_empty() {
+            // disclose the whole namespace
+            if elements.is_empty() {
                 return true;
             }
 
-            claims.retain(|claim| {
-                // we pull in everything starting with `path` since a `disclosed_key` for an object will contain only name of the object
-                related_paths
-                    .iter()
-                    .any(|path| claim.inner().element_identifier.starts_with(path))
-            });
+            claims.retain(|claim| elements.contains(&claim.inner().element_identifier.as_str()));
 
             !claims.is_empty()
         });
