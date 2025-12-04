@@ -3463,8 +3463,9 @@ dependencies = [
 
 [[package]]
 name = "ndef-rs"
-version = "0.2.2"
-source = "git+https://github.com/procivis/ndef-rs?rev=f7a8aa1#f7a8aa196d906165a0d42caae24b919004981553"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ddd0fc6250331cbd89cc68e267aa411e6dbf59994731f5f34f1c2d742ab8c98"
 dependencies = [
  "anyhow",
  "bitflags",

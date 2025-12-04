@@ -97,7 +97,6 @@ allow-git = [
     "https://github.com/procivis/pairing_crypto",
     "https://github.com/procivis/dilithium",
     "https://github.com/procivis/blstrs",
-    "https://github.com/procivis/ndef-rs",
 ]
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
 unknown-git = "deny"
