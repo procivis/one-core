@@ -395,7 +395,7 @@ async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicKey
     similar_asserts::assert_eq!(resp.status(), 401);
 }
 
-fn to_jwk_with_kid(key: &GeneratedKey, kid: Uuid) -> PublicKeyJwk {
+pub(super) fn to_jwk_with_kid(key: &GeneratedKey, kid: Uuid) -> PublicKeyJwk {
     let mut jwk = key.key.public_key_as_jwk().unwrap();
     if let PublicKeyJwk::Okp(k) = &mut jwk {
         k.kid = Some(kid.to_string());

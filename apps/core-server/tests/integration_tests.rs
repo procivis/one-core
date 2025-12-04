@@ -77,3 +77,6 @@ mod api_wallet_unit_tests;
 
 #[path = "api/authentication.rs"]
 mod authentication;
+
+#[path = "api/authorization.rs"]
+mod authorization;
