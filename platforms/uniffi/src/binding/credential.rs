@@ -6,14 +6,15 @@ use one_core::model::list_filter::{
 };
 use one_core::model::list_query::{ListPagination, ListSorting};
 use one_core::service::credential::dto::{
-    CredentialRole, CredentialStateEnum, GetCredentialListResponseDTO, GetCredentialQueryDTO,
+    CredentialRole, CredentialStateEnum, DetailCredentialClaimResponseDTO,
+    GetCredentialListResponseDTO, GetCredentialQueryDTO,
 };
 use one_core::service::error::{BusinessLogicError, ServiceError};
 use one_core::{model, service};
 use one_dto_mapper::{From, Into, convert_inner};
 
 use super::common::SortDirection;
-use super::credential_schema::CredentialSchemaBindingDTO;
+use super::credential_schema::{CredentialClaimSchemaBindingDTO, CredentialSchemaBindingDTO};
 use super::identifier::GetIdentifierListItemBindingDTO;
 use crate::OneCoreBinding;
 use crate::binding::mapper::deserialize_timestamp;
@@ -372,12 +373,11 @@ pub enum CredentialStateBindingEnum {
     Error,
 }
 
-#[derive(Clone, Debug, uniffi::Record)]
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(DetailCredentialClaimResponseDTO)]
 pub struct ClaimBindingDTO {
-    pub id: String,
-    pub key: String,
-    pub data_type: String,
-    pub array: bool,
+    pub path: String,
+    pub schema: CredentialClaimSchemaBindingDTO,
     pub value: ClaimValueBindingDTO,
 }
 

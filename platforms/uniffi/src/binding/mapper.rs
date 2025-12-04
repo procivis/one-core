@@ -10,7 +10,7 @@ use one_core::provider::verification_protocol::dto::{
     PresentationDefinitionRequestedCredentialResponseDTO,
 };
 use one_core::service::credential::dto::{
-    CredentialDetailResponseDTO, CredentialListItemResponseDTO, DetailCredentialClaimResponseDTO,
+    CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     DetailCredentialClaimValueResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO,
 };
@@ -182,18 +182,6 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             imported_source_url: value.imported_source_url,
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
-        }
-    }
-}
-
-impl From<DetailCredentialClaimResponseDTO> for ClaimBindingDTO {
-    fn from(value: DetailCredentialClaimResponseDTO) -> Self {
-        Self {
-            id: value.schema.id.to_string(),
-            key: value.schema.key,
-            array: value.schema.array,
-            data_type: value.schema.datatype,
-            value: value.value.into(),
         }
     }
 }
