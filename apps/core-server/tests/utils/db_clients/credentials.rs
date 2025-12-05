@@ -73,7 +73,7 @@ impl CredentialsDB {
                         .expect("Missing claim schema id");
 
                     Claim {
-                        id: Uuid::new_v4(),
+                        id: Uuid::new_v4().into(),
                         credential_id,
                         created_date: get_dummy_date(),
                         last_modified: get_dummy_date(),
@@ -98,7 +98,7 @@ impl CredentialsDB {
                     if claim_schema.schema.array {
                         vec![
                             Claim {
-                                id: Uuid::new_v4(),
+                                id: Uuid::new_v4().into(),
                                 credential_id,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
@@ -108,7 +108,7 @@ impl CredentialsDB {
                                 schema: Some(claim_schema.schema.to_owned()),
                             },
                             Claim {
-                                id: Uuid::new_v4(),
+                                id: Uuid::new_v4().into(),
                                 credential_id,
                                 created_date: get_dummy_date(),
                                 last_modified: get_dummy_date(),
@@ -120,7 +120,7 @@ impl CredentialsDB {
                         ]
                     } else {
                         vec![Claim {
-                            id: Uuid::new_v4(),
+                            id: Uuid::new_v4().into(),
                             credential_id,
                             created_date: get_dummy_date(),
                             last_modified: get_dummy_date(),

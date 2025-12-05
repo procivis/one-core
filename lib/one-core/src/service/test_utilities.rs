@@ -318,7 +318,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
         suspend_end_date: None,
         profile: None,
         claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

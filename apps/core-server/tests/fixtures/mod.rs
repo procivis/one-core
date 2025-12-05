@@ -678,7 +678,7 @@ pub async fn create_credential(
         .unwrap()
         .iter()
         .map(move |claim_schema| Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),

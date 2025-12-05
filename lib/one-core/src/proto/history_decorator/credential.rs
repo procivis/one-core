@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use shared_types::CredentialId;
+use shared_types::{ClaimId, CredentialId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::model::claim::ClaimId;
 use crate::model::credential::{
     Credential, CredentialRelations, CredentialRole, CredentialStateEnum, GetCredentialList,
     GetCredentialQuery, UpdateCredentialRequest,

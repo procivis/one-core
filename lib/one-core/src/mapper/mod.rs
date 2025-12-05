@@ -10,7 +10,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
-use crate::model::claim::{Claim, ClaimId};
+use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::common::GetListResponse;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -81,7 +81,7 @@ pub(crate) fn value_to_model_claims(
     let mut model_claims = vec![];
 
     let mut claim_stub = Claim {
-        id: ClaimId::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id,
         created_date: now,
         last_modified: now,

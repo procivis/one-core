@@ -102,7 +102,7 @@ impl ProofsDB {
             completed_date,
             claims: Some(vec![ProofClaim {
                 claim: Claim {
-                    id: Default::default(),
+                    id: Uuid::default().into(),
                     credential_id: Uuid::default().into(),
                     created_date: get_dummy_date(),
                     last_modified: get_dummy_date(),

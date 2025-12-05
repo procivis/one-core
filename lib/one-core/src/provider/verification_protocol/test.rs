@@ -233,7 +233,7 @@ fn mdoc_credential() -> Credential {
         },
     ];
     *credential.claims.as_mut().unwrap() = vec![Claim {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -381,7 +381,7 @@ fn mdoc_credential_with_optional_namespace() -> Credential {
         })
         .collect();
     *credential.claims.as_mut().unwrap() = vec![Claim {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id: credential.id.to_owned(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -447,7 +447,7 @@ fn dummy_credential() -> Credential {
         suspend_end_date: None,
         profile: None,
         claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

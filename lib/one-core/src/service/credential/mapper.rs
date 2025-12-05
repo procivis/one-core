@@ -390,7 +390,7 @@ pub(super) fn claims_from_create_request(
             .find(|schema| schema.schema.id == claim_schema_id)
             .ok_or(BusinessLogicError::MissingClaimSchema { claim_schema_id })?;
         let claim = Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,
@@ -427,7 +427,7 @@ pub(super) fn claims_from_create_request(
                     "Schema not found for array or object claim with path {current_path}",
                 )))?;
             let parent_claim = Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
@@ -461,7 +461,7 @@ fn insert_array_parent(
         };
         if !claims_map.contains_key(array_path) {
             let parent_claim = Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,

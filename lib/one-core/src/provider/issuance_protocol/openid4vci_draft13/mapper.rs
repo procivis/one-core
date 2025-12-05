@@ -276,7 +276,7 @@ pub(super) fn create_claims_from_credential_definition(
 
         if let Some(value) = value_details.value.to_owned() {
             let claim = Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
@@ -588,7 +588,7 @@ fn visit_nested_field_field(
             let mut res = vec![];
             if let Some(value) = value.value.to_owned() {
                 res.push(Claim {
-                    id: Uuid::new_v4(),
+                    id: Uuid::new_v4().into(),
                     credential_id,
                     created_date: now,
                     last_modified: now,
@@ -647,7 +647,7 @@ fn visit_nested_object_field(
     if !child_claims.is_empty() {
         // Object not empty -> insert object container claim
         child_claims.push(Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,
@@ -754,7 +754,7 @@ fn visit_nested_array_field(
     if !child_claims.is_empty() {
         // Array not empty -> insert array container claim
         child_claims.push(Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,

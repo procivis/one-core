@@ -36,7 +36,7 @@ use one_core::repository::proof_schema_repository::{
 use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{
-    ClaimSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    ClaimId, ClaimSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -545,7 +545,7 @@ async fn test_get_proof_with_relations() {
         });
 
     let credential_id = Uuid::new_v4().into();
-    let claim_id = Uuid::new_v4();
+    let claim_id: ClaimId = Uuid::new_v4().into();
     let mut claim_repository = MockClaimRepository::default();
     claim_repository
         .expect_get_claim_list()
@@ -679,7 +679,7 @@ async fn test_get_proof_with_relations() {
     .unwrap();
 
     claim::ActiveModel {
-        id: Set(claim_id.into()),
+        id: Set(claim_id),
         credential_id: Set(credential_id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set(Some("value".into())),
@@ -887,7 +887,7 @@ async fn test_set_proof_claims_success() {
     .unwrap();
 
     let claim = Claim {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id: credential.id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -899,7 +899,7 @@ async fn test_set_proof_claims_success() {
 
     // necessary to pass db consistency checks
     claim::ActiveModel {
-        id: Set(claim.id.into()),
+        id: Set(claim.id),
         credential_id: Set(credential.id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set(Some("value".into())),

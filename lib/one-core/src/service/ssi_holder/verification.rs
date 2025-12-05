@@ -299,7 +299,7 @@ impl SSIHolderService {
                     self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
                 let credential_presentation = CredentialPresentation {
                     token: credential_content.to_owned(),
-                    disclosed_keys: submitted_keys.to_owned(),
+                    disclosed_keys: submitted_keys,
                 };
                 let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(credential)?;
                 let (presentation, validity_credential_presentation) = self

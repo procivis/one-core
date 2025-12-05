@@ -1,12 +1,12 @@
 use std::collections::{HashMap, HashSet};
 
 use autometrics::autometrics;
-use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
-use shared_types::{ClaimSchemaId, CredentialId};
+use shared_types::{ClaimId, ClaimSchemaId, CredentialId};
 
 use super::ClaimProvider;
 use crate::entity::claim;
@@ -64,7 +64,7 @@ impl ClaimRepository for ClaimProvider {
         let claim_id_to_index: HashMap<shared_types::ClaimId, usize> = ids
             .into_iter()
             .enumerate()
-            .map(|(index, id)| (id.into(), index))
+            .map(|(index, id)| (id, index))
             .collect();
 
         let mut models = claim::Entity::find()

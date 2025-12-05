@@ -793,7 +793,7 @@ async fn test_submit_proof_repeating_claims() {
             Ok(Some(Credential {
                 id: credential_id,
                 claims: Some(vec![Claim {
-                    id: claim_id,
+                    id: claim_id.into(),
                     credential_id,
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),

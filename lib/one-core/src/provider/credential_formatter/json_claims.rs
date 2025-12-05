@@ -111,7 +111,7 @@ fn parse_claim(
             };
 
             let mut result = vec![Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
@@ -147,7 +147,7 @@ fn parse_claim(
             }
 
             result.push(Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
@@ -175,7 +175,7 @@ fn parse_claim(
                 .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
             vec![Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,

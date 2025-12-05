@@ -481,7 +481,7 @@ impl CredentialFormatter for MdocFormatter {
         let credential_id = Uuid::new_v4().into();
         let mut claims = parse_claims(namespaces, self.datatype_provider.as_ref(), credential_id)?;
         claims.push(Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,
@@ -1186,7 +1186,7 @@ fn parse_claims(
 
         let now = OffsetDateTime::now_utc();
         result.push(Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,
@@ -1248,7 +1248,7 @@ fn parse_claim(
             datatype_provider.extract_cbor_claim(&value)
     {
         return Ok(vec![Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,
@@ -1302,7 +1302,7 @@ fn parse_claim(
             };
 
             let mut result = vec![Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
@@ -1341,7 +1341,7 @@ fn parse_claim(
             }
 
             result.push(Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,
@@ -1367,7 +1367,7 @@ fn parse_claim(
                 .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
             vec![Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id,
                 created_date: now,
                 last_modified: now,

@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use anyhow::anyhow;
 use autometrics::autometrics;
-use one_core::model::claim::{Claim, ClaimId};
+use one_core::model::claim::Claim;
 use one_core::model::common::LockType;
 use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::interaction::InteractionId;
@@ -16,7 +16,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
-use shared_types::ProofId;
+use shared_types::{ClaimId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -341,10 +341,10 @@ impl ProofProvider {
                 .await
                 .map_err(|e| DataLayerError::Db(e.into()))?;
 
-            let claim_ids = proof_claims
+            let claim_ids: Vec<ClaimId> = proof_claims
                 .iter()
-                .map(|item| Uuid::from_str(&item.claim_id))
-                .collect::<Result<Vec<ClaimId>, _>>()?;
+                .map(|item| Uuid::from_str(&item.claim_id).map(ClaimId::from))
+                .collect::<Result<Vec<_>, _>>()?;
 
             proof.claims = if claim_ids.is_empty() {
                 Some(vec![])

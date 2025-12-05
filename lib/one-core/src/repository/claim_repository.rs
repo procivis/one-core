@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
+use shared_types::ClaimId;
+
 use super::error::DataLayerError;
-use crate::model::claim::{Claim, ClaimId, ClaimRelations};
+use crate::model::claim::{Claim, ClaimRelations};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

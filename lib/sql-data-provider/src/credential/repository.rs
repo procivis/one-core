@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use autometrics::autometrics;
-use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
     Clearable, Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations,
     GetCredentialList, GetCredentialQuery, UpdateCredentialRequest,
@@ -23,7 +23,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, JoinType, PaginatorTrait,
     QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
-use shared_types::{CredentialId, CredentialSchemaId, IdentifierId};
+use shared_types::{ClaimId, CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -82,7 +82,7 @@ async fn get_claims(
         .await
         .map_err(|e| DataLayerError::Db(e.into()))?
         .into_iter()
-        .map(|claim| Uuid::from_str(&claim.id))
+        .map(|claim| Uuid::from_str(&claim.id).map(ClaimId::from))
         .collect::<Result<Vec<_>, _>>()?;
 
     claim_repository.get_claim_list(ids, relations).await

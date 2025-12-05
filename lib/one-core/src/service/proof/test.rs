@@ -620,7 +620,7 @@ async fn test_get_proof_with_array_holder() {
         suspend_end_date: None,
         claims: Some(vec![
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -630,7 +630,7 @@ async fn test_get_proof_with_array_holder() {
                 schema: Some(claim_schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -640,7 +640,7 @@ async fn test_get_proof_with_array_holder() {
                 schema: Some(claim_schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -875,7 +875,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         suspend_end_date: None,
         claims: Some(vec![
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -885,7 +885,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -895,7 +895,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -905,7 +905,7 @@ async fn test_get_proof_with_array_in_object_holder() {
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1145,7 +1145,7 @@ async fn test_get_proof_with_object_array_holder() {
         suspend_end_date: None,
         claims: Some(vec![
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1155,7 +1155,7 @@ async fn test_get_proof_with_object_array_holder() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1165,7 +1165,7 @@ async fn test_get_proof_with_object_array_holder() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1175,7 +1175,7 @@ async fn test_get_proof_with_object_array_holder() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1185,7 +1185,7 @@ async fn test_get_proof_with_object_array_holder() {
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1419,7 +1419,7 @@ async fn test_get_proof_with_array() {
         suspend_end_date: None,
         claims: Some(vec![
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1429,7 +1429,7 @@ async fn test_get_proof_with_array() {
                 schema: Some(claim_schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1439,7 +1439,7 @@ async fn test_get_proof_with_array() {
                 schema: Some(claim_schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1683,7 +1683,7 @@ async fn test_get_proof_with_array_in_object() {
         suspend_end_date: None,
         claims: Some(vec![
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1693,7 +1693,7 @@ async fn test_get_proof_with_array_in_object() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1703,7 +1703,7 @@ async fn test_get_proof_with_array_in_object() {
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1713,7 +1713,7 @@ async fn test_get_proof_with_array_in_object() {
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1963,7 +1963,7 @@ async fn test_get_proof_with_object_array() {
         suspend_end_date: None,
         claims: Some(vec![
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1973,7 +1973,7 @@ async fn test_get_proof_with_object_array() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1983,7 +1983,7 @@ async fn test_get_proof_with_object_array() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -1993,7 +1993,7 @@ async fn test_get_proof_with_object_array() {
                 schema: Some(claim_schemas[0].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
@@ -2003,7 +2003,7 @@ async fn test_get_proof_with_object_array() {
                 schema: Some(claim_schemas[1].schema.clone()),
             },
             Claim {
-                id: Uuid::new_v4(),
+                id: Uuid::new_v4().into(),
                 credential_id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),

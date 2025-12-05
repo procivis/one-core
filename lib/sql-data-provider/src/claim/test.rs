@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::repository::claim_repository::ClaimRepository;
@@ -146,7 +146,7 @@ async fn test_create_claim_list_success() {
             claim_schemas
                 .into_iter()
                 .map(|schema| Claim {
-                    id: ClaimId::new_v4(),
+                    id: Uuid::new_v4().into(),
                     credential_id,
                     value: Some("value".to_string()),
                     created_date: get_dummy_date(),
@@ -185,7 +185,7 @@ async fn test_delete_claims_for_credential() {
             claim_schemas
                 .into_iter()
                 .map(|schema| Claim {
-                    id: ClaimId::new_v4(),
+                    id: Uuid::new_v4().into(),
                     credential_id,
                     value: Some("value".to_string()),
                     created_date: get_dummy_date(),
@@ -245,7 +245,7 @@ async fn test_delete_claims_for_credentials() {
             claim_schemas
                 .iter()
                 .map(|schema| Claim {
-                    id: ClaimId::new_v4(),
+                    id: Uuid::new_v4().into(),
                     credential_id,
                     value: Some("value".to_string()),
                     created_date: get_dummy_date(),
@@ -264,7 +264,7 @@ async fn test_delete_claims_for_credentials() {
             claim_schemas
                 .into_iter()
                 .map(|schema| Claim {
-                    id: ClaimId::new_v4(),
+                    id: Uuid::new_v4().into(),
                     credential_id: credential_id_2,
                     value: Some("value".to_string()),
                     created_date: get_dummy_date(),
@@ -303,7 +303,7 @@ async fn test_create_claim_list_missing_schema() {
 
     let result = repository
         .create_claim_list(vec![Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             value: Some("value".to_string()),
             created_date: get_dummy_date(),
@@ -328,7 +328,7 @@ async fn test_get_claim_list() {
     let claims: Vec<Claim> = claim_schemas
         .iter()
         .map(|schema| Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             value: Some("value".to_string()),
             created_date: get_dummy_date(),
@@ -362,7 +362,7 @@ async fn test_get_claim_list() {
     // one item missing
     let result = repository
         .get_claim_list(
-            vec![claims[0].id, ClaimId::new_v4()],
+            vec![claims[0].id, Uuid::new_v4().into()],
             &ClaimRelations::default(),
         )
         .await;
@@ -407,7 +407,7 @@ async fn test_get_claim_list_with_relation() {
     let claims: Vec<Claim> = claim_schemas
         .iter()
         .map(|schema| Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             value: Some("value".to_string()),
             created_date: get_dummy_date(),

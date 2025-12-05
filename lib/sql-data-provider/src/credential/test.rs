@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::ops::Add;
 use std::sync::Arc;
 
-use one_core::model::claim::{Claim, ClaimId, ClaimRelations};
+use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, CredentialRelations, CredentialRole,
@@ -304,7 +304,7 @@ async fn test_create_credential_success() {
         .schema;
     let claims = vec![
         Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -314,7 +314,7 @@ async fn test_create_credential_success() {
             selectively_disclosable: false,
         },
         Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -431,7 +431,7 @@ async fn test_create_credential_already_exists() {
         .to_owned()
         .schema;
     let claims = vec![Claim {
-        id: ClaimId::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -782,7 +782,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         .to_owned()
         .schema;
     let claims = vec![Claim {
-        id: ClaimId::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -796,7 +796,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
         claims
             .iter()
             .map(|claim| claim::ActiveModel {
-                id: Set(claim.id.into()),
+                id: Set(claim.id),
                 credential_id: Set(credential_id),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
                 value: Set(convert_inner(claim.value.to_owned())),
@@ -887,7 +887,7 @@ async fn test_get_credential_success() {
         .schema;
     let claims = vec![
         Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -897,7 +897,7 @@ async fn test_get_credential_success() {
             selectively_disclosable: false,
         },
         Claim {
-            id: ClaimId::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
@@ -913,7 +913,7 @@ async fn test_get_credential_success() {
         claims
             .iter()
             .map(|claim| claim::ActiveModel {
-                id: Set(claim.id.into()),
+                id: Set(claim.id),
                 credential_id: Set(credential_id),
                 claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
                 value: Set(convert_inner(claim.value.to_owned())),
@@ -1283,7 +1283,7 @@ async fn test_get_credential_by_claim_id_success() {
         .to_owned()
         .schema;
     let claim = Claim {
-        id: ClaimId::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id: credential.id,
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
@@ -1294,7 +1294,7 @@ async fn test_get_credential_by_claim_id_success() {
     };
 
     claim::ActiveModel {
-        id: Set(claim.id.into()),
+        id: Set(claim.id),
         credential_id: Set(credential.id),
         claim_schema_id: Set(claim.schema.as_ref().unwrap().id),
         value: Set(convert_inner(claim.value.to_owned())),

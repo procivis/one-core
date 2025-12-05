@@ -1,10 +1,7 @@
-use shared_types::CredentialId;
+use shared_types::{ClaimId, CredentialId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::claim_schema::{ClaimSchema, ClaimSchemaRelations};
-
-pub type ClaimId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Claim {

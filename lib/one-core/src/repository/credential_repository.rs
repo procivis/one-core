@@ -1,9 +1,8 @@
 use std::collections::HashSet;
 
-use shared_types::CredentialId;
+use shared_types::{ClaimId, CredentialId};
 
 use super::error::DataLayerError;
-use crate::model::claim::ClaimId;
 use crate::model::credential::{
     Credential, CredentialRelations, GetCredentialList, GetCredentialQuery, UpdateCredentialRequest,
 };

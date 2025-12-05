@@ -361,7 +361,7 @@ async fn test_get_presentation_definition_ok() {
 
     let claims = vec![
         Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -371,7 +371,7 @@ async fn test_get_presentation_definition_ok() {
             selectively_disclosable: false,
         },
         Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -381,7 +381,7 @@ async fn test_get_presentation_definition_ok() {
             selectively_disclosable: false,
         },
         Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -395,7 +395,7 @@ async fn test_get_presentation_definition_ok() {
             selectively_disclosable: false,
         },
         Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
@@ -409,7 +409,7 @@ async fn test_get_presentation_definition_ok() {
             selectively_disclosable: false,
         },
         Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),

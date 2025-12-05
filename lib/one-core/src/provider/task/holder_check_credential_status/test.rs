@@ -274,7 +274,7 @@ fn generic_credential() -> Credential {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,

@@ -166,7 +166,7 @@ fn generic_credential() -> Credential {
         state: CredentialStateEnum::Created,
         suspend_end_date: None,
         claims: Some(vec![Claim {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             credential_id,
             created_date: now,
             last_modified: now,
@@ -3711,7 +3711,7 @@ async fn test_get_credential_success_with_non_required_nested_object() {
     ];
 
     *credential.claims.as_mut().unwrap() = vec![Claim {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id: credential.id,
         created_date: now,
         last_modified: now,
@@ -3769,7 +3769,7 @@ fn generate_claim(
     let now = get_dummy_date();
 
     Claim {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         credential_id,
         created_date: now,
         last_modified: now,

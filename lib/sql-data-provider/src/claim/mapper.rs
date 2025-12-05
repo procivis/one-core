@@ -9,7 +9,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
 
     fn try_from(value: Claim) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: Set(value.id.into()),
+            id: Set(value.id),
             credential_id: Set(value.credential_id),
             created_date: Set(value.created_date),
             last_modified: Set(value.last_modified),
@@ -24,7 +24,7 @@ impl TryFrom<Claim> for claim::ActiveModel {
 impl From<claim::Model> for Claim {
     fn from(value: claim::Model) -> Self {
         Self {
-            id: value.id.into(),
+            id: value.id,
             credential_id: value.credential_id,
             value: value
                 .value
