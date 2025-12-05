@@ -1,7 +1,6 @@
 mod did;
 mod exchange_protocol;
 mod formatter;
-mod frontend;
 mod identifier;
 mod key_algorithm;
 mod key_security_level;

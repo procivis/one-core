@@ -1,4 +1,7 @@
 use axum::extract::State;
+use one_core::service::config::dto::ConfigDTO;
+use one_core::service::error::ServiceError;
+use one_dto_mapper::convert_inner;
 
 use super::dto::ConfigRestDTO;
 use crate::dto::response::OkOrErrorResponse;
@@ -41,18 +44,10 @@ use crate::router::AppState;
 "},
 )]
 pub(crate) async fn get_config(state: State<AppState>) -> OkOrErrorResponse<ConfigRestDTO> {
-    let result: Result<ConfigRestDTO, _> = state
-        .core
-        .config_service
-        .get_config()
-        .map(ConfigRestDTO::from)
-        .map(|mut config| {
-            config.frontend.insert(
-                "walletProviderEnabled".to_string(),
-                serde_json::json!(state.config.enable_wallet_provider),
-            );
-            config
-        });
-
-    OkOrErrorResponse::from_result(result, state, "getting config")
+    let result = state.core.config_service.get_config();
+    OkOrErrorResponse::from_result(
+        convert_inner::<Result<ConfigDTO, ServiceError>, ConfigRestDTO>(result),
+        state,
+        "getting config",
+    )
 }
