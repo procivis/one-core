@@ -8,9 +8,8 @@ use one_core::model::proof::{Proof, ProofRole, ProofStateEnum};
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
-use wiremock::http::Method;
-use wiremock::matchers::{body_string_contains, method, path};
-use wiremock::{Mock, MockBuilder, MockServer, ResponseTemplate};
+use wiremock::MockBuilder;
+use wiremock::matchers::body_string_contains;
 
 use crate::fixtures::{
     self, ClaimData, TestingCredentialParams, TestingCredentialSchemaParams, TestingDidParams,
@@ -20,7 +19,6 @@ use crate::utils;
 use crate::utils::api_clients::Response;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::blobs::TestingBlobParams;
-use crate::utils::server::run_server;
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc() {
@@ -809,33 +807,27 @@ async fn setup_submittable_presentation(
 
 #[tokio::test]
 async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
-    let mock_server = MockServer::start().await;
-    let config = fixtures::create_config(mock_server.uri(), None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let issuer_did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let issuer_identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            did: Some(issuer_did.clone()),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let verifier_did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let verifier_identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            did: Some(verifier_did.clone()),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let (context, organisation, _, issuer_identifier, ..) = TestContext::new_with_did(None).await;
+
+    let verifier_did = context
+        .db
+        .dids
+        .create(Some(organisation.to_owned()), Default::default())
+        .await;
+    let verifier_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(verifier_did.clone()),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let holder_key = fixtures::create_key(
-        &db_conn,
+        &context.db.db_conn,
         &organisation,
         Some(TestingKeyParams {
             key_type: Some("ECDSA".to_string()),
@@ -854,83 +846,103 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
         }),
     )
     .await;
-    let holder_did = fixtures::create_did(
-        &db_conn,
-        &organisation,
-        Some(TestingDidParams {
-            did_method: Some("KEY".to_string()),
-            did: Some(
-                "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
-                    .parse()
-                    .unwrap(),
-            ),
-            keys: Some(vec![RelatedKey {
-                role: KeyRole::Authentication,
-                key: holder_key.clone(),
-                reference: "1".to_string(),
-            }]),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let holder_identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            did: Some(holder_did.clone()),
-            ..Default::default()
-        }),
-    )
-    .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.to_owned()),
+            TestingDidParams {
+                did_method: Some("KEY".to_string()),
+                did: Some(
+                    "did:key:zDnaeTDHP1rEYDFKYtQtH9Yx6Aycyxj7y9PXYDSeDKHnWUFP6"
+                        .parse()
+                        .unwrap(),
+                ),
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: holder_key.clone(),
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let holder_identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.to_owned()),
+                is_remote: Some(false),
+                ..Default::default()
+            },
+        )
+        .await;
 
     let new_claim_schemas: Vec<(Uuid, &str, bool, &str, bool)> = vec![
         (Uuid::new_v4(), "cat", true, "STRING", false), // Presentation 2 token 1
         (Uuid::new_v4(), "cat2", false, "STRING", false), // Optional - not provided
     ];
 
-    let credential_schema = create_credential_schema_with_claims(
-        &db_conn,
-        "Schema1",
-        &organisation,
-        "NONE",
-        &new_claim_schemas,
-    )
-    .await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_claims(
+            &Uuid::new_v4(),
+            "Schema1",
+            &organisation,
+            "NONE",
+            &new_claim_schemas,
+            "JWT",
+            "Schema1",
+        )
+        .await;
 
-    let blob = fixtures::create_blob(
-        &db_conn,
-        TestingBlobParams {
+    let blob = context
+        .db
+        .blobs
+        .create(TestingBlobParams {
             value: Some("TOKEN".as_bytes().to_vec()),
             ..Default::default()
-        },
-    )
-    .await;
+        })
+        .await;
 
-    let credential = fixtures::create_credential(
-        &db_conn,
-        &credential_schema,
-        CredentialStateEnum::Accepted,
-        &issuer_identifier,
-        "OPENID4VCI_DRAFT13",
-        TestingCredentialParams {
-            holder_identifier: Some(holder_identifier),
-            key: Some(holder_key),
-            credential_blob_id: Some(blob.id),
-            role: Some(CredentialRole::Holder),
-            ..Default::default()
-        },
-    )
-    .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Accepted,
+            &issuer_identifier,
+            "OPENID4VCI_DRAFT13",
+            TestingCredentialParams {
+                holder_identifier: Some(holder_identifier),
+                key: Some(holder_key),
+                credential_blob_id: Some(blob.id),
+                role: Some(CredentialRole::Holder),
+                claims_data: Some(
+                    new_claim_schemas
+                        .into_iter()
+                        .map(|(id, name, _, _, _)| ClaimData {
+                            schema_id: id.into(),
+                            path: name.to_string(),
+                            value: Some(name.to_string()),
+                            selectively_disclosable: true,
+                        })
+                        .collect(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
 
-    let verifier_url = mock_server.uri();
-
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
-    let _handle = run_server(listener, config, &db_conn).await;
+    let verifier_url = context.server_mock.uri();
+    let base_url = &context.api.base_url;
 
     let claims = credential.claims.clone().unwrap();
     let interaction = fixtures::create_interaction(
-        &db_conn,
+        &context.db.db_conn,
         json!(
             {
                 "response_type":"vp_token",
@@ -1003,7 +1015,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
                                     {
                                         "id": claims[1].id,
                                         "path":["$.vc.credentialSubject.cat2"],
-                                        "optional":false
+                                        "optional":true
                                     }
                                 ]
                             }
@@ -1020,7 +1032,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     .await;
 
     let proof = fixtures::create_proof(
-        &db_conn,
+        &context.db.db_conn,
         &verifier_identifier,
         None,
         ProofStateEnum::Requested,
@@ -1033,19 +1045,19 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     )
     .await;
 
-    Mock::given(method(Method::POST))
-        .and(path("/ssi/openid4vp/draft-20/response".to_owned()))
-        // Just sample query params as they are too dynamic and contain random ids
-        .and(body_string_contains("state"))
-        .and(body_string_contains("53c44733-4f9d-4db2-aa83-afb8e17b500f"))
-        .and(body_string_contains("vp_token"))
-        .and(body_string_contains("descriptor_map"))
-        .and(body_string_contains("input_0"))
-        .and(body_string_contains("jwt_vp_json")) // As we use jwt as credential input. Temporary.
-        .and(body_string_contains("verifiableCredential"))
-        .respond_with(ResponseTemplate::new(200))
-        .expect(1)
-        .mount(&mock_server)
+    context
+        .server_mock
+        .ssi_request_uri_endpoint(Some(|mock_builder: MockBuilder| {
+            // Just sample query params as they are too dynamic and contain random ids
+            mock_builder
+                .and(body_string_contains("state"))
+                .and(body_string_contains("53c44733-4f9d-4db2-aa83-afb8e17b500f"))
+                .and(body_string_contains("vp_token"))
+                .and(body_string_contains("descriptor_map"))
+                .and(body_string_contains("input_0"))
+                .and(body_string_contains("jwt_vp_json")) // As we use jwt as credential input. Temporary.
+                .and(body_string_contains("verifiableCredential"))
+        }))
         .await;
 
     // WHEN
@@ -1072,7 +1084,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
     // THEN
     assert_eq!(resp.status(), 204);
 
-    let proof = fixtures::get_proof(&db_conn, &proof.id).await;
+    let proof = fixtures::get_proof(&context.db.db_conn, &proof.id).await;
     assert_eq!(proof.state, ProofStateEnum::Accepted);
     assert!(
         proof

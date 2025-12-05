@@ -4,7 +4,7 @@ use std::sync::Arc;
 use ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use futures::TryFutureExt;
 use itertools::Itertools;
-use shared_types::{CredentialId, ProofId};
+use shared_types::{ClaimId, CredentialId, ProofId};
 use url::Url;
 
 use super::SSIHolderService;
@@ -203,7 +203,7 @@ impl SSIHolderService {
             .flat_map(|group| group.requested_credentials)
             .collect();
 
-        let mut submitted_claims: Vec<Claim> = vec![];
+        let mut disclosed_claims = HashMap::<ClaimId, Claim>::new();
         let mut credential_presentations: Vec<FormattedCredentialPresentation> = vec![];
         let holder_binding_ctx =
             verification_protocol.holder_get_holder_binding_context(&proof, interaction_data)?;
@@ -223,7 +223,7 @@ impl SSIHolderService {
             }
 
             for submitted_credential in submitted_credentials {
-                let submitted_keys = requested_credential
+                let submitted_paths = requested_credential
                     .fields
                     .iter()
                     .filter(|field| submitted_credential.submit_claims.contains(&field.id))
@@ -277,29 +277,69 @@ impl SSIHolderService {
                             "credential_schema missing".to_string(),
                         ))?;
 
-                for claim in credential
+                let claims = credential
                     .claims
                     .as_ref()
                     .ok_or(ServiceError::MappingError("claims missing".to_string()))?
-                {
-                    for key in &submitted_keys {
-                        // handle nested path by checking the prefix
-                        if claim
-                            .path
-                            .starts_with(&format!("{key}{NESTED_CLAIM_MARKER}"))
-                            || claim.path == *key
-                                && submitted_claims.iter().all(|c| c.id != claim.id)
+                    .iter()
+                    .filter(|claim| claim.schema.as_ref().is_some_and(|schema| !schema.metadata))
+                    // parents before children
+                    .sorted_by_key(|claim| &claim.path);
+
+                let mut disclosed_claims_for_credential = HashMap::<ClaimId, Claim>::new();
+                for claim in claims {
+                    let claim_path = &claim.path;
+                    let mut disclosed = false;
+                    for submitted_path in &submitted_paths {
+                        // explicitly submitted
+                        if claim_path == submitted_path {
+                            disclosed = true;
+                            break;
+                        }
+
+                        // parent claims of submitted (all levels transitively)
+                        if submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}"))
                         {
-                            submitted_claims.push(claim.to_owned());
+                            disclosed = true;
+                            break;
+                        }
+
+                        // child claims of submitted (all levels transitively)
+                        if claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}"))
+                        {
+                            disclosed = true;
+                            break;
                         }
                     }
+
+                    // non-selectively-disclosable (direct) children of disclosed claims
+                    // or non-selectively-disclosable root claims
+                    if !disclosed
+                        && !claim.selectively_disclosable
+                        && claim_path.rsplit_once(NESTED_CLAIM_MARKER).is_none_or(
+                            |(parent_path, _)| {
+                                disclosed_claims_for_credential
+                                    .values()
+                                    .map(|claim| claim.path.as_str())
+                                    .contains(&parent_path)
+                            },
+                        )
+                    {
+                        disclosed = true;
+                    }
+
+                    if disclosed {
+                        disclosed_claims_for_credential.insert(claim.id, claim.to_owned());
+                    }
                 }
+
+                disclosed_claims.extend(disclosed_claims_for_credential);
 
                 let formatter =
                     self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
                 let credential_presentation = CredentialPresentation {
                     token: credential_content.to_owned(),
-                    disclosed_keys: submitted_keys,
+                    disclosed_keys: submitted_paths,
                 };
                 let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(credential)?;
                 let (presentation, validity_credential_presentation) = self
@@ -330,7 +370,7 @@ impl SSIHolderService {
             &proof,
             &*verification_protocol,
             credential_presentations,
-            submitted_claims,
+            disclosed_claims.into_values().collect(),
         )
         .await
     }

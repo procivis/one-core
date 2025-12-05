@@ -11,7 +11,7 @@ use std::str::FromStr;
 use core_server::{AuthMode, ServerConfig};
 use hex_literal::hex;
 use one_core::config::core_config::{self, AppConfig, InputFormat};
-use one_core::model::blob::{Blob, BlobType};
+use one_core::model::blob::Blob;
 use one_core::model::certificate::Certificate;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
@@ -56,7 +56,6 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
-use crate::utils::db_clients::blobs::TestingBlobParams;
 use crate::utils::db_clients::proof_schemas::CreateProofInputSchema;
 
 pub fn unwrap_or_random(op: Option<String>) -> String {
@@ -720,28 +719,6 @@ pub async fn create_credential(
         .unwrap();
 
     credential
-}
-
-pub async fn create_blob(db_conn: &DbConn, params: TestingBlobParams) -> Blob {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-
-    let now = OffsetDateTime::now_utc();
-
-    let blob = Blob {
-        id: params.id.unwrap_or(Uuid::new_v4().into()),
-        created_date: params.created_date.unwrap_or(now),
-        last_modified: params.last_modified.unwrap_or(now),
-        value: params.value.unwrap_or(vec![1, 2, 3, 4, 5]),
-        r#type: params.r#type.unwrap_or(BlobType::Credential),
-    };
-
-    data_layer
-        .get_blob_repository()
-        .create(blob.clone())
-        .await
-        .unwrap();
-
-    blob
 }
 
 #[expect(clippy::too_many_arguments)]
