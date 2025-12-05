@@ -34,7 +34,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
 ) -> Result<OpenID4VP25AuthorizationRequestQueryParams, VerificationProtocolError> {
     let params = if openidvc_params.use_request_uri {
         OpenID4VP25AuthorizationRequestQueryParams {
-            client_id: encode_client_id_with_scheme(client_id, client_id_scheme),
+            client_id: encode_client_id_with_scheme_draft25(client_id, client_id_scheme),
             request_uri: Some(format!(
                 "{base_url}/ssi/openid4vp/draft-25/{}/client-request",
                 proof.id
@@ -55,7 +55,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
                 )
                 .await?;
                 return Ok(OpenID4VP25AuthorizationRequestQueryParams {
-                    client_id: encode_client_id_with_scheme(client_id, client_id_scheme),
+                    client_id: encode_client_id_with_scheme_draft25(client_id, client_id_scheme),
                     request: Some(token),
                     ..Default::default()
                 });
@@ -79,7 +79,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
                 )
                 .await?;
                 return Ok(OpenID4VP25AuthorizationRequestQueryParams {
-                    client_id: encode_client_id_with_scheme(
+                    client_id: encode_client_id_with_scheme_draft25(
                         client_id,
                         ClientIdScheme::VerifierAttestation,
                     ),
@@ -96,7 +96,7 @@ pub(crate) async fn create_openid4vp25_authorization_request(
                 )
                 .await?;
                 return Ok(OpenID4VP25AuthorizationRequestQueryParams {
-                    client_id: encode_client_id_with_scheme(client_id, ClientIdScheme::Did),
+                    client_id: encode_client_id_with_scheme_draft25(client_id, ClientIdScheme::Did),
                     request: Some(token),
                     ..Default::default()
                 });
@@ -150,7 +150,10 @@ fn format_params_for_redirect_uri(
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     Ok(OpenID4VP25AuthorizationRequestQueryParams {
-        client_id: encode_client_id_with_scheme(client_id.clone(), ClientIdScheme::RedirectUri),
+        client_id: encode_client_id_with_scheme_draft25(
+            client_id.clone(),
+            ClientIdScheme::RedirectUri,
+        ),
         response_type: Some("vp_token".to_string()),
         state: Some(interaction_id.to_string()),
         response_mode: authorization_request.response_mode,
@@ -166,7 +169,7 @@ fn format_params_for_redirect_uri(
     })
 }
 
-pub(super) fn encode_client_id_with_scheme(
+pub(crate) fn encode_client_id_with_scheme_draft25(
     client_id: String,
     client_id_scheme: ClientIdScheme,
 ) -> String {
@@ -176,23 +179,22 @@ pub(super) fn encode_client_id_with_scheme(
     }
 }
 
-pub(crate) fn decode_client_id_with_scheme(
-    client_id: String,
+pub(super) fn decode_client_id_with_scheme(
+    client_id_with_scheme: String,
 ) -> Result<(String, ClientIdScheme), VerificationProtocolError> {
-    let (client_id_scheme, client_id) =
-        client_id
-            .split_once(':')
-            .ok_or(VerificationProtocolError::InvalidRequest(
-                "invalid client_id".to_string(),
-            ))?;
+    let (client_id_scheme, client_id_without_prefix) = client_id_with_scheme
+        .split_once(':')
+        .ok_or(VerificationProtocolError::InvalidRequest(
+            "invalid client_id".to_string(),
+        ))?;
 
     let client_id_scheme: ClientIdScheme = client_id_scheme.parse().map_err(|e| {
         VerificationProtocolError::InvalidRequest(format!("invalid client_id_scheme: {e}"))
     })?;
 
     let client_id = match client_id_scheme {
-        ClientIdScheme::Did => client_id,
-        _ => client_id,
+        ClientIdScheme::Did => client_id_with_scheme.as_str(),
+        _ => client_id_without_prefix,
     };
 
     Ok((client_id.to_string(), client_id_scheme))

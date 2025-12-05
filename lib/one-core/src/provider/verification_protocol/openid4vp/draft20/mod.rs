@@ -265,6 +265,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
             &*self.presentation_formatter_provider,
             &*self.key_provider,
             self.key_algorithm_provider.clone(),
+            VerificationProtocolType::OpenId4VpDraft20,
         )
         .await?;
 

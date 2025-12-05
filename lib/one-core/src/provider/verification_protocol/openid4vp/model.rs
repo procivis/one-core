@@ -76,6 +76,7 @@ pub enum VpSubmissionData {
     EncryptedResponse(ResponseSubmission),
 }
 
+#[derive(Debug)]
 pub(crate) struct EncryptionInfo {
     pub verifier_key: OpenID4VPClientMetadataJwkDTO,
     pub alg: AuthorizationEncryptedResponseContentEncryptionAlgorithm,

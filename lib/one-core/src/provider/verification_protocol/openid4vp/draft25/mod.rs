@@ -4,7 +4,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use futures::future::BoxFuture;
-use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_scheme};
+use mappers::{create_openid4vp25_authorization_request, encode_client_id_with_scheme_draft25};
 use model::OpenID4Vp25Params;
 use one_crypto::utilities;
 use serde_json::Value;
@@ -236,7 +236,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 .ok_or(VerificationProtocolError::Failed(
                     "missing nonce".to_string(),
                 ))?,
-            audience: encode_client_id_with_scheme(
+            audience: encode_client_id_with_scheme_draft25(
                 interaction_data.client_id,
                 interaction_data.client_id_scheme,
             ),
@@ -394,6 +394,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
                 &*self.presentation_formatter_provider,
                 &*self.key_provider,
                 self.key_algorithm_provider.clone(),
+                VerificationProtocolType::OpenId4VpDraft25,
             )
             .await?
         };
@@ -569,7 +570,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
             nonce.clone(),
             presentation_definition.clone(),
             dcql_query.clone(),
-            encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
+            encode_client_id_with_scheme_draft25(client_id.clone(), client_id_scheme),
             response_uri.clone(),
             client_metadata.clone(),
         )?;
@@ -582,7 +583,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         let interaction_content = OpenID4VPVerifierInteractionContent {
             nonce: nonce.to_owned(),
             presentation_definition: presentation_definition.clone(),
-            client_id: encode_client_id_with_scheme(client_id.clone(), client_id_scheme),
+            client_id: encode_client_id_with_scheme_draft25(client_id.clone(), client_id_scheme),
             dcql_query: dcql_query.clone(),
             encryption_key,
             client_id_scheme: Some(client_id_scheme),
@@ -647,7 +648,7 @@ fn format_presentation_context(
             ))?;
     let ctx = if presentation_format == FormatType::Mdoc {
         mdoc_presentation_context(mdoc_draft_handover(
-            &encode_client_id_with_scheme(
+            &encode_client_id_with_scheme_draft25(
                 interaction_data.client_id.clone(),
                 interaction_data.client_id_scheme,
             ),
