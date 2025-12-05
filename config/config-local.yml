@@ -74,7 +74,6 @@ format:
         msoExpectedUpdateIn: 60
         msoMinimumRefreshTime: 10
         leeway: 10
-        embedLayoutProperties: true
 issuanceProtocol:
   OPENID4VCI_DRAFT13:
     params:

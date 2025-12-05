@@ -14,7 +14,6 @@ use indexmap::{IndexMap, IndexSet};
 use one_crypto::SignerError;
 use one_crypto::utilities::generate_random_bytes;
 use serde::Deserialize;
-use serde_json::json;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{CredentialId, CredentialSchemaId, DidValue};
@@ -51,9 +50,9 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::json_claims::prepare_identifier;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialClaim, CredentialClaimValue, CredentialData,
-    CredentialPresentation, CredentialSchema, CredentialSchemaMetadata, CredentialSubject,
-    DetailCredential, Features, FormatterCapabilities, HolderBindingCtx, IdentifierDetails,
-    PublicKeySource, PublishedClaim, SelectiveDisclosure, TokenVerifier, VerificationFn,
+    CredentialPresentation, CredentialSchema, CredentialSubject, DetailCredential, Features,
+    FormatterCapabilities, HolderBindingCtx, IdentifierDetails, PublicKeySource, PublishedClaim,
+    SelectiveDisclosure, TokenVerifier, VerificationFn,
 };
 use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::data_type::model::ExtractedClaim;
@@ -69,8 +68,6 @@ pub(crate) mod util;
 mod test;
 
 const FULL_DATE_FORMAT: &[FormatItem<'_>] = format_description!("[year]-[month]-[day]");
-
-static LAYOUT_NAMESPACE: &str = "ch.procivis.mdoc_layout.1";
 
 pub struct MdocFormatter {
     certificate_validator: Arc<dyn CertificateValidator>,
@@ -92,7 +89,6 @@ pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub mso_minimum_refresh_time: Duration,
     pub leeway: u64,
-    pub embed_layout_properties: Option<bool>,
 }
 
 impl MdocFormatter {
@@ -130,26 +126,7 @@ impl CredentialFormatter for MdocFormatter {
                 FormatterError::Failed("MDOC credential missing credential schema".to_string())
             })?;
 
-        let mut claims = nest_claims(credential_data.claims.clone())?;
-
-        if let Some(metadata) = credential_schema.metadata {
-            let layout_value = match self.params.embed_layout_properties {
-                Some(true) => {
-                    json!({
-                        "id": credential_schema.id,
-                        "layoutProperties": metadata.layout_properties,
-                        "layoutType": metadata.layout_type,
-                    })
-                }
-                _ => {
-                    json!({
-                        "id": credential_schema.id
-                    })
-                }
-            };
-
-            claims.insert(LAYOUT_NAMESPACE.to_string(), layout_value);
-        }
+        let claims = nest_claims(credential_data.claims.clone())?;
 
         let namespaces =
             try_build_namespaces(claims, credential_data.claims, &self.datatype_config)?;
@@ -320,16 +297,11 @@ impl CredentialFormatter for MdocFormatter {
             ));
         };
 
-        let mut disclosed_keys: IndexSet<&str> = credential
+        let disclosed_keys: IndexSet<&str> = credential
             .disclosed_keys
             .iter()
             .map(|key| key.as_str())
             .collect();
-
-        if namespaces.contains_key(LAYOUT_NAMESPACE) {
-            // We would like to disclose that namespace as well
-            disclosed_keys.insert(LAYOUT_NAMESPACE);
-        }
 
         let mut elements_for_namespace = IndexMap::new();
         for disclosed_key in disclosed_keys {
@@ -425,7 +397,7 @@ impl CredentialFormatter for MdocFormatter {
                 "ARRAY".to_string(),
                 "MDL_PICTURE".to_string(),
             ],
-            forbidden_claim_names: vec!["0".to_string(), LAYOUT_NAMESPACE.to_string()],
+            forbidden_claim_names: vec!["0".to_string()],
             issuance_identifier_types: vec![IdentifierType::Certificate],
             verification_identifier_types: vec![IdentifierType::Did, IdentifierType::Certificate],
             holder_identifier_types: vec![IdentifierType::Did, IdentifierType::Key],
@@ -607,11 +579,6 @@ async fn extract_credentials_internal(
         },
     );
 
-    let layout = claims.remove(LAYOUT_NAMESPACE);
-
-    let metadata: Option<CredentialSchemaMetadata> =
-        layout.and_then(|layout| serde_json::from_value(layout.value.into()).ok());
-
     Ok(DetailCredential {
         id: None,
         issuance_date: Some(mso.validity_info.signed.into()),
@@ -629,7 +596,7 @@ async fn extract_credentials_internal(
         credential_schema: Some(CredentialSchema {
             id: mso.doc_type,
             r#type: "mdoc".to_string(),
-            metadata,
+            metadata: None,
         }),
     })
 }
@@ -784,22 +751,6 @@ fn build_ciborium_value(
             Ok(ciborium::Value::Array(items))
         }
         serde_json::Value::Null => Ok(ciborium::Value::Null),
-        serde_json::Value::String(value)
-            if this_path
-                .chars()
-                .take_while(|c| c != &NESTED_CLAIM_MARKER)
-                .eq(LAYOUT_NAMESPACE.chars()) =>
-        {
-            let claim = PublishedClaim {
-                key: this_path.to_string(),
-                value: crate::provider::credential_formatter::model::PublishedClaimValue::String(
-                    value.to_string(),
-                ),
-                datatype: Some("STRING".to_owned()),
-                array_item: false,
-            };
-            map_to_ciborium_value(&claim, datatype_config)
-        }
         _ => {
             let claim =
                 claims
@@ -1161,10 +1112,6 @@ fn parse_claims(
 ) -> Result<Vec<Claim>, FormatterError> {
     let mut result = vec![];
     for (namespace, inner_claims) in namespaces {
-        if namespace == LAYOUT_NAMESPACE {
-            continue;
-        }
-
         for issuer_signed_item in inner_claims {
             let issuer_signed_item = issuer_signed_item.into_inner();
             let path = format!("{namespace}/{}", issuer_signed_item.element_identifier);

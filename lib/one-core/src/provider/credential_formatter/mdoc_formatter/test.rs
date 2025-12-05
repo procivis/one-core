@@ -16,7 +16,8 @@ use crate::model::credential_schema::{BackgroundProperties, LayoutProperties, La
 use crate::model::did::Did;
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::provider::credential_formatter::model::{
-    CertificateDetails, Issuer, MockSignatureProvider, MockTokenVerifier, PublishedClaimValue,
+    CertificateDetails, CredentialSchemaMetadata, Issuer, MockSignatureProvider, MockTokenVerifier,
+    PublishedClaimValue,
 };
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::data_type::error::DataTypeProviderError;
@@ -331,7 +332,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
-        embed_layout_properties: None,
     };
 
     let config = generic_config().core;
@@ -364,8 +364,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
     let cose_sign1 = issuer_signed.issuer_auth.0;
 
     // check namespaces
-    // additional namespace is included always when credential schema contains layout
-    assert_eq!(2, namespaces.len());
+    assert_eq!(1, namespaces.len());
     assert_eq!(1, namespaces["a"].len());
     let signed_item = &namespaces["a"][0].inner();
 
@@ -405,8 +404,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         ciborium::from_reader(cose_sign1.payload.unwrap().as_slice()).unwrap();
 
     // check value digests
-    // additional namespace is included always when credential schema contains layout
-    assert_eq!(2, mso.inner().value_digests.len());
+    assert_eq!(1, mso.inner().value_digests.len());
     assert_eq!(1, mso.inner().value_digests["a"].len());
     assert!(
         mso.inner().value_digests["a"]
@@ -548,7 +546,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
-        embed_layout_properties: None,
     };
 
     let mut certificate_validator = MockCertificateValidator::new();
@@ -679,26 +676,8 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
 }
 
 #[tokio::test]
-async fn test_credential_formatting_ok_for_ecdsa_layout_transfered() {
-    let detailed_credential = format_and_extract_ecdsa(true).await;
-    assert_eq!(
-        detailed_credential
-            .credential_schema
-            .unwrap()
-            .metadata
-            .unwrap()
-            .layout_properties
-            .background
-            .unwrap()
-            .color
-            .unwrap(),
-        "color"
-    );
-}
-
-#[tokio::test]
 async fn test_credential_formatting_ok_for_ecdsa_layout_not_transfered() {
-    let detailed_credential = format_and_extract_ecdsa(false).await;
+    let detailed_credential = format_and_extract_ecdsa().await;
     assert!(
         detailed_credential
             .credential_schema
@@ -708,7 +687,7 @@ async fn test_credential_formatting_ok_for_ecdsa_layout_not_transfered() {
     );
 }
 
-async fn format_and_extract_ecdsa(embed_layout: bool) -> DetailCredential {
+async fn format_and_extract_ecdsa() -> DetailCredential {
     let issuer_did = Issuer::Url("did:key:test".parse().unwrap());
 
     let holder_did: DidValue = "did:holder:123".parse().unwrap();
@@ -834,7 +813,6 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
-        embed_layout_properties: Some(embed_layout),
     };
 
     let mut certificate_validator = MockCertificateValidator::new();
@@ -905,7 +883,6 @@ fn test_credential_schema_id() {
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
-        embed_layout_properties: None,
     };
     let formatter = MdocFormatter::new(
         params,
@@ -950,7 +927,6 @@ async fn test_parse_credential() {
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
-        embed_layout_properties: None,
     };
 
     let mut certificate_validator = MockCertificateValidator::new();

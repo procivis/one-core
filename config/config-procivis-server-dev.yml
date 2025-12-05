@@ -34,7 +34,6 @@ format:
         msoExpectedUpdateIn: 60
         msoMinimumRefreshTime: 10
         leeway: 10
-        embedLayoutProperties: true
 transport:
   MQTT:
     type: "MQTT"
