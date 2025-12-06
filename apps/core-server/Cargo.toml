@@ -78,7 +78,7 @@ indoc                      = { version = "2.0" }
 maplit.workspace           = true
 rand.workspace             = true
 rcgen.workspace            = true
-reqwest                    = { version = "0.12", features = ["json"] }
+reqwest                    = { workspace = true, features = ["json"] }
 sea-orm.workspace          = true
 secrecy.workspace          = true
 serde_json_path.workspace  = true
