@@ -54,7 +54,7 @@ impl OID4VPFinal1_0Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpFinal1_0,
+            &[VerificationProtocolType::OpenId4VpFinal1_0],
         )?;
 
         let proof = self
@@ -179,7 +179,7 @@ impl OID4VPFinal1_0Service {
     ) -> Result<OpenID4VPFinal1_0ClientMetadata, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpFinal1_0,
+            &[VerificationProtocolType::OpenId4VpFinal1_0],
         )?;
 
         let proof = self
@@ -224,7 +224,7 @@ impl OID4VPFinal1_0Service {
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpFinal1_0,
+            &[VerificationProtocolType::OpenId4VpFinal1_0],
         )?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;

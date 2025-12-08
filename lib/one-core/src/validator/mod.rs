@@ -178,12 +178,12 @@ pub fn validate_audience(audience: &[String], expected: &str) -> Result<(), Serv
 
 pub(crate) fn validate_verification_protocol_config_exists(
     config: &CoreConfig,
-    protocol: VerificationProtocolType,
+    protocols: &[VerificationProtocolType],
 ) -> Result<(), ConfigValidationError> {
     if !config
         .verification_protocol
         .iter()
-        .any(|(_, v)| v.r#type == protocol)
+        .any(|(_, v)| protocols.contains(&v.r#type))
     {
         Err(ConfigValidationError::EntryNotFound(
             "No exchange method with type OPENID4VC".to_string(),

@@ -52,7 +52,7 @@ impl OID4VPDraft25Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
         )?;
 
         let proof = self
@@ -177,7 +177,7 @@ impl OID4VPDraft25Service {
     ) -> Result<OpenID4VPDraftClientMetadata, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
         )?;
 
         let proof = self
@@ -220,7 +220,7 @@ impl OID4VPDraft25Service {
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
         )?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
@@ -359,7 +359,7 @@ impl OID4VPDraft25Service {
     ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
-            VerificationProtocolType::OpenId4VpDraft25,
+            &[VerificationProtocolType::OpenId4VpDraft25],
         )?;
 
         let proof = self

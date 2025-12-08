@@ -51,7 +51,10 @@ use crate::validator::{throw_if_proof_state_not_eq, validate_verification_protoc
 
 impl OID4VPDraft20Service {
     pub async fn get_client_request(&self, id: ProofId) -> Result<String, ServiceError> {
-        validate_verification_protocol_config_exists(&self.config, OpenId4VpDraft20)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+        )?;
 
         let proof = self
             .proof_repository
@@ -185,7 +188,7 @@ impl OID4VPDraft20Service {
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPDraftClientMetadata, ServiceError> {
-        validate_verification_protocol_config_exists(&self.config, OpenId4VpDraft20)?;
+        validate_verification_protocol_config_exists(&self.config, &[OpenId4VpDraft20])?;
 
         let proof = self
             .proof_repository
@@ -221,7 +224,10 @@ impl OID4VPDraft20Service {
         &self,
         request: OpenID4VPDirectPostRequestDTO,
     ) -> Result<OpenID4VPDirectPostResponseDTO, ServiceError> {
-        validate_verification_protocol_config_exists(&self.config, OpenId4VpDraft20)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+        )?;
 
         let unpacked_request = self.unpack_direct_post_request(request).await?;
         let interaction_id = unpacked_request.state;
@@ -357,7 +363,10 @@ impl OID4VPDraft20Service {
         &self,
         id: ProofId,
     ) -> Result<OpenID4VPPresentationDefinition, ServiceError> {
-        validate_verification_protocol_config_exists(&self.config, OpenId4VpDraft20)?;
+        validate_verification_protocol_config_exists(
+            &self.config,
+            &[OpenId4VpDraft20, OpenId4VpDraft20Swiyu],
+        )?;
 
         let proof = self
             .proof_repository
