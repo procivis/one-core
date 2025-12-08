@@ -72,7 +72,7 @@ impl OID4VCIDraft13Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
         let issuer = self
             .protocol_base_url
             .as_ref()
@@ -152,7 +152,7 @@ impl OID4VCIDraft13Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -223,7 +223,7 @@ impl OID4VCIDraft13Service {
         &self,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIDiscoveryResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -256,7 +256,7 @@ impl OID4VCIDraft13Service {
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
     ) -> Result<OpenID4VCICredentialOfferDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
 
         let credential = self
             .credential_repository
@@ -360,7 +360,7 @@ impl OID4VCIDraft13Service {
         access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
 
         let Some(schema) = self
             .credential_schema_repository
@@ -575,7 +575,7 @@ impl OID4VCIDraft13Service {
         access_token: &str,
         request: OpenID4VCINotificationRequestDTO,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
 
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
@@ -710,7 +710,7 @@ impl OID4VCIDraft13Service {
         credential_schema_id: &CredentialSchemaId,
         request: OpenID4VCITokenRequestDTO,
     ) -> Result<OpenID4VCITokenResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_config_entity_presence(self.protocol_type, &self.config)?;
 
         let Some(credential_schema) = self
             .credential_schema_repository

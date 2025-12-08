@@ -101,12 +101,13 @@ pub(crate) fn throw_if_access_token_invalid(
 }
 
 pub(super) fn validate_config_entity_presence(
+    protocol_type: IssuanceProtocolType,
     config: &CoreConfig,
 ) -> Result<(), ConfigValidationError> {
     if !config
         .issuance_protocol
         .iter()
-        .any(|(_, v)| v.r#type == IssuanceProtocolType::OpenId4VciDraft13)
+        .any(|(_, v)| v.r#type == protocol_type)
     {
         Err(ConfigValidationError::EntryNotFound(
             "No exchange method with type OPENID4VC".to_string(),
