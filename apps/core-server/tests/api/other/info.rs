@@ -11,6 +11,14 @@ async fn test_build_info() {
 }
 
 #[tokio::test]
+async fn test_build_info_invalid_token() {
+    let context = TestContext::new_with_token("invalid", None).await;
+
+    let resp = context.api.other.build_info().await;
+    assert_eq!(401, resp.status());
+}
+
+#[tokio::test]
 async fn test_build_info_disabled() {
     let config = indoc::indoc! {"
       app:

@@ -11,7 +11,7 @@ use crate::metrics::encode_metrics;
 
 #[utoipa::path(
     get,
-    path = "/build-info",
+    path = "/api/build-info/v1",
     responses(
         (status = 200, description = "Ok")
     ),

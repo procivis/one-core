@@ -14,7 +14,7 @@ impl OtherApi {
     }
 
     pub async fn build_info(&self) -> Response {
-        self.client.get("/build-info").await
+        self.client.get("/api/build-info/v1").await
     }
 
     pub async fn health(&self) -> Response {

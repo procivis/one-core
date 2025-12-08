@@ -81,7 +81,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
     let mut openapi_paths = openapi_documentation.as_mut().map(|d| &mut d.paths.paths);
 
     let protected = if config.enable_management_endpoints {
-        Router::new()
+        let mut router = Router::new()
             .route("/api/cache/v1", delete(cache::controller::prune_cache))
             .route("/api/config/v1", get(config::controller::get_config))
             .route(
@@ -339,7 +339,15 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             .route(
                 "/api/holder-wallet-unit/v1",
                 post(holder_wallet_unit::controller::wallet_unit_holder_register),
-            )
+            );
+
+        if config.enable_server_info {
+            router = router.route("/api/build-info/v1", get(misc::get_build_info));
+        } else if let Some(paths) = &mut openapi_paths {
+            paths.shift_remove("/api/build-info/v1");
+        }
+
+        router
             .layer(
                 TraceLayer::new_for_http()
                     .make_span_with(|request: &Request<_>| {
@@ -575,12 +583,9 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
     };
 
     let server_info_endpoints = if config.enable_server_info {
-        Router::new()
-            .route("/build-info", get(misc::get_build_info))
-            .route("/health", get(misc::health_check))
+        Router::new().route("/health", get(misc::health_check))
     } else {
         if let Some(paths) = openapi_paths.as_mut() {
-            paths.shift_remove("/build-info");
             paths.shift_remove("/health");
         };
         Router::new()
