@@ -86,7 +86,7 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
 
         // The holder binding has been added by the credential formatter already
         Ok(FormattedPresentation {
-            vp_token: credential.raw_credential,
+            vp_token: credential.credential_token,
             oidc_format: "vc+sd-jwt".to_string(),
         })
     }

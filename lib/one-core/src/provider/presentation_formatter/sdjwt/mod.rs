@@ -75,11 +75,11 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
             "Empty credential list passed to format_presentation".to_string(),
         ))?;
 
-        let DecomposedToken { jwt, .. } = parse_token(&credential.raw_credential)?;
+        let DecomposedToken { jwt, .. } = parse_token(&credential.credential_token)?;
         let decomposed_token = Jwt::<()>::decompose_token(jwt)?;
         if decomposed_token.payload.proof_of_possession_key.is_some() {
             return Ok(FormattedPresentation {
-                vp_token: credential.raw_credential.to_owned(),
+                vp_token: credential.credential_token.to_owned(),
                 oidc_format: "vc+sd-jwt".to_string(),
             });
         }

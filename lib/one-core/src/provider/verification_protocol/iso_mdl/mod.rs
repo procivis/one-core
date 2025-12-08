@@ -237,7 +237,8 @@ impl VerificationProtocol for IsoMdl {
                     .get_type(&credential.credential_schema.format)
                     .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
                 Ok(CredentialToPresent {
-                    raw_credential: credential.presentation,
+                    credential_token: credential.presentation,
+                    lvvc_credential_token: None,
                     credential_format: format,
                 })
             })

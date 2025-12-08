@@ -759,22 +759,16 @@ pub(super) async fn create_presentation(
             )
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-        let mut credentials = vec![CredentialToPresent {
-            raw_credential: credential_presentation.presentation.to_owned(),
+        let credentials = CredentialToPresent {
+            credential_token: credential_presentation.presentation.to_owned(),
+            lvvc_credential_token: credential_presentation
+                .validity_credential_presentation
+                .clone(),
             credential_format,
-        }];
-        if let Some(validity_credential) = credential_presentation
-            .validity_credential_presentation
-            .to_owned()
-        {
-            credentials.push(CredentialToPresent {
-                raw_credential: validity_credential,
-                credential_format,
-            })
-        }
+        };
         let formatted_presentation = presentation_formatter
             .format_presentation(
-                credentials,
+                vec![credentials],
                 auth_fn,
                 &credential_presentation
                     .holder_did

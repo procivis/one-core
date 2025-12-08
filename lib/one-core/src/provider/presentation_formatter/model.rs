@@ -7,8 +7,10 @@ use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::model::IdentifierDetails;
 
 pub struct CredentialToPresent {
-    pub raw_credential: String,
+    pub credential_token: String,
     pub credential_format: FormatType,
+    /// Optional LVVC credential to include in the presentation, must match the format of the credential to present
+    pub lvvc_credential_token: Option<String>,
 }
 
 #[skip_serializing_none]

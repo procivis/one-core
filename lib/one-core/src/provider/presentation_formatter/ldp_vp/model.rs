@@ -2,6 +2,7 @@ use indexmap::IndexSet;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::Issuer;
 use crate::provider::credential_formatter::vcdm::{ContextType, VcdmProof};
 
@@ -29,6 +30,18 @@ impl CredentialEnvelope {
     pub fn get_token(&self) -> String {
         let res = self.id.split_once(',').unwrap_or(("", ""));
         res.1.to_owned()
+    }
+
+    pub fn to_map(&self) -> Result<serde_json::Map<String, serde_json::Value>, FormatterError> {
+        let as_value = serde_json::to_value(self)
+            .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?;
+
+        Ok(as_value
+            .as_object()
+            .ok_or_else(|| {
+                FormatterError::CouldNotFormat("Credential must be an object".to_string())
+            })?
+            .to_owned())
     }
 }
 

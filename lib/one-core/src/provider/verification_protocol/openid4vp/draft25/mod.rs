@@ -159,18 +159,13 @@ impl OpenID4VP25HTTP {
                 )
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-            let mut credentials = vec![CredentialToPresent {
-                raw_credential: credential_presentation.presentation,
+            let credentials = vec![CredentialToPresent {
+                credential_token: credential_presentation.presentation,
                 credential_format,
+                lvvc_credential_token: credential_presentation
+                    .validity_credential_presentation
+                    .clone(),
             }];
-            if let Some(validity_credential) =
-                credential_presentation.validity_credential_presentation
-            {
-                credentials.push(CredentialToPresent {
-                    raw_credential: validity_credential,
-                    credential_format,
-                })
-            }
             let formatted_presentation = presentation_formatter
                 .format_presentation(
                     credentials,

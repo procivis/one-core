@@ -68,20 +68,11 @@ pub(crate) async fn pex_submission_data(
             ));
         };
         let credential_format_type = format_to_type(&credential, config)?;
-        let mut credentials_to_present = vec![CredentialToPresent {
-            raw_credential: credential.presentation,
+        let credentials_to_present = CredentialToPresent {
+            credential_token: credential.presentation,
             credential_format: credential_format_type,
-        }];
-        let has_validity_credential =
-            if let Some(validity_cred) = credential.validity_credential_presentation {
-                credentials_to_present.push(CredentialToPresent {
-                    raw_credential: validity_cred,
-                    credential_format: credential_format_type,
-                });
-                true
-            } else {
-                false
-            };
+            lvvc_credential_token: credential.validity_credential_presentation.clone(),
+        };
         let presentation_format_type = cred_to_presentation_format_type(credential_format_type);
         if encryption_info.is_none() && presentation_format_type == FormatType::Mdoc {
             return Err(VerificationProtocolError::Failed(
@@ -126,7 +117,7 @@ pub(crate) async fn pex_submission_data(
             oidc_format,
         } = presentation_formatter
             .format_presentation(
-                credentials_to_present,
+                vec![credentials_to_present],
                 auth_fn,
                 &credential.holder_did.map(|did| did.did),
                 ctx,
@@ -143,7 +134,7 @@ pub(crate) async fn pex_submission_data(
             oidc_format,
             &credential_openid4vp_format,
             idx,
-            has_validity_credential,
+            credential.validity_credential_presentation.is_some(),
         ));
     }
 

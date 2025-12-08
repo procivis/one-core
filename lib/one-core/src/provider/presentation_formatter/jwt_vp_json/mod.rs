@@ -66,23 +66,25 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
             FormatType::Mdoc,
         ];
 
-        let tokens = credentials_to_present
-            .iter()
-            .map(|cred| {
-                if !supported_credential_formats.contains(&cred.credential_format) {
-                    return Err(FormatterError::Failed(format!(
-                        "Credential format {} not supported",
-                        cred.credential_format
-                    )));
-                }
+        for credential in &credentials_to_present {
+            if !supported_credential_formats.contains(&credential.credential_format) {
+                return Err(FormatterError::Failed(format!(
+                    "Credential format {} not supported",
+                    credential.credential_format
+                )));
+            }
+        }
 
-                Ok(cred.raw_credential.clone())
+        // LVVC credentials are included in the same presentation, alongside the regular credentials
+        let credentials_with_lvvcs = credentials_to_present
+            .into_iter()
+            .flat_map(|credential| match credential.lvvc_credential_token {
+                Some(lvvc) => vec![credential.credential_token, lvvc],
+                None => vec![credential.credential_token],
             })
-            .collect::<Result<Vec<String>, FormatterError>>()?;
+            .collect::<Vec<String>>();
 
-        let nonce = context.nonce;
-
-        let vp: VP = format_payload(&tokens, nonce)?;
+        let vp: VP = format_payload(&credentials_with_lvvcs, context.nonce)?;
 
         let now = OffsetDateTime::now_utc();
         let valid_for = Duration::minutes(5);

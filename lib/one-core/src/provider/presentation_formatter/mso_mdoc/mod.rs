@@ -98,7 +98,7 @@ impl PresentationFormatter for MsoMdocPresentationFormatter {
                         cred.credential_format
                     )));
                 }
-                Ok(cred.raw_credential.clone())
+                Ok(cred.credential_token.clone())
             })
             .collect::<Result<Vec<String>, FormatterError>>()?;
 

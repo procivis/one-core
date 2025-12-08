@@ -75,37 +75,48 @@ impl PresentationFormatter for LdpVpPresentationFormatter {
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
         let json_ld_context = indexset![ContextType::Url(Context::CredentialsV2.to_url())];
+        let mut verifiable_credential: VerifiableCredential = vec![];
 
-        let verifiable_credential: VerifiableCredential = credentials_to_present
-            .iter()
-            .map(|cred| match cred.credential_format {
+        for credential in credentials_to_present {
+            match credential.credential_format {
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => {
-                    serde_json::from_str(cred.raw_credential.as_str())
-                        .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))
-                }
-                _ => {
-                    let openid_format_identifier = map_to_openid4vp_format(&cred.credential_format)
-                        .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
-
-                    let enveloped = CredentialEnvelope::new(
-                        openid_format_identifier,
-                        cred.raw_credential.as_str(),
+                    verifiable_credential.push(
+                        serde_json::from_str(credential.credential_token.as_str())
+                            .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
                     );
 
-                    let json_value = serde_json::to_value(enveloped)
-                        .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?;
-                    let map = json_value
-                        .as_object()
-                        .ok_or_else(|| {
-                            FormatterError::CouldNotFormat(
-                                "Credential must be an object".to_string(),
-                            )
-                        })?
-                        .to_owned();
-                    Ok(map)
+                    if let Some(lvvc_credential_token) = credential.lvvc_credential_token {
+                        verifiable_credential.push(
+                            serde_json::from_str(lvvc_credential_token.as_str())
+                                .map_err(|err| FormatterError::CouldNotFormat(err.to_string()))?,
+                        );
+                    }
                 }
-            })
-            .collect::<Result<Vec<_>, FormatterError>>()?;
+                _ => {
+                    let openid_format_identifier =
+                        map_to_openid4vp_format(&credential.credential_format)
+                            .map_err(|e| FormatterError::CouldNotFormat(e.to_string()))?;
+
+                    let enveloped_credential = CredentialEnvelope::new(
+                        openid_format_identifier,
+                        credential.credential_token.as_str(),
+                    )
+                    .to_map()?;
+
+                    verifiable_credential.push(enveloped_credential);
+
+                    if let Some(lvvc_credential_token) = credential.lvvc_credential_token {
+                        let enveloped_lvvc = CredentialEnvelope::new(
+                            openid_format_identifier,
+                            lvvc_credential_token.as_str(),
+                        )
+                        .to_map()?;
+
+                        verifiable_credential.push(enveloped_lvvc);
+                    }
+                }
+            }
+        }
 
         let holder = holder_did
             .as_ref()

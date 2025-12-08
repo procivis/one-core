@@ -217,21 +217,16 @@ impl OpenID4VPFinal1_0 {
                 )
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-            let mut credentials = vec![CredentialToPresent {
-                raw_credential: credential_presentation.presentation,
+            let credentials = CredentialToPresent {
+                credential_token: credential_presentation.presentation,
+                lvvc_credential_token: credential_presentation
+                    .validity_credential_presentation
+                    .clone(),
                 credential_format,
-            }];
-            if let Some(validity_credential) =
-                credential_presentation.validity_credential_presentation
-            {
-                credentials.push(CredentialToPresent {
-                    raw_credential: validity_credential,
-                    credential_format,
-                })
-            }
+            };
             let formatted_presentation = presentation_formatter
                 .format_presentation(
-                    credentials,
+                    vec![credentials],
                     auth_fn,
                     &credential_presentation.holder_did.map(|did| did.did),
                     format_presentation_context(interaction_data, presentation_format)?,
