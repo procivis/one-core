@@ -312,15 +312,6 @@ pub struct CredentialClaimSchemaBindingDTO {
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, uniffi::Enum)]
-pub enum CredentialSchemaTypeBindingEnum {
-    ProcivisOneSchema2024 {},
-    FallbackSchema2024 {},
-    Mdoc {},
-    SdJwtVc {},
-    Other { value: String },
-}
-
 #[derive(Clone, Debug, Eq, PartialEq, From, Into, uniffi::Enum)]
 #[from(LayoutType)]
 #[into(LayoutType)]
