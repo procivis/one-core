@@ -94,12 +94,14 @@ impl HistoriesApi {
 
     pub async fn create(
         &self,
+        name: &str,
         source: impl Into<HistorySource>,
         entity_type: impl Into<HistoryEntityType>,
         action: impl Into<HistoryAction>,
         metadata: Option<serde_json::Value>,
     ) -> Response {
         let body = json!({
+          "name": name,
           "source": source.into(),
           "entityType": entity_type.into(),
           "action": action.into(),

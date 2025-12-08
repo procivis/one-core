@@ -40,7 +40,7 @@ async fn test_create_history_invalid_source() {
                 source: HistorySource::Core,
                 action: HistoryAction::Created,
                 entity_type: HistoryEntityType::Organisation,
-                name: None,
+                name: "name".to_string(),
                 entity_id: None,
                 organisation_id: None,
                 metadata: None,

@@ -48,7 +48,7 @@ pub type GetHistoryListResponseDTO = GetListResponse<HistoryResponseDTO>;
 #[derive(Debug, Clone)]
 pub struct CreateHistoryRequestDTO {
     pub action: HistoryAction,
-    pub name: Option<String>,
+    pub name: String,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: Option<OrganisationId>,

@@ -74,7 +74,10 @@ impl ProofHistoryDecorator {
         }
 
         let target = target_from_proof(&proof);
-        let name = proof.schema.map(|s| s.name).unwrap_or_default();
+        let name = proof
+            .schema
+            .map(|s| s.name)
+            .unwrap_or_else(|| target.to_owned().unwrap_or_default());
 
         let result = self
             .history_repository

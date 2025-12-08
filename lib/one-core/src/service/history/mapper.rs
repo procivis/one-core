@@ -21,7 +21,7 @@ impl From<CreateHistoryRequestDTO> for History {
             id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             action: value.action,
-            name: value.name.unwrap_or_default(),
+            name: value.name,
             target: value.target,
             source: value.source,
             entity_id: value.entity_id,

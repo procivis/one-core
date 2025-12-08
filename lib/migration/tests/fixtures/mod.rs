@@ -48,6 +48,7 @@ pub(super) enum ColumnType {
 }
 
 #[derive(Debug)]
+#[expect(dead_code)]
 pub(super) enum DefaultValue {
     String(String),
     Integer(i64),

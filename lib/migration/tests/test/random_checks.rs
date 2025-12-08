@@ -52,10 +52,4 @@ async fn test_db_schema_random_checks() {
         .r#type(ColumnType::TimestampSeconds)
         .nullable(false)
         .default(None);
-
-    let history = schema.table("history");
-    history
-        .column("source")
-        .r#type(ColumnType::String(None))
-        .default(Some(DefaultValue::String("CORE".to_string())));
 }

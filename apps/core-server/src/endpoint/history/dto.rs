@@ -32,7 +32,7 @@ pub(crate) type GetHistoryQuery =
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateHistoryRequestRestDTO {
     pub action: HistoryAction,
-    pub name: Option<String>,
+    pub name: String,
     pub entity_id: Option<EntityId>,
     pub entity_type: HistoryEntityType,
     pub organisation_id: Option<OrganisationId>,

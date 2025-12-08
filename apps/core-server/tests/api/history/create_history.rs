@@ -14,6 +14,7 @@ async fn test_create_history_without_metadata() {
         .api
         .histories
         .create(
+            "name",
             HistorySource::Bff,
             HistoryEntityType::User,
             HistoryAction::Created,
@@ -45,6 +46,7 @@ async fn test_create_history_with_metadata() {
         .api
         .histories
         .create(
+            "name",
             HistorySource::Bff,
             HistoryEntityType::User,
             HistoryAction::Created,
