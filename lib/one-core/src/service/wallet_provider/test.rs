@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::ops::{Add, Sub};
 use std::sync::Arc;
 
@@ -31,8 +30,8 @@ use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::ecdsa::Ecdsa;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
-use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
+use crate::provider::key_storage::MockKeyStorage;
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
@@ -185,10 +184,11 @@ async fn test_register_wallet_unit() {
         .expect_key_handle()
         .returning(move |_| Ok(issuer_key_handle.clone()));
 
-    let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
-    key_storages.insert("TEST".to_string(), Arc::new(key_storage));
-
-    let key_provider = KeyProviderImpl::new(key_storages);
+    let key_storage = Arc::new(key_storage);
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .returning(move |_| Some(key_storage.clone()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository
@@ -296,10 +296,11 @@ async fn test_register_wallet_unit_integrity_check() {
         .expect_key_handle()
         .return_once(|_| Ok(issuer_key_handle));
 
-    let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
-    key_storages.insert("TEST".to_string(), Arc::new(key_storage));
-
-    let key_provider = KeyProviderImpl::new(key_storages);
+    let key_storage = Arc::new(key_storage);
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .returning(move |_| Some(key_storage.clone()));
 
     let mut history_repository = MockHistoryRepository::new();
     history_repository

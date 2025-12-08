@@ -2,13 +2,19 @@ use std::string::FromUtf8Error;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use time::OffsetDateTime;
 use time::format_description::well_known::Rfc2822;
 use time::macros::offset;
+use time::{Duration, OffsetDateTime};
 
+use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
-use crate::provider::remote_entity_storage::RemoteEntityStorageError;
+use crate::provider::remote_entity_storage::db_storage::DbStorage;
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::provider::remote_entity_storage::{
+    RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
+};
+use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 
 pub struct JsonLdResolver {
     pub client: Arc<dyn HttpClient>,
@@ -155,6 +161,36 @@ impl json_ld::Loader for ContextCache {
 const RFC_2822_BUT_WITH_GMT: &[time::format_description::FormatItem<'static>] = time::macros::format_description!(
     "[weekday repr:short], [day] [month repr:short] [year] [hour]:[minute]:[second] GMT"
 );
+
+pub(crate) fn initialize_jsonld_cache_from_config(
+    config: &CoreConfig,
+    remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+) -> JsonLdCachingLoader {
+    let config = config
+        .cache_entities
+        .entities
+        .get("JSON_LD_CONTEXT")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(Default::default())),
+    };
+
+    JsonLdCachingLoader::new(
+        RemoteEntityType::JsonLdContext,
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
+}
 
 #[cfg(test)]
 mod test {

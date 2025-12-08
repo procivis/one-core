@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use async_trait::async_trait;
+use serde::Deserialize;
 use shared_types::{DidId, DidValue};
 use url::Url;
 
@@ -18,8 +19,10 @@ use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::keys::Keys;
 use crate::provider::did_method::model::{AmountOfKeys, DidCapabilities, DidDocument, Operation};
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Params {
+    #[serde(default)]
     pub keys: Keys,
     pub resolve_to_insecure_http: Option<bool>,
 }

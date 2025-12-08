@@ -14,7 +14,6 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
-#[derive(Clone)]
 pub struct CredentialSchemaService {
     credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
     organisation_repository: Arc<dyn OrganisationRepository>,
@@ -29,7 +28,7 @@ pub struct CredentialSchemaService {
 
 impl CredentialSchemaService {
     #[expect(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         core_base_url: Option<String>,
         repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,

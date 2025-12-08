@@ -63,9 +63,7 @@ use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
 use crate::provider::key_algorithm::model::GeneratedKey;
-use crate::provider::key_algorithm::provider::{
-    KeyAlgorithmProvider, KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
-};
+use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
 use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
 use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -942,16 +940,14 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
             Ok(Box::new(mock_signature_provider))
         });
 
-    let arc: Arc<dyn KeyAlgorithm + 'static> = Arc::new(Ecdsa);
-    let real_key_algorithm_provider = KeyAlgorithmProviderImpl::new(
-        HashMap::from([(KeyAlgorithmType::Ecdsa, arc)]),
-        Default::default(),
-    );
-
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_parse_jwk()
-        .returning(move |k| real_key_algorithm_provider.parse_jwk(k));
+    key_algorithm_provider.expect_parse_jwk().returning(|k| {
+        let key = Ecdsa.parse_jwk(k).unwrap();
+        Ok(ParsedKey {
+            key,
+            algorithm_type: KeyAlgorithmType::Ecdsa,
+        })
+    });
 
     key_algorithm_provider
         .expect_reconstruct_key()

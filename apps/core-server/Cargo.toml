@@ -24,7 +24,7 @@ futures.workspace = true
 headers = { version = "0.4" }
 http-body-util = "0.1.2"
 indexmap.workspace = true
-indoc = { version = "2.0" }
+indoc.workspace = true
 one-core = { version = "0.1.0", path = "../../lib/one-core", features = ["config_json", "config_yaml", "config_env"] }
 one-crypto = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
@@ -68,25 +68,30 @@ serde_json.workspace = true
 shadow-rs.workspace  = true
 
 [dev-dependencies]
-asn1-rs.workspace          = true
-async-trait.workspace      = true
-bs58.workspace             = true
-dcql                       = { version = "0.1.0", path = "../../lib/dcql" }
-hex.workspace              = true
-hex-literal.workspace      = true
-indoc                      = { version = "2.0" }
-maplit.workspace           = true
-rand.workspace             = true
-rcgen.workspace            = true
-reqwest                    = { workspace = true, features = ["json"] }
-sea-orm.workspace          = true
-secrecy.workspace          = true
-serde_json_path.workspace  = true
+asn1-rs.workspace = true
+async-trait.workspace = true
+bs58.workspace = true
+dcql = { version = "0.1.0", path = "../../lib/dcql" }
+hex.workspace = true
+hex-literal.workspace = true
+maplit.workspace = true
+one-core = { version = "0.1.0", path = "../../lib/one-core", features = [
+    "config_json",
+    "config_yaml",
+    "config_env",
+    "mock",
+] }
+rand.workspace = true
+rcgen.workspace = true
+reqwest = { workspace = true, features = ["json"] }
+sea-orm.workspace = true
+secrecy.workspace = true
+serde_json_path.workspace = true
 serde_urlencoded.workspace = true
-similar-asserts.workspace  = true
-sql-data-provider          = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
-ulid.workspace             = true
-wiremock.workspace         = true
+similar-asserts.workspace = true
+sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
+ulid.workspace = true
+wiremock.workspace = true
 
 [lints]
 workspace = true

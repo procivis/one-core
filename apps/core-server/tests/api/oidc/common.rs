@@ -1,14 +1,11 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use hex_literal::hex;
-use one_core::config::core_config::KeyAlgorithmType;
 use one_core::model::key::Key;
-use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_core::provider::key_algorithm::key::KeyHandle;
-use one_core::provider::key_algorithm::provider::{KeyAlgorithmProvider, KeyAlgorithmProviderImpl};
+use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
 use one_core::service::key::dto::PublicKeyJwkDTO;
@@ -52,13 +49,10 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
     let holder_key = eddsa_key_2();
     let holder_key_id = format!("did:key:{}#{}", holder_key.multibase, holder_key.multibase);
 
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter([(
-            KeyAlgorithmType::Eddsa,
-            Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
-        )]),
-        Default::default(),
-    ));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(|_| Some(Arc::new(Eddsa)));
 
     let params = holder_key.params.clone();
     let key = Key {
@@ -73,13 +67,9 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
         organisation: None,
     };
 
-    let key_algorithm = key_algorithm_provider
-        .key_algorithm_from_type(key.key_algorithm_type().unwrap())
-        .unwrap();
-
     let encryption_key = hex!("93d9182795f0d1bec61329fc2d18c4b4c1b7e65e69e20ec30a2101a9875fff7e");
     let key_provider = InternalKeyProvider::new(
-        key_algorithm_provider,
+        Arc::new(key_algorithm_provider),
         Params {
             encryption: encryption_key.to_vec().into(),
         },
@@ -88,7 +78,7 @@ pub(super) async fn proof_jwt(use_kid: bool, nonce: Option<&str>) -> String {
 
     proof_jwt_for(
         &key_handle,
-        key_algorithm.issuance_jose_alg_id().unwrap(),
+        "EdDSA".to_string(),
         use_kid.then_some(&holder_key_id),
         nonce,
     )

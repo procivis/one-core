@@ -1,15 +1,20 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Context;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 
 use super::{
     CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
 };
+use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
 use crate::proto::http_client::HttpClient;
+use crate::provider::remote_entity_storage::db_storage::DbStorage;
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntity, RemoteEntityStorage, RemoteEntityType};
+use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -147,4 +152,39 @@ impl Resolver for VctTypeMetadataResolver {
             expiry_date: None,
         })
     }
+}
+
+pub(crate) async fn initialize_vct_type_metadata_cache_from_config(
+    config: &CoreConfig,
+    remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+    client: Arc<dyn HttpClient>,
+) -> Result<Arc<dyn VctTypeMetadataFetcher>, anyhow::Error> {
+    let config = config
+        .cache_entities
+        .entities
+        .get("VCT_METADATA")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    let cache = VctTypeMetadataCache::new(
+        Arc::new(VctTypeMetadataResolver::new(client)),
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    );
+
+    cache.initialize_from_static_resources().await?;
+
+    Ok(Arc::new(cache))
 }

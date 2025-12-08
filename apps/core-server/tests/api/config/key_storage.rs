@@ -19,8 +19,4 @@ async fn test_capabilities_features_are_present_in_config() {
         resp["keyStorage"]["INTERNAL"]["capabilities"]["features"],
         json!(["EXPORTABLE", "IMPORTABLE"])
     );
-    assert_eq!(
-        resp["keyStorage"]["PKCS11"]["capabilities"]["features"],
-        json!([])
-    );
 }

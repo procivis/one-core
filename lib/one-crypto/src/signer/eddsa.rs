@@ -6,7 +6,7 @@ use crate::encryption::EncryptionError;
 use crate::jwe::{RemoteJwk, decode_b64};
 use crate::{Signer, SignerError};
 
-pub struct EDDSASigner {}
+pub struct EDDSASigner;
 
 pub struct KeyPair {
     pub public: Vec<u8>,

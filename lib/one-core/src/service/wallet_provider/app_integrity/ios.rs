@@ -248,7 +248,7 @@ mod tests {
 
     use super::*;
     use crate::config;
-    use crate::config::core_config::{CoreConfig, Fields, KeyAlgorithmType, Params};
+    use crate::config::core_config::{CoreConfig, Fields, Params};
     use crate::proto::certificate_validator::{
         CertificateValidationOptions, CertificateValidatorImpl,
     };
@@ -259,9 +259,8 @@ mod tests {
         AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
     };
     use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
-    use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::ecdsa::Ecdsa;
-    use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
     use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 
     static APPLE_ATTESTATION_CA: &str = "-----BEGIN CERTIFICATE-----
@@ -343,13 +342,10 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
     }
 
     fn test_cert_validator(clock: Arc<dyn Clock>) -> CertificateValidatorImpl {
-        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-            HashMap::from_iter(vec![(
-                KeyAlgorithmType::Ecdsa,
-                Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
-            )]),
-            Default::default(),
-        ));
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+        key_algorithm_provider
+            .expect_key_algorithm_from_type()
+            .returning(|_| Some(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
             Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
@@ -368,7 +364,7 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
             Duration::days(1),
         ));
         CertificateValidatorImpl::new(
-            key_algorithm_provider,
+            Arc::new(key_algorithm_provider),
             crl_cache,
             clock,
             Duration::minutes(1),

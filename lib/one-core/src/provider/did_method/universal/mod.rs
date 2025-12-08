@@ -22,7 +22,8 @@ struct ResolutionResponse {
     did_document: DidDocumentDTO,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Params {
     pub resolver_url: String,
     pub supported_method_names: Vec<String>,

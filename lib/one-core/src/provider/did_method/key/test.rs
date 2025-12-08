@@ -1,7 +1,6 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use mockall::predicate;
+use mockall::predicate::{self, eq};
 use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::DidId;
@@ -14,20 +13,22 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
 use crate::provider::did_method::{DidKeys, DidMethod};
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
 };
-use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 
 fn setup_key_did_method(
     key_algorithm: MockKeyAlgorithm,
     algorithm_id: KeyAlgorithmType,
 ) -> KeyDidMethod {
-    let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
-    key_algorithms.insert(algorithm_id, Arc::new(key_algorithm));
-
-    let key_algorithm_provider = KeyAlgorithmProviderImpl::new(key_algorithms, Default::default());
+    let alg = Arc::new(key_algorithm);
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(algorithm_id))
+        .returning(move |_| Some(alg.clone()));
 
     KeyDidMethod::new(Arc::new(key_algorithm_provider))
 }

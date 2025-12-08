@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used)]
+
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};

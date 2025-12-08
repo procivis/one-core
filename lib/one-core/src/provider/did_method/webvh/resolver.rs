@@ -120,18 +120,16 @@ fn transform_did_to_https(did: &str) -> Result<TransformedDid<'_>, DidMethodErro
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
     use std::fs;
     use std::fs::{File, ReadDir};
     use std::io::Read;
     use std::sync::Arc;
 
-    use indexmap::IndexMap;
     use maplit::hashmap;
+    use mockall::predicate::eq;
     use serde_json::json;
     use serde_json_path::JsonPath;
     use similar_asserts::assert_eq;
-    use time::Duration;
     use time::macros::datetime;
 
     use super::*;
@@ -142,19 +140,17 @@ mod test {
     use crate::provider::did_method::DidMethod;
     use crate::provider::did_method::dto::DidDocumentDTO;
     use crate::provider::did_method::error::DidMethodError::{Deactivated, ResolutionError};
-    use crate::provider::did_method::jwk::JWKDidMethod;
+    use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::key::KeyDidMethod;
     use crate::provider::did_method::keys::Keys;
     use crate::provider::did_method::model::DidVerificationMethod;
-    use crate::provider::did_method::provider::DidMethodProviderImpl;
-    use crate::provider::did_method::resolver::DidCachingLoader;
     use crate::provider::did_method::webvh::common::DidLogParameters;
     use crate::provider::did_method::webvh::deserialize::DidMethodVersion;
-    use crate::provider::key_algorithm::KeyAlgorithm;
+    use crate::provider::key_algorithm::ecdsa::Ecdsa;
     use crate::provider::key_algorithm::eddsa::Eddsa;
-    use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
-    use crate::provider::remote_entity_storage::RemoteEntityType;
-    use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+    use crate::provider::key_algorithm::provider::{
+        KeyAlgorithmProvider, MockKeyAlgorithmProvider,
+    };
     use crate::util::test_utilities::mock_http_get_request;
 
     #[test]
@@ -301,7 +297,7 @@ mod test {
         let document = resolve(
             &did,
             &http_client,
-            &did_method_provider,
+            did_method_provider.as_ref(),
             false,
             &Default::default(),
         )
@@ -370,7 +366,7 @@ mod test {
         let document = resolve(
             &did,
             &http_client,
-            &did_method_provider,
+            did_method_provider.as_ref(),
             false,
             &Params {
                 keys: Keys::default(),
@@ -412,7 +408,7 @@ mod test {
         let document = resolve(
             &mismatched_did,
             &http_client,
-            &did_method_provider,
+            did_method_provider.as_ref(),
             false,
             &Default::default(),
         )
@@ -512,7 +508,7 @@ mod test {
             let result = resolve(
                 &did.parse().unwrap(),
                 &http_client,
-                &did_method_provider,
+                did_method_provider.as_ref(),
                 false,
                 &Default::default(),
             )
@@ -525,34 +521,48 @@ mod test {
         }
     }
 
-    fn test_did_method_provider() -> DidMethodProviderImpl {
-        let caching_loader = DidCachingLoader::new(
-            RemoteEntityType::DidDocument,
-            Arc::new(InMemoryStorage::new(HashMap::new())),
-            100,
-            Duration::minutes(1),
-            Duration::minutes(1),
-        );
-        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-            HashMap::from_iter(vec![(
-                KeyAlgorithmType::Eddsa,
-                Arc::new(Eddsa) as Arc<dyn KeyAlgorithm>,
-            )]),
-            Default::default(),
-        ));
-        DidMethodProviderImpl::new(
-            caching_loader,
-            IndexMap::from_iter(vec![
-                (
-                    "JWK".to_owned(),
-                    Arc::new(JWKDidMethod::new(key_algorithm_provider.clone()))
-                        as Arc<dyn DidMethod>,
-                ),
-                (
-                    "KEY".to_owned(),
-                    Arc::new(KeyDidMethod::new(key_algorithm_provider)) as Arc<dyn DidMethod>,
-                ),
-            ]),
-        )
+    struct FakeDidMethodProvider(Arc<dyn KeyAlgorithmProvider>);
+
+    #[async_trait::async_trait]
+    impl DidMethodProvider for FakeDidMethodProvider {
+        async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
+            Ok(KeyDidMethod::new(self.0.clone())
+                .resolve(did)
+                .await
+                .unwrap())
+        }
+
+        fn get_did_method(&self, _did_method_id: &str) -> Option<Arc<dyn DidMethod>> {
+            unimplemented!()
+        }
+
+        fn get_did_method_id(&self, _did: &DidValue) -> Option<String> {
+            unimplemented!()
+        }
+
+        fn get_did_method_by_method_name(
+            &self,
+            _method_name: &str,
+        ) -> Option<(String, Arc<dyn DidMethod>)> {
+            unimplemented!()
+        }
+
+        fn supported_method_names(&self) -> Vec<String> {
+            unimplemented!()
+        }
+    }
+
+    fn test_did_method_provider() -> Arc<dyn DidMethodProvider> {
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+        key_algorithm_provider
+            .expect_key_algorithm_from_type()
+            .with(eq(KeyAlgorithmType::Ecdsa))
+            .returning(|_| Some(Arc::new(Ecdsa)));
+        key_algorithm_provider
+            .expect_key_algorithm_from_type()
+            .with(eq(KeyAlgorithmType::Eddsa))
+            .returning(|_| Some(Arc::new(Eddsa)));
+
+        Arc::new(FakeDidMethodProvider(Arc::new(key_algorithm_provider)))
     }
 }

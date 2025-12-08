@@ -169,7 +169,6 @@ impl OpenID4VCIProofJWTFormatter {
 
 #[cfg(test)]
 mod test {
-    use std::collections::HashMap;
     use std::sync::Arc;
 
     use similar_asserts::assert_eq;
@@ -186,7 +185,7 @@ mod test {
     use crate::provider::did_method::provider::MockDidMethodProvider;
     use crate::provider::key_algorithm::KeyAlgorithm;
     use crate::provider::key_algorithm::eddsa::Eddsa;
-    use crate::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+    use crate::provider::key_algorithm::provider::{MockKeyAlgorithmProvider, ParsedKey};
     use crate::provider::key_storage::provider::SignatureProviderImpl;
 
     #[tokio::test]
@@ -259,14 +258,23 @@ mod test {
             })
         });
 
-        let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-            HashMap::from_iter([(KeyAlgorithmType::Eddsa, Arc::new(Eddsa) as _)]),
-            Default::default(),
-        ));
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+        key_algorithm_provider
+            .expect_key_algorithm_from_type()
+            .returning(|_| Some(Arc::new(Eddsa)));
+        key_algorithm_provider
+            .expect_key_algorithm_from_jose_alg()
+            .returning(|_| Some((KeyAlgorithmType::Eddsa, Arc::new(Eddsa))));
+        key_algorithm_provider.expect_parse_jwk().returning(|key| {
+            Ok(ParsedKey {
+                algorithm_type: KeyAlgorithmType::Eddsa,
+                key: Eddsa.parse_jwk(key).unwrap(),
+            })
+        });
 
         let key_verification = KeyVerification {
             did_method_provider: Arc::new(did_method_provider),
-            key_algorithm_provider,
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
             key_role: KeyRole::Authentication,
             certificate_validator: Arc::new(MockCertificateValidator::default()),
         };
@@ -279,6 +287,11 @@ mod test {
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), Some(private_key().into()), None)
             .unwrap();
+
+        let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+        key_algorithm_provider
+            .expect_key_algorithm_from_type()
+            .returning(|_| Some(Arc::new(Eddsa)));
 
         let provider = SignatureProviderImpl {
             key: Key {
@@ -294,10 +307,7 @@ mod test {
             },
             key_handle,
             jwk_key_id: key_id,
-            key_algorithm_provider: Arc::new(KeyAlgorithmProviderImpl::new(
-                HashMap::from_iter([(KeyAlgorithmType::Eddsa, Arc::new(key_algorithm) as _)]),
-                Default::default(),
-            )),
+            key_algorithm_provider: Arc::new(key_algorithm_provider),
         };
 
         Box::new(provider)

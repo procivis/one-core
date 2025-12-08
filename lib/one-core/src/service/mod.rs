@@ -28,10 +28,11 @@ pub mod ssi_issuer;
 mod ssi_validator;
 pub mod storage_proxy;
 pub mod task;
-#[cfg(test)]
-pub mod test_utilities;
 pub mod trust_anchor;
 pub mod trust_entity;
 pub mod vc_api;
 pub mod wallet_provider;
 pub mod wallet_unit;
+
+#[cfg(any(test, feature = "mock"))]
+pub mod test_utilities;

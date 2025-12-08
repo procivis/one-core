@@ -4,12 +4,20 @@ use std::sync::Arc;
 
 use itertools::Itertools;
 use secrecy::SecretSlice;
+use serde_json::json;
 
 use super::KeyAlgorithm;
+use super::bbs::BBS;
+use super::ecdsa::Ecdsa;
+use super::eddsa::Eddsa;
 use super::error::KeyAlgorithmProviderError;
-use crate::config::core_config::{ConfigExt, KeyAlgorithmConfig, KeyAlgorithmType};
+use super::key::KeyHandle;
+use super::ml_dsa::MlDsa;
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{
+    ConfigExt, ConfigFields, CoreConfig, KeyAlgorithmConfig, KeyAlgorithmType,
+};
 use crate::model::key::{JwkUse, PublicKeyJwk};
-use crate::provider::key_algorithm::key::KeyHandle;
 
 #[derive(Clone)]
 pub struct ParsedKey {
@@ -47,13 +55,13 @@ pub trait KeyAlgorithmProvider: Send + Sync {
     fn ordered_by_holder_priority(&self) -> Vec<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)>;
 }
 
-pub struct KeyAlgorithmProviderImpl {
+struct KeyAlgorithmProviderImpl {
     algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>,
     config: KeyAlgorithmConfig,
 }
 
 impl KeyAlgorithmProviderImpl {
-    pub fn new(
+    fn new(
         algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>,
         config: KeyAlgorithmConfig,
     ) -> Self {
@@ -175,4 +183,35 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
             .map(|(k, v)| (*k, v.to_owned()))
             .collect()
     }
+}
+
+pub(crate) fn key_algorithm_provider_from_config(
+    config: &mut CoreConfig,
+) -> Result<Arc<dyn KeyAlgorithmProvider>, ConfigValidationError> {
+    let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
+
+    for (name, fields) in config.key_algorithm.iter() {
+        if !fields.enabled() {
+            continue;
+        }
+
+        let key_algorithm: Arc<dyn KeyAlgorithm> = match name {
+            KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
+            KeyAlgorithmType::Ecdsa => Arc::new(Ecdsa),
+            KeyAlgorithmType::BbsPlus => Arc::new(BBS),
+            KeyAlgorithmType::Dilithium => Arc::new(MlDsa),
+        };
+        key_algorithms.insert(*name, key_algorithm);
+    }
+
+    for (key, value) in config.key_algorithm.iter_mut() {
+        if let Some(entity) = key_algorithms.get(key) {
+            value.capabilities = Some(json!(entity.get_capabilities()));
+        }
+    }
+
+    Ok(Arc::new(KeyAlgorithmProviderImpl::new(
+        key_algorithms,
+        config.key_algorithm.to_owned(),
+    )))
 }

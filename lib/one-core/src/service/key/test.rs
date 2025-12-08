@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use similar_asserts::assert_eq;
@@ -15,9 +14,9 @@ use crate::proto::session_provider::test::StaticSessionProvider;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
-use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
-use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -36,10 +35,11 @@ fn setup_service(
     key_algorithm_provider: MockKeyAlgorithmProvider,
     history_repository: MockHistoryRepository,
 ) -> KeyService {
-    let mut storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
-    storages.insert("INTERNAL".to_string(), Arc::new(key_storage));
-
-    let provider = KeyProviderImpl::new(storages);
+    let key_storage = Arc::new(key_storage);
+    let mut provider = MockKeyProvider::new();
+    provider
+        .expect_get_key_storage()
+        .returning(move |_| Some(key_storage.clone()));
 
     KeyService::new(
         Arc::new(repository),

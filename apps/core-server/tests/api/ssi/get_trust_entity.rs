@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -11,9 +10,8 @@ use one_core::proto::jwt::model::{JWTHeader, JWTPayload};
 use one_core::provider::credential_formatter::model::SignatureProvider;
 use one_core::provider::did_method::key::KeyDidMethod;
 use one_core::provider::did_method::{DidKeys, DidMethod};
-use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
-use one_core::provider::key_algorithm::provider::KeyAlgorithmProviderImpl;
+use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::SecretSlice;
@@ -130,14 +128,11 @@ async fn prepare_bearer_token(context: &TestContext, org: &Organisation) -> (Did
         )
         .await;
 
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![(
-            KeyAlgorithmType::Ecdsa,
-            Arc::new(Ecdsa) as Arc<dyn KeyAlgorithm>,
-        )]),
-        Default::default(),
-    ));
-    let did_method = KeyDidMethod::new(key_algorithm_provider.clone());
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(|_| Some(Arc::new(Ecdsa)));
+    let did_method = KeyDidMethod::new(Arc::new(key_algorithm_provider));
 
     let keys = vec![key.clone()];
     let did_value = did_method

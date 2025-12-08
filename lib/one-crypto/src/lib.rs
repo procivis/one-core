@@ -15,6 +15,12 @@ use secrecy::SecretSlice;
 use sha2::Sha256;
 use thiserror::Error;
 
+use crate::hasher::sha256::SHA256;
+use crate::signer::bbs::BBSSigner;
+use crate::signer::crydi3::CRYDI3Signer;
+use crate::signer::ecdsa::ECDSASigner;
+use crate::signer::eddsa::EDDSASigner;
+
 pub mod encryption;
 pub mod hasher;
 pub mod jwe;
@@ -140,4 +146,20 @@ pub trait CryptoProvider: Send + Sync {
 
     /// Returns signer instance.
     fn get_signer(&self, signer: &str) -> Result<Arc<dyn Signer>, CryptoProviderError>;
+}
+
+pub fn initialize_crypto_provider() -> Arc<dyn CryptoProvider> {
+    let hashers: Vec<(String, Arc<dyn Hasher>)> = vec![("sha-256".to_string(), Arc::new(SHA256))];
+
+    let signers: Vec<(String, Arc<dyn Signer>)> = vec![
+        ("Ed25519".to_string(), Arc::new(EDDSASigner)),
+        ("ECDSA".to_string(), Arc::new(ECDSASigner)),
+        ("CRYDI3".to_string(), Arc::new(CRYDI3Signer)),
+        ("BBS".to_string(), Arc::new(BBSSigner)),
+    ];
+
+    Arc::new(CryptoProviderImpl::new(
+        HashMap::from_iter(hashers),
+        HashMap::from_iter(signers),
+    ))
 }

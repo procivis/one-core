@@ -35,10 +35,14 @@ mod mapper;
 #[cfg(test)]
 mod test;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct Params {
+    #[serde(default)]
     pub keys: Keys,
+    #[serde(default)]
     pub max_did_log_entry_check: Option<u32>,
+    #[serde(default)]
     pub resolve_to_insecure_http: bool,
 }
 

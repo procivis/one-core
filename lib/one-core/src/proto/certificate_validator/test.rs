@@ -23,10 +23,7 @@ use crate::provider::caching_loader::android_attestation_crl::{
     AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
 };
 use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
-use crate::provider::key_algorithm::KeyAlgorithm;
-use crate::provider::key_algorithm::provider::{
-    KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
-};
+use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::remote_entity_storage::MockRemoteEntityStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::service::error::{ServiceError, ValidationError};
@@ -200,19 +197,16 @@ fn create_intermediate_ca_cert(
 }
 
 fn create_certificate_validator() -> CertificateValidatorImpl {
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![
-            (
-                KeyAlgorithmType::Eddsa,
-                Arc::new(crate::provider::key_algorithm::eddsa::Eddsa) as Arc<dyn KeyAlgorithm>,
-            ),
-            (
-                KeyAlgorithmType::Ecdsa,
-                Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa) as Arc<dyn KeyAlgorithm>,
-            ),
-        ]),
-        Default::default(),
-    ));
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Eddsa))
+        .returning(|_| Some(Arc::new(crate::provider::key_algorithm::eddsa::Eddsa)));
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .with(eq(KeyAlgorithmType::Ecdsa))
+        .returning(|_| Some(Arc::new(crate::provider::key_algorithm::ecdsa::Ecdsa)));
+
     let crl_cache = Arc::new(X509CrlCache::new(
         Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
         Arc::new(InMemoryStorage::new(HashMap::new())),
@@ -231,7 +225,7 @@ fn create_certificate_validator() -> CertificateValidatorImpl {
     ));
 
     CertificateValidatorImpl::new(
-        key_algorithm_provider,
+        Arc::new(key_algorithm_provider),
         crl_cache,
         Arc::new(DefaultClock),
         Duration::minutes(1),

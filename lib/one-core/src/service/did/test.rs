@@ -1,10 +1,8 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
-use indexmap::IndexMap;
 use mockall::predicate::*;
 use similar_asserts::assert_eq;
-use time::{Duration, OffsetDateTime};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::DidService;
@@ -19,13 +17,10 @@ use crate::model::organisation::OrganisationRelations;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
-use crate::provider::caching_loader::CachingLoader;
 use crate::provider::did_method::model::{DidCapabilities, Operation};
-use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
-use crate::provider::did_method::{DidMethod, DidUpdate, MockDidMethod};
+use crate::provider::did_method::provider::MockDidMethodProvider;
+use crate::provider::did_method::{DidUpdate, MockDidMethod};
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
-use crate::provider::remote_entity_storage::RemoteEntityType;
-use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
@@ -44,18 +39,13 @@ fn setup_service(
     did_method: MockDidMethod,
     key_algorithm_provider: MockKeyAlgorithmProvider,
 ) -> DidService {
-    let mut did_methods: IndexMap<String, Arc<dyn DidMethod>> = IndexMap::new();
-    did_methods.insert("KEY".to_string(), Arc::new(did_method));
+    let did_method = Arc::new(did_method);
 
     let did_repository = Arc::new(did_repository);
-    let did_caching_loader = CachingLoader::new(
-        RemoteEntityType::DidDocument,
-        Arc::new(InMemoryStorage::new(HashMap::new())),
-        999,
-        Duration::seconds(1000),
-        Duration::seconds(999),
-    );
-    let did_method_provider = DidMethodProviderImpl::new(did_caching_loader, did_methods);
+    let mut did_method_provider = MockDidMethodProvider::new();
+    did_method_provider
+        .expect_get_did_method()
+        .returning(move |_| Some(did_method.clone()));
 
     DidService::new(
         did_repository,

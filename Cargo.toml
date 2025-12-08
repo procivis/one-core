@@ -34,6 +34,7 @@ futures            = { version = "0.3" }
 hex                = { version = "0.4", features = ["serde"] }
 hex-literal        = { version = "1.0" }
 indexmap           = { version = "2.6", features = ["serde"] }
+indoc              = { version = "2.0" }
 maplit             = { version = "1.0" }
 mockall            = { version = "0.13" }
 multihash          = { version = "0.19" }

@@ -1,12 +1,21 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use time::Duration;
 
-use crate::proto::clock::Clock;
-use crate::provider::caching_loader::android_attestation_crl::AndroidAttestationCrlCache;
-use crate::provider::caching_loader::x509_crl::X509CrlCache;
+use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::proto::clock::{Clock, DefaultClock};
+use crate::proto::http_client::HttpClient;
+use crate::provider::caching_loader::android_attestation_crl::{
+    AndroidAttestationCrlCache, AndroidAttestationCrlResolver,
+};
+use crate::provider::caching_loader::x509_crl::{X509CrlCache, X509CrlResolver};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
+use crate::provider::remote_entity_storage::RemoteEntityStorage;
+use crate::provider::remote_entity_storage::db_storage::DbStorage;
+use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::error::ServiceError;
 
@@ -125,7 +134,7 @@ impl CertificateValidationOptions {
 }
 
 #[derive(Clone)]
-pub struct CertificateValidatorImpl {
+pub(crate) struct CertificateValidatorImpl {
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     crl_cache: Arc<X509CrlCache>,
     clock: Arc<dyn Clock>,
@@ -134,7 +143,7 @@ pub struct CertificateValidatorImpl {
 }
 
 impl CertificateValidatorImpl {
-    pub fn new(
+    pub(crate) fn new(
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         crl_cache: Arc<X509CrlCache>,
         clock: Arc<dyn Clock>,
@@ -149,4 +158,66 @@ impl CertificateValidatorImpl {
             android_attestation_crl_cache,
         }
     }
+}
+
+pub(crate) fn certificate_validator_from_config(
+    config: &CoreConfig,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    client: Arc<dyn HttpClient>,
+    remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+) -> Arc<dyn CertificateValidator> {
+    Arc::new(CertificateValidatorImpl::new(
+        key_algorithm_provider.clone(),
+        Arc::new(initialize_x509_crl_cache(
+            config,
+            client.clone(),
+            remote_entity_cache_repository,
+        )),
+        Arc::new(DefaultClock),
+        config.certificate_validation.leeway,
+        Arc::new(initialize_android_key_attestation_crl_cache(client)),
+    ))
+}
+
+fn initialize_android_key_attestation_crl_cache(
+    client: Arc<dyn HttpClient>,
+) -> AndroidAttestationCrlCache {
+    AndroidAttestationCrlCache::new(
+        Arc::new(AndroidAttestationCrlResolver::new(client)),
+        Arc::new(InMemoryStorage::new(HashMap::new())),
+        1,
+        Duration::days(1),
+        Duration::days(1),
+    )
+}
+
+fn initialize_x509_crl_cache(
+    config: &CoreConfig,
+    client: Arc<dyn HttpClient>,
+    remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
+) -> X509CrlCache {
+    let config = config
+        .cache_entities
+        .entities
+        .get("X509_CRL")
+        .cloned()
+        .unwrap_or(CacheEntityConfig {
+            cache_refresh_timeout: Duration::days(1),
+            cache_size: 100,
+            cache_type: CacheEntityCacheType::Db,
+            refresh_after: Duration::minutes(5),
+        });
+
+    let storage: Arc<dyn RemoteEntityStorage> = match config.cache_type {
+        CacheEntityCacheType::Db => Arc::new(DbStorage::new(remote_entity_cache_repository)),
+        CacheEntityCacheType::InMemory => Arc::new(InMemoryStorage::new(HashMap::new())),
+    };
+
+    X509CrlCache::new(
+        Arc::new(X509CrlResolver::new(client)),
+        storage,
+        config.cache_size as usize,
+        config.cache_refresh_timeout,
+        config.refresh_after,
+    )
 }

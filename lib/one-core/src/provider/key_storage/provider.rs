@@ -3,12 +3,20 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use one_crypto::SignerError;
+use one_crypto::{CryptoProvider, SignerError};
+use serde_json::json;
 
 use super::KeyStorage;
+use super::azure_vault::AzureVaultKeyProvider;
 use super::error::{KeyStorageError, KeyStorageProviderError};
-use crate::config::core_config::KeyAlgorithmType;
+use super::internal::InternalKeyProvider;
+use super::pkcs11::PKCS11KeyProvider;
+use super::remote_secure_element::RemoteSecureElementKeyProvider;
+use super::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{ConfigFields, CoreConfig, KeyAlgorithmType, KeyStorageType};
 use crate::model::key::Key;
+use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -58,12 +66,12 @@ pub trait KeyProvider: Send + Sync {
     }
 }
 
-pub struct KeyProviderImpl {
+struct KeyProviderImpl {
     storages: HashMap<String, Arc<dyn KeyStorage>>,
 }
 
 impl KeyProviderImpl {
-    pub fn new(storages: HashMap<String, Arc<dyn KeyStorage>>) -> Self {
+    fn new(storages: HashMap<String, Arc<dyn KeyStorage>>) -> Self {
         Self { storages }
     }
 }
@@ -163,4 +171,65 @@ impl SignatureProvider for AttestationSignatureProvider {
     fn get_public_key(&self) -> Vec<u8> {
         self.key.public_key.to_owned()
     }
+}
+
+pub(crate) fn key_provider_from_config(
+    config: &mut CoreConfig,
+    key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    crypto: Arc<dyn CryptoProvider>,
+    client: Arc<dyn HttpClient>,
+    native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+    remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
+) -> Result<Arc<dyn KeyProvider>, ConfigValidationError> {
+    let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
+
+    for (name, field) in config
+        .key_storage
+        .iter()
+        .filter(|(_, field)| field.enabled())
+    {
+        let provider =
+            match field.r#type {
+                KeyStorageType::Internal => {
+                    let params = config.key_storage.get(name)?;
+                    Arc::new(InternalKeyProvider::new(
+                        key_algorithm_provider.clone(),
+                        params,
+                    )) as _
+                }
+                KeyStorageType::PKCS11 => Arc::new(PKCS11KeyProvider::new()) as _,
+                KeyStorageType::AzureVault => {
+                    let params = config.key_storage.get(name)?;
+                    Arc::new(AzureVaultKeyProvider::new(
+                        params,
+                        crypto.clone(),
+                        client.clone(),
+                    )) as _
+                }
+                KeyStorageType::SecureElement => {
+                    let native_storage = native_secure_element.clone().ok_or(
+                        ConfigValidationError::EntryNotFound("native key provider".to_string()),
+                    )?;
+                    let params = config.key_storage.get(name)?;
+                    Arc::new(SecureElementKeyProvider::new(native_storage, params)) as _
+                }
+                KeyStorageType::RemoteSecureElement => {
+                    let native_storage = remote_secure_element.clone().ok_or(
+                        ConfigValidationError::EntryNotFound(
+                            "native remote key provider".to_string(),
+                        ),
+                    )?;
+                    Arc::new(RemoteSecureElementKeyProvider::new(native_storage)) as _
+                }
+            };
+        key_providers.insert(name.to_owned(), provider);
+    }
+
+    for (key, value) in config.key_storage.iter_mut() {
+        if let Some(entity) = key_providers.get(key) {
+            value.capabilities = Some(json!(entity.get_capabilities()));
+        }
+    }
+
+    Ok(Arc::new(KeyProviderImpl::new(key_providers)))
 }

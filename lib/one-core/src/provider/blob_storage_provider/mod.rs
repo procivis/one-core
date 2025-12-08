@@ -8,8 +8,8 @@ use one_dto_mapper::From;
 use shared_types::BlobId;
 use strum::Display;
 
-use crate::config::core_config::BlobStorageConfig;
-use crate::config::{ConfigError, core_config};
+use crate::config::core_config;
+use crate::config::core_config::{BlobStorageConfig, ConfigFields};
 use crate::model::blob::{Blob, UpdateBlobRequest};
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::repository::blob_repository::BlobRepository;
@@ -40,12 +40,12 @@ pub trait BlobStorage: Send + Sync {
     async fn delete_many(&self, ids: &[BlobId]) -> Result<(), BlobStorageError>;
 }
 
-pub struct BlobStorageProviderImpl {
+struct BlobStorageProviderImpl {
     storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>,
 }
 
 impl BlobStorageProviderImpl {
-    pub fn new(storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>) -> Self {
+    fn new(storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>) -> Self {
         Self { storages }
     }
 }
@@ -90,14 +90,14 @@ impl BlobStorage for RepositoryBlobStorage {
     }
 }
 
-pub(crate) fn blob_storage_providers_from_config(
+pub(crate) fn blob_storage_provider_from_config(
     blob_storage_config: &BlobStorageConfig,
     blob_repository: Arc<dyn BlobRepository>,
-) -> Result<HashMap<BlobStorageType, Arc<dyn BlobStorage>>, ConfigError> {
+) -> Arc<dyn BlobStorageProvider> {
     let mut providers: HashMap<BlobStorageType, Arc<dyn BlobStorage>> = HashMap::new();
 
     for (r#type, fields) in blob_storage_config.iter() {
-        if !fields.enabled.unwrap_or_default() {
+        if !fields.enabled() {
             continue;
         }
         let blob_provider = match r#type {
@@ -108,5 +108,5 @@ pub(crate) fn blob_storage_providers_from_config(
         providers.insert((*r#type).into(), Arc::new(blob_provider));
     }
 
-    Ok(providers)
+    Arc::new(BlobStorageProviderImpl::new(providers))
 }

@@ -76,6 +76,7 @@ pub fn prepare_caching_loader(additional: Option<(&str, &str)>) -> JsonLdCaching
     )
 }
 
+#[allow(dead_code)]
 pub(crate) fn assert_time_diff_less_than(
     time1: &OffsetDateTime,
     time2: &OffsetDateTime,

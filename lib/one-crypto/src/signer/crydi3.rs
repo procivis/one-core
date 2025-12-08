@@ -2,7 +2,7 @@ use pqc_dilithium::*;
 use secrecy::{ExposeSecret, SecretSlice};
 
 use crate::{Signer, SignerError};
-pub struct CRYDI3Signer {}
+pub struct CRYDI3Signer;
 
 pub struct KeyPair {
     pub public: Vec<u8>,

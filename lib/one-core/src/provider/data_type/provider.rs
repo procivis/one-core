@@ -1,12 +1,22 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::config::ConfigValidationError;
-use crate::provider::data_type::DataType;
-use crate::provider::data_type::error::{DataTypeError, DataTypeProviderError};
-use crate::provider::data_type::model::{
-    DataTypeProviderInit, ExtractedClaim, ExtractionResult, JsonOrCbor, ValueType,
+use serde_json::json;
+
+use super::boolean::BooleanDataType;
+use super::date::DateDataType;
+use super::error::{DataTypeError, DataTypeProviderError};
+use super::model::{
+    DataTypeProviderInit, ExtractedClaim, ExtractionResult, JsonOrCbor, ValueExtractionConfig,
+    ValueType,
 };
+use super::number::NumberDataType;
+use super::picture::PictureDataType;
+use super::string::StringDataType;
+use super::swiyu_picture::SwiyuPictureDataType;
+use super::{CommonParams, DataType, date, number, picture, string, swiyu_picture};
+use crate::config::ConfigValidationError;
+use crate::config::core_config::{CoreConfig, DatatypeType};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait DataTypeProvider: Send + Sync {
@@ -34,14 +44,14 @@ struct NamedProvider {
     provider: Arc<dyn DataType>,
 }
 
-pub struct DataTypeProviderImpl {
+struct DataTypeProviderImpl {
     fallback: HashMap<ValueType, NamedProvider>,
     // regular non-fallback
     data_types: HashMap<String, Arc<dyn DataType>>,
 }
 
 impl DataTypeProviderImpl {
-    pub fn new(providers: Vec<DataTypeProviderInit>) -> Result<Self, ConfigValidationError> {
+    fn new(providers: Vec<DataTypeProviderInit>) -> Result<Self, ConfigValidationError> {
         let mut fallback = HashMap::new();
         let mut data_types = HashMap::new();
 
@@ -180,4 +190,81 @@ impl DataTypeProvider for DataTypeProviderImpl {
             provider.extract_cbor_claim(value)
         })
     }
+}
+
+pub(crate) fn data_type_provider_from_config(
+    config: &mut CoreConfig,
+) -> Result<Arc<dyn DataTypeProvider>, ConfigValidationError> {
+    let mut data_type_provider = vec![];
+    for (name, fields) in config.datatype.iter_mut() {
+        let params = fields.deserialize::<CommonParams>().map_err(|source| {
+            ConfigValidationError::FieldsDeserialization {
+                key: name.to_owned(),
+                source,
+            }
+        })?;
+        let Some(holder_config) = &params.holder else {
+            continue;
+        };
+        let fallback = holder_config.value_extraction == ValueExtractionConfig::EnabledFallback;
+        let provider: Arc<dyn DataType> = match fields.r#type {
+            DatatypeType::String => {
+                let params = fields.deserialize::<string::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                Arc::new(StringDataType::new(params)?)
+            }
+            DatatypeType::Date => {
+                let params = fields.deserialize::<date::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                Arc::new(DateDataType::new(params)?)
+            }
+            DatatypeType::Boolean => Arc::new(BooleanDataType),
+            DatatypeType::Number => {
+                let params = fields.deserialize::<number::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                Arc::new(NumberDataType::new(params))
+            }
+            DatatypeType::Picture => {
+                let params = fields.deserialize::<picture::Params>().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    }
+                })?;
+                Arc::new(PictureDataType::new(params))
+            }
+            DatatypeType::SwiyuPicture => {
+                let params = fields
+                    .deserialize::<swiyu_picture::Params>()
+                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source,
+                    })?;
+                Arc::new(SwiyuPictureDataType::new(params)?)
+            }
+            DatatypeType::Array | DatatypeType::Object => {
+                // skip Array and Objects until we support data extraction for intermediary claims
+                continue;
+            }
+        };
+        fields.capabilities = Some(json!(provider.get_capabilities()));
+        data_type_provider.push(DataTypeProviderInit {
+            name: name.to_string(),
+            fallback,
+            provider,
+        });
+    }
+    Ok(Arc::new(DataTypeProviderImpl::new(data_type_provider)?))
 }

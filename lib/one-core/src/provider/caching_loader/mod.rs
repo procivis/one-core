@@ -23,7 +23,6 @@ use crate::proto::http_client;
 
 pub mod android_attestation_crl;
 pub mod json_ld_context;
-pub mod json_schema;
 pub mod openid_metadata;
 pub mod trust_list;
 pub mod vct;

@@ -3,7 +3,6 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
-use indexmap::IndexMap;
 use maplit::hashmap;
 use mockall::predicate::eq;
 use one_crypto::hasher::sha256::SHA256;
@@ -43,18 +42,15 @@ use crate::provider::credential_formatter::sdjwtvc_formatter::{Params, SDJWTVCFo
 use crate::provider::credential_formatter::vcdm::{VcdmCredential, VcdmCredentialSubject};
 use crate::provider::credential_formatter::{CredentialFormatter, nest_claims};
 use crate::provider::data_type::provider::MockDataTypeProvider;
+use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::key::KeyDidMethod;
-use crate::provider::did_method::provider::{DidMethodProviderImpl, MockDidMethodProvider};
-use crate::provider::did_method::resolver::DidCachingLoader;
+use crate::provider::did_method::model::DidDocument;
+use crate::provider::did_method::provider::{DidMethodProvider, MockDidMethodProvider};
 use crate::provider::did_method::{DidKeys, DidMethod};
+use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::eddsa::Eddsa;
-use crate::provider::key_algorithm::provider::{
-    KeyAlgorithmProviderImpl, MockKeyAlgorithmProvider,
-};
-use crate::provider::key_algorithm::{KeyAlgorithm, MockKeyAlgorithm};
-use crate::provider::remote_entity_storage::RemoteEntityType;
-use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
+use crate::provider::key_algorithm::provider::{KeyAlgorithmProvider, MockKeyAlgorithmProvider};
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 use crate::service::ssi_issuer::dto::SdJwtVcTypeMetadataResponseDTO;
 use crate::service::test_utilities::{
@@ -1354,21 +1350,46 @@ async fn test_format_extract_round_trip_sd_array_elements() {
     assert_eq!(result.claims.claims, expected)
 }
 
+struct FakeDidMethodProvider(Arc<dyn KeyAlgorithmProvider>);
+
+#[async_trait::async_trait]
+impl DidMethodProvider for FakeDidMethodProvider {
+    async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodProviderError> {
+        let method: Arc<dyn DidMethod> = if did.as_str().starts_with("did:key") {
+            Arc::new(KeyDidMethod::new(self.0.clone()))
+        } else {
+            Arc::new(JWKDidMethod::new(self.0.clone()))
+        };
+        Ok(method.resolve(did).await.unwrap())
+    }
+
+    fn get_did_method(&self, _did_method_id: &str) -> Option<Arc<dyn DidMethod>> {
+        unimplemented!()
+    }
+
+    fn get_did_method_id(&self, _did: &DidValue) -> Option<String> {
+        unimplemented!()
+    }
+
+    fn get_did_method_by_method_name(
+        &self,
+        _method_name: &str,
+    ) -> Option<(String, Arc<dyn DidMethod>)> {
+        unimplemented!()
+    }
+
+    fn supported_method_names(&self) -> Vec<String> {
+        unimplemented!()
+    }
+}
+
 fn formatter_for_params(
     params: Params,
 ) -> (
-    Arc<KeyAlgorithmProviderImpl>,
-    Arc<DidMethodProviderImpl>,
+    Arc<dyn KeyAlgorithmProvider>,
+    Arc<dyn DidMethodProvider>,
     SDJWTVCFormatter,
 ) {
-    let caching_loader = DidCachingLoader::new(
-        RemoteEntityType::DidDocument,
-        Arc::new(InMemoryStorage::new(HashMap::new())),
-        100,
-        Duration::minutes(1),
-        Duration::minutes(1),
-    );
-
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256 {}) as Arc<dyn Hasher>
     };
@@ -1376,27 +1397,17 @@ fn formatter_for_params(
         "Ed25519".to_string() => Arc::new(EDDSASigner {}) as Arc<dyn Signer>,
     };
     let crypto = Arc::new(CryptoProviderImpl::new(hashers, signers));
-    let key_alg = Eddsa;
-    let key_algorithm_provider = Arc::new(KeyAlgorithmProviderImpl::new(
-        HashMap::from_iter(vec![(
-            KeyAlgorithmType::Eddsa,
-            Arc::new(key_alg) as Arc<dyn KeyAlgorithm>,
-        )]),
-        Default::default(),
-    ));
-    let did_method_provider = Arc::new(DidMethodProviderImpl::new(
-        caching_loader,
-        IndexMap::from_iter(vec![
-            (
-                "JWK".to_owned(),
-                Arc::new(JWKDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
-            ),
-            (
-                "KEY".to_owned(),
-                Arc::new(KeyDidMethod::new(key_algorithm_provider.clone())) as Arc<dyn DidMethod>,
-            ),
-        ]),
-    ));
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(|_| Some(Arc::new(Eddsa)));
+    key_algorithm_provider
+        .expect_key_algorithm_from_jose_alg()
+        .returning(|_| Some((KeyAlgorithmType::Eddsa, Arc::new(Eddsa))));
+    let key_algorithm_provider = Arc::new(key_algorithm_provider);
+
+    let did_method_provider = Arc::new(FakeDidMethodProvider(key_algorithm_provider.clone()));
 
     let mut vct_metadata_cache = MockVctTypeMetadataFetcher::new();
     vct_metadata_cache

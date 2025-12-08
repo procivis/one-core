@@ -14,7 +14,7 @@ use crate::jwe::{RemoteJwk, decode_b64};
 use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
 
-pub struct ECDSASigner {}
+pub struct ECDSASigner;
 
 impl ECDSASigner {
     fn from_bytes(public_key: &[u8]) -> Result<VerifyingKey, SignerError> {

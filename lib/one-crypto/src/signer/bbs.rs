@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use crate::utilities::get_rng;
 use crate::{Signer, SignerError};
 
-pub struct BBSSigner {}
+pub struct BBSSigner;
 
 #[derive(Serialize, Deserialize)]
 pub struct BbsInput {

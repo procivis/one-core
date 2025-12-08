@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use assert2::check;
@@ -16,11 +15,11 @@ use crate::proto::os_provider::MockOSInfoProvider;
 use crate::proto::os_provider::dto::OSName;
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::wallet_unit::{MockHolderWalletUnitProto, WalletUnitStatusCheckResponse};
-use crate::provider::key_algorithm::ecdsa::Ecdsa;
+use crate::provider::credential_formatter::model::MockSignatureProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::StorageGeneratedKey;
-use crate::provider::key_storage::provider::{KeyProviderImpl, MockKeyProvider};
-use crate::provider::key_storage::{KeyStorage, MockKeyStorage};
+use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::wallet_provider_client::MockWalletProviderClient;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::holder_wallet_unit_repository::MockHolderWalletUnitRepository;
@@ -58,12 +57,6 @@ fn mock_wallet_unit_service() -> WalletUnitService {
 async fn holder_register_success() {
     // given
     let organisation_id: OrganisationId = Uuid::new_v4().into();
-
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .once()
-        .return_once(|_| Some(Arc::new(Ecdsa)));
 
     let mut organisation_repository = MockOrganisationRepository::new();
     organisation_repository
@@ -106,15 +99,26 @@ async fn holder_register_success() {
             assert_eq!(nonce, Some("test_nonce".to_string()));
             Ok(vec!["test_attestation".to_string()])
         });
-    key_storage
-        .expect_sign_with_attestation_key()
-        .times(1)
-        .returning(move |_, _| Ok(vec![1, 2, 3, 4, 5]));
 
-    let mut key_storages: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
-    key_storages.insert("SECURE_ELEMENT".to_string(), Arc::new(key_storage));
-
-    let key_provider_impl = KeyProviderImpl::new(key_storages);
+    let key_storage = Arc::new(key_storage);
+    let mut key_provider = MockKeyProvider::new();
+    key_provider
+        .expect_get_key_storage()
+        .returning(move |_| Some(key_storage.clone()));
+    key_provider
+        .expect_get_attestation_signature_provider()
+        .returning(move |_, _, _| {
+            let mut signature_provider = MockSignatureProvider::new();
+            signature_provider
+                .expect_jose_alg()
+                .returning(|| Some("EdDSA".to_string()));
+            signature_provider.expect_get_key_id().returning(|| None);
+            signature_provider
+                .expect_sign()
+                .once()
+                .returning(|_| Ok(vec![0x01]));
+            Ok(Box::new(signature_provider))
+        });
 
     let mut os_info_provider = MockOSInfoProvider::new();
     os_info_provider
@@ -179,8 +183,7 @@ async fn holder_register_success() {
         wallet_provider_client: Arc::new(wallet_provider_client),
         holder_wallet_unit_repository: Arc::new(att_repo),
         history_repository: Arc::new(history_repository),
-        key_provider: Arc::new(key_provider_impl),
-        key_algorithm_provider: Arc::new(key_algorithm_provider),
+        key_provider: Arc::new(key_provider),
         os_info_provider: Arc::new(os_info_provider),
         config: Arc::new(generic_config().core),
         ..mock_wallet_unit_service()
