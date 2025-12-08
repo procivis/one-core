@@ -94,7 +94,7 @@ pub struct UpdateCredentialRequest {
     pub credential_blob_id: Option<BlobId>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Display)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Display)]
 pub enum CredentialRole {
     Holder,
     Issuer,

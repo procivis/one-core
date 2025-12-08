@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::fmt::Debug;
 use std::sync::Arc;
 
 use shared_types::{ClaimId, CredentialId};
@@ -37,7 +38,11 @@ impl CredentialHistoryDecorator {
         .ok_or_else(|| anyhow::anyhow!("Credential (id: {credential_id}) not found").into())
     }
 
-    async fn create_history_entry(&self, credential_id: CredentialId, action: HistoryAction) {
+    async fn create_history_entry(
+        &self,
+        credential_id: CredentialId,
+        actions: impl IntoIterator<Item = HistoryAction> + Debug,
+    ) {
         let credential = self
             .get_credential(
                 &credential_id,
@@ -61,12 +66,14 @@ impl CredentialHistoryDecorator {
 
         match credential {
             Ok(Some(credential)) => {
-                self.create_history_entry_for_credential(&credential, action)
-                    .await;
+                for action in actions {
+                    self.create_history_entry_for_credential(&credential, action)
+                        .await;
+                }
             }
             _ => {
                 tracing::warn!(
-                    "failed inserting {action:?} history event for credential. missing credential {credential_id}",
+                    "failed inserting {actions:?} history event for credential. missing credential {credential_id}",
                 );
             }
         }
@@ -117,9 +124,19 @@ impl CredentialHistoryDecorator {
 impl CredentialRepository for CredentialHistoryDecorator {
     async fn create_credential(&self, request: Credential) -> Result<CredentialId, DataLayerError> {
         let state = request.state;
+        let role = request.role;
         let credential_id = self.inner.create_credential(request).await?;
-        self.create_history_entry(credential_id, action_from_state(state))
+
+        if role == CredentialRole::Holder && state == CredentialStateEnum::Accepted {
+            self.create_history_entry(
+                credential_id,
+                [HistoryAction::Issued, HistoryAction::Accepted],
+            )
             .await;
+        } else {
+            self.create_history_entry(credential_id, [action_from_state(state)])
+                .await;
+        };
 
         Ok(credential_id)
     }
@@ -142,13 +159,13 @@ impl CredentialRepository for CredentialHistoryDecorator {
             && update.state.is_none()
             && Some(interaction_id) != stored.interaction.map(|i| i.id)
         {
-            self.create_history_entry(credential_id, HistoryAction::Shared)
+            self.create_history_entry(credential_id, [HistoryAction::Shared])
                 .await;
         }
 
         if let Some(new_state) = update.state {
             if stored.state != new_state {
-                self.create_history_entry(credential_id, action_from_state(new_state))
+                self.create_history_entry(credential_id, [action_from_state(new_state)])
                     .await;
             }
 
@@ -169,7 +186,7 @@ impl CredentialRepository for CredentialHistoryDecorator {
                 }
                 _ => None,
             } {
-                self.create_history_entry(credential_id, additional_event)
+                self.create_history_entry(credential_id, [additional_event])
                     .await;
             }
         }

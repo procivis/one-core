@@ -455,6 +455,18 @@ async fn test_issuance_accept_schema_name_already_exists() {
     let credential = context.db.credentials.get(&credential_id).await;
     let credential_schema = credential.schema.as_ref().unwrap();
 
+    let history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    assert_eq!(history.values.len(), 2); // one per state: Accepted + Issued
+    let actions = HashSet::from_iter(history.values.iter().map(|value| value.action));
+    assert_eq!(
+        actions,
+        HashSet::from([HistoryAction::Accepted, HistoryAction::Issued])
+    );
+
     // Assert credential schema has been automatically renamed due to clash with existing schema
     // also named "test".
     assert_ne!(credential_schema.name, "test");

@@ -175,7 +175,7 @@ async fn test_get_list_credential_filter_by_role() {
                     &identifier,
                     "OPENID4VCI_DRAFT13",
                     TestingCredentialParams {
-                        role: Some(role_enum.clone()),
+                        role: Some(role_enum),
                         ..Default::default()
                     },
                 )
