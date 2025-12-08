@@ -842,6 +842,18 @@ where
             })
     }
 
+    pub fn get_key_by_type(&self, r#type: T) -> Result<String, ConfigValidationError>
+    where
+        T: PartialEq + std::fmt::Display,
+    {
+        Ok(self
+            .iter()
+            .find(|(_, v)| v.r#type == r#type)
+            .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
+            .0
+            .to_string())
+    }
+
     pub fn get_fields(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError> {
         let fields = self
             .0

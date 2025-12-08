@@ -141,6 +141,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     client.clone(),
                     credential_schema_importer.clone(),
                     credential_schema_import_parser.clone(),
+                    config.clone(),
                 );
 
                 Arc::new(OpenID4VCI13::new(
@@ -177,6 +178,7 @@ pub(crate) fn issuance_protocol_providers_from_config(
                     client.clone(),
                     credential_schema_importer.clone(),
                     credential_schema_import_parser.clone(),
+                    config.clone(),
                 );
 
                 Arc::new(OpenID4VCI13Swiyu::new(

@@ -11,7 +11,7 @@ use super::mapper::{
     fetch_procivis_schema, from_create_request, map_to_import_credential_schema_request,
 };
 use super::model::OpenID4VCICredentialConfigurationData;
-use crate::config::core_config::FormatType;
+use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::claim::Claim;
 use crate::model::credential_schema::{
     BackgroundProperties, CredentialSchema, LayoutProperties, LayoutType, LogoProperties,
@@ -46,6 +46,7 @@ pub(crate) struct HandleInvitationOperationsImpl {
     pub http_client: Arc<dyn HttpClient>,
     pub credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     pub credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
+    pub config: Arc<CoreConfig>,
 }
 
 /// Interface to be implemented in order to use an exchange protocol.
@@ -72,12 +73,14 @@ impl HandleInvitationOperationsImpl {
         http_client: Arc<dyn HttpClient>,
         credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
         credential_schema_parser: Arc<dyn CredentialSchemaImportParser>,
+        config: Arc<CoreConfig>,
     ) -> Self {
         Self {
             vct_type_metadata_cache,
             http_client,
             credential_schema_importer,
             credential_schema_import_parser: credential_schema_parser,
+            config,
         }
     }
 }
@@ -239,13 +242,11 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
 
                     Ok(BuildCredentialSchemaResponse { claims, schema })
                 } else {
-                    let credential_format = match credential_config.format.as_str() {
-                        "vc+sd-jwt" if credential_config.vct.is_some() => {
-                            FormatType::SdJwtVc.to_string()
-                        }
-                        "vc+sd-jwt" | "dc+sd-jwt" => FormatType::SdJwt.to_string(),
-                        "jwt_vc_json" | "jwt_vp_json" => FormatType::Jwt.to_string(),
-                        "ldp_vc" | "ldp_vp" => FormatType::JsonLdClassic.to_string(),
+                    let format_type = match credential_config.format.as_str() {
+                        "vc+sd-jwt" if credential_config.vct.is_some() => FormatType::SdJwtVc,
+                        "vc+sd-jwt" | "dc+sd-jwt" => FormatType::SdJwt,
+                        "jwt_vc_json" | "jwt_vp_json" => FormatType::Jwt,
+                        "ldp_vc" | "ldp_vp" => FormatType::JsonLdClassic,
                         _ => {
                             return Err(IssuanceProtocolError::Failed(format!(
                                 "Unknown format: {}",
@@ -253,6 +254,11 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                             )));
                         }
                     };
+                    let credential_format = self
+                        .config
+                        .format
+                        .get_key_by_type(format_type)
+                        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
                     let (claim_schemas, claims): (Vec<_>, Vec<_>) =
                         create_claims_from_credential_definition(*credential_id, claim_keys)?;
 
