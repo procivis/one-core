@@ -205,6 +205,38 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+  OPENID4VP_DRAFT25_EUDI:
+    display:
+      en: "OpenID4VP Draft 25 (EUDI)"
+      de: "OpenID4VP Draft 25 (EUDI)"
+    order: 8
+    type: "OPENID4VP_DRAFT25"
+    params:
+      public:
+        useRequestUri: true
+        urlScheme: openid4vp
+        verifier:
+          useDcql: false
+          supportedClientIdSchemes:
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+              x509_hash,
+            ]
+        holder:
+          supportedClientIdSchemes:
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+              x509_hash,
+            ]
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
   OPENID4VP_FINAL1:
     display: "exchange.openid4vpFinal1"
     order: 4
