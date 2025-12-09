@@ -136,6 +136,12 @@ verificationProtocol:
         allowInsecureHttpTransport: true
         redirectUri:
           allowedSchemes: ["http", "https"]
+  OPENID4VP_DRAFT25_EUDI:
+    params:
+      public:
+        allowInsecureHttpTransport: true
+        redirectUri:
+          allowedSchemes: ["http", "https"]
   OPENID4VP_FINAL1_EUDI:
     params:
       public:
