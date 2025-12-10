@@ -199,7 +199,7 @@ fn generic_credential() -> Credential {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
@@ -272,7 +272,7 @@ fn generic_credential_list_entity() -> Credential {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: None,
             organisation: None,
@@ -3315,7 +3315,7 @@ fn generate_credential_schema_with_claim_schemas(
         created_date: now,
         last_modified: now,
         name: "nested".to_string(),
-        format: "".to_string(),
+        format: "".into(),
         revocation_method: "".to_string(),
         key_storage_security: None,
         layout_type: LayoutType::Card,
@@ -3898,7 +3898,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 claim_schemas
@@ -4466,7 +4466,7 @@ async fn test_get_credential_success_array_index_sorting() {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 claim_schemas
@@ -4783,7 +4783,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             last_modified: now,
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "MDOC".to_string(),
+            format: "MDOC".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 claim_schemas
@@ -5003,7 +5003,7 @@ async fn test_get_credential_success_array_single_element() {
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             key_storage_security: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 claim_schemas
@@ -5127,7 +5127,7 @@ async fn test_create_credential_array(
         last_modified: OffsetDateTime::now_utc(),
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         revocation_method: "NONE".to_string(),
         key_storage_security: None,
         layout_type: LayoutType::Card,

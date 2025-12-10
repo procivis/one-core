@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use secrecy::SecretSlice;
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialFormat, CredentialId};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -211,7 +211,7 @@ async fn test_issuer_submit_succeeds() {
     assert!(result.unwrap().notification_id.is_some());
 }
 
-fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credential {
+fn generic_mdoc_credential(format: CredentialFormat, state: CredentialStateEnum) -> Credential {
     let key = dummy_key();
 
     Credential {
@@ -234,7 +234,7 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
         }),
         key: Some(key),
         schema: Some(CredentialSchema {
-            format: format.to_string(),
+            format,
             ..dummy_credential().schema.unwrap()
         }),
         ..dummy_credential()
@@ -244,11 +244,11 @@ fn generic_mdoc_credential(format: &str, state: CredentialStateEnum) -> Credenti
 #[tokio::test]
 async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     let credential_id: CredentialId = Uuid::new_v4().into();
-    let format = "MDOC";
+    let format = CredentialFormat::from("MDOC");
 
     let mut credential_repository = MockCredentialRepository::new();
 
-    let credential = generic_mdoc_credential(format, CredentialStateEnum::Offered);
+    let credential = generic_mdoc_credential(format.clone(), CredentialStateEnum::Offered);
     let credential_copy = credential.clone();
     credential_repository
         .expect_get_credential()
@@ -364,9 +364,9 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 #[tokio::test]
 async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential() {
     let credential_id: CredentialId = Uuid::new_v4().into();
-    let format = "MDOC";
+    let format = CredentialFormat::from("MDOC");
 
-    let credential = generic_mdoc_credential(format, CredentialStateEnum::Accepted);
+    let credential = generic_mdoc_credential(format.clone(), CredentialStateEnum::Accepted);
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -439,7 +439,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let mut config = dummy_config();
 
     config.format.insert(
-        "MDOC".to_string(),
+        "MDOC".into(),
         Fields {
             r#type: FormatType::Mdoc,
             display: "display".into(),
@@ -505,9 +505,9 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
 #[tokio::test]
 async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_future_fails() {
     let credential_id: CredentialId = Uuid::new_v4().into();
-    let format = "MDOC";
+    let format = CredentialFormat::from("MDOC");
 
-    let credential = generic_mdoc_credential(format, CredentialStateEnum::Accepted);
+    let credential = generic_mdoc_credential(format.clone(), CredentialStateEnum::Accepted);
 
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
@@ -537,7 +537,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
 
     let mut config = dummy_config();
     config.format.insert(
-        format.to_string(),
+        format,
         Fields {
             r#type: FormatType::Mdoc,
             display: "display".into(),
@@ -632,7 +632,7 @@ fn dummy_config() -> CoreConfig {
     );
 
     config.format.insert(
-        "MDOC".to_string(),
+        "MDOC".into(),
         Fields {
             r#type: FormatType::Mdoc,
             display: "mdoc".into(),
@@ -690,7 +690,7 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {

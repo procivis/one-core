@@ -227,12 +227,11 @@ impl SSIHolderService {
             }
         };
 
-        let format = format_type.to_string();
-        let formatter = self
+        let (_, formatter) = self
             .formatter_provider
-            .get_credential_formatter(&format)
+            .get_formatter_by_type(format_type)
             .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::Formatter(format),
+                MissingProviderError::FormatterType(format_type),
             ))?;
 
         if let Some(holder_binding) = &holder_binding {
@@ -368,7 +367,7 @@ impl SSIHolderService {
             .formatter_provider
             .get_credential_formatter(format)
             .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::Formatter(format.to_owned()),
+                MissingProviderError::Formatter(format.to_string()),
             ))?;
 
         if let Some(holder_binding) = &holder_binding {
@@ -457,13 +456,11 @@ impl SSIHolderService {
         credential: &str,
         schema: &CredentialSchema,
     ) -> Result<Vec<Claim>, ServiceError> {
-        let credential_format = &schema.format;
-
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(credential_format)
+            .get_credential_formatter(&schema.format)
             .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::Formatter(credential_format.to_owned()),
+                MissingProviderError::Formatter(schema.format.to_string()),
             ))?;
 
         let credential = formatter

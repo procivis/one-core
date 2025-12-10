@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
+use shared_types::CredentialFormat;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -50,7 +51,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             .formatter_provider
             .get_credential_formatter(&dto.schema.format)
             .ok_or(MissingProviderError::Formatter(
-                dto.schema.format.to_owned(),
+                dto.schema.format.to_string(),
             ))?;
         let format = self.config.format.get_fields(&dto.schema.format)?.r#type();
         let revocation_method = self
@@ -220,7 +221,10 @@ impl CredentialSchemaImportParserImpl {
         Ok(schema_id)
     }
 
-    pub(super) fn parse_format(&self, format: String) -> Result<String, ServiceError> {
+    pub(super) fn parse_format(
+        &self,
+        format: CredentialFormat,
+    ) -> Result<CredentialFormat, ServiceError> {
         self.config.format.get_if_enabled(&format)?;
         Ok(format)
     }
@@ -518,6 +522,7 @@ mod test {
     use std::sync::Arc;
 
     use assert2::{assert, let_assert};
+    use similar_asserts::assert_eq;
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -559,7 +564,7 @@ mod test {
         // given
         let mut config = generic_config().core;
         config.format.insert(
-            "JWT".to_string(),
+            "JWT".into(),
             Fields {
                 r#type: FormatType::Jwt,
                 display: ConfigEntryDisplay::TranslationId("test".to_string()),
@@ -578,11 +583,11 @@ mod test {
         );
 
         // when
-        let result = parser.parse_format("JWT".to_string());
+        let result = parser.parse_format("JWT".into());
 
         // then
         let_assert!(Ok(format) = result);
-        assert!("JWT" == format);
+        assert_eq!("JWT", format.to_string());
     }
 
     #[test]

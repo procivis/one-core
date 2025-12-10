@@ -11,7 +11,7 @@ use uuid::Uuid;
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::VerificationProtocolType;
+use crate::config::core_config::{FormatType, VerificationProtocolType};
 use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::KeyStorageSecurity;
@@ -730,6 +730,9 @@ pub enum MissingProviderError {
     #[error("Cannot find `{0}` in formatter provider")]
     Formatter(String),
 
+    #[error("Cannot find formatter with type `{0}` in formatter provider")]
+    FormatterType(FormatType),
+
     #[error("Cannot find `{0}` in key storage provider")]
     KeyStorage(String),
 
@@ -1134,7 +1137,7 @@ impl ErrorCodeMixin for DataLayerError {
 impl ErrorCodeMixin for MissingProviderError {
     fn error_code(&self) -> ErrorCode {
         match self {
-            Self::Formatter(_) => ErrorCode::BR_0038,
+            Self::Formatter(_) | Self::FormatterType(_) => ErrorCode::BR_0038,
             Self::KeyStorage(_) => ErrorCode::BR_0040,
             Self::DidMethod(_) => ErrorCode::BR_0031,
             Self::KeyAlgorithm(_) => ErrorCode::BR_0042,

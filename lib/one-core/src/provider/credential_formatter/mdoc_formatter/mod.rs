@@ -490,7 +490,7 @@ impl CredentialFormatter for MdocFormatter {
             created_date: now,
             last_modified: now,
             name: doctype.to_owned(),
-            format: "MDOC".to_string(),
+            format: "".into(), // Will be overridden based on config priority
             revocation_method: "NONE".to_string(),
             key_storage_security: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,

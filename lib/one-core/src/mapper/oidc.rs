@@ -1,3 +1,5 @@
+use shared_types::CredentialFormat;
+
 use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -8,11 +10,11 @@ use crate::service::error::ServiceError;
 
 // This detects precise format checking e.g. crypto suite
 pub(crate) fn detect_format_with_crypto_suite(
-    credential_schema_format: &str,
+    credential_schema_format: &CredentialFormat,
     credential_content: &str,
     formatter_provider: &dyn CredentialFormatterProvider,
-) -> Result<String, ServiceError> {
-    let format = if credential_schema_format.starts_with("JSON_LD") {
+) -> Result<CredentialFormat, ServiceError> {
+    let format = if credential_schema_format.as_ref().starts_with("JSON_LD") {
         let format_type = map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
             .map_err(|_| ServiceError::MappingError("Credential format not resolved".to_owned()))?;
         let (name, _) = formatter_provider
@@ -51,7 +53,7 @@ pub(crate) fn determine_response_mode_openid4vp_draft(
         )));
     }
 
-    let mdoc_only = format_iter.all(|format| format == "MDOC");
+    let mdoc_only = format_iter.all(|format| format.as_ref() == "MDOC");
 
     let response_mode = match mdoc_only {
         true => "direct_post.jwt".to_string(),

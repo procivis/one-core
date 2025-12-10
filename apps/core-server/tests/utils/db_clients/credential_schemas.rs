@@ -10,7 +10,7 @@ use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialFormat, CredentialSchemaId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -19,7 +19,7 @@ use uuid::Uuid;
 pub struct TestingCreateSchemaParams {
     pub id: Option<CredentialSchemaId>,
     pub schema_id: Option<String>,
-    pub format: Option<String>,
+    pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
@@ -85,7 +85,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: params.deleted_at,
-            format: params.format.unwrap_or("JWT".to_string()),
+            format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -163,7 +163,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: params.format.unwrap_or("JSON_LD_BBSPLUS".to_string()),
+            format: params.format.unwrap_or("JSON_LD_BBSPLUS".into()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -267,7 +267,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: params.format.unwrap_or("JWT".to_string()),
+            format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -371,7 +371,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: params.format.unwrap_or("JWT".to_string()),
+            format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -488,7 +488,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: params.format.unwrap_or("JWT".to_string()),
+            format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -709,7 +709,7 @@ impl CredentialSchemasDB {
             key_storage_security: params.key_storage_security,
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: params.format.unwrap_or("JWT".to_string()),
+            format: params.format.unwrap_or("JWT".into()),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -757,7 +757,7 @@ impl CredentialSchemasDB {
             name: name.to_owned(),
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
@@ -814,7 +814,7 @@ impl CredentialSchemasDB {
             name: name.to_owned(),
             organisation: Some(organisation.clone()),
             deleted_at: None,
-            format: format.to_string(),
+            format: format.into(),
             revocation_method: revocation_method.to_owned(),
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,

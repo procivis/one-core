@@ -8,6 +8,7 @@ use mockall::predicate::{self, eq};
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
+use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -297,7 +298,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
@@ -331,7 +332,7 @@ fn dummy_config() -> CoreConfig {
     let mut config = CoreConfig::default();
 
     config.format.insert(
-        "JWT".to_string(),
+        "JWT".into(),
         Fields {
             r#type: FormatType::Jwt,
             display: "display".into(),
@@ -661,7 +662,7 @@ async fn test_holder_accept_credential_success() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
+        .with(predicate::eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
             formatter.expect_get_leeway().returning(|| 1000);
@@ -865,7 +866,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
+        .with(predicate::eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
             formatter.expect_get_leeway().returning(|| 1000);
@@ -1112,7 +1113,7 @@ async fn test_holder_accept_expired_credential_fails() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
+        .with(predicate::eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
             formatter.expect_get_leeway().returning(|| 1000);
@@ -1781,7 +1782,7 @@ fn generic_schema() -> CredentialSchema {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_BBSPLUS".to_string(),
+        format: "JSON_LD_BBSPLUS".into(),
         revocation_method: "NONE".to_string(),
         key_storage_security: None,
         layout_type: LayoutType::Card,
@@ -1899,7 +1900,7 @@ fn generic_schema_array_object() -> CredentialSchema {
         imported_source_url: "CORE_URL".to_string(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_CLASSIC".to_string(),
+        format: "JSON_LD_CLASSIC".into(),
         revocation_method: "NONE".to_string(),
         key_storage_security: None,
         layout_type: LayoutType::Card,
@@ -2017,7 +2018,7 @@ fn generic_schema_object_hell() -> CredentialSchema {
         imported_source_url: "CORE_URL".to_string(),
         last_modified: get_dummy_date(),
         name: "LPTestNestedSelectiveZug".to_string(),
-        format: "JSON_LD_CLASSIC".to_string(),
+        format: "JSON_LD_CLASSIC".into(),
         revocation_method: "NONE".to_string(),
         key_storage_security: None,
         layout_type: LayoutType::Card,

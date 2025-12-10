@@ -1,12 +1,12 @@
 use one_dto_mapper::From;
 use serde::Deserialize;
-use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId, ProofSchemaId};
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::credential_schema::{
-    CredentialFormat, KeyStorageSecurity, LayoutType, RevocationMethod,
-};
+use crate::model::credential_schema::{KeyStorageSecurity, LayoutType, RevocationMethod};
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};

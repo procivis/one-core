@@ -142,10 +142,19 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         IssuanceProtocolError::Failed("MDOC metadata missing doctype".to_string())
                     })?;
 
+                let format = self
+                    .config
+                    .format
+                    .get_key_by_type(FormatType::Mdoc)
+                    .map_err(|err| {
+                        IssuanceProtocolError::Failed(format!(
+                            "Failed to create new credential schema: {err}"
+                        ))
+                    })?;
                 let credential_schema = from_create_request(
                     CreateCredentialSchemaRequestDTO {
                         name,
-                        format: FormatType::Mdoc.to_string(),
+                        format,
                         revocation_method: "NONE".to_string(),
                         claims: if let Some(schemas) = claim_schemas {
                             parse_mdoc_schema_claims(schemas, element_order)

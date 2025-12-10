@@ -209,7 +209,7 @@ pub(super) async fn get_verifier_proof_detail(
         };
 
         let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format == "MDOC" => {
+            Some(schema) if schema.format.to_string() == "MDOC" => {
                 validity_credential_repository
                     .get_latest_by_credential_id(credential.id, ValidityCredentialType::Mdoc)
                     .await?
@@ -601,7 +601,7 @@ pub(super) async fn get_holder_proof_detail(
             }
             Entry::Vacant(entry) => {
                 let mdoc_validity_credentials = match &credential.schema {
-                    Some(schema) if schema.format == "MDOC" => {
+                    Some(schema) if schema.format.to_string() == "MDOC" => {
                         validity_credential_repository
                             .get_latest_by_credential_id(
                                 credential.id,

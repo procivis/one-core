@@ -345,7 +345,7 @@ impl CredentialFormatter for JWTFormatter {
             created_date: now,
             last_modified: now,
             name: schema_name,
-            format: "JWT".to_string(),
+            format: "".into(), // Will be overridden based on config priority
             revocation_method: revocation_method.to_string(),
             key_storage_security: None,
             layout_type: LayoutType::Card,

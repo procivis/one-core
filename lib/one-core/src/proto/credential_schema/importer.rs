@@ -150,7 +150,7 @@ impl CredentialSchemaImporterProto {
             .formatter_provider
             .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
-                credential_schema.format.to_owned(),
+                credential_schema.format.to_string(),
             ))?;
 
         let claim_schemas =

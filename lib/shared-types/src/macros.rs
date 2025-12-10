@@ -4,7 +4,7 @@
 /// ```
 ///   struct MyNewtype(String);
 ///   // assumes that the newtype wraps a String and will be stored in the database as a String.
-///   impl_for_seaorm_newtype!(MyNewtype);
+///   impls_for_seaorm_newtype!(MyNewtype);
 ///
 ///   struct MyNewtype(OtherType);
 ///   // assumes that OtherType will be stored in the database as a String, so it must be convertible to a String and also implement FromStr.

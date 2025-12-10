@@ -227,7 +227,6 @@ async fn test_parse_credential() {
     );
 
     let schema = credential.schema.as_ref().unwrap();
-    assert_eq!(schema.format, "JSON_LD_CLASSIC");
     assert_eq!(schema.revocation_method, "LVVC");
     assert_eq!(schema.name, "7543JsonLdNested");
     assert_eq!(

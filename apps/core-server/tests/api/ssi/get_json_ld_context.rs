@@ -18,7 +18,7 @@ async fn test_get_json_ld_context_success() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JSON_LD_CLASSIC".to_string()),
+                format: Some("JSON_LD_CLASSIC".into()),
                 ..Default::default()
             },
         )
@@ -91,7 +91,7 @@ async fn test_get_json_ld_context_with_nested_claims_success() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JSON_LD_CLASSIC".to_string()),
+                format: Some("JSON_LD_CLASSIC".into()),
                 ..Default::default()
             },
         )
@@ -157,7 +157,7 @@ async fn test_get_json_ld_context_special_chars_success() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JSON_LD_CLASSIC".to_string()),
+                format: Some("JSON_LD_CLASSIC".into()),
                 ..Default::default()
             },
         )
@@ -198,7 +198,7 @@ async fn test_get_json_ld_context_credential_invalid_format() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )

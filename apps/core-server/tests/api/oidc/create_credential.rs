@@ -18,7 +18,7 @@ use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
-use shared_types::{CredentialId, DidValue};
+use shared_types::{CredentialFormat, CredentialId, DidValue};
 use similar_asserts::assert_eq;
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
@@ -47,7 +47,7 @@ async fn test_post_issuer_credential() {
 async fn test_post_issuer_credential_sd_jwt_vc() {
     let params = PostCredentialTestParams {
         schema_id: Some("some-vct-value".to_string()),
-        credential_format: Some("SD_JWT_VC".to_string()),
+        credential_format: Some("SD_JWT_VC".into()),
         format: Some("vc+sd-jwt"),
         ..Default::default()
     };
@@ -58,7 +58,7 @@ async fn test_post_issuer_credential_sd_jwt_vc() {
 async fn test_post_issuer_credential_sd_jwt_vc_invalid_format() {
     let params = PostCredentialTestParams {
         schema_id: Some("some-vct-value".to_string()),
-        credential_format: Some("SD_JWT_VC".to_string()),
+        credential_format: Some("SD_JWT_VC".into()),
         expect_failure: true,
         ..Default::default()
     };
@@ -355,7 +355,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
             &organisation,
             "TOKENSTATUSLIST",
             TestingCreateSchemaParams {
-                format: Some("SD_JWT_VC".to_string()),
+                format: Some("SD_JWT_VC".into()),
                 schema_id: Some(schema_id.clone()),
                 ..Default::default()
             },
@@ -631,7 +631,7 @@ struct PostCredentialTestParams<'a> {
     pop_nonce: Option<&'a str>,
     expect_failure: bool,
     schema_id: Option<String>,
-    credential_format: Option<String>,
+    credential_format: Option<CredentialFormat>,
     format: Option<&'a str>,
 }
 

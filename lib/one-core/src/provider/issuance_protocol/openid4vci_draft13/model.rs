@@ -6,7 +6,7 @@ use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{CredentialFormat, CredentialSchemaId, DidValue, OrganisationId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
@@ -14,7 +14,7 @@ use url::Url;
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{
-    CredentialFormat, KeyStorageSecurity, LayoutProperties, LayoutType, RevocationMethod,
+    KeyStorageSecurity, LayoutProperties, LayoutType, RevocationMethod,
 };
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
@@ -624,7 +624,7 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
 #[derive(Clone, Debug)]
 pub(crate) struct CreateCredentialSchemaRequestDTO {
     pub name: String,
-    pub format: String,
+    pub format: CredentialFormat,
     pub revocation_method: String,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,

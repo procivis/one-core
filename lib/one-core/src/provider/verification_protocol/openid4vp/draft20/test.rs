@@ -6,7 +6,7 @@ use std::sync::Arc;
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use mockall::predicate::eq;
 use serde_json::{Value, json};
-use shared_types::DidValue;
+use shared_types::{CredentialFormat, DidValue};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
@@ -209,7 +209,7 @@ async fn test_share_proof() {
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT");
+    let proof = test_proof(proof_id, "JWT".into());
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
@@ -302,7 +302,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
         ..Default::default()
     });
 
-    let proof = test_proof(Uuid::new_v4(), "MDOC");
+    let proof = test_proof(Uuid::new_v4(), "MDOC".into());
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Mdoc));
 
@@ -325,7 +325,7 @@ async fn test_response_mode_direct_post_jwt_for_mdoc() {
     assert_eq!("direct_post.jwt", query_pairs.get("response_mode").unwrap());
 }
 
-fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
+fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
     Proof {
         id: proof_id.into(),
         created_date: OffsetDateTime::now_utc(),
@@ -355,7 +355,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "test-credential-schema".to_string(),
-                    format: credential_format.to_string(),
+                    format: credential_format,
                     revocation_method: "NONE".to_string(),
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
@@ -430,7 +430,7 @@ async fn test_share_proof_with_use_request_uri() {
     let arc = Arc::new(credential_formatter);
     credential_formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("JWT"))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(arc.clone()));
 
     let protocol = setup_protocol(TestInputs {
@@ -443,7 +443,7 @@ async fn test_share_proof_with_use_request_uri() {
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT");
+    let proof = test_proof(proof_id, "JWT".into());
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
@@ -498,7 +498,7 @@ async fn test_share_proof_with_use_request_uri_did_client_id_scheme() {
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT");
+    let proof = test_proof(proof_id, "JWT".into());
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
@@ -1014,7 +1014,7 @@ async fn test_share_proof_custom_scheme() {
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT");
+    let proof = test_proof(proof_id, "JWT".into());
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 

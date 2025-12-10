@@ -292,7 +292,7 @@ async fn simple_schema(
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
-                format: Some("SD_JWT_VC".to_owned()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )

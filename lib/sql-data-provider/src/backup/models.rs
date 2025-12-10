@@ -1,9 +1,9 @@
-use one_core::model::credential_schema::{
-    CredentialFormat, CredentialSchemaName, RevocationMethod,
-};
+use one_core::model::credential_schema::{CredentialSchemaName, RevocationMethod};
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
-use shared_types::{BlobId, CredentialId, CredentialSchemaId, IdentifierId, OrganisationId};
+use shared_types::{
+    BlobId, CredentialFormat, CredentialId, CredentialSchemaId, IdentifierId, OrganisationId,
+};
 use time::OffsetDateTime;
 
 use crate::entity::credential::{CredentialRole, CredentialState};

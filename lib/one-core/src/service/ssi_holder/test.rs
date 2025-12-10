@@ -1665,7 +1665,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {

@@ -166,7 +166,7 @@ pub(crate) async fn validate_proof(
         HashMap::new();
 
     let credential_formatter = credential_formatter_provider
-        .get_credential_formatter(format)
+        .get_credential_formatter(&format.into())
         .ok_or(MissingProviderError::Formatter(format.to_owned()))?;
 
     for credential in presentation.credentials {

@@ -1,6 +1,7 @@
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use shared_types::CredentialFormat;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -28,7 +29,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     #[serde(with = "time::serde::rfc3339")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: String,
+    pub format: CredentialFormat,
     pub revocation_method: String,
     pub organisation_id: Uuid,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,

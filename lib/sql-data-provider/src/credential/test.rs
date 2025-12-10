@@ -100,7 +100,7 @@ async fn setup_empty() -> TestSetup {
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         name: "credential schema".to_string(),
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         key_storage_security: Some(KeyStorageSecurity::Basic.into()),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(

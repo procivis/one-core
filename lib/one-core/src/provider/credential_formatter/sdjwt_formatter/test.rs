@@ -1142,7 +1142,6 @@ async fn test_parse_credential() {
     // Verify credential schema
     assert!(result.schema.is_some());
     let schema = result.schema.as_ref().unwrap();
-    assert_eq!(schema.format, "SDJWT");
     assert_eq!(schema.name, "ArraysAndObjects");
     assert_eq!(
         schema.schema_id,

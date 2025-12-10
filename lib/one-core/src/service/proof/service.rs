@@ -3,7 +3,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{CredentialId, OrganisationId, ProofId};
+use shared_types::{CredentialFormat, CredentialId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -599,7 +599,7 @@ impl ProofService {
         )?;
 
         let config = self.config.clone();
-        let format_type_mapper: FormatMapper = Arc::new(move |input| {
+        let format_type_mapper: FormatMapper = Arc::new(move |input: &CredentialFormat| {
             Ok(config
                 .format
                 .get_fields(input)

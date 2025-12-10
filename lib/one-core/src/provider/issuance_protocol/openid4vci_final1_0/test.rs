@@ -6,6 +6,7 @@ use mockall::predicate;
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
+use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -294,7 +295,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             last_modified: now,
             name: "schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
@@ -328,7 +329,7 @@ fn dummy_config() -> CoreConfig {
     let mut config = CoreConfig::default();
 
     config.format.insert(
-        "JWT".to_string(),
+        "JWT".into(),
         Fields {
             r#type: FormatType::Jwt,
             display: "display".into(),
@@ -626,11 +627,11 @@ async fn test_holder_accept_credential_success() {
     let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
+        .with(predicate::eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter_clone.clone()));
     formatter_provider
         .expect_get_formatter_by_type()
-        .returning(move |_| Some(("JWT".to_string(), formatter.clone())));
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
     let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access
@@ -829,11 +830,11 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
+        .with(predicate::eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter_clone.clone()));
     formatter_provider
         .expect_get_formatter_by_type()
-        .returning(move |_| Some(("JWT".to_string(), formatter.clone())));
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
     let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access
@@ -1068,11 +1069,11 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq("JWT"))
+        .with(predicate::eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter_clone.clone()));
     formatter_provider
         .expect_get_formatter_by_type()
-        .returning(move |_| Some(("JWT".to_string(), formatter.clone())));
+        .returning(move |_| Some(("JWT".into(), formatter.clone())));
 
     let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access

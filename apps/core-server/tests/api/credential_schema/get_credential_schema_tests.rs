@@ -62,7 +62,7 @@ async fn test_get_credential_scheme_with_3rd_party_type() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("foo".to_string()),
+                format: Some("foo".into()),
                 ..Default::default()
             },
         )

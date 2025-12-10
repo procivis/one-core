@@ -14,7 +14,8 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use shared_types::{
-    BlobId, CertificateId, CredentialId, DidValue, HolderWalletUnitId, IdentifierId,
+    BlobId, CertificateId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId,
+    IdentifierId,
 };
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -185,7 +186,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         credential_id: &CredentialId,
         latest_state: &CredentialStateEnum,
-        format: &str,
+        format: &CredentialFormat,
         format_type: FormatType,
     ) -> Result<(), IssuanceProtocolError> {
         match (latest_state, format_type) {
@@ -222,7 +223,10 @@ impl OpenID4VCIFinal1_0 {
         Ok(())
     }
 
-    fn mso_minimum_refresh_time(&self, format: &str) -> Result<Duration, IssuanceProtocolError> {
+    fn mso_minimum_refresh_time(
+        &self,
+        format: &CredentialFormat,
+    ) -> Result<Duration, IssuanceProtocolError> {
         self.config
             .format
             .get::<mdoc_formatter::Params, _>(format)

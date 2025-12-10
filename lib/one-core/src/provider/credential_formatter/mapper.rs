@@ -46,7 +46,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
     let schema = credential_detail.schema;
     // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
     // We also include it if LLVC credentials are used for revocation
-    let credential_id = if schema.format.eq("JSON_LD_BBSPLUS")
+    let credential_id = if schema.format.to_string() == "JSON_LD_BBSPLUS"
         || credential_status
             .iter()
             .any(|status| status.r#type == RevocationType::Lvvc.to_string())

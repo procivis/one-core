@@ -65,7 +65,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("SD_JWT".to_string()),
+                format: Some("SD_JWT".into()),
                 ..Default::default()
             },
         )
@@ -118,7 +118,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt_vc() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("SD_JWT_VC".to_string()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )

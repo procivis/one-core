@@ -588,7 +588,7 @@ mod tests {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "CredentialSchema".to_string(),
-                format: "MDOC".to_string(),
+                format: "MDOC".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 layout_type: LayoutType::Card,

@@ -415,10 +415,11 @@ impl BitstringStatusList {
                     self.params.format.to_string()
                 }
             }
-        };
+        }
+        .into();
 
         self.formatter_provider
-            .get_credential_formatter(format.as_str())
+            .get_credential_formatter(&format)
             .ok_or_else(|| RevocationError::FormatterNotFound(self.params.format.to_string()))
     }
 
@@ -441,10 +442,12 @@ impl BitstringStatusList {
                     "Invalid status list Content-Type: {content_type}"
                 )));
             }
-        };
+        }
+        .to_string()
+        .into();
 
         self.formatter_provider
-            .get_credential_formatter(format)
+            .get_credential_formatter(&format)
             .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))
     }
 

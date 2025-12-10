@@ -7,7 +7,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::DidId;
+use shared_types::{CredentialFormat, DidId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -105,7 +105,7 @@ fn generic_credential_schema() -> CredentialSchema {
         last_modified: now,
         name: "SchemaName".to_string(),
         key_storage_security: None,
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             required: true,
@@ -236,7 +236,7 @@ async fn test_get_issuer_metadata_jwt() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("JWT"))
+        .with(eq(CredentialFormat::from("JWT")))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut repository = MockCredentialSchemaRepository::default();
@@ -339,12 +339,12 @@ async fn test_get_issuer_metadata_sd_jwt() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("SD_JWT"))
+        .with(eq(CredentialFormat::from("SD_JWT")))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
     schema.organisation = Some(generic_organisation());
-    schema.format = "SD_JWT".to_string();
+    schema.format = "SD_JWT".into();
     let relations = CredentialSchemaRelations {
         claim_schemas: Some(ClaimSchemaRelations::default()),
         organisation: Some(OrganisationRelations::default()),
@@ -440,11 +440,11 @@ async fn test_get_issuer_metadata_mdoc() {
     let mut formatter_provider = MockCredentialFormatterProvider::default();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("MDOC"))
+        .with(eq(CredentialFormat::from("MDOC")))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let mut schema = generic_credential_schema();
-    schema.format = "MDOC".to_string();
+    schema.format = "MDOC".into();
     schema.organisation = Some(generic_organisation());
     let now = OffsetDateTime::now_utc();
     schema.claim_schemas = Some(vec![
@@ -993,7 +993,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "SD_JWT_VC".to_string();
+    schema.format = "SD_JWT_VC".into();
     let credential = dummy_credential(
         "OPENID4VCI_DRAFT13",
         CredentialStateEnum::Pending,
@@ -1164,7 +1164,7 @@ async fn test_create_credential_success_mdoc() {
     let mut exchange_provider = MockIssuanceProtocolProvider::default();
 
     let schema = CredentialSchema {
-        format: "MDOC".to_string(),
+        format: "MDOC".into(),
         schema_id: "test.doctype".to_owned(),
         ..generic_credential_schema()
     };
@@ -1431,7 +1431,7 @@ async fn test_create_credential_invalid_vct_for_credential_schema() {
     let mut repository = MockCredentialSchemaRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "SD_JWT_VC".to_string();
+    schema.format = "SD_JWT_VC".into();
     {
         let clone = schema.clone();
         repository
@@ -1929,7 +1929,7 @@ async fn test_for_mdoc_schema_pre_authorized_grant_type_creates_refresh_token() 
     let mut interaction_repository = MockInteractionRepository::default();
 
     let mut schema = generic_credential_schema();
-    schema.format = "MDOC".to_string();
+    schema.format = "MDOC".into();
 
     credential_schema_repository
         .expect_get_credential_schema()

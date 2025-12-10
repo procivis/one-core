@@ -114,7 +114,7 @@ impl LvvcProvider {
         let format = credential
             .schema
             .as_ref()
-            .map(|schema| schema.format.as_str())
+            .map(|schema| &schema.format)
             .ok_or(RevocationError::MappingError(
                 "credential_schema is None".to_string(),
             ))?;
@@ -122,7 +122,7 @@ impl LvvcProvider {
         let formatter = self
             .credential_formatter
             .get_credential_formatter(format)
-            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_owned()))?;
+            .ok_or_else(|| RevocationError::FormatterNotFound(format.to_string()))?;
 
         Ok(formatter)
     }

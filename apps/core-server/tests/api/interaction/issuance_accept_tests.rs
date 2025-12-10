@@ -2430,7 +2430,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JSON_LD_CLASSIC".to_string()),
+                format: Some("JSON_LD_CLASSIC".into()),
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
                         schema: ClaimSchema {

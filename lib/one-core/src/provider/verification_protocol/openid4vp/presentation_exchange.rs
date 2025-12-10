@@ -89,16 +89,8 @@ pub(crate) async fn pex_submission_data(
                     .to_string(),
             ));
         }
-        let presentation_format = config.format.iter().find_map(|(name, fields)| {
-            if fields.r#type == presentation_format_type {
-                Some(name)
-            } else {
-                None
-            }
-        }).ok_or(VerificationProtocolError::Failed(format!("No matching formatter found for presentation format type {presentation_format_type}")))?;
-        let presentation_formatter = presentation_formatter_provider
-            .get_presentation_formatter(presentation_format)
-            .ok_or_else(|| VerificationProtocolError::Failed("Formatter not found".to_string()))?;
+        let (_, presentation_formatter) =  presentation_formatter_provider.get_presentation_formatter_by_type(presentation_format_type)
+            .ok_or(VerificationProtocolError::Failed(format!("No matching formatter found for presentation format type {presentation_format_type}")))?;
 
         let auth_fn = key_provider
             .get_signature_provider(

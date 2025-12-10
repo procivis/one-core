@@ -3,7 +3,7 @@ use std::sync::Arc;
 use mockall::PredicateBooleanExt;
 use mockall::predicate::*;
 use serde_json::json;
-use shared_types::{CredentialSchemaId, OrganisationId, ProofSchemaId};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -384,7 +384,7 @@ async fn test_create_proof_schema_success() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -516,7 +516,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "software".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -653,7 +653,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -802,7 +802,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
-                format: "PHYSICAL_CARD".to_string(),
+                format: "PHYSICAL_CARD".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -824,7 +824,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema-2".to_string(),
                 imported_source_url: "CORE_URL".to_string(),
-                format: "PHYSICAL_CARD".to_string(),
+                format: "PHYSICAL_CARD".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -979,7 +979,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
-                format: "SD_JWT".to_string(),
+                format: "SD_JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(vec![
@@ -1140,7 +1140,7 @@ async fn test_create_proof_schema_array_success() {
                 imported_source_url: "CORE_URL".to_string(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
-                format: "SD_JWT".to_string(),
+                format: "SD_JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(vec![
@@ -1304,7 +1304,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(vec![CredentialSchemaClaim {
@@ -1541,7 +1541,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 imported_source_url: "http://import.credential.schema".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
@@ -1616,7 +1616,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("JWT"))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter.clone()));
 
     let mut revocation_method = MockRevocationMethod::new();
@@ -1743,7 +1743,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 imported_source_url: "http://import.credential.schema".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
@@ -1818,7 +1818,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("JWT"))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter.clone()));
 
     let mut revocation_method = MockRevocationMethod::new();
@@ -1911,7 +1911,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 imported_source_url: "CORE_URL".to_string(),
                 last_modified: get_dummy_date(),
                 name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
+                format: "MDOC".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 layout_type: LayoutType::Card,
@@ -1967,7 +1967,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 imported_source_url: "CORE_URL".to_string(),
                 last_modified: now,
                 name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
+                format: "MDOC".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
@@ -1991,7 +1991,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("MDOC"))
+        .with(eq(CredentialFormat::from("MDOC")))
         .return_once(move |_| Some(Arc::new(formatter)));
 
     let formatter_provider = Arc::new(formatter_provider);
@@ -2075,7 +2075,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 last_modified: now,
                 imported_source_url: "CORE_URL".to_string(),
                 name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
+                format: "MDOC".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
@@ -2147,7 +2147,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 last_modified: now,
                 imported_source_url: "CORE_URL".to_string(),
                 name: "test-credential-schema".to_string(),
-                format: "MDOC".to_string(),
+                format: "MDOC".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
@@ -2213,7 +2213,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 last_modified: now,
                 imported_source_url: "CORE_URL".to_string(),
                 name: "test-credential-schema".to_string(),
-                format: "OTHER_FORMAT".to_string(),
+                format: "OTHER_FORMAT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: Some(KeyStorageSecurity::Moderate),
                 schema_id: "iso-org-test123".to_string(),
@@ -2503,7 +2503,7 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
         created_date: now,
         last_modified: now,
         name: "".to_string(),
-        format: "".to_string(),
+        format: "".into(),
         imported_source_url: "CORE_URL".to_string(),
         revocation_method: "".to_string(),
         key_storage_security: None,
@@ -2756,7 +2756,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
                 name: "credential-schema".to_string(),
-                format: "JWT".to_string(),
+                format: "JWT".into(),
                 revocation_method: "NONE".to_string(),
                 key_storage_security: None,
                 claim_schemas: Some(

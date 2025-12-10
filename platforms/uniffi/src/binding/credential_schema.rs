@@ -209,6 +209,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     #[from(with_fn_ref = "TimestampFormat::format_timestamp")]
     pub last_modified: String,
     pub name: String,
+    #[from(with_fn_ref = "ToString::to_string")]
     pub format: String,
     pub revocation_method: String,
     #[from(with_fn = convert_inner)]

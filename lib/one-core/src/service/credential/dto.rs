@@ -2,8 +2,8 @@ use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
-    CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
-    OrganisationId,
+    CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
+    IdentifierId, KeyId, OrganisationId,
 };
 use strum::AsRefStr;
 use time::OffsetDateTime;
@@ -13,9 +13,7 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{
     CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
 };
-use crate::model::credential_schema::{
-    CredentialFormat, KeyStorageSecurity, LayoutType, RevocationMethod,
-};
+use crate::model::credential_schema::{KeyStorageSecurity, LayoutType, RevocationMethod};
 use crate::model::list_query::ListQuery;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{

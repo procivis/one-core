@@ -71,7 +71,7 @@ pub(super) fn validate_format_and_exchange_protocol_compatibility(
                 ))?;
 
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format.to_string())
+            .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
             ))?;
@@ -126,7 +126,7 @@ pub(super) fn validate_did_and_format_compatibility(
                 ))?;
 
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format.to_string())
+            .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
             ))?;
@@ -260,7 +260,7 @@ pub(super) fn validate_verification_key_storage_compatibility(
                 ))?;
 
         let formatter = formatter_provider
-            .get_credential_formatter(&credential_schema.format.to_string())
+            .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
             ))?;

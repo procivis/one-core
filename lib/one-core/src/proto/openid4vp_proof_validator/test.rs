@@ -343,7 +343,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     mocks
         .credential_formatter_provider
         .expect_get_formatter_by_type()
-        .returning(move |_| Some(("JWT".to_string(), credential_formatter.clone())));
+        .returning(move |_| Some(("JWT".into(), credential_formatter.clone())));
 
     let mut revocation_method = MockRevocationMethod::new();
     if let Some(revocation_check) = mock_data.revocation_check {

@@ -3,7 +3,7 @@ use std::vec;
 
 use assert2::let_assert;
 use mockall::predicate::*;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialFormat, CredentialSchemaId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -99,7 +99,7 @@ fn generic_credential_schema() -> CredentialSchema {
         last_modified: now,
         key_storage_security: None,
         name: "testName".to_string(),
-        format: "".to_string(),
+        format: "".into(),
         revocation_method: "".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -388,7 +388,7 @@ async fn test_create_credential_schema_success() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
@@ -497,7 +497,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "MDOC".to_string(),
+            format: "MDOC".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
@@ -558,7 +558,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("SD_JWT_VC"))
+        .with(eq(CredentialFormat::from("SD_JWT_VC")))
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -613,7 +613,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
     service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "external credential".to_string(),
-            format: "SD_JWT_VC".to_string(),
+            format: "SD_JWT_VC".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: true,
@@ -716,7 +716,7 @@ async fn test_create_credential_schema_success_nested_claims() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -772,7 +772,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -818,7 +818,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),
@@ -879,7 +879,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -932,7 +932,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -1025,7 +1025,7 @@ async fn test_create_credential_schema_unique_name_error() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "testName".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -1068,7 +1068,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -1105,7 +1105,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -1167,7 +1167,7 @@ async fn test_create_credential_schema_fail_validation() {
     let non_existing_format = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "NON_EXISTING_FORMAT".to_string(),
+            format: "NON_EXISTING_FORMAT".into(),
             revocation_method: "NONE".to_string(),
             key_storage_security: None,
             external_schema: false,
@@ -1193,7 +1193,7 @@ async fn test_create_credential_schema_fail_validation() {
     let non_existing_revocation_method = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "TEST".to_string(),
             key_storage_security: None,
             external_schema: false,
@@ -1220,7 +1220,7 @@ async fn test_create_credential_schema_fail_validation() {
     let wrong_datatype = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             external_schema: false,
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
@@ -1245,7 +1245,7 @@ async fn test_create_credential_schema_fail_validation() {
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
             key_storage_security: None,
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             external_schema: false,
             organisation_id: Uuid::new_v4().into(),
@@ -1330,7 +1330,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
             revocation_method: "NONE".to_string(),
             organisation_id: organisation.id.to_owned(),
@@ -1421,7 +1421,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             external_schema: false,
             revocation_method: "NONE".to_string(),
@@ -1482,7 +1482,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             external_schema: false,
             revocation_method: "NONE".to_string(),
@@ -1547,7 +1547,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "MDOC".to_string(),
+            format: "MDOC".into(),
             external_schema: false,
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
@@ -1634,7 +1634,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "MDOC".to_string(),
+            format: "MDOC".into(),
             external_schema: false,
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
@@ -1711,7 +1711,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "PHYSICAL_CARD".to_string(),
+            format: "PHYSICAL_CARD".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -1774,7 +1774,7 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             external_schema: false,
             revocation_method: "NONE".to_string(),
@@ -1822,7 +1822,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
     let first_level_fail = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             external_schema: false,
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
@@ -1851,7 +1851,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
     let nested_fail = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -1886,7 +1886,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
     let unicode_len_fail = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -2798,7 +2798,7 @@ fn test_claims_presence_in_layout_properties_validation_attributes_not_specified
 fn dummy_request() -> CreateCredentialSchemaRequestDTO {
     CreateCredentialSchemaRequestDTO {
         name: "AnyName".to_owned(),
-        format: "AnyFormat".to_owned(),
+        format: "AnyFormat".into(),
         revocation_method: "None".to_owned(),
         external_schema: false,
         organisation_id: Uuid::new_v4().into(),
@@ -2974,7 +2974,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             external_schema: false,
@@ -3040,7 +3040,7 @@ async fn test_create_credential_schema_fail_session_org_mismatch() {
     let result = service
         .create_credential_schema(CreateCredentialSchemaRequestDTO {
             name: "cred".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             key_storage_security: None,
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4().into(),

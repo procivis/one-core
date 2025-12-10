@@ -17,6 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
+use shared_types::CredentialFormat;
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
@@ -246,7 +247,7 @@ where
     }
 }
 
-pub type FormatConfig = ConfigBlock<String, FormatType>;
+pub type FormatConfig = ConfigBlock<CredentialFormat, FormatType>;
 
 #[derive(
     Debug,

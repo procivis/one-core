@@ -195,7 +195,7 @@ impl CredentialService {
 
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(schema.format.as_str())
+            .get_credential_formatter(&schema.format)
             .ok_or_else(|| {
                 IssuanceProtocolError::Failed(format!("{} formatter not found", schema.format))
             })?;

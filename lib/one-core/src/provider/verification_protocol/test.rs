@@ -221,7 +221,7 @@ fn mdoc_credential() -> Credential {
 
     credential.state = CredentialStateEnum::Accepted;
     let schema = credential.schema.as_mut().unwrap();
-    schema.format = "MDOC".to_string();
+    schema.format = "MDOC".into();
     *schema.claim_schemas.as_mut().unwrap() = vec![
         CredentialSchemaClaim {
             schema: new_claim_schemas[0].to_owned(),
@@ -475,7 +475,7 @@ fn dummy_credential() -> Credential {
             last_modified: OffsetDateTime::now_utc(),
             key_storage_security: None,
             name: "schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "revocation method".to_string(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {

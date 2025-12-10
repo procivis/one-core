@@ -35,8 +35,8 @@ use super::sdjwt::{SdJwtHolderBindingParams, prepare_sd_presentation};
 use super::vcdm::VcdmCredential;
 use super::{CredentialFormatter, MetadataClaimSchema, StatusListType, sdjwt};
 use crate::config::core_config::{
-    DatatypeConfig, DatatypeType, DidType, FormatType, IdentifierType, IssuanceProtocolType,
-    KeyAlgorithmType, KeyStorageType, RevocationType, VerificationProtocolType,
+    DatatypeConfig, DatatypeType, DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType,
+    KeyStorageType, RevocationType, VerificationProtocolType,
 };
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -138,7 +138,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             last_modified: now,
             // Will be overridden based on issuer metadata
             name: vct.clone(),
-            format: FormatType::SdJwtVc.to_string(),
+            format: "".into(), // Will be overridden based on config priority
             revocation_method: revocation_method.to_string(),
             key_storage_security: None,
             layout_type: LayoutType::Card,

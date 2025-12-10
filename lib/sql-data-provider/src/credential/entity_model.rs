@@ -1,5 +1,5 @@
 use sea_orm::FromQueryResult;
-use shared_types::{BlobId, CredentialId, CredentialSchemaId, IdentifierId};
+use shared_types::{BlobId, CredentialFormat, CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
 
 use crate::entity::credential;
@@ -25,7 +25,7 @@ pub(super) struct CredentialListEntityModel {
 
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
-    pub credential_schema_format: String,
+    pub credential_schema_format: CredentialFormat,
     pub credential_schema_id: CredentialSchemaId,
     pub credential_schema_last_modified: OffsetDateTime,
     pub credential_schema_name: String,

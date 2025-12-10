@@ -184,7 +184,7 @@ async fn test_get_credential_success_metadata() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some("https://example.org/foo".to_owned()),
-                format: Some("SD_JWT_VC".to_string()),
+                format: Some("SD_JWT_VC".into()),
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
                         schema: ClaimSchema {

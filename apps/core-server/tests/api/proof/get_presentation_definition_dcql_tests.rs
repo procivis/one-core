@@ -37,7 +37,7 @@ async fn test_get_presentation_definition_dcql_simple() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
-                format: Some("SD_JWT_VC".to_owned()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )
@@ -902,7 +902,7 @@ async fn test_get_presentation_definition_dcql_simple_w3c() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
-                format: Some("JWT".to_owned()),
+                format: Some("JWT".into()),
                 ..Default::default()
             },
         )
@@ -993,7 +993,7 @@ async fn test_get_presentation_definition_dcql_no_selective_disclosure_inapplica
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
-                format: Some("JWT".to_owned()),
+                format: Some("JWT".into()),
                 ..Default::default()
             },
         )
@@ -1424,7 +1424,7 @@ async fn test_get_presentation_definition_dcql_metadata_value_matching() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_owned()),
-                format: Some("SD_JWT_VC".to_string()),
+                format: Some("SD_JWT_VC".into()),
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
                         schema: ClaimSchema {
@@ -1635,7 +1635,7 @@ async fn test_get_presentation_definition_dcql_multiple_applicable_credentials()
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
-                format: Some("SD_JWT_VC".to_owned()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )
@@ -1774,7 +1774,7 @@ async fn test_get_presentation_definition_dcql_multiple() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
-                format: Some("SD_JWT_VC".to_owned()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )
@@ -1914,7 +1914,7 @@ async fn test_get_presentation_definition_dcql_no_claims() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(vct.to_string()),
-                format: Some("SD_JWT_VC".to_owned()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )
@@ -1986,7 +1986,7 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id1.to_string()),
-                format: Some("JSON_LD_CLASSIC".to_owned()),
+                format: Some("JSON_LD_CLASSIC".into()),
                 ..Default::default()
             },
         )
@@ -2002,7 +2002,7 @@ async fn test_get_presentation_definition_dcql_w3c_mixed_selective_disclosure() 
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id2.to_string()),
-                format: Some("JSON_LD_BBSPLUS".to_owned()),
+                format: Some("JSON_LD_BBSPLUS".into()),
                 ..Default::default()
             },
         )
@@ -2463,7 +2463,7 @@ mod trusted_authorities {
                 "NONE",
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
-                    format: Some("SD_JWT_VC".to_owned()),
+                    format: Some("SD_JWT_VC".into()),
                     ..Default::default()
                 },
             )
@@ -2567,7 +2567,7 @@ mod trusted_authorities {
                 "NONE",
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
-                    format: Some("SD_JWT_VC".to_owned()),
+                    format: Some("SD_JWT_VC".into()),
                     ..Default::default()
                 },
             )
@@ -2668,7 +2668,7 @@ mod trusted_authorities {
                 "NONE",
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
-                    format: Some("SD_JWT_VC".to_owned()),
+                    format: Some("SD_JWT_VC".into()),
                     ..Default::default()
                 },
             )
@@ -2759,7 +2759,7 @@ mod trusted_authorities {
                 "NONE",
                 TestingCreateSchemaParams {
                     schema_id: Some(vct.to_string()),
-                    format: Some("SD_JWT_VC".to_owned()),
+                    format: Some("SD_JWT_VC".into()),
                     ..Default::default()
                 },
             )

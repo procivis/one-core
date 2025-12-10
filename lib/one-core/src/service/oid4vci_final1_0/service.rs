@@ -125,7 +125,7 @@ impl OID4VCIFinal1_0Service {
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?;
+            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
 
         let format_capabilities = formatter.get_capabilities();
         let credential_signing_alg_values_supported = format_capabilities

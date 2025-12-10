@@ -46,8 +46,8 @@ use one_crypto::utilities::generate_alphanumeric;
 use sea_orm::ConnectionTrait;
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
-    BlobId, ClaimSchemaId, CredentialSchemaId, DidId, DidValue, EntityId, IdentifierId, KeyId,
-    ProofId,
+    BlobId, ClaimSchemaId, CredentialFormat, CredentialSchemaId, DidId, DidValue, EntityId,
+    IdentifierId, KeyId, ProofId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -387,7 +387,7 @@ pub struct TestingCredentialSchemaParams {
     pub last_modified: Option<OffsetDateTime>,
     pub deleted_at: Option<OffsetDateTime>,
     pub name: Option<String>,
-    pub format: Option<String>,
+    pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<Option<KeyStorageSecurity>>,
     pub revocation_method: Option<String>,
     pub layout_type: Option<LayoutType>,
@@ -430,7 +430,7 @@ pub async fn create_credential_schema(
         key_storage_security: params.key_storage_security.unwrap_or_default(),
         organisation: Some(organisation.to_owned()),
         deleted_at: params.deleted_at,
-        format: params.format.unwrap_or("JWT".to_string()),
+        format: params.format.unwrap_or("JWT".into()),
         revocation_method: params.revocation_method.unwrap_or("NONE".to_string()),
         claim_schemas: Some(claim_schemas),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
@@ -485,7 +485,7 @@ pub async fn create_credential_schema_with_claims(
         name: name.to_owned(),
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         revocation_method: revocation_method.to_owned(),
         claim_schemas: Some(claim_schemas),
         layout_type: LayoutType::Card,

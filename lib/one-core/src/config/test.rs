@@ -170,7 +170,7 @@ rusty_fork_test! {
             assert_eq!(config.app.database_url, "test2"); // via config2
         }
 
-        let jwt = config.core.format.get_fields("JWT").unwrap();
+        let jwt = config.core.format.get_fields(&"JWT".into()).unwrap();
 
         assert_eq!(
             jwt.params.as_ref().unwrap().public,

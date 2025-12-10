@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use one_crypto::CryptoProvider;
 use serde_json::json;
+use shared_types::CredentialFormat;
 
 use super::CredentialFormatter;
 use super::json_ld_bbsplus::JsonLdBbsplus;
@@ -26,26 +27,29 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait CredentialFormatterProvider: Send + Sync {
-    fn get_credential_formatter(&self, formatter_id: &str) -> Option<Arc<dyn CredentialFormatter>>;
+    fn get_credential_formatter(
+        &self,
+        credential_format: &CredentialFormat,
+    ) -> Option<Arc<dyn CredentialFormatter>>;
 
     /// Retrieves the highest priority formatter by type, if any.
     /// Returns the config name and formatter.
     fn get_formatter_by_type(
         &self,
         format_type: FormatType,
-    ) -> Option<(String, Arc<dyn CredentialFormatter>)>;
+    ) -> Option<(CredentialFormat, Arc<dyn CredentialFormatter>)>;
 }
 
 struct CredentialFormatterProviderImpl {
-    credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>>,
+    credential_formatters: HashMap<CredentialFormat, Arc<dyn CredentialFormatter>>,
     /// Map of format type to name of highest priority formatter.
-    type_to_name: HashMap<FormatType, String>,
+    type_to_name: HashMap<FormatType, CredentialFormat>,
 }
 
 impl CredentialFormatterProviderImpl {
     fn new(
-        credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>>,
-        type_to_name: HashMap<FormatType, String>,
+        credential_formatters: HashMap<CredentialFormat, Arc<dyn CredentialFormatter>>,
+        type_to_name: HashMap<FormatType, CredentialFormat>,
     ) -> Self {
         Self {
             credential_formatters,
@@ -55,14 +59,17 @@ impl CredentialFormatterProviderImpl {
 }
 
 impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
-    fn get_credential_formatter(&self, format: &str) -> Option<Arc<dyn CredentialFormatter>> {
+    fn get_credential_formatter(
+        &self,
+        format: &CredentialFormat,
+    ) -> Option<Arc<dyn CredentialFormatter>> {
         self.credential_formatters.get(format).cloned()
     }
 
     fn get_formatter_by_type(
         &self,
         format_type: FormatType,
-    ) -> Option<(String, Arc<dyn CredentialFormatter>)> {
+    ) -> Option<(CredentialFormat, Arc<dyn CredentialFormatter>)> {
         let name = self.type_to_name.get(&format_type)?;
         let formatter = self.get_credential_formatter(name)?;
         Some((name.to_owned(), formatter))
@@ -81,14 +88,15 @@ pub(crate) fn credential_formatter_provider_from_config(
     vct_type_metadata_cache: Arc<dyn VctTypeMetadataFetcher>,
     certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<Arc<dyn CredentialFormatterProvider>, ConfigValidationError> {
-    let mut credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
-    let mut type_to_name_prio: HashMap<FormatType, (String, u64)> = HashMap::new();
+    let mut credential_formatters: HashMap<CredentialFormat, Arc<dyn CredentialFormatter>> =
+        HashMap::new();
+    let mut type_to_name_prio: HashMap<FormatType, (CredentialFormat, u64)> = HashMap::new();
 
     for (name, field) in config.format.iter() {
         let priority = field.priority.unwrap_or_default();
 
         if absent_or_lower_priority(&type_to_name_prio, &field.r#type, priority) {
-            type_to_name_prio.insert(field.r#type, (name.to_owned(), priority));
+            type_to_name_prio.insert(field.r#type, (name.clone(), priority));
         }
 
         let formatter = match field.r#type {
@@ -203,7 +211,7 @@ pub(crate) fn credential_formatter_provider_from_config(
 }
 
 fn absent_or_lower_priority(
-    map: &HashMap<FormatType, (String, u64)>,
+    map: &HashMap<FormatType, (CredentialFormat, u64)>,
     key: &FormatType,
     priority: u64,
 ) -> bool {
@@ -241,7 +249,7 @@ mod test {
         );
         let mut generic_config = generic_config();
         generic_config.core.format.insert(
-            "MY_SD_JWT_VC".to_string(),
+            "MY_SD_JWT_VC".into(),
             Fields {
                 r#type: FormatType::SdJwtVc,
                 display: ConfigEntryDisplay::TranslationId("translationId".to_string()),
@@ -260,7 +268,7 @@ mod test {
             },
         );
         generic_config.core.format.insert(
-            "SD_JWT_VC_SWIYU".to_string(),
+            "SD_JWT_VC_SWIYU".into(),
             Fields {
                 r#type: FormatType::SdJwtVc,
                 display: ConfigEntryDisplay::TranslationId("translationId".to_string()),
@@ -293,7 +301,7 @@ mod test {
         .unwrap();
 
         let (name, provider) = provider.get_formatter_by_type(FormatType::SdJwtVc).unwrap();
-        assert_eq!(name, "MY_SD_JWT_VC");
+        assert_eq!(name.as_ref(), "MY_SD_JWT_VC");
         let capabilities = provider.get_capabilities();
         assert!(
             capabilities

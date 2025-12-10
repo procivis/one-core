@@ -475,7 +475,11 @@ fn first_matching_claims(
     Ok(None)
 }
 
-fn format_matches(dcql_format: &CredentialFormat, format: &str, config: &CoreConfig) -> bool {
+fn format_matches(
+    dcql_format: &CredentialFormat,
+    format: &shared_types::CredentialFormat,
+    config: &CoreConfig,
+) -> bool {
     let Some(credential_format) = config
         .format
         .get_fields(format)

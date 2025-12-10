@@ -287,7 +287,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         let format = match request.format {
-            None => Unchanged(Default::default()),
+            None => Unchanged("".into()), // Previously default empty string
             Some(format) => Set(format),
         };
 

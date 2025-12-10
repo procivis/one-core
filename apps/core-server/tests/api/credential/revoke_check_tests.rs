@@ -44,7 +44,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JWT".to_string()),
+                format: Some("JWT".into()),
                 ..Default::default()
             },
         )
@@ -140,7 +140,7 @@ async fn test_revoke_check_failed_if_only_offered() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JWT".to_string()),
+                format: Some("JWT".into()),
                 ..Default::default()
             },
         )
@@ -946,7 +946,7 @@ async fn test_revoke_check_mdoc_update() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -1109,7 +1109,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -1272,7 +1272,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -1435,7 +1435,7 @@ async fn test_revoke_check_token_update() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -1587,7 +1587,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &organisation,
             "MDOC_MSO_UPDATE_SUSPENSION",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -1737,7 +1737,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -1882,7 +1882,7 @@ async fn test_suspended_to_valid_mdoc() {
             &organisation,
             "MDOC_MSO_UPDATE_SUSPENSION",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -2077,7 +2077,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &organisation,
             "MDOC_MSO_UPDATE_SUSPENSION",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )

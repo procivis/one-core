@@ -369,7 +369,7 @@ impl OpenId4VpProofValidatorProto {
             // And more than one Credential + LVVC pairs are present.
             let credential_formatter = self
                 .credential_formatter_provider
-                .get_credential_formatter(requested_credential_schema.format.as_str())
+                .get_credential_formatter(&requested_credential_schema.format)
                 .ok_or(OpenID4VCError::ValidationError(format!(
                     "Could not find format: {}",
                     requested_credential_schema.format
@@ -406,7 +406,7 @@ impl OpenId4VpProofValidatorProto {
         let format = proof_schema_input
             .credential_schema
             .as_ref()
-            .map(|schema| schema.format.as_str())
+            .map(|schema| &schema.format)
             .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
         let formatter = self
             .credential_formatter_provider
@@ -486,7 +486,7 @@ impl OpenId4VpProofValidatorProto {
         }
 
         let mut mso = None;
-        if format == "MDOC" {
+        if format.as_ref() == "MDOC" {
             mso = Some(
                 try_extracting_mso_from_token(credential_token)
                     .await

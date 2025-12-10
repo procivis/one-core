@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use assert2::{assert, let_assert};
 use mockall::predicate::*;
+use shared_types::CredentialFormat;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -60,7 +61,7 @@ fn test_parse_import_credential_schema_success() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(eq("JWT"))
+        .with(eq(CredentialFormat::from("JWT")))
         .once()
         .return_once(|_| Some(Arc::new(formatter)));
 
@@ -91,7 +92,7 @@ fn test_parse_import_credential_schema_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
@@ -119,7 +120,7 @@ fn test_parse_import_credential_schema_success() {
     // then
     let_assert!(Ok(schema) = result);
     assert!("Imported Schema" == schema.name);
-    assert!("JWT" == schema.format);
+    assert!("JWT" == schema.format.as_ref());
 }
 
 #[test]
@@ -168,7 +169,7 @@ fn test_parse_import_with_nested_claims_success() {
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             organisation_id: Uuid::new_v4(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
@@ -219,7 +220,7 @@ async fn test_importer_import_credential_schema_success() {
         last_modified: get_dummy_date(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Test Schema".to_string(),
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
@@ -288,7 +289,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         last_modified: get_dummy_date(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(vec![]),
         organisation: Some(dummy_organisation(None)),
@@ -353,7 +354,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         last_modified: get_dummy_date(),
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
-        format: "JWT".to_string(),
+        format: "JWT".into(),
         revocation_method: "NONE".to_string(),
         claim_schemas: Some(vec![]),
         organisation: Some(dummy_organisation(None)),

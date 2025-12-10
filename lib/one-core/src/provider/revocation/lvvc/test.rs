@@ -99,7 +99,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
             created_date: now,
             last_modified: now,
             name: "schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "LVVC".to_string(),
             key_storage_security: None,
             layout_type: LayoutType::Card,

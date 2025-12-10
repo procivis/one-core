@@ -2567,7 +2567,7 @@ async fn test_handle_invitation_fails_duplicate_with_different_format() {
             "NONE",
             TestingCreateSchemaParams {
                 schema_id: Some("custom-doctype".to_string()),
-                format: Some("SD_JWT_VC".to_string()),
+                format: Some("SD_JWT_VC".into()),
                 ..Default::default()
             },
         )

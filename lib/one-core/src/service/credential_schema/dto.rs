@@ -1,7 +1,7 @@
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
+use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialFormat, CredentialSchema, KeyStorageSecurity, LayoutType, RevocationMethod,
+    CredentialSchema, KeyStorageSecurity, LayoutType, RevocationMethod,
     SortableCredentialSchemaColumn,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
@@ -111,7 +111,7 @@ pub type GetCredentialSchemaQueryDTO = ListQuery<
 #[derive(Clone, Debug)]
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
-    pub format: String,
+    pub format: CredentialFormat,
     pub revocation_method: String,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,

@@ -62,7 +62,7 @@ pub fn throw_if_invalid_credential_combination(
     if schemas.len() > 1 {
         for schema in schemas {
             let formatter = formatter_provider
-                .get_credential_formatter(&schema.format.to_string())
+                .get_credential_formatter(&schema.format)
                 .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
 
             if !formatter
@@ -128,7 +128,7 @@ pub fn extract_claims_from_credential_schema(
                 .ok_or_else(|| ServiceError::MappingError("Missing credential schema".into()))?;
 
             let formatter = formatter_provider
-                .get_credential_formatter(&credential_schema.format.to_string())
+                .get_credential_formatter(&credential_schema.format)
                 .ok_or(MissingProviderError::Formatter(
                     credential_schema.format.to_string(),
                 ))?;
@@ -226,7 +226,7 @@ pub(super) fn validate_imported_proof_schema(
         config
             .format
             .get_if_enabled(format)
-            .map_err(|_| ProofSchemaImportError::UnsupportedFormat(format.to_owned()))?;
+            .map_err(|_| ProofSchemaImportError::UnsupportedFormat(format.to_string()))?;
 
         validate_imported_proof_schema_data_types(&schema.claim_schemas, config)?;
     }

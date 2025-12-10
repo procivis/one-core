@@ -459,7 +459,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             created_date: now,
             last_modified: now,
             name: schema_name,
-            format: "JSON_LD_BBSPLUS".to_string(),
+            format: "".into(),
             revocation_method: revocation_method.to_string(),
             key_storage_security: None,
             layout_type: LayoutType::Card,

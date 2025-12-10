@@ -7,7 +7,7 @@ use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialSchemaId, OrganisationId};
+use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
@@ -37,7 +37,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: String,
+    pub format: CredentialFormat,
     pub revocation_method: String,
     /// Indication of what type of key storage the wallet should use.
     #[from(with_fn = convert_inner)]
@@ -70,7 +70,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     pub last_modified: OffsetDateTime,
     pub name: String,
-    pub format: String,
+    pub format: CredentialFormat,
     pub revocation_method: String,
     pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]

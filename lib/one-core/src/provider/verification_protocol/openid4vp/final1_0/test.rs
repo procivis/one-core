@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use dcql::DcqlQuery;
+use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
@@ -96,7 +97,11 @@ fn generic_params() -> Params {
     }
 }
 
-fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<RelatedKey>) -> Proof {
+fn test_proof(
+    proof_id: Uuid,
+    credential_format: CredentialFormat,
+    verifier_key: Option<RelatedKey>,
+) -> Proof {
     let key_id = Uuid::new_v4().into();
     Proof {
         id: proof_id.into(),
@@ -136,7 +141,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str, verifier_key: Option<Rela
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "test-credential-schema".to_string(),
-                    format: credential_format.to_string(),
+                    format: credential_format,
                     revocation_method: "NONE".to_string(),
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
@@ -221,7 +226,7 @@ async fn test_share_proof_direct_post() {
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT", None);
+    let proof = test_proof(proof_id, "JWT".into(), None);
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
@@ -377,7 +382,7 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
         reference: "1".to_string(),
     };
 
-    let proof = test_proof(proof_id, "JWT", Some(key_agreement_key));
+    let proof = test_proof(proof_id, "JWT".into(), Some(key_agreement_key));
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
@@ -534,7 +539,7 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
         reference: "1".to_string(),
     };
 
-    let proof = test_proof(proof_id, "JWT", Some(key_agreement_key));
+    let proof = test_proof(proof_id, "JWT".into(), Some(key_agreement_key));
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 

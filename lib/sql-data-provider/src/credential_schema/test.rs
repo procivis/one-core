@@ -118,7 +118,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(
                 new_claim_schemas
@@ -196,7 +196,7 @@ async fn test_create_credential_schema_success() {
             key_storage_security: Some(KeyStorageSecurity::Basic.into()),
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
-            format: "JWT".to_string(),
+            format: "JWT".into(),
             revocation_method: "NONE".to_string(),
             claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
@@ -484,7 +484,7 @@ async fn test_delete_credential_schema_not_found() {
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             name: "Test".to_string(),
-            format: "MDOC".to_string(),
+            format: "MDOC".into(),
             revocation_method: "NONE".to_string(),
             key_storage_security: None,
             layout_type: LayoutType::Document,
@@ -515,7 +515,7 @@ async fn test_update_credential_schema_success() {
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
             revocation_method: Some(new_revocation_method.to_string()),
-            format: Some(new_format.to_string()),
+            format: Some(new_format.into()),
             claim_schemas: None,
             layout_properties: Some(LayoutProperties {
                 background: Some(BackgroundProperties {
@@ -535,7 +535,7 @@ async fn test_update_credential_schema_success() {
         .unwrap();
     assert_eq!(db_schemas.len(), 1);
     assert_eq!(db_schemas[0].revocation_method, new_revocation_method);
-    assert_eq!(db_schemas[0].format, new_format);
+    assert_eq!(db_schemas[0].format.as_ref(), new_format);
     assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
     assert_eq!(
         &db_schemas[0]

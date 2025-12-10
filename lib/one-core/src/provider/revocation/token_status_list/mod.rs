@@ -15,6 +15,7 @@ use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
+use crate::config::core_config::FormatType;
 use crate::mapper::params::convert_params;
 use crate::model::certificate::CertificateRelations;
 use crate::model::common::LockType;
@@ -480,11 +481,14 @@ impl RevocationMethod for TokenStatusList {
 
 impl TokenStatusList {
     fn get_formatter_for_issuance(&self) -> Result<Arc<dyn CredentialFormatter>, RevocationError> {
-        let format = self.params.format.to_string();
-
+        let format_type = match self.params.format {
+            StatusListCredentialFormat::Jwt => FormatType::Jwt,
+            StatusListCredentialFormat::JsonLdClassic => FormatType::JsonLdClassic,
+        };
         self.formatter_provider
-            .get_credential_formatter(&format)
-            .ok_or(RevocationError::FormatterNotFound(format))
+            .get_formatter_by_type(format_type)
+            .ok_or(RevocationError::FormatterNotFound(format_type.to_string()))
+            .map(|(_, formatter)| formatter)
     }
 
     async fn create_entry(

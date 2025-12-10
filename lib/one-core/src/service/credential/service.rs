@@ -132,7 +132,7 @@ impl CredentialService {
         let formatter_capabilities = self
             .formatter_provider
             .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?
+            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?
             .get_capabilities();
 
         let exchange_capabilities = self
@@ -324,7 +324,7 @@ impl CredentialService {
         }
 
         let mdoc_validity_credentials = match &credential.schema {
-            Some(schema) if schema.format == "MDOC" => {
+            Some(schema) if schema.format.to_string() == "MDOC" => {
                 self.validity_credential_repository
                     .get_latest_by_credential_id(*credential_id, ValidityCredentialType::Mdoc)
                     .await?
@@ -839,7 +839,9 @@ impl CredentialService {
             .formatter_provider
             .get_credential_formatter(&credential_schema.format)
         else {
-            return Err(MissingProviderError::Formatter(credential_schema.format).into());
+            return Err(
+                MissingProviderError::Formatter(credential_schema.format.to_string()).into(),
+            );
         };
 
         let detail_credential = formatter

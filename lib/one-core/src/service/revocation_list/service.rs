@@ -148,12 +148,11 @@ impl RevocationListService {
             }
         };
 
-        let format = schema.format.to_string();
         let formatter = self
             .formatter_provider
-            .get_credential_formatter(&format)
+            .get_credential_formatter(&schema.format)
             .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::Formatter(format.to_owned()),
+                MissingProviderError::Formatter(schema.format.to_string()),
             ))?;
 
         let extracted_credential = formatter

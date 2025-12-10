@@ -37,7 +37,7 @@ async fn test_create_credential_schema_success() {
     assert_eq!(credential_schema.name, "some credential schema");
     assert_eq!(credential_schema.revocation_method, "NONE");
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
-    assert_eq!(credential_schema.format, "JWT");
+    assert_eq!(credential_schema.format.as_ref(), "JWT");
     let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
     assert_eq!(
         claim_schemas

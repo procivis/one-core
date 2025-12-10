@@ -120,11 +120,14 @@ impl VCAPIService {
             self.key_algorithm_provider.clone(),
         )?;
 
-        let credential_format = credential_format.as_deref().unwrap_or("JSON_LD_CLASSIC");
+        let credential_format = credential_format
+            .as_deref()
+            .unwrap_or("JSON_LD_CLASSIC")
+            .into();
 
         let formatter = self
             .credential_formatter_provider
-            .get_credential_formatter(credential_format)
+            .get_credential_formatter(&credential_format)
             .ok_or(ServiceError::MissingProvider(
                 MissingProviderError::Formatter(credential_format.to_string()),
             ))?;
@@ -227,11 +230,13 @@ impl VCAPIService {
                 .credential_format
                 .as_deref()
                 .unwrap_or("JSON_LD_CLASSIC")
-        };
+        }
+        .to_string()
+        .into();
 
         let formatter = self
             .credential_formatter_provider
-            .get_credential_formatter(format)
+            .get_credential_formatter(&format)
             .ok_or(ServiceError::Other(format!(
                 "Formatter not found for credential format {format}"
             )))?;

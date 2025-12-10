@@ -299,7 +299,7 @@ async fn test_create_proof_scan_to_verify_invalid_credential() {
         &db_conn,
         &organisation,
         Some(TestingCredentialSchemaParams {
-            format: Some("PHYSICAL_CARD".to_string()),
+            format: Some("PHYSICAL_CARD".into()),
             schema_id: Some("IdentityCard".to_string()),
             ..Default::default()
         }),
@@ -419,7 +419,7 @@ async fn test_create_proof_mdoc_without_key_agreement_key() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
                 ..Default::default()
             },

@@ -164,7 +164,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             &org,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -243,7 +243,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             &org,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )

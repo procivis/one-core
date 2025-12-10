@@ -19,7 +19,7 @@ pub(crate) fn throw_if_credential_request_invalid(
     let requested_format = map_from_openid4vp_format(request.format.as_str())
         .map_err(|e| ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(e)))?;
 
-    if !schema.format.starts_with(&requested_format) {
+    if !schema.format.to_string().starts_with(&requested_format) {
         return Err(ServiceError::OpenID4VCIError(
             OpenID4VCIError::UnsupportedCredentialFormat,
         ));

@@ -146,7 +146,7 @@ async fn test_succeed_to_create_nested_proof_schema_without_object_claim() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("SD_JWT".to_owned()),
+                format: Some("SD_JWT".into()),
                 ..Default::default()
             },
         )
@@ -484,7 +484,7 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("SD_JWT_VC_SWIYU".to_string()),
+                format: Some("SD_JWT_VC_SWIYU".into()),
                 ..Default::default()
             },
         )
@@ -499,7 +499,7 @@ async fn test_fail_to_create_proof_schema_with_mixed_combined_presentation_suppo
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
                 ..Default::default()
             },
@@ -568,7 +568,7 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 schema_id: Some("org.iso.18013.5.1.mDL".to_string()),
                 ..Default::default()
             },
@@ -583,7 +583,7 @@ async fn test_create_proof_schema_with_both_schemas_supporting_combined_presenta
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("JWT".to_string()),
+                format: Some("JWT".into()),
                 ..Default::default()
             },
         )
@@ -654,7 +654,7 @@ async fn test_create_proof_schema_with_single_schema_without_combined_presentati
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("SD_JWT_VC_SWIYU".to_string()),
+                format: Some("SD_JWT_VC_SWIYU".into()),
                 ..Default::default()
             },
         )

@@ -110,7 +110,7 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -358,7 +358,7 @@ async fn test_get_credential_offer_success_mdoc() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )
@@ -434,7 +434,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             &organisation,
             "NONE",
             TestingCreateSchemaParams {
-                format: Some("MDOC".to_string()),
+                format: Some("MDOC".into()),
                 ..Default::default()
             },
         )

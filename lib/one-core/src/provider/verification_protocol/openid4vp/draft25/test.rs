@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use url::Url;
@@ -106,7 +107,7 @@ async fn test_share_proof() {
     });
 
     let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT");
+    let proof = test_proof(proof_id, "JWT".into());
 
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
 
@@ -209,7 +210,7 @@ async fn test_share_proof() {
     );
 }
 
-fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
+fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
     Proof {
         id: proof_id.into(),
         created_date: OffsetDateTime::now_utc(),
@@ -239,7 +240,7 @@ fn test_proof(proof_id: Uuid, credential_format: &str) -> Proof {
                     created_date: OffsetDateTime::now_utc(),
                     last_modified: OffsetDateTime::now_utc(),
                     name: "test-credential-schema".to_string(),
-                    format: credential_format.to_string(),
+                    format: credential_format,
                     revocation_method: "NONE".to_string(),
                     key_storage_security: None,
                     layout_type: LayoutType::Card,

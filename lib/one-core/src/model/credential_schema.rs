@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialFormat, CredentialSchemaId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -15,7 +15,6 @@ use crate::service::credential_schema::dto::{
 };
 
 pub type CredentialSchemaName = String;
-pub type CredentialFormat = String;
 pub type RevocationMethod = String;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -154,7 +153,7 @@ pub type GetCredentialSchemaQuery = ListQuery<
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
     pub revocation_method: Option<RevocationMethod>,
-    pub format: Option<String>,
+    pub format: Option<CredentialFormat>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,

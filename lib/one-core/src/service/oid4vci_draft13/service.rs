@@ -187,7 +187,7 @@ impl OID4VCIDraft13Service {
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&schema.format)
-            .ok_or(MissingProviderError::Formatter(schema.format.to_owned()))?;
+            .ok_or(MissingProviderError::Formatter(schema.format.to_string()))?;
 
         let format_capabilities = formatter.get_capabilities();
         let credential_signing_alg_values_supported = format_capabilities
@@ -807,7 +807,7 @@ impl OID4VCIDraft13Service {
                 let credential_format_type = self
                     .config
                     .format
-                    .get_fields(credential_schema.format.as_str())?
+                    .get_fields(&credential_schema.format)?
                     .r#type;
 
                 // we add refresh token for mdoc

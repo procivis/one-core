@@ -2,7 +2,6 @@
 //! https://www.iso.org/standard/69084.html
 
 use std::collections::HashMap;
-use std::str::FromStr;
 use std::sync::Arc;
 
 use anyhow::Context;
@@ -27,7 +26,7 @@ use super::{
     VerificationProtocolError,
 };
 use crate::config::core_config::{
-    CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationEngagement,
+    CoreConfig, DidType, IdentifierType, TransportType, VerificationEngagement,
 };
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
 use crate::model::organisation::Organisation;
@@ -199,9 +198,19 @@ impl VerificationProtocol for IsoMdl {
             .as_ref()
             .map(|did| did.did.to_owned());
 
-        let presentation_formatter = self
+        let format_type = self
+            .config
+            .format
+            .get_type(&credential_presentation.credential_schema.format)
+            .map_err(|err| {
+                VerificationProtocolError::Failed(format!(
+                    "unknown credential formatter `{}`: {err}",
+                    credential_presentation.credential_schema.format
+                ))
+            })?;
+        let (_, presentation_formatter) = self
             .presentation_formatter_provider
-            .get_presentation_formatter(&credential_presentation.credential_schema.format)
+            .get_presentation_formatter_by_type(format_type)
             .ok_or(VerificationProtocolError::Failed(format!(
                 "unknown format: {}",
                 credential_presentation.credential_schema.format
@@ -222,7 +231,10 @@ impl VerificationProtocol for IsoMdl {
         let presentations = credential_presentations
             .into_iter()
             .map(|credential| {
-                let format = FormatType::from_str(&credential.credential_schema.format)
+                let format = self
+                    .config
+                    .format
+                    .get_type(&credential.credential_schema.format)
                     .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
                 Ok(CredentialToPresent {
                     raw_credential: credential.presentation,

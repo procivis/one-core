@@ -41,7 +41,7 @@ impl CredentialSchemaService {
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&request.format)
-            .ok_or(MissingProviderError::Formatter(request.format.to_owned()))?;
+            .ok_or(MissingProviderError::Formatter(request.format.to_string()))?;
         super::validator::validate_create_request(
             &request,
             &self.config,
