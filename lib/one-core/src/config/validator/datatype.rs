@@ -211,55 +211,8 @@ fn validate_date(value: &str, params: DateParams) -> Result<(), DatatypeValidati
         .formats
         .iter()
         .map(|format| match format {
-            DateFormat::Date => {
-                let date = Date::parse(value, DATE_FORMAT)?;
-
-                if let Some(min) = &params.min {
-                    let min_date = parse_min_max_date(min)?;
-                    if date < min_date {
-                        return Err(DatatypeValidationError::DateTooEarly(
-                            value.to_string(),
-                            min.to_owned(),
-                        ));
-                    }
-                }
-
-                if let Some(max) = &params.max {
-                    let max_date = parse_min_max_date(max)?;
-                    if date > max_date {
-                        return Err(DatatypeValidationError::DateTooLate(
-                            value.to_string(),
-                            max.to_owned(),
-                        ));
-                    }
-                }
-
-                Ok(())
-            }
-            DateFormat::Datetime => {
-                let datetime = OffsetDateTime::parse(value, &Rfc3339)?;
-                if let Some(min) = &params.min {
-                    let min_date = parse_min_max_datetime(min)?;
-                    if datetime < min_date {
-                        return Err(DatatypeValidationError::DateTooEarly(
-                            value.to_string(),
-                            min.to_owned(),
-                        ));
-                    }
-                }
-
-                if let Some(max) = &params.max {
-                    let max_date = parse_min_max_datetime(max)?;
-                    if datetime > max_date {
-                        return Err(DatatypeValidationError::DateTooLate(
-                            value.to_string(),
-                            max.to_owned(),
-                        ));
-                    }
-                }
-
-                Ok(())
-            }
+            DateFormat::Date => validate_date_format_date(value, &params),
+            DateFormat::Datetime => validate_date_format_datetime(value, &params),
         })
         .partition(|r| r.is_ok());
 
@@ -267,6 +220,63 @@ fn validate_date(value: &str, params: DateParams) -> Result<(), DatatypeValidati
         && let Some(last_error) = errors.pop()
     {
         return last_error;
+    }
+
+    Ok(())
+}
+
+fn validate_date_format_date(
+    value: &str,
+    params: &DateParams,
+) -> Result<(), DatatypeValidationError> {
+    let date = Date::parse(value, DATE_FORMAT)?;
+
+    if let Some(min) = &params.min {
+        let min_date = parse_min_max_date(min)?;
+        if date < min_date {
+            return Err(DatatypeValidationError::DateTooEarly(
+                value.to_string(),
+                min.to_owned(),
+            ));
+        }
+    }
+
+    if let Some(max) = &params.max {
+        let max_date = parse_min_max_date(max)?;
+        if date > max_date {
+            return Err(DatatypeValidationError::DateTooLate(
+                value.to_string(),
+                max.to_owned(),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_date_format_datetime(
+    value: &str,
+    params: &DateParams,
+) -> Result<(), DatatypeValidationError> {
+    let datetime = OffsetDateTime::parse(value, &Rfc3339)?;
+    if let Some(min) = &params.min {
+        let min_date = parse_min_max_datetime(min)?;
+        if datetime < min_date {
+            return Err(DatatypeValidationError::DateTooEarly(
+                value.to_string(),
+                min.to_owned(),
+            ));
+        }
+    }
+
+    if let Some(max) = &params.max {
+        let max_date = parse_min_max_datetime(max)?;
+        if datetime > max_date {
+            return Err(DatatypeValidationError::DateTooLate(
+                value.to_string(),
+                max.to_owned(),
+            ));
+        }
     }
 
     Ok(())

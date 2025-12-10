@@ -277,63 +277,10 @@ impl SSIHolderService {
                             "credential_schema missing".to_string(),
                         ))?;
 
-                let claims = credential
-                    .claims
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError("claims missing".to_string()))?
-                    .iter()
-                    .filter(|claim| claim.schema.as_ref().is_some_and(|schema| !schema.metadata))
-                    // parents before children
-                    .sorted_by_key(|claim| &claim.path);
-
-                let mut disclosed_claims_for_credential = HashMap::<ClaimId, Claim>::new();
-                for claim in claims {
-                    let claim_path = &claim.path;
-                    let mut disclosed = false;
-                    for submitted_path in &submitted_paths {
-                        // explicitly submitted
-                        if claim_path == submitted_path {
-                            disclosed = true;
-                            break;
-                        }
-
-                        // parent claims of submitted (all levels transitively)
-                        if submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}"))
-                        {
-                            disclosed = true;
-                            break;
-                        }
-
-                        // child claims of submitted (all levels transitively)
-                        if claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}"))
-                        {
-                            disclosed = true;
-                            break;
-                        }
-                    }
-
-                    // non-selectively-disclosable (direct) children of disclosed claims
-                    // or non-selectively-disclosable root claims
-                    if !disclosed
-                        && !claim.selectively_disclosable
-                        && claim_path.rsplit_once(NESTED_CLAIM_MARKER).is_none_or(
-                            |(parent_path, _)| {
-                                disclosed_claims_for_credential
-                                    .values()
-                                    .map(|claim| claim.path.as_str())
-                                    .contains(&parent_path)
-                            },
-                        )
-                    {
-                        disclosed = true;
-                    }
-
-                    if disclosed {
-                        disclosed_claims_for_credential.insert(claim.id, claim.to_owned());
-                    }
-                }
-
-                disclosed_claims.extend(disclosed_claims_for_credential);
+                disclosed_claims.extend(disclosed_claims_for_credential(
+                    credential,
+                    &submitted_paths,
+                )?);
 
                 let formatter =
                     self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
@@ -658,13 +605,6 @@ impl SSIHolderService {
             }
         }
 
-        let blob_storage = self
-            .blob_storage_provider
-            .get_blob_storage(BlobStorageType::Db)
-            .await
-            .ok_or(ServiceError::MissingProvider(
-                MissingProviderError::BlobStorage("Missing blobstorage type DB".to_string()),
-            ))?;
         let mut submitted_claims = vec![];
         let mut credential_presentations = vec![];
         for (query_id, credential_selection) in creds_paths_to_present {
@@ -673,93 +613,20 @@ impl SSIHolderService {
                 presented_paths,
             } in credential_selection
             {
-                let credential = self
-                    .credential_repository
-                    .get_credential(
-                        &credential_id,
-                        &CredentialRelations {
-                            claims: Some(Default::default()),
-                            key: Some(Default::default()),
-                            holder_identifier: Some(IdentifierRelations {
-                                did: Some(DidRelations {
-                                    keys: Some(Default::default()),
-                                    ..Default::default()
-                                }),
-                                key: Some(Default::default()),
-                                ..Default::default()
-                            }),
-                            schema: Some(Default::default()),
-                            ..Default::default()
-                        },
-                    )
-                    .await?
-                    .ok_or(EntityNotFoundError::Credential(credential_id))?;
-                let blob_id = credential
-                    .credential_blob_id
-                    .ok_or(ServiceError::MappingError(format!(
-                        "Missing blob id on credential `{credential_id}`"
-                    )))?;
-                let credential_blob =
-                    blob_storage
-                        .get(&blob_id)
-                        .await?
-                        .ok_or(ServiceError::MappingError(format!(
-                            "Blob with id `{blob_id}` (belonging to credential `{credential_id}`) not found"
-
-                        )))?;
-
-                let credential_content = std::str::from_utf8(&credential_blob.value)
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
-                let credential_schema =
-                    credential
-                        .schema
-                        .as_ref()
-                        .ok_or(ServiceError::MappingError(
-                            "credential_schema missing".to_string(),
-                        ))?;
-                let formatter =
-                    self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
-
-                let credential_presentation = CredentialPresentation {
-                    token: credential_content.to_owned(),
-                    // credential formatters do not use intermediary claims
-                    disclosed_keys: paths_to_leafs(&presented_paths),
-                };
-                let (presentation, validity_credential_presentation) = self
-                    .prepare_credential_presentation(
-                        credential_presentation,
-                        holder_binding_ctx.clone(),
-                        &credential,
-                        &*formatter,
+                let (presented_credential, claims) = self
+                    .get_credential_presentation(
+                        query_id.to_owned(),
+                        credential_id,
+                        &presented_paths,
+                        holder_binding_ctx.to_owned(),
                     )
                     .await?;
 
-                let (holder_did, key, jwk_key_id) =
-                    holder_did_key_jwk_from_credential(&credential)?;
-                let presented_credential = FormattedCredentialPresentation {
-                    presentation,
-                    validity_credential_presentation,
-                    credential_schema: credential_schema.clone(),
-                    reference: PresentationReference::Dcql {
-                        credential_query_id: query_id.clone(),
-                    },
-                    holder_did,
-                    key,
-                    jwk_key_id,
-                };
                 credential_presentations.push(presented_credential);
-                let mut claims = credential
-                    .claims
-                    .ok_or(ServiceError::MappingError(format!(
-                        "Missing claims on credential `{credential_id}`"
-                    )))?
-                    .into_iter()
-                    .filter(|c| presented_paths.contains(&c.path))
-                    .collect();
-                submitted_claims.append(&mut claims);
+                submitted_claims.extend(claims);
             }
         }
+
         self.submit_and_update_proof(
             &proof,
             &*verification_protocol,
@@ -854,6 +721,106 @@ impl SSIHolderService {
         }
         Ok(())
     }
+
+    async fn get_credential_presentation(
+        &self,
+        credential_query_id: String,
+        credential_id: CredentialId,
+        presented_paths: &[String],
+        holder_binding_ctx: Option<HolderBindingCtx>,
+    ) -> Result<(FormattedCredentialPresentation, Vec<Claim>), ServiceError> {
+        let blob_storage = self
+            .blob_storage_provider
+            .get_blob_storage(BlobStorageType::Db)
+            .await
+            .ok_or(ServiceError::MissingProvider(
+                MissingProviderError::BlobStorage("Missing blobstorage type DB".to_string()),
+            ))?;
+
+        let credential = self
+            .credential_repository
+            .get_credential(
+                &credential_id,
+                &CredentialRelations {
+                    claims: Some(Default::default()),
+                    key: Some(Default::default()),
+                    holder_identifier: Some(IdentifierRelations {
+                        did: Some(DidRelations {
+                            keys: Some(Default::default()),
+                            ..Default::default()
+                        }),
+                        key: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    schema: Some(Default::default()),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(EntityNotFoundError::Credential(credential_id))?;
+        let blob_id = credential
+            .credential_blob_id
+            .ok_or(ServiceError::MappingError(format!(
+                "Missing blob id on credential `{credential_id}`"
+            )))?;
+        let credential_blob =
+            blob_storage
+                .get(&blob_id)
+                .await?
+                .ok_or(ServiceError::MappingError(format!(
+                    "Blob with id `{blob_id}` (belonging to credential `{credential_id}`) not found"
+                )))?;
+
+        let credential_content = std::str::from_utf8(&credential_blob.value)
+            .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+
+        let credential_schema = credential
+            .schema
+            .as_ref()
+            .ok_or(ServiceError::MappingError(
+                "credential_schema missing".to_string(),
+            ))?;
+        let formatter =
+            self.formatter_for_blob_and_schema(credential_content, credential_schema)?;
+
+        let credential_presentation = CredentialPresentation {
+            token: credential_content.to_owned(),
+            // credential formatters do not use intermediary claims
+            disclosed_keys: paths_to_leafs(presented_paths),
+        };
+        let (presentation, validity_credential_presentation) = self
+            .prepare_credential_presentation(
+                credential_presentation,
+                holder_binding_ctx,
+                &credential,
+                &*formatter,
+            )
+            .await?;
+
+        let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(&credential)?;
+        let presented_credential = FormattedCredentialPresentation {
+            presentation,
+            validity_credential_presentation,
+            credential_schema: credential_schema.clone(),
+            reference: PresentationReference::Dcql {
+                credential_query_id,
+            },
+            holder_did,
+            key,
+            jwk_key_id,
+        };
+
+        let claims = credential
+            .claims
+            .ok_or(ServiceError::MappingError(format!(
+                "Missing claims on credential `{credential_id}`"
+            )))?
+            .into_iter()
+            .filter(|c| presented_paths.contains(&c.path))
+            .collect();
+
+        Ok((presented_credential, claims))
+    }
 }
 
 fn presented_claim_paths_from_nested_with_selection(
@@ -918,4 +885,65 @@ fn is_selected_claim(
             || claim.path.starts_with(&format!("{}/", &selected_path))
     });
     Ok(claim.required || is_selected || is_child_or_parent_of_selected)
+}
+
+fn disclosed_claims_for_credential(
+    credential: &Credential,
+    submitted_paths: &[String],
+) -> Result<HashMap<ClaimId, Claim>, ServiceError> {
+    let claims = credential
+        .claims
+        .as_ref()
+        .ok_or(ServiceError::MappingError("claims missing".to_string()))?
+        .iter()
+        .filter(|claim| claim.schema.as_ref().is_some_and(|schema| !schema.metadata))
+        // parents before children
+        .sorted_by_key(|claim| &claim.path);
+
+    let mut result = HashMap::<ClaimId, Claim>::new();
+    for claim in claims {
+        let claim_path = &claim.path;
+        let mut disclosed = false;
+        for submitted_path in submitted_paths {
+            // explicitly submitted
+            if claim_path == submitted_path {
+                disclosed = true;
+                break;
+            }
+
+            // parent claims of submitted (all levels transitively)
+            if submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}")) {
+                disclosed = true;
+                break;
+            }
+
+            // child claims of submitted (all levels transitively)
+            if claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}")) {
+                disclosed = true;
+                break;
+            }
+        }
+
+        // non-selectively-disclosable (direct) children of disclosed claims
+        // or non-selectively-disclosable root claims
+        if !disclosed
+            && !claim.selectively_disclosable
+            && claim_path
+                .rsplit_once(NESTED_CLAIM_MARKER)
+                .is_none_or(|(parent_path, _)| {
+                    result
+                        .values()
+                        .map(|claim| claim.path.as_str())
+                        .contains(&parent_path)
+                })
+        {
+            disclosed = true;
+        }
+
+        if disclosed {
+            result.insert(claim.id, claim.to_owned());
+        }
+    }
+
+    Ok(result)
 }

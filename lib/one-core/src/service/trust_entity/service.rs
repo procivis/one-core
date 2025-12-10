@@ -732,81 +732,26 @@ impl TrustEntityService {
                 };
 
                 let identifier_id = identifier.id;
-                let validated_trust_entity = match identifier.r#type {
-                    IdentifierType::Key => {
-                        // not supported at all -> fail hard
-                        return Err(BusinessLogicError::IncompatibleIdentifierType {
-                            reason: "Key identifier not supported".to_string(),
-                        }
-                        .into());
-                    }
-                    IdentifierType::Did => Ok(trust_entity_from_identifier_and_anchor(
-                        trust_entity,
-                        identifier,
-                        trust_anchor.clone(),
-                        None,
-                    )),
-                    IdentifierType::Certificate => {
-                        if let Some(certificate) = &certificate {
-                            self.validate_ca(&trust_entity, certificate)
-                                .await
-                                .map(|ca_cert| {
-                                    trust_entity_from_identifier_and_anchor(
-                                        trust_entity,
-                                        identifier,
-                                        trust_anchor.clone(),
-                                        Some(ca_cert),
-                                    )
-                                })
+                if let Some(resolved) = self
+                    .resolve_batch(trust_entity, &trust_anchor, identifier, certificate)
+                    .await?
+                {
+                    // insert into result structure
+                    if let Some(previous_entry) = result.get_mut(&identifier_id) {
+                        if let Some(previous_entity) = previous_entry
+                            .iter_mut()
+                            .find(|item| item.trust_entity.id == resolved.trust_entity.id)
+                        {
+                            previous_entity
+                                .certificate_ids
+                                .extend(resolved.certificate_ids);
                         } else {
-                            return Err(ServiceError::Other(format!(
-                                "failed to retrieve certificate for identifier {}",
-                                identifier.id
-                            )));
+                            previous_entry.push(resolved);
                         }
-                    }
-                };
-
-                // validation is allowed to fail, silently ignore and drop it from the results
-                let Ok(validated_trust_entity) = validated_trust_entity else {
-                    tracing::info!(
-                        "identifier `{identifier_id}`{} is not trusted{}",
-                        certificate
-                            .map(|cert| format!(" using certificate {}", cert.id))
-                            .unwrap_or_default(),
-                        validated_trust_entity
-                            .err()
-                            .map(|err| format!(": {err}"))
-                            .unwrap_or_default()
-                    );
-                    continue;
-                };
-
-                let certificate_id = certificate.map(|c| c.id);
-                let mut certificate_ids = certificate_id.map(|id| vec![id]).unwrap_or_default();
-
-                // insert into result structure
-                if let Some(previous_entry) = result.get_mut(&identifier_id) {
-                    if let Some(previous_entity) = previous_entry
-                        .iter_mut()
-                        .find(|item| item.trust_entity.id == validated_trust_entity.id)
-                    {
-                        previous_entity.certificate_ids.append(&mut certificate_ids);
                     } else {
-                        previous_entry.push(ResolvedIdentifierTrustEntityResponseDTO {
-                            trust_entity: validated_trust_entity,
-                            certificate_ids,
-                        });
+                        result.insert(identifier_id, vec![resolved]);
                     }
-                } else {
-                    result.insert(
-                        identifier_id,
-                        vec![ResolvedIdentifierTrustEntityResponseDTO {
-                            trust_entity: validated_trust_entity,
-                            certificate_ids,
-                        }],
-                    );
-                }
+                };
             }
         }
 
@@ -896,6 +841,74 @@ impl TrustEntityService {
             batches.push(batch);
         }
         Ok((batches, batch_to_identifier_and_cert_map))
+    }
+
+    async fn resolve_batch(
+        &self,
+        trust_entity: TrustEntityByEntityKey,
+        trust_anchor: &TrustAnchor,
+        identifier: Identifier,
+        certificate: Option<Certificate>,
+    ) -> Result<Option<ResolvedIdentifierTrustEntityResponseDTO>, ServiceError> {
+        let identifier_id = identifier.id;
+        let validated_trust_entity = match identifier.r#type {
+            IdentifierType::Key => {
+                // not supported at all -> fail hard
+                return Err(BusinessLogicError::IncompatibleIdentifierType {
+                    reason: "Key identifier not supported".to_string(),
+                }
+                .into());
+            }
+            IdentifierType::Did => Ok(trust_entity_from_identifier_and_anchor(
+                trust_entity,
+                identifier,
+                trust_anchor.clone(),
+                None,
+            )),
+            IdentifierType::Certificate => {
+                if let Some(certificate) = &certificate {
+                    self.validate_ca(&trust_entity, certificate)
+                        .await
+                        .map(|ca_cert| {
+                            trust_entity_from_identifier_and_anchor(
+                                trust_entity,
+                                identifier,
+                                trust_anchor.clone(),
+                                Some(ca_cert),
+                            )
+                        })
+                } else {
+                    return Err(ServiceError::Other(format!(
+                        "failed to retrieve certificate for identifier {identifier_id}",
+                    )));
+                }
+            }
+        };
+
+        let Ok(validated_trust_entity) = validated_trust_entity else {
+            // validation is allowed to fail, ignore and drop it from the results
+            tracing::info!(
+                "identifier `{identifier_id}`{} is not trusted{}",
+                certificate
+                    .map(|cert| format!(" using certificate {}", cert.id))
+                    .unwrap_or_default(),
+                validated_trust_entity
+                    .err()
+                    .map(|err| format!(": {err}"))
+                    .unwrap_or_default()
+            );
+            return Ok(None);
+        };
+
+        let mut certificate_ids = vec![];
+        if let Some(certificate) = certificate {
+            certificate_ids.push(certificate.id);
+        };
+
+        Ok(Some(ResolvedIdentifierTrustEntityResponseDTO {
+            trust_entity: validated_trust_entity,
+            certificate_ids,
+        }))
     }
 
     fn get_proof_of_possession_leeway(&self, entity: &TrustEntity) -> Result<u64, ServiceError> {

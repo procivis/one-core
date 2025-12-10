@@ -76,27 +76,23 @@ pub(crate) fn validate_critical_extensions(
     Ok(())
 }
 
-/// Validates key usage constraint `keyCertSign` according to [RFC 5280 section 4.2.1.3](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3)
-///
-/// CA certificates must declare `keyCertSign` usage if the key is used to sign other certificates (always enforced)
-pub(crate) fn validate_ca_key_cert_sign_key_usage(
-    ca_certificate: &X509Certificate,
+/// Validates certificate is signed properly by the parent CA certificate in the chain.
+/// Also performs other consistency checks (parent must be a CA, parent CA cert has to contain correct keyUsage)
+pub(crate) fn validate_ca_signature(
+    certificate: &X509Certificate,
+    parent_ca_certificate: &X509Certificate,
 ) -> Result<(), ValidationError> {
-    let key_usage = ca_certificate
-        .key_usage()
-        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
-        .ok_or(ValidationError::KeyUsageViolation(
-            "CA certificate_validator missing Key Usage extension".to_string(),
-        ))?;
-
-    // The keyCertSign bit is asserted when the subject public key is used for verifying signatures on public key certificates
-    if !key_usage.value.key_cert_sign() {
-        return Err(ValidationError::KeyUsageViolation(
-            "CA certificate_validator missing keyCertSign usage".to_string(),
+    if !parent_ca_certificate.is_ca() {
+        return Err(ValidationError::InvalidCaCertificateChain(
+            "Certificate chain containing non-CA parents".to_string(),
         ));
-    }
+    };
 
-    Ok(())
+    validate_ca_key_cert_sign_key_usage(parent_ca_certificate)?;
+
+    certificate
+        .verify_signature(Some(parent_ca_certificate.public_key()))
+        .map_err(|_| ValidationError::CertificateSignatureInvalid)
 }
 
 pub(crate) fn validate_required_cert_key_usage(
@@ -121,6 +117,29 @@ pub(crate) fn validate_required_cert_key_usage(
                 }
             }
         }
+    }
+
+    Ok(())
+}
+
+/// Validates key usage constraint `keyCertSign` according to [RFC 5280 section 4.2.1.3](https://datatracker.ietf.org/doc/html/rfc5280#section-4.2.1.3)
+///
+/// CA certificates must declare `keyCertSign` usage if the key is used to sign other certificates (always enforced)
+fn validate_ca_key_cert_sign_key_usage(
+    ca_certificate: &X509Certificate,
+) -> Result<(), ValidationError> {
+    let key_usage = ca_certificate
+        .key_usage()
+        .map_err(|e| ValidationError::KeyUsageViolation(e.to_string()))?
+        .ok_or(ValidationError::KeyUsageViolation(
+            "CA certificate_validator missing Key Usage extension".to_string(),
+        ))?;
+
+    // The keyCertSign bit is asserted when the subject public key is used for verifying signatures on public key certificates
+    if !key_usage.value.key_cert_sign() {
+        return Err(ValidationError::KeyUsageViolation(
+            "CA certificate_validator missing keyCertSign usage".to_string(),
+        ));
     }
 
     Ok(())

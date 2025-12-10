@@ -562,19 +562,18 @@ impl WalletProviderService {
         let issuer_identifier =
             validate_org_wallet_provider(organisation, &wallet_unit.wallet_provider_name)?;
 
-        let revocation_method = if let Some(revocation_method) =
-            &config_params.wallet_unit_attestation.revocation_method
-        {
-            Some(
+        let revocation_method = config_params
+            .wallet_unit_attestation
+            .revocation_method
+            .as_ref()
+            .map(|revocation_method| {
                 self.revocation_method_provider
                     .get_revocation_method(revocation_method)
                     .ok_or(MissingProviderError::RevocationMethod(
                         revocation_method.to_owned(),
-                    ))?,
-            )
-        } else {
-            None
-        };
+                    ))
+            })
+            .transpose()?;
 
         let key = public_key_from_wallet_unit(&wallet_unit, &*self.key_algorithm_provider)?;
         let bearer_token = Jwt::<NoncePayload>::decompose_token(bearer_token)?;
@@ -650,11 +649,7 @@ impl WalletProviderService {
             });
         }
 
-        let updated_attested_keys = if key_attestation_inputs.is_empty() {
-            None
-        } else {
-            Some(attested_keys)
-        };
+        let updated_attested_keys = (!key_attestation_inputs.is_empty()).then_some(attested_keys);
 
         let mut key_attestations = vec![];
 

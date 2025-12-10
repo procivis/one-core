@@ -13,14 +13,14 @@ use crate::provider::revocation::error::RevocationError;
 use crate::service::error::{ServiceError, ValidationError};
 
 impl CertificateValidatorImpl {
-    /// Returns `true` if certificate_validator revoked, `false` if not revoked
-    /// and `Err` if checking fails for some reason
+    /// Returns `Ok` if not revoked, `Err(CertificateRevoked)` if certificate revoked,
+    /// and other `Err` if checking fails for some reason
     pub(crate) async fn check_revocation(
         &self,
         certificate: &X509Certificate<'_>,
         parent: Option<&X509Certificate<'_>>,
         crl_mode: CrlMode,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<(), ServiceError> {
         match crl_mode {
             CrlMode::X509 => {
                 let extension = certificate
@@ -31,7 +31,9 @@ impl CertificateValidatorImpl {
                     extension.map(|extension| extension.parsed_extension())
                 {
                     let downloaded_crl = self.download_crl_from_points(crl).await?;
-                    return self.check_crl_revocation(&downloaded_crl, certificate, parent);
+                    if self.check_crl_revocation(&downloaded_crl, certificate, parent)? {
+                        return Err(ValidationError::CertificateRevoked.into());
+                    }
                 }
             }
             CrlMode::AndroidAttestation => {
@@ -42,15 +44,17 @@ impl CertificateValidatorImpl {
                     .map_err(|e| ValidationError::CRLCheckFailed(e.to_string()))?;
                 let entry_id = certificate.serial.to_str_radix(16).to_lowercase();
                 let entry_status = crl.entries.get(&entry_id).map(|info| &info.status);
-                return Ok(entry_status.is_some_and(|status| {
+                if entry_status.is_some_and(|status| {
                     *status == CertificateStatus::Revoked || *status == CertificateStatus::Suspended
-                }));
+                }) {
+                    return Err(ValidationError::CertificateRevoked.into());
+                }
             }
         }
 
         // OCSP support not implemented
 
-        Ok(false)
+        Ok(())
     }
 
     fn check_crl_revocation(

@@ -45,41 +45,7 @@ pub(crate) fn entities_for_local_active_identifier<'a>(
                 ));
             }
 
-            let did = identifier.did.as_ref().ok_or(ServiceError::MappingError(
-                "missing identifier did".to_string(),
-            ))?;
-
-            if let Some(did_id) = did_id
-                && did.id != did_id
-            {
-                return Err(ServiceError::ValidationError(
-                    "Mismatching identifier and did specified".to_string(),
-                ));
-            }
-
-            if did.deactivated {
-                return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
-            }
-
-            if did.did_type.is_remote() {
-                return Err(BusinessLogicError::IncompatibleDidType {
-                    reason: "did is remote".to_string(),
-                }
-                .into());
-            }
-
-            let key =
-                &match key_id {
-                    Some(key_id) => did
-                        .find_key(&key_id, key_filter)?
-                        .ok_or(ValidationError::KeyNotFound)?,
-                    None => did.find_first_matching_key(key_filter)?.ok_or(
-                        ValidationError::InvalidKey("No authentication key found".to_string()),
-                    )?,
-                }
-                .key;
-
-            Ok(IdentifierEntitySelection::Did { did, key })
+            did_selection(identifier, key_filter, key_id, did_id)
         }
         IdentifierType::Certificate => {
             if did_id.is_some() {
@@ -87,45 +53,8 @@ pub(crate) fn entities_for_local_active_identifier<'a>(
                     "Did cannot be specified for identifier of type certificate".to_string(),
                 ));
             }
-            let certificates =
-                identifier
-                    .certificates
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "missing identifier certificates".to_string(),
-                    ))?;
 
-            let certificate = match certificate_id {
-                Some(certificate_id) => {
-                    let certificate = certificates
-                        .iter()
-                        .find(|certificate| certificate.id == certificate_id)
-                        .ok_or(ServiceError::ValidationError(
-                            "Mismatching identifier and certificate specified".to_string(),
-                        ))?;
-
-                    if certificate.state != CertificateState::Active {
-                        return Err(ServiceError::ValidationError(
-                            "Selected certificate not active".to_string(),
-                        ));
-                    }
-                    certificate
-                }
-                // no certificate selected by user, pick an active
-                None => certificates
-                    .iter()
-                    .find(|certificate| certificate.state == CertificateState::Active)
-                    .ok_or(ServiceError::ValidationError(
-                        "No active certificate found".to_string(),
-                    ))?,
-            };
-
-            let key = certificate.key.as_ref().ok_or(ServiceError::MappingError(
-                "missing certificate key".to_string(),
-            ))?;
-
-            validate_key_id_matches(key_id, key)?;
-            Ok(IdentifierEntitySelection::Certificate { certificate, key })
+            certificate_selection(identifier, key_id, certificate_id)
         }
         IdentifierType::Key => {
             if did_id.is_some() {
@@ -146,6 +75,95 @@ pub(crate) fn entities_for_local_active_identifier<'a>(
             Ok(IdentifierEntitySelection::Key(key))
         }
     }
+}
+
+fn did_selection<'a>(
+    identifier: &'a Identifier,
+    key_filter: &KeyFilter,
+    key_id: Option<KeyId>,
+    did_id: Option<DidId>,
+) -> Result<IdentifierEntitySelection<'a>, ServiceError> {
+    let did = identifier.did.as_ref().ok_or(ServiceError::MappingError(
+        "missing identifier did".to_string(),
+    ))?;
+
+    if let Some(did_id) = did_id
+        && did.id != did_id
+    {
+        return Err(ServiceError::ValidationError(
+            "Mismatching identifier and did specified".to_string(),
+        ));
+    }
+
+    if did.deactivated {
+        return Err(BusinessLogicError::DidIsDeactivated(did.id).into());
+    }
+
+    if did.did_type.is_remote() {
+        return Err(BusinessLogicError::IncompatibleDidType {
+            reason: "did is remote".to_string(),
+        }
+        .into());
+    }
+
+    let key = &match key_id {
+        Some(key_id) => did
+            .find_key(&key_id, key_filter)?
+            .ok_or(ValidationError::KeyNotFound)?,
+        None => did
+            .find_first_matching_key(key_filter)?
+            .ok_or(ValidationError::InvalidKey(
+                "No authentication key found".to_string(),
+            ))?,
+    }
+    .key;
+
+    Ok(IdentifierEntitySelection::Did { did, key })
+}
+
+fn certificate_selection<'a>(
+    identifier: &'a Identifier,
+    key_id: Option<KeyId>,
+    certificate_id: Option<CertificateId>,
+) -> Result<IdentifierEntitySelection<'a>, ServiceError> {
+    let certificates = identifier
+        .certificates
+        .as_ref()
+        .ok_or(ServiceError::MappingError(
+            "missing identifier certificates".to_string(),
+        ))?;
+
+    let certificate = match certificate_id {
+        Some(certificate_id) => {
+            let certificate = certificates
+                .iter()
+                .find(|certificate| certificate.id == certificate_id)
+                .ok_or(ServiceError::ValidationError(
+                    "Mismatching identifier and certificate specified".to_string(),
+                ))?;
+
+            if certificate.state != CertificateState::Active {
+                return Err(ServiceError::ValidationError(
+                    "Selected certificate not active".to_string(),
+                ));
+            }
+            certificate
+        }
+        // no certificate selected by user, pick an active
+        None => certificates
+            .iter()
+            .find(|certificate| certificate.state == CertificateState::Active)
+            .ok_or(ServiceError::ValidationError(
+                "No active certificate found".to_string(),
+            ))?,
+    };
+
+    let key = certificate.key.as_ref().ok_or(ServiceError::MappingError(
+        "missing certificate key".to_string(),
+    ))?;
+
+    validate_key_id_matches(key_id, key)?;
+    Ok(IdentifierEntitySelection::Certificate { certificate, key })
 }
 
 fn validate_key_id_matches(key_id: Option<KeyId>, key: &Key) -> Result<(), ServiceError> {

@@ -5,8 +5,8 @@ use std::sync::Arc;
 use autometrics::autometrics;
 use one_core::model::claim::{Claim, ClaimRelations};
 use one_core::model::credential::{
-    Clearable, Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations,
-    GetCredentialList, GetCredentialQuery, UpdateCredentialRequest,
+    Credential, CredentialListIncludeEntityTypeEnum, CredentialRelations, GetCredentialList,
+    GetCredentialQuery, UpdateCredentialRequest,
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
@@ -27,10 +27,10 @@ use shared_types::{ClaimId, CredentialId, CredentialSchemaId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::CredentialProvider;
+use super::entity_model::CredentialListEntityModel;
+use super::mapper::{credentials_to_repository, from_clearable, request_to_active_model};
 use crate::common::calculate_pages_count;
-use crate::credential::CredentialProvider;
-use crate::credential::entity_model::CredentialListEntityModel;
-use crate::credential::mapper::{credentials_to_repository, request_to_active_model};
 use crate::entity::{claim, claim_schema, credential, credential_schema, identifier};
 use crate::list_query_generic::{SelectWithFilterJoin, SelectWithListQuery};
 use crate::mapper::to_update_data_layer_error;
@@ -215,6 +215,31 @@ impl CredentialProvider {
         }
 
         Ok(result)
+    }
+
+    async fn update_claims(
+        &self,
+        credential_id: CredentialId,
+        claims: Option<Vec<Claim>>,
+    ) -> Result<(), DataLayerError> {
+        if let Some(claims) = claims {
+            if claims
+                .iter()
+                .any(|claim| claim.credential_id != credential_id)
+            {
+                return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
+            }
+
+            self.claim_repository
+                .delete_claims_for_credential(credential_id)
+                .await?;
+
+            if !claims.is_empty() {
+                self.claim_repository.create_claim_list(claims).await?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -502,13 +527,7 @@ impl CredentialRepository for CredentialProvider {
             Some(redirect_uri) => Set(redirect_uri),
         };
 
-        let suspend_end_date = match request.suspend_end_date {
-            Clearable::ForceSet(date) => match date {
-                None => Set(None),
-                Some(suspend) => Set(Some(suspend)),
-            },
-            Clearable::DontTouch => Unchanged(Default::default()),
-        };
+        let suspend_end_date = from_clearable(request.suspend_end_date);
 
         let state = match request.state {
             None => NotSet,
@@ -548,22 +567,7 @@ impl CredentialRepository for CredentialProvider {
             ..Default::default()
         };
 
-        if let Some(claims) = request.claims {
-            if claims
-                .iter()
-                .any(|claim| claim.credential_id != credential_id)
-            {
-                return Err(anyhow::anyhow!("Claim credential-id mismatch!").into());
-            }
-
-            self.claim_repository
-                .delete_claims_for_credential(credential_id)
-                .await?;
-
-            if !claims.is_empty() {
-                self.claim_repository.create_claim_list(claims).await?;
-            }
-        }
+        self.update_claims(credential_id, request.claims).await?;
 
         update_model
             .update(&self.db)

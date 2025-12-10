@@ -6,8 +6,7 @@ use x509_parser::pem::Pem;
 use x509_parser::prelude::{ASN1Time, X509Certificate};
 
 use super::x509_extension::{
-    validate_ca_key_cert_sign_key_usage, validate_critical_extensions,
-    validate_required_cert_key_usage,
+    validate_ca_signature, validate_critical_extensions, validate_required_cert_key_usage,
 };
 use super::{
     CertSelection, CertificateValidationOptions, CertificateValidator, CertificateValidatorImpl,
@@ -130,6 +129,7 @@ impl CertificateValidatorImpl {
                     && !validation.integrity_check
                     && validation.leaf_only_extensions.is_empty()
                 {
+                    // no more checks needed, return the parsed certificate
                     return Ok(current);
                 }
 
@@ -138,18 +138,7 @@ impl CertificateValidatorImpl {
 
             if validation.integrity_check {
                 if let Some(parent) = chain.peek() {
-                    if !parent.is_ca() {
-                        return Err(ValidationError::InvalidCaCertificateChain(
-                            "Certificate chain containing non-CA parents".to_string(),
-                        )
-                        .into());
-                    };
-
-                    validate_ca_key_cert_sign_key_usage(parent)?;
-
-                    current
-                        .verify_signature(Some(parent.public_key()))
-                        .map_err(|_| ValidationError::CertificateSignatureInvalid)?;
+                    validate_ca_signature(current, parent)?;
                 }
 
                 validate_critical_extensions(current)?;
@@ -158,12 +147,8 @@ impl CertificateValidatorImpl {
             if let Some(crl_mode) = validation.validity_check {
                 self.check_validity_with_leeway(current, self.clock_leeway)?;
 
-                let revoked = self
-                    .check_revocation(current, chain.peek().copied(), crl_mode)
+                self.check_revocation(current, chain.peek().copied(), crl_mode)
                     .await?;
-                if revoked {
-                    return Err(ValidationError::CertificateRevoked.into());
-                }
             }
 
             if !validation.leaf_only_extensions.is_empty()
@@ -339,7 +324,7 @@ impl CertificateValidatorImpl {
     }
 }
 
-pub fn parse_chain_to_x509_attributes(
+pub(crate) fn parse_chain_to_x509_attributes(
     pem_chain: &[u8],
 ) -> Result<CertificateX509AttributesDTO, ValidationError> {
     let Some(pem) = Pem::iter_from_buffer(pem_chain).next() else {

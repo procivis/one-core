@@ -7,8 +7,8 @@ use one_core::model::common::LockType;
 use one_core::model::history::HistoryErrorMetadata;
 use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
-    GetProofList, GetProofQuery, Proof, ProofClaim, ProofRelations, ProofStateEnum,
-    UpdateProofRequest,
+    GetProofList, GetProofQuery, Proof, ProofClaim, ProofClaimRelations, ProofRelations,
+    ProofStateEnum, UpdateProofRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::proof_repository::ProofRepository;
@@ -335,46 +335,7 @@ impl ProofProvider {
         }
 
         if let Some(claim_relations) = &relations.claims {
-            let proof_claims = crate::entity::proof_claim::Entity::find()
-                .filter(proof_claim::Column::ProofId.eq(proof_model.id))
-                .all(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
-
-            let claim_ids: Vec<ClaimId> = proof_claims
-                .iter()
-                .map(|item| Uuid::from_str(&item.claim_id).map(ClaimId::from))
-                .collect::<Result<Vec<_>, _>>()?;
-
-            proof.claims = if claim_ids.is_empty() {
-                Some(vec![])
-            } else {
-                let claims = self
-                    .claim_repository
-                    .get_claim_list(claim_ids, &claim_relations.claim)
-                    .await?;
-
-                let mut claims: Vec<ProofClaim> = claims
-                    .into_iter()
-                    .map(|claim| ProofClaim {
-                        claim,
-                        credential: None,
-                    })
-                    .collect();
-
-                if let Some(credential_relations) = &claim_relations.credential {
-                    for claim in claims.iter_mut() {
-                        let credential = self
-                            .credential_repository
-                            .get_credential_by_claim_id(&claim.claim.id, credential_relations)
-                            .await?
-                            .ok_or(DataLayerError::Db(anyhow!("Credential not found")))?;
-                        claim.credential = Some(credential);
-                    }
-                }
-
-                Some(claims)
-            };
+            proof.claims = Some(self.resolve_claims(&proof_model, claim_relations).await?);
         }
 
         if let Some(identifier_relations) = &relations.verifier_identifier
@@ -436,5 +397,52 @@ impl ProofProvider {
         }
 
         Ok(proof)
+    }
+
+    async fn resolve_claims(
+        &self,
+        proof_model: &proof::Model,
+        relations: &ProofClaimRelations,
+    ) -> Result<Vec<ProofClaim>, DataLayerError> {
+        let proof_claims = crate::entity::proof_claim::Entity::find()
+            .filter(proof_claim::Column::ProofId.eq(proof_model.id))
+            .all(&self.db)
+            .await
+            .map_err(|e| DataLayerError::Db(e.into()))?;
+
+        let claim_ids: Vec<ClaimId> = proof_claims
+            .iter()
+            .map(|item| Uuid::from_str(&item.claim_id).map(ClaimId::from))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        Ok(if claim_ids.is_empty() {
+            vec![]
+        } else {
+            let claims = self
+                .claim_repository
+                .get_claim_list(claim_ids, &relations.claim)
+                .await?;
+
+            let mut claims: Vec<_> = claims
+                .into_iter()
+                .map(|claim| ProofClaim {
+                    claim,
+                    credential: None,
+                })
+                .collect();
+
+            if let Some(credential_relations) = &relations.credential {
+                for claim in claims.iter_mut() {
+                    let credential = self
+                        .credential_repository
+                        .get_credential_by_claim_id(&claim.claim.id, credential_relations)
+                        .await?
+                        .ok_or(DataLayerError::Db(anyhow!("Credential not found")))?;
+                    claim.credential = Some(credential);
+                }
+            }
+
+            claims
+        })
     }
 }

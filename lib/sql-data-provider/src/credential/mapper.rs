@@ -1,4 +1,6 @@
-use one_core::model::credential::{Credential, CredentialFilterValue, SortableCredentialColumn};
+use one_core::model::credential::{
+    Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
+};
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::identifier::Identifier;
 use one_core::model::interaction::InteractionId;
@@ -7,7 +9,7 @@ use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, SimpleExpr};
-use sea_orm::{ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set};
+use sea_orm::{ActiveValue, ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set, Value};
 use shared_types::{BlobId, CertificateId, IdentifierId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
@@ -17,6 +19,16 @@ use crate::list_query_generic::{
     get_blob_match_condition, get_comparison_condition, get_equals_condition,
     get_string_match_condition,
 };
+
+pub(super) fn from_clearable<T>(clearable: Clearable<Option<T>>) -> ActiveValue<Option<T>>
+where
+    Option<T>: Into<Value>,
+{
+    match clearable {
+        Clearable::ForceSet(value) => Set(value),
+        Clearable::DontTouch => ActiveValue::Unchanged(Default::default()),
+    }
+}
 
 impl IntoSortingColumn for SortableCredentialColumn {
     fn get_column(&self) -> SimpleExpr {
