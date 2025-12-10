@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use itertools::Itertools;
 use serde_json::json;
 use url::Url;
 
@@ -17,7 +18,9 @@ use super::openid4vp::proximity_draft00::{
 };
 use super::scan_to_verify::ScanToVerify;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, VerificationProtocolType};
+use crate::config::core_config::{
+    CoreConfig, VerificationProtocolConfig, VerificationProtocolType,
+};
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -42,11 +45,15 @@ pub(crate) trait VerificationProtocolProvider: Send + Sync {
 
 struct VerificationProtocolProviderImpl {
     protocols: HashMap<String, Arc<dyn VerificationProtocol>>,
+    config: VerificationProtocolConfig,
 }
 
 impl VerificationProtocolProviderImpl {
-    fn new(protocols: HashMap<String, Arc<dyn VerificationProtocol>>) -> Self {
-        Self { protocols }
+    fn new(
+        protocols: HashMap<String, Arc<dyn VerificationProtocol>>,
+        config: VerificationProtocolConfig,
+    ) -> Self {
+        Self { protocols, config }
     }
 }
 
@@ -57,8 +64,20 @@ impl VerificationProtocolProvider for VerificationProtocolProviderImpl {
     }
 
     fn detect_protocol(&self, url: &Url) -> Option<(String, Arc<dyn VerificationProtocol>)> {
-        self.protocols
+        let get_order = |id: &str| {
+            self.config
+                .get_fields(id)
+                .ok()
+                .and_then(|entry| entry.order)
+                .unwrap_or(0)
+        };
+        let sorted_protocols = self
+            .protocols
             .iter()
+            .sorted_by(|(a, _), (b, _)| Ord::cmp(&get_order(a), &get_order(b)));
+
+        sorted_protocols
+            .into_iter()
             .find(|(_, protocol)| protocol.holder_can_handle(url))
             .map(|(id, protocol)| (id.to_owned(), protocol.to_owned()))
     }
@@ -257,7 +276,10 @@ pub(crate) fn verification_protocol_provider_from_config(
         }
     }
 
-    Ok(Arc::new(VerificationProtocolProviderImpl::new(providers)))
+    Ok(Arc::new(VerificationProtocolProviderImpl::new(
+        providers,
+        config.verification_protocol.to_owned(),
+    )))
 }
 
 #[expect(clippy::too_many_arguments)]

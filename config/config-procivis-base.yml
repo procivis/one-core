@@ -209,7 +209,7 @@ verificationProtocol:
     display:
       en: "OpenID4VP Draft 25 (EUDI)"
       de: "OpenID4VP Draft 25 (EUDI)"
-    order: 8
+    order: 10
     type: "OPENID4VP_DRAFT25"
     params:
       public:
@@ -273,6 +273,37 @@ verificationProtocol:
     type: "OPENID4VP_DRAFT20_SWIYU"
     params:
       public:
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+  OPENID4VP_FINAL1_HAIP:
+    display:
+      en: "OpenID4VP Final 1.0 (HAIP)"
+      de: "OpenID4VP Final 1.0 (HAIP)"
+    order: 11
+    type: "OPENID4VP_FINAL1"
+    params:
+      public:
+        useRequestUri: true
+        urlScheme: haip-vp
+        verifier:
+          supportedClientIdSchemes:
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+              x509_hash,
+            ]
+        holder:
+          supportedClientIdSchemes:
+            [
+              verifier_attestation,
+              redirect_uri,
+              decentralized_identifier,
+              x509_san_dns,
+              x509_hash,
+            ]
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
