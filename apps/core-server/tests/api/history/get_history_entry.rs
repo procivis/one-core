@@ -1,6 +1,6 @@
+use one_core::error::ErrorCode;
 use one_core::model::history::{HistoryErrorMetadata, HistoryMetadata};
 use one_core::service::backup::dto::UnexportableEntitiesResponseDTO;
-use one_core::service::error::ErrorCode;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 

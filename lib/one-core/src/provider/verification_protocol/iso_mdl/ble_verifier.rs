@@ -14,6 +14,7 @@ use super::common::{
 };
 use super::device_engagement::{BleOptions, DeviceEngagement};
 use super::session::{Command, SessionData, SessionEstablishment, StatusCode};
+use crate::error::ErrorCode::BR_0000;
 use crate::mapper::{NESTED_CLAIM_MARKER, encode_cbor_base64};
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
@@ -37,7 +38,6 @@ use crate::provider::presentation_formatter::provider::PresentationFormatterProv
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::proof_repository::ProofRepository;
-use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::ServiceError;
 
 #[derive(Debug, Clone)]

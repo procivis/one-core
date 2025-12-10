@@ -4,11 +4,12 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use one_core::error::ErrorCode;
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
 use one_core::service::error::{
-    BusinessLogicError, ErrorCode, MissingProviderError, ServiceError, ValidationError,
+    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
 use one_dto_mapper::convert_inner;
 use serde::Serialize;

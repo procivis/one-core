@@ -1,7 +1,8 @@
+use one_core::error::ErrorCodeMixin;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::list_query::{ListPagination, ListQuery, ListSorting};
 use one_core::proto::session_provider::SessionProvider;
-use one_core::service::error::{BusinessLogicError, ErrorCodeMixin, ServiceError};
+use one_core::service::error::{BusinessLogicError, ServiceError};
 use one_dto_mapper::convert_inner;
 use shared_types::OrganisationId;
 use strum::EnumMessage;

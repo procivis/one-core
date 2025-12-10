@@ -3,7 +3,7 @@ use axum::extract::rejection::{FormRejection, JsonRejection, PathRejection, Quer
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum_extra::typed_header::TypedHeaderRejection;
-use one_core::service::error::ErrorCode;
+use one_core::error::ErrorCode;
 use proc_macros::options_not_nullable;
 use serde::Serialize;
 use utoipa::ToSchema;

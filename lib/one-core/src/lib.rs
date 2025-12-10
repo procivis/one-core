@@ -90,6 +90,7 @@ use crate::service::wallet_provider::WalletProviderService;
 use crate::service::wallet_unit::WalletUnitService;
 
 pub mod config;
+pub mod error;
 pub mod mapper;
 pub mod model;
 pub mod proto;

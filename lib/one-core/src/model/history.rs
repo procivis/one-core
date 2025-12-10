@@ -5,11 +5,11 @@ use shared_types::{
 };
 use time::OffsetDateTime;
 
+use crate::error::ErrorCode;
 use crate::model::common::GetListResponse;
 use crate::model::list_filter::{ListFilterValue, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::service::backup::dto::UnexportableEntitiesResponseDTO;
-use crate::service::error::ErrorCode;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HistoryMetadata {

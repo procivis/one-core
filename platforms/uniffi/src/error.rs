@@ -1,5 +1,5 @@
+use one_core::error::ErrorCodeMixin;
 use one_core::provider::key_storage::error::KeyStorageError;
-use one_core::service::error::ErrorCodeMixin;
 use one_crypto::SignerError;
 use one_dto_mapper::{From, Into};
 use strum::EnumMessage;
@@ -15,10 +15,10 @@ pub(crate) enum SDKError {
 }
 
 impl ErrorCodeMixin for SDKError {
-    fn error_code(&self) -> one_core::service::error::ErrorCode {
+    fn error_code(&self) -> one_core::error::ErrorCode {
         match self {
-            Self::InitializationFailure(_) => one_core::service::error::ErrorCode::BR_0183,
-            Self::NotInitialized => one_core::service::error::ErrorCode::BR_0184,
+            Self::InitializationFailure(_) => one_core::error::ErrorCode::BR_0183,
+            Self::NotInitialized => one_core::error::ErrorCode::BR_0184,
         }
     }
 }

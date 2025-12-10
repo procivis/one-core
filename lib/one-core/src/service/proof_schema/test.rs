@@ -12,6 +12,7 @@ use super::ProofSchemaService;
 use crate::config::core_config::{
     ConfigEntryDisplay, CoreConfig, KeySecurityLevelFields, KeySecurityLevelType, RevocationType,
 };
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
@@ -49,8 +50,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
 use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, ErrorCode, ErrorCodeMixin, ServiceError,
-    ValidationError,
+    BusinessLogicError, EntityNotFoundError, ServiceError, ValidationError,
 };
 use crate::service::proof_schema::ProofSchemaImportError;
 use crate::service::proof_schema::dto::{

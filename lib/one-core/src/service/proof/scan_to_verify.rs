@@ -4,6 +4,7 @@ use super::ProofService;
 use super::dto::ScanToVerifyRequestDTO;
 use super::mapper::proof_for_scan_to_verify;
 use crate::config::validator::transport::get_first_available_transport;
+use crate::error::ErrorCode::BR_0000;
 use crate::mapper::extracted_credential_to_model;
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -17,7 +18,6 @@ use crate::provider::revocation::model::{
     CredentialDataByRole, RevocationState, VerifierCredentialData,
 };
 use crate::provider::verification_protocol::VerificationProtocol;
-use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 
 impl ProofService {

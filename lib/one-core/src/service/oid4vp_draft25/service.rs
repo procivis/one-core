@@ -7,6 +7,7 @@ use tracing::warn;
 use super::OID4VPDraft25Service;
 use super::proof_request::generate_authorization_request_params_draft25;
 use crate::config::core_config::VerificationProtocolType;
+use crate::error::ErrorCode::BR_0000;
 use crate::mapper::get_encryption_key_jwk_from_proof;
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
@@ -39,7 +40,6 @@ use crate::provider::verification_protocol::openid4vp::model::{
     VpSubmissionData,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata_draft;
-use crate::service::error::ErrorCode::BR_0000;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };

@@ -29,6 +29,7 @@ use super::validator::{
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, Fields, KeyAlgorithmType, WalletProviderType};
+use crate::error::ErrorCodeMixin;
 use crate::mapper::list_response_into;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
@@ -59,9 +60,7 @@ use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProvi
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
-use crate::service::error::{
-    EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
-};
+use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };

@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::service::error::{ErrorCode, ErrorCodeMixin};
-
+use crate::error::{ErrorCode, ErrorCodeMixin};
 pub(crate) mod apdu;
 pub(crate) mod command;
 pub mod hce;

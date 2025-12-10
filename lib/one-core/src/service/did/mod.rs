@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use super::error::ErrorCode;
+use crate::error::ErrorCode;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
