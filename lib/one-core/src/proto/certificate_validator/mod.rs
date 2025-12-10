@@ -170,7 +170,6 @@ pub(crate) fn certificate_validator_from_config(
         key_algorithm_provider.clone(),
         Arc::new(initialize_x509_crl_cache(
             config,
-            client.clone(),
             remote_entity_cache_repository,
         )),
         Arc::new(DefaultClock),
@@ -193,7 +192,6 @@ fn initialize_android_key_attestation_crl_cache(
 
 fn initialize_x509_crl_cache(
     config: &CoreConfig,
-    client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
 ) -> X509CrlCache {
     let config = config
@@ -214,7 +212,7 @@ fn initialize_x509_crl_cache(
     };
 
     X509CrlCache::new(
-        Arc::new(X509CrlResolver::new(client)),
+        Arc::new(X509CrlResolver::new(Default::default())),
         storage,
         config.cache_size as usize,
         config.cache_refresh_timeout,

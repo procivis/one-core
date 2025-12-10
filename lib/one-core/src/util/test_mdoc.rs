@@ -28,7 +28,7 @@ pub async fn format_mdoc_credential(
     auth_fn: AuthenticationFn,
 ) -> String {
     let crl_cache = Arc::new(X509CrlCache::new(
-        Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
+        Arc::new(X509CrlResolver::new(Default::default())),
         Arc::new(InMemoryStorage::new(HashMap::new())),
         100,
         Duration::minutes(1),

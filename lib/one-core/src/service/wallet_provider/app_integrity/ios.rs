@@ -348,7 +348,7 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
             .returning(|_| Some(Arc::new(Ecdsa)));
 
         let crl_cache = Arc::new(X509CrlCache::new(
-            Arc::new(X509CrlResolver::new(Arc::new(ReqwestClient::default()))),
+            Arc::new(X509CrlResolver::new(Default::default())),
             Arc::new(InMemoryStorage::new(HashMap::new())),
             100,
             Duration::days(1),
