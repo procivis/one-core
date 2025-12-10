@@ -1598,9 +1598,20 @@ async fn handle_credential_invitation(
             ));
         }
 
+        let scope = credential_configuration_ids
+            .iter()
+            .map(|id| {
+                issuer_metadata
+                    .credential_configurations_supported
+                    .get(id)
+                    .and_then(|c| c.scope.clone())
+            })
+            .collect::<Option<Vec<String>>>();
+
         return Ok(InvitationResponseEnum::AuthorizationFlow {
             organisation_id: organisation.id,
             issuer: params.issuer,
+            scope,
             client_id: params.client_id,
             redirect_uri,
             authorization_details: Some(

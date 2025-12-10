@@ -1587,6 +1587,7 @@ async fn handle_credential_invitation(
         return Ok(InvitationResponseEnum::AuthorizationFlow {
             organisation_id: organisation.id,
             issuer: params.issuer,
+            scope: None,
             client_id: params.client_id,
             redirect_uri,
             authorization_details: Some(

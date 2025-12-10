@@ -656,6 +656,7 @@ impl SSIHolderService {
                 client_id,
                 redirect_uri,
                 authorization_details,
+                scope,
                 issuer_state,
                 authorization_server,
             } => {
@@ -669,7 +670,7 @@ impl SSIHolderService {
                         issuer,
                         client_id,
                         redirect_uri,
-                        scope: None,
+                        scope,
                         authorization_details,
                         issuer_state,
                         authorization_server,

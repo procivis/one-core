@@ -47,6 +47,7 @@ pub(crate) enum InvitationResponseEnum {
         redirect_uri: Option<String>,
         authorization_details: Option<Vec<InitiateIssuanceAuthorizationDetailDTO>>,
         issuer_state: Option<String>,
+        scope: Option<Vec<String>>,
         authorization_server: Option<String>,
     },
 }
