@@ -47,7 +47,7 @@ use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{
-    CredentialRevocationState, Operation, RevocationMethodCapabilities,
+    Operation, RevocationMethodCapabilities, RevocationState,
 };
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
@@ -1950,7 +1950,7 @@ async fn test_check_revocation_being_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(CredentialRevocationState::Revoked));
+        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
 
     let formatter = Arc::new(formatter);
     formatter_provider
@@ -3012,7 +3012,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Revoked))
+        .with(always(), eq(RevocationState::Revoked))
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
@@ -3061,7 +3061,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Revoked))
+        .with(always(), eq(RevocationState::Revoked))
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
@@ -3131,7 +3131,7 @@ async fn test_suspend_credential_success() {
         .once()
         .with(
             always(),
-            eq(CredentialRevocationState::Suspended {
+            eq(RevocationState::Suspended {
                 suspend_end_date: Some(suspend_end_date),
             }),
         )
@@ -3241,7 +3241,7 @@ async fn test_reactivate_credential_success() {
     revocation_method
         .expect_mark_credential_as()
         .once()
-        .with(always(), eq(CredentialRevocationState::Valid))
+        .with(always(), eq(RevocationState::Valid))
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()

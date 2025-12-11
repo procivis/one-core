@@ -33,7 +33,7 @@ use crate::provider::presentation_formatter::model::{
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::lvvc::util::is_lvvc_credential;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+    CredentialDataByRole, RevocationState, VerifierCredentialData,
 };
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
@@ -455,9 +455,8 @@ impl OpenId4VpProofValidatorProto {
                 )
                 .await?
             {
-                CredentialRevocationState::Valid => {}
-                CredentialRevocationState::Revoked
-                | CredentialRevocationState::Suspended { .. } => {
+                RevocationState::Valid => {}
+                RevocationState::Revoked | RevocationState::Suspended { .. } => {
                     return Err(OpenID4VCError::CredentialIsRevokedOrSuspended);
                 }
             }

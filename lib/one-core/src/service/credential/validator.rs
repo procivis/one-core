@@ -16,7 +16,7 @@ use crate::provider::credential_formatter::model::FormatterCapabilities;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCIDraft13Params;
 use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiyuParams;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
-use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::model::RevocationState;
 use crate::service::credential::dto::CredentialRequestClaimDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::validator::throw_if_org_relation_not_matching_session;
@@ -553,13 +553,10 @@ fn resolve_parent_claim_schemas<'a>(
 
 pub(super) fn verify_suspension_support(
     credential_schema: &CredentialSchema,
-    revocation_state: &CredentialRevocationState,
+    revocation_state: &RevocationState,
 ) -> Result<(), ServiceError> {
     if !credential_schema.allow_suspension
-        && matches!(
-            revocation_state,
-            CredentialRevocationState::Suspended { .. }
-        )
+        && matches!(revocation_state, RevocationState::Suspended { .. })
     {
         return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
     }

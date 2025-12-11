@@ -2,8 +2,9 @@ use std::sync::Arc;
 
 use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
-    RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
+    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use shared_types::{CredentialId, IdentifierId, RevocationListId};
@@ -69,14 +70,39 @@ impl RevocationListsDB {
         credential_id: CredentialId,
         index_on_status_list: usize,
     ) {
+        self.create_entry(
+            list_id,
+            RevocationListEntityId::Credential(credential_id),
+            index_on_status_list,
+        )
+        .await;
+    }
+
+    pub async fn create_entry(
+        &self,
+        list_id: RevocationListId,
+        entity_id: RevocationListEntityId,
+        index_on_status_list: usize,
+    ) {
         self.repository
-            .create_entry(
-                list_id,
-                RevocationListEntityId::Credential(credential_id),
-                index_on_status_list,
-            )
+            .create_entry(list_id, entity_id, index_on_status_list)
             .await
             .unwrap()
+    }
+
+    pub async fn update_entry(
+        &self,
+        list_id: RevocationListId,
+        index_on_status_list: usize,
+        status: Option<RevocationListEntryStatus>,
+    ) {
+        self.repository
+            .update_entry(
+                UpdateRevocationListEntryId::Index(list_id, index_on_status_list),
+                UpdateRevocationListEntryRequest { status },
+            )
+            .await
+            .unwrap();
     }
 
     pub async fn get_entries(&self, list_id: RevocationListId) -> Vec<RevocationListEntry> {

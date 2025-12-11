@@ -1,12 +1,12 @@
-use super::model::CredentialRevocationState;
+use super::model::RevocationState;
 use crate::model::credential::CredentialStateEnum;
 
-impl From<CredentialRevocationState> for CredentialStateEnum {
-    fn from(value: CredentialRevocationState) -> Self {
+impl From<RevocationState> for CredentialStateEnum {
+    fn from(value: RevocationState) -> Self {
         match value {
-            CredentialRevocationState::Valid => CredentialStateEnum::Accepted,
-            CredentialRevocationState::Revoked => CredentialStateEnum::Revoked,
-            CredentialRevocationState::Suspended { .. } => CredentialStateEnum::Suspended,
+            RevocationState::Valid => CredentialStateEnum::Accepted,
+            RevocationState::Revoked => CredentialStateEnum::Revoked,
+            RevocationState::Suspended { .. } => CredentialStateEnum::Suspended,
         }
     }
 }

@@ -19,6 +19,7 @@ pub struct WalletUnitsDB {
 
 #[derive(Default)]
 pub struct TestWalletUnit {
+    pub id: Option<WalletUnitId>,
     pub name: Option<String>,
     pub nonce: Option<String>,
     pub last_modified: Option<OffsetDateTime>,
@@ -41,7 +42,7 @@ impl WalletUnitsDB {
         let six_hours_ago = OffsetDateTime::now_utc().sub(Duration::days(1));
 
         let wallet_unit = WalletUnit {
-            id: Uuid::new_v4().into(),
+            id: test_wallet_unit.id.unwrap_or_else(|| Uuid::new_v4().into()),
             name: test_wallet_unit.name.unwrap_or("test_wallet".to_string()),
             created_date: six_hours_ago,
             last_modified: test_wallet_unit.last_modified.unwrap_or(six_hours_ago),

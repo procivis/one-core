@@ -6,6 +6,7 @@ use time::OffsetDateTime;
 
 use crate::model::credential::Credential;
 use crate::model::proof_schema::ProofInputSchema;
+use crate::model::revocation_list::RevocationListEntryStatus;
 use crate::provider::credential_formatter::model::{CredentialStatus, DetailCredential};
 
 #[derive(Clone)]
@@ -27,12 +28,22 @@ pub struct CredentialRevocationInfo {
 }
 
 #[derive(Clone, Debug, Display, PartialEq)]
-pub enum CredentialRevocationState {
+pub enum RevocationState {
     Valid,
     Revoked,
     Suspended {
         suspend_end_date: Option<OffsetDateTime>,
     },
+}
+
+impl From<RevocationState> for RevocationListEntryStatus {
+    fn from(value: RevocationState) -> Self {
+        match value {
+            RevocationState::Valid => RevocationListEntryStatus::Active,
+            RevocationState::Revoked => RevocationListEntryStatus::Revoked,
+            RevocationState::Suspended { .. } => RevocationListEntryStatus::Suspended,
+        }
+    }
 }
 
 #[derive(Debug, Default)]

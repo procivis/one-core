@@ -4,7 +4,7 @@ use flate2::bufread::GzDecoder;
 use flate2::write::GzEncoder;
 
 use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::model::RevocationState;
 
 pub(super) fn gzip_compress(input: Vec<u8>) -> Result<Vec<u8>, std::io::Error> {
     let mut encoder = GzEncoder::new(Vec::new(), Default::default());
@@ -21,15 +21,15 @@ pub(super) fn gzip_decompress(input: Vec<u8>, index: usize) -> Result<Vec<u8>, s
 
 pub(super) fn status_purpose_to_revocation_state(
     status_purpose: Option<&String>,
-) -> Result<CredentialRevocationState, RevocationError> {
+) -> Result<RevocationState, RevocationError> {
     match status_purpose
         .ok_or(RevocationError::ValidationError(
             "Missing status purpose ".to_string(),
         ))?
         .as_str()
     {
-        "revocation" => Ok(CredentialRevocationState::Revoked),
-        "suspension" => Ok(CredentialRevocationState::Suspended {
+        "revocation" => Ok(RevocationState::Revoked),
+        "suspension" => Ok(RevocationState::Suspended {
             suspend_end_date: None,
         }),
         value => Err(RevocationError::ValidationError(format!(

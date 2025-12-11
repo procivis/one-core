@@ -2,10 +2,9 @@ use serde::{Deserialize, Serialize};
 use shared_types::{CredentialId, RevocationListId, WalletUnitAttestedKeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
-use crate::model::credential::CredentialStateEnum;
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::wallet_unit::WalletUnitStatus;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationList {
@@ -30,6 +29,7 @@ pub struct RevocationListRelations {
 pub enum RevocationListPurpose {
     Revocation,
     Suspension,
+    RevocationAndSuspension,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize, Deserialize)]
@@ -52,6 +52,14 @@ pub enum StatusListType {
 pub struct RevocationListEntry {
     pub entity_info: RevocationListEntityInfo,
     pub index: usize,
+    pub status: RevocationListEntryStatus,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum RevocationListEntryStatus {
+    Active,
+    Revoked,
+    Suspended,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -62,17 +70,18 @@ pub enum RevocationListEntityId {
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityInfo {
-    Credential(CredentialId, CredentialStateEnum),
-    WalletUnitAttestedKey(WalletUnitAttestedKeyId, WalletUnitStatus),
+    Credential(CredentialId),
+    WalletUnitAttestedKey,
 }
 
-impl From<RevocationListEntityInfo> for RevocationListEntityId {
-    fn from(value: RevocationListEntityInfo) -> Self {
-        match value {
-            RevocationListEntityInfo::Credential(id, _) => Self::Credential(id),
-            RevocationListEntityInfo::WalletUnitAttestedKey(id, _) => {
-                Self::WalletUnitAttestedKey(id)
-            }
-        }
-    }
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub enum UpdateRevocationListEntryId {
+    Credential(CredentialId),
+    Id(Uuid),
+    Index(RevocationListId, usize),
+}
+
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct UpdateRevocationListEntryRequest {
+    pub status: Option<RevocationListEntryStatus>,
 }

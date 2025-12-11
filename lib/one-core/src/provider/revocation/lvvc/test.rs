@@ -29,7 +29,7 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::{LvvcProvider, Params};
-use crate::provider::revocation::model::{CredentialDataByRole, CredentialRevocationState};
+use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 
 fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential) {
@@ -230,7 +230,7 @@ async fn test_check_revocation_status_as_holder_not_cached() {
         )
         .await
         .unwrap();
-    assert_eq!(CredentialRevocationState::Valid, result);
+    assert_eq!(RevocationState::Valid, result);
 }
 
 #[tokio::test]
@@ -287,7 +287,7 @@ async fn test_check_revocation_status_as_holder_cached() {
         )
         .await
         .unwrap();
-    assert_eq!(CredentialRevocationState::Valid, result);
+    assert_eq!(RevocationState::Valid, result);
 }
 
 #[tokio::test]

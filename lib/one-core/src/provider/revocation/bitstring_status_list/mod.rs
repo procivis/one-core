@@ -16,14 +16,14 @@ use self::resolver::StatusListCachingLoader;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::mapper::params::convert_params;
 use crate::model::common::LockType;
-use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::credential::Credential;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
+    RevocationListPurpose, StatusListCredentialFormat, StatusListType, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
-use crate::model::wallet_unit::WalletUnitStatus;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
 };
@@ -42,8 +42,8 @@ use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
-    Operation, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, Operation,
+    RevocationMethodCapabilities, RevocationState,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::repository::error::DataLayerError;
@@ -170,7 +170,7 @@ impl RevocationMethod for BitstringStatusList {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: CredentialRevocationState,
+        new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         let issuer_identifier =
             credential
@@ -181,7 +181,7 @@ impl RevocationMethod for BitstringStatusList {
                     "issuer identifier is None".to_string(),
                 ))?;
 
-        let purpose = if new_state == CredentialRevocationState::Revoked {
+        let purpose = if new_state == RevocationState::Revoked {
             RevocationListPurpose::Revocation
         } else {
             RevocationListPurpose::Suspension
@@ -201,20 +201,21 @@ impl RevocationMethod for BitstringStatusList {
                 issuer_identifier.id,
             ))?;
 
+        self.revocation_list_repository
+            .update_entry(
+                UpdateRevocationListEntryId::Credential(credential.id),
+                UpdateRevocationListEntryRequest {
+                    status: Some(new_state.into()),
+                },
+            )
+            .await?;
+
         let current_entries = self
             .revocation_list_repository
             .get_entries(current_list.id)
             .await?;
 
-        let encoded_list = generate_bitstring_from_entries(
-            current_entries,
-            purpose,
-            Some(RevocationListEntityInfo::Credential(
-                credential.id,
-                new_state.into(),
-            )),
-        )
-        .await?;
+        let encoded_list = generate_bitstring_from_entries(current_entries, purpose).await?;
 
         let list_credential = format_status_list_credential(
             &current_list.id,
@@ -241,7 +242,7 @@ impl RevocationMethod for BitstringStatusList {
         _issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
                 "Invalid credential status type: {}",
@@ -317,7 +318,7 @@ impl RevocationMethod for BitstringStatusList {
         if util::extract_bitstring_index(encoded_list.to_owned(), list_index)? {
             status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
         } else {
-            Ok(CredentialRevocationState::Valid)
+            Ok(RevocationState::Valid)
         }
     }
 
@@ -342,6 +343,7 @@ impl RevocationMethod for BitstringStatusList {
     async fn update_attestation_entries(
         &self,
         _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),
@@ -697,25 +699,15 @@ pub(crate) async fn format_status_list_credential(
 async fn generate_bitstring_from_entries(
     entries: Vec<RevocationListEntry>,
     purpose: RevocationListPurpose,
-    additionally_changed_entry: Option<RevocationListEntityInfo>,
 ) -> Result<String, RevocationError> {
-    let changed_entry: Option<(RevocationListEntityId, RevocationListEntityInfo)> =
-        additionally_changed_entry.map(|entry| (entry.to_owned().into(), entry));
-
     let states = entries
         .into_iter()
         .map(|entry| {
-            let entity_id: RevocationListEntityId = entry.entity_info.to_owned().into();
-
-            if let Some((changed_entry_id, changed_entry)) = changed_entry.as_ref()
-                && changed_entry_id == &entity_id
-            {
-                return (entry.index, changed_entry.to_owned());
-            }
-
-            (entry.index, entry.entity_info)
+            (
+                entry.index,
+                get_revocation_entry_state(entry.status, purpose),
+            )
         })
-        .map(|(index, entry_info)| (index, get_revocation_entry_state(entry_info, purpose)))
         .collect::<Vec<_>>();
 
     util::generate_bitstring(states).map_err(RevocationError::from)
@@ -735,26 +727,15 @@ fn get_revocation_list_url(
 }
 
 fn get_revocation_entry_state(
-    entry_info: RevocationListEntityInfo,
+    entry_status: RevocationListEntryStatus,
     purpose: RevocationListPurpose,
 ) -> bool {
-    match entry_info {
-        RevocationListEntityInfo::Credential(_, state) => {
-            match purpose {
-                RevocationListPurpose::Suspension => state == CredentialStateEnum::Suspended,
-                RevocationListPurpose::Revocation => matches!(
-                    state,
-                    CredentialStateEnum::Revoked
-                        | CredentialStateEnum::Rejected
-                        | CredentialStateEnum::Error // also mark failed credentials as revoked to prevent misuse
-                ),
-            }
-        }
-        RevocationListEntityInfo::WalletUnitAttestedKey(_, status) => match purpose {
-            RevocationListPurpose::Suspension => false,
-            RevocationListPurpose::Revocation => {
-                matches!(status, WalletUnitStatus::Revoked | WalletUnitStatus::Error)
-            }
-        },
+    match purpose {
+        RevocationListPurpose::Revocation => entry_status == RevocationListEntryStatus::Revoked,
+        RevocationListPurpose::Suspension => entry_status == RevocationListEntryStatus::Suspended,
+        RevocationListPurpose::RevocationAndSuspension => matches!(
+            entry_status,
+            RevocationListEntryStatus::Revoked | RevocationListEntryStatus::Suspended
+        ),
     }
 }

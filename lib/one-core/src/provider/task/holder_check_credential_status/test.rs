@@ -32,7 +32,7 @@ use crate::provider::issuance_protocol::provider::MockIssuanceProtocolProvider;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
-use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::task::Task;
 use crate::provider::task::holder_check_credential_status::dto::HolderCheckCredentialStatusResultDTO;
@@ -85,7 +85,7 @@ async fn test_task_holder_check_credential_status_being_revoked() {
 
     revocation_method
         .expect_check_credential_revocation_status()
-        .returning(|_, _, _, _| Ok(CredentialRevocationState::Revoked));
+        .returning(|_, _, _, _| Ok(RevocationState::Revoked));
 
     let formatter = Arc::new(formatter);
     formatter_provider

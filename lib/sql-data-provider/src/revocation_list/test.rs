@@ -5,9 +5,8 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
-use one_core::model::wallet_unit::WalletUnitStatus;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
@@ -21,8 +20,7 @@ use crate::entity::revocation_list::RevocationListFormat;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
     insert_identifier, insert_organisation_to_database, insert_revocation_list,
-    insert_revocation_list_entry, insert_wallet_unit_attested_key_to_database,
-    insert_wallet_unit_to_database, setup_test_data_layer_and_connection,
+    insert_revocation_list_entry, setup_test_data_layer_and_connection,
 };
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -241,20 +239,9 @@ async fn test_get_entries_empty_list() {
 async fn test_get_entries_non_empty() {
     let setup = setup_with_list().await;
 
-    let organisation_id = setup.identifier.organisation.as_ref().unwrap().id;
-
-    let wallet_unit_id =
-        insert_wallet_unit_to_database(&setup.db, organisation_id, "wallet_unit".to_string()).await;
-    let revocation_list_entry_id = insert_revocation_list_entry(&setup.db, setup.list_id, 1, None)
+    insert_revocation_list_entry(&setup.db, setup.list_id, 1, None)
         .await
         .unwrap();
-    let wallet_unit_attested_key_id = insert_wallet_unit_attested_key_to_database(
-        &setup.db,
-        wallet_unit_id,
-        Some(revocation_list_entry_id.to_string()),
-        get_dummy_date(),
-    )
-    .await;
 
     let credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
     insert_revocation_list_entry(&setup.db, setup.list_id, 2, Some(credential_id))
@@ -266,21 +253,17 @@ async fn test_get_entries_non_empty() {
     assert_eq!(
         results[0],
         RevocationListEntry {
-            entity_info: RevocationListEntityInfo::WalletUnitAttestedKey(
-                wallet_unit_attested_key_id,
-                WalletUnitStatus::Active
-            ),
-            index: 1
+            entity_info: RevocationListEntityInfo::WalletUnitAttestedKey,
+            index: 1,
+            status: RevocationListEntryStatus::Active,
         }
     );
     assert_eq!(
         results[1],
         RevocationListEntry {
-            entity_info: RevocationListEntityInfo::Credential(
-                credential_id,
-                CredentialStateEnum::Created
-            ),
-            index: 2
+            entity_info: RevocationListEntityInfo::Credential(credential_id),
+            index: 2,
+            status: RevocationListEntryStatus::Active,
         }
     );
 }

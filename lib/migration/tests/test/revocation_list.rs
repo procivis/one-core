@@ -81,6 +81,8 @@ async fn test_db_schema_revocation_list_entry() {
             "revocation_list_id",
             "index",
             "credential_id",
+            "status",
+            "type",
         ])
         .index(
             "index-RevocationList-Index-Unique",
@@ -118,4 +120,14 @@ async fn test_db_schema_revocation_list_entry() {
         .r#type(ColumnType::Uuid)
         .nullable(true)
         .foreign_key("fk-RevocationListEntry-CredentialId", "credential", "id");
+    revocation_list_entry
+        .column("status")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    revocation_list_entry
+        .column("type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
 }

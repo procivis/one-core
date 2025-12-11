@@ -64,7 +64,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     create_credential_offer, create_issuer_metadata_response, oidc_issuer_create_token,
     parse_access_token, parse_refresh_token,
 };
-use crate::provider::revocation::model::{CredentialRevocationState, Operation};
+use crate::provider::revocation::model::{Operation, RevocationState};
 use crate::repository::error::DataLayerError;
 use crate::service::credential::dto::{WalletAppAttestationDTO, WalletUnitAttestationDTO};
 use crate::service::error::{
@@ -842,7 +842,7 @@ impl OID4VCIFinal1_0Service {
             .contains(&Operation::Revoke)
         {
             revocation_method
-                .mark_credential_as(credential, CredentialRevocationState::Revoked)
+                .mark_credential_as(credential, RevocationState::Revoked)
                 .await?;
         }
 

@@ -2,9 +2,11 @@
 //! https://datatracker.ietf.org/doc/html/draft-ietf-oauth-status-list-03
 
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 use futures::FutureExt;
+use itertools::Itertools;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::RevocationListId;
@@ -16,14 +18,15 @@ use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
 use crate::mapper::params::convert_params;
 use crate::model::certificate::CertificateRelations;
 use crate::model::common::LockType;
-use crate::model::credential::{Credential, CredentialStateEnum};
+use crate::model::credential::Credential;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
+    StatusListCredentialFormat, StatusListType, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
-use crate::model::wallet_unit::{WalletUnitRelations, WalletUnitStatus};
+use crate::model::wallet_unit::WalletUnitRelations;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
 };
@@ -47,14 +50,13 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
-    Operation, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, Operation,
+    RevocationMethodCapabilities, RevocationState,
 };
 use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
-
 pub mod resolver;
 pub mod util;
 
@@ -169,7 +171,7 @@ impl RevocationMethod for TokenStatusList {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: CredentialRevocationState,
+        new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         let issuer_identifier =
             credential
@@ -183,7 +185,7 @@ impl RevocationMethod for TokenStatusList {
             .revocation_list_repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier.id,
-                RevocationListPurpose::Revocation,
+                RevocationListPurpose::RevocationAndSuspension,
                 StatusListType::TokenStatusList,
                 &Default::default(),
             )
@@ -193,19 +195,21 @@ impl RevocationMethod for TokenStatusList {
                 issuer_identifier.id,
             ))?;
 
+        self.revocation_list_repository
+            .update_entry(
+                UpdateRevocationListEntryId::Credential(credential.id),
+                UpdateRevocationListEntryRequest {
+                    status: Some(new_state.into()),
+                },
+            )
+            .await?;
+
         let current_entries = self
             .revocation_list_repository
             .get_entries(current_list.id)
             .await?;
 
-        let encoded_list = generate_token_from_entries(
-            current_entries,
-            Some(RevocationListEntityInfo::Credential(
-                credential.id,
-                new_state.into(),
-            )),
-        )
-        .await?;
+        let encoded_list = generate_token_from_entries(current_entries).await?;
 
         let list_credential = format_status_list_credential(
             &current_list.id,
@@ -231,7 +235,7 @@ impl RevocationMethod for TokenStatusList {
         issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         if credential_status.r#type != CREDENTIAL_STATUS_TYPE {
             return Err(RevocationError::ValidationError(format!(
                 "Invalid credential status type: {}",
@@ -362,34 +366,70 @@ impl RevocationMethod for TokenStatusList {
     async fn update_attestation_entries(
         &self,
         keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        let lists: HashMap<RevocationListId, RevocationList> = HashMap::from_iter(
-            keys.into_iter()
-                .map(|key| (key.revocation_list.id, key.revocation_list)),
-        );
-
-        for list in lists.into_values() {
-            let entries = self.revocation_list_repository.get_entries(list.id).await?;
-
-            let encoded_list = generate_token_from_entries(entries, None).await?;
-
-            let list_credential = format_status_list_credential(
-                &list.id,
-                &list.issuer_identifier.ok_or(RevocationError::MappingError(
-                    "Missing issuer_identifier".to_string(),
-                ))?,
-                encoded_list,
-                &*self.key_provider,
-                &self.key_algorithm_provider,
-                &self.core_base_url,
-                &*self.get_formatter_for_issuance()?,
-            )
-            .await?;
-
-            self.revocation_list_repository
-                .update_credentials(&list.id, list_credential.into_bytes())
-                .await?;
+        struct RevocationListKey(RevocationList);
+        impl Hash for RevocationListKey {
+            fn hash<H: Hasher>(&self, state: &mut H) {
+                self.0.id.hash(state);
+            }
         }
+        impl PartialEq for RevocationListKey {
+            fn eq(&self, other: &Self) -> bool {
+                self.0.id == other.0.id
+            }
+        }
+        impl Eq for RevocationListKey {}
+
+        let revocation_lists = keys
+            .into_iter()
+            .map(|k| {
+                (
+                    RevocationListKey(k.revocation_list),
+                    k.revocation_list_index,
+                )
+            })
+            .into_group_map();
+
+        self.transaction_manager
+            .tx(async move {
+                for (RevocationListKey(list), indexes) in revocation_lists.into_iter() {
+                    for index in indexes {
+                        self.revocation_list_repository
+                            .update_entry(
+                                UpdateRevocationListEntryId::Index(list.id, index),
+                                UpdateRevocationListEntryRequest {
+                                    status: Some(new_state.clone().into()),
+                                },
+                            )
+                            .await?;
+                    }
+
+                    let entries = self.revocation_list_repository.get_entries(list.id).await?;
+
+                    let encoded_list = generate_token_from_entries(entries).await?;
+
+                    let list_credential = format_status_list_credential(
+                        &list.id,
+                        &list.issuer_identifier.ok_or(RevocationError::MappingError(
+                            "Missing issuer_identifier".to_string(),
+                        ))?,
+                        encoded_list,
+                        &*self.key_provider,
+                        &self.key_algorithm_provider,
+                        &self.core_base_url,
+                        &*self.get_formatter_for_issuance()?,
+                    )
+                    .await?;
+
+                    self.revocation_list_repository
+                        .update_credentials(&list.id, list_credential.into_bytes())
+                        .await?;
+                }
+                Ok::<_, RevocationError>(())
+            }
+            .boxed())
+            .await??;
 
         Ok(())
     }
@@ -433,7 +473,7 @@ impl TokenStatusList {
                         .revocation_list_repository
                         .get_revocation_by_issuer_identifier_id(
                             issuer_identifier.id,
-                            RevocationListPurpose::Revocation,
+                            RevocationListPurpose::RevocationAndSuspension,
                             StatusListType::TokenStatusList,
                             &Default::default(),
                         )
@@ -469,7 +509,7 @@ impl TokenStatusList {
             self.revocation_list_repository
                 .get_revocation_by_issuer_identifier_id(
                     issuer_identifier.id,
-                    RevocationListPurpose::Revocation,
+                    RevocationListPurpose::RevocationAndSuspension,
                     StatusListType::TokenStatusList,
                     &Default::default(),
                 )
@@ -548,7 +588,7 @@ impl TokenStatusList {
         let list_credential = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,
-            generate_token_from_entries(vec![], None).await?,
+            generate_token_from_entries(vec![]).await?,
             &*self.key_provider,
             &self.key_algorithm_provider,
             &self.core_base_url,
@@ -564,7 +604,7 @@ impl TokenStatusList {
                 credentials: list_credential.into_bytes(),
                 format: self.params.format,
                 r#type: StatusListType::TokenStatusList,
-                purpose: RevocationListPurpose::Revocation,
+                purpose: RevocationListPurpose::RevocationAndSuspension,
                 issuer_identifier: Some(issuer_identifier.to_owned()),
             })
             .await?;
@@ -695,25 +735,10 @@ async fn format_status_list_credential(
 
 async fn generate_token_from_entries(
     entries: Vec<RevocationListEntry>,
-    additionally_changed_entry: Option<RevocationListEntityInfo>,
 ) -> Result<String, RevocationError> {
-    let changed_entry: Option<(RevocationListEntityId, RevocationListEntityInfo)> =
-        additionally_changed_entry.map(|entry| (entry.to_owned().into(), entry));
-
     let index_states = entries
         .into_iter()
-        .map(|entry| {
-            let entity_id: RevocationListEntityId = entry.entity_info.to_owned().into();
-
-            if let Some((changed_entry_id, changed_entry)) = changed_entry.as_ref()
-                && changed_entry_id == &entity_id
-            {
-                return (entry.index, changed_entry.to_owned());
-            }
-
-            (entry.index, entry.entity_info)
-        })
-        .map(|(index, entry_info)| (index, get_revocation_entry_state(entry_info)))
+        .map(|entry| (entry.index, entry.status))
         .collect::<Vec<_>>();
 
     let preferred_token_size =
@@ -733,24 +758,4 @@ fn get_revocation_list_url(
         ))?,
         revocation_list_id
     ))
-}
-
-fn get_revocation_entry_state(entry_info: RevocationListEntityInfo) -> CredentialRevocationState {
-    match entry_info {
-        RevocationListEntityInfo::Credential(_, state) => match state {
-            CredentialStateEnum::Suspended => CredentialRevocationState::Suspended {
-                suspend_end_date: None,
-            },
-            CredentialStateEnum::Revoked
-            | CredentialStateEnum::Rejected
-            | CredentialStateEnum::Error => CredentialRevocationState::Revoked,
-            _ => CredentialRevocationState::Valid,
-        },
-        RevocationListEntityInfo::WalletUnitAttestedKey(_, status) => match status {
-            WalletUnitStatus::Revoked | WalletUnitStatus::Error => {
-                CredentialRevocationState::Revoked
-            }
-            _ => CredentialRevocationState::Valid,
-        },
-    }
 }

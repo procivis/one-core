@@ -10,7 +10,7 @@ use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierD
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, JsonLdContext, RevocationMethodCapabilities,
+    CredentialDataByRole, JsonLdContext, RevocationMethodCapabilities, RevocationState,
 };
 
 pub struct MdocMsoUpdateSuspensionRevocation {}
@@ -31,9 +31,9 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     async fn mark_credential_as(
         &self,
         _credential: &Credential,
-        new_state: CredentialRevocationState,
+        new_state: RevocationState,
     ) -> Result<(), RevocationError> {
-        if new_state == CredentialRevocationState::Revoked {
+        if new_state == RevocationState::Revoked {
             return Err(RevocationError::OperationNotSupported(
                 "MDOC_MSO_UPDATE_SUSPENSION: revocation not supported".to_string(),
             ));
@@ -48,7 +48,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
         _issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         Err(RevocationError::ValidationError(
             "Credential cannot be revoked - status invalid".to_string(),
         ))
@@ -75,6 +75,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     async fn update_attestation_entries(
         &self,
         _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),

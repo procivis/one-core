@@ -433,7 +433,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         .revocation_lists
         .get_revocation_by_issuer_identifier_id(
             issuer_identifier.id,
-            RevocationListPurpose::Revocation,
+            RevocationListPurpose::RevocationAndSuspension,
             StatusListType::TokenStatusList,
             &Default::default(),
         )

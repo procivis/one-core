@@ -37,7 +37,7 @@ use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
+    CredentialDataByRole, Operation, RevocationMethodCapabilities, RevocationState,
 };
 use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
@@ -413,11 +413,8 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<(), ServiceError> {
-        self.change_issued_credential_revocation_state(
-            credential_id,
-            CredentialRevocationState::Valid,
-        )
-        .await?;
+        self.change_issued_credential_revocation_state(credential_id, RevocationState::Valid)
+            .await?;
         Ok(())
     }
 
@@ -428,7 +425,7 @@ impl CredentialService {
     ) -> Result<(), ServiceError> {
         self.change_issued_credential_revocation_state(
             credential_id,
-            CredentialRevocationState::Suspended {
+            RevocationState::Suspended {
                 suspend_end_date: request.suspend_end_date,
             },
         )
@@ -445,11 +442,8 @@ impl CredentialService {
         &self,
         credential_id: &CredentialId,
     ) -> Result<(), ServiceError> {
-        self.change_issued_credential_revocation_state(
-            credential_id,
-            CredentialRevocationState::Revoked,
-        )
-        .await?;
+        self.change_issued_credential_revocation_state(credential_id, RevocationState::Revoked)
+            .await?;
         Ok(())
     }
 
@@ -607,7 +601,7 @@ impl CredentialService {
     async fn change_issued_credential_revocation_state(
         &self,
         credential_id: &CredentialId,
-        revocation_state: CredentialRevocationState,
+        revocation_state: RevocationState,
     ) -> Result<(), ServiceError> {
         let credential = self
             .credential_repository
@@ -668,12 +662,12 @@ impl CredentialService {
         let current_state = &credential.state;
 
         let valid_states: &[CredentialStateEnum] = match revocation_state {
-            CredentialRevocationState::Revoked => &[
+            RevocationState::Revoked => &[
                 CredentialStateEnum::Accepted,
                 CredentialStateEnum::Suspended,
             ],
-            CredentialRevocationState::Valid => &[CredentialStateEnum::Suspended],
-            CredentialRevocationState::Suspended { .. } => &[CredentialStateEnum::Accepted],
+            RevocationState::Valid => &[CredentialStateEnum::Suspended],
+            RevocationState::Suspended { .. } => &[CredentialStateEnum::Accepted],
         };
         throw_if_state_not_in(current_state, valid_states)?;
 
@@ -688,10 +682,8 @@ impl CredentialService {
 
         let capabilities: RevocationMethodCapabilities = revocation_method.get_capabilities();
         let required_capability = match revocation_state {
-            CredentialRevocationState::Valid | CredentialRevocationState::Suspended { .. } => {
-                Operation::Suspend
-            }
-            CredentialRevocationState::Revoked => Operation::Revoke,
+            RevocationState::Valid | RevocationState::Suspended { .. } => Operation::Suspend,
+            RevocationState::Revoked => Operation::Revoke,
         };
         if !capabilities.operations.contains(&required_capability) {
             return Err(
@@ -706,7 +698,7 @@ impl CredentialService {
             .await?;
 
         let suspend_end_date =
-            if let CredentialRevocationState::Suspended { suspend_end_date } = &revocation_state {
+            if let RevocationState::Suspended { suspend_end_date } = &revocation_state {
                 suspend_end_date.to_owned()
             } else {
                 None
@@ -897,7 +889,7 @@ impl CredentialService {
             CredentialRole::Issuer | CredentialRole::Verifier => None,
         };
 
-        let mut worst_revocation_state = CredentialRevocationState::Valid;
+        let mut worst_revocation_state = RevocationState::Valid;
         for status in credential_status {
             match revocation_method
                 .check_credential_revocation_status(
@@ -917,12 +909,12 @@ impl CredentialService {
                     });
                 }
                 Ok(state) => match state {
-                    CredentialRevocationState::Valid => {}
-                    CredentialRevocationState::Revoked => {
+                    RevocationState::Valid => {}
+                    RevocationState::Revoked => {
                         worst_revocation_state = state;
                         break;
                     }
-                    CredentialRevocationState::Suspended { .. } => {
+                    RevocationState::Suspended { .. } => {
                         worst_revocation_state = state;
                     }
                 },
@@ -930,9 +922,7 @@ impl CredentialService {
         }
 
         let suspend_end_date = match &worst_revocation_state {
-            CredentialRevocationState::Suspended { suspend_end_date } => {
-                suspend_end_date.to_owned()
-            }
+            RevocationState::Suspended { suspend_end_date } => suspend_end_date.to_owned(),
             _ => None,
         };
         let detected_state = worst_revocation_state.into();

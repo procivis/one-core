@@ -38,8 +38,8 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::dto::Lvvc;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
-    Operation, RevocationMethodCapabilities, VerifierCredentialData,
+    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, Operation,
+    RevocationMethodCapabilities, RevocationState, VerifierCredentialData,
 };
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 
@@ -149,7 +149,7 @@ impl LvvcProvider {
         credential: &Credential,
         credential_status: &CredentialStatus,
         force_refresh: bool,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         let lvvc = holder_get_lvvc(
             credential,
             credential_status,
@@ -173,10 +173,10 @@ impl LvvcProvider {
 
         let status = status_from_lvvc_claims(&lvvc.claims.claims)?;
         Ok(match status {
-            LvvcStatus::Accepted => CredentialRevocationState::Valid,
-            LvvcStatus::Revoked => CredentialRevocationState::Revoked,
+            LvvcStatus::Accepted => RevocationState::Valid,
+            LvvcStatus::Revoked => RevocationState::Revoked,
             LvvcStatus::Suspended { suspend_end_date } => {
-                CredentialRevocationState::Suspended { suspend_end_date }
+                RevocationState::Suspended { suspend_end_date }
             }
         })
     }
@@ -185,7 +185,7 @@ impl LvvcProvider {
         &self,
         issuer_did: &DidValue,
         data: VerifierCredentialData,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         let credential_id = data
             .credential
             .id
@@ -230,10 +230,10 @@ impl LvvcProvider {
 
         let status = status_from_lvvc_claims(&lvvc.claims.claims)?;
         Ok(match status {
-            LvvcStatus::Accepted => CredentialRevocationState::Valid,
-            LvvcStatus::Revoked => CredentialRevocationState::Revoked,
+            LvvcStatus::Accepted => RevocationState::Valid,
+            LvvcStatus::Revoked => RevocationState::Revoked,
             LvvcStatus::Suspended { suspend_end_date } => {
-                CredentialRevocationState::Suspended { suspend_end_date }
+                RevocationState::Suspended { suspend_end_date }
             }
         })
     }
@@ -286,18 +286,18 @@ impl RevocationMethod for LvvcProvider {
     async fn mark_credential_as(
         &self,
         credential: &Credential,
-        new_state: CredentialRevocationState,
+        new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         let lvvc = match new_state {
-            CredentialRevocationState::Revoked => {
+            RevocationState::Revoked => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Revoked)
                     .await
             }
-            CredentialRevocationState::Valid => {
+            RevocationState::Valid => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Accepted)
                     .await
             }
-            CredentialRevocationState::Suspended { suspend_end_date } => {
+            RevocationState::Suspended { suspend_end_date } => {
                 self.create_lvvc_with_status(credential, LvvcStatus::Suspended { suspend_end_date })
                     .await
             }
@@ -316,7 +316,7 @@ impl RevocationMethod for LvvcProvider {
         issuer_details: &IdentifierDetails,
         additional_credential_data: Option<CredentialDataByRole>,
         force_refresh: bool,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         let IdentifierDetails::Did(issuer_did) = issuer_details else {
             return Err(RevocationError::ValidationError(
                 "issuer did is missing".to_string(),
@@ -363,6 +363,7 @@ impl RevocationMethod for LvvcProvider {
     async fn update_attestation_entries(
         &self,
         _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),

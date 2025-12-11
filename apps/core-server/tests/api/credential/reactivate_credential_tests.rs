@@ -3,7 +3,9 @@ use std::str::FromStr;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
-use one_core::model::revocation_list::{RevocationListPurpose, StatusListType};
+use one_core::model::revocation_list::{
+    RevocationListEntryStatus, RevocationListPurpose, StatusListType,
+};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 
@@ -54,6 +56,16 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
         .create_credential_entry(revocation_list.id, credential.id, 0)
         .await;
 
+    context
+        .db
+        .revocation_lists
+        .update_entry(
+            revocation_list.id,
+            0,
+            Some(RevocationListEntryStatus::Revoked),
+        )
+        .await;
+
     // WHEN
     let resp = context.api.credentials.reactivate(&credential.id).await;
 
@@ -63,6 +75,17 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
     let credential = context.db.credentials.get(&credential.id).await;
 
     assert_eq!(CredentialStateEnum::Accepted, credential.state);
+
+    let revocation_list_entry = context
+        .db
+        .revocation_lists
+        .get_entries(revocation_list.id)
+        .await;
+    assert_eq!(revocation_list_entry.len(), 1);
+    assert_eq!(
+        revocation_list_entry[0].status,
+        RevocationListEntryStatus::Active
+    );
 }
 
 #[tokio::test]

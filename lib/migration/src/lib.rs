@@ -181,6 +181,7 @@ mod m20251127_162310_add_org_created_history_idx;
 mod m20251128_080107_credential_columns_not_null;
 mod m20251201_091341_remove_default_org_type;
 mod m20251205_094417_align_history;
+mod m20251208_141548_add_columns_is_active_and_type_to_revocation_entry;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -364,6 +365,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251128_080107_credential_columns_not_null::Migration),
             Box::new(m20251201_091341_remove_default_org_type::Migration),
             Box::new(m20251205_094417_align_history::Migration),
+            Box::new(m20251208_141548_add_columns_is_active_and_type_to_revocation_entry::Migration),
         ]
     }
 }

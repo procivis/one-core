@@ -16,8 +16,8 @@ use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::bitstring_status_list::util::extract_bitstring_index;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationInfo, CredentialRevocationState, JsonLdContext,
-    Operation, RevocationMethodCapabilities,
+    CredentialDataByRole, CredentialRevocationInfo, JsonLdContext, Operation,
+    RevocationMethodCapabilities, RevocationState,
 };
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 
@@ -48,7 +48,7 @@ impl RevocationMethod for StatusList2021 {
     async fn mark_credential_as(
         &self,
         _credential: &Credential,
-        _new_state: CredentialRevocationState,
+        _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "StatusList2021".to_string(),
@@ -61,7 +61,7 @@ impl RevocationMethod for StatusList2021 {
         issuer_details: &IdentifierDetails,
         _additional_credential_data: Option<CredentialDataByRole>,
         _force_refresh: bool,
-    ) -> Result<CredentialRevocationState, RevocationError> {
+    ) -> Result<RevocationState, RevocationError> {
         let IdentifierDetails::Did(issuer_did) = issuer_details else {
             return Err(RevocationError::ValidationError(
                 "issuer did is missing".to_string(),
@@ -113,7 +113,7 @@ impl RevocationMethod for StatusList2021 {
         if extract_bitstring_index(encoded_list, list_index)? {
             status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
         } else {
-            Ok(CredentialRevocationState::Valid)
+            Ok(RevocationState::Valid)
         }
     }
 
@@ -138,6 +138,7 @@ impl RevocationMethod for StatusList2021 {
     async fn update_attestation_entries(
         &self,
         _keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
+        _new_state: RevocationState,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),

@@ -4,7 +4,9 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::revocation_list::{RevocationListPurpose, StatusListType};
+use one_core::model::revocation_list::{
+    RevocationListEntryStatus, RevocationListPurpose, StatusListType,
+};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -77,6 +79,17 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
 
     assert_eq!(suspend_end_date, credential.suspend_end_date.unwrap());
     assert_history_count(&context, &credential.id.into(), HistoryAction::Suspended, 1).await;
+
+    let revocation_list_entry = context
+        .db
+        .revocation_lists
+        .get_entries(revocation_list.id)
+        .await;
+    assert_eq!(revocation_list_entry.len(), 1);
+    assert_eq!(
+        revocation_list_entry[0].status,
+        RevocationListEntryStatus::Suspended
+    );
 }
 
 #[tokio::test]

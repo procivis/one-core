@@ -15,7 +15,7 @@ use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::provider::KeyProvider;
-use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::wallet_provider_client::WalletProviderClient;
 use crate::provider::wallet_provider_client::dto::IssueWalletAttestationResponse;
@@ -226,7 +226,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             .await;
 
         match revocation_status {
-            Ok(CredentialRevocationState::Valid) => Ok(WalletUnitStatusCheckResponse::Active),
+            Ok(RevocationState::Valid) => Ok(WalletUnitStatusCheckResponse::Active),
             Ok(_) => Ok(WalletUnitStatusCheckResponse::Revoked),
             Err(e) => Err(ServiceError::Revocation(e)),
         }

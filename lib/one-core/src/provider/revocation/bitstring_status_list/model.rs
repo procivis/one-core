@@ -12,4 +12,6 @@ pub enum StatusPurpose {
     Revocation,
     #[strum(serialize = "suspension")]
     Suspension,
+    #[strum(serialize = "revocation_and_suspension")]
+    RevocationAndSuspension,
 }

@@ -58,7 +58,7 @@ use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::revocation::model::CredentialRevocationInfo;
+use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
 use crate::service::error::{
     EntityNotFoundError, ErrorCodeMixin, MissingProviderError, ServiceError,
 };
@@ -1147,9 +1147,10 @@ impl WalletProviderService {
                     revocation_method.to_owned(),
                 ))?;
 
-            revocation_method.update_attestation_entries(keys).await?;
+            revocation_method
+                .update_attestation_entries(keys, RevocationState::Revoked)
+                .await?;
         }
-
         Ok(())
     }
 

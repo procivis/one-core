@@ -56,6 +56,8 @@ pub enum RevocationListPurpose {
     Revocation,
     #[sea_orm(string_value = "SUSPENSION")]
     Suspension,
+    #[sea_orm(string_value = "REVOCATION_AND_SUSPENSION")]
+    RevocationAndSuspension,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]

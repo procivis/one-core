@@ -34,7 +34,7 @@ use crate::provider::presentation_formatter::model::ExtractedPresentation;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::error::RevocationError;
-use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
@@ -74,7 +74,7 @@ struct MockData {
     presentation_extraction: Option<Result<ExtractedPresentation, FormatterError>>,
     credential_extraction_unverified: Option<Result<DetailCredential, FormatterError>>,
     credential_extraction: Option<Result<DetailCredential, FormatterError>>,
-    revocation_check: Option<Result<CredentialRevocationState, RevocationError>>,
+    revocation_check: Option<Result<RevocationState, RevocationError>>,
 }
 
 fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
@@ -177,7 +177,7 @@ async fn test_validate_submission_success_dcql() {
 #[tokio::test]
 async fn test_validate_submission_suspended() {
     let mut test_data = test_data(Some(dummy_presentation_definition()), None);
-    test_data.mock_data.revocation_check = Some(Ok(CredentialRevocationState::Suspended {
+    test_data.mock_data.revocation_check = Some(Ok(RevocationState::Suspended {
         suspend_end_date: None,
     }));
     let mocks = mocks_with_test_data(test_data.mock_data);
@@ -220,7 +220,7 @@ async fn test_validate_submission_suspended() {
 #[tokio::test]
 async fn test_validate_submission_suspended_dcql() {
     let mut test_data = test_data(None, Some(dummy_dcql_query()));
-    test_data.mock_data.revocation_check = Some(Ok(CredentialRevocationState::Suspended {
+    test_data.mock_data.revocation_check = Some(Ok(RevocationState::Suspended {
         suspend_end_date: None,
     }));
     let mocks = mocks_with_test_data(test_data.mock_data);
@@ -531,7 +531,7 @@ fn test_data(
         presentation_extraction: Some(Ok(extracted_presentation)),
         credential_extraction_unverified: Some(Ok(extracted_credential.clone())),
         credential_extraction: Some(Ok(extracted_credential)),
-        revocation_check: Some(Ok(CredentialRevocationState::Valid)),
+        revocation_check: Some(Ok(RevocationState::Valid)),
     };
     TestData {
         issuer_did,

@@ -9,8 +9,9 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use thiserror::Error;
 
+use crate::model::revocation_list::RevocationListEntryStatus;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;
-use crate::provider::revocation::model::CredentialRevocationState;
+use crate::provider::revocation::model::RevocationState;
 
 #[derive(Debug, Error)]
 pub enum TokenError {
@@ -33,7 +34,7 @@ pub(crate) const PREFERRED_ENTRY_SIZE: usize = 2;
 pub(crate) fn extract_state_from_token(
     status_list: &TokenStatusListSubject,
     index: usize,
-) -> Result<CredentialRevocationState, TokenError> {
+) -> Result<RevocationState, TokenError> {
     let entry_size = status_list.bits;
 
     let compressed = Base64UrlSafeNoPadding::decode_to_vec(&status_list.value, Some(&[b'='; 4]))
@@ -68,16 +69,16 @@ pub(crate) fn extract_state_from_token(
         .ok_or(TokenError::IndexOutOfBounds { index })?;
 
     match (revoked, suspended) {
-        (true, _) => Ok(CredentialRevocationState::Revoked),
-        (false, true) => Ok(CredentialRevocationState::Suspended {
+        (true, _) => Ok(RevocationState::Revoked),
+        (false, true) => Ok(RevocationState::Suspended {
             suspend_end_date: None,
         }),
-        (_, _) => Ok(CredentialRevocationState::Valid),
+        (_, _) => Ok(RevocationState::Valid),
     }
 }
 
 pub(super) fn generate_token(
-    input: Vec<(usize, CredentialRevocationState)>,
+    input: Vec<(usize, RevocationListEntryStatus)>,
     bits: usize,
     preferred_token_size: usize,
 ) -> Result<String, TokenError> {
@@ -85,21 +86,19 @@ pub(super) fn generate_token(
     input.into_iter().try_for_each(|(index, state)| {
         let most_significant_bit_index = get_most_significant_bit_index(index, bits);
         match state {
-            CredentialRevocationState::Valid => {}
-            CredentialRevocationState::Revoked => {
+            RevocationListEntryStatus::Active => {}
+            RevocationListEntryStatus::Revoked => {
                 let revocation_bit_index = most_significant_bit_index + bits - 1;
                 bitvec.set(revocation_bit_index, true)
             }
-            CredentialRevocationState::Suspended { .. } => {
+            RevocationListEntryStatus::Suspended => {
                 if bits < PREFERRED_ENTRY_SIZE {
                     return Err(TokenError::SuspensionRequiresAtLeastTwoBits);
                 }
-
                 let suspension_bit_index = most_significant_bit_index + bits - 2;
                 bitvec.set(suspension_bit_index, true)
             }
         }
-
         Ok(())
     })?;
 

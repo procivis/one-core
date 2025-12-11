@@ -4,7 +4,8 @@ use super::error::DataLayerError;
 use crate::model::common::LockType;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
-    RevocationListRelations, StatusListType,
+    RevocationListRelations, StatusListType, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -46,6 +47,12 @@ pub trait RevocationListRepository: Send + Sync {
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
         index_on_status_list: usize,
+    ) -> Result<(), DataLayerError>;
+
+    async fn update_entry(
+        &self,
+        id: UpdateRevocationListEntryId,
+        request: UpdateRevocationListEntryRequest,
     ) -> Result<(), DataLayerError>;
 
     async fn get_entries(

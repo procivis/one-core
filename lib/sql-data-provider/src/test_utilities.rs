@@ -31,6 +31,7 @@ use crate::entity::interaction::InteractionType;
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
 use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
+use crate::entity::revocation_list_entry::{RevocationListEntryStatus, RevocationListEntryType};
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
     key_did, organisation, proof, proof_claim, proof_input_claim_schema, proof_input_schema,
@@ -619,6 +620,10 @@ pub async fn insert_revocation_list_entry(
         revocation_list_id: Set(list_id),
         index: Set(index as _),
         credential_id: Set(credential_id),
+        r#type: Set(credential_id
+            .map(|_| RevocationListEntryType::Credential)
+            .unwrap_or(RevocationListEntryType::WalletUnitAttestedKey)),
+        status: Set(RevocationListEntryStatus::Active),
     }
     .insert(database)
     .await?;

@@ -3,21 +3,21 @@ use autometrics::autometrics;
 use one_core::model::common::LockType;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListPurpose, RevocationListRelations, StatusListType,
+    RevocationListPurpose, RevocationListRelations, StatusListType, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
 use sea_orm::{
-    ActiveEnum, ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, QueryFilter,
-    QueryOrder, QuerySelect, RelationTrait, Set, Unchanged,
+    ActiveEnum, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, FromQueryResult, NotSet,
+    QueryFilter, QueryOrder, QuerySelect, Set, Unchanged,
 };
-use shared_types::{CredentialId, IdentifierId, RevocationListId, WalletUnitAttestedKeyId};
+use shared_types::{CredentialId, IdentifierId, RevocationListId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::entity::{
-    credential, revocation_list, revocation_list_entry, wallet_unit, wallet_unit_attested_key,
-};
+use crate::entity::revocation_list_entry::{RevocationListEntryStatus, RevocationListEntryType};
+use crate::entity::{revocation_list, revocation_list_entry, wallet_unit_attested_key};
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 use crate::revocation_list::RevocationListProvider;
 
@@ -214,6 +214,13 @@ impl RevocationListRepository for RevocationListProvider {
             None
         };
 
+        let r#type = match entity_id {
+            RevocationListEntityId::Credential(_) => RevocationListEntryType::Credential,
+            RevocationListEntityId::WalletUnitAttestedKey(_) => {
+                RevocationListEntryType::WalletUnitAttestedKey
+            }
+        };
+
         let now = OffsetDateTime::now_utc();
         let entry_id = Uuid::new_v4();
         revocation_list_entry::ActiveModel {
@@ -222,6 +229,8 @@ impl RevocationListRepository for RevocationListProvider {
             revocation_list_id: Set(list_id),
             index: Set(index_on_status_list as _),
             credential_id: Set(credential_id),
+            r#type: Set(r#type),
+            status: Set(RevocationListEntryStatus::Active),
         }
         .insert(&self.db)
         .await
@@ -242,38 +251,69 @@ impl RevocationListRepository for RevocationListProvider {
         Ok(())
     }
 
+    async fn update_entry(
+        &self,
+        id: UpdateRevocationListEntryId,
+        request: UpdateRevocationListEntryRequest,
+    ) -> Result<(), DataLayerError> {
+        let status = match request.status {
+            None => Unchanged(RevocationListEntryStatus::Active),
+            Some(status) => Set(status.into()),
+        };
+
+        let model = revocation_list_entry::ActiveModel {
+            id: NotSet,
+            status,
+            ..Default::default()
+        };
+
+        let model = match id {
+            UpdateRevocationListEntryId::Credential(credential_id) => {
+                revocation_list_entry::Entity::update_many()
+                    .set(model)
+                    .filter(revocation_list_entry::Column::CredentialId.eq(credential_id))
+            }
+            UpdateRevocationListEntryId::Id(id) => revocation_list_entry::Entity::update_many()
+                .set(model)
+                .filter(revocation_list_entry::Column::Id.eq(id)),
+            UpdateRevocationListEntryId::Index(revocation_list_id, index) => {
+                revocation_list_entry::Entity::update_many()
+                    .set(model)
+                    .filter(
+                        Condition::all()
+                            .add(
+                                revocation_list_entry::Column::RevocationListId
+                                    .eq(revocation_list_id),
+                            )
+                            .add(revocation_list_entry::Column::Index.eq(index as u32)),
+                    )
+            }
+        };
+        model
+            .exec(&self.db)
+            .await
+            .map_err(to_update_data_layer_error)?;
+        Ok(())
+    }
+
     async fn get_entries(
         &self,
         list_id: RevocationListId,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
-        #[derive(FromQueryResult)]
+        #[derive(FromQueryResult, Debug)]
         struct Entry {
-            pub credential_id: Option<CredentialId>,
-            pub state: Option<credential::CredentialState>,
             pub index: u32,
-            pub id: Option<WalletUnitAttestedKeyId>,
-            pub status: Option<wallet_unit::WalletUnitStatus>,
+            pub credential_id: Option<CredentialId>,
+            pub status: RevocationListEntryStatus,
+            pub r#type: RevocationListEntryType,
         }
 
         let entries = revocation_list_entry::Entity::find()
             .select_only()
             .column(revocation_list_entry::Column::Index)
             .column(revocation_list_entry::Column::CredentialId)
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                revocation_list_entry::Relation::Credential.def(),
-            )
-            .column(credential::Column::State)
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                revocation_list_entry::Relation::WalletUnitAttestedKey.def(),
-            )
-            .column(wallet_unit_attested_key::Column::Id)
-            .join(
-                sea_orm::JoinType::LeftJoin,
-                wallet_unit_attested_key::Relation::WalletUnit.def(),
-            )
-            .column(wallet_unit::Column::Status)
+            .column(revocation_list_entry::Column::Status)
+            .column(revocation_list_entry::Column::Type)
             .filter(revocation_list_entry::Column::RevocationListId.eq(list_id.to_string()))
             .order_by_asc(revocation_list_entry::Column::Index)
             .into_model::<Entry>()
@@ -284,24 +324,26 @@ impl RevocationListRepository for RevocationListProvider {
         entries
             .into_iter()
             .map(|entry| {
-                let index = entry.index as _;
-                let entity_info = match entry {
-                    Entry {
-                        credential_id: Some(credential_id),
-                        state: Some(state),
-                        ..
-                    } => RevocationListEntityInfo::Credential(credential_id, state.into()),
-                    Entry {
-                        id: Some(id),
-                        status: Some(status),
-                        ..
-                    } => RevocationListEntityInfo::WalletUnitAttestedKey(id, status.into()),
-                    _ => {
+                let entity_info = match entry.r#type {
+                    RevocationListEntryType::Credential => {
+                        let Some(credential_id) = entry.credential_id else {
+                            return Err(DataLayerError::MappingError);
+                        };
+                        RevocationListEntityInfo::Credential(credential_id)
+                    }
+                    RevocationListEntryType::WalletUnitAttestedKey => {
+                        RevocationListEntityInfo::WalletUnitAttestedKey
+                    }
+                    RevocationListEntryType::Signature => {
+                        // Add support for signature in task ONE-8136
                         return Err(DataLayerError::MappingError);
                     }
                 };
-
-                Ok(RevocationListEntry { entity_info, index })
+                Ok(RevocationListEntry {
+                    entity_info,
+                    index: entry.index as usize,
+                    status: entry.status.into(),
+                })
             })
             .collect::<Result<_, DataLayerError>>()
     }

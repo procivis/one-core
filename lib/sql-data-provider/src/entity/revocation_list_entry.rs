@@ -1,3 +1,4 @@
+use one_core::model::revocation_list;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use shared_types::{CredentialId, DidId, IdentifierId, RevocationListId};
@@ -12,6 +13,32 @@ pub struct Model {
     pub revocation_list_id: RevocationListId,
     pub index: u32,
     pub credential_id: Option<CredentialId>,
+    pub r#type: RevocationListEntryType,
+    pub status: RevocationListEntryStatus,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum RevocationListEntryType {
+    #[sea_orm(string_value = "CREDENTIAL")]
+    Credential,
+    #[sea_orm(string_value = "WUA")]
+    WalletUnitAttestedKey,
+    #[sea_orm(string_value = "SIGNATURE")]
+    Signature,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
+#[from(revocation_list::RevocationListEntryStatus)]
+#[into(revocation_list::RevocationListEntryStatus)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum RevocationListEntryStatus {
+    #[sea_orm(string_value = "ACTIVE")]
+    Active,
+    #[sea_orm(string_value = "SUSPENDED")]
+    Suspended,
+    #[sea_orm(string_value = "REVOKED")]
+    Revoked,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

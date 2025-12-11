@@ -14,7 +14,7 @@ use crate::model::proof_schema::ProofSchema;
 use crate::proto::identifier_creator::IdentifierRole;
 use crate::provider::credential_formatter::model::CredentialClaim;
 use crate::provider::revocation::model::{
-    CredentialDataByRole, CredentialRevocationState, VerifierCredentialData,
+    CredentialDataByRole, RevocationState, VerifierCredentialData,
 };
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::service::error::ErrorCode::BR_0000;
@@ -152,7 +152,7 @@ impl ProofService {
                 )
                 .await?;
 
-            if state != CredentialRevocationState::Valid {
+            if state != RevocationState::Valid {
                 return Err(BusinessLogicError::CredentialIsRevokedOrSuspended.into());
             }
         }
