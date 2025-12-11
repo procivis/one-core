@@ -245,14 +245,6 @@ impl OpenId4VpProofValidatorProto {
         let query_id = &credential_query.id;
         let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
-        let requested_credential_schema =
-            proof_input_schema
-                .credential_schema
-                .as_ref()
-                .ok_or(OpenID4VCError::Other(
-                    "Missing credential schema".to_owned(),
-                ))?;
-
         if !multiple_presentations_allowed && presentation_strings.len() != 1 {
             return Err(OpenID4VCError::ValidationError(format!(
                 "Expected one presentation for credential query {query_id}"
@@ -285,53 +277,9 @@ impl OpenId4VpProofValidatorProto {
                 )
                 .await?;
 
-            let lvvc_credential_expected = requested_credential_schema.revocation_method == "LVVC";
-
-            if !multiple_presentations_allowed {
-                if lvvc_credential_expected {
-                    if credentials.len() != 2 {
-                        return Err(OpenID4VCError::ValidationError(
-                            "Invalid number of credentials in presentation, expected 2".to_string(),
-                        ));
-                    }
-                } else if credentials.len() != 1 {
-                    return Err(OpenID4VCError::ValidationError(
-                        "Invalid number of credentials in presentation, expected 1".to_string(),
-                    ));
-                }
-            };
-
-            let mut lvvc_credentials = Vec::new();
-            let mut non_lvvc_credentials = Vec::new();
-
-            if lvvc_credential_expected {
-                // We do not assume the LVVC is at any specific index in the presentation.
-                // Instead we extract all credentials and then check if any of them are LVVCs,
-                // This accounts for the case where the `multiple` flag is set to true
-                // And more than one Credential + LVVC pairs are present.
-                let credential_formatter = self
-                    .credential_formatter_provider
-                    .get_credential_formatter(requested_credential_schema.format.as_str())
-                    .ok_or(OpenID4VCError::ValidationError(format!(
-                        "Could not find format: {}",
-                        requested_credential_schema.format
-                    )))?;
-
-                for credential_token in credentials.iter() {
-                    let potential_lvvc_credential = credential_formatter
-                        .extract_credentials_unverified(credential_token, None)
-                        .await
-                        .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
-
-                    if is_lvvc_credential(&potential_lvvc_credential) {
-                        lvvc_credentials.push(potential_lvvc_credential);
-                    } else {
-                        non_lvvc_credentials.push(credential_token.clone());
-                    }
-                }
-            } else {
-                non_lvvc_credentials = credentials;
-            };
+            let (lvvc_credentials, non_lvvc_credentials) = self
+                .filter_lvvc_credentials(credential_query, proof_input_schema, credentials)
+                .await?;
 
             for credential_token in non_lvvc_credentials {
                 let (credential, mso) = self
@@ -371,6 +319,75 @@ impl OpenId4VpProofValidatorProto {
         }
 
         Ok(total_proved_claims)
+    }
+
+    async fn filter_lvvc_credentials(
+        &self,
+        credential_query: &CredentialQuery,
+        proof_input_schema: &ProofInputSchema,
+        credentials: Vec<String>,
+    ) -> Result<(Vec<DetailCredential>, Vec<String>), OpenID4VCError> {
+        // If multiple is true, then the verifier will accept multiple presentation tokens
+        // for the same credential query.
+        let multiple_presentations_allowed = credential_query.multiple;
+
+        let requested_credential_schema =
+            proof_input_schema
+                .credential_schema
+                .as_ref()
+                .ok_or(OpenID4VCError::Other(
+                    "Missing credential schema".to_owned(),
+                ))?;
+
+        let lvvc_credential_expected = requested_credential_schema.revocation_method == "LVVC";
+
+        if !multiple_presentations_allowed {
+            if lvvc_credential_expected {
+                if credentials.len() != 2 {
+                    return Err(OpenID4VCError::ValidationError(
+                        "Invalid number of credentials in presentation, expected 2".to_string(),
+                    ));
+                }
+            } else if credentials.len() != 1 {
+                return Err(OpenID4VCError::ValidationError(
+                    "Invalid number of credentials in presentation, expected 1".to_string(),
+                ));
+            }
+        };
+
+        let mut lvvc_credentials = Vec::new();
+        let mut non_lvvc_credentials = Vec::new();
+
+        if lvvc_credential_expected {
+            // We do not assume the LVVC is at any specific index in the presentation.
+            // Instead we extract all credentials and then check if any of them are LVVCs,
+            // This accounts for the case where the `multiple` flag is set to true
+            // And more than one Credential + LVVC pairs are present.
+            let credential_formatter = self
+                .credential_formatter_provider
+                .get_credential_formatter(requested_credential_schema.format.as_str())
+                .ok_or(OpenID4VCError::ValidationError(format!(
+                    "Could not find format: {}",
+                    requested_credential_schema.format
+                )))?;
+
+            for credential_token in credentials {
+                let potential_lvvc_credential = credential_formatter
+                    .extract_credentials_unverified(&credential_token, None)
+                    .await
+                    .map_err(|e| OpenID4VCError::Other(e.to_string()))?;
+
+                if is_lvvc_credential(&potential_lvvc_credential) {
+                    lvvc_credentials.push(potential_lvvc_credential);
+                } else {
+                    non_lvvc_credentials.push(credential_token);
+                }
+            }
+        } else {
+            non_lvvc_credentials = credentials;
+        };
+
+        Ok((lvvc_credentials, non_lvvc_credentials))
     }
 
     async fn validate_credential(
@@ -562,7 +579,7 @@ impl OpenId4VpProofValidatorProto {
             }
         }
 
-        let mut total_proved_claims: Vec<ValidatedProofClaimDTO> = Vec::new();
+        let mut total_proved_claims = Vec::new();
 
         // Unpack presentations and credentials
         for presentation_submitted in &presentation_submission.descriptor_map {
@@ -712,8 +729,7 @@ impl OpenId4VpProofValidatorProto {
                 continue;
             }
 
-            let proved_claims: Vec<ValidatedProofClaimDTO> =
-                validate_claims(credential, proof_schema_input, mso)?;
+            let proved_claims = validate_claims(credential, proof_schema_input, mso)?;
 
             total_proved_claims.extend(proved_claims);
         }
@@ -1002,43 +1018,21 @@ fn check_issuer_is_trusted_authority(
     issuer: &IdentifierDetails,
     authorities: &[TrustedAuthority],
 ) -> Result<(), OpenID4VCError> {
-    let issuer_aki = match issuer {
-        IdentifierDetails::Certificate(cert) => {
-            match get_aki_for_pem_chain(cert.chain.as_bytes()) {
-                Some(value) => value,
-                None => {
-                    return Err(OpenID4VCError::ValidationError(
-                        "Failed to retrieve Authority Key Identifier for credential issuer"
-                            .to_owned(),
-                    ));
-                }
-            }
-        }
+    let IdentifierDetails::Certificate(issuer_certificate) = issuer else {
         // Currently, we support only AuthorityKeyId trusted authorities.
         // Non-certificate issuers cannot pass an AKI check, so the code can bail out early here.
-        _ => {
-            return Err(OpenID4VCError::ValidationError(
-                "Issuer is not in Trusted Authorities list".to_owned(),
-            ));
-        }
+        return Err(OpenID4VCError::ValidationError(
+            "Issuer is not in Trusted Authorities list".to_owned(),
+        ));
     };
 
-    // DCQL spec says that AKI values should be provided as base64-encoded strings.
-    // We need to decode those before we can match them against stored AKIs.
-    let trusted_akis = {
-        let mut akis: Vec<Vec<u8>> = Vec::new();
-        for authority in authorities {
-            if let TrustedAuthority::AuthorityKeyId { values } = &authority {
-                for value in values {
-                    match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
-                        Ok(bytes) => akis.push(bytes),
-                        Err(_) => { /* Discard invalid values */ }
-                    }
-                }
-            }
-        }
-        akis
+    let Some(issuer_aki) = get_aki_for_pem_chain(issuer_certificate.chain.as_bytes()) else {
+        return Err(OpenID4VCError::ValidationError(
+            "Failed to retrieve Authority Key Identifier for credential issuer".to_owned(),
+        ));
     };
+
+    let trusted_akis = get_trusted_akis(authorities);
 
     for trusted_aki in &trusted_akis {
         // This is very inefficient.
@@ -1055,6 +1049,24 @@ fn check_issuer_is_trusted_authority(
     Err(OpenID4VCError::ValidationError(
         "Issuer is not in Trusted Authorities list".to_owned(),
     ))
+}
+
+pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<Vec<u8>> {
+    // DCQL spec says that AKI values should be provided as base64url-encoded strings.
+    // We need to decode those before we can match them against stored AKIs.
+
+    let mut akis: Vec<Vec<u8>> = Vec::new();
+    for authority in authorities {
+        if let TrustedAuthority::AuthorityKeyId { values } = &authority {
+            for value in values {
+                match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
+                    Ok(bytes) => akis.push(bytes),
+                    Err(_) => { /* Discard invalid values */ }
+                }
+            }
+        }
+    }
+    akis
 }
 
 fn validate_claims(

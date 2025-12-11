@@ -30,7 +30,6 @@ use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationEngagement,
 };
 use crate::mapper::{NESTED_CLAIM_MARKER, decode_cbor_base64};
-use crate::model::credential::CredentialStateEnum;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
@@ -354,17 +353,6 @@ impl VerificationProtocol for IsoMdl {
             let mut applicable_credentials = vec![];
 
             for credential in credentials {
-                let credential_state = credential.state;
-
-                if !matches!(
-                    credential_state,
-                    CredentialStateEnum::Accepted
-                        | CredentialStateEnum::Revoked
-                        | CredentialStateEnum::Suspended
-                ) {
-                    continue;
-                }
-
                 let claims = credential.claims.as_ref().ok_or_else(|| {
                     VerificationProtocolError::Failed("Claims missing for credential".to_string())
                 })?;

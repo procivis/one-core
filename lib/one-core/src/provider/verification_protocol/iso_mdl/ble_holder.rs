@@ -138,43 +138,12 @@ pub(crate) async fn receive_mdl_request(
         .schedule_continuation(
             interaction_data.continuation_task_id,
             |task_id, _, peripheral| async move {
-                let result: Result<_, VerificationProtocolError> = async {
-                    let connected_device_future =
-                        wait_for_active_device(&peripheral, interaction_data.service_uuid);
-
-                    let info = match (&qr_engagement, &nfc_engagement) {
-                        (None, None) => Err(VerificationProtocolError::Failed(
-                            "No engagement".to_string(),
-                        )),
-                        // if running only NFC engagement, failure of NFC session means failure of the whole proof flow
-                        (None, Some(nfc_only)) => {
-                            let session_failure_future = nfc_only.handler.session_failure().ok_or(
-                                VerificationProtocolError::Failed(
-                                    "NFC session failure receiver not available".to_string(),
-                                ),
-                            )?;
-                            tokio::select! {
-                                connected_device = connected_device_future => connected_device,
-                                failure_reason = session_failure_future => {
-                                    Err(match failure_reason {
-                                        Ok(nfc_error) => VerificationProtocolError::Failed(format!("NFC session failure: {nfc_error}")),
-                                        Err(rcv_error) => VerificationProtocolError::Failed(format!("NFC session failure: {rcv_error}")),
-                                    })
-                                }
-                            }
-                        }
-                        // if running QR engagement, then we can ignore NFC failure since QR-code engagement is still possible
-                        (Some(_qr), _) => connected_device_future.await,
-                    }?;
-
-                    peripheral
-                        .stop_advertisement()
-                        .await
-                        .context("failed to stop advertisement")
-                        .map_err(VerificationProtocolError::Transport)?;
-
-                    Ok(info)
-                }
+                let result = wait_to_finish_engagement(
+                    &peripheral,
+                    interaction_data.service_uuid,
+                    &qr_engagement,
+                    &nfc_engagement,
+                )
                 .await;
 
                 let info = match result {
@@ -410,6 +379,50 @@ pub(crate) async fn send_mdl_response(
     ))??;
 
     Ok(())
+}
+
+async fn wait_to_finish_engagement(
+    peripheral: &TrackingBlePeripheral,
+    service_uuid: Uuid,
+    qr_engagement: &Option<EmbeddedCbor<DeviceEngagement>>,
+    nfc_engagement: &Option<NfcHceSession>,
+) -> Result<DeviceInfo, VerificationProtocolError> {
+    let connected_device_future = wait_for_active_device(peripheral, service_uuid);
+
+    let info = match (qr_engagement, nfc_engagement) {
+        (None, None) => Err(VerificationProtocolError::Failed(
+            "No engagement".to_string(),
+        )),
+        // if running only NFC engagement, failure of NFC session means failure of the whole proof flow
+        (None, Some(nfc_only)) => {
+            let session_failure_future =
+                nfc_only
+                    .handler
+                    .session_failure()
+                    .ok_or(VerificationProtocolError::Failed(
+                        "NFC session failure receiver not available".to_string(),
+                    ))?;
+            tokio::select! {
+                connected_device = connected_device_future => connected_device,
+                failure_reason = session_failure_future => {
+                    Err(match failure_reason {
+                        Ok(nfc_error) => VerificationProtocolError::Failed(format!("NFC session failure: {nfc_error}")),
+                        Err(rcv_error) => VerificationProtocolError::Failed(format!("NFC session failure: {rcv_error}")),
+                    })
+                }
+            }
+        }
+        // if running QR engagement, then we can ignore NFC failure since QR-code engagement is still possible
+        (Some(_qr), _) => connected_device_future.await,
+    }?;
+
+    peripheral
+        .stop_advertisement()
+        .await
+        .context("failed to stop advertisement")
+        .map_err(VerificationProtocolError::Transport)?;
+
+    Ok(info)
 }
 
 async fn wait_for_active_device(

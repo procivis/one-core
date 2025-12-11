@@ -1,7 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
 
-use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dcql::matching::{ClaimFilter, CredentialFilter};
 use dcql::{
     ClaimPath, ClaimValue, CredentialFormat, CredentialQuery, DcqlQuery, PathSegment,
@@ -18,6 +17,7 @@ use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::proof::Proof;
+use crate::proto::openid4vp_proof_validator::validator::get_trusted_akis;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::verification_protocol::dto::{
@@ -323,22 +323,7 @@ pub(super) async fn filter_credentials_by_trusted_authorities(
         return;
     }
 
-    // DCQL spec says that AKI values should be provided as base64-encoded strings.
-    // We need to decode those before we can match them against stored AKIs.
-    let trusted_akis = {
-        let mut akis: Vec<Vec<u8>> = Vec::new();
-        for authority in authorities {
-            if let TrustedAuthority::AuthorityKeyId { values } = &authority {
-                for value in values {
-                    match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
-                        Ok(bytes) => akis.push(bytes),
-                        Err(_) => { /* Discard invalid values */ }
-                    }
-                }
-            }
-        }
-        akis
-    };
+    let trusted_akis = get_trusted_akis(authorities);
 
     /*
      * The OpenID4VP spec says (in pt 6.1.1):

@@ -737,20 +737,24 @@ impl TrustEntityService {
                     .await?
                 {
                     // insert into result structure
-                    if let Some(previous_entry) = result.get_mut(&identifier_id) {
-                        if let Some(previous_entity) = previous_entry
-                            .iter_mut()
-                            .find(|item| item.trust_entity.id == resolved.trust_entity.id)
-                        {
-                            previous_entity
-                                .certificate_ids
-                                .extend(resolved.certificate_ids);
-                        } else {
-                            previous_entry.push(resolved);
-                        }
-                    } else {
-                        result.insert(identifier_id, vec![resolved]);
-                    }
+                    result
+                        .entry(identifier_id)
+                        .and_modify({
+                            let resolved = resolved.clone();
+                            |previous_entry| {
+                                if let Some(previous_entity) = previous_entry
+                                    .iter_mut()
+                                    .find(|item| item.trust_entity.id == resolved.trust_entity.id)
+                                {
+                                    previous_entity
+                                        .certificate_ids
+                                        .extend(resolved.certificate_ids);
+                                } else {
+                                    previous_entry.push(resolved);
+                                }
+                            }
+                        })
+                        .or_insert(vec![resolved]);
                 };
             }
         }

@@ -285,7 +285,7 @@ pub struct ResolveTrustEntitiesResponseDTO {
         HashMap<IdentifierId, Vec<ResolvedIdentifierTrustEntityResponseDTO>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ResolvedIdentifierTrustEntityResponseDTO {
     pub trust_entity: GetTrustEntityResponseDTO,
     pub certificate_ids: Vec<CertificateId>,

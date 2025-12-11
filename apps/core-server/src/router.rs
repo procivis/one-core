@@ -11,11 +11,13 @@ use axum::http::{Request, Response};
 use axum::response::IntoResponse;
 use axum::routing::{delete, get, patch, post};
 use axum::{Extension, Router, middleware};
+use indexmap::IndexMap;
 use one_core::OneCore;
 use one_core::proto::session_provider::Session;
 use tower_http::catch_panic::CatchPanicLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{Span, error_span, info, warn};
+use utoipa::openapi::PathItem;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::ServerConfig;
@@ -65,22 +67,137 @@ pub async fn start_server(listener: TcpListener, config: ServerConfig, core: One
 }
 
 fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentication) -> Router {
-    let mut openapi_documentation = if config.enable_open_api {
-        Some(gen_openapi_documentation(
-            config.clone(),
-            state.core.config.clone(),
-        ))
-    } else {
-        None
-    };
+    let mut openapi_documentation = config.enable_open_api.then_some(gen_openapi_documentation(
+        config.clone(),
+        state.core.config.clone(),
+    ));
+
+    let mut openapi_paths = openapi_documentation.as_mut().map(|d| &mut d.paths.paths);
 
     if !config.enable_management_endpoints && !config.enable_external_endpoints {
         warn!("Management APIs and External APIs disabled.");
     }
 
-    let mut openapi_paths = openapi_documentation.as_mut().map(|d| &mut d.paths.paths);
+    let management_endpoints =
+        get_management_endpoints(&config, authentication, &mut openapi_paths);
 
-    let protected = if config.enable_management_endpoints {
+    let external_endpoints = get_external_endpoints(&config, &mut openapi_paths);
+
+    let metrics_endpoints = if config.enable_metrics {
+        Router::new().route("/metrics", get(misc::get_metrics))
+    } else {
+        if let Some(paths) = openapi_paths.as_mut() {
+            paths.shift_remove("/metrics");
+        };
+        Router::new()
+    };
+
+    let server_info_endpoints = if config.enable_server_info {
+        Router::new().route("/health", get(misc::health_check))
+    } else {
+        if let Some(paths) = openapi_paths.as_mut() {
+            paths.shift_remove("/health");
+        };
+        Router::new()
+    };
+
+    let openapi_endpoints = if let Some(openapi_documentation) = openapi_documentation {
+        Router::new()
+            .route(
+                "/api-docs/openapi.yaml",
+                get(misc::get_openapi_yaml(&openapi_documentation)),
+            )
+            .merge(
+                SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation),
+            )
+    } else {
+        Router::new()
+    };
+
+    let vcapi_endpoints = if config.insecure_vc_api_endpoints_enabled {
+        Router::new()
+            .route(
+                "/vc-api/credentials/issue",
+                post(vc_api::controller::issue_credential),
+            )
+            .route(
+                "/vc-api/credentials/verify",
+                post(vc_api::controller::verify_credential),
+            )
+            .route(
+                "/vc-api/presentations/verify",
+                post(vc_api::controller::verify_presentation),
+            )
+            .route(
+                "/vc-api/identifiers/{identifier}",
+                get(vc_api::controller::resolve_identifier),
+            )
+    } else {
+        Router::new()
+    };
+
+    let mut router = management_endpoints
+        .merge(external_endpoints)
+        .merge(vcapi_endpoints)
+        .layer(middleware::from_fn(crate::middleware::sentry_layer))
+        .layer(middleware::from_fn(crate::middleware::metrics_counter))
+        .merge(openapi_endpoints)
+        .merge(server_info_endpoints)
+        .merge(metrics_endpoints)
+        .layer(CatchPanicLayer::custom(handle_panic))
+        .layer(Extension(config))
+        .layer(middleware::from_fn(
+            crate::middleware::add_disable_cache_headers,
+        ))
+        .layer(middleware::from_fn(
+            crate::middleware::add_x_content_type_options_no_sniff_header,
+        ));
+
+    if tracing::enabled!(target: "core_server::middleware", tracing::Level::TRACE) {
+        router = router.layer(middleware::from_fn(
+            crate::middleware::log_request_and_response,
+        ));
+    }
+
+    router
+        .layer(
+            TraceLayer::new_for_http()
+                .make_span_with(|request: &Request<_>| {
+                    let context = get_http_request_context(request);
+                    error_span!(
+                        "http_request",
+                        method = context.method,
+                        path = context.path,
+                        service = "one-core",
+                        requestId = context.request_id.as_ref(),
+                        sessionId = context.session_id, // Derived from x-session-id header
+                    )
+                })
+                .on_request(|request: &Request<_>, _span: &Span| {
+                    tracing::debug!(
+                        "SERVICE CALL START {} {}",
+                        request.method(),
+                        request.uri().path()
+                    )
+                })
+                .on_failure(|_, _, _: &_| {}) // override default on_failure handler
+                .on_response(|response: &Response<_>, duration: Duration, _: &_| {
+                    tracing::debug!(
+                        "SERVICE CALL END {} ({} ms)",
+                        response.status(),
+                        duration.as_millis()
+                    );
+                }),
+        )
+        .with_state(state)
+}
+
+fn get_management_endpoints(
+    config: &ServerConfig,
+    authentication: Authentication,
+    openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
+) -> Router<AppState> {
+    if config.enable_management_endpoints {
         let mut router = Router::new()
             .route("/api/cache/v1", delete(cache::controller::prune_cache))
             .route("/api/config/v1", get(config::controller::get_config))
@@ -154,7 +271,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 let mut routes = get(history::controller::get_history_list);
                 if config.enable_history_create_endpoint {
                     routes = routes.post(history::controller::create_history);
-                } else if let Some(paths) = openapi_paths.as_mut()
+                } else if let Some(paths) = openapi_paths
                     && let Some(path) = paths.get_mut("/api/history/v1")
                 {
                     path.post = None;
@@ -343,7 +460,7 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
 
         if config.enable_server_info {
             router = router.route("/api/build-info/v1", get(misc::get_build_info));
-        } else if let Some(paths) = &mut openapi_paths {
+        } else if let Some(paths) = openapi_paths {
             paths.shift_remove("/api/build-info/v1");
         }
 
@@ -370,13 +487,18 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
             .layer(middleware::from_fn(crate::middleware::authorization_check))
             .layer(Extension(authentication))
     } else {
-        if let Some(paths) = openapi_paths.as_mut() {
+        if let Some(paths) = openapi_paths {
             paths.shift_remove("/api");
         };
         Router::new()
-    };
+    }
+}
 
-    let unprotected = if config.enable_external_endpoints {
+fn get_external_endpoints(
+    config: &ServerConfig,
+    openapi_paths: &mut Option<&mut IndexMap<String, PathItem>>,
+) -> Router<AppState> {
+    if config.enable_external_endpoints {
         Router::new()
             .route(
                 "/ssi/openid4vci/draft-13/{id}/.well-known/openid-credential-issuer",
@@ -567,119 +689,11 @@ fn router(state: AppState, config: Arc<ServerConfig>, authentication: Authentica
                 get(ssi::wallet_provider::controller::get_wallet_provider_metadata),
             )
     } else {
-        if let Some(paths) = openapi_paths.as_mut() {
+        if let Some(paths) = openapi_paths {
             paths.shift_remove("/ssi");
         };
         Router::new()
-    };
-
-    let metrics_endpoints = if config.enable_metrics {
-        Router::new().route("/metrics", get(misc::get_metrics))
-    } else {
-        if let Some(paths) = openapi_paths.as_mut() {
-            paths.shift_remove("/metrics");
-        };
-        Router::new()
-    };
-
-    let server_info_endpoints = if config.enable_server_info {
-        Router::new().route("/health", get(misc::health_check))
-    } else {
-        if let Some(paths) = openapi_paths.as_mut() {
-            paths.shift_remove("/health");
-        };
-        Router::new()
-    };
-
-    let openapi_endpoints = if let Some(openapi_documentation) = openapi_documentation {
-        Router::new()
-            .route(
-                "/api-docs/openapi.yaml",
-                get(misc::get_openapi_yaml(&openapi_documentation)),
-            )
-            .merge(
-                SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", openapi_documentation),
-            )
-    } else {
-        Router::new()
-    };
-
-    let vcapi_endpoints = if config.insecure_vc_api_endpoints_enabled {
-        Router::new()
-            .route(
-                "/vc-api/credentials/issue",
-                post(vc_api::controller::issue_credential),
-            )
-            .route(
-                "/vc-api/credentials/verify",
-                post(vc_api::controller::verify_credential),
-            )
-            .route(
-                "/vc-api/presentations/verify",
-                post(vc_api::controller::verify_presentation),
-            )
-            .route(
-                "/vc-api/identifiers/{identifier}",
-                get(vc_api::controller::resolve_identifier),
-            )
-    } else {
-        Router::new()
-    };
-
-    let mut router = protected
-        .merge(unprotected)
-        .merge(vcapi_endpoints)
-        .layer(middleware::from_fn(crate::middleware::sentry_layer))
-        .layer(middleware::from_fn(crate::middleware::metrics_counter))
-        .merge(openapi_endpoints)
-        .merge(server_info_endpoints)
-        .merge(metrics_endpoints)
-        .layer(CatchPanicLayer::custom(handle_panic))
-        .layer(Extension(config))
-        .layer(middleware::from_fn(
-            crate::middleware::add_disable_cache_headers,
-        ))
-        .layer(middleware::from_fn(
-            crate::middleware::add_x_content_type_options_no_sniff_header,
-        ));
-
-    if tracing::enabled!(target: "core_server::middleware", tracing::Level::TRACE) {
-        router = router.layer(middleware::from_fn(
-            crate::middleware::log_request_and_response,
-        ));
     }
-
-    router
-        .layer(
-            TraceLayer::new_for_http()
-                .make_span_with(|request: &Request<_>| {
-                    let context = get_http_request_context(request);
-                    error_span!(
-                        "http_request",
-                        method = context.method,
-                        path = context.path,
-                        service = "one-core",
-                        requestId = context.request_id.as_ref(),
-                        sessionId = context.session_id, // Derived from x-session-id header
-                    )
-                })
-                .on_request(|request: &Request<_>, _span: &Span| {
-                    tracing::debug!(
-                        "SERVICE CALL START {} {}",
-                        request.method(),
-                        request.uri().path()
-                    )
-                })
-                .on_failure(|_, _, _: &_| {}) // override default on_failure handler
-                .on_response(|response: &Response<_>, duration: Duration, _: &_| {
-                    tracing::debug!(
-                        "SERVICE CALL END {} ({} ms)",
-                        response.status(),
-                        duration.as_millis()
-                    );
-                }),
-        )
-        .with_state(state)
 }
 
 fn handle_panic(err: Box<dyn Any + Send + 'static>) -> Response<Body> {
