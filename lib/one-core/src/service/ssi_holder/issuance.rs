@@ -10,6 +10,7 @@ use super::dto::{
     ContinueIssuanceResponseDTO, HandleInvitationResultDTO, InitiateIssuanceRequestDTO,
     InitiateIssuanceResponseDTO, OpenIDAuthorizationCodeFlowInteractionData,
 };
+use super::mapper::select_holder_key;
 use super::validator::{
     validate_credentials_match_session_organisation, validate_holder_capabilities,
     validate_initiate_issuance_request,
@@ -23,8 +24,8 @@ use crate::model::credential::{
     Credential, CredentialRelations, CredentialStateEnum, UpdateCredentialRequest,
 };
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
-use crate::model::identifier::{IdentifierRelations, IdentifierType};
+use crate::model::did::DidRelations;
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{
     Interaction, InteractionId, InteractionRelations, InteractionType,
 };
@@ -139,103 +140,24 @@ impl SSIHolderService {
                 &*self.session_provider,
             )?;
 
-            let key = match identifier.r#type {
-                IdentifierType::Key => {
-                    let key = identifier.key.to_owned().ok_or(ServiceError::MappingError(
-                        "Missing identifier key".to_string(),
-                    ))?;
-
-                    if let Some(key_id) = key_id
-                        && key_id != key.id
-                    {
-                        return Err(ValidationError::InvalidKey(
-                            "Mismatch keyId of selected identifier".to_string(),
-                        )
-                        .into());
-                    }
-                    key
-                }
-                IdentifierType::Did => {
-                    let did = identifier.did.to_owned().ok_or(ServiceError::MappingError(
-                        "Missing identifier did".to_string(),
-                    ))?;
-
-                    let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
-                    let selected_key = match key_id {
-                        Some(key_id) => did
-                            .find_key(&key_id, &key_filter)?
-                            .ok_or(ValidationError::KeyNotFound)?,
-                        None => did.find_first_matching_key(&key_filter)?.ok_or(
-                            ValidationError::InvalidKey(
-                                "No key with role authentication available".to_string(),
-                            ),
-                        )?,
-                    };
-                    selected_key.key.to_owned()
-                }
-                _ => {
-                    return Err(BusinessLogic(
-                        BusinessLogicError::IncompatibleHolderIdentifier,
-                    ));
-                }
-            };
-
+            let key = select_holder_key(&identifier, key_id)?;
             Some(HolderBindingInput { identifier, key })
         } else {
             None
         };
 
         if credentials.is_empty() {
-            return self
-                .accept_credential_final1(
-                    interaction_id,
-                    holder_binding_input,
-                    tx_code,
-                    holder_wallet_unit_id,
-                )
-                .await;
-        }
-
-        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
-
-        // Errors are gathered into vec, so we can try to accept all credentials.
-        let mut errors = vec![];
-
-        let mut credential_id = None;
-        for credential in credentials {
-            credential_id = Some(credential.id);
-            if let Err(error) = self
-                .accept_and_save_credential_draft13(
-                    &credential,
-                    holder_binding_input.clone(),
-                    tx_code.clone(),
-                )
+            self.accept_credential_final1(
+                interaction_id,
+                holder_binding_input,
+                tx_code,
+                holder_wallet_unit_id,
+            )
+            .await
+        } else {
+            self.accept_credentials_draft13(credentials, holder_binding_input, tx_code)
                 .await
-            {
-                tracing::error!("Failed to accept credential: {error}");
-
-                let _result = self
-                    .credential_repository
-                    .update_credential(
-                        credential.id,
-                        UpdateCredentialRequest {
-                            state: Some(CredentialStateEnum::Error),
-                            ..Default::default()
-                        },
-                    )
-                    .await;
-
-                errors.push(error);
-            }
         }
-
-        if let Some(error) = errors.into_iter().next() {
-            return Err(error);
-        }
-
-        Ok(credential_id.ok_or(IssuanceProtocolError::Failed(
-            "No credential issued".to_string(),
-        ))?)
     }
 
     /// specific handling for the final-1 protocol, credential gets created after issued
@@ -370,6 +292,54 @@ impl SSIHolderService {
             .await?;
 
         Ok(credential_id)
+    }
+
+    async fn accept_credentials_draft13(
+        &self,
+        credentials: Vec<Credential>,
+        holder_binding_input: Option<HolderBindingInput>,
+        tx_code: Option<String>,
+    ) -> Result<CredentialId, ServiceError> {
+        validate_credentials_match_session_organisation(&credentials, &*self.session_provider)?;
+
+        // Errors are gathered into vec, so we can try to accept all credentials.
+        let mut errors = vec![];
+
+        let mut credential_id = None;
+        for credential in credentials {
+            credential_id = Some(credential.id);
+            if let Err(error) = self
+                .accept_and_save_credential_draft13(
+                    &credential,
+                    holder_binding_input.clone(),
+                    tx_code.clone(),
+                )
+                .await
+            {
+                tracing::error!("Failed to accept credential: {error}");
+
+                let _result = self
+                    .credential_repository
+                    .update_credential(
+                        credential.id,
+                        UpdateCredentialRequest {
+                            state: Some(CredentialStateEnum::Error),
+                            ..Default::default()
+                        },
+                    )
+                    .await;
+
+                errors.push(error);
+            }
+        }
+
+        if let Some(error) = errors.into_iter().next() {
+            return Err(error);
+        }
+
+        Ok(credential_id.ok_or(IssuanceProtocolError::Failed(
+            "No credential issued".to_string(),
+        ))?)
     }
 
     async fn accept_and_save_credential_draft13(

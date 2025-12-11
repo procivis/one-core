@@ -1,14 +1,15 @@
 use one_dto_mapper::convert_inner;
+use shared_types::KeyId;
 
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
-use crate::model::did::{Did, KeyFilter};
-use crate::model::identifier::IdentifierType;
+use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
-use crate::service::error::ServiceError;
+use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 
 impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
     fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
@@ -90,4 +91,49 @@ pub(super) fn holder_did_key_jwk_from_credential(
     };
 
     Ok((holder_did, key, holder_jwk_key_id))
+}
+
+pub(super) fn select_holder_key(
+    identifier: &Identifier,
+    key_id: Option<KeyId>,
+) -> Result<Key, ServiceError> {
+    Ok(match identifier.r#type {
+        IdentifierType::Key => {
+            let key = identifier.key.to_owned().ok_or(ServiceError::MappingError(
+                "Missing identifier key".to_string(),
+            ))?;
+
+            if let Some(key_id) = key_id
+                && key_id != key.id
+            {
+                return Err(ValidationError::InvalidKey(
+                    "Mismatch keyId of selected identifier".to_string(),
+                )
+                .into());
+            }
+            key
+        }
+        IdentifierType::Did => {
+            let did = identifier.did.to_owned().ok_or(ServiceError::MappingError(
+                "Missing identifier did".to_string(),
+            ))?;
+
+            let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
+            let selected_key = match key_id {
+                Some(key_id) => did
+                    .find_key(&key_id, &key_filter)?
+                    .ok_or(ValidationError::KeyNotFound)?,
+                None => {
+                    did.find_first_matching_key(&key_filter)?
+                        .ok_or(ValidationError::InvalidKey(
+                            "No key with role authentication available".to_string(),
+                        ))?
+                }
+            };
+            selected_key.key.to_owned()
+        }
+        _ => {
+            return Err(BusinessLogicError::IncompatibleHolderIdentifier.into());
+        }
+    })
 }

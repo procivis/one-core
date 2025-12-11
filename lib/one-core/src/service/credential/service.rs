@@ -1,16 +1,24 @@
 use shared_types::{CredentialId, OrganisationId};
 use uuid::Uuid;
 
-use super::mapper::credential_detail_response_from_model;
+use super::CredentialService;
+use super::dto::{
+    CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
+    CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
+    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
+};
+use super::mapper::{
+    claims_from_create_request, credential_detail_response_from_model, from_create_request,
+    get_issuer_details,
+};
 use super::validator::{
     throw_if_credential_schema_not_in_session_org, validate_format_and_did_method_compatibility,
     validate_redirect_uri, verify_suspension_support,
 };
-use crate::config::core_config::RevocationType;
+use crate::config::core_config::{FormatType, RevocationType};
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
 use crate::mapper::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::mapper::list_response_try_into;
-use crate::mapper::oidc::detect_format_with_crypto_suite;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
@@ -21,25 +29,17 @@ use crate::model::credential::{
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
-use crate::model::identifier::{IdentifierRelations, IdentifierState, IdentifierType};
+use crate::model::identifier::{IdentifierRelations, IdentifierState};
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::validity_credential::ValidityCredentialType;
 use crate::provider::blob_storage_provider::BlobStorageType;
-use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::issuance_protocol::model::ShareResponse;
 use crate::provider::revocation::model::{
     CredentialDataByRole, CredentialRevocationState, Operation, RevocationMethodCapabilities,
 };
 use crate::repository::error::DataLayerError;
-use crate::service::credential::CredentialService;
-use crate::service::credential::dto::{
-    CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
-    CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
-    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
-};
-use crate::service::credential::mapper::{claims_from_create_request, from_create_request};
 use crate::service::credential_schema::validator::validate_key_storage_security_supported;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
@@ -837,9 +837,16 @@ impl CredentialService {
             .map_err(|e| ServiceError::MappingError(e.to_string()))?;
 
         // Workaround credential format detection
-        let format = detect_format_with_crypto_suite(&credential_schema.format, &credential_str)?;
+        let format = self
+            .config
+            .format
+            .get_fields(&credential_schema.format)?
+            .r#type;
 
-        let Some(formatter) = self.formatter_provider.get_credential_formatter(&format) else {
+        let Some(formatter) = self
+            .formatter_provider
+            .get_credential_formatter(&credential_schema.format)
+        else {
             return Err(MissingProviderError::Formatter(credential_schema.format).into());
         };
 
@@ -847,30 +854,11 @@ impl CredentialService {
             .extract_credentials_unverified(&credential_str, Some(&credential_schema))
             .await?;
 
-        if format == "MDOC" {
-            let new_state = self
-                .check_mdoc_update(&credential, &detail_credential, force_refresh)
-                .await?;
-
-            if new_state != current_state {
-                let update_request = UpdateCredentialRequest {
-                    state: Some(new_state),
-                    suspend_end_date: Clearable::DontTouch,
-                    ..Default::default()
-                };
-
-                self.credential_repository
-                    .update_credential(credential_id, update_request)
-                    .await?;
-            }
-
-            //Mdoc flow ends here. Nothing else to do for MDOC
-            return Ok(CredentialRevocationCheckResponseDTO {
-                credential_id,
-                status: new_state.into(),
-                success: true,
-                reason: None,
-            });
+        if format == FormatType::Mdoc {
+            // Mdoc flow ends here. Nothing else to do for MDOC, since it does not have revocation mechanism
+            return self
+                .update_mdoc(&credential, &detail_credential, force_refresh)
+                .await;
         }
 
         let credential_status = if !detail_credential.status.is_empty() {
@@ -900,39 +888,7 @@ impl CredentialService {
                     "issuer_identifier is None".to_string(),
                 ))?;
 
-        let issuer_details = match issuer_identifier.r#type {
-            IdentifierType::Did => {
-                let issuer_did = issuer_identifier
-                    .did
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
-
-                IdentifierDetails::Did(issuer_did.did.clone())
-            }
-            IdentifierType::Certificate => {
-                let certificate = issuer_identifier
-                    .certificates
-                    .as_ref()
-                    .ok_or(ServiceError::MappingError(
-                        "issuer certificates is None".to_string(),
-                    ))?
-                    .first()
-                    .ok_or(ServiceError::MappingError(
-                        "issuer certificate is missing".to_string(),
-                    ))?
-                    .to_owned();
-
-                IdentifierDetails::Certificate(CertificateDetails {
-                    chain: certificate.chain,
-                    fingerprint: certificate.fingerprint,
-                    expiry: certificate.expiry_date,
-                    subject_common_name: None,
-                })
-            }
-            _ => {
-                return Err(BusinessLogicError::IncompatibleIssuanceIdentifier.into());
-            }
-        };
+        let issuer_details = get_issuer_details(issuer_identifier)?;
 
         let credential_data_by_role = match credential.role {
             CredentialRole::Holder => {

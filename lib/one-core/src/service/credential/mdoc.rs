@@ -25,11 +25,43 @@ use crate::provider::issuance_protocol::openid4vci_draft13_swiyu::OpenID4VCISwiy
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::credential::CredentialService;
+use crate::service::credential::dto::CredentialRevocationCheckResponseDTO;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::oid4vci_draft13::dto::OpenID4VCICredentialResponseDTO;
 
 impl CredentialService {
-    pub(super) async fn check_mdoc_update(
+    pub(super) async fn update_mdoc(
+        &self,
+        credential: &Credential,
+        detail_credential: &DetailCredential,
+        force_refresh: bool,
+    ) -> Result<CredentialRevocationCheckResponseDTO, ServiceError> {
+        let current_state = credential.state;
+        let new_state = self
+            .check_mdoc_update(credential, detail_credential, force_refresh)
+            .await?;
+
+        if new_state != current_state {
+            let update_request = UpdateCredentialRequest {
+                state: Some(new_state),
+                suspend_end_date: Clearable::DontTouch,
+                ..Default::default()
+            };
+
+            self.credential_repository
+                .update_credential(credential.id, update_request)
+                .await?;
+        }
+
+        Ok(CredentialRevocationCheckResponseDTO {
+            credential_id: credential.id,
+            status: new_state.into(),
+            success: true,
+            reason: None,
+        })
+    }
+
+    async fn check_mdoc_update(
         &self,
         credential: &Credential,
         detail_credential: &DetailCredential,

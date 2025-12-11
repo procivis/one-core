@@ -16,10 +16,11 @@ use crate::model::certificate::Certificate;
 use crate::model::claim::Claim;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
-use crate::model::identifier::Identifier;
+use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::model::validity_credential::ValidityCredential;
 use crate::provider::credential_formatter::mdoc_formatter;
+use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialDetailResponseDTO, CredentialListItemResponseDTO,
     CredentialRequestClaimDTO, DetailCredentialClaimResponseDTO,
@@ -373,6 +374,44 @@ pub(super) fn from_create_request(
         wallet_unit_attestation_blob_id: None,
         wallet_app_attestation_blob_id: None,
     }
+}
+
+pub(super) fn get_issuer_details(
+    issuer_identifier: &Identifier,
+) -> Result<IdentifierDetails, ServiceError> {
+    Ok(match issuer_identifier.r#type {
+        IdentifierType::Did => {
+            let issuer_did = issuer_identifier
+                .did
+                .as_ref()
+                .ok_or(ServiceError::MappingError("issuer_did is None".to_string()))?;
+
+            IdentifierDetails::Did(issuer_did.did.clone())
+        }
+        IdentifierType::Certificate => {
+            let certificate = issuer_identifier
+                .certificates
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "issuer certificates is None".to_string(),
+                ))?
+                .first()
+                .ok_or(ServiceError::MappingError(
+                    "issuer certificate is missing".to_string(),
+                ))?
+                .to_owned();
+
+            IdentifierDetails::Certificate(CertificateDetails {
+                chain: certificate.chain,
+                fingerprint: certificate.fingerprint,
+                expiry: certificate.expiry_date,
+                subject_common_name: None,
+            })
+        }
+        _ => {
+            return Err(BusinessLogicError::IncompatibleIssuanceIdentifier.into());
+        }
+    })
 }
 
 pub(super) fn claims_from_create_request(
