@@ -38,8 +38,8 @@ use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     ApplicableCredentialOrFailureHintEnum, CredentialDetailClaimExtResponseDTO,
-    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionVersion,
-    PresentationReference, UpdateResponse,
+    FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionV2ResponseDTO,
+    PresentationDefinitionVersion, PresentationReference, UpdateResponse,
 };
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPHolderInteractionData;
 use crate::service::credential::dto::{
@@ -515,74 +515,16 @@ impl SSIHolderService {
             .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_proxy())
             .await?;
 
-        struct CredentialPathsToPresent {
-            credential_id: CredentialId,
-            // all paths of the presented subtree
-            presented_paths: Vec<String>,
-        }
-
         // All the things the user chose to present
         let mut creds_paths_to_present = HashMap::<String, Vec<CredentialPathsToPresent>>::new();
         for (query_id, credential_selection) in request.submission {
-            let Some(possible_selections) =
-                presentation_definition.credential_queries.get(&query_id)
-            else {
-                return Err(BusinessLogicError::InvalidPresentationSubmission {
-                    reason: format!("Unknown credential query id `{query_id}`"),
-                }
-                .into());
-            };
-            let ApplicableCredentials {
-                applicable_credentials,
-            } = &possible_selections.credential_or_failure_hint
-            else {
-                return Err(BusinessLogicError::InvalidPresentationSubmission {
-                    reason: format!("No applicable credentials for query id `{query_id}`"),
-                }
-                .into());
-            };
+            let paths_to_present = get_credential_paths_to_present(
+                &query_id,
+                credential_selection,
+                &presentation_definition,
+            )?;
 
-            if credential_selection.len() > 1 && !possible_selections.multiple {
-                return Err(BusinessLogicError::InvalidPresentationSubmission {
-                    reason: format!(
-                        "Only one submission allowed for credential query id `{query_id}`"
-                    ),
-                }
-                .into());
-            }
-
-            for PresentationSubmitV2CredentialRequestDTO {
-                credential_id,
-                user_selections,
-            } in credential_selection
-            {
-                let deduplicated: HashSet<&String> = HashSet::from_iter(&user_selections);
-                if deduplicated.len() != user_selections.len() {
-                    return Err(BusinessLogicError::InvalidPresentationSubmission {
-                        reason: format!("Invalid user selections for credential `{credential_id}` for `{query_id}`: user selections contain duplicate paths"),
-                    }.into());
-                }
-                let Some(selected_credential) = applicable_credentials
-                    .iter()
-                    .find(|&credential| credential.id == credential_id)
-                else {
-                    return Err(BusinessLogicError::InvalidPresentationSubmission {
-                        reason: format!("Credential `{credential_id}` is not applicable for credential query id `{query_id}`"),
-                    }.into());
-                };
-
-                let presented_paths = CredentialPathsToPresent {
-                    credential_id,
-                    presented_paths: presented_claim_paths_from_nested_with_selection(
-                        selected_credential,
-                        user_selections,
-                    )?,
-                };
-                creds_paths_to_present
-                    .entry(query_id.clone())
-                    .or_default()
-                    .push(presented_paths);
-            }
+            creds_paths_to_present.insert(query_id, paths_to_present);
         }
 
         // Check against all the credential set options available
@@ -823,6 +765,75 @@ impl SSIHolderService {
     }
 }
 
+struct CredentialPathsToPresent {
+    credential_id: CredentialId,
+    // all paths of the presented subtree
+    presented_paths: Vec<String>,
+}
+
+fn get_credential_paths_to_present(
+    query_id: &String,
+    credential_selection: Vec<PresentationSubmitV2CredentialRequestDTO>,
+    presentation_definition: &PresentationDefinitionV2ResponseDTO,
+) -> Result<Vec<CredentialPathsToPresent>, ServiceError> {
+    let Some(possible_selections) = presentation_definition.credential_queries.get(query_id) else {
+        return Err(BusinessLogicError::InvalidPresentationSubmission {
+            reason: format!("Unknown credential query id `{query_id}`"),
+        }
+        .into());
+    };
+
+    let ApplicableCredentials {
+        applicable_credentials,
+    } = &possible_selections.credential_or_failure_hint
+    else {
+        return Err(BusinessLogicError::InvalidPresentationSubmission {
+            reason: format!("No applicable credentials for query id `{query_id}`"),
+        }
+        .into());
+    };
+
+    if credential_selection.len() > 1 && !possible_selections.multiple {
+        return Err(BusinessLogicError::InvalidPresentationSubmission {
+            reason: format!("Only one submission allowed for credential query id `{query_id}`"),
+        }
+        .into());
+    }
+
+    let mut result = vec![];
+
+    for PresentationSubmitV2CredentialRequestDTO {
+        credential_id,
+        user_selections,
+    } in credential_selection
+    {
+        let deduplicated: HashSet<&String> = HashSet::from_iter(&user_selections);
+        if deduplicated.len() != user_selections.len() {
+            return Err(BusinessLogicError::InvalidPresentationSubmission {
+                        reason: format!("Invalid user selections for credential `{credential_id}` for `{query_id}`: user selections contain duplicate paths"),
+                    }.into());
+        }
+        let Some(selected_credential) = applicable_credentials
+            .iter()
+            .find(|&credential| credential.id == credential_id)
+        else {
+            return Err(BusinessLogicError::InvalidPresentationSubmission {
+                        reason: format!("Credential `{credential_id}` is not applicable for credential query id `{query_id}`"),
+                    }.into());
+        };
+
+        result.push(CredentialPathsToPresent {
+            credential_id,
+            presented_paths: presented_claim_paths_from_nested_with_selection(
+                selected_credential,
+                user_selections,
+            )?,
+        });
+    }
+
+    Ok(result)
+}
+
 fn presented_claim_paths_from_nested_with_selection(
     credential: &CredentialDetailResponseDTO<CredentialDetailClaimExtResponseDTO>,
     mut user_selections: Vec<String>,
@@ -906,19 +917,12 @@ fn disclosed_claims_for_credential(
         let mut disclosed = false;
         for submitted_path in submitted_paths {
             // explicitly submitted
-            if claim_path == submitted_path {
-                disclosed = true;
-                break;
-            }
-
+            if claim_path == submitted_path ||
             // parent claims of submitted (all levels transitively)
-            if submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}")) {
-                disclosed = true;
-                break;
-            }
-
+            submitted_path.starts_with(&format!("{claim_path}{NESTED_CLAIM_MARKER}")) || 
             // child claims of submitted (all levels transitively)
-            if claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}")) {
+            claim_path.starts_with(&format!("{submitted_path}{NESTED_CLAIM_MARKER}"))
+            {
                 disclosed = true;
                 break;
             }
