@@ -13,7 +13,7 @@ use one_core::service::ssi_holder::dto::{
     PresentationSubmitV2CredentialRequestDTO, PresentationSubmitV2RequestDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, DidId, HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId,
@@ -27,7 +27,7 @@ use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::credential_schema::dto::KeyStorageSecurityRestEnum;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = "https://example.com/credential-offer")]
@@ -37,6 +37,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = json!(["HTTP"]))]
     /// For configurations with multiple transport protocols enabled you can
     /// specify which one to use for this interaction.
+    #[modify_schema(field = transport)]
     #[schema(nullable = false)]
     pub transport: Option<Vec<String>>,
     /// For issuer-initiated Authorization Code Flow, provide the authorization server

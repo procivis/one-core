@@ -89,17 +89,30 @@ fn on_struct_fields_field(
     field_ident: proc_macro2::Ident,
     field: syn::ExprPath,
 ) -> Option<proc_macro2::TokenStream> {
-    let ident_str = field_ident.to_string();
+    let ident_camel_case = to_camel_case(&field_ident.to_string());
     Some(quote! {
-        if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_str) {
+        if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj))) = object.properties.get_mut(#ident_camel_case) {
             let values: Vec<utoipa::r#gen::serde_json::Value> = core_config
                 .#field
                 .iter_enabled()
-                    .map(|(k, _)| std::string::ToString::to_string(k))
-                    .map(utoipa::r#gen::serde_json::Value::String)
-                    .collect();
+                .map(|(k, _)| std::string::ToString::to_string(k))
+                .map(utoipa::r#gen::serde_json::Value::String)
+                .collect();
             let values = if values.is_empty() { None } else { Some(values) };
             field_obj.enum_values = values;
+        } else if let std::option::Option::Some(utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Array(field_obj))) = object.properties.get_mut(#ident_camel_case) {
+            if let utoipa::openapi::schema::ArrayItems::RefOrSchema(s) = &mut field_obj.items {
+                if let utoipa::openapi::RefOr::T(utoipa::openapi::Schema::Object(field_obj)) = s.as_mut() {
+                    let values: Vec<utoipa::r#gen::serde_json::Value> = core_config
+                        .#field
+                        .iter_enabled()
+                        .map(|(k, _)| std::string::ToString::to_string(k))
+                        .map(utoipa::r#gen::serde_json::Value::String)
+                        .collect();
+                    let values = if values.is_empty() { None } else { Some(values) };
+                    field_obj.enum_values = values;
+                }
+            }
         };
     })
 }
@@ -127,4 +140,20 @@ fn on_enum(item_enum: &ItemEnum) -> TokenStream {
     } else {
         quote! {}.into()
     }
+}
+
+pub fn to_camel_case(input: &str) -> String {
+    let mut pascal = String::new();
+    let mut capitalize = true;
+    for ch in input.chars() {
+        if ch == '_' {
+            capitalize = true;
+        } else if capitalize {
+            pascal.push(ch.to_ascii_uppercase());
+            capitalize = false;
+        } else {
+            pascal.push(ch);
+        }
+    }
+    pascal[..1].to_ascii_lowercase() + &pascal[1..]
 }

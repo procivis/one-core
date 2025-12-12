@@ -15,7 +15,7 @@ use one_dto_mapper::{
     From, Into, TryFrom, TryInto, convert_inner, convert_inner_of_inner, try_convert_inner,
     try_convert_inner_of_inner,
 };
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -50,13 +50,14 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
 }
 
 #[options_not_nullable]
-#[derive(Debug, Deserialize, ToSchema, Into)]
+#[derive(Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 #[into(CreateIdentifierDidRequestDTO)]
 pub(crate) struct CreateIdentifierDidRequestRestDTO {
     pub name: Option<String>,
     /// Specify the DID method. Check the `did` object of your configuration
     /// for supported options.
+    #[modify_schema(field = did)]
     pub method: String,
     pub keys: CreateDidRequestKeysRestDTO,
     pub params: Option<serde_json::Value>,

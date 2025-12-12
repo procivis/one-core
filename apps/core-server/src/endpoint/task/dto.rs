@@ -1,14 +1,14 @@
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct TaskRequestRestDTO {
     /// Choose a task to run. Check the `task` object of the configuration
     /// for supported options and reference the configuration instance.
-    #[schema(example = "SUSPEND_CHECK")]
+    #[modify_schema(field = task)]
     pub name: String,
     /// Parameters to pass to the task.
     #[schema(value_type = Option<Object>)]

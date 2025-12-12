@@ -5,7 +5,7 @@ use one_core::service::credential_schema::dto::{
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
@@ -196,7 +196,7 @@ pub(crate) enum KeyStorageSecurityRestEnum {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto, ModifySchema)]
 #[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateCredentialSchemaRequestRestDTO {
@@ -206,13 +206,13 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     /// Choose a credential format for credentials issued using this
     /// credential schema. Check the `format` object of the configuration
     /// for supported options and reference the configuration instance.
-    #[schema(example = "SD_JWT_VC")]
+    #[modify_schema(field = format)]
     #[try_into(infallible)]
     pub format: String,
     /// Choose a revocation method for credentials issued using this
     /// credential schema. Check the `revocation` object of the configuration
     /// for supported options and reference the configuration instance.
-    #[schema(example = "TOKENSTATUSLIST")]
+    #[modify_schema(field = revocation)]
     #[try_into(infallible)]
     pub revocation_method: String,
     /// Specify the organization.
@@ -223,8 +223,8 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[try_into(with_fn = convert_inner, infallible)]
     pub claims: Vec<CredentialClaimSchemaRequestRestDTO>,
-    /// Specifies key storage security requirements that the holder's wallet must meet for
-    /// credential issuance.
+    /// Specifies key storage security requirements that the holder's wallet
+    /// must meet for credential issuance.
     #[try_into(with_fn = convert_inner, infallible)]
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
     /// Determines the general appearance of the credential in the holder's
@@ -274,14 +274,12 @@ pub(crate) enum CredentialSchemaLayoutType {
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into)]
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into, ModifySchema)]
 #[into(CredentialClaimSchemaRequestDTO)]
 pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
-    /// The type of data accepted for this attribute. The `DATE` datatype
-    /// only accepts full date-time. See the
-    /// [configuration](/configure) guide for
-    /// the full reference of datatypes.
+    /// The type of data accepted for this attribute.
+    #[modify_schema(field = datatype)]
     pub datatype: String,
     pub required: bool,
     /// If `true`, an array can be passed for this attribute during issuance.

@@ -5,7 +5,7 @@ use one_core::service::key::dto::{
     KeyGenerateCSRResponseDTO, KeyListItemResponseDTO, KeyRequestDTO, KeyResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, TryInto};
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
@@ -18,7 +18,7 @@ use crate::mapper::MapperError;
 use crate::serialize::front_time;
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto, ModifySchema)]
 #[try_into(T = KeyRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct KeyRequestRestDTO {
@@ -28,7 +28,7 @@ pub(crate) struct KeyRequestRestDTO {
     /// Choose which key algorithm to use to create the key pair. Check
     /// the `keyAlgorithm` object of the configuration for supported options
     /// and reference the configuration instance.
-    #[schema(example = "EDDSA")]
+    #[modify_schema(field = key_algorithm)]
     #[try_into(infallible)]
     pub key_type: String,
     /// The parameters passed into the key algorithm.
@@ -41,7 +41,7 @@ pub(crate) struct KeyRequestRestDTO {
     /// Choose a key storage type. Check the `keyStorage`
     /// object of the configuration for supported options and reference the
     /// configuration instance.
-    #[schema(example = "INTERNAL")]
+    #[modify_schema(field = key_storage)]
     #[try_into(infallible)]
     pub storage_type: String,
     /// The parameters passed into the storage type.

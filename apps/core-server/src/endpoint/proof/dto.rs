@@ -16,7 +16,7 @@ use one_core::service::proof::dto::{
     ShareProofRequestDTO, ShareProofRequestParamsDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
-use proc_macros::options_not_nullable;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
@@ -68,7 +68,7 @@ pub(crate) enum ProofRoleRestEnum {
 }
 
 #[options_not_nullable(skip_serializing_none = false)]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateProofRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct CreateProofRequestRestDTO {
@@ -89,7 +89,7 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// Specify the verification protocol to use for credential exchange. Check
     /// the `verificationProtocol` object of the configuration for supported options and
     /// reference the configuration instance.
-    #[schema(example = "OPENID4VP_DRAFT20")]
+    #[modify_schema(field = verification_protocol)]
     pub protocol: String,
     /// When a shared proof is accepted, the holder will be redirected to
     /// the resource specified here, if redirects are enabled in the system
@@ -118,7 +118,8 @@ pub(crate) struct CreateProofRequestRestDTO {
     /// the `transport` object of the configuration for supported options and
     /// reference the configuration instance.
     #[into(with_fn = convert_inner)]
-    #[schema(example = json!(["HTTP"]), nullable = false)]
+    #[modify_schema(field = transport)]
+    #[schema(nullable = false)]
     pub transport: Option<Vec<String>>,
     /// Optional profile to associate with this proof request.
     pub profile: Option<String>,
