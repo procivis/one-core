@@ -5,12 +5,6 @@ use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use one_core::error::{ErrorCode, ErrorCodeMixin};
-use one_core::provider::credential_formatter::error::FormatterError;
-use one_core::provider::did_method::error::DidMethodProviderError;
-use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
-use one_core::service::error::{
-    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
-};
 use one_dto_mapper::convert_inner;
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -44,37 +38,6 @@ impl ErrorResponse {
         })
     }
 
-    fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
-        let response = ErrorResponseRestDTO::from(&error).hide_cause(hide_cause);
-        match error {
-            ServiceError::EntityNotFound(_)
-            | ServiceError::MissingProvider(MissingProviderError::DidMethod(_))
-            | ServiceError::DidMethodProviderError(DidMethodProviderError::MissingProvider(_))
-            | ServiceError::Validation(ValidationError::MissingLayoutAttribute(_))
-            | ServiceError::BusinessLogic(BusinessLogicError::MissingTrustEntity(_)) => {
-                Self::NotFound(response)
-            }
-            ServiceError::Validation(ValidationError::Forbidden) => Self::Forbidden,
-            ServiceError::Validation(_)
-            | ServiceError::ValidationError(_)
-            | ServiceError::BusinessLogic(_)
-            | ServiceError::FormatterError(FormatterError::BBSOnly)
-            | ServiceError::ConfigValidationError(_)
-            | ServiceError::IssuanceProtocolError(
-                IssuanceProtocolError::OperationNotSupported
-                | IssuanceProtocolError::TxCode(_)
-                | IssuanceProtocolError::CredentialVerificationFailed(_)
-                | IssuanceProtocolError::DidMismatch
-                | IssuanceProtocolError::RefreshTooSoon
-                | IssuanceProtocolError::Suspended
-                | IssuanceProtocolError::InvalidRequest(_),
-            )
-            | ServiceError::TrustManagementError(_)
-            | ServiceError::WalletProviderError(_) => Self::BadRequest(response),
-            _ => Self::ServerError(response),
-        }
-    }
-
     fn from_error(error: &impl ErrorCodeMixin, hide_cause: bool) -> Self {
         let response = ErrorResponseRestDTO::from(error).hide_cause(hide_cause);
         match error_code_to_http_status(error.error_code()) {
@@ -91,7 +54,7 @@ impl ErrorResponse {
     }
 
     #[track_caller]
-    fn from_service_error_with_trace(
+    fn from_error_with_trace(
         error: &impl ErrorCodeMixin,
         state: State<AppState>,
         action_description: &str,
@@ -143,23 +106,19 @@ impl<T> OkOrErrorResponse<T> {
         Self::Ok(value.into())
     }
 
-    pub fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
-        Self::Error(ErrorResponse::from_service_error(error, hide_cause))
-    }
-
     pub fn from_error<E: ErrorCodeMixin>(error: &E, hide_cause: bool) -> Self {
         Self::Error(ErrorResponse::from_error(error, hide_cause))
     }
 
     #[track_caller]
     pub(crate) fn from_result(
-        result: Result<impl Into<T>, ServiceError>,
+        result: Result<impl Into<T>, impl ErrorCodeMixin>,
         state: State<AppState>,
         action_description: &str,
     ) -> Self {
         match result {
             Ok(value) => Self::ok(value),
-            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+            Err(error) => Self::Error(ErrorResponse::from_error_with_trace(
                 &error,
                 state,
                 action_description,
@@ -168,16 +127,20 @@ impl<T> OkOrErrorResponse<T> {
     }
 
     #[track_caller]
-    pub(crate) fn from_result_fallible(
-        result: Result<impl TryInto<T, Error = impl Into<ServiceError>>, ServiceError>,
+    pub(crate) fn from_result_fallible<IN, OUT>(
+        result: Result<impl TryInto<T, Error = IN>, OUT>,
         state: State<AppState>,
         action_description: &str,
-    ) -> Self {
+    ) -> Self
+    where
+        IN: ErrorCodeMixin + Into<OUT>,
+        OUT: ErrorCodeMixin,
+    {
         let result = result.and_then(|r| r.try_into().map_err(Into::into));
 
         match result {
             Ok(value) => Self::ok(value),
-            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+            Err(error) => Self::Error(ErrorResponse::from_error_with_trace(
                 &error,
                 state,
                 action_description,
@@ -244,10 +207,6 @@ impl<T> CreatedOrErrorResponse<T> {
         Self::Created(value.into())
     }
 
-    pub fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
-        Self::Error(ErrorResponse::from_service_error(error, hide_cause))
-    }
-
     pub fn from_error<E: ErrorCodeMixin>(error: &E, hide_cause: bool) -> Self {
         Self::Error(ErrorResponse::from_error(error, hide_cause))
     }
@@ -260,7 +219,7 @@ impl<T> CreatedOrErrorResponse<T> {
     ) -> Self {
         match result {
             Ok(value) => Self::created(value),
-            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+            Err(error) => Self::Error(ErrorResponse::from_error_with_trace(
                 &error,
                 state,
                 action_description,
@@ -300,19 +259,19 @@ pub(crate) enum EmptyOrErrorResponse {
 }
 
 impl EmptyOrErrorResponse {
-    pub fn from_service_error(error: ServiceError, hide_cause: bool) -> Self {
-        Self::Error(ErrorResponse::from_service_error(error, hide_cause))
+    pub fn from_error<E: ErrorCodeMixin>(error: &E, hide_cause: bool) -> Self {
+        Self::Error(ErrorResponse::from_error(error, hide_cause))
     }
 
     #[track_caller]
     pub(crate) fn from_result(
-        result: Result<(), ServiceError>,
+        result: Result<(), impl ErrorCodeMixin>,
         state: State<AppState>,
         action_description: &str,
     ) -> Self {
         match result {
             Ok(_) => Self::NoContent,
-            Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
+            Err(error) => Self::Error(ErrorResponse::from_error_with_trace(
                 &error,
                 state,
                 action_description,

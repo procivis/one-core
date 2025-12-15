@@ -47,8 +47,8 @@ pub(crate) async fn get_key(
             Ok(value) => OkOrErrorResponse::ok(value),
             Err(error) => {
                 tracing::error!("Error while encoding base64: {:?}", error);
-                OkOrErrorResponse::from_service_error(
-                    ServiceError::MappingError(error.to_string()),
+                OkOrErrorResponse::from_error(
+                    &ServiceError::MappingError(error.to_string()),
                     state.config.hide_error_response_cause,
                 )
             }
@@ -137,8 +137,8 @@ pub(crate) async fn get_key_list(
                 Ok(value) => OkOrErrorResponse::ok(value),
                 Err(error) => {
                     tracing::error!("Error while encoding base64: {:?}", error);
-                    OkOrErrorResponse::from_service_error(
-                        ServiceError::MappingError(error.to_string()),
+                    OkOrErrorResponse::from_error(
+                        &ServiceError::MappingError(error.to_string()),
                         state.config.hide_error_response_cause,
                     )
                 }

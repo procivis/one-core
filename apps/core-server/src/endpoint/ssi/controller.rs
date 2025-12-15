@@ -345,10 +345,7 @@ pub(crate) async fn ssi_patch_trust_entity(
     let request = match request.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return EmptyOrErrorResponse::from_service_error(
-                err,
-                state.config.hide_error_response_cause,
-            );
+            return EmptyOrErrorResponse::from_error(&err, state.config.hide_error_response_cause);
         }
     };
     let result = state
@@ -385,8 +382,8 @@ pub(crate) async fn ssi_post_trust_entity(
     let request = match request.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return CreatedOrErrorResponse::from_service_error(
-                err,
+            return CreatedOrErrorResponse::from_error(
+                &err,
                 state.config.hide_error_response_cause,
             );
         }

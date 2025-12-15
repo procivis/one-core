@@ -180,8 +180,8 @@ pub(crate) async fn import_proof_schema(
     let request = match request.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return CreatedOrErrorResponse::from_service_error(
-                err,
+            return CreatedOrErrorResponse::from_error(
+                &err,
                 state.config.hide_error_response_cause,
             );
         }

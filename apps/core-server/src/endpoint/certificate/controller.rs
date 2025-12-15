@@ -36,15 +36,15 @@ pub(crate) async fn get_certificate(
             Ok(value) => OkOrErrorResponse::ok(value),
             Err(error) => {
                 tracing::error!("Error while converting certificate response: {:?}", error);
-                OkOrErrorResponse::from_service_error(
-                    ServiceError::MappingError(error.to_string()),
+                OkOrErrorResponse::from_error(
+                    &ServiceError::MappingError(error.to_string()),
                     state.config.hide_error_response_cause,
                 )
             }
         },
         Err(error) => {
             tracing::error!("Error while getting certificate details: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+            OkOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
     }
 }

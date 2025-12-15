@@ -1,5 +1,6 @@
 use std::fmt;
 
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::model::common::GetListResponse;
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{convert_inner, try_convert_inner};
@@ -12,6 +13,12 @@ use crate::dto::common::GetListResponseRestDTO;
 pub(crate) enum MapperError {
     #[error("ct_codecs error: `{0}`")]
     CtCodecsError(#[from] ct_codecs::Error),
+}
+
+impl ErrorCodeMixin for MapperError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0000
+    }
 }
 
 impl<T, K> From<GetListResponse<K>> for GetListResponseRestDTO<T>

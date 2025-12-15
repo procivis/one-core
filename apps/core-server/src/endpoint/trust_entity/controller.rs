@@ -41,8 +41,8 @@ pub(crate) async fn create_trust_entity(
     let request = match request.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return CreatedOrErrorResponse::from_service_error(
-                err,
+            return CreatedOrErrorResponse::from_error(
+                &err,
                 state.config.hide_error_response_cause,
             );
         }
@@ -82,10 +82,7 @@ pub(crate) async fn update_trust_entity(
     let request_body = match request_body.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return EmptyOrErrorResponse::from_service_error(
-                err,
-                state.config.hide_error_response_cause,
-            );
+            return EmptyOrErrorResponse::from_error(&err, state.config.hide_error_response_cause);
         }
     };
     let result = state
@@ -175,8 +172,8 @@ pub(crate) async fn create_remote_trust_entity(
     let request = match request.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return CreatedOrErrorResponse::from_service_error(
-                err,
+            return CreatedOrErrorResponse::from_error(
+                &err,
                 state.config.hide_error_response_cause,
             );
         }
@@ -217,10 +214,7 @@ pub(crate) async fn update_remote_trust_entity(
     let request_body = match request_body.try_into() {
         Ok(request) => request,
         Err(err) => {
-            return EmptyOrErrorResponse::from_service_error(
-                err,
-                state.config.hide_error_response_cause,
-            );
+            return EmptyOrErrorResponse::from_error(&err, state.config.hide_error_response_cause);
         }
     };
     let result = state

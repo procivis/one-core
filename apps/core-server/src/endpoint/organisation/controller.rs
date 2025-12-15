@@ -69,7 +69,7 @@ pub(crate) async fn get_organisations(
     match result {
         Err(error) => {
             tracing::error!("Error while getting organisation list: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+            OkOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
         Ok(value) => OkOrErrorResponse::Ok(GetOrganisationListResponseRestDTO {
             values: convert_inner(value.values),

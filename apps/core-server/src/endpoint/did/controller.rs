@@ -43,15 +43,15 @@ pub(crate) async fn get_did(
             Ok(value) => OkOrErrorResponse::ok(value),
             Err(error) => {
                 tracing::error!("Error while encoding base64: {:?}", error);
-                OkOrErrorResponse::from_service_error(
-                    ServiceError::MappingError(error.to_string()),
+                OkOrErrorResponse::from_error(
+                    &ServiceError::MappingError(error.to_string()),
                     state.config.hide_error_response_cause,
                 )
             }
         },
         Err(error) => {
             tracing::error!("Error while getting did details: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+            OkOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
     }
 }
@@ -121,10 +121,7 @@ pub(crate) async fn post_did(
         Ok(id) => CreatedOrErrorResponse::created(EntityResponseRestDTO { id: id.into() }),
         Err(error) => {
             tracing::error!(%error, "Error while creating did");
-            CreatedOrErrorResponse::from_service_error(
-                error,
-                state.config.hide_error_response_cause,
-            )
+            CreatedOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
     }
 }
