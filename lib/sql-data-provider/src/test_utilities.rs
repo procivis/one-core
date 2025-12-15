@@ -623,6 +623,7 @@ pub async fn insert_revocation_list_entry(
         r#type: Set(credential_id
             .map(|_| RevocationListEntryType::Credential)
             .unwrap_or(RevocationListEntryType::WalletUnitAttestedKey)),
+        signature_type: Set(None),
         status: Set(RevocationListEntryStatus::Active),
     }
     .insert(database)
@@ -687,7 +688,7 @@ pub async fn insert_wallet_unit_to_database(
 pub async fn insert_wallet_unit_attested_key_to_database(
     db: &DatabaseConnection,
     wallet_unit_id: WalletUnitId,
-    revocation_list_entry_id: Option<String>,
+    revocation_list_entry_id: Option<Uuid>,
     expiration_date: OffsetDateTime,
 ) -> WalletUnitAttestedKeyId {
     let id = Uuid::new_v4().into();
@@ -698,7 +699,7 @@ pub async fn insert_wallet_unit_attested_key_to_database(
         expiration_date: Set(expiration_date),
         public_key_jwk: Set(random_jwk_string()),
         wallet_unit_id: Set(wallet_unit_id),
-        revocation_list_entry_id: Set(revocation_list_entry_id),
+        revocation_list_entry_id: Set(revocation_list_entry_id.map(|id| id.into())),
     }
     .insert(db)
     .await

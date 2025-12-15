@@ -1,4 +1,7 @@
+use shared_types::RevocationListEntryId;
+
 use crate::model::credential::Credential;
+use crate::model::identifier::Identifier;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
 };
@@ -74,6 +77,22 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         keys: Vec<WalletUnitAttestedKeyRevocationInfo>,
         new_state: RevocationState,
+    ) -> Result<(), RevocationError>;
+
+    // Signature functionality
+
+    /// Issuer: create a status list entry before generating signature
+    async fn add_signature(
+        &self,
+        signature_type: String,
+        issuer: &Identifier,
+    ) -> Result<RevocationListEntryId, RevocationError>;
+
+    /// Issuer: mark previously-issued signature as revoked
+    async fn revoke_signature(
+        &self,
+        signature_type: String,
+        signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError>;
 
     /// Revocation method capabilities include the operations possible for each revocation

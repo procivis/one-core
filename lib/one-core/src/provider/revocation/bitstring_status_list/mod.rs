@@ -7,7 +7,7 @@ use std::sync::Arc;
 use futures::FutureExt;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, RevocationListId};
+use shared_types::{CredentialId, RevocationListEntryId, RevocationListId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -347,6 +347,26 @@ impl RevocationMethod for BitstringStatusList {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),
+        ))
+    }
+
+    async fn add_signature(
+        &self,
+        _signature_type: String,
+        _issuer: &Identifier,
+    ) -> Result<RevocationListEntryId, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn revoke_signature(
+        &self,
+        _signature_type: String,
+        _signature_id: RevocationListEntryId,
+    ) -> Result<(), RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Signatures not supported".to_string(),
         ))
     }
 

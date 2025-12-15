@@ -8,11 +8,12 @@ use one_core::model::revocation_list::{
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
+use sea_orm::sea_query::IntoCondition;
 use sea_orm::{
     ActiveEnum, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, FromQueryResult, NotSet,
     QueryFilter, QueryOrder, QuerySelect, Set, Unchanged,
 };
-use shared_types::{CredentialId, IdentifierId, RevocationListId};
+use shared_types::{CredentialId, IdentifierId, RevocationListEntryId, RevocationListId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -207,29 +208,33 @@ impl RevocationListRepository for RevocationListProvider {
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
         index_on_status_list: usize,
-    ) -> Result<(), DataLayerError> {
+    ) -> Result<RevocationListEntryId, DataLayerError> {
         let credential_id = if let RevocationListEntityId::Credential(credential_id) = &entity_id {
             Some(credential_id.to_owned())
         } else {
             None
         };
 
-        let r#type = match entity_id {
-            RevocationListEntityId::Credential(_) => RevocationListEntryType::Credential,
+        let (r#type, signature_type) = match &entity_id {
+            RevocationListEntityId::Credential(_) => (RevocationListEntryType::Credential, None),
+            RevocationListEntityId::Signature(sig_type) => {
+                (RevocationListEntryType::Signature, Some(sig_type.clone()))
+            }
             RevocationListEntityId::WalletUnitAttestedKey(_) => {
-                RevocationListEntryType::WalletUnitAttestedKey
+                (RevocationListEntryType::WalletUnitAttestedKey, None)
             }
         };
 
         let now = OffsetDateTime::now_utc();
-        let entry_id = Uuid::new_v4();
+        let entry_id: RevocationListEntryId = Uuid::new_v4().into();
         revocation_list_entry::ActiveModel {
-            id: Set(entry_id.to_string()),
+            id: Set(entry_id),
             created_date: Set(now),
             revocation_list_id: Set(list_id),
             index: Set(index_on_status_list as _),
             credential_id: Set(credential_id),
             r#type: Set(r#type),
+            signature_type: Set(signature_type),
             status: Set(RevocationListEntryStatus::Active),
         }
         .insert(&self.db)
@@ -240,7 +245,7 @@ impl RevocationListRepository for RevocationListProvider {
             wallet_unit_attested_key::Entity::update(wallet_unit_attested_key::ActiveModel {
                 id: Unchanged(key_id),
                 last_modified: Set(now),
-                revocation_list_entry_id: Set(Some(entry_id.to_string())),
+                revocation_list_entry_id: Set(Some(entry_id)),
                 ..Default::default()
             })
             .exec(&self.db)
@@ -248,7 +253,7 @@ impl RevocationListRepository for RevocationListProvider {
             .map_err(to_update_data_layer_error)?;
         }
 
-        Ok(())
+        Ok(entry_id)
     }
 
     async fn update_entry(
@@ -288,6 +293,15 @@ impl RevocationListRepository for RevocationListProvider {
                             .add(revocation_list_entry::Column::Index.eq(index as u32)),
                     )
             }
+            UpdateRevocationListEntryId::Signature(sig_type, id) => {
+                revocation_list_entry::Entity::update_many()
+                    .set(model)
+                    .filter(revocation_list_entry::Column::Id.eq(id))
+                    .filter(
+                        revocation_list_entry::Column::Type.eq(RevocationListEntryType::Signature),
+                    )
+                    .filter(revocation_list_entry::Column::SignatureType.eq(sig_type))
+            }
         };
         model
             .exec(&self.db)
@@ -296,9 +310,37 @@ impl RevocationListRepository for RevocationListProvider {
         Ok(())
     }
 
+    async fn get_entry_by_id(
+        &self,
+        entry_id: RevocationListEntryId,
+    ) -> Result<Option<RevocationListEntry>, DataLayerError> {
+        let mut entries = self
+            .get_filered_entries(vec![
+                revocation_list_entry::Column::Id
+                    .eq(entry_id)
+                    .into_condition(),
+            ])
+            .await?;
+        Ok(entries.pop())
+    }
+
     async fn get_entries(
         &self,
         list_id: RevocationListId,
+    ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
+        self.get_filered_entries(vec![
+            revocation_list_entry::Column::RevocationListId
+                .eq(list_id.to_string())
+                .into_condition(),
+        ])
+        .await
+    }
+}
+
+impl RevocationListProvider {
+    async fn get_filered_entries(
+        &self,
+        filters: Vec<sea_orm::Condition>,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
         #[derive(FromQueryResult, Debug)]
         struct Entry {
@@ -306,16 +348,26 @@ impl RevocationListRepository for RevocationListProvider {
             pub credential_id: Option<CredentialId>,
             pub status: RevocationListEntryStatus,
             pub r#type: RevocationListEntryType,
+            pub signature_type: Option<String>,
         }
 
-        let entries = revocation_list_entry::Entity::find()
-            .select_only()
-            .column(revocation_list_entry::Column::Index)
-            .column(revocation_list_entry::Column::CredentialId)
-            .column(revocation_list_entry::Column::Status)
-            .column(revocation_list_entry::Column::Type)
-            .filter(revocation_list_entry::Column::RevocationListId.eq(list_id.to_string()))
-            .order_by_asc(revocation_list_entry::Column::Index)
+        let query = {
+            let mut query = revocation_list_entry::Entity::find()
+                .select_only()
+                .column(revocation_list_entry::Column::Index)
+                .column(revocation_list_entry::Column::CredentialId)
+                .column(revocation_list_entry::Column::Status)
+                .column(revocation_list_entry::Column::Type)
+                .column(revocation_list_entry::Column::SignatureType);
+
+            for filter in filters {
+                query = query.filter(filter)
+            }
+
+            query.order_by_asc(revocation_list_entry::Column::Index)
+        };
+
+        let entries = query
             .into_model::<Entry>()
             .all(&self.db)
             .await
@@ -325,20 +377,18 @@ impl RevocationListRepository for RevocationListProvider {
             .into_iter()
             .map(|entry| {
                 let entity_info = match entry.r#type {
-                    RevocationListEntryType::Credential => {
-                        let Some(credential_id) = entry.credential_id else {
-                            return Err(DataLayerError::MappingError);
-                        };
-                        RevocationListEntityInfo::Credential(credential_id)
-                    }
+                    RevocationListEntryType::Credential => match entry.credential_id {
+                        Some(value) => Ok(RevocationListEntityInfo::Credential(value)),
+                        None => Err(DataLayerError::MappingError),
+                    },
                     RevocationListEntryType::WalletUnitAttestedKey => {
-                        RevocationListEntityInfo::WalletUnitAttestedKey
+                        Ok(RevocationListEntityInfo::WalletUnitAttestedKey)
                     }
-                    RevocationListEntryType::Signature => {
-                        // Add support for signature in task ONE-8136
-                        return Err(DataLayerError::MappingError);
-                    }
-                };
+                    RevocationListEntryType::Signature => match entry.signature_type {
+                        Some(value) => Ok(RevocationListEntityInfo::Signature(value)),
+                        None => Err(DataLayerError::MappingError),
+                    },
+                }?;
                 Ok(RevocationListEntry {
                     entity_info,
                     index: entry.index as usize,

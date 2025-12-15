@@ -9,7 +9,7 @@ use futures::FutureExt;
 use itertools::Itertools;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::RevocationListId;
+use shared_types::{RevocationListEntryId, RevocationListId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -22,8 +22,8 @@ use crate::model::credential::Credential;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
-    StatusListCredentialFormat, StatusListType, UpdateRevocationListEntryId,
+    RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
+    RevocationListPurpose, StatusListCredentialFormat, StatusListType, UpdateRevocationListEntryId,
     UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_unit::WalletUnitRelations;
@@ -165,7 +165,7 @@ impl RevocationMethod for TokenStatusList {
             )
             .await?;
 
-        Ok(vec![entry])
+        Ok(vec![entry.1])
     }
 
     async fn mark_credential_as(
@@ -344,11 +344,13 @@ impl RevocationMethod for TokenStatusList {
                 "Missing issuer_identifier".to_string(),
             ))?;
 
-        self.create_entry(
-            RevocationListEntityId::WalletUnitAttestedKey(attestation.id),
-            &issuer_identifier,
-        )
-        .await
+        let result = self
+            .create_entry(
+                RevocationListEntityId::WalletUnitAttestedKey(attestation.id),
+                &issuer_identifier,
+            )
+            .await?;
+        Ok(result.1)
     }
 
     async fn get_attestation_revocation_info(
@@ -434,6 +436,33 @@ impl RevocationMethod for TokenStatusList {
         Ok(())
     }
 
+    async fn add_signature(
+        &self,
+        signature_type: String,
+        issuer: &Identifier,
+    ) -> Result<RevocationListEntryId, RevocationError> {
+        let result = self
+            .create_entry(RevocationListEntityId::Signature(signature_type), issuer)
+            .await?;
+        Ok(result.0)
+    }
+
+    async fn revoke_signature(
+        &self,
+        signature_type: String,
+        signature_id: RevocationListEntryId,
+    ) -> Result<(), RevocationError> {
+        self.revocation_list_repository
+            .update_entry(
+                UpdateRevocationListEntryId::Signature(signature_type, signature_id),
+                UpdateRevocationListEntryRequest {
+                    status: Some(RevocationListEntryStatus::Revoked),
+                },
+            )
+            .await?;
+        Ok(())
+    }
+
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
@@ -462,9 +491,9 @@ impl TokenStatusList {
         &self,
         entity_id: RevocationListEntityId,
         issuer_identifier: &Identifier,
-    ) -> Result<CredentialRevocationInfo, RevocationError> {
+    ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let mut list_id = None;
-        let mut index: Option<usize> = None;
+        let mut entry: Option<(RevocationListEntryId, usize)> = None;
         let tx_ok = self
             .transaction_manager
             .transaction(
@@ -479,15 +508,16 @@ impl TokenStatusList {
                         )
                         .await?;
 
-                    list_id = Some(if let Some(current_list) = current_list {
-                        current_list.id
-                    } else {
-                        let list_id = self
-                            .start_new_list_for_entity(entity_id.clone(), issuer_identifier)
-                            .await?;
-                        index = Some(0);
-                        list_id
-                    });
+                    match current_list {
+                        Some(list) => list_id = Some(list.id),
+                        None => {
+                            let (new_list_id, new_entry_id) = self
+                                .start_new_list_for_entity(entity_id.clone(), issuer_identifier)
+                                .await?;
+                            list_id = Some(new_list_id);
+                            entry = Some((new_entry_id, 0));
+                        }
+                    }
 
                     Ok(())
                 }
@@ -498,7 +528,7 @@ impl TokenStatusList {
 
         if !tx_ok {
             list_id = None;
-            index = None;
+            entry = None;
         }
 
         let list_id = if let Some(list_id) = list_id {
@@ -520,22 +550,22 @@ impl TokenStatusList {
                 .id
         };
 
-        let index = if let Some(index) = index {
-            index
-        } else {
-            self.add_entity_to_list(list_id, entity_id).await?
+        let (entry_id, entry_index) = match entry {
+            Some((id, index)) => (id, index),
+            None => self.add_entity_to_list(list_id, entity_id).await?,
         };
 
-        Ok(CredentialRevocationInfo {
-            credential_status: self.create_credential_status(&list_id, index)?,
-        })
+        let revocation_info = CredentialRevocationInfo {
+            credential_status: self.create_credential_status(&list_id, entry_index)?,
+        };
+        Ok((entry_id, revocation_info))
     }
 
     async fn add_entity_to_list(
         &self,
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
-    ) -> Result<usize, RevocationError> {
+    ) -> Result<(RevocationListEntryId, usize), RevocationError> {
         let mut retry_counter = 0;
         loop {
             let result = self
@@ -551,7 +581,7 @@ impl TokenStatusList {
                         .create_entry(list_id, entity_id.to_owned(), index)
                         .await
                     {
-                        Ok(_) => Ok(Some(index)),
+                        Ok(entry_id) => Ok(Some((entry_id, index))),
                         Err(DataLayerError::AlreadyExists) => {
                             tracing::info!(
                                 "Retrying adding entity to list({list_id}), occupied index({index}), retry({retry_counter})"
@@ -583,7 +613,7 @@ impl TokenStatusList {
         &self,
         entity_id: RevocationListEntityId,
         issuer_identifier: &Identifier,
-    ) -> Result<RevocationListId, RevocationError> {
+    ) -> Result<(RevocationListId, RevocationListEntryId), RevocationError> {
         let revocation_list_id = Uuid::new_v4().into();
         let list_credential = format_status_list_credential(
             &revocation_list_id,
@@ -609,11 +639,12 @@ impl TokenStatusList {
             })
             .await?;
 
-        self.revocation_list_repository
+        let entry_id = self
+            .revocation_list_repository
             .create_entry(revocation_list_id, entity_id, 0)
             .await?;
 
-        Ok(revocation_list_id)
+        Ok((revocation_list_id, entry_id))
     }
 
     fn create_credential_status(

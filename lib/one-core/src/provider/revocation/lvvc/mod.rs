@@ -8,7 +8,7 @@ use std::sync::Arc;
 use holder_fetch::holder_get_lvvc;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
-use shared_types::DidValue;
+use shared_types::{DidValue, RevocationListEntryId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use util::get_lvvc_credential_subject;
@@ -20,6 +20,7 @@ use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::mapper::params::convert_params;
 use crate::model::credential::Credential;
 use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::identifier::Identifier;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
 };
@@ -367,6 +368,26 @@ impl RevocationMethod for LvvcProvider {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),
+        ))
+    }
+
+    async fn add_signature(
+        &self,
+        _signature_type: String,
+        _issuer: &Identifier,
+    ) -> Result<RevocationListEntryId, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn revoke_signature(
+        &self,
+        _signature_type: String,
+        _signature_id: RevocationListEntryId,
+    ) -> Result<(), RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Signatures not supported".to_string(),
         ))
     }
 

@@ -15,6 +15,7 @@ pub mod misc;
 pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
+pub mod signature;
 pub mod ssi;
 pub mod task;
 pub mod trust_anchor;

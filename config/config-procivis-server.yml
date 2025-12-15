@@ -16,6 +16,7 @@ app:
   enableServerInfo: true
   enableOpenApi: true
   enableHistoryCreateEndpoint: true
+  enableSignatureEndpoints: true
   auth:
     mode: STS
     stsTokenValidation:

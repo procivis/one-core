@@ -68,6 +68,8 @@ pub struct ServerConfig {
     pub enable_wallet_provider: bool,
     #[serde(default)]
     pub enable_history_create_endpoint: bool,
+    #[serde(default)]
+    pub enable_signature_endpoints: bool,
     pub auth: AuthMode,
 }
 

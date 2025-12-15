@@ -4,7 +4,7 @@ use sea_orm::{
     ActiveModelBehavior, DeriveEntityModel, DerivePrimaryKey, DeriveRelation, EntityTrait,
     EnumIter, PrimaryKeyTrait, Related, RelationDef, RelationTrait, Set,
 };
-use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
+use shared_types::{RevocationListEntryId, WalletUnitAttestedKeyId, WalletUnitId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -17,7 +17,7 @@ pub struct Model {
     pub expiration_date: OffsetDateTime,
     pub public_key_jwk: String,
     pub wallet_unit_id: WalletUnitId,
-    pub revocation_list_entry_id: Option<String>,
+    pub revocation_list_entry_id: Option<RevocationListEntryId>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

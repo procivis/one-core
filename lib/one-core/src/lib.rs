@@ -50,6 +50,8 @@ use crate::provider::key_storage::provider::{KeyProvider, key_provider_from_conf
 use crate::provider::key_storage::secure_element::NativeKeyStorage;
 use crate::provider::presentation_formatter::provider::get_presentation_formatter_provider;
 use crate::provider::revocation::provider::revocation_method_provider_from_config;
+use crate::provider::signer::provider::SignerProviderImpl;
+use crate::provider::signer::signers_from_config;
 use crate::provider::task::provider::task_provider_from_config;
 use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
@@ -77,6 +79,7 @@ use crate::service::organisation::OrganisationService;
 use crate::service::proof::ProofService;
 use crate::service::proof_schema::ProofSchemaService;
 use crate::service::revocation_list::RevocationListService;
+use crate::service::signature::SignatureService;
 use crate::service::ssi_holder::SSIHolderService;
 use crate::service::ssi_issuer::SSIIssuerService;
 use crate::service::task::TaskService;
@@ -127,6 +130,7 @@ pub struct OneCore {
     pub vc_api_service: VCAPIService,
     pub cache_service: CacheService,
     pub wallet_unit_service: WalletUnitService,
+    pub signature_service: SignatureService,
     pub nfc_service: NfcService,
 }
 
@@ -405,6 +409,20 @@ impl OneCore {
             Some(mqtt_client),
             nfc_hce.clone(),
         )?;
+
+        let signers = signers_from_config(
+            &mut config.signer,
+            clock.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            revocation_method_provider.clone(),
+            data_provider.get_identifier_repository(),
+            data_provider.get_history_repository(),
+        )?;
+        let signer_provider = Arc::new(SignerProviderImpl::new(
+            signers,
+            data_provider.get_revocation_list_repository(),
+        ));
 
         let config = Arc::new(config);
 
@@ -749,6 +767,7 @@ impl OneCore {
                 config,
                 session_provider.clone(),
             ),
+            signature_service: SignatureService::new(signer_provider),
         })
     }
 

@@ -1,8 +1,11 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
+use shared_types::RevocationListEntryId;
+
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::credential::Credential;
+use crate::model::identifier::Identifier;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
 };
@@ -79,6 +82,26 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Attestations not supported".to_string(),
+        ))
+    }
+
+    async fn add_signature(
+        &self,
+        _signature_type: String,
+        _issuer: &Identifier,
+    ) -> Result<RevocationListEntryId, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn revoke_signature(
+        &self,
+        _signature_type: String,
+        _signature_id: RevocationListEntryId,
+    ) -> Result<(), RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Signatures not supported".to_string(),
         ))
     }
 

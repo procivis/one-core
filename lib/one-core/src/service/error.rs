@@ -3,7 +3,8 @@ use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
     HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
-    RevocationListId, TrustAnchorId, TrustEntityId, TrustEntityKey, WalletUnitId,
+    RevocationListEntryId, RevocationListId, TrustAnchorId, TrustEntityId, TrustEntityKey,
+    WalletUnitId,
 };
 use strum::{EnumMessage, IntoStaticStr};
 use thiserror::Error;
@@ -158,6 +159,9 @@ pub enum EntityNotFoundError {
 
     #[error("Revocation list `{0}` not found")]
     RevocationList(RevocationListId),
+
+    #[error("Revocation list entry `{0}` not found")]
+    RevocationListEntry(RevocationListEntryId),
 
     #[error("Proof schema `{0}` not found")]
     ProofSchema(ProofSchemaId),
@@ -756,6 +760,9 @@ pub enum MissingProviderError {
 
     #[error("Cannot find blob storage `{0}`")]
     BlobStorage(String),
+
+    #[error("Cannot find signature provider `{0}`")]
+    Signer(String),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage)]
@@ -1559,6 +1566,7 @@ impl ErrorCodeMixin for EntityNotFoundError {
             Self::WalletUnit(_) => ErrorCode::BR_0259,
             Self::HolderWalletUnit(_) => ErrorCode::BR_0296,
             Self::WalletUnitAttestationByOrganisation(_) => ErrorCode::BR_0262,
+            Self::RevocationListEntry(_) => ErrorCode::BR_0000,
         }
     }
 }
@@ -1856,6 +1864,7 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::Task(_) => ErrorCode::BR_0103,
             Self::TrustManager(_) => ErrorCode::BR_0132,
             Self::BlobStorage(_) => ErrorCode::BR_0252,
+            Self::Signer(_) => ErrorCode::BR_0000,
         }
     }
 }

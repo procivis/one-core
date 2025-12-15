@@ -63,6 +63,7 @@ pub struct CoreConfig {
     pub credential_issuer: CredentialIssuerConfig,
     pub verification_engagement: VerificationEngagementConfig,
     pub certificate_validation: CertificateValidationConfig,
+    pub signer: SignerConfig,
 }
 
 impl CoreConfig {
@@ -793,6 +794,29 @@ pub struct CertificateValidationConfig {
     #[serde(default)]
     #[serde_as(as = "DurationSeconds<i64>")]
     pub leeway: time::Duration,
+}
+
+pub type SignerConfig = ConfigBlock<SignerType>;
+
+#[derive(
+    Debug,
+    Copy,
+    Clone,
+    Display,
+    EnumString,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Serialize,
+    Deserialize,
+    AsRefStr,
+    Hash,
+)]
+pub enum SignerType {
+    #[serde(rename = "REGISTRATION_CERTIFICATE")]
+    #[strum(serialize = "REGISTRATION_CERTIFICATE")]
+    RegistrationCertificate,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

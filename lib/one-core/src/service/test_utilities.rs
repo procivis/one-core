@@ -290,6 +290,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 enabled: true
         certificateValidation:
             leeway: 60
+        signer: {}
     "};
 
     AppConfig::parse(vec![InputFormat::yaml_str(config)]).unwrap()

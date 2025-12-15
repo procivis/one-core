@@ -83,6 +83,7 @@ async fn test_db_schema_revocation_list_entry() {
             "credential_id",
             "status",
             "type",
+            "signature_type",
         ])
         .index(
             "index-RevocationList-Index-Unique",
@@ -130,4 +131,8 @@ async fn test_db_schema_revocation_list_entry() {
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
+    revocation_list_entry
+        .column("signature_type")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
 }

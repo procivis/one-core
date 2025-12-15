@@ -87,7 +87,7 @@ impl RevocationListsDB {
         self.repository
             .create_entry(list_id, entity_id, index_on_status_list)
             .await
-            .unwrap()
+            .unwrap();
     }
 
     pub async fn update_entry(

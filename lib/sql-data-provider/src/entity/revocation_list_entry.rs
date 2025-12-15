@@ -1,19 +1,20 @@
 use one_core::model::revocation_list;
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{CredentialId, DidId, IdentifierId, RevocationListId};
+use shared_types::{CredentialId, DidId, IdentifierId, RevocationListEntryId, RevocationListId};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "revocation_list_entry")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub id: String,
+    pub id: RevocationListEntryId,
     pub created_date: OffsetDateTime,
     pub revocation_list_id: RevocationListId,
     pub index: u32,
     pub credential_id: Option<CredentialId>,
     pub r#type: RevocationListEntryType,
+    pub signature_type: Option<String>,
     pub status: RevocationListEntryStatus,
 }
 

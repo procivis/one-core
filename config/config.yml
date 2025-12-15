@@ -17,3 +17,4 @@ walletProvider: {}
 credentialIssuer: {}
 verificationEngagement: {}
 certificateValidation: {}
+signer: {}

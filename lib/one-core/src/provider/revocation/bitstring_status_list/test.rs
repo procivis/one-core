@@ -77,7 +77,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         .returning(|_, _| Ok(0));
     revocation_list_repository
         .expect_create_entry()
-        .returning(|_, _, _| Ok(()));
+        .returning(|_, _, _| Ok(Uuid::new_v4().into()));
 
     let revocation_list = BitstringStatusList::new(
         Some("".into()),

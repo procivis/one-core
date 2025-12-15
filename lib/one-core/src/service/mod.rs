@@ -23,6 +23,7 @@ pub mod organisation;
 pub mod proof;
 pub mod proof_schema;
 pub mod revocation_list;
+pub mod signature;
 pub mod ssi_holder;
 pub mod ssi_issuer;
 mod ssi_validator;

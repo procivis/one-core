@@ -164,6 +164,8 @@ pub enum HistoryEntityType {
     StsIamRole,
     #[sea_orm(string_value = "STS_TOKEN")]
     StsToken,
+    #[sea_orm(string_value = "SIGNATURE")]
+    Signature,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

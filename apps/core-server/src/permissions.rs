@@ -54,6 +54,8 @@ pub enum Permission {
     ProofSchemaList,
     ProofSchemaShare,
     ProofShare,
+    RegistrationCertificateCreate,
+    RegistrationCertificateRevoke,
     StsOrganisationCreate,
     StsOrganisationDelete,
     StsOrganisationDetail,
@@ -224,6 +226,7 @@ mod test {
             enable_management_endpoints: false,
             enable_wallet_provider: false,
             enable_history_create_endpoint: false,
+            enable_signature_endpoints: false,
             auth,
         }
     }

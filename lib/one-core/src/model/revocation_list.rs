@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, RevocationListId, WalletUnitAttestedKeyId};
+use shared_types::{
+    CredentialId, RevocationListEntryId, RevocationListId, WalletUnitAttestedKeyId,
+};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::identifier::{Identifier, IdentifierRelations};
 
@@ -65,20 +66,23 @@ pub enum RevocationListEntryStatus {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityId {
     Credential(CredentialId),
+    Signature(String),
     WalletUnitAttestedKey(WalletUnitAttestedKeyId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityInfo {
     Credential(CredentialId),
+    Signature(String),
     WalletUnitAttestedKey,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum UpdateRevocationListEntryId {
     Credential(CredentialId),
-    Id(Uuid),
+    Id(RevocationListEntryId),
     Index(RevocationListId, usize),
+    Signature(String, RevocationListEntryId),
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]

@@ -1,4 +1,4 @@
-use shared_types::{IdentifierId, RevocationListId};
+use shared_types::{IdentifierId, RevocationListEntryId, RevocationListId};
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
@@ -47,13 +47,18 @@ pub trait RevocationListRepository: Send + Sync {
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
         index_on_status_list: usize,
-    ) -> Result<(), DataLayerError>;
+    ) -> Result<RevocationListEntryId, DataLayerError>;
 
     async fn update_entry(
         &self,
         id: UpdateRevocationListEntryId,
         request: UpdateRevocationListEntryRequest,
     ) -> Result<(), DataLayerError>;
+
+    async fn get_entry_by_id(
+        &self,
+        id: RevocationListEntryId,
+    ) -> Result<Option<RevocationListEntry>, DataLayerError>;
 
     async fn get_entries(
         &self,
