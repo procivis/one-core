@@ -287,7 +287,7 @@ impl OpenID4VCI13 {
     fn mso_minimum_refresh_time(&self, format: &str) -> Result<Duration, IssuanceProtocolError> {
         self.config
             .format
-            .get::<mdoc_formatter::Params>(format)
+            .get::<mdoc_formatter::Params, _>(format)
             .map(|p| p.mso_minimum_refresh_time)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))
     }

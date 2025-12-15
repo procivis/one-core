@@ -307,7 +307,7 @@ pub(crate) fn gather_object_datatypes_from_config(config: &DatatypeConfig) -> Ha
         .iter()
         .filter_map(|(name, fields)| {
             if fields.r#type == DatatypeType::Object {
-                Some(name)
+                Some(name.as_str())
             } else {
                 None
             }

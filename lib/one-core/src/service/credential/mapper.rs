@@ -47,7 +47,7 @@ pub fn credential_detail_response_from_model(
     let state = value.state;
 
     let mdoc_mso_validity = if let Some(validity_credential) = validity_credential {
-        let params = config.format.get::<mdoc_formatter::Params>("MDOC")?;
+        let params = config.format.get::<mdoc_formatter::Params, _>("MDOC")?;
         Some(MdocMsoValidityResponseDTO {
             expiration: validity_credential.created_date + params.mso_expires_in,
             next_update: validity_credential.created_date + params.mso_expected_update_in,

@@ -29,7 +29,7 @@ pub fn validate_identifier(
 
 pub fn validate_protocol_type<T: Serialize + Clone>(
     exchange: &str,
-    config: &ConfigBlock<T>,
+    config: &ConfigBlock<String, T>,
 ) -> Result<(), ValidationError> {
     config.get_if_enabled(exchange).map(|_| ()).map_err(|err| {
         ValidationError::InvalidExchangeType {

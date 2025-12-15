@@ -14,7 +14,7 @@ pub(crate) enum SelectedTransportType {
 pub(crate) fn get_first_available_transport<'config>(
     config: &'config TransportConfig,
     supported_options: &[TransportType],
-) -> Result<(&'config str, TransportType), ValidationError> {
+) -> Result<(&'config String, TransportType), ValidationError> {
     config
         .iter()
         .filter(|(_, fields)| fields.enabled())
@@ -30,7 +30,7 @@ pub(crate) fn validate_and_select_transport_type(
     config: &TransportConfig,
     exchange_protocol_capabilities: &VerificationProtocolCapabilities,
 ) -> Result<SelectedTransportType, ValidationError> {
-    let check_transport_capabilities = |transport| {
+    let check_transport_capabilities = |transport: &str| {
         let r#type = config
             .get_fields(transport)
             .map_err(|e| ValidationError::InvalidTransportType {

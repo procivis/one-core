@@ -1,6 +1,6 @@
 use std::borrow::Borrow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::hash::Hash;
 use std::path::Path;
 
@@ -72,7 +72,7 @@ impl CoreConfig {
             .iter()
             .filter_map(|(key, fields)| {
                 if fields.r#type == datatype {
-                    Some(key)
+                    Some(key.as_str())
                 } else {
                     None
                 }
@@ -246,7 +246,7 @@ where
     }
 }
 
-pub type FormatConfig = ConfigBlock<FormatType>;
+pub type FormatConfig = ConfigBlock<String, FormatType>;
 
 #[derive(
     Debug,
@@ -286,7 +286,7 @@ pub enum FormatType {
     Mdoc,
 }
 
-pub type TransportConfig = ConfigBlock<TransportType>;
+pub type TransportConfig = ConfigBlock<String, TransportType>;
 
 #[derive(
     Debug,
@@ -314,7 +314,7 @@ pub enum TransportType {
     Mqtt,
 }
 
-pub type IssuanceProtocolConfig = ConfigBlock<IssuanceProtocolType>;
+pub type IssuanceProtocolConfig = ConfigBlock<String, IssuanceProtocolType>;
 
 #[derive(
     Debug,
@@ -342,7 +342,7 @@ pub enum IssuanceProtocolType {
     OpenId4VciFinal1_0,
 }
 
-pub type VerificationProtocolConfig = ConfigBlock<VerificationProtocolType>;
+pub type VerificationProtocolConfig = ConfigBlock<String, VerificationProtocolType>;
 
 #[derive(
     Debug,
@@ -382,7 +382,7 @@ pub enum VerificationProtocolType {
     OpenId4VpProximityDraft00,
 }
 
-pub type RevocationConfig = ConfigBlock<RevocationType>;
+pub type RevocationConfig = ConfigBlock<String, RevocationType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -405,7 +405,7 @@ pub enum RevocationType {
     TokenStatusList,
 }
 
-pub type DidConfig = ConfigBlock<DidType>;
+pub type DidConfig = ConfigBlock<String, DidType>;
 
 #[derive(
     Debug,
@@ -439,7 +439,7 @@ pub enum DidType {
     WebVh,
 }
 
-pub type DatatypeConfig = ConfigBlock<DatatypeType>;
+pub type DatatypeConfig = ConfigBlock<String, DatatypeType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -522,7 +522,7 @@ pub enum KeyAlgorithmType {
     Dilithium,
 }
 
-pub type KeyStorageConfig = ConfigBlock<KeyStorageType>;
+pub type KeyStorageConfig = ConfigBlock<String, KeyStorageType>;
 
 #[derive(
     Debug,
@@ -656,7 +656,7 @@ impl ConfigFields for IdentifierFields {
     }
 }
 
-pub type TaskConfig = ConfigBlock<TaskType>;
+pub type TaskConfig = ConfigBlock<String, TaskType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -676,7 +676,7 @@ pub enum TaskType {
     HolderCheckCredentialStatus,
 }
 
-pub type TrustManagementConfig = ConfigBlock<TrustManagementType>;
+pub type TrustManagementConfig = ConfigBlock<String, TrustManagementType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
@@ -744,7 +744,7 @@ pub enum WalletProviderType {
     ProcivisOne,
 }
 
-pub type WalletProviderConfig = ConfigBlock<WalletProviderType>;
+pub type WalletProviderConfig = ConfigBlock<String, WalletProviderType>;
 
 #[derive(
     Debug,
@@ -796,7 +796,7 @@ pub struct CertificateValidationConfig {
     pub leeway: time::Duration,
 }
 
-pub type SignerConfig = ConfigBlock<SignerType>;
+pub type SignerConfig = ConfigBlock<String, SignerType>;
 
 #[derive(
     Debug,
@@ -819,41 +819,51 @@ pub enum SignerType {
     RegistrationCertificate,
 }
 
+// Alias for the collection of traits we want config keys to implement.
+pub trait ConfigKey: Debug + Display + Clone + Ord {}
+// Blanket impl
+impl<T: Debug + Display + Clone + Ord> ConfigKey for T {}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(transparent)]
-pub struct ConfigBlock<T>(Dict<String, Fields<T>>);
+pub struct ConfigBlock<K: ConfigKey, T>(Dict<K, Fields<T>>);
 
-impl<T> ConfigBlock<T>
+impl<K, T> ConfigBlock<K, T>
 where
+    K: ConfigKey,
     T: Serialize + Clone,
 {
     // Deserialize current fields for a given key into a type.
     // Private and public fields will be merged.
-    pub fn get<U>(&self, key: &str) -> Result<U, ConfigValidationError>
+    pub fn get<U, Q: ?Sized + Display + Ord>(&self, key: &Q) -> Result<U, ConfigValidationError>
     where
+        K: Borrow<Q>,
         U: DeserializeOwned,
     {
         let fields = self
             .0
             .get(key)
-            .ok_or_else(|| ConfigValidationError::EntryNotFound(key.to_owned()))?;
+            .ok_or_else(|| ConfigValidationError::EntryNotFound(key.to_string()))?;
 
         fields
             .deserialize()
             .map_err(|source| ConfigValidationError::FieldsDeserialization {
-                key: key.to_owned(),
+                key: key.to_string(),
                 source,
             })
     }
 
-    pub fn get_type(&self, key: &str) -> Result<T, ConfigValidationError> {
+    pub fn get_type<Q: ?Sized + Display + Ord>(&self, key: &Q) -> Result<T, ConfigValidationError>
+    where
+        K: Borrow<Q>,
+    {
         self.get_fields(key).map(|fields| fields.r#type.clone())
     }
 
     pub fn get_by_type<U>(&self, r#type: T) -> Result<U, ConfigValidationError>
     where
         U: DeserializeOwned,
-        T: PartialEq + std::fmt::Display,
+        T: PartialEq + Display,
     {
         self.iter()
             .find(|(_, v)| v.r#type == r#type)
@@ -866,19 +876,25 @@ where
             })
     }
 
-    pub fn get_key_by_type(&self, r#type: T) -> Result<String, ConfigValidationError>
+    pub fn get_key_by_type(&self, r#type: T) -> Result<K, ConfigValidationError>
     where
-        T: PartialEq + std::fmt::Display,
+        T: PartialEq + Display,
     {
         Ok(self
             .iter()
             .find(|(_, v)| v.r#type == r#type)
             .ok_or_else(|| ConfigValidationError::TypeNotFound(r#type.to_string()))?
             .0
-            .to_string())
+            .clone())
     }
 
-    pub fn get_fields(&self, key: &str) -> Result<&Fields<T>, ConfigValidationError> {
+    pub fn get_fields<Q: ?Sized + Display + Ord>(
+        &self,
+        key: &Q,
+    ) -> Result<&Fields<T>, ConfigValidationError>
+    where
+        K: Borrow<Q>,
+    {
         let fields = self
             .0
             .get(key)
@@ -887,21 +903,21 @@ where
         Ok(fields)
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (&str, &Fields<T>)> {
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &Fields<T>)> {
         self.0.iter().map(|(k, v)| (k as _, v))
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&str, &mut Fields<T>)> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (&K, &mut Fields<T>)> {
         self.0.iter_mut().map(|(k, v)| (k as _, v))
     }
 
     #[cfg(test)]
-    pub fn insert(&mut self, key: String, fields: Fields<T>) {
+    pub fn insert(&mut self, key: K, fields: Fields<T>) {
         self.0.insert(key, fields);
     }
 }
 
-impl ConfigBlock<TransportType> {
+impl ConfigBlock<String, TransportType> {
     pub fn ble_enabled_for(&self, key: &str) -> bool {
         self.transport_enabled_for(key, &TransportType::Ble)
     }
@@ -941,12 +957,12 @@ pub trait ConfigExt<K, T> {
     fn get_if_enabled<Q>(&self, key: &Q) -> Result<&T, ConfigValidationError>
     where
         K: Borrow<Q> + Ord,
-        Q: ?Sized + ToString + Ord;
+        Q: ?Sized + Ord + Display;
 }
 
 impl<K, T> ConfigExt<K, T> for Dict<K, T>
 where
-    K: ToString + Ord + Hash,
+    K: Ord,
     T: ConfigFields,
 {
     fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a T)>
@@ -960,7 +976,7 @@ where
     fn get_if_enabled<Q>(&self, key: &Q) -> Result<&T, ConfigValidationError>
     where
         K: Borrow<Q> + Ord,
-        Q: ?Sized + ToString + Ord,
+        Q: ?Sized + Ord + Display,
     {
         let fields = self
             .get(key)
@@ -972,8 +988,8 @@ where
     }
 }
 
-impl<T> ConfigExt<String, Fields<T>> for ConfigBlock<T> {
-    fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a String, &'a Fields<T>)>
+impl<K: ConfigKey, T> ConfigExt<K, Fields<T>> for ConfigBlock<K, T> {
+    fn iter_enabled<'a>(&'a self) -> impl Iterator<Item = (&'a K, &'a Fields<T>)>
     where
         T: 'a,
     {
@@ -982,14 +998,13 @@ impl<T> ConfigExt<String, Fields<T>> for ConfigBlock<T> {
 
     fn get_if_enabled<Q>(&self, key: &Q) -> Result<&Fields<T>, ConfigValidationError>
     where
-        String: Borrow<Q> + Ord,
-        Q: ?Sized + ToString + Ord,
+        K: Borrow<Q> + Ord,
+        Q: ?Sized + Ord + Display,
     {
         self.0.get_if_enabled(key)
     }
 }
-
-impl<T> Default for ConfigBlock<T> {
+impl<K: ConfigKey, T> Default for ConfigBlock<K, T> {
     fn default() -> Self {
         Self(Dict::default())
     }
@@ -1002,9 +1017,9 @@ pub enum ConfigEntryDisplay {
     Translated(HashMap<String, String>),
 }
 
-impl<T: Into<String>> From<T> for ConfigEntryDisplay {
+impl<T: Display> From<T> for ConfigEntryDisplay {
     fn from(value: T) -> Self {
-        Self::TranslationId(value.into())
+        Self::TranslationId(value.to_string())
     }
 }
 

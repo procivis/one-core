@@ -72,7 +72,7 @@ pub(crate) fn prepare_nested_representation(
         .iter()
         .filter_map(|(name, fields)| {
             if fields.r#type == DatatypeType::Object {
-                Some(name)
+                Some(name.as_str())
             } else {
                 None
             }

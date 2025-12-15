@@ -61,7 +61,7 @@ pub(crate) fn key_security_level_provider_from_config(
         })?;
 
         for storage_type in &params.holder.key_storages {
-            if config.key_storage.get::<()>(storage_type).is_ok() {
+            if config.key_storage.get::<(), _>(storage_type).is_ok() {
                 return Err(ConfigValidationError::EntryNotFound(format!(
                     "No key storage with type {}",
                     storage_type
