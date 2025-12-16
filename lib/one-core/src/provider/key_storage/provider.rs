@@ -14,7 +14,7 @@ use super::pkcs11::PKCS11KeyProvider;
 use super::remote_secure_element::RemoteSecureElementKeyProvider;
 use super::secure_element::{NativeKeyStorage, SecureElementKeyProvider};
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{ConfigFields, CoreConfig, KeyAlgorithmType, KeyStorageType};
+use crate::config::core_config::{CoreConfig, KeyAlgorithmType, KeyStorageType};
 use crate::model::key::Key;
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::model::{AuthenticationFn, SignatureProvider};
@@ -183,11 +183,7 @@ pub(crate) fn key_provider_from_config(
 ) -> Result<Arc<dyn KeyProvider>, ConfigValidationError> {
     let mut key_providers: HashMap<String, Arc<dyn KeyStorage>> = HashMap::new();
 
-    for (name, field) in config
-        .key_storage
-        .iter()
-        .filter(|(_, field)| field.enabled())
-    {
+    for (name, field) in config.key_storage.iter() {
         let provider =
             match field.r#type {
                 KeyStorageType::Internal => {

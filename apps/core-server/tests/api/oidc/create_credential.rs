@@ -97,7 +97,7 @@ async fn test_post_issuer_credential_in_parallel() {
         key,
         issuer_identifier,
         ..
-    } = issuer_setup().await;
+    } = issuer_setup(None).await;
 
     let PostCredentialTestParams {
         revocation_method,
@@ -237,7 +237,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         key,
         issuer_identifier,
         ..
-    } = issuer_setup().await;
+    } = issuer_setup(None).await;
 
     let schema_id = "schema-id".to_string();
     let credential_schema = context
@@ -344,7 +344,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         key,
         issuer_identifier,
         ..
-    } = issuer_setup().await;
+    } = issuer_setup(None).await;
 
     let schema_id = "schema-id".to_string();
     let credential_schema = context
@@ -447,7 +447,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
 #[tokio::test]
 async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existing_token_status_list()
  {
-    let issuer_setup = issuer_setup().await;
+    let issuer_setup = issuer_setup(None).await;
     issuer_setup
         .context
         .db
@@ -516,6 +516,31 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
 }
 
 #[tokio::test]
+async fn test_post_issuer_credential_with_disabled_issuer_key_storage() {
+    let disabled_key_storage = Some(
+        indoc::indoc! {"
+        keyStorage:
+            INTERNAL:
+                enabled: false
+        "}
+        .to_string(),
+    );
+    let issuer_setup = issuer_setup(disabled_key_storage).await;
+    issuer_setup
+        .context
+        .db
+        .revocation_lists
+        .create(
+            issuer_setup.issuer_identifier.clone(),
+            RevocationListPurpose::Revocation,
+            None,
+            Some(StatusListType::TokenStatusList),
+        )
+        .await;
+    test_post_issuer_credential_with(PostCredentialTestParams::default(), Some(issuer_setup)).await;
+}
+
+#[tokio::test]
 async fn test_post_issuer_credential_with_lvvc_revocation_method() {
     let params = PostCredentialTestParams {
         revocation_method: Some("LVVC"),
@@ -543,11 +568,10 @@ struct TestIssuerSetup {
     issuer_identifier: Identifier,
 }
 
-async fn issuer_setup() -> TestIssuerSetup {
+async fn issuer_setup(additional_config: Option<String>) -> TestIssuerSetup {
     let interaction_id = Uuid::new_v4();
     let access_token = format!("{interaction_id}.test");
-
-    let context = TestContext::new_with_token(&access_token, None).await;
+    let context = TestContext::new_with_token(&access_token, additional_config).await;
 
     let organisation = context.db.organisations.create().await;
 
@@ -624,7 +648,7 @@ async fn test_post_issuer_credential_with(
         issuer_identifier,
         ..
     } = match context {
-        None => issuer_setup().await,
+        None => issuer_setup(None).await,
         Some(context) => context,
     };
 

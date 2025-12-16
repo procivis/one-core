@@ -96,3 +96,55 @@ impl one_core::provider::key_storage::secure_element::NativeKeyStorage for Nativ
             .map_err(KeyStorageError::from)
     }
 }
+
+#[cfg(test)]
+pub mod mock {
+    use async_trait::async_trait;
+
+    use crate::binding::key_storage::{GeneratedKeyBindingDTO, NativeKeyStorage};
+    use crate::error::NativeKeyStorageError;
+
+    pub struct MockNativeKeyStorage;
+
+    #[async_trait]
+    impl NativeKeyStorage for MockNativeKeyStorage {
+        async fn generate_key(
+            &self,
+            _key_alias: String,
+        ) -> Result<GeneratedKeyBindingDTO, NativeKeyStorageError> {
+            unimplemented!("mock does not support operation")
+        }
+
+        async fn sign(
+            &self,
+            _key_reference: Vec<u8>,
+            _message: Vec<u8>,
+        ) -> Result<Vec<u8>, NativeKeyStorageError> {
+            unimplemented!("mock does not support operation")
+        }
+
+        async fn generate_attestation_key(
+            &self,
+            _key_alias: String,
+            _nonce: Option<String>,
+        ) -> Result<GeneratedKeyBindingDTO, NativeKeyStorageError> {
+            unimplemented!("mock does not support operation")
+        }
+
+        async fn generate_attestation(
+            &self,
+            _key_reference: Vec<u8>,
+            _nonce: Option<String>,
+        ) -> Result<Vec<String>, NativeKeyStorageError> {
+            unimplemented!("mock does not support operation")
+        }
+
+        async fn sign_with_attestation_key(
+            &self,
+            _key_reference: Vec<u8>,
+            _message: Vec<u8>,
+        ) -> Result<Vec<u8>, NativeKeyStorageError> {
+            unimplemented!("mock does not support operation")
+        }
+    }
+}
