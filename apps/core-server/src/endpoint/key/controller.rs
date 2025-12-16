@@ -1,6 +1,7 @@
 use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
+use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use proc_macros::require_permissions;
@@ -54,7 +55,7 @@ pub(crate) async fn get_key(
         },
         Err(error) => {
             tracing::error!("Error while getting key: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+            OkOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
     }
 }
@@ -84,7 +85,14 @@ pub(crate) async fn post_key(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<Json<KeyRequestRestDTO>, ErrorResponseRestDTO>,
 ) -> CreatedOrErrorResponse<EntityResponseRestDTO> {
-    let result = async { state.core.key_service.create_key(request.try_into()?).await }.await;
+    let result = async {
+        state
+            .core
+            .key_service
+            .create_key(request.try_into().error_while("mapping request")?)
+            .await
+    }
+    .await;
     CreatedOrErrorResponse::from_result(result, state, "creating key")
 }
 
@@ -106,11 +114,15 @@ pub(crate) async fn get_key_list(
     WithRejection(Qs(query), _): WithRejection<Qs<GetKeyQuery>, ErrorResponseRestDTO>,
 ) -> OkOrErrorResponse<GetKeyListResponseRestDTO> {
     let result = async {
-        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)?;
+        let organisation_id = fallback_organisation_id_from_session(query.filter.organisation_id)
+            .error_while("mapping organisation from session")?;
         state
             .core
             .key_service
-            .get_key_list(&organisation_id, query.try_into()?)
+            .get_key_list(
+                &organisation_id,
+                query.try_into().error_while("mapping query")?,
+            )
             .await
     }
     .await;
@@ -118,7 +130,7 @@ pub(crate) async fn get_key_list(
     match result {
         Err(error) => {
             tracing::error!("Error while getting keys: {:?}", error);
-            OkOrErrorResponse::from_service_error(error, state.config.hide_error_response_cause)
+            OkOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
         Ok(value) => {
             match list_try_from::<KeyListItemResponseRestDTO, KeyListItemResponseDTO>(value) {
@@ -172,10 +184,7 @@ pub(crate) async fn generate_csr(
         Ok(value) => CreatedOrErrorResponse::created(KeyGenerateCSRResponseRestDTO::from(value)),
         Err(error) => {
             tracing::error!("Error while getting key: {:?}", error);
-            CreatedOrErrorResponse::from_service_error(
-                error,
-                state.config.hide_error_response_cause,
-            )
+            CreatedOrErrorResponse::from_error(&error, state.config.hide_error_response_cause)
         }
     }
 }

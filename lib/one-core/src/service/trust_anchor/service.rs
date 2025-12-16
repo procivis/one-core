@@ -70,7 +70,8 @@ impl TrustAnchorService {
         let trust_list_type = self
             .config
             .trust_management
-            .get_fields(&result.r#type)?
+            .get_fields(&result.r#type)
+            .map_err(|_| BusinessLogicError::UnknownTrustAnchorType)?
             .r#type;
         if trust_list_type != TrustManagementType::SimpleTrustList {
             return Err(BusinessLogicError::TrustAnchorTypeIsNotSimpleTrustList.into());

@@ -1369,7 +1369,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 404);
     assert_eq!("BR_0024", resp.error_code().await);
 }
 
@@ -1494,7 +1494,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 404);
     assert_eq!("BR_0037", resp.error_code().await);
 }
 

@@ -1,9 +1,12 @@
 use std::error::Error;
+use std::fmt::{Display, Formatter};
 
 use serde::{Deserialize, Serialize};
-use strum::{EnumMessage, IntoStaticStr};
+use strum::{Display, EnumMessage, IntoStaticStr};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, IntoStaticStr, EnumMessage, Display,
+)]
 #[allow(non_camel_case_types)]
 pub enum ErrorCode {
     #[strum(message = "Unmapped error code")]
@@ -716,8 +719,69 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid history source")]
     BR_0315,
+
+    #[strum(message = "Service validation error")]
+    BR_0323,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
     fn error_code(&self) -> ErrorCode;
+}
+
+pub trait ErrorCodeMixinExt: ErrorCodeMixin {
+    fn error_while(self, context: impl Display) -> NestedError;
+}
+
+impl<T: ErrorCodeMixin> ErrorCodeMixinExt for T {
+    fn error_while(self, context: impl Display) -> NestedError {
+        NestedError {
+            context: context.to_string(),
+            source: Box::new(self),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct NestedError {
+    pub context: String,
+    pub source: Box<dyn ErrorCodeMixin>,
+}
+
+impl Error for NestedError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        Some(&*self.source)
+    }
+}
+
+impl ErrorCodeMixin for NestedError {
+    fn error_code(&self) -> ErrorCode {
+        self.source.error_code()
+    }
+}
+
+impl Display for NestedError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Error while {}.", self.context)?;
+        writeln!(f, "Caused by: {}", self.source)?;
+        Ok(())
+    }
+}
+
+pub trait ContextWithErrorCode<T, E: ErrorCodeMixin> {
+    /// Nests the error with the given context.
+    ///
+    /// The context, when displayed, should fit the following pattern:
+    ///
+    /// "Error while `context`.<br>
+    /// Caused by: `nested error`"
+    fn error_while(self, context: impl Display) -> Result<T, NestedError>;
+}
+
+impl<T, E: ErrorCodeMixin> ContextWithErrorCode<T, E> for Result<T, E> {
+    fn error_while(self, context: impl Display) -> Result<T, NestedError> {
+        self.map_err(|e| NestedError {
+            context: context.to_string(),
+            source: Box::new(e),
+        })
+    }
 }

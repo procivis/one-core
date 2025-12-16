@@ -9,6 +9,7 @@ use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 
 pub mod dto;
+pub mod error;
 pub mod service;
 
 pub(crate) mod mapper;

@@ -1,3 +1,5 @@
+pub(crate) mod status_code;
+
 use axum::Json;
 use axum::extract::rejection::{FormRejection, JsonRejection, PathRejection, QueryRejection};
 use axum::http::StatusCode;

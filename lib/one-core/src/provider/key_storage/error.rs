@@ -4,6 +4,7 @@ use one_crypto::SignerError;
 use one_crypto::encryption::EncryptionError;
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_storage::model::Features;
 
@@ -38,4 +39,10 @@ pub enum KeyStorageError {
     Encryption(EncryptionError),
     #[error("Unsupported feature: `{feature}`")]
     UnsupportedFeature { feature: Features },
+}
+
+impl ErrorCodeMixin for KeyStorageError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0039
+    }
 }

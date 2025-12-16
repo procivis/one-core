@@ -481,7 +481,7 @@ async fn test_fail_to_create_credential_unknown_key_id() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.status(), 404);
     assert_eq!("BR_0037", resp.error_code().await);
 }
 
@@ -714,7 +714,7 @@ async fn test_create_credential_with_invalid_certificate_id() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0000")
+    assert_eq!(resp.error_code().await, "BR_0323")
 }
 
 #[tokio::test]
@@ -783,7 +783,7 @@ async fn test_create_credential_fail_with_only_certificate_id() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0000")
+    assert_eq!(resp.error_code().await, "BR_0323")
 }
 
 #[tokio::test]

@@ -12,19 +12,18 @@ use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyRequestDTO, PrivateKeyJwkDTO};
 use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::key::{Key, KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::session_provider::SessionExt;
 use crate::provider::key_storage::KeyStorage;
-use crate::provider::key_storage::error::KeyStorageError;
 use crate::repository::error::DataLayerError;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
-};
+use crate::service::error::ServiceError;
 use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRResponseDTO, KeyResponseDTO,
 };
+use crate::service::key::error::KeyServiceError;
 use crate::service::key::mapper::from_create_request;
 use crate::service::key::validator::{validate_generate_request, validate_key_algorithm_for_csr};
 use crate::validator::{
@@ -37,7 +36,7 @@ impl KeyService {
     /// # Arguments
     ///
     /// * `KeyId` - Id of an existing key
-    pub async fn get_key(&self, key_id: &KeyId) -> Result<KeyResponseDTO, ServiceError> {
+    pub async fn get_key(&self, key_id: &KeyId) -> Result<KeyResponseDTO, KeyServiceError> {
         let key = self
             .key_repository
             .get_key(
@@ -46,15 +45,17 @@ impl KeyService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("loading key")?;
 
         let Some(key) = key else {
-            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
+            return Err(KeyServiceError::KeyNotFound(*key_id));
         };
         throw_if_org_relation_not_matching_session(
             key.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("validating organisation")?;
 
         key.try_into()
     }
@@ -64,46 +65,56 @@ impl KeyService {
     /// # Arguments
     ///
     /// * `request` - key data
-    pub async fn create_key(&self, request: KeyRequestDTO) -> Result<KeyId, ServiceError> {
-        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)?;
+    pub async fn create_key(&self, request: KeyRequestDTO) -> Result<KeyId, KeyServiceError> {
+        throw_if_org_not_matching_session(&request.organisation_id, &*self.session_provider)
+            .error_while("validating organisation")?;
         validate_generate_request(&request.key_type, &request.storage_type, &self.config)?;
 
         let organisation = self
             .organisation_repository
             .get_organisation(&request.organisation_id, &OrganisationRelations::default())
-            .await?;
+            .await
+            .error_while("loading organisation from repository")?;
 
         let Some(organisation) = organisation else {
-            return Err(BusinessLogicError::MissingOrganisation(request.organisation_id).into());
+            return Err(KeyServiceError::MissingOrganisation(
+                request.organisation_id,
+            ));
         };
 
         if organisation.deactivated_at.is_some() {
-            return Err(
-                BusinessLogicError::OrganisationIsDeactivated(request.organisation_id).into(),
-            );
+            return Err(KeyServiceError::OrganisationDeactivated(
+                request.organisation_id,
+            ));
         }
 
         let provider = self
             .key_provider
             .get_key_storage(&request.storage_type)
-            .ok_or(ValidationError::InvalidKeyStorage(
-                request.storage_type.clone(),
-            ))?;
+            .ok_or(KeyServiceError::InvalidKeyStorage {
+                key_storage: request.storage_type.to_string(),
+            })?;
 
-        let key_type = KeyAlgorithmType::from_str(&request.key_type)
-            .map_err(|_| ValidationError::InvalidKeyAlgorithm(request.key_type.to_string()))?;
+        let key_type = KeyAlgorithmType::from_str(&request.key_type).map_err(|_| {
+            KeyServiceError::InvalidKeyAlgorithm {
+                key_algorithm: request.key_type.to_string(),
+            }
+        })?;
 
         if !provider.get_capabilities().algorithms.contains(&key_type) {
-            return Err(KeyStorageError::UnsupportedKeyType {
-                key_type: key_type.to_string(),
-            }
-            .into());
+            return Err(KeyServiceError::UnsupportedKeyType { key_type });
         }
-        let (request, jwk) = extract_jwk(request)?;
+        let (request, jwk) = extract_jwk(request).error_while("extracting jwk")?;
         let key_id = Uuid::new_v4().into();
         let key = match jwk {
-            None => provider.generate(key_id, key_type).await?,
-            Some(jwk) => provider.import(key_id, key_type, jwk.into()).await?,
+            None => provider
+                .generate(key_id, key_type)
+                .await
+                .error_while("generating key")?,
+            Some(jwk) => provider
+                .import(key_id, key_type, jwk.into())
+                .await
+                .error_while("importing key")?,
         };
 
         let key_entity = from_create_request(key_id, request, organisation, key);
@@ -113,10 +124,8 @@ impl KeyService {
             .create_key(key_entity.to_owned())
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => {
-                    ServiceError::from(BusinessLogicError::KeyAlreadyExists)
-                }
-                err => ServiceError::from(err),
+                DataLayerError::AlreadyExists => KeyServiceError::KeyAlreadyExists,
+                err => err.error_while("creating key").into(),
             })?;
 
         Ok(uuid)
@@ -131,9 +140,14 @@ impl KeyService {
         &self,
         organisation_id: &OrganisationId,
         query: KeyListQuery,
-    ) -> Result<GetKeyListResponseDTO, ServiceError> {
-        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)?;
-        let result = self.key_repository.get_key_list(query).await?;
+    ) -> Result<GetKeyListResponseDTO, KeyServiceError> {
+        throw_if_org_not_matching_session(organisation_id, &*self.session_provider)
+            .error_while("validating organisation")?;
+        let result = self
+            .key_repository
+            .get_key_list(query)
+            .await
+            .error_while("loading keys")?;
 
         Ok(result.into())
     }
@@ -147,7 +161,7 @@ impl KeyService {
         &self,
         key_id: &KeyId,
         request: KeyGenerateCSRRequestDTO,
-    ) -> Result<KeyGenerateCSRResponseDTO, ServiceError> {
+    ) -> Result<KeyGenerateCSRResponseDTO, KeyServiceError> {
         let key = self
             .key_repository
             .get_key(
@@ -156,36 +170,37 @@ impl KeyService {
                     organisation: Some(OrganisationRelations::default()),
                 },
             )
-            .await?;
+            .await
+            .error_while("loading key")?;
 
         let Some(key) = key else {
-            return Err(EntityNotFoundError::Key(key_id.to_owned()).into());
+            return Err(KeyServiceError::KeyNotFound(*key_id));
         };
         throw_if_org_relation_not_matching_session(
             key.organisation.as_ref(),
             &*self.session_provider,
-        )?;
+        )
+        .error_while("validating organisation")?;
         validate_key_algorithm_for_csr(&key, &*self.key_algorithm_provider)?;
 
         let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
-            ServiceError::MissingProvider(MissingProviderError::KeyStorage(
-                key.key_type.to_owned(),
-            )),
+            KeyServiceError::MissingKeyStorageProvider {
+                key_storage: key.storage_type.clone(),
+            },
         )?;
         let remote_key = RemoteKeyAdapter::create_remote_key(
             key.clone(),
             key_storage,
             tokio::runtime::Handle::current(),
         )
-        .map_err(|err| ServiceError::Other(format!("Failed creating remote key {err}")))?;
-        let key_pair = KeyPair::from_remote(remote_key)
-            .map_err(|err| ServiceError::Other(format!("Failed creating remote key {err}")))?;
+        .context("Failed creating remote key")?;
+        let key_pair = KeyPair::from_remote(remote_key).context("Failed creating remote key")?;
 
         let content = request_to_certificate_params(request)
             .serialize_request(&key_pair)
-            .map_err(|err| ServiceError::Other(format!("Failed creating CSR: {err}")))?
+            .context("Failed creating CSR")?
             .pem()
-            .map_err(|err| ServiceError::Other(format!("CSR PEM conversion failed: {err}")))?;
+            .context("CSR PEM conversion failed")?;
 
         let result = self
             .history_repository
@@ -199,7 +214,13 @@ impl KeyService {
                 entity_id: Some(key.id.into()),
                 entity_type: HistoryEntityType::Key,
                 metadata: None,
-                organisation_id: Some(key.organisation.ok_or(DataLayerError::MappingError)?.id),
+                organisation_id: Some(
+                    key.organisation
+                        .ok_or(KeyServiceError::MappingError(
+                            "missing key organisation".to_string(),
+                        ))?
+                        .id,
+                ),
                 user: self.session_provider.session().user(),
             })
             .await;

@@ -8,8 +8,8 @@ use super::dto::{GetKeyListResponseDTO, KeyGenerateCSRRequestProfile, KeyRequest
 use crate::model::key::{GetKeyList, Key};
 use crate::model::organisation::Organisation;
 use crate::provider::key_storage::model::StorageGeneratedKey;
-use crate::service::error::ServiceError;
 use crate::service::key::dto::{KeyGenerateCSRRequestDTO, KeyResponseDTO};
+use crate::service::key::error::KeyServiceError;
 
 pub(super) fn from_create_request(
     key_id: KeyId,
@@ -33,12 +33,12 @@ pub(super) fn from_create_request(
 }
 
 impl TryFrom<Key> for KeyResponseDTO {
-    type Error = ServiceError;
+    type Error = KeyServiceError;
 
     fn try_from(value: Key) -> Result<Self, Self::Error> {
         let organisation_id = value
             .organisation
-            .ok_or(ServiceError::MappingError(
+            .ok_or(KeyServiceError::MappingError(
                 "organisation is None".to_string(),
             ))?
             .id;

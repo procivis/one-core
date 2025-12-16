@@ -4,7 +4,7 @@ use axum::Json;
 use axum::extract::State;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
-use one_core::error::ErrorCode;
+use one_core::error::{ErrorCode, ErrorCodeMixin};
 use one_core::provider::credential_formatter::error::FormatterError;
 use one_core::provider::did_method::error::DidMethodProviderError;
 use one_core::provider::issuance_protocol::error::IssuanceProtocolError;
@@ -16,12 +16,12 @@ use serde::Serialize;
 use utoipa::ToSchema;
 
 use super::error::{Cause, ErrorResponseRestDTO};
+use crate::dto::error::status_code::error_code_to_http_status;
 use crate::router::AppState;
 
 #[derive(utoipa::IntoResponses)]
 pub(crate) enum ErrorResponse {
     #[response(status = 401, description = "Unauthorized")]
-    #[expect(dead_code)]
     Unauthorized,
     #[response(status = 400, description = "Bad Request")]
     BadRequest(#[to_schema] ErrorResponseRestDTO),
@@ -75,15 +75,30 @@ impl ErrorResponse {
         }
     }
 
+    fn from_error(error: &impl ErrorCodeMixin, hide_cause: bool) -> Self {
+        let response = ErrorResponseRestDTO::from(error).hide_cause(hide_cause);
+        match error_code_to_http_status(error.error_code()) {
+            StatusCode::FORBIDDEN => Self::Forbidden,
+            StatusCode::UNAUTHORIZED => Self::Unauthorized,
+            StatusCode::BAD_REQUEST => Self::BadRequest(response),
+            StatusCode::NOT_FOUND => Self::NotFound(response),
+            StatusCode::INTERNAL_SERVER_ERROR => Self::ServerError(response),
+            status_code => {
+                tracing::error!("unmapped http status code: {}", status_code);
+                Self::ServerError(response)
+            }
+        }
+    }
+
     #[track_caller]
     fn from_service_error_with_trace(
-        error: ServiceError,
+        error: &impl ErrorCodeMixin,
         state: State<AppState>,
         action_description: &str,
     ) -> Self {
         let location = std::panic::Location::caller();
         tracing::error!(%error, %location, "Error while {action_description}");
-        Self::from_service_error(error, state.config.hide_error_response_cause)
+        Self::from_error(error, state.config.hide_error_response_cause)
     }
 }
 
@@ -132,6 +147,10 @@ impl<T> OkOrErrorResponse<T> {
         Self::Error(ErrorResponse::from_service_error(error, hide_cause))
     }
 
+    pub fn from_error<E: ErrorCodeMixin>(error: &E, hide_cause: bool) -> Self {
+        Self::Error(ErrorResponse::from_error(error, hide_cause))
+    }
+
     #[track_caller]
     pub(crate) fn from_result(
         result: Result<impl Into<T>, ServiceError>,
@@ -141,7 +160,7 @@ impl<T> OkOrErrorResponse<T> {
         match result {
             Ok(value) => Self::ok(value),
             Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
-                error,
+                &error,
                 state,
                 action_description,
             )),
@@ -159,7 +178,7 @@ impl<T> OkOrErrorResponse<T> {
         match result {
             Ok(value) => Self::ok(value),
             Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
-                error,
+                &error,
                 state,
                 action_description,
             )),
@@ -229,16 +248,20 @@ impl<T> CreatedOrErrorResponse<T> {
         Self::Error(ErrorResponse::from_service_error(error, hide_cause))
     }
 
+    pub fn from_error<E: ErrorCodeMixin>(error: &E, hide_cause: bool) -> Self {
+        Self::Error(ErrorResponse::from_error(error, hide_cause))
+    }
+
     #[track_caller]
     pub(crate) fn from_result(
-        result: Result<impl Into<T>, ServiceError>,
+        result: Result<impl Into<T>, impl ErrorCodeMixin>,
         state: State<AppState>,
         action_description: &str,
     ) -> Self {
         match result {
             Ok(value) => Self::created(value),
             Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
-                error,
+                &error,
                 state,
                 action_description,
             )),
@@ -290,7 +313,7 @@ impl EmptyOrErrorResponse {
         match result {
             Ok(_) => Self::NoContent,
             Err(error) => Self::Error(ErrorResponse::from_service_error_with_trace(
-                error,
+                &error,
                 state,
                 action_description,
             )),

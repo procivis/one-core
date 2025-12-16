@@ -51,7 +51,13 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
             is_remote: value.is_remote,
             state: value.state,
             did: value.did.map(TryInto::try_into).transpose()?,
-            key: value.key.map(TryInto::try_into).transpose()?,
+            key: value
+                .key
+                .map(TryInto::try_into)
+                .transpose()
+                .map_err(|err| {
+                    ServiceError::MappingError(format!("Failed to convert key: {err}"))
+                })?,
             certificates,
         })
     }

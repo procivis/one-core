@@ -410,5 +410,5 @@ async fn test_upsert_organisation_fail_non_existing_wallet_provider() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!(resp.error_code().await, "BR_0051");
+    assert_eq!(resp.error_code().await, "BR_0284");
 }

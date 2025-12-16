@@ -98,8 +98,8 @@ struct PartialQueryParamsRest<SortColumn: ToSchema, Include: ToSchema> {
     pub include: Option<Vec<Include>>,
 }
 
-impl From<&ServiceError> for ErrorResponseRestDTO {
-    fn from(error: &ServiceError) -> Self {
+impl<E: ErrorCodeMixin> From<&E> for ErrorResponseRestDTO {
+    fn from(error: &E) -> Self {
         let code = error.error_code();
         let cause = Cause::with_message_from_error(error);
 

@@ -6,6 +6,7 @@ use uuid::Uuid;
 
 use super::KeyService;
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
@@ -20,11 +21,11 @@ use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
-use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
     KeyRequestDTO,
 };
+use crate::service::key::error::KeyServiceError;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 fn setup_service(
@@ -281,9 +282,7 @@ async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
     let result = service.generate_csr(&key.id, generic_csr_request()).await;
     assert!(matches!(
         result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::UnsupportedKeyTypeForCSR
-        ))
+        Err(KeyServiceError::UnsupportedKeyTypeForCSR)
     ));
 }
 
@@ -308,11 +307,10 @@ async fn test_create_key_session_org_mismatch() {
             storage_type: "".to_string(),
             storage_params: Default::default(),
         })
-        .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(result.error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -337,11 +335,10 @@ async fn test_list_key_session_org_mismatch() {
                 include: None,
             },
         )
-        .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(result.error_code(), ErrorCode::BR_0178);
 }
 
 #[tokio::test]
@@ -362,16 +359,12 @@ async fn test_key_ops_session_org_mismatch() {
         Arc::new(StaticSessionProvider::new_random()),
     );
 
-    let result = service.get_key(&key_id.into()).await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
-    let result = service
+    let err = service.get_key(&key_id.into()).await.err().unwrap();
+    assert_eq!(err.error_code(), ErrorCode::BR_0178);
+    let err = service
         .generate_csr(&key_id.into(), generic_csr_request())
-        .await;
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(ValidationError::Forbidden))
-    ));
+        .await
+        .err()
+        .unwrap();
+    assert_eq!(err.error_code(), ErrorCode::BR_0178);
 }

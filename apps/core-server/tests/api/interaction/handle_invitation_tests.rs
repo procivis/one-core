@@ -2587,7 +2587,7 @@ async fn test_handle_invitation_fails_duplicate_with_different_format() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 500);
+    assert_eq!(resp.status(), 400);
 
     let resp = resp.json_value().await;
     assert_eq!(resp["code"], "BR_0087");
