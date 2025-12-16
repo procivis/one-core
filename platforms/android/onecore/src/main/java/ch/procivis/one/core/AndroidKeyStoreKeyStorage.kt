@@ -100,7 +100,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
                 throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
             }
 
-            val keyAlias = keyReference.contentToString()
+            val keyAlias = keyReference.toString(Charsets.UTF_8)
 
             val keyStore = getAndroidKeyStore()
             val privateKey = keyStore.getKey(keyAlias, null) as PrivateKey
@@ -138,7 +138,7 @@ class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage
             throw NativeKeyStorageException.KeyGenerationFailure("Insufficient SDK version `${Build.VERSION.SDK_INT}`");
         }
 
-        val keyAlias = keyReference.contentToString()
+        val keyAlias = keyReference.toString(Charsets.UTF_8)
 
         val keyStore = this.getAndroidKeyStore()
         val certificateChain = keyStore.getCertificateChain(keyAlias)
