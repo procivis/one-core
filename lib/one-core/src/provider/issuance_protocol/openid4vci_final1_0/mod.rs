@@ -525,17 +525,17 @@ impl OpenID4VCIFinal1_0 {
         organisation: &Organisation,
         interaction: &Interaction,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
-        let format = map_from_oidc_format_to_core_detailed(
+        let format_type = map_from_oidc_format_to_core_detailed(
             &interaction_data.format,
             Some(&issuer_response.credential),
         )
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        let formatter = self
+        let (format, formatter) = self
             .formatter_provider
-            .get_credential_formatter(&format)
+            .get_formatter_by_type(format_type)
             .ok_or_else(|| {
-                IssuanceProtocolError::Failed(format!("{format} formatter not found"))
+                IssuanceProtocolError::Failed(format!("{format_type} formatter not found"))
             })?;
 
         let mut credential = formatter

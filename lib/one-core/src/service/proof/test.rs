@@ -4242,6 +4242,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             r#type: TransportType::Ble,
             display: "".into(),
             order: None,
+            priority: None,
             enabled: None,
             capabilities: None,
             params: None,

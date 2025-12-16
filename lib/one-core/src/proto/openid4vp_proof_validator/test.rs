@@ -324,16 +324,26 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
             .expect_extract_credentials()
             .return_once(move |_, _, _, _| credential_extraction);
     }
-    let credential_formatter = Arc::new(credential_formatter);
     let presentation_formatter = Arc::new(presentation_formatter);
+    let presentation_formatter_clone = presentation_formatter.clone();
     mocks
         .presentation_formatter_provider
         .expect_get_presentation_formatter()
-        .returning(move |_| Some(presentation_formatter.clone()));
+        .returning(move |_| Some(presentation_formatter_clone.clone()));
+    mocks
+        .presentation_formatter_provider
+        .expect_get_presentation_formatter_by_type()
+        .returning(move |_| Some(("JWT".to_string(), presentation_formatter.clone())));
+    let credential_formatter = Arc::new(credential_formatter);
+    let credential_formatter_clone = credential_formatter.clone();
     mocks
         .credential_formatter_provider
         .expect_get_credential_formatter()
-        .returning(move |_| Some(credential_formatter.clone()));
+        .returning(move |_| Some(credential_formatter_clone.clone()));
+    mocks
+        .credential_formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".to_string(), credential_formatter.clone())));
 
     let mut revocation_method = MockRevocationMethod::new();
     if let Some(revocation_check) = mock_data.revocation_check {

@@ -7,7 +7,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
 use shared_types::DidValue;
 
-use crate::config::core_config::{DidType, VerificationProtocolType};
+use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::did::KeyRole;
@@ -252,17 +252,21 @@ impl OpenId4VpProofValidatorProto {
         }
 
         for presentation_string in presentation_strings {
-            let presentation_format = match dcql_credential_format {
+            let presentation_format_type = match dcql_credential_format {
                 // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
                 // The SD_JWT(_VC) presentation formatter was used for both W3C and IETF SD-JWTs.
                 // This match ensures the correct w3c presentation format is used for W3C SD-JWTs.
-                CredentialFormat::W3cSdJwt => "JWT".to_string(),
+                CredentialFormat::W3cSdJwt => FormatType::Jwt,
                 _ => map_from_oidc_format_to_core_detailed(
                     &credential_query.format.to_string(),
                     Some(presentation_string),
                 )
                 .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?,
             };
+            let (presentation_format, _) = self
+                .presentation_formatter_provider
+                .get_presentation_formatter_by_type(presentation_format_type)
+                .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
             let ExtractedPresentation {
                 issuer,
@@ -622,11 +626,15 @@ impl OpenId4VpProofValidatorProto {
                 }
             };
 
-            let presentation_format = map_from_oidc_format_to_core_detailed(
+            let presentation_format_type = map_from_oidc_format_to_core_detailed(
                 &presentation_submitted.format,
                 Some(presentation_string),
             )
             .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
+            let (presentation_format, _) = self
+                .presentation_formatter_provider
+                .get_presentation_formatter_by_type(presentation_format_type)
+                .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
             let presentation = self
                 .validate_presentation(
@@ -774,13 +782,13 @@ impl OpenId4VpProofValidatorProto {
             )?;
 
             let oidc_format = &path_nested.format;
-            let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential))
+            let format_type = map_from_oidc_format_to_core_detailed(oidc_format, Some(credential))
                 .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-            let formatter = self
+            let (_, formatter) = self
                 .credential_formatter_provider
-                .get_credential_formatter(&format)
+                .get_formatter_by_type(format_type)
                 .ok_or(OpenID4VCError::ValidationError(format!(
-                    "Could not find format: {format}",
+                    "Could not find formatter for format type: {format_type}",
                 )))?;
 
             let credential = formatter
@@ -802,11 +810,12 @@ impl OpenId4VpProofValidatorProto {
         oidc_format: &str,
         protocol_type: VerificationProtocolType,
     ) -> Result<ExtractedPresentation, OpenID4VCError> {
-        let format = map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
-            .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
-        let presentation_formatter = self
+        let format_type =
+            map_from_oidc_format_to_core_detailed(oidc_format, Some(presentation_string))
+                .map_err(|_| OpenID4VCError::VCFormatsNotSupported)?;
+        let (_, presentation_formatter) = self
             .presentation_formatter_provider
-            .get_presentation_formatter(&format)
+            .get_presentation_formatter_by_type(format_type)
             .ok_or(OpenID4VCError::VCFormatsNotSupported)?;
 
         let presentation = presentation_formatter

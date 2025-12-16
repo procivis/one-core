@@ -69,6 +69,7 @@ fn wallet_provider_config(
         r#type: config::core_config::WalletProviderType::ProcivisOne,
         display: "display".into(),
         order: None,
+        priority: None,
         enabled: Some(true),
         capabilities: None,
         params: Some(Params {

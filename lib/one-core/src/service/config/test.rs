@@ -14,6 +14,7 @@ fn convert_internal_structure_to_dto() {
             r#type: DatatypeType::String,
             display: "display".into(),
             order: None,
+            priority: None,
             enabled: None,
             capabilities: None,
             params: Some(Params {
@@ -73,6 +74,7 @@ fn do_not_serialize_private_parameters() {
             r#type: DatatypeType::String,
             display: "display".into(),
             order: None,
+            priority: None,
             enabled: None,
             capabilities: None,
             params: Some(Params {

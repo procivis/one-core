@@ -28,7 +28,7 @@ use crate::config::core_config::{
     CoreConfig, DidType as ConfigDidType, FormatType, IssuanceProtocolType,
 };
 use crate::mapper::NESTED_CLAIM_MARKER;
-use crate::mapper::oidc::{map_from_oidc_format_to_core_detailed, map_to_openid4vp_format};
+use crate::mapper::oidc::{detect_format_with_crypto_suite, map_to_openid4vp_format};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::claim::ClaimRelations;
@@ -519,22 +519,12 @@ impl OpenID4VCI13 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("schema is None".to_string()))?;
 
-        fn detect_format_with_crypto_suite(
-            credential_schema_format: &str,
-            credential_content: &str,
-        ) -> anyhow::Result<String> {
-            let format = if credential_schema_format.starts_with("JSON_LD") {
-                map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
-                    .map_err(|_| anyhow::anyhow!("Credential format not resolved"))?
-            } else {
-                credential_schema_format.to_owned()
-            };
-            Ok(format)
-        }
-
-        let real_format =
-            detect_format_with_crypto_suite(&schema.format, &issuer_response.credential)
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        let real_format = detect_format_with_crypto_suite(
+            &schema.format,
+            &issuer_response.credential,
+            &*self.formatter_provider,
+        )
+        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
         let formatter = self
             .formatter_provider

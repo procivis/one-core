@@ -52,6 +52,7 @@ format:
     type: "SD_JWT_VC"
     display: "format.sdjwt_vc"
     order: 200
+    priority: 100
     params:
       public:
         leeway: 60

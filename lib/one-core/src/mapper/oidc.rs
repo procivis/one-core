@@ -1,5 +1,6 @@
 use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
+use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::sdjwt::{SdJwtType, detect_sdjwt_type_from_token};
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -9,10 +10,17 @@ use crate::service::error::ServiceError;
 pub(crate) fn detect_format_with_crypto_suite(
     credential_schema_format: &str,
     credential_content: &str,
+    formatter_provider: &dyn CredentialFormatterProvider,
 ) -> Result<String, ServiceError> {
     let format = if credential_schema_format.starts_with("JSON_LD") {
-        map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
-            .map_err(|_| ServiceError::MappingError("Credential format not resolved".to_owned()))?
+        let format_type = map_from_oidc_format_to_core_detailed("ldp_vc", Some(credential_content))
+            .map_err(|_| ServiceError::MappingError("Credential format not resolved".to_owned()))?;
+        let (name, _) = formatter_provider
+            .get_formatter_by_type(format_type)
+            .ok_or(ServiceError::MappingError(format!(
+                "No formatter for type {format_type}"
+            )))?;
+        name
     } else {
         credential_schema_format.to_owned()
     };
@@ -82,39 +90,39 @@ pub(crate) fn map_from_openid4vp_format(format: &str) -> Result<String, OpenID4V
 pub(crate) fn map_from_oidc_format_to_core_detailed(
     format: &str,
     token: Option<&str>,
-) -> Result<String, OpenIDIssuanceError> {
+) -> Result<FormatType, OpenIDIssuanceError> {
     match format {
-        "jwt_vc_json" => Ok(FormatType::Jwt.to_string()),
+        "jwt_vc_json" => Ok(FormatType::Jwt),
         "vc+sd-jwt" | "dc+sd-jwt" | "vc sd-jwt" => {
             if let Some(token) = token {
                 match detect_sdjwt_type_from_token(token).map_err(|_| {
                     OpenIDIssuanceError::OpenID4VCI(OpenID4VCIError::UnsupportedCredentialFormat)
                 })? {
-                    SdJwtType::SdJwt => Ok("SD_JWT".to_string()),
-                    SdJwtType::SdJwtVc => Ok("SD_JWT_VC".to_string()),
+                    SdJwtType::SdJwt => Ok(FormatType::SdJwt),
+                    SdJwtType::SdJwtVc => Ok(FormatType::SdJwtVc),
                 }
             } else {
-                Ok(FormatType::SdJwt.to_string())
+                Ok(FormatType::SdJwt)
             }
         }
         "ldp_vc" => {
             if let Some(token) = token {
                 match get_crypto_suite(token) {
                     Some(suite) => match suite.as_str() {
-                        "bbs-2023" => Ok("JSON_LD_BBSPLUS".to_string()),
-                        _ => Ok("JSON_LD_CLASSIC".to_string()),
+                        "bbs-2023" => Ok(FormatType::JsonLdBbsPlus),
+                        _ => Ok(FormatType::JsonLdClassic),
                     },
                     None => Err(OpenIDIssuanceError::OpenID4VCI(
                         OpenID4VCIError::UnsupportedCredentialFormat,
                     )),
                 }
             } else {
-                Ok(FormatType::JsonLdClassic.to_string())
+                Ok(FormatType::JsonLdClassic)
             }
         }
-        "jwt_vp_json" => Ok(FormatType::Jwt.to_string()),
-        "ldp_vp" => Ok(FormatType::JsonLdClassic.to_string()),
-        "mso_mdoc" => Ok(FormatType::Mdoc.to_string()),
+        "jwt_vp_json" => Ok(FormatType::Jwt),
+        "ldp_vp" => Ok(FormatType::JsonLdClassic),
+        "mso_mdoc" => Ok(FormatType::Mdoc),
         _ => Err(OpenIDIssuanceError::OpenID4VCI(
             OpenID4VCIError::UnsupportedCredentialFormat,
         )),

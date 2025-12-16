@@ -333,6 +333,7 @@ fn dummy_config() -> CoreConfig {
             r#type: FormatType::Jwt,
             display: "display".into(),
             order: None,
+            priority: None,
             enabled: None,
             capabilities: None,
             params: None,
@@ -622,10 +623,14 @@ async fn test_holder_accept_credential_success() {
     });
 
     let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".to_string(), formatter.clone())));
 
     let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access
@@ -821,10 +826,14 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         move |_| Ok(clone.clone())
     });
     let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".to_string(), formatter.clone())));
 
     let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access
@@ -1056,10 +1065,14 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     });
 
     let formatter = Arc::new(formatter);
+    let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
         .with(predicate::eq("JWT"))
-        .returning(move |_| Some(formatter.clone()));
+        .returning(move |_| Some(formatter_clone.clone()));
+    formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".to_string(), formatter.clone())));
 
     let schema = credential.schema.as_ref().unwrap().to_owned();
     storage_access

@@ -27,16 +27,29 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait CredentialFormatterProvider: Send + Sync {
     fn get_credential_formatter(&self, formatter_id: &str) -> Option<Arc<dyn CredentialFormatter>>;
+
+    /// Retrieves the highest priority formatter by type, if any.
+    /// Returns the config name and formatter.
+    fn get_formatter_by_type(
+        &self,
+        format_type: FormatType,
+    ) -> Option<(String, Arc<dyn CredentialFormatter>)>;
 }
 
 struct CredentialFormatterProviderImpl {
     credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>>,
+    /// Map of format type to name of highest priority formatter.
+    type_to_name: HashMap<FormatType, String>,
 }
 
 impl CredentialFormatterProviderImpl {
-    fn new(credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>>) -> Self {
+    fn new(
+        credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>>,
+        type_to_name: HashMap<FormatType, String>,
+    ) -> Self {
         Self {
             credential_formatters,
+            type_to_name,
         }
     }
 }
@@ -44,6 +57,15 @@ impl CredentialFormatterProviderImpl {
 impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
     fn get_credential_formatter(&self, format: &str) -> Option<Arc<dyn CredentialFormatter>> {
         self.credential_formatters.get(format).cloned()
+    }
+
+    fn get_formatter_by_type(
+        &self,
+        format_type: FormatType,
+    ) -> Option<(String, Arc<dyn CredentialFormatter>)> {
+        let name = self.type_to_name.get(&format_type)?;
+        let formatter = self.get_credential_formatter(name)?;
+        Some((name.to_owned(), formatter))
     }
 }
 
@@ -60,8 +82,15 @@ pub(crate) fn credential_formatter_provider_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
 ) -> Result<Arc<dyn CredentialFormatterProvider>, ConfigValidationError> {
     let mut credential_formatters: HashMap<String, Arc<dyn CredentialFormatter>> = HashMap::new();
+    let mut type_to_name_prio: HashMap<FormatType, (String, u64)> = HashMap::new();
 
     for (name, field) in config.format.iter() {
+        let priority = field.priority.unwrap_or_default();
+
+        if absent_or_lower_priority(&type_to_name_prio, &field.r#type, priority) {
+            type_to_name_prio.insert(field.r#type, (name.to_owned(), priority));
+        }
+
         let formatter = match field.r#type {
             FormatType::Jwt => {
                 let params = config.format.get(name)?;
@@ -163,7 +192,113 @@ pub(crate) fn credential_formatter_provider_from_config(
         }
     }
 
+    let type_to_name = type_to_name_prio
+        .into_iter()
+        .map(|(k, v)| (k, v.0))
+        .collect();
     Ok(Arc::new(CredentialFormatterProviderImpl::new(
         credential_formatters,
+        type_to_name,
     )))
+}
+
+fn absent_or_lower_priority(
+    map: &HashMap<FormatType, (String, u64)>,
+    key: &FormatType,
+    priority: u64,
+) -> bool {
+    match map.get(key) {
+        None => true,
+        Some((_, existing_priority)) => *existing_priority < priority,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use one_crypto::MockCryptoProvider;
+    use similar_asserts::assert_eq;
+    use time::Duration;
+
+    use super::*;
+    use crate::config::core_config::{ConfigEntryDisplay, Fields, IssuanceProtocolType};
+    use crate::proto::certificate_validator::MockCertificateValidator;
+    use crate::proto::http_client::MockHttpClient;
+    use crate::provider::caching_loader::vct::MockVctTypeMetadataFetcher;
+    use crate::provider::data_type::provider::MockDataTypeProvider;
+    use crate::provider::did_method::provider::MockDidMethodProvider;
+    use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
+    use crate::provider::remote_entity_storage::{MockRemoteEntityStorage, RemoteEntityType};
+    use crate::service::test_utilities::generic_config;
+
+    #[test]
+    fn get_formatter_by_type_returns_highest_priority() {
+        let jsonld_cache_resolver = JsonLdCachingLoader::new(
+            RemoteEntityType::JsonLdContext,
+            Arc::new(MockRemoteEntityStorage::new()),
+            100,
+            Duration::seconds(2),
+            Duration::seconds(2),
+        );
+        let mut generic_config = generic_config();
+        generic_config.core.format.insert(
+            "MY_SD_JWT_VC".to_string(),
+            Fields {
+                r#type: FormatType::SdJwtVc,
+                display: ConfigEntryDisplay::TranslationId("translationId".to_string()),
+                order: None,
+                priority: Some(100),
+                enabled: None,
+                capabilities: None,
+                params: Some(Params {
+                    private: None,
+                    public: Some(json!({
+                        "leeway": 60,
+                        "embedLayoutProperties": true,
+                        "swiyuMode": false
+                    })),
+                }),
+            },
+        );
+        generic_config.core.format.insert(
+            "SD_JWT_VC_SWIYU".to_string(),
+            Fields {
+                r#type: FormatType::SdJwtVc,
+                display: ConfigEntryDisplay::TranslationId("translationId".to_string()),
+                order: None,
+                priority: None,
+                enabled: None,
+                capabilities: None,
+                params: Some(Params {
+                    private: None,
+                    public: Some(json!({
+                        "leeway": 60,
+                        "embedLayoutProperties": true,
+                        "swiyuMode": true
+                    })),
+                }),
+            },
+        );
+
+        let provider = credential_formatter_provider_from_config(
+            &mut generic_config.core,
+            Arc::new(MockKeyAlgorithmProvider::new()),
+            Arc::new(MockHttpClient::new()),
+            Arc::new(MockDataTypeProvider::new()),
+            Arc::new(MockCryptoProvider::new()),
+            jsonld_cache_resolver,
+            Arc::new(MockDidMethodProvider::new()),
+            Arc::new(MockVctTypeMetadataFetcher::new()),
+            Arc::new(MockCertificateValidator::new()),
+        )
+        .unwrap();
+
+        let (name, provider) = provider.get_formatter_by_type(FormatType::SdJwtVc).unwrap();
+        assert_eq!(name, "MY_SD_JWT_VC");
+        let capabilities = provider.get_capabilities();
+        assert!(
+            capabilities
+                .issuance_exchange_protocols
+                .contains(&IssuanceProtocolType::OpenId4VciDraft13) // not swiyu mode
+        )
+    }
 }

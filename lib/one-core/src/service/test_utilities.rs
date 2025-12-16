@@ -54,6 +54,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
+                        embedLayoutProperties: true
             SD_JWT:
                 type: 'SD_JWT'
                 display: 'format.sdjwt'
@@ -61,6 +62,7 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
+                        embedLayoutProperties: true
             SD_JWT_VC:
                 type: 'SD_JWT_VC'
                 display: 'format.sdjwtvc'
@@ -68,12 +70,14 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 params:
                     public:
                         leeway: 60
-                        schemaIdRequired: true
+                        embedLayoutProperties: true
             JSON_LD_CLASSIC:
                 type: 'JSON_LD_CLASSIC'
                 display: 'display'
                 order: 2
-                params: null
+                params:
+                    public:
+                        leeway: 60
             PHYSICAL_CARD:
                 type: 'PHYSICAL_CARD'
                 display: 'format.physicalCard'

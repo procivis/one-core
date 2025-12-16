@@ -51,6 +51,7 @@ fn setup_protocol(inputs: TestInputs) -> MqttVerifier {
             r#type: TransportType::Mqtt,
             display: "".into(),
             order: None,
+            priority: None,
             enabled: Some(true),
             capabilities: None,
             params: None,

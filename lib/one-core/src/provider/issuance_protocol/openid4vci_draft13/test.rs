@@ -336,6 +336,7 @@ fn dummy_config() -> CoreConfig {
             r#type: FormatType::Jwt,
             display: "display".into(),
             order: None,
+            priority: None,
             enabled: None,
             capabilities: None,
             params: None,

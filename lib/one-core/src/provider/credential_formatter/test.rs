@@ -284,6 +284,7 @@ fn test_from_credential_detail_response_nested_claim_mapping_array() {
             r#type: DatatypeType::Object,
             display: "".into(),
             order: Some(1),
+            priority: None,
             enabled: Some(true),
             capabilities: None,
             params: None,

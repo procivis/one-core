@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use maplit::hashmap;
 use one_crypto::CryptoProvider;
 
 use super::PresentationFormatter;
@@ -9,6 +10,7 @@ use super::ldp_vp::LdpVpPresentationFormatter;
 use super::mso_mdoc::MsoMdocPresentationFormatter;
 use super::sdjwt::SdjwtPresentationFormatter;
 use super::sdjwt_vc::SdjwtVCPresentationFormatter;
+use crate::config::core_config::FormatType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::JsonLdCachingLoader;
@@ -20,16 +22,28 @@ pub trait PresentationFormatterProvider: Send + Sync {
         &self,
         formatter_id: &str,
     ) -> Option<Arc<dyn PresentationFormatter>>;
+
+    /// Retrieves a presentation formatter by type, if any.
+    /// Returns the "config" (quotes because it is not in config; but it should be) name and formatter.
+    fn get_presentation_formatter_by_type(
+        &self,
+        format_type: FormatType,
+    ) -> Option<(String, Arc<dyn PresentationFormatter>)>;
 }
 
 struct PresentationFormatterProviderImpl {
     presentation_formatters: HashMap<String, Arc<dyn PresentationFormatter>>,
+    type_to_name: HashMap<FormatType, String>,
 }
 
 impl PresentationFormatterProviderImpl {
-    fn new(presentation_formatters: HashMap<String, Arc<dyn PresentationFormatter>>) -> Self {
+    fn new(
+        presentation_formatters: HashMap<String, Arc<dyn PresentationFormatter>>,
+        type_to_name: HashMap<FormatType, String>,
+    ) -> Self {
         Self {
             presentation_formatters,
+            type_to_name,
         }
     }
 }
@@ -40,6 +54,15 @@ impl PresentationFormatterProvider for PresentationFormatterProviderImpl {
         formatter_id: &str,
     ) -> Option<Arc<dyn PresentationFormatter>> {
         self.presentation_formatters.get(formatter_id).cloned()
+    }
+
+    fn get_presentation_formatter_by_type(
+        &self,
+        format_type: FormatType,
+    ) -> Option<(String, Arc<dyn PresentationFormatter>)> {
+        let name = self.type_to_name.get(&format_type)?;
+        let formatter = self.get_presentation_formatter(name)?;
+        Some((name.to_owned(), formatter))
     }
 }
 
@@ -95,7 +118,15 @@ pub(crate) fn get_presentation_formatter_provider(
             ),
         ]);
 
+    let type_to_name = hashmap! {
+        FormatType::JsonLdClassic => "JSON_LD_CLASSIC".to_owned(),
+        FormatType::Mdoc => "MDOC".to_owned(),
+        FormatType::Jwt => "JWT".to_owned(),
+        FormatType::SdJwt => "SD_JWT".to_owned(),
+        FormatType::SdJwtVc => "SD_JWT_VC".to_owned(),
+    };
     Arc::new(PresentationFormatterProviderImpl::new(
         presentation_formatters,
+        type_to_name,
     ))
 }

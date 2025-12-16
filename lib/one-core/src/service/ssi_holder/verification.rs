@@ -369,8 +369,11 @@ impl SSIHolderService {
         credential_content: &str,
         credential_schema: &CredentialSchema,
     ) -> Result<Arc<dyn CredentialFormatter>, ServiceError> {
-        let format =
-            detect_format_with_crypto_suite(&credential_schema.format, credential_content)?;
+        let format = detect_format_with_crypto_suite(
+            &credential_schema.format,
+            credential_content,
+            &*self.formatter_provider,
+        )?;
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&format)

@@ -1030,6 +1030,9 @@ pub struct Fields<T> {
     pub r#type: T,
     pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
+    /// Selection priority of the given provider (used to disambiguate between multiple providers of
+    /// the same type). Higher priority providers will be preferred over lower priority ones.
+    pub priority: Option<u64>,
     pub enabled: Option<bool>,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
@@ -1170,6 +1173,7 @@ mod tests {
             r#type: "JWT".to_string(),
             display: "jwt".into(),
             order: Some(0),
+            priority: None,
             enabled: None,
             capabilities: None,
             params: Some(Params {
