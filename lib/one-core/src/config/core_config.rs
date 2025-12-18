@@ -480,7 +480,8 @@ pub type KeyAlgorithmConfig = Dict<KeyAlgorithmType, KeyAlgorithmFields>;
 pub struct KeyAlgorithmFields {
     pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
-    pub enabled: Option<bool>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
     #[serde(default)]
@@ -489,7 +490,7 @@ pub struct KeyAlgorithmFields {
 
 impl ConfigFields for KeyAlgorithmFields {
     fn enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
+        self.enabled
     }
 }
 
@@ -598,7 +599,8 @@ pub enum KeySecurityLevelType {
 pub struct KeySecurityLevelFields {
     pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
-    pub enabled: Option<bool>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
     #[serde(default, deserialize_with = "deserialize_params")]
@@ -607,7 +609,7 @@ pub struct KeySecurityLevelFields {
 
 impl ConfigFields for KeySecurityLevelFields {
     fn enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
+        self.enabled
     }
 }
 
@@ -646,14 +648,15 @@ pub enum IdentifierType {
 pub struct IdentifierFields {
     pub display: ConfigEntryDisplay,
     pub order: Option<u64>,
-    pub enabled: Option<bool>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
 }
 
 impl ConfigFields for IdentifierFields {
     fn enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
+        self.enabled
     }
 }
 
@@ -714,14 +717,15 @@ pub enum BlobStorageType {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BlobStorageFields {
-    pub enabled: Option<bool>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(default, deserialize_with = "deserialize_params")]
     pub params: Option<Params>,
 }
 
 impl ConfigFields for BlobStorageFields {
     fn enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
+        self.enabled
     }
 }
 
@@ -945,7 +949,7 @@ impl ConfigBlock<String, TransportType> {
     }
 }
 
-pub trait ConfigFields {
+trait ConfigFields {
     fn enabled(&self) -> bool;
 }
 
@@ -1034,11 +1038,16 @@ pub struct Fields<T> {
     /// Selection priority of the given provider (used to disambiguate between multiple providers of
     /// the same type). Higher priority providers will be preferred over lower priority ones.
     pub priority: Option<u64>,
-    pub enabled: Option<bool>,
+    #[serde(default = "default_true")]
+    pub enabled: bool,
     #[serde(skip_deserializing)]
     pub capabilities: Option<Value>,
     #[serde(default, deserialize_with = "deserialize_params")]
     pub params: Option<Params>,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 impl<T> Fields<T>
@@ -1082,7 +1091,7 @@ where
 
 impl<T> ConfigFields for Fields<T> {
     fn enabled(&self) -> bool {
-        self.enabled.unwrap_or(true)
+        self.enabled
     }
 }
 
@@ -1175,7 +1184,7 @@ mod tests {
             display: "jwt".into(),
             order: Some(0),
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({ "leeway": 60 })),
@@ -1191,6 +1200,7 @@ mod tests {
                 "type": "JWT",
                 "display": "jwt",
                 "order": 0,
+                "enabled": true,
                 //params
                 "leeway": 60,
                 "other": "thing"

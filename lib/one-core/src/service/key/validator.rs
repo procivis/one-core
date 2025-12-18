@@ -21,7 +21,7 @@ pub(super) fn validate_generate_request(
         .get(&key_type)
         .ok_or(ValidationError::InvalidKeyAlgorithm(key_type.to_string()))
         .error_while("getting key algorithm config")?;
-    if algorithm_config.enabled.is_some_and(|value| !value) {
+    if !algorithm_config.enabled {
         return Err(
             ValidationError::InvalidKeyAlgorithm("algorithm is disabled".to_string())
                 .error_while("validating key algorithm")

@@ -14,7 +14,7 @@ pub fn validate_identifier(
     let requested_identifier_type = &verifier_identifier.r#type.into();
     config
         .get(requested_identifier_type)
-        .filter(|cfg| cfg.enabled.unwrap_or_default())
+        .filter(|cfg| cfg.enabled)
         .map(|_| ())
         .ok_or(ValidationError::IdentifierTypeDisabled(
             requested_identifier_type.to_string(),

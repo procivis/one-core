@@ -9,7 +9,7 @@ use super::holder_check_credential_status::HolderCheckCredentialStatus;
 use super::retain_proof_check::RetainProofCheck;
 use super::suspend_check::SuspendCheckProvider;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{ConfigFields, CoreConfig, Fields, TaskType};
+use crate::config::core_config::{CoreConfig, Fields, TaskType};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::repository::certificate_repository::CertificateRepository;
@@ -51,7 +51,7 @@ pub(crate) fn task_provider_from_config(
     let mut tasks: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
     for (name, field) in config.task.iter() {
-        if !field.enabled() {
+        if !field.enabled {
             continue;
         }
 

@@ -378,7 +378,7 @@ Q3RkxoFO2GgviGuVD2ukPNuGJ7FHCvecJ8sNRqyqBrydvuQAO2zStDp3
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: Some(true),
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({

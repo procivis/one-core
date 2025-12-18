@@ -4243,7 +4243,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
             display: "".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: None,
         },

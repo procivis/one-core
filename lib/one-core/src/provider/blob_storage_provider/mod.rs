@@ -9,7 +9,7 @@ use shared_types::BlobId;
 use strum::Display;
 
 use crate::config::core_config;
-use crate::config::core_config::{BlobStorageConfig, ConfigFields};
+use crate::config::core_config::BlobStorageConfig;
 use crate::model::blob::{Blob, UpdateBlobRequest};
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::repository::blob_repository::BlobRepository;
@@ -91,7 +91,7 @@ pub(crate) fn blob_storage_provider_from_config(
     let mut storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>> = HashMap::new();
 
     for (r#type, fields) in blob_storage_config.iter() {
-        if !fields.enabled() {
+        if !fields.enabled {
             continue;
         }
         let blob_provider = match r#type {

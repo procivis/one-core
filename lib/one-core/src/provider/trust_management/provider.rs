@@ -8,7 +8,7 @@ use super::simple_list::SimpleList;
 use super::{TrustManagement, simple_list};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
-    CacheEntityCacheType, CacheEntityConfig, ConfigFields, CoreConfig, TrustManagementType,
+    CacheEntityCacheType, CacheEntityConfig, CoreConfig, TrustManagementType,
 };
 use crate::model::credential::Credential;
 use crate::model::interaction::Interaction;
@@ -67,7 +67,7 @@ pub(crate) fn trust_management_provider_from_config(
     ));
 
     for (key, fields) in config.trust_management.iter() {
-        if !fields.enabled() {
+        if !fields.enabled {
             continue;
         }
 

@@ -244,7 +244,7 @@ mod test {
                 display: ConfigEntryDisplay::TranslationId("translationId".to_string()),
                 order: None,
                 priority: Some(100),
-                enabled: None,
+                enabled: true,
                 capabilities: None,
                 params: Some(Params {
                     private: None,
@@ -263,7 +263,7 @@ mod test {
                 display: ConfigEntryDisplay::TranslationId("translationId".to_string()),
                 order: None,
                 priority: None,
-                enabled: None,
+                enabled: true,
                 capabilities: None,
                 params: Some(Params {
                     private: None,

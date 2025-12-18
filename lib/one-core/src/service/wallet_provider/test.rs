@@ -70,7 +70,7 @@ fn wallet_provider_config(
         display: "display".into(),
         order: None,
         priority: None,
-        enabled: Some(true),
+        enabled: true,
         capabilities: None,
         params: Some(Params {
             public: Some(json!({

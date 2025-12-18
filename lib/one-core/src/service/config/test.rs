@@ -15,7 +15,7 @@ fn convert_internal_structure_to_dto() {
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({
@@ -42,6 +42,7 @@ fn convert_internal_structure_to_dto() {
           "datatype": {
             "STRING": {
               "display": "display",
+              "enabled": true,
               "params": {
                 "autocomplete": false
               },
@@ -75,7 +76,7 @@ fn do_not_serialize_private_parameters() {
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: None,
@@ -101,6 +102,7 @@ fn do_not_serialize_private_parameters() {
           "datatype": {
             "STRING": {
               "display": "display",
+              "enabled": true,
               "params": {},
               "type": "STRING"
             }

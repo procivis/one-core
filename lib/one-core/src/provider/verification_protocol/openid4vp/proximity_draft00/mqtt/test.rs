@@ -52,7 +52,7 @@ fn setup_protocol(inputs: TestInputs) -> MqttVerifier {
             display: "".into(),
             order: None,
             priority: None,
-            enabled: Some(true),
+            enabled: true,
             capabilities: None,
             params: None,
         },

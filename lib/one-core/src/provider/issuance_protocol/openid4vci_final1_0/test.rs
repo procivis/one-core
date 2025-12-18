@@ -335,7 +335,7 @@ fn dummy_config() -> CoreConfig {
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: None,
         },

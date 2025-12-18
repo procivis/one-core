@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use itertools::Itertools;
 
-use crate::config::core_config::{ConfigExt, ConfigFields, Fields, TransportConfig, TransportType};
+use crate::config::core_config::{ConfigExt, Fields, TransportConfig, TransportType};
 use crate::provider::verification_protocol::dto::VerificationProtocolCapabilities;
 use crate::service::error::ValidationError;
 
@@ -17,7 +17,7 @@ pub(crate) fn get_first_available_transport<'config>(
 ) -> Result<(&'config String, TransportType), ValidationError> {
     config
         .iter()
-        .filter(|(_, fields)| fields.enabled())
+        .filter(|(_, fields)| fields.enabled)
         .filter(|(_, fields)| supported_options.contains(&fields.r#type))
         .sorted_by_key(|(_, fields)| fields.order)
         .next()
@@ -235,7 +235,7 @@ mod test {
                     display: "".into(),
                     order: Some(order as u64),
                     priority: None,
-                    enabled: Some(true),
+                    enabled: true,
                     capabilities: None,
                     params: None,
                 },

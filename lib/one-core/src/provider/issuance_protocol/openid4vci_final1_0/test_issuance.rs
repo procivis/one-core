@@ -449,7 +449,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({
@@ -549,7 +549,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({
@@ -621,7 +621,7 @@ fn dummy_config() -> CoreConfig {
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: None,
         },
@@ -634,7 +634,7 @@ fn dummy_config() -> CoreConfig {
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: None,
         },
@@ -647,7 +647,7 @@ fn dummy_config() -> CoreConfig {
             display: "display".into(),
             order: None,
             priority: None,
-            enabled: None,
+            enabled: true,
             capabilities: None,
             params: Some(Params {
                 public: Some(json!({

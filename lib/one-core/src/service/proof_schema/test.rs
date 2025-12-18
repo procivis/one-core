@@ -472,7 +472,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
         KeySecurityLevelFields {
             display: ConfigEntryDisplay::TranslationId("moderate".to_string()),
             order: None,
-            enabled: Some(true),
+            enabled: true,
             capabilities: None,
             params: None,
         },

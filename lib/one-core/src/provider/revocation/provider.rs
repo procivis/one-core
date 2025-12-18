@@ -13,8 +13,7 @@ use super::status_list_2021::StatusList2021;
 use super::token_status_list::TokenStatusList;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{
-    CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, ConfigFields, CoreConfig,
-    RevocationType,
+    CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, CoreConfig, RevocationType,
 };
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
@@ -91,7 +90,7 @@ pub(crate) fn revocation_method_provider_from_config(
     let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> = HashMap::new();
 
     for (key, fields) in config.revocation.iter() {
-        if !fields.enabled() {
+        if !fields.enabled {
             continue;
         }
 

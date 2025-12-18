@@ -12,7 +12,7 @@ use super::high::High;
 use super::mapper::params_from_fields;
 use super::moderate::Moderate;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{ConfigFields, CoreConfig, KeySecurityLevelType};
+use crate::config::core_config::{CoreConfig, KeySecurityLevelType};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub(crate) trait KeySecurityLevelProvider: Send + Sync {
@@ -44,7 +44,7 @@ pub(crate) fn key_security_level_provider_from_config(
     let mut levels: HashMap<KeySecurityLevelType, Arc<dyn KeySecurityLevel>> = HashMap::new();
 
     for (name, fields) in config.key_security_level.iter_mut() {
-        if !fields.enabled() {
+        if !fields.enabled {
             continue;
         }
         let params = params_from_fields(fields).map_err(|err| {

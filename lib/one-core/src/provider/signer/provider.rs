@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use super::{Signer, registration_certificate};
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{ConfigFields, CoreConfig, SignerType};
+use crate::config::core_config::{CoreConfig, SignerType};
 use crate::model::revocation_list::RevocationListEntityInfo;
 use crate::proto::clock::Clock;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -72,7 +72,7 @@ pub(crate) fn signer_provider_from_config(
     let mut signers: HashMap<String, Arc<dyn Signer>> = HashMap::new();
 
     for (name, fields) in config.signer.iter_mut() {
-        if !fields.enabled() {
+        if !fields.enabled {
             continue;
         }
 

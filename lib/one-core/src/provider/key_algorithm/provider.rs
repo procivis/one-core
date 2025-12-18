@@ -14,9 +14,7 @@ use super::error::KeyAlgorithmProviderError;
 use super::key::KeyHandle;
 use super::ml_dsa::MlDsa;
 use crate::config::ConfigValidationError;
-use crate::config::core_config::{
-    ConfigExt, ConfigFields, CoreConfig, KeyAlgorithmConfig, KeyAlgorithmType,
-};
+use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmConfig, KeyAlgorithmType};
 use crate::model::key::{JwkUse, PublicKeyJwk};
 
 #[derive(Clone)]
@@ -182,7 +180,7 @@ pub(crate) fn key_algorithm_provider_from_config(
     let mut algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
     for (name, fields) in config.key_algorithm.iter() {
-        if !fields.enabled() {
+        if !fields.enabled {
             continue;
         }
 
