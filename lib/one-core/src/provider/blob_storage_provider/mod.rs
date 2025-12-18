@@ -44,12 +44,6 @@ struct BlobStorageProviderImpl {
     storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>,
 }
 
-impl BlobStorageProviderImpl {
-    fn new(storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>>) -> Self {
-        Self { storages }
-    }
-}
-
 #[async_trait]
 impl BlobStorageProvider for BlobStorageProviderImpl {
     async fn get_blob_storage(&self, r#type: BlobStorageType) -> Option<Arc<dyn BlobStorage>> {
@@ -94,7 +88,7 @@ pub(crate) fn blob_storage_provider_from_config(
     blob_storage_config: &BlobStorageConfig,
     blob_repository: Arc<dyn BlobRepository>,
 ) -> Arc<dyn BlobStorageProvider> {
-    let mut providers: HashMap<BlobStorageType, Arc<dyn BlobStorage>> = HashMap::new();
+    let mut storages: HashMap<BlobStorageType, Arc<dyn BlobStorage>> = HashMap::new();
 
     for (r#type, fields) in blob_storage_config.iter() {
         if !fields.enabled() {
@@ -105,8 +99,8 @@ pub(crate) fn blob_storage_provider_from_config(
                 blob_repository: blob_repository.clone(),
             },
         };
-        providers.insert((*r#type).into(), Arc::new(blob_provider));
+        storages.insert((*r#type).into(), Arc::new(blob_provider));
     }
 
-    Arc::new(BlobStorageProviderImpl::new(providers))
+    Arc::new(BlobStorageProviderImpl { storages })
 }

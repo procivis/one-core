@@ -48,7 +48,7 @@ pub struct Params {
 pub struct PayloadParams {
     pub issuer: Option<Url>,
     pub audience: Option<Vec<String>>,
-    pub expiry: Duration,
+    pub expiry: i64,
 }
 
 pub struct RegistrationCertificate {
@@ -144,7 +144,7 @@ impl Signer for RegistrationCertificate {
         };
         let jwt_payload = JWTPayload::<model::Payload> {
             issued_at: Some(now),
-            expires_at: Some(now + self.params.payload.expiry),
+            expires_at: Some(now + Duration::seconds(self.params.payload.expiry)),
             invalid_before: None,
             issuer: None,
             subject: None,
@@ -366,7 +366,7 @@ impl TryFrom<Option<&crate::config::core_config::Params>> for Params {
 
         // GEN-5.2.4-08: The `exp` field in the WRPRC payload shall indicate a time not later than
         // 12 months after the issuance time specified in the `iat` field specified in GEN-5.2.4-01.
-        if result.payload.expiry > Duration::days(365) {
+        if Duration::seconds(result.payload.expiry) > Duration::days(365) {
             return Err(Error::custom(
                 "expiry cannot occur later than 12 months after issuance (GEN-5.2.4-08)",
             ));

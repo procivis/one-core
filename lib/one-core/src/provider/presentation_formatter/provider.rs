@@ -36,18 +36,6 @@ struct PresentationFormatterProviderImpl {
     type_to_name: HashMap<FormatType, String>,
 }
 
-impl PresentationFormatterProviderImpl {
-    fn new(
-        presentation_formatters: HashMap<String, Arc<dyn PresentationFormatter>>,
-        type_to_name: HashMap<FormatType, String>,
-    ) -> Self {
-        Self {
-            presentation_formatters,
-            type_to_name,
-        }
-    }
-}
-
 impl PresentationFormatterProvider for PresentationFormatterProviderImpl {
     fn get_presentation_formatter(
         &self,
@@ -125,8 +113,8 @@ pub(crate) fn get_presentation_formatter_provider(
         FormatType::SdJwt => "SD_JWT".to_owned(),
         FormatType::SdJwtVc => "SD_JWT_VC".to_owned(),
     };
-    Arc::new(PresentationFormatterProviderImpl::new(
+    Arc::new(PresentationFormatterProviderImpl {
         presentation_formatters,
         type_to_name,
-    ))
+    })
 }

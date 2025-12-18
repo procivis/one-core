@@ -50,8 +50,7 @@ use crate::provider::key_storage::provider::{KeyProvider, key_provider_from_conf
 use crate::provider::key_storage::secure_element::NativeKeyStorage;
 use crate::provider::presentation_formatter::provider::get_presentation_formatter_provider;
 use crate::provider::revocation::provider::revocation_method_provider_from_config;
-use crate::provider::signer::provider::SignerProviderImpl;
-use crate::provider::signer::signers_from_config;
+use crate::provider::signer::provider::signer_provider_from_config;
 use crate::provider::task::provider::task_provider_from_config;
 use crate::provider::trust_management::provider::trust_management_provider_from_config;
 use crate::provider::verification_protocol::provider::verification_protocol_provider_from_config;
@@ -411,19 +410,16 @@ impl OneCore {
             nfc_hce.clone(),
         )?;
 
-        let signers = signers_from_config(
-            &mut config.signer,
+        let signer_provider = signer_provider_from_config(
+            &mut config,
             clock.clone(),
             key_provider.clone(),
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
-            data_provider.get_identifier_repository(),
+            identifier_repository.clone(),
             data_provider.get_history_repository(),
-        )?;
-        let signer_provider = Arc::new(SignerProviderImpl::new(
-            signers,
             data_provider.get_revocation_list_repository(),
-        ));
+        )?;
 
         let config = Arc::new(config);
 

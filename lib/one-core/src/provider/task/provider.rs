@@ -29,12 +29,6 @@ struct TaskProviderImpl {
     tasks: HashMap<String, Arc<dyn Task>>,
 }
 
-impl TaskProviderImpl {
-    fn new(tasks: HashMap<String, Arc<dyn Task>>) -> Self {
-        Self { tasks }
-    }
-}
-
 impl TaskProvider for TaskProviderImpl {
     fn get_task(&self, task_id: &str) -> Option<Arc<dyn Task>> {
         self.tasks.get(task_id).cloned()
@@ -54,40 +48,40 @@ pub(crate) fn task_provider_from_config(
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
-    let mut providers: HashMap<String, Arc<dyn Task>> = HashMap::new();
+    let mut tasks: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
     for (name, field) in config.task.iter() {
         if !field.enabled() {
             continue;
         }
 
-        let provider = match &field.r#type {
+        let task: Arc<dyn Task> = match &field.r#type {
             TaskType::SuspendCheck => Arc::new(SuspendCheckProvider::new(
                 credential_repository.clone(),
                 credential_service.clone(),
-            )) as _,
+            )),
             TaskType::RetainProofCheck => Arc::new(RetainProofCheck::new(
                 claim_repository.clone(),
                 credential_repository.clone(),
                 proof_repository.clone(),
                 history_repository.clone(),
                 blob_storage_provider.clone(),
-            )) as _,
+            )),
             TaskType::CertificateCheck => Arc::new(CertificateCheck::new(
                 certificate_repository.clone(),
                 identifier_repository.clone(),
                 certificate_validator.clone(),
-            )) as _,
+            )),
             TaskType::HolderCheckCredentialStatus => Arc::new(HolderCheckCredentialStatus::new(
                 parse_params(field)?,
                 credential_repository.clone(),
                 credential_service.clone(),
-            )) as _,
+            )),
         };
-        providers.insert(name.to_owned(), provider);
+        tasks.insert(name.to_owned(), task);
     }
 
-    Ok(Arc::new(TaskProviderImpl::new(providers)))
+    Ok(Arc::new(TaskProviderImpl { tasks }))
 }
 
 fn parse_params<P: DeserializeOwned>(

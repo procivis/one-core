@@ -60,15 +60,6 @@ struct KeyAlgorithmProviderImpl {
     config: KeyAlgorithmConfig,
 }
 
-impl KeyAlgorithmProviderImpl {
-    fn new(
-        algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>>,
-        config: KeyAlgorithmConfig,
-    ) -> Self {
-        Self { algorithms, config }
-    }
-}
-
 impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
     fn key_algorithm_from_type(
         &self,
@@ -188,7 +179,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
 pub(crate) fn key_algorithm_provider_from_config(
     config: &mut CoreConfig,
 ) -> Result<Arc<dyn KeyAlgorithmProvider>, ConfigValidationError> {
-    let mut key_algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
+    let mut algorithms: HashMap<KeyAlgorithmType, Arc<dyn KeyAlgorithm>> = HashMap::new();
 
     for (name, fields) in config.key_algorithm.iter() {
         if !fields.enabled() {
@@ -201,17 +192,17 @@ pub(crate) fn key_algorithm_provider_from_config(
             KeyAlgorithmType::BbsPlus => Arc::new(BBS),
             KeyAlgorithmType::Dilithium => Arc::new(MlDsa),
         };
-        key_algorithms.insert(*name, key_algorithm);
+        algorithms.insert(*name, key_algorithm);
     }
 
     for (key, value) in config.key_algorithm.iter_mut() {
-        if let Some(entity) = key_algorithms.get(key) {
+        if let Some(entity) = algorithms.get(key) {
             value.capabilities = Some(json!(entity.get_capabilities()));
         }
     }
 
-    Ok(Arc::new(KeyAlgorithmProviderImpl::new(
-        key_algorithms,
-        config.key_algorithm.to_owned(),
-    )))
+    Ok(Arc::new(KeyAlgorithmProviderImpl {
+        algorithms,
+        config: config.key_algorithm.to_owned(),
+    }))
 }

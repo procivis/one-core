@@ -35,12 +35,6 @@ struct TrustManagementProviderImpl {
     trust_managers: HashMap<String, Arc<dyn TrustManagement>>,
 }
 
-impl TrustManagementProviderImpl {
-    fn new(trust_managers: HashMap<String, Arc<dyn TrustManagement>>) -> Self {
-        Self { trust_managers }
-    }
-}
-
 impl TrustManagementProvider for TrustManagementProviderImpl {
     fn get(&self, name: &str) -> Option<Arc<dyn TrustManagement>> {
         self.trust_managers.get(name).cloned()
@@ -64,7 +58,7 @@ pub(crate) fn trust_management_provider_from_config(
     client: Arc<dyn HttpClient>,
     remote_entity_cache_repository: Arc<dyn RemoteEntityCacheRepository>,
 ) -> Result<Arc<dyn TrustManagementProvider>, ConfigValidationError> {
-    let mut providers: HashMap<String, Arc<dyn TrustManagement>> = HashMap::new();
+    let mut trust_managers: HashMap<String, Arc<dyn TrustManagement>> = HashMap::new();
 
     let trust_list_cache = Arc::new(initialize_trust_list_cache(
         config,
@@ -88,16 +82,16 @@ pub(crate) fn trust_management_provider_from_config(
             }
         };
 
-        providers.insert(key.to_string(), management);
+        trust_managers.insert(key.to_string(), management);
     }
 
     for (key, value) in config.trust_management.iter_mut() {
-        if let Some(entity) = providers.get(key) {
+        if let Some(entity) = trust_managers.get(key) {
             value.capabilities = Some(json!(entity.get_capabilities()));
         }
     }
 
-    Ok(Arc::new(TrustManagementProviderImpl::new(providers)))
+    Ok(Arc::new(TrustManagementProviderImpl { trust_managers }))
 }
 
 fn initialize_trust_list_cache(

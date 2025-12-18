@@ -6,7 +6,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
-use crate::config::core_config::{KeyAlgorithmType, KeyStorageType};
+use crate::config::core_config::{ConfigFields, KeyAlgorithmType, KeyStorageType};
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
@@ -66,7 +66,7 @@ impl WalletUnitService {
             .config
             .key_storage
             .iter()
-            .filter(|(_, v)| v.enabled.unwrap_or(true) && v.r#type == key_storage_type)
+            .filter(|(_, v)| v.enabled() && v.r#type == key_storage_type)
             .map(|(k, _)| k)
             .next()
             .ok_or(MissingProviderError::KeyStorage(format!(

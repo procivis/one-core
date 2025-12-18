@@ -46,18 +46,6 @@ struct CredentialFormatterProviderImpl {
     type_to_name: HashMap<FormatType, CredentialFormat>,
 }
 
-impl CredentialFormatterProviderImpl {
-    fn new(
-        credential_formatters: HashMap<CredentialFormat, Arc<dyn CredentialFormatter>>,
-        type_to_name: HashMap<FormatType, CredentialFormat>,
-    ) -> Self {
-        Self {
-            credential_formatters,
-            type_to_name,
-        }
-    }
-}
-
 impl CredentialFormatterProvider for CredentialFormatterProviderImpl {
     fn get_credential_formatter(
         &self,
@@ -99,20 +87,20 @@ pub(crate) fn credential_formatter_provider_from_config(
             type_to_name_prio.insert(field.r#type, (name.clone(), priority));
         }
 
-        let formatter = match field.r#type {
+        let formatter: Arc<dyn CredentialFormatter> = match field.r#type {
             FormatType::Jwt => {
                 let params = config.format.get(name)?;
                 Arc::new(JWTFormatter::new(
                     params,
                     key_algorithm_provider.clone(),
                     data_type_provider.clone(),
-                )) as _
+                ))
             }
             FormatType::PhysicalCard => Arc::new(PhysicalCardFormatter::new(
                 crypto.clone(),
                 json_ld_cache.clone(),
                 client.clone(),
-            )) as _,
+            )),
             FormatType::SdJwt => {
                 let params = config.format.get(name)?;
                 Arc::new(SDJWTFormatter::new(
@@ -122,7 +110,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                     key_algorithm_provider.clone(),
                     data_type_provider.clone(),
                     client.clone(),
-                )) as _
+                ))
             }
             FormatType::SdJwtVc => {
                 let params = config.format.get(name)?;
@@ -136,7 +124,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                     config.datatype.clone(),
                     client.clone(),
                     data_type_provider.clone(),
-                )) as _
+                ))
             }
             FormatType::JsonLdClassic => {
                 let params = config.format.get(name)?;
@@ -147,7 +135,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                     data_type_provider.clone(),
                     key_algorithm_provider.clone(),
                     client.clone(),
-                )) as _
+                ))
             }
             FormatType::JsonLdBbsPlus => {
                 let params = config.format.get(name)?;
@@ -159,7 +147,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                     key_algorithm_provider.clone(),
                     json_ld_cache.clone(),
                     client.clone(),
-                )) as _
+                ))
             }
             FormatType::Mdoc => {
                 let params = config.format.get(name)?;
@@ -170,7 +158,7 @@ pub(crate) fn credential_formatter_provider_from_config(
                     config.datatype.clone(),
                     data_type_provider.clone(),
                     key_algorithm_provider.clone(),
-                )) as _
+                ))
             }
         };
         credential_formatters.insert(name.to_owned(), formatter);
@@ -204,10 +192,11 @@ pub(crate) fn credential_formatter_provider_from_config(
         .into_iter()
         .map(|(k, v)| (k, v.0))
         .collect();
-    Ok(Arc::new(CredentialFormatterProviderImpl::new(
+
+    Ok(Arc::new(CredentialFormatterProviderImpl {
         credential_formatters,
         type_to_name,
-    )))
+    }))
 }
 
 fn absent_or_lower_priority(

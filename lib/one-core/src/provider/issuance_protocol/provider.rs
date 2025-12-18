@@ -73,15 +73,6 @@ impl IssuanceProtocolProvider for IssuanceProtocolProviderImpl {
     }
 }
 
-impl IssuanceProtocolProviderImpl {
-    fn new(
-        protocols: HashMap<String, Arc<dyn IssuanceProtocol>>,
-        config: IssuanceProtocolConfig,
-    ) -> Self {
-        Self { protocols, config }
-    }
-}
-
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn issuance_protocol_provider_from_config(
     config: &mut CoreConfig,
@@ -105,7 +96,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
     credential_schema_import_parser: Arc<dyn CredentialSchemaImportParser>,
     wallet_unit_proto: Arc<dyn HolderWalletUnitProto>,
 ) -> Result<Arc<dyn IssuanceProtocolProvider>, ConfigValidationError> {
-    let mut providers: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
+    let mut protocols: HashMap<String, Arc<dyn IssuanceProtocol>> = HashMap::new();
 
     let core_config = Arc::new(config.to_owned());
 
@@ -216,11 +207,11 @@ pub(crate) fn issuance_protocol_provider_from_config(
             }
         };
         fields.capabilities = Some(json!(protocol.get_capabilities()));
-        providers.insert(name.to_string(), protocol);
+        protocols.insert(name.to_string(), protocol);
     }
 
-    Ok(Arc::new(IssuanceProtocolProviderImpl::new(
-        providers,
-        config.issuance_protocol.to_owned(),
-    )))
+    Ok(Arc::new(IssuanceProtocolProviderImpl {
+        protocols,
+        config: config.issuance_protocol.to_owned(),
+    }))
 }

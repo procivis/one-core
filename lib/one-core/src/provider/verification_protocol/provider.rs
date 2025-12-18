@@ -48,15 +48,6 @@ struct VerificationProtocolProviderImpl {
     config: VerificationProtocolConfig,
 }
 
-impl VerificationProtocolProviderImpl {
-    fn new(
-        protocols: HashMap<String, Arc<dyn VerificationProtocol>>,
-        config: VerificationProtocolConfig,
-    ) -> Self {
-        Self { protocols, config }
-    }
-}
-
 #[async_trait::async_trait]
 impl VerificationProtocolProvider for VerificationProtocolProviderImpl {
     fn get_protocol(&self, protocol_id: &str) -> Option<Arc<dyn VerificationProtocol>> {
@@ -102,24 +93,20 @@ pub(crate) fn verification_protocol_provider_from_config(
     mqtt_client: Option<Arc<dyn MqttClient>>,
     nfc_hce: Option<Arc<dyn NfcHce>>,
 ) -> Result<Arc<dyn VerificationProtocolProvider>, ConfigValidationError> {
-    let mut providers: HashMap<String, Arc<dyn VerificationProtocol>> = HashMap::new();
+    let mut protocols: HashMap<String, Arc<dyn VerificationProtocol>> = HashMap::new();
 
     let mut openid_url_schemes = HashSet::new();
 
     let core_config = Arc::new(config.to_owned());
 
     for (name, fields) in config.verification_protocol.iter_mut() {
-        match fields.r#type {
-            VerificationProtocolType::ScanToVerify => {
-                let protocol = Arc::new(ScanToVerify::new(
-                    credential_formatter_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    did_method_provider.clone(),
-                    certificate_validator.clone(),
-                ));
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
-            }
+        let protocol: Arc<dyn VerificationProtocol> = match fields.r#type {
+            VerificationProtocolType::ScanToVerify => Arc::new(ScanToVerify::new(
+                credential_formatter_provider.clone(),
+                key_algorithm_provider.clone(),
+                did_method_provider.clone(),
+                certificate_validator.clone(),
+            )),
             VerificationProtocolType::OpenId4VpFinal1_0 => {
                 use super::openid4vp::final1_0::model::Params;
                 let params = fields.deserialize::<Params>().map_err(|source| {
@@ -129,7 +116,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                     }
                 })?;
 
-                let final1_0 = OpenID4VPFinal1_0::new(
+                Arc::new(OpenID4VPFinal1_0::new(
                     core_base_url.clone(),
                     credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),
@@ -140,11 +127,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                     client.clone(),
                     params.clone(),
                     core_config.clone(),
-                );
-
-                let protocol = Arc::new(final1_0);
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
+                ))
             }
             VerificationProtocolType::OpenId4VpDraft25 => {
                 let params = fields
@@ -154,7 +137,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                         source,
                     })?;
 
-                let http25 = OpenID4VP25HTTP::new(
+                Arc::new(OpenID4VP25HTTP::new(
                     core_base_url.clone(),
                     credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),
@@ -165,11 +148,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                     client.clone(),
                     params.clone(),
                     core_config.clone(),
-                );
-
-                let protocol = Arc::new(http25);
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
+                ))
             }
             VerificationProtocolType::OpenId4VpDraft20 => {
                 let params = fields
@@ -184,7 +163,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                     name,
                     params.url_scheme.to_string(),
                 )?;
-                let http20 = openid4vp_draft20_from_params(
+                Arc::new(openid4vp_draft20_from_params(
                     core_base_url.clone(),
                     credential_formatter_provider.clone(),
                     presentation_formatter_provider.clone(),
@@ -196,10 +175,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                     openid_metadata_cache.clone(),
                     params.clone(),
                     core_config.clone(),
-                )?;
-                let protocol = Arc::new(http20);
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
+                )?)
             }
             VerificationProtocolType::OpenId4VpDraft20Swiyu => {
                 let params = fields
@@ -227,13 +203,11 @@ pub(crate) fn verification_protocol_provider_from_config(
                     params.into(),
                     core_config.clone(),
                 )?;
-                let protocol = Arc::new(OpenID4VP20Swiyu::new(
+                Arc::new(OpenID4VP20Swiyu::new(
                     http20,
                     client.clone(),
                     allow_insecure_http,
-                ));
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
+                ))
             }
             VerificationProtocolType::OpenId4VpProximityDraft00 => {
                 let params = fields
@@ -243,7 +217,7 @@ pub(crate) fn verification_protocol_provider_from_config(
                         source,
                     })?;
 
-                let protocol = OpenID4VPProximityDraft00::new(
+                Arc::new(OpenID4VPProximityDraft00::new(
                     mqtt_client.clone(),
                     core_config.clone(),
                     params.clone(),
@@ -257,29 +231,26 @@ pub(crate) fn verification_protocol_provider_from_config(
                     certificate_validator.clone(),
                     identifier_creator.clone(),
                     ble.clone(),
-                );
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), Arc::new(protocol));
+                ))
             }
-            VerificationProtocolType::IsoMdl => {
-                let protocol = Arc::new(IsoMdl::new(
-                    core_config.clone(),
-                    presentation_formatter_provider.clone(),
-                    key_provider.clone(),
-                    key_algorithm_provider.clone(),
-                    ble.clone(),
-                    nfc_hce.clone(),
-                ));
-                fields.capabilities = Some(json!(protocol.get_capabilities()));
-                providers.insert(name.to_string(), protocol);
-            }
-        }
+            VerificationProtocolType::IsoMdl => Arc::new(IsoMdl::new(
+                core_config.clone(),
+                presentation_formatter_provider.clone(),
+                key_provider.clone(),
+                key_algorithm_provider.clone(),
+                ble.clone(),
+                nfc_hce.clone(),
+            )),
+        };
+
+        fields.capabilities = Some(json!(protocol.get_capabilities()));
+        protocols.insert(name.to_string(), protocol);
     }
 
-    Ok(Arc::new(VerificationProtocolProviderImpl::new(
-        providers,
-        config.verification_protocol.to_owned(),
-    )))
+    Ok(Arc::new(VerificationProtocolProviderImpl {
+        protocols,
+        config: config.verification_protocol.to_owned(),
+    }))
 }
 
 #[expect(clippy::too_many_arguments)]

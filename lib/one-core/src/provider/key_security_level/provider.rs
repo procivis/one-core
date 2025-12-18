@@ -24,12 +24,6 @@ struct KeySecurityLevelProviderImpl {
     levels: HashMap<KeySecurityLevelType, Arc<dyn KeySecurityLevel>>,
 }
 
-impl KeySecurityLevelProviderImpl {
-    fn new(levels: HashMap<KeySecurityLevelType, Arc<dyn KeySecurityLevel>>) -> Self {
-        Self { levels }
-    }
-}
-
 impl KeySecurityLevelProvider for KeySecurityLevelProviderImpl {
     fn get_from_type(&self, level_type: KeySecurityLevelType) -> Option<Arc<dyn KeySecurityLevel>> {
         self.levels.get(&level_type).cloned()
@@ -79,5 +73,5 @@ pub(crate) fn key_security_level_provider_from_config(
         levels.insert(*name, security_level);
     }
 
-    Ok(Arc::new(KeySecurityLevelProviderImpl::new(levels)))
+    Ok(Arc::new(KeySecurityLevelProviderImpl { levels }))
 }

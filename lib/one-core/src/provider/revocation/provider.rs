@@ -50,12 +50,6 @@ struct RevocationMethodProviderImpl {
     revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
 }
 
-impl RevocationMethodProviderImpl {
-    fn new(revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>) -> Self {
-        Self { revocation_methods }
-    }
-}
-
 impl RevocationMethodProvider for RevocationMethodProviderImpl {
     fn get_revocation_method(
         &self,
@@ -101,10 +95,10 @@ pub(crate) fn revocation_method_provider_from_config(
             continue;
         }
 
-        let revocation_method = match fields.r#type {
-            RevocationType::None => Arc::new(NoneRevocation {}) as _,
+        let revocation_method: Arc<dyn RevocationMethod> = match fields.r#type {
+            RevocationType::None => Arc::new(NoneRevocation {}),
             RevocationType::MdocMsoUpdateSuspension => {
-                Arc::new(MdocMsoUpdateSuspensionRevocation {}) as _
+                Arc::new(MdocMsoUpdateSuspensionRevocation {})
             }
             RevocationType::BitstringStatusList => {
                 let params = config.revocation.get(key)?;
@@ -124,7 +118,7 @@ pub(crate) fn revocation_method_provider_from_config(
                     transaction_manager.clone(),
                     client.clone(),
                     Some(params),
-                )) as _
+                ))
             }
             RevocationType::Lvvc => {
                 let params = config.revocation.get(key)?;
@@ -136,7 +130,7 @@ pub(crate) fn revocation_method_provider_from_config(
                     key_algorithm_provider.clone(),
                     client.clone(),
                     params,
-                )) as _
+                ))
             }
             RevocationType::TokenStatusList => {
                 let params = config.revocation.get(key)?;
@@ -160,7 +154,7 @@ pub(crate) fn revocation_method_provider_from_config(
                         Some(params),
                     )
                     .map_err(|e| ConfigValidationError::EntryNotFound(e.to_string()))?,
-                ) as _
+                )
             }
         };
 
@@ -184,9 +178,9 @@ pub(crate) fn revocation_method_provider_from_config(
         }) as _,
     );
 
-    Ok(Arc::new(RevocationMethodProviderImpl::new(
+    Ok(Arc::new(RevocationMethodProviderImpl {
         revocation_methods,
-    )))
+    }))
 }
 
 fn initialize_statuslist_loader(
