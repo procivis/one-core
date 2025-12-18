@@ -262,13 +262,6 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// Return only events associated with the provided proof schema UUID.
     #[param(nullable = false)]
     pub proof_schema_id: Option<ProofSchemaId>,
-    /// Search for a string.
-    #[param(nullable = false)]
-    pub search_text: Option<String>,
-    /// Changes where `searchText` is searched. If no value is provided, events
-    /// that have any field matching `searchText` will be returned.
-    #[param(nullable = false)]
-    pub search_type: Option<HistorySearchEnumRest>,
     /// Return only events associated with the provided users. Only applicable
     /// in STS authentication mode.
     #[param(rename = "users[]", nullable = false)]
@@ -286,18 +279,4 @@ pub(crate) struct HistoryFilterQueryParamsRest {
     /// `SYSTEM_HISTORY_LIST` permission in STS authentication mode.
     #[param(inline, nullable = false)]
     pub show_system_history: Option<Boolean>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
-#[into("one_core::model::history::HistorySearchEnum")]
-#[serde(rename_all = "camelCase")]
-pub(crate) enum HistorySearchEnumRest {
-    ClaimName,
-    ClaimValue,
-    CredentialSchemaName,
-    IssuerDid,
-    IssuerName,
-    VerifierDid,
-    VerifierName,
-    ProofSchemaName,
 }
