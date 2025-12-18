@@ -6,7 +6,7 @@ use serde_json::json;
 use uuid::Uuid;
 
 use crate::binding::OneCoreBinding;
-use crate::binding::key_storage::mock::MockNativeKeyStorage;
+use crate::binding::key_storage::MockNativeKeyStorage;
 use crate::binding::organisation::CreateOrganisationRequestBindingDTO;
 use crate::{InitParamsDTO, initialize};
 
@@ -105,8 +105,8 @@ async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
         data_dir_path,
         InitParamsDTO {
             config_json: Some(additional_config),
-            native_secure_element: Some(Arc::new(MockNativeKeyStorage)),
-            remote_secure_element: Some(Arc::new(MockNativeKeyStorage)),
+            native_secure_element: Some(Arc::new(MockNativeKeyStorage::new())),
+            remote_secure_element: Some(Arc::new(MockNativeKeyStorage::new())),
             ..Default::default()
         },
     )

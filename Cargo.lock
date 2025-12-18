@@ -3720,6 +3720,7 @@ dependencies = [
  "async-trait",
  "futures",
  "indexmap 2.6.0",
+ "mockall",
  "one-core",
  "one-crypto",
  "one-dto-mapper",

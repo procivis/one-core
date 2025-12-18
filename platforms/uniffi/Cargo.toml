@@ -37,6 +37,7 @@ url.workspace            = true
 uuid.workspace           = true
 
 [dev-dependencies]
+mockall.workspace         = true
 similar-asserts.workspace = true
 
 [target.'cfg(target_os = "android")'.dependencies]
