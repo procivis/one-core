@@ -48,7 +48,7 @@ pub(crate) async fn create_signature(
     params(
         ("id" = Uuid, Path, description = "Signature id")
     ),
-    tag = "key",
+    tag = "signature",
     security(
         ("bearer" = [])
     ),
