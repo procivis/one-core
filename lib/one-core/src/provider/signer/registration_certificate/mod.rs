@@ -164,7 +164,7 @@ impl Signer for RegistrationCertificate {
                 created_date: now,
                 source: HistorySource::Core,
                 action: HistoryAction::Created,
-                entity_id: None,
+                entity_id: Some(jwt_id.into()),
                 entity_type: HistoryEntityType::Signature,
                 metadata: Some(HistoryMetadata::External(request.data)),
                 name: payload_name,
