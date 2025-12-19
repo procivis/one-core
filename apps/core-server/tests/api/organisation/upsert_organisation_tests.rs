@@ -1,4 +1,7 @@
+use std::collections::HashSet;
+
 use futures::future::join_all;
+use maplit::hashset;
 use one_core::model::history::HistoryAction;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -278,9 +281,17 @@ async fn test_upsert_organisation_reactivate_deactivated() {
         .histories
         .get_by_entity_id(&organisation.id.into())
         .await;
+
+    let actions: HashSet<_> = history
+        .values
+        .into_iter()
+        .take(2)
+        .map(|item| item.action)
+        .collect();
+
     assert_eq!(
-        history.values.first().unwrap().action,
-        HistoryAction::Reactivated
+        actions,
+        hashset![HistoryAction::Reactivated, HistoryAction::Updated]
     );
 }
 
