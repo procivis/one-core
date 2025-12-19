@@ -1,0 +1,196 @@
+use sea_orm::DbBackend;
+
+use crate::fixtures::{ColumnType, fetch_schema};
+
+#[tokio::test]
+async fn test_db_schema_credential_schema() {
+    let schema = fetch_schema().await;
+
+    let mut columns = vec![
+        "id",
+        "created_date",
+        "last_modified",
+        "deleted_at",
+        "name",
+        "format",
+        "revocation_method",
+        "organisation_id",
+        "schema_id",
+        "layout_properties",
+        "layout_type",
+        "imported_source_url",
+        "allow_suspension",
+        "requires_app_attestation",
+        "key_storage_security",
+    ];
+    if schema.backend() == DbBackend::MySql {
+        columns.push("deleted_at_materialized");
+    }
+
+    let credential_schema = schema
+        .table("credential_schema")
+        .columns(&columns)
+        .index(
+            "index-Organisation-SchemaId-DeletedAt_Unique",
+            true,
+            &["organisation_id", "schema_id", "deleted_at_materialized"],
+        )
+        .index(
+            "index_CredentialSchema_Name-OrganisationId-DeletedAt_Unique",
+            true,
+            &["name", "organisation_id", "deleted_at_materialized"],
+        )
+        .index(
+            "index-CredentialSchema-CreatedDate",
+            false,
+            &["created_date"],
+        );
+    credential_schema
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    credential_schema
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("deleted_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    credential_schema
+        .column("name")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("format")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("revocation_method")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("organisation_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-CredentialSchema-OrganisationId", "organisation", "id");
+    credential_schema
+        .column("schema_id")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("layout_properties")
+        .r#type(ColumnType::Json)
+        .nullable(true);
+    credential_schema
+        .column("layout_type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("imported_source_url")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("allow_suspension")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("requires_app_attestation")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
+    credential_schema
+        .column("key_storage_security")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
+}
+
+#[tokio::test]
+async fn test_db_schema_claim_schema() {
+    let schema = fetch_schema().await;
+
+    let claim_schema = schema.table("claim_schema").columns(&[
+        "id",
+        "created_date",
+        "last_modified",
+        "key",
+        "datatype",
+        "array",
+        "metadata",
+        "credential_schema_id",
+        "required",
+        "order",
+    ]);
+    claim_schema
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    claim_schema
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("key")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("datatype")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("array")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("metadata")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("credential_schema_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk_claim_schema_credential_schema_id",
+            "credential_schema",
+            "id",
+        );
+    claim_schema
+        .column("required")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
+    claim_schema
+        .column("order")
+        .r#type(ColumnType::Unsigned)
+        .nullable(false)
+        .default(None);
+}

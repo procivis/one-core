@@ -147,3 +147,61 @@ async fn test_db_schema_credential() {
             "id",
         );
 }
+
+#[tokio::test]
+async fn test_db_schema_claim() {
+    let schema = fetch_schema().await;
+
+    let claim = schema.table("claim").columns(&[
+        "id",
+        "created_date",
+        "last_modified",
+        "claim_schema_id",
+        "credential_id",
+        "value",
+        "path",
+        "selectively_disclosable",
+    ]);
+    claim
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    claim
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    claim
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    claim
+        .column("claim_schema_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-Claim-ClaimSchemaId", "claim_schema", "id");
+    claim
+        .column("credential_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-Claim-CredentialId", "credential", "id");
+    claim
+        .column("value")
+        .r#type(ColumnType::Blob)
+        .nullable(true);
+    claim
+        .column("path")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    claim
+        .column("selectively_disclosable")
+        .r#type(ColumnType::Boolean)
+        .nullable(false)
+        .default(None);
+}

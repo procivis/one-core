@@ -683,9 +683,10 @@ async fn test_get_proof_with_relations() {
         credential_id: Set(credential_id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set(Some("value".into())),
+        path: Set("path".into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        ..Default::default()
+        selectively_disclosable: Set(false),
     }
     .insert(&db)
     .await
@@ -893,7 +894,7 @@ async fn test_set_proof_claims_success() {
         last_modified: get_dummy_date(),
         value: Some("value".to_string()),
         schema: None,
-        path: String::default(),
+        path: "path".to_string(),
         selectively_disclosable: false,
     };
 
@@ -903,9 +904,10 @@ async fn test_set_proof_claims_success() {
         credential_id: Set(credential.id),
         claim_schema_id: Set(claim_schema_ids[0]),
         value: Set(Some("value".into())),
+        path: Set("path".into()),
         created_date: Set(get_dummy_date()),
         last_modified: Set(get_dummy_date()),
-        ..Default::default()
+        selectively_disclosable: Set(false),
     }
     .insert(&db)
     .await

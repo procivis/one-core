@@ -1,12 +1,14 @@
 use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::repository::claim_schema_repository::ClaimSchemaRepository;
 use one_core::repository::error::DataLayerError;
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::ActiveValue::Set;
+use sea_orm::{ActiveModelTrait, DatabaseConnection};
 use shared_types::CredentialSchemaId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use super::ClaimSchemaProvider;
+use crate::entity;
 use crate::test_utilities::*;
 use crate::transaction_context::TransactionManagerImpl;
 
@@ -45,46 +47,11 @@ async fn setup() -> TestSetup {
 }
 
 #[tokio::test]
-async fn test_create_claim_schema_list() {
-    let TestSetup {
-        repository,
-        db,
-        credential_schema_id,
-        ..
-    } = setup().await;
-
-    let result = repository
-        .create_claim_schema_list(
-            vec![ClaimSchema {
-                id: Uuid::new_v4().into(),
-                key: "key".to_string(),
-                data_type: "STRING".to_string(),
-                created_date: get_dummy_date(),
-                last_modified: get_dummy_date(),
-                array: false,
-                metadata: false,
-            }],
-            credential_schema_id,
-        )
-        .await;
-    assert!(result.is_ok());
-
-    assert_eq!(
-        crate::entity::claim_schema::Entity::find()
-            .all(&db)
-            .await
-            .unwrap()
-            .len(),
-        1
-    );
-}
-
-#[tokio::test]
 async fn test_get_claim_schema_list() {
     let TestSetup {
         repository,
         credential_schema_id,
-        ..
+        db,
     } = setup().await;
 
     let schemas = vec![
@@ -107,10 +74,24 @@ async fn test_get_claim_schema_list() {
             metadata: false,
         },
     ];
-    repository
-        .create_claim_schema_list(schemas.clone(), credential_schema_id)
+
+    for (index, claim) in schemas.iter().enumerate() {
+        entity::claim_schema::ActiveModel {
+            id: Set(claim.id),
+            key: Set(claim.key.to_owned()),
+            created_date: Set(claim.created_date),
+            last_modified: Set(claim.last_modified),
+            datatype: Set(claim.data_type.to_owned()),
+            array: Set(claim.array),
+            metadata: Set(claim.metadata),
+            credential_schema_id: Set(credential_schema_id),
+            required: Set(true),
+            order: Set(index as _),
+        }
+        .insert(&db)
         .await
         .unwrap();
+    }
 
     // single item
     let result = repository

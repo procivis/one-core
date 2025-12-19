@@ -229,6 +229,8 @@ impl From<ColumnType> for Type {
                 ..Default::default()
             }),
             ColumnType::Blob => Self::LongBlob,
+            ColumnType::Json => Self::LongText(Default::default()),
+            ColumnType::Text => Self::Text(Default::default()),
         }
     }
 }

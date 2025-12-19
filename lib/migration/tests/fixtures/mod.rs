@@ -45,6 +45,8 @@ pub(super) enum ColumnType {
     Unsigned,
     Boolean,
     Blob,
+    Json,
+    Text,
 }
 
 #[derive(Debug)]
