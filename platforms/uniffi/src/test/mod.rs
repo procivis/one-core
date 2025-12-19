@@ -59,9 +59,6 @@ impl Drop for TempDirContext {
 async fn initialize_core(data_dir_path: String) -> Arc<OneCoreBinding> {
     let additional_config = json!({
         "keyStorage": {
-            "SECURE_ELEMENT": {
-                "enabled": false
-            },
             "INTERNAL": {
                 "params": {
                     "private": {

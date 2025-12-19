@@ -45,19 +45,6 @@ verificationProtocol:
     type: "ISO_MDL"
     display: "exchange.isoMdl"
     order: 7
-keyStorage:
-  SECURE_ELEMENT:
-    display: "keyStorage.secureElement"
-    type: "SECURE_ELEMENT"
-    order: 3
-    params:
-      private:
-        aliasPrefix: "ch.procivis.one.wallet.keys"
-  UBIQU_RSE:
-    display: "keyStorage.ubiqu"
-    type: "REMOTE_SECURE_ELEMENT"
-    enabled: false
-    order: 10
 keySecurityLevel:
   MODERATE:
     params:
