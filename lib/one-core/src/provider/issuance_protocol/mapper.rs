@@ -190,12 +190,14 @@ fn pick_key_configuration(
         .as_ref()
         .and_then(|proof_types| proof_types.get("jwt"));
 
-    let issuer_accepted_security_levels = issuer_proof_config.and_then(|proof_type| {
-        proof_type
-            .key_attestations_required
-            .as_ref()
-            .map(|kar| &kar.key_storage)
-    });
+    let issuer_accepted_key_storage_security_levels = issuer_proof_config
+        .and_then(|proof_type| {
+            proof_type
+                .key_attestations_required
+                .as_ref()
+                .map(|kar| &kar.key_storage)
+        })
+        .and_then(|levels| (!levels.is_empty()).then_some(levels));
 
     let issuer_accepted_algorithms = issuer_proof_config.map(|proof_type| {
         proof_type
@@ -207,7 +209,7 @@ fn pick_key_configuration(
     });
 
     for (_, security_level) in key_security_level_provider.ordered_by_priority() {
-        if issuer_accepted_security_levels
+        if issuer_accepted_key_storage_security_levels
             .as_ref()
             .is_some_and(|issuer_accepted_levels| {
                 !security_level
@@ -247,7 +249,7 @@ fn pick_key_configuration(
 
     Err(IssuanceProtocolError::BindingAutogenerationFailure(
         format!(
-            "Could not find a proper key storage, issuer_accepted_security_levels:{issuer_accepted_security_levels:?}, issuer_accepted_algorithms:{issuer_accepted_algorithms:?}"
+            "Could not find a proper key storage, issuer_accepted_key_storage_security_levels:{issuer_accepted_key_storage_security_levels:?}, issuer_accepted_algorithms:{issuer_accepted_algorithms:?}"
         ),
     ))
 }

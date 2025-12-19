@@ -26,7 +26,7 @@ use crate::model::credential_schema::{
 };
 use crate::provider::issuance_protocol::error::{IssuanceProtocolError, OpenID4VCIError};
 use crate::provider::issuance_protocol::model::{
-    KeyStorageSecurityLevel, OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
+    KeyStorageSecurityLevel, OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
@@ -184,8 +184,9 @@ pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSup
     key_storage_security_level: Option<KeyStorageSecurityLevel>,
 ) -> R {
     let key_attestations_required =
-        key_storage_security_level.map(|level| OpenIF4VCIKeyAttestationsRequired {
+        key_storage_security_level.map(|level| OpenID4VCIKeyAttestationsRequired {
             key_storage: vec![level],
+            user_authentication: vec![],
         });
 
     R::from([(
@@ -302,6 +303,7 @@ pub(crate) fn interaction_data_to_accepted_key_storage_security(
                 .key_attestations_required
                 .as_ref()
                 .map(|kar| kar.key_storage.clone())
+                .and_then(|levels| (!levels.is_empty()).then_some(levels))
         })
     })
 }
@@ -334,6 +336,7 @@ pub(super) fn credential_config_to_holder_signing_algs_and_key_storage_security(
     let key_storage_security = proof_type
         .key_attestations_required
         .as_ref()
-        .map(|key_attestations| key_attestations.key_storage.clone());
+        .map(|key_attestations| key_attestations.key_storage.clone())
+        .and_then(|levels| (!levels.is_empty()).then_some(levels));
     (algs, convert_inner_of_inner(key_storage_security))
 }

@@ -44,7 +44,7 @@ use crate::proto::http_client;
 use crate::proto::http_client::HttpClient;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::model::{
-    KeyStorageSecurityLevel, OpenID4VCIProofTypeSupported, OpenIF4VCIKeyAttestationsRequired,
+    KeyStorageSecurityLevel, OpenID4VCIKeyAttestationsRequired, OpenID4VCIProofTypeSupported,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -1077,8 +1077,9 @@ pub(crate) fn map_proof_types_supported<R: From<[(String, OpenID4VCIProofTypeSup
     key_storage_security_level: Option<KeyStorageSecurityLevel>,
 ) -> R {
     let key_attestations_required =
-        key_storage_security_level.map(|level| OpenIF4VCIKeyAttestationsRequired {
+        key_storage_security_level.map(|level| OpenID4VCIKeyAttestationsRequired {
             key_storage: vec![level],
+            user_authentication: vec![],
         });
 
     R::from([(

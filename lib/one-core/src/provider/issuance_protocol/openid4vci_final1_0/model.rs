@@ -713,6 +713,7 @@ pub struct ContinueIssuanceAuthorizationDetailDTO {
     pub credential_configuration_id: String,
 }
 
+#[derive(Debug)]
 pub(super) struct TokenRequestWalletAttestationRequest {
     pub wallet_attestation: String,
     pub wallet_attestation_pop: String,

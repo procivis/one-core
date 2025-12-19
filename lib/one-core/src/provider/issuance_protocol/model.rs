@@ -55,12 +55,15 @@ pub(crate) enum InvitationResponseEnum {
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCIProofTypeSupported {
     pub proof_signing_alg_values_supported: Vec<String>,
-    pub key_attestations_required: Option<OpenIF4VCIKeyAttestationsRequired>,
+    pub key_attestations_required: Option<OpenID4VCIKeyAttestationsRequired>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
-pub struct OpenIF4VCIKeyAttestationsRequired {
+pub struct OpenID4VCIKeyAttestationsRequired {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub key_storage: Vec<KeyStorageSecurityLevel>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub user_authentication: Vec<String>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize, From, Into)]

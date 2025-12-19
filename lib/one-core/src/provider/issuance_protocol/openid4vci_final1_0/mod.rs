@@ -577,10 +577,9 @@ impl OpenID4VCIFinal1_0 {
             .and_then(|map| map.get("jwt"))
             .and_then(|jwt| jwt.key_attestations_required.as_ref())
             .and_then(|att_list| {
-                convert_inner(KeyStorageSecurityLevel::select_lowest(
-                    &att_list.key_storage,
-                ))
-            });
+                (!att_list.key_storage.is_empty()).then_some(&att_list.key_storage)
+            })
+            .and_then(|levels| convert_inner(KeyStorageSecurityLevel::select_lowest(levels)));
 
         let identifier_updates = match credential.issuer_identifier.as_ref() {
             Some(Identifier {

@@ -6,10 +6,8 @@ use serde_json::json;
 use url::Url;
 
 use super::openid4vci_draft13::OpenID4VCI13;
-use super::openid4vci_draft13::model::OpenID4VCIDraft13Params;
-use super::openid4vci_draft13_swiyu::{OpenID4VCI13Swiyu, OpenID4VCISwiyuParams};
+use super::openid4vci_draft13_swiyu::OpenID4VCI13Swiyu;
 use super::openid4vci_final1_0::OpenID4VCIFinal1_0;
-use super::openid4vci_final1_0::model::OpenID4VCIFinal1Params;
 use super::{IssuanceProtocol, openid4vci_draft13};
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolConfig, IssuanceProtocolType};
@@ -103,12 +101,12 @@ pub(crate) fn issuance_protocol_provider_from_config(
     for (name, fields) in config.issuance_protocol.iter_mut() {
         let protocol: Arc<dyn IssuanceProtocol> = match fields.r#type {
             IssuanceProtocolType::OpenId4VciFinal1_0 => {
-                let params = fields
-                    .deserialize::<OpenID4VCIFinal1Params>()
-                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                let params = fields.deserialize().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
-                    })?;
+                    }
+                })?;
 
                 Arc::new(OpenID4VCIFinal1_0::new(
                     client.clone(),
@@ -132,12 +130,12 @@ pub(crate) fn issuance_protocol_provider_from_config(
                 ))
             }
             IssuanceProtocolType::OpenId4VciDraft13 => {
-                let params = fields
-                    .deserialize::<OpenID4VCIDraft13Params>()
-                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                let params = fields.deserialize().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
-                    })?;
+                    }
+                })?;
 
                 let handle_invitation_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     vct_type_metadata_cache.clone(),
@@ -169,12 +167,12 @@ pub(crate) fn issuance_protocol_provider_from_config(
                 ))
             }
             IssuanceProtocolType::OpenId4VciDraft13Swiyu => {
-                let params = fields
-                    .deserialize::<OpenID4VCISwiyuParams>()
-                    .map_err(|source| ConfigValidationError::FieldsDeserialization {
+                let params = fields.deserialize().map_err(|source| {
+                    ConfigValidationError::FieldsDeserialization {
                         key: name.to_owned(),
                         source,
-                    })?;
+                    }
+                })?;
 
                 let handle_invitation_operations = openid4vci_draft13::handle_invitation_operations::HandleInvitationOperationsImpl::new(
                     vct_type_metadata_cache.clone(),
