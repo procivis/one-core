@@ -446,20 +446,18 @@ async fn test_fail_create_trust_entity_root_is_not_ca() {
         .await;
 
     // Create a self-signed non-CA certificate as the "root"
-    let root_ca = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let mut root_params = CertificateParams::default();
+    let (_, root_issuer) = create_ca_cert(&mut root_params, &eddsa::Key);
 
-    let non_ca_root = create_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &root_ca,
-        eddsa::key(),
-    );
+    let mut non_ca_params = CertificateParams::default();
+    let (non_ca_root, non_ca_issuer) =
+        create_intermediate_ca_cert(&mut non_ca_params, &ecdsa::Key, &root_issuer, &root_params);
 
     let leaf_cert = create_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &non_ca_root,
-        eddsa::key(),
+        &mut CertificateParams::default(),
+        ecdsa::Key,
+        &non_ca_issuer,
+        &non_ca_params,
     );
 
     let pem_chain = format!("{}{}", leaf_cert.pem(), non_ca_root.pem());
@@ -494,19 +492,22 @@ async fn test_fail_create_trust_entity_root_is_intermediate_ca() {
         .create(TestingTrustAnchorParams::default())
         .await;
 
-    let root_ca = create_ca_cert(CertificateParams::default(), eddsa::key());
-    let intermediate_ca = create_intermediate_ca_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &root_ca,
-        eddsa::key(),
+    let mut ca_params = CertificateParams::default();
+    let (_, root_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+
+    let mut intermediate_params = CertificateParams::default();
+    let (intermediate_ca, intermediate_issuer) = create_intermediate_ca_cert(
+        &mut intermediate_params,
+        &ecdsa::Key,
+        &root_issuer,
+        &ca_params,
     );
 
     let leaf_cert = create_cert(
-        CertificateParams::default(),
-        eddsa::key(),
-        &intermediate_ca,
-        ecdsa::key(),
+        &mut CertificateParams::default(),
+        eddsa::Key,
+        &intermediate_issuer,
+        &intermediate_params,
     );
 
     let pem_chain = format!("{}{}", leaf_cert.pem(), intermediate_ca.pem());
@@ -543,20 +544,17 @@ async fn test_fail_create_trust_entity_path_constraint_violation() {
 
     let mut params = CertificateParams::default();
     params.is_ca = IsCa::Ca(BasicConstraints::Constrained(0));
-    let root_ca = create_ca_cert(params, eddsa::key());
+    let (root_ca, root_issuer) = create_ca_cert(&mut params, &eddsa::Key);
 
-    let intermediate_ca = create_intermediate_ca_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &root_ca,
-        eddsa::key(),
-    );
+    let mut intermediate_params = CertificateParams::default();
+    let (intermediate_ca, intermediate_issuer) =
+        create_intermediate_ca_cert(&mut intermediate_params, &ecdsa::Key, &root_issuer, &params);
 
     let leaf_cert = create_cert(
-        CertificateParams::default(),
-        eddsa::key(),
-        &intermediate_ca,
-        ecdsa::key(),
+        &mut CertificateParams::default(),
+        eddsa::Key,
+        &intermediate_issuer,
+        &intermediate_params,
     );
 
     // Create a chain: leaf -> intermediate -> root (violates path constraint)

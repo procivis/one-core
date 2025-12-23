@@ -82,7 +82,7 @@ mod test {
 
     use rcgen::{
         BasicConstraints, CertificateParams, CertificateRevocationList,
-        CertificateRevocationListParams, IsCa, KeyPair,
+        CertificateRevocationListParams, IsCa, Issuer, KeyPair,
     };
     use time::{Duration, OffsetDateTime};
     use wiremock::matchers::method;
@@ -135,8 +135,9 @@ mod test {
             revoked_certs: vec![],
             key_identifier_method: ca_params.key_identifier_method.to_owned(),
         };
-        let issuer = ca_params.self_signed(&issuer_key).unwrap();
-        let signed_crl = crl_params.signed_by(&issuer, &issuer_key).unwrap();
+        let signed_crl = crl_params
+            .signed_by(&Issuer::new(ca_params, issuer_key))
+            .unwrap();
         (next_update, signed_crl)
     }
 }

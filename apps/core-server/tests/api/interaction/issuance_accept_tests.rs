@@ -651,12 +651,13 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
             },
         )
         .await;
-    let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
     let cert = create_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &ca_cert,
-        eddsa::key(),
+        &mut CertificateParams::default(),
+        ecdsa::Key,
+        &ca_issuer,
+        &ca_params,
     );
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
     let issuer_cert = context

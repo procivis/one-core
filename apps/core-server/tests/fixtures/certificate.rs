@@ -3,12 +3,10 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, CertificateRevocationList,
-    CertificateRevocationListParams, DistinguishedName, DnType, IsCa, KeyPair, KeyUsagePurpose,
-    RemoteKeyPair,
+    CertificateRevocationListParams, DistinguishedName, DnType, IsCa, Issuer, KeyUsagePurpose,
+    PublicKeyData, SigningKey,
 };
 use time::{Duration, OffsetDateTime};
-
-type InputKey = Box<dyn RemoteKeyPair + Send + Sync>;
 
 // hardcoded key pair - equivalent of `ecdsa_testing_params()`
 pub mod ecdsa {
@@ -20,7 +18,7 @@ pub mod ecdsa {
     use one_core::provider::credential_formatter::model::SignatureProvider;
     use one_crypto::signer::ecdsa::ECDSASigner;
     use one_crypto::{Signer, SignerError};
-    use rcgen::{PKCS_ECDSA_P256_SHA256, RemoteKeyPair, SignatureAlgorithm};
+    use rcgen::{Error, PKCS_ECDSA_P256_SHA256, PublicKeyData, SignatureAlgorithm, SigningKey};
     use secrecy::SecretSlice;
 
     static PRIV_KEY: LazyLock<Vec<u8>> = LazyLock::new(|| {
@@ -38,28 +36,27 @@ pub mod ecdsa {
     static PUB_KEY_UNCOMPRESSED: LazyLock<Vec<u8>> =
         LazyLock::new(|| ECDSASigner::parse_public_key(&PUB_KEY_COMPRESSED, false).unwrap());
 
-    struct Key;
+    #[derive(Clone, Copy, Debug)]
+    pub struct Key;
 
-    pub fn key() -> super::InputKey {
-        Box::new(Key)
-    }
-
-    pub fn signature_provider() -> Box<dyn SignatureProvider> {
-        Box::new(Key)
-    }
-
-    impl RemoteKeyPair for Key {
-        fn public_key(&self) -> &[u8] {
+    impl PublicKeyData for Key {
+        fn der_bytes(&self) -> &[u8] {
             &PUB_KEY_UNCOMPRESSED
-        }
-
-        fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
-            Ok(Self::sign(msg))
         }
 
         fn algorithm(&self) -> &'static SignatureAlgorithm {
             &PKCS_ECDSA_P256_SHA256
         }
+    }
+
+    impl SigningKey for Key {
+        fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, Error> {
+            Ok(Self::sign(msg))
+        }
+    }
+
+    pub fn signature_provider() -> Box<dyn SignatureProvider> {
+        Box::new(Key)
     }
 
     impl Key {
@@ -116,7 +113,7 @@ pub mod eddsa {
     use one_core::provider::credential_formatter::model::SignatureProvider;
     use one_crypto::signer::eddsa::EDDSASigner;
     use one_crypto::{Signer, SignerError};
-    use rcgen::{PKCS_ED25519, RemoteKeyPair, SignatureAlgorithm};
+    use rcgen::{Error, PKCS_ED25519, PublicKeyData, SignatureAlgorithm, SigningKey};
     use secrecy::SecretSlice;
 
     static PRIV_KEY: LazyLock<Vec<u8>> = LazyLock::new(|| {
@@ -136,29 +133,28 @@ pub mod eddsa {
 
     pub const KEY_IDENTIFIER: &str = "61:20:eb:7e:ae:c1:f4:b5:bc:26:a1:5f:f0:6a:32:a6:2c:75:f5:fb";
 
-    struct Key;
+    #[derive(Clone, Copy, Debug)]
+    pub struct Key;
 
-    pub fn key() -> super::InputKey {
-        Box::new(Key)
-    }
-
-    #[expect(unused)]
-    pub fn signature_provider() -> Box<dyn SignatureProvider> {
-        Box::new(Key)
-    }
-
-    impl RemoteKeyPair for Key {
-        fn public_key(&self) -> &[u8] {
+    impl PublicKeyData for Key {
+        fn der_bytes(&self) -> &[u8] {
             &PUB_KEY
-        }
-
-        fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
-            Ok(Self::sign(msg))
         }
 
         fn algorithm(&self) -> &'static SignatureAlgorithm {
             &PKCS_ED25519
         }
+    }
+
+    impl SigningKey for Key {
+        fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, Error> {
+            Ok(Self::sign(msg))
+        }
+    }
+
+    #[expect(unused)]
+    pub fn signature_provider() -> Box<dyn SignatureProvider> {
+        Box::new(Key)
     }
 
     impl Key {
@@ -193,9 +189,10 @@ pub mod eddsa {
     }
 }
 
-pub(crate) fn create_ca_cert(mut params: CertificateParams, key: InputKey) -> Certificate {
-    let key = KeyPair::from_remote(key).unwrap();
-
+pub(crate) fn create_ca_cert<S: SigningKey + Copy>(
+    params: &mut CertificateParams,
+    key: S,
+) -> (Certificate, Issuer<'static, S>) {
     params.is_ca = if params.is_ca == IsCa::NoCa {
         IsCa::Ca(BasicConstraints::Unconstrained)
     } else {
@@ -224,18 +221,16 @@ pub(crate) fn create_ca_cert(mut params: CertificateParams, key: InputKey) -> Ce
         params.not_after = max_not_after;
     }
 
-    params.self_signed(&key).unwrap()
+    let issuer = Issuer::new(params.clone(), key);
+    (params.self_signed(&key).unwrap(), issuer)
 }
 
 pub(crate) fn create_cert(
-    mut params: CertificateParams,
-    key: InputKey,
-    issuer: &Certificate,
-    issuer_key: InputKey,
+    params: &mut CertificateParams,
+    key: impl SigningKey,
+    issuer: &Issuer<impl SigningKey>,
+    issuer_params: &CertificateParams,
 ) -> Certificate {
-    let key = KeyPair::from_remote(key).unwrap();
-    let issuer_key = KeyPair::from_remote(issuer_key).unwrap();
-
     if params.key_usages.is_empty() {
         params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
     }
@@ -244,23 +239,23 @@ pub(crate) fn create_cert(
     distinguished_name.push(DnType::CommonName, "test cert");
     params.distinguished_name = distinguished_name;
 
-    let parent_not_before = issuer.params().not_before;
-    let parent_not_after = issuer.params().not_after;
+    let parent_not_before = issuer_params.not_before;
+    let parent_not_after = issuer_params.not_after;
     if params.not_before < parent_not_before {
         params.not_before = parent_not_before;
     }
     if params.not_after > parent_not_after {
         params.not_after = parent_not_after;
     }
-    params.signed_by(&key, issuer, &issuer_key).unwrap()
+    params.signed_by(&key, issuer).unwrap()
 }
 
-pub(crate) fn create_intermediate_ca_cert(
-    mut params: CertificateParams,
-    key: InputKey,
-    issuer: &Certificate,
-    issuer_key: InputKey,
-) -> Certificate {
+pub(crate) fn create_intermediate_ca_cert<S: PublicKeyData + SigningKey + Copy>(
+    params: &mut CertificateParams,
+    key: &S,
+    issuer: &Issuer<impl SigningKey>,
+    issuer_params: &CertificateParams,
+) -> (Certificate, Issuer<'static, S>) {
     params.is_ca = if params.is_ca == IsCa::NoCa {
         IsCa::Ca(BasicConstraints::Unconstrained)
     } else {
@@ -277,16 +272,16 @@ pub(crate) fn create_intermediate_ca_cert(
         params.distinguished_name = distinguished_name;
     }
 
-    create_cert(params, key, issuer, issuer_key)
+    let cert = create_cert(params, key, issuer, issuer_params);
+    (cert, Issuer::new(params.clone(), key.to_owned()))
 }
 
 pub(crate) fn create_crl(
-    params: CertificateRevocationListParams,
-    issuer: &Certificate,
-    issuer_key: InputKey,
+    params: &CertificateRevocationListParams,
+    issuer: CertificateParams,
+    issuer_key: impl SigningKey,
 ) -> CertificateRevocationList {
-    let issuer_key = KeyPair::from_remote(issuer_key).unwrap();
-    params.signed_by(issuer, &issuer_key).unwrap()
+    params.signed_by(&Issuer::new(issuer, issuer_key)).unwrap()
 }
 
 pub(crate) fn fingerprint(cert: &Certificate) -> String {

@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use rcgen::{
-    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa, KeyPair,
-    KeyUsagePurpose,
+    BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa, Issuer,
+    KeyPair, KeyUsagePurpose, SigningKey,
 };
 use time::{Duration, OffsetDateTime};
 use x509_parser::pem::Pem;
@@ -121,7 +121,7 @@ STsfRXkSUfgzmbAsuDE=
         .await;
 }
 
-fn create_ca_cert(path_len_constraint: Option<u8>) -> (Certificate, KeyPair) {
+fn create_ca_cert(path_len_constraint: Option<u8>) -> (Certificate, KeyPair, CertificateParams) {
     let mut params = CertificateParams::default();
     params.is_ca = match path_len_constraint {
         Some(value) => IsCa::Ca(BasicConstraints::Constrained(value)),
@@ -144,13 +144,13 @@ fn create_ca_cert(path_len_constraint: Option<u8>) -> (Certificate, KeyPair) {
 
     let keys = KeyPair::generate().unwrap();
     let cert = params.self_signed(&keys).unwrap();
-    (cert, keys)
+    (cert, keys, params)
 }
 
 fn create_cert(
-    mut params: CertificateParams,
-    issuer: &Certificate,
-    issuer_keys: &KeyPair,
+    params: &mut CertificateParams,
+    issuer: &Issuer<'_, impl SigningKey>,
+    issuer_params: &CertificateParams,
 ) -> (Certificate, KeyPair) {
     if params.key_usages.is_empty() {
         params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
@@ -162,8 +162,8 @@ fn create_cert(
         params.distinguished_name = distinguished_name;
     }
 
-    let parent_not_before = issuer.params().not_before;
-    let parent_not_after = issuer.params().not_after;
+    let parent_not_before = issuer_params.not_before;
+    let parent_not_after = issuer_params.not_after;
     if params.not_before < parent_not_before {
         params.not_before = parent_not_before;
     }
@@ -172,15 +172,15 @@ fn create_cert(
     }
 
     let keys = KeyPair::generate().unwrap();
-    let cert = params.signed_by(&keys, issuer, issuer_keys).unwrap();
+    let cert = params.signed_by(&keys, issuer).unwrap();
     (cert, keys)
 }
 
 fn create_intermediate_ca_cert(
     path_len_constraint: Option<u8>,
-    issuer: &Certificate,
-    issuer_keys: &KeyPair,
-) -> (Certificate, KeyPair) {
+    issuer: &Issuer<'_, impl SigningKey>,
+    issuer_params: &CertificateParams,
+) -> (Certificate, KeyPair, CertificateParams) {
     let mut params = CertificateParams::default();
     params.is_ca = match path_len_constraint {
         Some(value) => IsCa::Ca(BasicConstraints::Constrained(value)),
@@ -193,7 +193,8 @@ fn create_intermediate_ca_cert(
     distinguished_name.push(DnType::CommonName, "Intermediate CA");
     params.distinguished_name = distinguished_name;
 
-    create_cert(params, issuer, issuer_keys)
+    let (cert, key) = create_cert(&mut params, issuer, issuer_params);
+    (cert, key, params)
 }
 
 fn create_certificate_validator() -> CertificateValidatorImpl {
@@ -235,15 +236,17 @@ fn create_certificate_validator() -> CertificateValidatorImpl {
 
 #[tokio::test]
 async fn validate_chain_fails_on_violation_of_root_ca_path_len_constraint() {
-    let (ca_cert, ca_key) = create_ca_cert(Some(0));
+    let (ca_cert, ca_key, ca_params) = create_ca_cert(Some(0));
+    let ca_issuer = Issuer::from_params(&ca_params, ca_key);
 
-    let (intermediate_cert, intermediate_key) =
-        create_intermediate_ca_cert(None, &ca_cert, &ca_key);
+    let (intermediate_cert, intermediate_key, intermediate_params) =
+        create_intermediate_ca_cert(None, &ca_issuer, &ca_params);
+    let intermediate_issuer = Issuer::from_params(&intermediate_params, intermediate_key);
 
-    let (leaf_cert, _leaf_key) = create_cert(
-        CertificateParams::default(),
-        &intermediate_cert,
-        &intermediate_key,
+    let (leaf_cert, _) = create_cert(
+        &mut CertificateParams::default(),
+        &intermediate_issuer,
+        &intermediate_params,
     );
 
     let validator = create_certificate_validator();
@@ -268,18 +271,23 @@ async fn validate_chain_fails_on_violation_of_root_ca_path_len_constraint() {
 
 #[tokio::test]
 async fn validate_chain_fails_on_violation_of_intermediate_ca_path_len_constraint() {
-    let (ca_cert, ca_key) = create_ca_cert(None);
+    let (ca_cert, ca_key, ca_params) = create_ca_cert(None);
+    let ca_issuer = Issuer::from_params(&ca_params, ca_key);
 
-    let (first_intermediate_cert, first_intermediate_key) =
-        create_intermediate_ca_cert(Some(0), &ca_cert, &ca_key);
+    let (first_intermediate_cert, first_intermediate_key, first_intermediate_params) =
+        create_intermediate_ca_cert(Some(0), &ca_issuer, &ca_params);
+    let first_intermediate_issuer =
+        Issuer::from_params(&first_intermediate_params, first_intermediate_key);
 
-    let (second_intermediate_cert, second_intermediate_key) =
-        create_intermediate_ca_cert(None, &first_intermediate_cert, &first_intermediate_key);
+    let (second_intermediate_cert, second_intermediate_key, second_intermediate_params) =
+        create_intermediate_ca_cert(None, &first_intermediate_issuer, &first_intermediate_params);
+    let second_intermediate_issuer =
+        Issuer::from_params(&second_intermediate_params, second_intermediate_key);
 
     let (leaf_cert, _leaf_key) = create_cert(
-        CertificateParams::default(),
-        &second_intermediate_cert,
-        &second_intermediate_key,
+        &mut CertificateParams::default(),
+        &second_intermediate_issuer,
+        &second_intermediate_params,
     );
 
     let validator = create_certificate_validator();
@@ -309,18 +317,23 @@ async fn validate_chain_fails_on_violation_of_intermediate_ca_path_len_constrain
 
 #[tokio::test]
 async fn validate_chain_succeeds_when_path_len_constraints_are_satisfied() {
-    let (ca_cert, ca_key) = create_ca_cert(Some(2));
+    let (ca_cert, ca_key, ca_params) = create_ca_cert(Some(2));
+    let ca_issuer = Issuer::from_params(&ca_params, ca_key);
 
-    let (first_intermediate_cert, first_intermediate_key) =
-        create_intermediate_ca_cert(Some(1), &ca_cert, &ca_key);
+    let (first_intermediate_cert, first_intermediate_key, first_intermediate_params) =
+        create_intermediate_ca_cert(Some(1), &ca_issuer, &ca_params);
+    let first_intermediate_issuer =
+        Issuer::from_params(&first_intermediate_params, first_intermediate_key);
 
-    let (second_intermediate_cert, second_intermediate_key) =
-        create_intermediate_ca_cert(None, &first_intermediate_cert, &first_intermediate_key);
+    let (second_intermediate_cert, second_intermediate_key, second_intermediate_params) =
+        create_intermediate_ca_cert(None, &first_intermediate_issuer, &first_intermediate_params);
+    let second_intermediate_issuer =
+        Issuer::from_params(&second_intermediate_params, second_intermediate_key);
 
     let (leaf_cert, _leaf_key) = create_cert(
-        CertificateParams::default(),
-        &second_intermediate_cert,
-        &second_intermediate_key,
+        &mut CertificateParams::default(),
+        &second_intermediate_issuer,
+        &second_intermediate_params,
     );
 
     let validator = create_certificate_validator();

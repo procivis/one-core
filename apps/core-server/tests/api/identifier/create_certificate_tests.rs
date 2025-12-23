@@ -1,6 +1,6 @@
 use rcgen::{
     CertificateParams, CertificateRevocationListParams, CrlDistributionPoint, CustomExtension,
-    KeyUsagePurpose, RevokedCertParams,
+    KeyUsagePurpose, RevokedCertParams, SerialNumber,
 };
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -21,13 +21,14 @@ async fn test_create_certificate_identifier_no_crl() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
-    let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
 
     let cert = create_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &ca_cert,
-        eddsa::key(),
+        &mut CertificateParams::default(),
+        ecdsa::Key,
+        &ca_issuer,
+        &ca_params,
     );
 
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
@@ -51,7 +52,8 @@ async fn test_create_certificate_identifier_crl_not_available() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
-    let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
 
     let crl_uri = format!("{}/crl/1", context.server_mock.uri());
     context.server_mock.fail_crl_download("1").await;
@@ -60,7 +62,7 @@ async fn test_create_certificate_identifier_crl_not_available() {
     params.crl_distribution_points = vec![CrlDistributionPoint {
         uris: vec![crl_uri],
     }];
-    let cert = create_cert(params, ecdsa::key(), &ca_cert, eddsa::key());
+    let cert = create_cert(&mut params, ecdsa::Key, &ca_issuer, &ca_params);
 
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
 
@@ -85,7 +87,7 @@ async fn test_create_certificate_identifier_with_crl() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
-    let ca_params = CertificateParams::default();
+    let mut ca_params = CertificateParams::default();
     let crl_params = CertificateRevocationListParams {
         this_update: OffsetDateTime::now_utc()
             .checked_sub(Duration::hours(1))
@@ -98,8 +100,8 @@ async fn test_create_certificate_identifier_with_crl() {
         revoked_certs: vec![],
         key_identifier_method: ca_params.key_identifier_method.to_owned(),
     };
-    let ca_cert = create_ca_cert(ca_params, eddsa::key());
-    let crl = create_crl(crl_params, &ca_cert, eddsa::key());
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+    let crl = create_crl(&crl_params, ca_params.clone(), eddsa::Key);
 
     let crl_uri = format!("{}/crl/1", context.server_mock.uri());
     context.server_mock.crl_download("1", crl.der()).await;
@@ -108,7 +110,7 @@ async fn test_create_certificate_identifier_with_crl() {
     params.crl_distribution_points = vec![CrlDistributionPoint {
         uris: vec![crl_uri],
     }];
-    let cert = create_cert(params, ecdsa::key(), &ca_cert, eddsa::key());
+    let cert = create_cert(&mut params, ecdsa::Key, &ca_issuer, &ca_params);
 
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
 
@@ -166,16 +168,18 @@ async fn test_create_certificate_identifier_with_crl_revoked() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
-    let ca_params = CertificateParams::default();
-    let ca_cert = create_ca_cert(ca_params.to_owned(), eddsa::key());
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
 
     let crl_uri = format!("{}/crl/1", context.server_mock.uri());
     let mut params = CertificateParams::default();
+    params.key_usages = vec![KeyUsagePurpose::CrlSign, KeyUsagePurpose::DigitalSignature];
     params.crl_distribution_points = vec![CrlDistributionPoint {
         uris: vec![crl_uri],
     }];
-    params.serial_number = Some(vec![1].into());
-    let cert = create_cert(params, ecdsa::key(), &ca_cert, eddsa::key());
+    let serial_number: SerialNumber = vec![1].into();
+    params.serial_number = Some(serial_number.clone());
+    let cert = create_cert(&mut params, ecdsa::Key, &ca_issuer, &ca_params);
 
     let one_hour_before = OffsetDateTime::now_utc()
         .checked_sub(Duration::hours(1))
@@ -188,7 +192,7 @@ async fn test_create_certificate_identifier_with_crl_revoked() {
         crl_number: vec![0].into(),
         issuing_distribution_point: None,
         revoked_certs: vec![RevokedCertParams {
-            serial_number: cert.params().serial_number.to_owned().unwrap(),
+            serial_number,
             revocation_time: one_hour_before,
             reason_code: None,
             invalidity_date: None,
@@ -196,7 +200,7 @@ async fn test_create_certificate_identifier_with_crl_revoked() {
         key_identifier_method: ca_params.key_identifier_method.to_owned(),
     };
 
-    let crl = create_crl(crl_params, &ca_cert, eddsa::key());
+    let crl = create_crl(&crl_params, params, eddsa::Key);
 
     context.server_mock.crl_download("1", crl.der()).await;
 
@@ -222,13 +226,14 @@ async fn test_create_certificate_identifier_cert_already_exists() {
         .create(&organisation, ecdsa_testing_params())
         .await;
 
-    let ca_cert = create_ca_cert(CertificateParams::default(), eddsa::key());
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
 
     let cert = create_cert(
-        CertificateParams::default(),
-        ecdsa::key(),
-        &ca_cert,
-        eddsa::key(),
+        &mut CertificateParams::default(),
+        ecdsa::Key,
+        &ca_issuer,
+        &ca_params,
     );
 
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
@@ -270,7 +275,7 @@ async fn test_create_certificate_identifier_unknown_critical_extension() {
         KeyUsagePurpose::DigitalSignature,
     ];
 
-    let ca_cert = create_ca_cert(ca_params, eddsa::key());
+    let (ca_cert, _) = create_ca_cert(&mut ca_params, &eddsa::Key);
     let chain = format!("{}{}", ca_cert.pem(), ca_cert.pem());
 
     let result = context
@@ -296,12 +301,12 @@ async fn test_create_certificate_identifier_ca_incorrect_key_usage() {
     // CA with incorrect key usage (missing KeyCertSign)
     let mut ca_params = CertificateParams::default();
     ca_params.key_usages = vec![KeyUsagePurpose::DigitalSignature]; // Missing KeyCertSign
-    let ca_cert = create_ca_cert(ca_params, eddsa::key());
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
 
     // Leaf certificate
     let mut leaf_params = CertificateParams::default();
     leaf_params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
-    let leaf_cert = create_cert(leaf_params, ecdsa::key(), &ca_cert, eddsa::key());
+    let leaf_cert = create_cert(&mut leaf_params, ecdsa::Key, &ca_issuer, &ca_params);
 
     let chain = format!("{}{}", leaf_cert.pem(), ca_cert.pem());
 
@@ -328,12 +333,12 @@ async fn test_create_certificate_identifier_missing_digital_signature() {
     // CA with proper key usage
     let mut ca_params = CertificateParams::default();
     ca_params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
-    let ca_cert = create_ca_cert(ca_params, eddsa::key());
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
 
     // End-entity certificate missing DigitalSignature
     let mut cert_params = CertificateParams::default();
     cert_params.key_usages = vec![KeyUsagePurpose::KeyEncipherment]; // Missing DigitalSignature
-    let cert = create_cert(cert_params, ecdsa::key(), &ca_cert, eddsa::key());
+    let cert = create_cert(&mut cert_params, ecdsa::Key, &ca_issuer, &ca_params);
 
     let chain = format!("{}{}", cert.pem(), ca_cert.pem());
 

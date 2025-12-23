@@ -2365,7 +2365,6 @@ mod trusted_authorities {
     };
 
     struct CertificateInfo {
-        pub raw_cert: rcgen::Certificate,
         pub cert: Certificate,
         pub aki_b64: String,
     }
@@ -2374,73 +2373,76 @@ mod trusted_authorities {
         context: &TestContext,
         organisation: &Organisation,
     ) -> (CertificateInfo, CertificateInfo) {
-        let mut root = Option::<CertificateInfo>::None;
-        let mut leaf = Option::<CertificateInfo>::None;
+        let mut ca_cert_params = cert_params();
+        let (ca_raw, ca_issuer) = create_ca_cert(&mut ca_cert_params, eddsa::Key);
+        let ca_cert = create_db_cert(context, organisation, &ca_raw).await;
+        let (intermediary_raw, _) = create_intermediate_ca_cert(
+            &mut cert_params(),
+            &ecdsa::Key,
+            &ca_issuer,
+            &ca_cert_params,
+        );
+        let intermediary_cert = create_db_cert(context, organisation, &intermediary_raw).await;
+        (
+            CertificateInfo {
+                aki_b64: aki_for_cert(&ca_cert),
+                cert: ca_cert,
+            },
+            CertificateInfo {
+                aki_b64: aki_for_cert(&intermediary_cert),
+                cert: intermediary_cert,
+            },
+        )
+    }
 
-        while leaf.is_none() {
-            let cert_params = {
-                let mut params = CertificateParams::default();
-                params.key_usages = vec![
-                    KeyUsagePurpose::DigitalSignature,
-                    KeyUsagePurpose::KeyCertSign,
-                ];
-                params.use_authority_key_identifier_extension = true;
-                params
-            };
-            let raw_cert = match &root {
-                Some(issuer) => create_intermediate_ca_cert(
-                    cert_params,
-                    ecdsa::key(),
-                    &issuer.raw_cert,
-                    eddsa::key(),
-                ),
-                None => create_ca_cert(cert_params.clone(), eddsa::key()),
-            };
+    fn aki_for_cert(cert: &Certificate) -> String {
+        let aki = get_aki_for_pem_chain(cert.chain.as_bytes()).unwrap();
+        Base64UrlSafeNoPadding::encode_to_string(aki).unwrap()
+    }
 
-            let identifier = context
-                .db
-                .identifiers
-                .create(
-                    organisation,
-                    TestingIdentifierParams {
-                        r#type: Some(IdentifierType::Certificate),
-                        is_remote: Some(true),
-                        ..Default::default()
-                    },
-                )
-                .await;
+    async fn create_db_cert(
+        context: &TestContext,
+        organisation: &Organisation,
+        raw_cert: &rcgen::Certificate,
+    ) -> Certificate {
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                organisation,
+                TestingIdentifierParams {
+                    r#type: Some(IdentifierType::Certificate),
+                    is_remote: Some(true),
+                    ..Default::default()
+                },
+            )
+            .await;
 
-            let cert = context
-                .db
-                .certificates
-                .create(
-                    identifier.id,
-                    TestingCertificateParams {
-                        name: Some("issuer certificate".to_string()),
-                        chain: Some(raw_cert.pem()),
-                        fingerprint: Some(fingerprint(&raw_cert)),
-                        state: Some(CertificateState::Active),
-                        organisation_id: Some(organisation.id),
-                        ..Default::default()
-                    },
-                )
-                .await;
+        context
+            .db
+            .certificates
+            .create(
+                identifier.id,
+                TestingCertificateParams {
+                    name: Some("issuer certificate".to_string()),
+                    chain: Some(raw_cert.pem()),
+                    fingerprint: Some(fingerprint(raw_cert)),
+                    state: Some(CertificateState::Active),
+                    organisation_id: Some(organisation.id),
+                    ..Default::default()
+                },
+            )
+            .await
+    }
 
-            let aki = get_aki_for_pem_chain(cert.chain.as_bytes()).unwrap();
-            let aki_b64 = Base64UrlSafeNoPadding::encode_to_string(aki).unwrap();
-
-            let info = CertificateInfo {
-                raw_cert,
-                cert,
-                aki_b64,
-            };
-            if root.is_none() {
-                root = Some(info)
-            } else {
-                leaf = Some(info)
-            }
-        }
-        (root.unwrap(), leaf.unwrap())
+    fn cert_params() -> CertificateParams {
+        let mut params = CertificateParams::default();
+        params.key_usages = vec![
+            KeyUsagePurpose::DigitalSignature,
+            KeyUsagePurpose::KeyCertSign,
+        ];
+        params.use_authority_key_identifier_extension = true;
+        params
     }
 
     #[tokio::test]

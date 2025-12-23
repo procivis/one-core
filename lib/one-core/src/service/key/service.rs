@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use anyhow::{Context, bail};
 use one_crypto::signer::ecdsa::ECDSASigner;
-use rcgen::{KeyPair, PKCS_ECDSA_P256_SHA256, PKCS_ED25519, RemoteKeyPair};
+use rcgen::{PKCS_ECDSA_P256_SHA256, PKCS_ED25519, SignatureAlgorithm};
 use shared_types::{KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -188,16 +188,12 @@ impl KeyService {
                 key_storage: key.storage_type.clone(),
             },
         )?;
-        let remote_key = RemoteKeyAdapter::create_remote_key(
-            key.clone(),
-            key_storage,
-            tokio::runtime::Handle::current(),
-        )
-        .context("Failed creating remote key")?;
-        let key_pair = KeyPair::from_remote(remote_key).context("Failed creating remote key")?;
+        let signing_key =
+            SigningKeyAdapter::new(key.clone(), key_storage, tokio::runtime::Handle::current())
+                .context("Failed creating remote key")?;
 
         let content = request_to_certificate_params(request)
-            .serialize_request(&key_pair)
+            .serialize_request(&signing_key)
             .context("Failed creating CSR")?
             .pem()
             .context("CSR PEM conversion failed")?;
@@ -233,7 +229,7 @@ impl KeyService {
     }
 }
 
-struct RemoteKeyAdapter {
+struct SigningKeyAdapter {
     key: Key,
     decompressed_public_key: Option<Vec<u8>>,
     key_storage: Arc<dyn KeyStorage>,
@@ -241,12 +237,12 @@ struct RemoteKeyAdapter {
     handle: tokio::runtime::Handle,
 }
 
-impl RemoteKeyAdapter {
-    fn create_remote_key(
+impl SigningKeyAdapter {
+    fn new(
         key: Key,
         key_storage: Arc<dyn KeyStorage>,
         handle: tokio::runtime::Handle,
-    ) -> anyhow::Result<Box<dyn RemoteKeyPair + Send + Sync + 'static>> {
+    ) -> anyhow::Result<SigningKeyAdapter> {
         let mut decompressed_public_key = None;
 
         let algorithm = match key.key_type.as_str() {
@@ -261,23 +257,29 @@ impl RemoteKeyAdapter {
             );
         }
 
-        Ok(Box::new(Self {
+        Ok(Self {
             key,
             key_storage,
             algorithm,
             handle,
             decompressed_public_key,
-        }) as _)
+        })
     }
 }
 
-impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
-    fn public_key(&self) -> &[u8] {
+impl rcgen::PublicKeyData for SigningKeyAdapter {
+    fn der_bytes(&self) -> &[u8] {
         self.decompressed_public_key
             .as_ref()
             .unwrap_or(&self.key.public_key)
     }
 
+    fn algorithm(&self) -> &'static SignatureAlgorithm {
+        self.algorithm
+    }
+}
+
+impl rcgen::SigningKey for SigningKeyAdapter {
     fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
         let handle = self.handle.clone();
         let key_storage = self.key_storage.clone();
@@ -335,10 +337,6 @@ impl rcgen::RemoteKeyPair for RemoteKeyAdapter {
             tracing::error!("Failed to join CSR thread");
             rcgen::Error::RemoteKeyError
         })?
-    }
-
-    fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
-        self.algorithm
     }
 }
 
