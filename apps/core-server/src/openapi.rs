@@ -383,6 +383,17 @@ fn get_tags(config: Arc<ServerConfig>) -> Vec<Tag> {
                        ))
                        .build(),
                    Tag::builder()
+                        .name("signature")
+                        .description(Some(indoc::formatdoc! {"
+                Create and revoke signatures.
+            "}))
+                        .extensions(Some(
+                            Extensions::builder()
+                                .add("x-displayName", "Signatures")
+                                .build(),
+                        ))
+                        .build(),
+                   Tag::builder()
                        .name("jsonld")
                        .description(Some(indoc::formatdoc! {"
                 Operations for credentials formatted with JSON-LD.
