@@ -112,7 +112,7 @@ async fn test_create_context() {
     };
 
     let result = setup.provider.create(context).await.unwrap();
-    assert_eq!(id, result.into());
+    assert_eq!(id, Uuid::from(result));
 
     let model = get_json_ld_context(&setup.db, &id.into()).await.unwrap();
     assert_eq!(model.value, [0, 1, 2, 3]);

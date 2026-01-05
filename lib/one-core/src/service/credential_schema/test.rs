@@ -751,7 +751,7 @@ async fn test_create_credential_schema_success_nested_claims() {
         })
         .await
         .unwrap();
-    assert_eq!(schema_id, result.into());
+    assert_eq!(schema_id, Uuid::from(result));
 }
 
 #[tokio::test]
@@ -2879,7 +2879,7 @@ async fn test_import_credential_schema_success() {
         .return_once(move |new_schema| {
             assert_eq!(
                 own_organisation_id,
-                new_schema.organisation.unwrap().id.into()
+                Uuid::from(new_schema.organisation.unwrap().id)
             );
             Ok(new_schema.id)
         });

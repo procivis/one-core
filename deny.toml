@@ -44,7 +44,7 @@ allow = [
     "ISC",
     "MIT",
     "MIT-0",
-    "Unicode-DFS-2016",
+    "CDLA-Permissive-2.0",
     "Unicode-3.0",
     "Zlib",
     "BSL-1.0",
@@ -54,7 +54,6 @@ version = 2
 
 exceptions = [
     # Allow MPL-2.0 for libraries we do not modify
-    { allow = ["MPL-2.0"], name = "webpki-roots", version = "*" },
     { allow = ["MPL-2.0"], name = "resiter", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi", version = "*" },
     { allow = ["MPL-2.0"], name = "uniffi_bindgen", version = "*" },
