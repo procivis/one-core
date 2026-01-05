@@ -34,7 +34,10 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
 
         let (claims, claim_schemas) = claims_with_schema
             .into_iter()
-            .map(|item| (item.claim.into(), item.claim_schema.into()))
+            .map(|item| {
+                let claim_schema = item.claim_schema.to_owned().into();
+                (item.into(), claim_schema)
+            })
             .unzip();
 
         Ok(Self {

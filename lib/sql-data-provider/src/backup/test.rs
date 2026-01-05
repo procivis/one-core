@@ -534,9 +534,17 @@ async fn test_fetch_unexportable_credentials_local() {
         unexportable.credentials.len(),
         unexportable_credentials_setup.unexportable_ids.len()
     );
+
     assert_eq_unordered(
-        unexportable.credentials.into_iter().map(|item| item.id),
+        unexportable.credentials.iter().map(|item| item.id),
         unexportable_credentials_setup.unexportable_ids,
+    );
+
+    // ONE-8026: claims must contain claim schemas
+    assert!(
+        unexportable.credentials[0].claims.as_ref().unwrap()[0]
+            .schema
+            .is_some()
     );
 }
 

@@ -28,7 +28,7 @@ use crate::service::credential::dto::{
 };
 use crate::service::error::{BusinessLogicError, ServiceError};
 
-pub fn credential_detail_response_from_model(
+pub(crate) fn credential_detail_response_from_model(
     value: Credential,
     config: &CoreConfig,
     validity_credential: Option<ValidityCredential>,
@@ -95,7 +95,7 @@ pub fn credential_detail_response_from_model(
     })
 }
 
-pub(crate) fn from_vec_claim(
+fn from_vec_claim(
     claims: Vec<Claim>,
     credential_schema: &CredentialSchema,
     config: &CoreConfig,
