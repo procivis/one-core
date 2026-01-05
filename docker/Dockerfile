@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.90.0-0.1
+ARG BASE_IMAGE=registry.gitlab.procivis.ch/procivis/one/one-operations/core-base:1.92.0-0.1
 ARG APP_VERSION
 
 # ----------- Planner image -----------

@@ -54,7 +54,7 @@ async fn test_get_claim_schema_list() {
         db,
     } = setup().await;
 
-    let schemas = vec![
+    let schemas = [
         ClaimSchema {
             id: Uuid::new_v4().into(),
             key: "key1".to_string(),

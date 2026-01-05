@@ -20,7 +20,7 @@ variables:
   CARGO_TARGET_DIR: "/build-cache/target"
   CARGO_HOME: "/build-cache/cargo-home"
   CARGO_UNSTABLE_GC: "true"
-  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.90.0-0.2
+  BUILD_IMAGE: $CI_REGISTRY/procivis/one/one-operations/core-base:1.92.0-0.1
   RUST_CONTAINER_NAME: rust
   NETWORK_NAME: my_network
 

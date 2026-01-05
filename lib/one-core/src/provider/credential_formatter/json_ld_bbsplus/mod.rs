@@ -10,7 +10,7 @@ use mapper::convert_to_detail_credential;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::json;
-use serde_with::{DurationSeconds, serde_as};
+use serde_with::DurationSeconds;
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;

@@ -781,7 +781,7 @@ async fn test_get_credential_list_success_filter_claim_name_value() {
     let claim_schema = credential_schema.claim_schemas.as_ref().unwrap()[0]
         .to_owned()
         .schema;
-    let claims = vec![Claim {
+    let claims = [Claim {
         id: Uuid::new_v4().into(),
         credential_id,
         created_date: get_dummy_date(),
