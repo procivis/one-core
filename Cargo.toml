@@ -75,9 +75,13 @@ let_underscore_drop = "warn"
 
 [workspace.lints.clippy]
 dbg_macro               = "deny"
+expect_used             = "deny"
+indexing_slicing        = "deny"
 let_underscore_must_use = "warn"
+panic                   = "deny"
 print_stderr            = "deny"
 redundant_clone         = "warn"
+unwrap_used             = "deny"
 
 [profile.mobile-release]
 codegen-units = 1

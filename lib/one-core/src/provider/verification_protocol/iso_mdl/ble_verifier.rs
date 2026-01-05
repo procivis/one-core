@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{Context, Error};
+use anyhow::{Context, Error, anyhow};
 use shared_types::ProofId;
 use time::OffsetDateTime;
 use tokio::sync::oneshot;
@@ -608,8 +608,14 @@ fn proof_input_schema_to_doc_request(input: &ProofInputSchema) -> anyhow::Result
         for claim_key in claim_keys {
             let path: Vec<_> = claim_key.splitn(3, NESTED_CLAIM_MARKER).collect();
 
-            let namespace = path[0].to_string();
-            let element_identifier = path[1].to_string();
+            let namespace = path
+                .first()
+                .ok_or_else(|| anyhow!("Invalid claim path"))?
+                .to_string();
+            let element_identifier = path
+                .get(1)
+                .ok_or_else(|| anyhow!("Invalid claim path"))?
+                .to_string();
             name_spaces
                 .entry(namespace)
                 .or_insert_with(HashMap::new)

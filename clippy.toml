@@ -1,6 +1,5 @@
-allow-expect-in-tests = true
-allow-panic-in-tests = true
-allow-unwrap-in-tests = true
-disallowed-macros = [
-  { path = "std::assert_eq", reason = "use similar_asserts::assert_eq - it has diff support" }
-]
+allow-expect-in-tests           = true
+allow-indexing-slicing-in-tests = true
+allow-panic-in-tests            = true
+allow-unwrap-in-tests           = true
+disallowed-macros               = [{ path = "std::assert_eq", reason = "use similar_asserts::assert_eq - it has diff support" }]

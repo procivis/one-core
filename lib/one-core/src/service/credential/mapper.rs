@@ -188,7 +188,9 @@ fn get_or_insert<'a>(
             match &mut parent_claim.value {
                 DetailCredentialClaimValueResponseDTO::Nested(claims) => {
                     if let Some(i) = claims.iter().position(|claim| claim.path == path) {
-                        Ok(&mut claims[i])
+                        Ok(claims
+                            .get_mut(i)
+                            .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
                     } else {
                         let mut item_schema = claim_schemas
                             .iter()
@@ -206,7 +208,9 @@ fn get_or_insert<'a>(
                             value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
                         });
                         let last = claims.len() - 1;
-                        Ok(&mut claims[last])
+                        Ok(claims
+                            .get_mut(last)
+                            .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
                     }
                 }
                 _ => Err(ServiceError::MappingError(
@@ -216,7 +220,9 @@ fn get_or_insert<'a>(
         }
         None => {
             if let Some(i) = root.iter().position(|claim| claim.schema.key == path) {
-                Ok(&mut root[i])
+                Ok(root
+                    .get_mut(i)
+                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
             } else {
                 root.push(DetailCredentialClaimResponseDTO {
                     path: path.to_owned(),
@@ -229,7 +235,9 @@ fn get_or_insert<'a>(
                     value: DetailCredentialClaimValueResponseDTO::Nested(vec![]),
                 });
                 let last = root.len() - 1;
-                Ok(&mut root[last])
+                Ok(root
+                    .get_mut(last)
+                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
             }
         }
     }

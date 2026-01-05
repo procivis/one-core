@@ -57,7 +57,9 @@ fn insert_claim(
         return Ok(());
     }
 
-    let part = key_parts[index].to_string();
+    let Some(part) = key_parts.get(index).map(ToString::to_string) else {
+        return Ok(());
+    };
 
     let nested_claim = match current_claim.entry(part.clone()) {
         Entry::Occupied(entry) => entry.into_mut(),

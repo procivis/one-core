@@ -171,8 +171,12 @@ fn encrypt_in_place_aes_cbc_hs256(
             secret.len()
         )));
     }
-    let hmac_key = &secret[..16];
-    let aes_key = &secret[16..32];
+    let hmac_key = &secret
+        .get(..16)
+        .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
+    let aes_key = &secret
+        .get(16..32)
+        .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
 
     // CBC requires padding
     let msg_len = buf.len();
@@ -214,8 +218,12 @@ fn decrypt_in_place_aes_cbc_hs256<'a>(
             secret.len()
         )));
     }
-    let hmac_key = &secret[..16];
-    let aes_key = &secret[16..32];
+    let hmac_key = &secret
+        .get(..16)
+        .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
+    let aes_key = &secret
+        .get(16..32)
+        .ok_or(EncryptionError::Crypto("wrong key size".to_string()))?;
     if iv.len() != 16 {
         return Err(EncryptionError::Crypto(format!(
             "wrong iv size: expected 16, got {}",
@@ -258,7 +266,12 @@ fn calculate_tag_aes_cbc_hs256(
     Mac::update(&mut mac, &ad_len);
 
     // the tag is defined as only the first 16 bytes of the hash
-    let calculated_tag = mac.finalize_reset().into_bytes()[..16].to_vec();
+    let calculated_tag = mac
+        .finalize_reset()
+        .into_bytes()
+        .get(..16)
+        .ok_or(EncryptionError::Crypto("wrong mac size".to_string()))?
+        .to_vec();
     Ok(calculated_tag)
 }
 
@@ -436,17 +449,40 @@ impl FromStr for EncryptedJWE {
                 parts.len()
             )));
         }
-        if !parts[1].is_empty() {
+        if !parts
+            .get(1)
+            .ok_or(EncryptionError::Crypto("Invalid JWE".to_string()))?
+            .is_empty()
+        {
             return Err(EncryptionError::Crypto(
                 "Invalid JWE: expected empty CEK".to_string(),
             ));
         }
-        let protected_header = decode_b64(parts[0], "protected header")?;
-        let nonce = decode_b64(parts[2], "nonce")?;
-        let payload = decode_b64(parts[3], "payload")?;
-        let tag = decode_b64(parts[4], "tag")?;
+        let protected_header_b64 = parts
+            .first()
+            .ok_or(EncryptionError::Crypto("Invalid JWE".to_string()))?
+            .to_string();
+        let protected_header = decode_b64(&protected_header_b64, "protected header")?;
+        let nonce = decode_b64(
+            parts
+                .get(2)
+                .ok_or(EncryptionError::Crypto("Invalid JWE".to_string()))?,
+            "nonce",
+        )?;
+        let payload = decode_b64(
+            parts
+                .get(3)
+                .ok_or(EncryptionError::Crypto("Invalid JWE".to_string()))?,
+            "payload",
+        )?;
+        let tag = decode_b64(
+            parts
+                .get(4)
+                .ok_or(EncryptionError::Crypto("Invalid JWE".to_string()))?,
+            "tag",
+        )?;
         Ok(Self {
-            protected_header_b64: parts[0].to_string(),
+            protected_header_b64,
             protected_header,
             nonce,
             payload,

@@ -51,8 +51,16 @@ pub fn parse_base_proof_value(proof_value: &str) -> Result<BbsBaseProofComponent
     let proof_value = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
         .map_err(|e| FormatterError::Failed(format!("Failed to b64 decoding proof value: {e}")))?;
 
-    let proof_value = match &proof_value[..3] {
-        prefix if prefix == CBOR_PREFIX_BASE => &proof_value[3..],
+    let proof_value = match proof_value.get(..3).ok_or(FormatterError::Failed(format!(
+        "Invalid proof value. expected prefix got: {}",
+        hex::encode(&proof_value)
+    )))? {
+        prefix if prefix == CBOR_PREFIX_BASE => {
+            proof_value.get(3..).ok_or(FormatterError::Failed(format!(
+                "Invalid proof value. got: {}",
+                hex::encode(&proof_value)
+            )))?
+        }
         other => {
             return Err(FormatterError::Failed(format!(
                 "Invalid proof value. expected baseline prefix got: {}",

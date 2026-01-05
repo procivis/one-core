@@ -126,7 +126,9 @@ impl IdentityRequest {
             len => return Err(anyhow::anyhow!("Invalid identity request size: {len}")),
         };
 
-        let arr = &data[..44];
+        let arr = data
+            .get(..44)
+            .ok_or(anyhow::anyhow!("Invalid identity request data"))?;
         let (key, nonce) = arr.split_at(32);
 
         Ok(Self {

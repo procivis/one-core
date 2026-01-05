@@ -113,8 +113,16 @@ pub async fn verify_derived_proof(
     let disclosed_messages = non_mandatory
         .into_iter()
         .enumerate()
-        .map(|(i, quad)| (selective_indexes[i], quad.into_bytes()))
-        .collect();
+        .map(|(i, quad)| {
+            Ok((
+                selective_indexes
+                    .get(i)
+                    .ok_or(FormatterError::Failed("Invalid index".to_string()))?
+                    .to_owned(),
+                quad.into_bytes(),
+            ))
+        })
+        .collect::<Result<_, FormatterError>>()?;
 
     let proof_input = BbsProofInput {
         header: bbs_header,

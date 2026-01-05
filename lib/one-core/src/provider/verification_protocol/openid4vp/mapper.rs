@@ -564,9 +564,16 @@ pub(crate) fn unencrypted_params(
             "Failed to serialize presentation submission params: {err}"
         ))
     })?;
+
     if let Some(state) = state {
-        result["state"] = Value::String(state);
+        result
+            .as_object_mut()
+            .ok_or(VerificationProtocolError::Failed(
+                "unsupported submission data".to_string(),
+            ))?
+            .insert("state".to_string(), Value::String(state));
     }
+
     let params = result
         .as_object()
         .ok_or(VerificationProtocolError::Failed(format!(

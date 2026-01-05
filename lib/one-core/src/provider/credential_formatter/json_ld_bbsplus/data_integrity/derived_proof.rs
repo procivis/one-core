@@ -67,8 +67,16 @@ pub fn parse_derived_proof_value(
     let proof_value = Base64UrlSafeNoPadding::decode_to_vec(proof_value, None)
         .map_err(|e| FormatterError::Failed(format!("Failed to b64 decoding proof value: {e}")))?;
 
-    let proof_value = match &proof_value[..3] {
-        prefix if prefix == CBOR_PREFIX_DERIVED => &proof_value[3..],
+    let proof_value = match proof_value.get(..3).ok_or(FormatterError::Failed(format!(
+        "Invalid proof value. expected prefix got: {}",
+        hex::encode(&proof_value)
+    )))? {
+        prefix if prefix == CBOR_PREFIX_DERIVED => {
+            proof_value.get(3..).ok_or(FormatterError::Failed(format!(
+                "Invalid proof value. got: {}",
+                hex::encode(&proof_value)
+            )))?
+        }
         other => {
             return Err(FormatterError::Failed(format!(
                 "Invalid proof value. expected derived prefix got: {}",
@@ -217,7 +225,12 @@ async fn create_disclosure_data(
     for (input_label, verifier_label) in canonical_id_map {
         verifier_label_map.insert(
             verifier_label.to_string(),
-            label_map[input_label.as_ref()].clone(),
+            label_map
+                .get(input_label.as_ref())
+                .ok_or_else(|| {
+                    FormatterError::Failed(format!("Failed to find label: {input_label}"))
+                })?
+                .clone(),
         );
     }
 

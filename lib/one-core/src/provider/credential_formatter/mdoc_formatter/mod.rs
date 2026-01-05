@@ -1028,14 +1028,18 @@ fn handle_array(array: Vec<Value>) -> Result<serde_json::Value, FormatterError> 
 
     // PICTURE
     if array.len() == 2 {
-        let bytes = array[1]
+        let data_type_value = array
+            .first()
+            .ok_or_else(|| FormatterError::Failed("Invalid index".to_owned()))?
+            .as_text()
+            .ok_or_else(|| FormatterError::Failed("Expected String value for key".to_owned()))?;
+
+        let bytes = array
+            .get(1)
+            .ok_or_else(|| FormatterError::Failed("Invalid index".to_owned()))?
             .as_bytes()
             .ok_or_else(|| FormatterError::Failed("Not a byte array".to_owned()))?;
         let value = String::from_utf8_lossy(bytes);
-
-        let data_type_value = array[0]
-            .as_text()
-            .ok_or_else(|| FormatterError::Failed("Expected String value for key".to_owned()))?;
 
         return Ok(serde_json::Value::String(format!(
             "{data_type_value},{value}"

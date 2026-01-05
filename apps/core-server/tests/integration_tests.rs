@@ -1,5 +1,6 @@
 #![allow(clippy::expect_used)]
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::indexing_slicing)]
 
 #[cfg(test)]
 mod fixtures;

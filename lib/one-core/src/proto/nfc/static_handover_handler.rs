@@ -2,7 +2,7 @@
 
 use std::sync::{Arc, Mutex};
 
-use anyhow::bail;
+use anyhow::{Context, bail};
 use tokio::sync::oneshot;
 
 use super::NfcError;
@@ -201,7 +201,10 @@ fn handle_apdu_command(
             }
 
             let mut response: Response = RESPONSE_STATUS_SUCCESS.into();
-            response.payload = content[start..end].to_vec();
+            response.payload = content
+                .get(start..end)
+                .context("Invalid APDU response")?
+                .to_vec();
             response
         }
         KnownCommand::Other(command) => {

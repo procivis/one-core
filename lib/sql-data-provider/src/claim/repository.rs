@@ -80,6 +80,7 @@ impl ClaimRepository for ClaimProvider {
             });
         }
 
+        #[allow(clippy::indexing_slicing)]
         models.sort_by_key(|model| claim_id_to_index[&model.id]);
 
         if let Some(claim_schema_relations) = &relations.schema {

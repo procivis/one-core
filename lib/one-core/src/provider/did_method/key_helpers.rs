@@ -34,7 +34,10 @@ pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
         DidMethodError::ResolutionError(format!("Invalid did key multibase suffix: {err}"))
     })?;
 
-    let type_ = match decoded[0..2] {
+    let type_ = match decoded
+        .get(0..2)
+        .ok_or_else(|| DidMethodError::ResolutionError("Invalid did key multibase".to_string()))?
+    {
         [0xed, 0x1] => DidKeyType::Eddsa,
         [0x80, 0x24] => DidKeyType::Ecdsa,
         [0xeb, 0x01] => DidKeyType::Bbs,
@@ -46,7 +49,10 @@ pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
     };
 
     // currently all supported key algorithms have a multicodec prefix 2 bytes long
-    let decoded_without_multibase_prefix = decoded[2..].into();
+    let decoded_without_multibase_prefix = decoded
+        .get(2..)
+        .ok_or_else(|| DidMethodError::ResolutionError("Invalid did key multibase".to_string()))?
+        .into();
 
     Ok(DecodedDidKey {
         multibase: tail.into(),

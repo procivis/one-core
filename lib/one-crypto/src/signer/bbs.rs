@@ -113,6 +113,7 @@ impl BBSSigner {
         let signature: [u8; BBS_BLS12381G1_SIGNATURE_LENGTH] = {
             let mut array = [0; BBS_BLS12381G1_SIGNATURE_LENGTH];
             let len = std::cmp::min(input.signature.len(), array.len());
+            #[allow(clippy::indexing_slicing)]
             array[..len].copy_from_slice(&input.signature[..len]);
             array
         };

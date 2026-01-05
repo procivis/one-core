@@ -400,18 +400,25 @@ fn validate_path(
     let mut schema_index = 0;
     let mut segment_index = 0;
     loop {
-        let related_schema = &related_claim_schemas[schema_index];
+        let related_schema = related_claim_schemas.get(schema_index).ok_or_else(|| {
+            ServiceError::MappingError(format!("Could not find schema index: {schema_index}"))
+        })?;
         let key_segment = get_nth_segment_of_key(&related_schema.schema.key, schema_index)?;
-        if key_segment != segments[segment_index] {
+        let segment = segments.get(segment_index).ok_or_else(|| {
+            ServiceError::MappingError(format!("Could not find segment index: {segment_index}"))
+        })?;
+        if key_segment != *segment {
             return Err(ServiceError::MappingError(format!(
-                "expected: {key_segment}, found: {}",
-                segments[segment_index]
+                "expected: {key_segment}, found: {segment}"
             )));
         }
 
         if related_schema.schema.array {
             segment_index += 1;
-            segments[segment_index].parse::<u64>().map_err(|e| {
+            let segment = segments.get(segment_index).ok_or_else(|| {
+                ServiceError::MappingError(format!("Could not find segment index: {segment_index}"))
+            })?;
+            segment.parse::<u64>().map_err(|e| {
                 ServiceError::ConfigValidationError(ConfigValidationError::DatatypeValidation(
                     DatatypeValidationError::IndexParseFailure(e),
                 ))

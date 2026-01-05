@@ -57,7 +57,7 @@ impl PictureDataType {
         if elements.len() != 2 {
             return None;
         }
-        let header = elements[0].as_text()?;
+        let header = elements.first()?.as_text()?;
         let mime_type = header
             .strip_prefix("data:")
             .and_then(|h| h.strip_suffix(";base64"))?;
@@ -66,7 +66,7 @@ impl PictureDataType {
         {
             return None;
         }
-        let data = String::from_utf8_lossy(elements[1].as_bytes()?);
+        let data = String::from_utf8_lossy(elements.get(1)?.as_bytes()?);
         if let Some(max_size) = self.params.file_size
             && base64_byte_length(&data) > max_size
         {

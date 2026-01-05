@@ -43,6 +43,7 @@ impl ClaimSchemaRepository for ClaimSchemaProvider {
 
         let mut claim_schema_list: Vec<ClaimSchema> = convert_inner(models);
 
+        #[allow(clippy::indexing_slicing)]
         claim_schema_list.sort_by_key(|claim_schema| claim_schema_to_index[&claim_schema.id]);
 
         Ok(claim_schema_list)

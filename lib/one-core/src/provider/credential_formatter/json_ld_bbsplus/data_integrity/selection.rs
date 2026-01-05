@@ -83,8 +83,12 @@ pub fn select_json_ld(
     }
 
     let mut selection_document = initialize_selection(document);
+
     if let Some(context) = document.get("@context") {
-        selection_document["@context"] = context.clone();
+        let Some(document) = selection_document.as_object_mut() else {
+            return Err(FormatterError::Failed("Invalid document".to_string()));
+        };
+        document.insert("@context".to_string(), context.to_owned());
     }
 
     for pointer in pointers {
@@ -106,19 +110,19 @@ pub fn select_json_ld(
 }
 
 fn initialize_selection(source: &serde_json::Value) -> serde_json::Value {
-    let mut value = serde_json::json!({});
+    let mut value = serde_json::map::Map::<String, serde_json::Value>::new();
 
     if let Some(id) = source.get("id")
         && id.as_str().is_some_and(|id_str| !id_str.starts_with("_:"))
     {
-        value["id"] = id.clone();
+        value.insert("id".to_string(), id.to_owned());
     }
 
-    if let Some(type_val) = source.get("type") {
-        value["type"] = type_val.clone();
+    if let Some(r#type) = source.get("type") {
+        value.insert("type".to_string(), r#type.to_owned());
     }
 
-    value
+    serde_json::Value::Object(value)
 }
 
 fn parse_pointer(pointer: &str) -> Vec<PathComponent<'_>> {

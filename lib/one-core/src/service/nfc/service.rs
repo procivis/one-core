@@ -98,7 +98,12 @@ async fn read_select_handover(scanner: &dyn NfcScanner) -> Result<String, Servic
         )));
     }
 
-    let ndef_file_id: [u8; 2] = capability_container.as_slice()[9..11]
+    let ndef_file_id: [u8; 2] = capability_container
+        .as_slice()
+        .get(9..11)
+        .ok_or(ServiceError::MappingError(
+            "Could not extract ndef_file_id".to_string(),
+        ))?
         .try_into()
         .map_err(|e: std::array::TryFromSliceError| ServiceError::MappingError(e.to_string()))?;
     selection(

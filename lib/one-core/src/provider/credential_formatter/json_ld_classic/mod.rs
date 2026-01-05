@@ -458,7 +458,7 @@ impl JsonLdClassic {
                 claims,
             },
             status: vcdm.credential_status,
-            credential_schema: vcdm.credential_schema.map(|v| v[0].clone()),
+            credential_schema: vcdm.credential_schema.and_then(|v| v.first().cloned()),
         })
     }
 

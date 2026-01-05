@@ -59,8 +59,8 @@ impl TryFrom<Vec<u8>> for Chunk {
 
     fn try_from(value: Vec<u8>) -> Result<Self, Self::Error> {
         match value.as_slice() {
-            [0, ..] => Ok(Self::Last(value[1..].to_vec())),
-            [1, ..] => Ok(Self::Next(value[1..].to_vec())),
+            [0, tail @ ..] => Ok(Self::Last(tail.to_vec())),
+            [1, tail @ ..] => Ok(Self::Next(tail.to_vec())),
             _ => Err(anyhow!("invalid data format")),
         }
     }

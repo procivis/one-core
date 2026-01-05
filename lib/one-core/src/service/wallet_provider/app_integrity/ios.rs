@@ -72,7 +72,12 @@ pub(crate) async fn validate_attestation_ios(
     // authenticator data.
 
     // RP_ID is the first 32 bytes of the authenticator data, which must be equal to the app id hash.
-    let rp_id = &attestation.auth_data[..32];
+    let rp_id = attestation
+        .auth_data
+        .get(..32)
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract RP_ID".to_string(),
+        ))?;
     let app_id_hash = SHA256
         .hash(bundle.bundle_id.as_bytes())
         .map_err(|err| AppIntegrityValidationError(format!("Failed to hash: {err}")))?;
@@ -81,11 +86,20 @@ pub(crate) async fn validate_attestation_ios(
     }
 
     // Signature counter of the particular key
-    let counter = u32::from_be_bytes(attestation.auth_data[33..37].try_into().map_err(|err| {
-        AppIntegrityValidationError(format!(
-            "Failed to read signature counter from authenticator data: {err}"
-        ))
-    })?);
+    let counter = u32::from_be_bytes(
+        attestation
+            .auth_data
+            .get(33..37)
+            .ok_or(AppIntegrityValidationError(
+                "Failed to extract signature counter".to_string(),
+            ))?
+            .try_into()
+            .map_err(|err| {
+                AppIntegrityValidationError(format!(
+                    "Failed to read signature counter from authenticator data: {err}"
+                ))
+            })?,
+    );
     if counter != 0 {
         return Err(AppIntegrityValidationError(format!(
             "Invalid signature counter: must be 0 but was {counter}"
@@ -93,18 +107,31 @@ pub(crate) async fn validate_attestation_ios(
     }
 
     // Either appattestdevelop or appattest (zero padded)
-    let aaguid = &attestation.auth_data[37..53];
+    let aaguid = attestation
+        .auth_data
+        .get(37..53)
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract AAGUID".to_string(),
+        ))?;
     if !(aaguid == APPATEST_PRODUCTION
         || !bundle.enforce_production_build && aaguid == APPATEST_DEVELOP)
     {
         return Err(AppIntegrityValidationError("Invalid AAGUID".to_string()));
     }
-    let credential_id_len =
-        u16::from_be_bytes(attestation.auth_data[53..55].try_into().map_err(|err| {
-            AppIntegrityValidationError(format!(
-                "Failed to read credential id length from authenticator data: {err}"
-            ))
-        })?) as usize;
+    let credential_id_len = u16::from_be_bytes(
+        attestation
+            .auth_data
+            .get(53..55)
+            .ok_or(AppIntegrityValidationError(
+                "Failed to extract credential id length".to_string(),
+            ))?
+            .try_into()
+            .map_err(|err| {
+                AppIntegrityValidationError(format!(
+                    "Failed to read credential id length from authenticator data: {err}"
+                ))
+            })?,
+    ) as usize;
 
     if attestation.auth_data.len() < 55 + credential_id_len {
         return Err(AppIntegrityValidationError(format!(
@@ -112,7 +139,12 @@ pub(crate) async fn validate_attestation_ios(
             55 + credential_id_len - attestation.auth_data.len()
         )));
     }
-    let credential_id = &attestation.auth_data[55..(55 + credential_id_len)];
+    let credential_id = attestation
+        .auth_data
+        .get(55..(55 + credential_id_len))
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract credential id".to_string(),
+        ))?;
     let cn = attestation_cert
         .subject_common_name
         .ok_or(AppIntegrityValidationError(
@@ -164,7 +196,11 @@ fn validate_nonce(
             ext.value
         )));
     }
-    let cert_nonce = &ext_data[ext_data.len() - 32..];
+    let cert_nonce = ext_data
+        .get(ext_data.len() - 32..)
+        .ok_or(AppIntegrityValidationError(
+            "Failed to extract cert_nonce".to_string(),
+        ))?;
     if cert_nonce != nonce.as_slice() {
         return Err(AppIntegrityValidationError("Nonce mismatch".to_string()));
     }

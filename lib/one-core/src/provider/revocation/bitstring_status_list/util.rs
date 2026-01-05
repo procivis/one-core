@@ -53,7 +53,8 @@ pub(crate) fn extract_bitstring_index(
     })?;
 
     let bits = BitVec::from_bytes(&bytes);
-    Ok(bits[index])
+    bits.get(index)
+        .ok_or(BitstringError::IndexOutOfBounds { index })
 }
 
 pub(super) fn generate_bitstring(input: Vec<(usize, bool)>) -> Result<String, BitstringError> {

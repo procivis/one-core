@@ -64,12 +64,18 @@ pub(crate) fn parse_multibase_with_tag(
         .into_vec()
         .map_err(|err| KeyAlgorithmError::Failed(format!("Invalid multibase suffix: {err}")))?;
 
-    if decoded[..expected_tag.len()] != expected_tag[..] {
+    if decoded
+        .get(..expected_tag.len())
+        .is_none_or(|tag| tag != expected_tag)
+    {
         return Err(KeyAlgorithmError::Failed(format!(
             "Invalid multibase tag, expected {}, but got {}",
             hex::encode(expected_tag),
-            hex::encode(&decoded[..2])
+            hex::encode(&decoded)
         )));
     };
-    Ok(decoded[expected_tag.len()..].to_vec())
+    Ok(decoded
+        .get(expected_tag.len()..)
+        .ok_or_else(|| KeyAlgorithmError::Failed("Invalid multibase suffix".to_string()))?
+        .to_vec())
 }

@@ -85,7 +85,9 @@ fn get_or_insert_proof_container_claim<'a>(
             };
 
             if let Some(i) = claims.iter().position(|claim| claim.path == path) {
-                Ok(&mut claims[i])
+                Ok(claims
+                    .get_mut(i)
+                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
             } else {
                 let key = from_path_to_key(path, original_key);
                 let mut claim = build_claim_from_credential_claims(
@@ -103,7 +105,9 @@ fn get_or_insert_proof_container_claim<'a>(
 
                 claims.push(claim);
                 let last = claims.len() - 1;
-                Ok(&mut claims[last])
+                Ok(claims
+                    .get_mut(last)
+                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
             }
         }
         // It's a root
@@ -112,7 +116,9 @@ fn get_or_insert_proof_container_claim<'a>(
                 .iter()
                 .position(|claim| claim.schema.key == path)
             {
-                Ok(&mut proof_claims[i])
+                Ok(proof_claims
+                    .get_mut(i)
+                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
             } else {
                 proof_claims.push(build_claim_from_credential_claims(
                     credential_claim_schemas,
@@ -121,7 +127,9 @@ fn get_or_insert_proof_container_claim<'a>(
                     required,
                 )?);
                 let last = proof_claims.len() - 1;
-                Ok(&mut proof_claims[last])
+                Ok(proof_claims
+                    .get_mut(last)
+                    .ok_or_else(|| ServiceError::Other("invalid index".into()))?)
             }
         }
     }

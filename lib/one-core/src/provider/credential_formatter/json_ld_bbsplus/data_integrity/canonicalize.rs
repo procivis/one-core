@@ -114,10 +114,12 @@ pub fn label_replacement_canonicalize_nquads(
     let c14n_label_map: BTreeMap<String, String> = label_map
         .iter()
         .map(|(key, new_label)| {
-            let key = &canonical_id_map[key.as_str()];
-            (key.to_string(), new_label.to_string())
+            let key = canonical_id_map
+                .get(key.as_str())
+                .ok_or(FormatterError::Failed(format!("Failed to find key: {key}")))?;
+            Ok((key.to_string(), new_label.to_string()))
         })
-        .collect();
+        .collect::<Result<_, FormatterError>>()?;
 
     let canonical_nquads = {
         let mut canonical_nquads = Vec::<u8>::new();
@@ -131,18 +133,47 @@ pub fn label_replacement_canonicalize_nquads(
     let canonical_nquads: Vec<String> = canonical_nquads
         .split_inclusive('\n')
         .map(|quad| {
-            BLANK_NODE_REGEX
-                .replace_all(quad, |capture: &Captures<'_>| {
-                    let old_label = &capture[2];
-                    let new_label = &c14n_label_map[old_label];
-                    format!("_:{new_label}")
-                })
-                .into_owned()
+            replace_all(&BLANK_NODE_REGEX, quad, |capture: &Captures<'_>| {
+                let old_label = capture
+                    .get(2)
+                    .ok_or(FormatterError::Failed(
+                        "Failed to find old_label".to_string(),
+                    ))?
+                    .as_str();
+                let new_label =
+                    c14n_label_map
+                        .get(old_label)
+                        .ok_or(FormatterError::Failed(format!(
+                            "Failed to find old_label: {old_label}"
+                        )))?;
+                Ok(format!("_:{new_label}"))
+            })
         })
+        .collect::<Result<Vec<_>, FormatterError>>()?
+        .into_iter()
         .sorted()
         .collect();
 
     Ok((canonical_nquads, label_map))
+}
+
+fn replace_all<E>(
+    re: &Regex,
+    haystack: &str,
+    replacement: impl Fn(&Captures) -> Result<String, E>,
+) -> Result<String, E> {
+    let mut new = String::with_capacity(haystack.len());
+    let mut last_match = 0;
+    for caps in re.captures_iter(haystack) {
+        let Some(m) = caps.get(0) else {
+            continue;
+        };
+        new.push_str(&haystack[last_match..m.start()]);
+        new.push_str(&replacement(&caps)?);
+        last_match = m.end();
+    }
+    new.push_str(&haystack[last_match..]);
+    Ok(new)
 }
 
 pub async fn label_replacement_canonicalize_json_ld(
@@ -209,7 +240,16 @@ pub fn create_label_map_function(
         let mut bnode_id_map = BTreeMap::new();
 
         for (input, c14n_label) in canonical_id_map {
-            bnode_id_map.insert(input.to_string(), label_map[c14n_label.as_str()].clone());
+            bnode_id_map.insert(
+                input.to_string(),
+                label_map
+                    .get(c14n_label.as_str())
+                    .ok_or(FormatterError::Failed(format!(
+                        "Failed to find c14n_label: {}",
+                        c14n_label.as_str()
+                    )))?
+                    .clone(),
+            );
         }
 
         Ok(bnode_id_map)

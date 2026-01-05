@@ -1,3 +1,5 @@
+#![allow(clippy::indexing_slicing)]
+
 use proc_macro::TokenStream;
 
 mod modify_schema;

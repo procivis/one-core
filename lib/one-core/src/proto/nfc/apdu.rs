@@ -1,6 +1,6 @@
 // Implementation of APDU message encoding/decoding according to ISO 7816-4
 
-use anyhow::bail;
+use anyhow::{Context, bail};
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Command {
@@ -25,29 +25,35 @@ impl TryFrom<Vec<u8>> for Command {
                 bail!("Invalid APDU command - index out of bounds");
             }
 
-            let encoded: [u8; 2] = encoded[index..(index + 2)].try_into()?;
+            let encoded: [u8; 2] = encoded
+                .get(index..(index + 2))
+                .context("Invalid APDU command")?
+                .try_into()?;
             Ok(u16::from_be_bytes(encoded))
         };
 
-        let cla = encoded[0];
-        let ins = encoded[1];
-        let p1 = encoded[2];
-        let p2 = encoded[3];
+        let cla = encoded.first().context("Invalid APDU command")?.to_owned();
+        let ins = encoded.get(1).context("Invalid APDU command")?.to_owned();
+        let p1 = encoded.get(2).context("Invalid APDU command")?.to_owned();
+        let p2 = encoded.get(3).context("Invalid APDU command")?.to_owned();
         let mut payload = vec![];
         let mut le = 0;
 
         if encoded.len() == 5 {
-            let enc_le = encoded[4] as usize;
+            let enc_le = encoded.get(4).context("Invalid APDU command")?.to_owned() as usize;
             le = if enc_le == 0 { 0x100 } else { enc_le };
         } else if encoded.len() > 5 {
-            let mut lc = encoded[4] as usize;
+            let mut lc = encoded.get(4).context("Invalid APDU command")?.to_owned() as usize;
             let mut lc_ends_at: usize = 5;
             if lc == 0 {
                 lc = to_u16(5)? as _;
                 lc_ends_at = 7;
             }
             if lc > 0 && lc_ends_at + lc <= encoded.len() {
-                payload = encoded[lc_ends_at..(lc_ends_at + lc)].to_vec();
+                payload = encoded
+                    .get(lc_ends_at..(lc_ends_at + lc))
+                    .context("Invalid APDU command")?
+                    .to_vec();
             } else {
                 lc = 0;
                 lc_ends_at = 4;
@@ -57,7 +63,8 @@ impl TryFrom<Vec<u8>> for Command {
             le = match le_len {
                 0 => 0,
                 1 => {
-                    let enc_le = encoded[encoded.len() - 1] as usize;
+                    let enc_le =
+                        encoded.last().context("Invalid APDU command")?.to_owned() as usize;
                     if enc_le == 0 { 0x100 } else { enc_le }
                 }
                 2 | 3 => {
@@ -162,8 +169,8 @@ impl TryFrom<Vec<u8>> for Response {
         let tail = encoded.split_off(length - 2);
         Ok(Self {
             payload: encoded,
-            sw1: tail[0],
-            sw2: tail[1],
+            sw1: tail.first().context("Invalid APDU response")?.to_owned(),
+            sw2: tail.get(1).context("Invalid APDU response")?.to_owned(),
         })
     }
 }

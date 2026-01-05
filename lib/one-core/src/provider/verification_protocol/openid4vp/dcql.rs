@@ -353,6 +353,7 @@ pub(super) async fn filter_credentials_by_trusted_authorities(
             // or maybe `.contains_bytes()` once the following gets implemented:
             // https://github.com/rust-lang/rust/issues/134149
             for window in credential_aki.windows(trusted_aki.len()) {
+                #[allow(clippy::indexing_slicing)]
                 if window.iter().eq(trusted_aki.iter()) {
                     keep[idx] = true;
                     continue 'cred;

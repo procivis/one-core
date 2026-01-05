@@ -190,7 +190,7 @@ linter:clippy:
   stage: test
   needs: []
   script:
-    - cargo clippy --all-targets --message-format=json -- -D warnings -D clippy::expect_used -D clippy::panic -D clippy::unwrap_used > clippy.json
+    - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
   artifacts:
     expire_in: 1 day
     when: always

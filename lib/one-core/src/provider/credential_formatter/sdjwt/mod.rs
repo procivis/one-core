@@ -562,7 +562,11 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                     "Invalid credential format".to_string(),
                 ))?;
         let expected_hash = hasher
-            .hash_base64_url(&token.as_bytes()[..=payload_end])
+            .hash_base64_url(token.as_bytes().get(..=payload_end).ok_or(
+                FormatterError::CouldNotExtractCredentials(
+                    "Could not extract payload for hash".to_string(),
+                ),
+            )?)
             .map_err(|err| {
                 FormatterError::CouldNotFormat(format!("failed to hash token: {err}"))
             })?;

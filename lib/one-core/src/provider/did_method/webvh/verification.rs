@@ -175,7 +175,13 @@ fn verify_scid(scid: &str, first_line_raw: &str) -> Result<(), DidMethodError> {
         ));
     }
 
-    json_array[0] = json!("{SCID}");
+    let Some(elem) = json_array.get_mut(0) else {
+        return Err(ResolutionError(
+            "Log entry must be a JSON array with 5 elements".to_string(),
+        ));
+    };
+    *elem = json!("{SCID}");
+
     json_array.pop(); // remove proof
 
     let hash = canonicalized_hash(json_value)?;
@@ -207,11 +213,16 @@ fn verify_version_id(
             "Log entry must be a JSON array with 5 elements".to_string(),
         ));
     }
-    let current_version_id = json_array[0]
+
+    let Some(current_version_id) = json_array.first() else {
+        return Err(ResolutionError(
+            "Log entry must be a JSON array with 5 elements".to_string(),
+        ));
+    };
+    let current_version_id = current_version_id
         .as_str()
         .ok_or(ResolutionError(format!(
-            "Expected versionId of type string but got '{}'.",
-            json_array[0]
+            "Expected versionId of type string but got '{current_version_id}'."
         )))?
         .to_string();
     let (index, expected_entry_hash) =
@@ -227,7 +238,13 @@ fn verify_version_id(
         )));
     }
 
-    json_array[0] = json!(scid_or_prev_version_id);
+    let Some(elem) = json_array.get_mut(0) else {
+        return Err(ResolutionError(
+            "Log entry must be a JSON array with 5 elements".to_string(),
+        ));
+    };
+    *elem = json!(scid_or_prev_version_id);
+
     json_array.pop(); // remove proof
 
     let hash = canonicalized_hash(json_value)?;
