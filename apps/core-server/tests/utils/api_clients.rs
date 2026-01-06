@@ -27,6 +27,7 @@ use self::wallet_units::WalletUnitsApi;
 use super::field_match::FieldHelpers;
 use crate::utils::api_clients::cache::CacheApi;
 use crate::utils::api_clients::holder_wallet_unit::HolderWalletUnitsApi;
+use crate::utils::api_clients::signatures::SignaturesApi;
 use crate::utils::api_clients::wallet_provider::WalletProviderApi;
 
 mod cache;
@@ -45,6 +46,7 @@ pub mod organisations;
 pub mod other;
 pub mod proof_schemas;
 pub mod proofs;
+pub mod signatures;
 pub mod ssi;
 pub mod tasks;
 pub mod trust_anchors;
@@ -206,6 +208,7 @@ pub struct Client {
     pub wallet_provider: WalletProviderApi,
     pub wallet_units: WalletUnitsApi,
     pub holder_wallet_units: HolderWalletUnitsApi,
+    pub signatures: SignaturesApi,
     pub base_url: String,
 }
 
@@ -239,7 +242,8 @@ impl Client {
             certificates: CertificatesApi::new(client.clone()),
             wallet_provider: WalletProviderApi::new(client.clone()),
             wallet_units: WalletUnitsApi::new(client.clone()),
-            holder_wallet_units: HolderWalletUnitsApi::new(client),
+            holder_wallet_units: HolderWalletUnitsApi::new(client.clone()),
+            signatures: SignaturesApi::new(client),
             base_url,
         }
     }

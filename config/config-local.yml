@@ -14,6 +14,7 @@ app:
   enableExternalEndpoints: true
   enableManagementEndpoints: true
   enableHistoryCreateEndpoint: true
+  enableSignatureEndpoints: true
   enableWalletProvider: true
   auth:
     mode: UNSAFE_STATIC
