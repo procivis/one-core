@@ -129,7 +129,10 @@ impl OrganisationService {
             .await;
 
         match result {
-            Ok(uuid) => Ok(uuid),
+            Ok(uuid) => {
+                tracing::info!("Created organisation {}", uuid);
+                Ok(uuid)
+            }
             Err(DataLayerError::AlreadyExists) => {
                 Err(BusinessLogicError::OrganisationAlreadyExists.into())
             }
@@ -159,13 +162,18 @@ impl OrganisationService {
             .await?;
         }
 
+        // TODO: improve?
+        let success_log = format!("Updated organisation {}", request.id);
         let result = self
             .organisation_repository
             .update_organisation(request.clone().into())
             .await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(_) => {
+                tracing::info!(message = success_log);
+                Ok(())
+            }
             Err(DataLayerError::AlreadyExists) => {
                 Err(BusinessLogicError::OrganisationAlreadyExists.into())
             }

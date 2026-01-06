@@ -197,6 +197,12 @@ impl DidService {
             .did
             .ok_or(ServiceError::MappingError("Did not found".to_string()))?;
 
+        tracing::info!(
+            "Created did `{}` ({}): did method `{}`",
+            did.name,
+            did.id,
+            did.did_method
+        );
         Ok(did.id)
     }
 
@@ -246,21 +252,29 @@ impl DidService {
                     "No identifier for this did exists".to_string(),
                 ))?;
 
+            let new_state = if deactivated {
+                IdentifierState::Deactivated
+            } else {
+                IdentifierState::Active
+            };
             self.identifier_repository
                 .update(
                     &identifier.id,
                     UpdateIdentifierRequest {
-                        state: Some(if deactivated {
-                            IdentifierState::Deactivated
-                        } else {
-                            IdentifierState::Active
-                        }),
+                        state: Some(new_state),
                         ..Default::default()
                     },
                 )
                 .await?;
-        }
 
+            // Success log is only written if update request was not empty
+            tracing::info!(
+                "Updated did `{}` ({}): new state `{:?}`",
+                did.name,
+                did.id,
+                new_state
+            );
+        }
         Ok(())
     }
 

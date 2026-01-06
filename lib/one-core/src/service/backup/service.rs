@@ -81,6 +81,8 @@ impl BackupService {
             .create_history(history_event)
             .await?;
 
+        tracing::info!("Created backup `{}`", output_path);
+
         Ok(BackupCreateResponseDTO {
             history_id,
             file: output_path,
@@ -161,6 +163,7 @@ impl BackupService {
             .map_err(|err| {
                 ServiceError::Other(format!("failed to finalize backup import: {err}"))
             })?;
+        tracing::info!("Restored backup");
         Ok(())
     }
 

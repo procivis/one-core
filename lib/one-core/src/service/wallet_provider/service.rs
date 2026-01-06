@@ -120,17 +120,17 @@ impl WalletProviderService {
         &self,
         request: RegisterWalletUnitRequestDTO,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
-        let (config, config_params) =
-            self.get_wallet_provider_config_params(request.wallet_provider.as_ref())?;
+        let wallet_provider = request.wallet_provider.to_owned();
+        let (config, config_params) = self.get_wallet_provider_config_params(&wallet_provider)?;
 
         let Some(organisation) = self
             .organisation_repository
-            .get_organisation_for_wallet_provider(request.wallet_provider.as_ref())
+            .get_organisation_for_wallet_provider(&wallet_provider)
             .await?
         else {
             return Err(WalletProviderError::WalletProviderNotAssociatedWithOrganisation.into());
         };
-        validate_org_wallet_provider(&organisation, &request.wallet_provider)?;
+        validate_org_wallet_provider(&organisation, &wallet_provider)?;
 
         if !config_params.wallet_app_attestation.integrity_check.enabled
             && request.proof.is_none()
@@ -141,7 +141,7 @@ impl WalletProviderService {
             return Err(WalletProviderError::AppIntegrityCheckNotRequired.into());
         }
 
-        if config_params.wallet_app_attestation.integrity_check.enabled
+        let result = if config_params.wallet_app_attestation.integrity_check.enabled
             && request.os != WalletUnitOs::Web
         {
             if request.public_key.is_some() || request.proof.is_some() {
@@ -176,7 +176,14 @@ impl WalletProviderService {
                 public_key_jwk,
             )
             .await
-        }
+        }?;
+
+        tracing::info!(
+            "Created wallet unit {} (requires activation `{}`): wallet provider `{wallet_provider}`",
+            result.id,
+            result.nonce.is_some()
+        );
+        Ok(result)
     }
 
     async fn create_wallet_unit_with_nonce(
@@ -430,6 +437,7 @@ impl WalletProviderService {
             organisation.id,
         )
         .await;
+        tracing::info!("Activated wallet unit {}", wallet_unit_id);
         Ok(())
     }
 
@@ -697,7 +705,7 @@ impl WalletProviderService {
                 .boxed())
                 .await??;
         }
-
+        tracing::info!("Issued attestations for wallet unit {}", wallet_unit_id);
         Ok(IssueWalletUnitAttestationResponseDTO {
             waa: app_attestations,
             wua: key_attestations,
@@ -1045,7 +1053,7 @@ impl WalletProviderService {
         validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
-    pub async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicKeyJwk, ServiceError> {
+    async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicKeyJwk, ServiceError> {
         let pop_token = Jwt::<NoncePayload>::decompose_token(pop)?;
         let jwk = pop_token
             .header
@@ -1150,6 +1158,7 @@ impl WalletProviderService {
                 .update_attestation_entries(keys, RevocationState::Revoked)
                 .await?;
         }
+        tracing::info!("Revoked wallet unit {}", id);
         Ok(())
     }
 
@@ -1170,6 +1179,7 @@ impl WalletProviderService {
             .delete_history_by_entity_id((*id).into())
             .await
             .inspect_err(|e| tracing::warn!("Failed to write wallet unit history: {e}"));
+        tracing::info!("Deleted wallet unit {}", id);
         Ok(())
     }
 

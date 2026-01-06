@@ -7,6 +7,7 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{DidValue, OrganisationId};
+use strum::Display;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
@@ -383,7 +384,7 @@ pub enum OpenID4VCICredentialRequestProofs {
     Attestation([String; 1]),
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Display)]
 #[serde(rename_all = "snake_case")]
 pub enum OpenID4VCINotificationEvent {
     CredentialAccepted,

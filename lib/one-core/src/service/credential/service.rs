@@ -199,6 +199,15 @@ impl CredentialService {
             &claim_schemas,
         )?;
 
+        let success_log = format!(
+            "Created credential {} using schema `{}` ({}) and issuer `{}` ({}): protocol `{}`",
+            credential_id,
+            schema.name,
+            schema.id,
+            issuer_identifier.name,
+            issuer_identifier.id,
+            request.protocol
+        );
         let issuer_key = issuer_key.to_owned();
         let credential = from_create_request(
             request,
@@ -212,9 +221,10 @@ impl CredentialService {
 
         let result = self
             .credential_repository
-            .create_credential(credential.to_owned())
+            .create_credential(credential)
             .await?;
 
+        tracing::info!(message = success_log);
         Ok(result)
     }
 
@@ -284,6 +294,7 @@ impl CredentialService {
                 error => ServiceError::from(error),
             })?;
 
+        tracing::info!("Deleted credential {}", credential.id);
         Ok(())
     }
 
@@ -415,6 +426,7 @@ impl CredentialService {
     ) -> Result<(), ServiceError> {
         self.change_issued_credential_revocation_state(credential_id, RevocationState::Valid)
             .await?;
+        tracing::info!("Reactivated credential {credential_id}");
         Ok(())
     }
 
@@ -430,6 +442,7 @@ impl CredentialService {
             },
         )
         .await?;
+        tracing::info!("Suspended credential {credential_id}");
         Ok(())
     }
 
@@ -444,6 +457,7 @@ impl CredentialService {
     ) -> Result<(), ServiceError> {
         self.change_issued_credential_revocation_state(credential_id, RevocationState::Revoked)
             .await?;
+        tracing::info!("Revoked credential {credential_id}");
         Ok(())
     }
 
@@ -562,7 +576,7 @@ impl CredentialService {
             )
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
-
+        tracing::info!("Shared credential {credential_id}");
         Ok(EntityShareResponseDTO { url, expires_at })
     }
 

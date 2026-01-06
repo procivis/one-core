@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use indexmap::IndexMap;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
@@ -476,14 +477,17 @@ impl OID4VCIDraft13Service {
             ))
         }?;
 
-        self.transaction_manager
+        let response = self
+            .transaction_manager
             .tx_with_config(
                 self.issue_tx(interaction_id, holder_identifier, holder_key_id, credential)
                     .boxed(),
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
-            .await?
+            .await??;
+        tracing::info!("Issued credential {}", credential.id);
+        Ok(response)
     }
 
     async fn issue_tx(
@@ -764,7 +768,7 @@ impl OID4VCIDraft13Service {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
 
-        let tx = async {
+        let tx: BoxFuture<Result<_, ServiceError>> = async {
             // Lock the interaction to ensure exclusive access
             let mut interaction = self
                 .interaction_repository
@@ -829,7 +833,12 @@ impl OID4VCIDraft13Service {
             Ok(response)
         }
         .boxed();
-        self.transaction_manager.tx(tx).await?
+        let result = self.transaction_manager.tx(tx).await??;
+        tracing::info!(
+            "Issued access token for issuance of credential {}",
+            credential.id
+        );
+        Ok(result)
     }
 }
 

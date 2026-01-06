@@ -107,6 +107,7 @@ impl SSIHolderService {
             )
             .await?;
 
+        tracing::info!("Rejected proof request {}", proof.id);
         Ok(())
     }
 
@@ -319,7 +320,9 @@ impl SSIHolderService {
             credential_presentations,
             disclosed_claims.into_values().collect(),
         )
-        .await
+        .await?;
+        tracing::info!("Submitted presentation V1 for proof request {}", proof.id);
+        Ok(())
     }
 
     async fn submit_and_update_proof(
@@ -578,7 +581,9 @@ impl SSIHolderService {
             credential_presentations,
             submitted_claims,
         )
-        .await
+        .await?;
+        tracing::info!("Submitted presentation V2 for proof request {}", proof.id);
+        Ok(())
     }
 
     pub(super) async fn handle_verification_invitation(

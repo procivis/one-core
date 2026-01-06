@@ -77,6 +77,7 @@ impl TrustEntityService {
 
         let (entity_type, entity_params) = request.try_into()?;
 
+        let trust_anchor_id = trust_anchor.id;
         let trust_entity = match entity_type {
             CreateTrustEntityTypeDTO::Identifier(identifier_id) => {
                 self.trust_entity_from_identifier_params(
@@ -102,15 +103,22 @@ impl TrustEntityService {
             }
         };
 
-        self.trust_entity_repository
+        let success_log = format!(
+            "Created trust entity `{}` ({}) using trust anchor {trust_anchor_id}",
+            trust_entity.name, trust_entity.id
+        );
+        let id = self
+            .trust_entity_repository
             .create(trust_entity)
             .await
             .map_err(|err| match err {
                 DataLayerError::AlreadyExists => {
-                    BusinessLogicError::TrustEntityAlreadyPresent.into()
+                    ServiceError::from(BusinessLogicError::TrustEntityAlreadyPresent)
                 }
                 err => err.into(),
-            })
+            })?;
+        tracing::info!(message = success_log);
+        Ok(id)
     }
 
     async fn trust_entity_from_certificate_params(

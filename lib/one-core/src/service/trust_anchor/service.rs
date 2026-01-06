@@ -46,13 +46,22 @@ impl TrustAnchorService {
 
         let anchor = trust_anchor_from_request(request, core_base_url)?;
 
-        self.trust_anchor_repository
+        let success_log = format!(
+            "Created trust anchor `{}` ({}): type `{}`, publisher {}",
+            anchor.name, anchor.id, anchor.r#type, anchor.is_publisher
+        );
+        let id = self
+            .trust_anchor_repository
             .create(anchor)
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => BusinessLogicError::TrustAnchorNameTaken.into(),
+                DataLayerError::AlreadyExists => {
+                    ServiceError::from(BusinessLogicError::TrustAnchorNameTaken)
+                }
                 err => err.into(),
-            })
+            })?;
+        tracing::info!(message = success_log);
+        Ok(id)
     }
 
     pub async fn get_trust_list(
@@ -118,14 +127,14 @@ impl TrustAnchorService {
     }
 
     pub async fn delete_trust_anchor(&self, anchor_id: TrustAnchorId) -> Result<(), ServiceError> {
-        self.trust_anchor_repository
+        let anchor = self
+            .trust_anchor_repository
             .get(anchor_id)
             .await?
             .ok_or(EntityNotFoundError::TrustAnchor(anchor_id))?;
 
-        self.trust_anchor_repository
-            .delete(anchor_id)
-            .await
-            .map_err(Into::into)
+        self.trust_anchor_repository.delete(anchor_id).await?;
+        tracing::info!("Deleted trust anchor `{}` ({})", anchor.name, anchor_id);
+        Ok(())
     }
 }

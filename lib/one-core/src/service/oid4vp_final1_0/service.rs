@@ -255,7 +255,10 @@ impl OID4VPFinal1_0Service {
                 BusinessLogicError::MissingProofForInteraction(interaction_id),
             ))?;
 
-        self.verify_submission(proof, unpacked_request).await
+        let proof_id = proof.id;
+        let result = self.verify_submission(proof, unpacked_request).await?;
+        tracing::info!("Successfully verified response for proof request {proof_id}",);
+        Ok(result)
     }
 
     async fn verify_submission(

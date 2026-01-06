@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use futures::FutureExt;
+use futures::future::BoxFuture;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
@@ -585,7 +586,8 @@ impl OID4VCIFinal1_0Service {
             }
         };
 
-        self.transaction_manager
+        let result = self
+            .transaction_manager
             .tx_with_config(
                 self.issue_tx(
                     interaction_id,
@@ -598,7 +600,9 @@ impl OID4VCIFinal1_0Service {
                 Some(IsolationLevel::ReadCommitted),
                 None,
             )
-            .await?
+            .await??;
+        tracing::info!("Issued credential {}", credential.id);
+        Ok(result)
     }
 
     async fn issue_tx(
@@ -790,10 +794,9 @@ impl OID4VCIFinal1_0Service {
             }
         };
 
-        tracing::debug!(
-            "Credential notified: {:?}, description: {:?}",
-            request.event,
-            request.event_description
+        let success_log = format!(
+            "Processed notification for credential {}: event `{}`, description: `{:?}`",
+            credential.id, request.event, request.event_description
         );
 
         let new_state = match request.event {
@@ -845,7 +848,7 @@ impl OID4VCIFinal1_0Service {
                 .mark_credential_as(credential, RevocationState::Revoked)
                 .await?;
         }
-
+        tracing::info!(message = success_log);
         Ok(())
     }
 
@@ -921,7 +924,7 @@ impl OID4VCIFinal1_0Service {
         let refresh_token_expires_in =
             get_exchange_param_refresh_token_expires_in(&self.config, &credential.protocol)?;
 
-        let tx = async {
+        let tx: BoxFuture<Result<_, ServiceError>> = async {
             // Lock the interaction to ensure exclusive access
             let mut interaction = self
                 .interaction_repository
@@ -1019,7 +1022,12 @@ impl OID4VCIFinal1_0Service {
             Ok(response)
         }
         .boxed();
-        self.transaction_manager.tx(tx).await?
+        let result = self.transaction_manager.tx(tx).await??;
+        tracing::info!(
+            "Issued access token for issuance of credential {}",
+            credential.id
+        );
+        Ok(result)
     }
 
     async fn validate_oauth_client_attestation(

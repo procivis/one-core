@@ -47,6 +47,7 @@ impl HistoryService {
         request.user = self.session_provider.session().user();
 
         let history = self.history_repository.create_history(request).await?;
+        tracing::info!("Created history entry: {}", history);
         Ok(history)
     }
 }

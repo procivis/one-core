@@ -101,7 +101,7 @@ impl IdentifierService {
             );
         }
 
-        match (request.did, request.key_id, request.certificates) {
+        let identifier = match (request.did, request.key_id, request.certificates) {
             // IdentifierType::Did
             (Some(did), None, None) => {
                 validate_identifier_type(
@@ -111,16 +111,13 @@ impl IdentifierService {
 
                 let did_request = to_create_did_request(&request.name, did, organisation.id);
 
-                let identifier = self
-                    .identifier_creator
+                self.identifier_creator
                     .create_local_identifier(
                         request.name,
                         CreateLocalIdentifierRequest::Did(did_request),
                         organisation,
                     )
-                    .await?;
-
-                Ok(identifier.id)
+                    .await?
             }
             // IdentifierType::Key
             (None, Some(key_id), None) => {
@@ -139,16 +136,13 @@ impl IdentifierService {
                     .await?
                     .ok_or(EntityNotFoundError::Key(key_id))?;
 
-                let identifier = self
-                    .identifier_creator
+                self.identifier_creator
                     .create_local_identifier(
                         request.name,
                         CreateLocalIdentifierRequest::Key(key),
                         organisation,
                     )
-                    .await?;
-
-                Ok(identifier.id)
+                    .await?
             }
             // IdentifierType::Certificate
             (None, None, Some(certificate_requests)) => {
@@ -157,20 +151,25 @@ impl IdentifierService {
                     &self.config.identifier,
                 )?;
 
-                let identifier = self
-                    .identifier_creator
+                self.identifier_creator
                     .create_local_identifier(
                         request.name,
                         CreateLocalIdentifierRequest::Certificate(certificate_requests),
                         organisation,
                     )
-                    .await?;
-
-                Ok(identifier.id)
+                    .await?
             }
             // invalid input combinations
-            _ => Err(ValidationError::InvalidIdentifierInput.into()),
-        }
+            _ => return Err(ValidationError::InvalidIdentifierInput.into()),
+        };
+
+        tracing::info!(
+            "Created identifier `{}` ({}) with type `{}`",
+            identifier.name,
+            identifier.id,
+            identifier.r#type
+        );
+        Ok(identifier.id)
     }
 
     /// Deletes an identifier
@@ -205,6 +204,11 @@ impl IdentifierService {
                 }
                 e => e.into(),
             })?;
+        tracing::info!(
+            "Deleted identifier `{}` ({})`",
+            identifier.name,
+            identifier.id
+        );
         Ok(())
     }
 }

@@ -128,6 +128,12 @@ impl KeyService {
                 err => err.error_while("creating key").into(),
             })?;
 
+        tracing::info!(
+            "Created key `{}` ({uuid}): storage provider `{}`, algorithm `{}`",
+            key_entity.name,
+            key_entity.storage_type,
+            key_entity.key_type
+        );
         Ok(uuid)
     }
 
@@ -197,6 +203,8 @@ impl KeyService {
             .context("Failed creating CSR")?
             .pem()
             .context("CSR PEM conversion failed")?;
+
+        tracing::info!("Created CSR for key `{}` ({})", key.name, key.id);
 
         let result = self
             .history_repository

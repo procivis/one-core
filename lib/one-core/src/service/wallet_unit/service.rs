@@ -150,6 +150,10 @@ impl WalletUnitService {
             os,
             now.unix_timestamp()
         );
+        let success_log = format!(
+            "Registered wallet unit `{wallet_unit_name}`({holder_wallet_unit_id}) using wallet provider `{}`",
+            request.wallet_provider.url
+        );
         self.history_repository
             .create_history(History {
                 id: Uuid::new_v4().into(),
@@ -165,6 +169,7 @@ impl WalletUnitService {
                 user: self.session_provider.session().user(),
             })
             .await?;
+        tracing::info!(message = success_log);
         Ok(holder_wallet_unit_id)
     }
 

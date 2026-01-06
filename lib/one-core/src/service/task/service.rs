@@ -10,6 +10,8 @@ impl TaskService {
             .get_task(task_id)
             .ok_or(MissingProviderError::Task(task_id.to_owned()))?;
 
-        task.run().await
+        let result = task.run().await?;
+        tracing::info!("Executed task `{task_id}`");
+        Ok(result)
     }
 }

@@ -205,10 +205,16 @@ impl ProofSchemaService {
             self.base_url.as_deref(),
         )?;
 
-        self.proof_schema_repository
+        let success_log = format!(
+            "Created proof schema `{}` ({})",
+            proof_schema.name, proof_schema.id
+        );
+        let result = self
+            .proof_schema_repository
             .create_proof_schema(proof_schema)
-            .await
-            .map_err(Into::into)
+            .await?;
+        tracing::info!(message = success_log);
+        Ok(result)
     }
 
     /// Removes a proof schema
@@ -246,7 +252,9 @@ impl ProofSchemaService {
                 }
                 .into(),
                 error => ServiceError::from(error),
-            })
+            })?;
+        tracing::info!("Deleted proof schema {}", id);
+        Ok(())
     }
 
     pub async fn share_proof_schema(
@@ -358,11 +366,15 @@ impl ProofSchemaService {
             imported_source_url: Some(schema.imported_source_url),
         };
 
+        let success_log = format!(
+            "Imported proof schema `{}` ({})",
+            proof_schema.name, proof_schema.id
+        );
         let proof_schema_id = self
             .proof_schema_repository
             .create_proof_schema(proof_schema)
             .await?;
-
+        tracing::info!(message = success_log);
         Ok(ImportProofSchemaResponseDTO {
             id: proof_schema_id,
         })

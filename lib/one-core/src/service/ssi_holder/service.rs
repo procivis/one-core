@@ -29,7 +29,7 @@ impl SSIHolderService {
         if let Some((issuance_exchange, issuance_protocol)) =
             self.issuance_protocol_provider.detect_protocol(&url).await
         {
-            return self
+            let result = self
                 .handle_issuance_invitation(
                     url,
                     organisation,
@@ -37,11 +37,16 @@ impl SSIHolderService {
                     issuance_protocol,
                     redirect_uri,
                 )
-                .await;
+                .await?;
+            success_log(&result);
+            return Ok(result);
         }
 
-        self.handle_verification_invitation(url, organisation, transport)
-            .await
+        let result = self
+            .handle_verification_invitation(url, organisation, transport)
+            .await?;
+        success_log(&result);
+        Ok(result)
     }
 
     pub(super) fn storage_proxy(&self) -> StorageProxyImpl {
@@ -54,5 +59,22 @@ impl SSIHolderService {
             self.key_repository.clone(),
             self.identifier_repository.clone(),
         )
+    }
+}
+
+fn success_log(result: &HandleInvitationResultDTO) {
+    match result {
+        HandleInvitationResultDTO::Credential { interaction_id, .. } => tracing::info!(
+            "Handled invitation and created interaction {interaction_id} for credential issuance using pre-authorized code flow`",
+        ),
+        HandleInvitationResultDTO::AuthorizationCodeFlow { interaction_id, .. } => tracing::info!(
+            "Handled invitation and created interaction {interaction_id} for credential issuance using authorization code flow`",
+        ),
+        HandleInvitationResultDTO::ProofRequest {
+            interaction_id,
+            proof_id,
+        } => tracing::info!(
+            "Handled invitation and created interaction {interaction_id} for proof request {proof_id}"
+        ),
     }
 }

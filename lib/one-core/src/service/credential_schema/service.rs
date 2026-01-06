@@ -18,6 +18,7 @@ use crate::service::credential_schema::validator::UniquenessCheckResult;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
+use crate::util::logging::quoted_opt_provider;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -111,10 +112,21 @@ impl CredentialSchemaService {
             ))?
             .extend(metadata_claims);
 
-        self.credential_schema_repository
+        let success_log = format!(
+            "Created credential schema `{}` ({id}): format `{}`, revocation method `{}`, key storage security {}",
+            credential_schema.name,
+            credential_schema.format,
+            credential_schema.revocation_method,
+            quoted_opt_provider(&credential_schema.key_storage_security)
+        );
+        let schema_id = self
+            .credential_schema_repository
             .create_credential_schema(credential_schema)
             .await
-            .map_err(ServiceError::from)
+            .map_err(ServiceError::from)?;
+
+        tracing::info!(message = success_log);
+        Ok(schema_id)
     }
 
     /// Deletes a credential schema
@@ -153,6 +165,11 @@ impl CredentialSchemaService {
                 error => ServiceError::from(error),
             })?;
 
+        tracing::info!(
+            "Deleted credential schema `{}` ({})",
+            credential_schema.name,
+            credential_schema.id
+        );
         Ok(())
     }
 
@@ -241,11 +258,20 @@ impl CredentialSchemaService {
             },
         )?;
 
+        let success_log = format!(
+            "Imported credential schema `{}` ({}): format `{}`, revocation method `{}`, key storage security {}",
+            credential_schema.name,
+            credential_schema.id,
+            credential_schema.format,
+            credential_schema.revocation_method,
+            quoted_opt_provider(&credential_schema.key_storage_security)
+        );
+
         let credential_schema = self
             .importer_proto
             .import_credential_schema(credential_schema)
             .await?;
-
+        tracing::info!(message = success_log);
         Ok(credential_schema.id)
     }
 

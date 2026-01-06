@@ -146,7 +146,7 @@ impl SSIHolderService {
             None
         };
 
-        if credentials.is_empty() {
+        let credential_id = if credentials.is_empty() {
             self.accept_credential_final1(
                 interaction_id,
                 holder_binding_input,
@@ -157,7 +157,11 @@ impl SSIHolderService {
         } else {
             self.accept_credentials_draft13(credentials, holder_binding_input, tx_code)
                 .await
-        }
+        }?;
+        tracing::info!(
+            "Accepted issuance of credential {credential_id} for interaction {interaction_id}"
+        );
+        Ok(credential_id)
     }
 
     /// specific handling for the final-1 protocol, credential gets created after issued
@@ -754,6 +758,9 @@ impl SSIHolderService {
             })
             .await?;
 
+        tracing::info!(
+            "Initiated authorization code flow for credential issuance, created interaction {interaction_id}"
+        );
         Ok(InitiateIssuanceResponseDTO {
             interaction_id,
             url: authorization_response.url.to_string(),
@@ -852,6 +859,10 @@ impl SSIHolderService {
                 &self.storage_proxy(),
             )
             .await?;
+
+        tracing::info!(
+            "Processed authorization code flow result for credential issuance using interaction {interaction_id}"
+        );
 
         Ok(ContinueIssuanceResponseDTO {
             interaction_id,

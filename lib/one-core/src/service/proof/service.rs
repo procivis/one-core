@@ -538,6 +538,10 @@ impl ProofService {
             }
         };
 
+        let success_log_detail = format!(
+            "using proof schema `{}` ({}): protocol `{}`, transport `{}`",
+            proof_schema.name, proof_schema.id, request.protocol, transport
+        );
         let verifier_key = verifier_key.to_owned();
         let proof_id = self
             .proof_repository
@@ -553,6 +557,7 @@ impl ProofService {
             ))
             .await?;
 
+        tracing::info!("Created proof request {proof_id} {success_log_detail}");
         Ok(proof_id)
     }
 
@@ -649,7 +654,7 @@ impl ProofService {
             )
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
-
+        tracing::info!("Shared proof request {}", proof.id);
         Ok(EntityShareResponseDTO {
             url,
             expires_at: None,
@@ -741,7 +746,7 @@ impl ProofService {
 
             blob_storage.delete(&proof_blob_id).await?;
         }
-
+        tracing::info!("Deleted proof claims for proof {}", proof.id);
         Ok(())
     }
 
@@ -974,6 +979,7 @@ impl ProofService {
 
             blob_storage.delete(&proof_blob_id).await?;
         }
+        tracing::info!("Deleted proof {}", proof.id);
         Ok(())
     }
 
