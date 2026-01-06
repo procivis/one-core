@@ -711,6 +711,7 @@ async fn test_get_proof_with_array_holder() {
             organisation: Some(organisation),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
+            expires_at: None,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -976,6 +977,7 @@ async fn test_get_proof_with_array_in_object_holder() {
             organisation: Some(organisation),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
+            expires_at: None,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -1256,6 +1258,7 @@ async fn test_get_proof_with_object_array_holder() {
             organisation: Some(dummy_organisation(None)),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
+            expires_at: None,
         }),
         role: ProofRole::Holder,
         profile: None,
@@ -3710,6 +3713,9 @@ async fn test_share_proof_created_success() {
     let mut interaction_repository = MockInteractionRepository::new();
     interaction_repository
         .expect_create_interaction()
+        .withf(move |interaction| {
+            interaction.id == interaction_id && interaction.expires_at.unwrap() == expires_at
+        })
         .once()
         .in_sequence(&mut seq)
         .returning(move |_| Ok(interaction_id));
@@ -4053,6 +4059,7 @@ async fn test_delete_proof_ok_for_allowed_state(
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4131,6 +4138,7 @@ async fn test_delete_proof_ok_for_requested_state() {
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4212,6 +4220,7 @@ async fn test_delete_proof_fails_for_invalid_state(
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     });
 
     let mut proof_repository = MockProofRepository::default();
@@ -4307,6 +4316,7 @@ async fn test_retract_proof_with_bluetooth_ok() {
         }),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();
@@ -4398,6 +4408,7 @@ async fn test_retract_proof_success_holder_iso_mdl() {
         organisation: Some(dummy_organisation(None)),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     });
 
     let mut protocol_provider = MockVerificationProtocolProvider::default();

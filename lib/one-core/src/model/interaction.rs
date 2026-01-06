@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use shared_types::NonceId;
 use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -14,8 +15,9 @@ pub struct Interaction {
     pub last_modified: OffsetDateTime,
     pub data: Option<Vec<u8>>,
     pub organisation: Option<Organisation>,
-    pub nonce_id: Option<Uuid>,
+    pub nonce_id: Option<NonceId>,
     pub interaction_type: InteractionType,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]

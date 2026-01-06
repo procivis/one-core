@@ -751,6 +751,7 @@ pub fn proof_for_scan_to_verify(
             organisation: schema.organisation,
             nonce_id: None,
             interaction_type: InteractionType::Verification,
+            expires_at: None,
         }),
         proof_blob_id: None,
         engagement: None,

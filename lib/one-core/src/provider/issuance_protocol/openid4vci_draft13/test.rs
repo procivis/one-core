@@ -319,6 +319,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         }),
         key: None,
         profile: None,
@@ -616,6 +617,7 @@ async fn test_holder_accept_credential_success() {
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
     let credential = Credential {
         interaction: Some(interaction.clone()),
@@ -830,6 +832,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
 
     let credential = Credential {
@@ -1065,6 +1068,7 @@ async fn test_holder_accept_expired_credential_fails() {
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
 
     let credential = Credential {
@@ -1276,6 +1280,7 @@ async fn test_holder_reject_credential() {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         });
 
         credential

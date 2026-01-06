@@ -9,7 +9,6 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
-use shared_types::NonceId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -89,7 +88,7 @@ async fn test_create_interaction() {
     let organisation = dummy_organisation(Some(organisation_id));
 
     let id = Uuid::new_v4();
-    let nonce_id = Uuid::new_v4();
+    let nonce_id = Uuid::new_v4().into();
     let interaction = Interaction {
         id,
         created_date: get_dummy_date(),
@@ -98,6 +97,7 @@ async fn test_create_interaction() {
         organisation: Some(organisation),
         nonce_id: Some(nonce_id),
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
 
     let result = setup.provider.create_interaction(interaction).await;
@@ -107,7 +107,7 @@ async fn test_create_interaction() {
 
     let model = get_interaction(&setup.db, &id).await.unwrap();
     assert_eq!(model.data, Some(vec![1, 2, 3]));
-    assert_eq!(model.nonce_id, Some(NonceId::from(nonce_id)));
+    assert_eq!(model.nonce_id, Some(nonce_id));
 }
 
 #[tokio::test]
@@ -148,10 +148,10 @@ async fn test_mark_nonce_as_used() {
     .parse()
     .unwrap();
 
-    let nonce_id = Uuid::new_v4();
+    let nonce_id = Uuid::new_v4().into();
     setup
         .provider
-        .mark_nonce_as_used(&interaction_id, nonce_id.into())
+        .mark_nonce_as_used(&interaction_id, nonce_id)
         .await
         .unwrap();
 
@@ -171,7 +171,7 @@ async fn test_mark_nonce_as_used_already_used() {
     let organisation_id = insert_organisation_to_database(&setup.db, None, None)
         .await
         .unwrap();
-    let nonce_id = Uuid::new_v4();
+    let nonce_id = Uuid::new_v4().into();
     let interaction_id = insert_interaction(
         &setup.db,
         &[],
@@ -184,7 +184,7 @@ async fn test_mark_nonce_as_used_already_used() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id.into())
+        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id)
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
@@ -196,7 +196,7 @@ async fn test_mark_nonce_as_used_already_used_different_interaction() {
     let organisation_id = insert_organisation_to_database(&setup.db, None, None)
         .await
         .unwrap();
-    let nonce_id = Uuid::new_v4();
+    let nonce_id = Uuid::new_v4().into();
     insert_interaction(
         &setup.db,
         &[],
@@ -218,7 +218,7 @@ async fn test_mark_nonce_as_used_already_used_different_interaction() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id.into())
+        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id)
         .await;
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
 }

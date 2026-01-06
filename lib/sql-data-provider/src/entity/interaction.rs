@@ -15,6 +15,7 @@ pub struct Model {
     pub organisation_id: OrganisationId,
     pub nonce_id: Option<NonceId>,
     pub interaction_type: InteractionType,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

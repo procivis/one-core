@@ -11,6 +11,7 @@ pub(crate) async fn add_new_interaction(
     data: Option<Vec<u8>>,
     organisation: Option<Organisation>,
     interaction_type: InteractionType,
+    expires_at: Option<OffsetDateTime>,
 ) -> Result<Interaction, ServiceError> {
     let now = OffsetDateTime::now_utc();
 
@@ -22,6 +23,7 @@ pub(crate) async fn add_new_interaction(
         organisation,
         nonce_id: None,
         interaction_type,
+        expires_at,
     };
 
     interaction_repository

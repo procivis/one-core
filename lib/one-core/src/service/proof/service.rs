@@ -530,6 +530,7 @@ impl ProofService {
                         serde_json::to_vec(&data).ok(),
                         proof_schema.organisation.clone(),
                         InteractionType::Verification,
+                        None,
                     )
                     .await?,
                 );
@@ -638,6 +639,7 @@ impl ProofService {
             interaction_data,
             Some(organisation.to_owned()),
             InteractionType::Verification,
+            expires_at,
         )
         .await?;
 
@@ -878,6 +880,7 @@ impl ProofService {
             Some(interaction_data),
             organisation,
             InteractionType::Verification,
+            None,
         )
         .await?;
 

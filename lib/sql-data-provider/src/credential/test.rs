@@ -1049,6 +1049,7 @@ async fn test_update_credential_success() {
                 organisation: None,
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
+                expires_at: None,
             }))
         });
 
@@ -1167,6 +1168,7 @@ async fn test_update_credential_success_no_claims() {
                 organisation: None,
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
+                expires_at: None,
             }))
         });
 

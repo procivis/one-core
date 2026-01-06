@@ -108,6 +108,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
                     organisation: None,
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
+                    expires_at: None,
                 }),
                 ..dummy_proof()
             }))
@@ -175,6 +176,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
                         organisation: None,
                         nonce_id: None,
                         interaction_type: InteractionType::Verification,
+                        expires_at: None,
                     }),
                     ..dummy_proof()
                 }))
@@ -225,6 +227,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
                     organisation: None,
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
+                    expires_at: None,
                 }),
                 ..dummy_proof()
             }))
@@ -318,6 +321,7 @@ async fn test_submit_proof_succeeds() {
                     organisation: None,
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
+                    expires_at: None,
                 }),
                 ..dummy_proof()
             }))
@@ -542,6 +546,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
                     organisation: None,
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
+                    expires_at: None,
                 }),
                 ..dummy_proof()
             }))
@@ -781,6 +786,7 @@ async fn test_submit_proof_repeating_claims() {
                     organisation: None,
                     nonce_id: None,
                     interaction_type: InteractionType::Verification,
+                    expires_at: None,
                 }),
                 ..dummy_proof()
             }))
@@ -1463,6 +1469,7 @@ async fn test_continue_issuance() {
                 organisation: Some(organisation.clone()),
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
+                expires_at: None,
             }))
         });
 
@@ -1695,6 +1702,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             organisation: Some(dummy_organisation(organisation_id)),
             nonce_id: None,
             interaction_type: InteractionType::Verification,
+            expires_at: None,
         }),
         key: None,
         credential_blob_id: Some(Uuid::new_v4().into()),

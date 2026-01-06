@@ -316,6 +316,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         }),
         key: None,
         profile: None,
@@ -565,6 +566,7 @@ async fn test_holder_accept_credential_success() {
         organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
 
     Mock::given(method(Method::POST))
@@ -780,6 +782,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
 
     Mock::given(method(Method::POST))
@@ -1007,6 +1010,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         organisation: credential.schema.as_ref().unwrap().organisation.to_owned(),
         nonce_id: None,
         interaction_type: InteractionType::Issuance,
+        expires_at: None,
     };
 
     Mock::given(method(Method::POST))
@@ -1269,6 +1273,7 @@ async fn test_holder_reject_credential() {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         });
 
         credential

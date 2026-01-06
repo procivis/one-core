@@ -687,6 +687,7 @@ pub async fn create_interaction_with_id(
         organisation: Some(organisation.to_owned()),
         nonce_id: None,
         interaction_type,
+        expires_at: None,
     };
 
     data_layer

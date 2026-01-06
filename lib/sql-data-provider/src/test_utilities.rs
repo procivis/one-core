@@ -511,7 +511,7 @@ pub async fn insert_interaction(
     database: &DatabaseConnection,
     data: &[u8],
     organisation_id: OrganisationId,
-    nonce_id: Option<Uuid>,
+    nonce_id: Option<NonceId>,
     interaction_type: InteractionType,
 ) -> Result<String, DbErr> {
     let now = OffsetDateTime::now_utc();
@@ -522,8 +522,9 @@ pub async fn insert_interaction(
         last_modified: Set(now),
         data: Set(Some(data.to_owned())),
         organisation_id: Set(organisation_id),
-        nonce_id: Set(nonce_id.map(NonceId::from)),
+        nonce_id: Set(nonce_id),
         interaction_type: Set(interaction_type),
+        expires_at: Set(None),
     }
     .insert(database)
     .await?;

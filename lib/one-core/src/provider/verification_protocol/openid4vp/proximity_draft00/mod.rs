@@ -707,6 +707,7 @@ pub(super) async fn create_interaction_and_proof(
         organisation: Some(organisation),
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     };
 
     let interaction_id = storage_access

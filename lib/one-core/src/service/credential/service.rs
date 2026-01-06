@@ -562,6 +562,7 @@ impl CredentialService {
             interaction_data,
             Some(organisation.to_owned()),
             InteractionType::Issuance,
+            expires_at,
         )
         .await?;
         self.credential_repository

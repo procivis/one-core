@@ -385,6 +385,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         }),
         key: None,
         credential_blob_id: None,

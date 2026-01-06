@@ -176,6 +176,7 @@ async fn test_presentation_reject_ok() {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Verification,
+            expires_at: None,
         }),
         profile: None,
         proof_blob_id: None,

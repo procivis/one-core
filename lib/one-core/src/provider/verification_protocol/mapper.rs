@@ -37,6 +37,7 @@ pub(crate) fn interaction_from_handle_invitation(
         organisation,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     }
 }
 

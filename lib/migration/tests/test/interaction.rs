@@ -14,6 +14,7 @@ async fn test_db_schema_interaction() {
             "organisation_id",
             "nonce_id",
             "interaction_type",
+            "expires_at",
         ])
         .index("index-Interaction-NonceId-Unique", true, &["nonce_id"]);
     interaction
@@ -51,4 +52,8 @@ async fn test_db_schema_interaction() {
         .r#type(ColumnType::String(None))
         .nullable(false)
         .default(None);
+    interaction
+        .column("expires_at")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
 }

@@ -508,6 +508,7 @@ async fn test_get_proof_with_relations() {
                 organisation: None,
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
+                expires_at: None,
             }))
         });
 
@@ -785,6 +786,7 @@ async fn test_get_proof_by_interaction_id_success() {
                 organisation: None,
                 nonce_id: None,
                 interaction_type: InteractionType::Verification,
+                expires_at: None,
             }))
         });
 

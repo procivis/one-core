@@ -616,7 +616,9 @@ async fn test_share_credential_success() {
     let mut interaction_repository = MockInteractionRepository::default();
     interaction_repository
         .expect_create_interaction()
-        .withf(move |interaction| interaction.id == interaction_id)
+        .withf(move |interaction| {
+            interaction.id == interaction_id && interaction.expires_at.unwrap() == expires_at
+        })
         .once()
         .returning(|interaction| Ok(interaction.id));
 

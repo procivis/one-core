@@ -196,6 +196,7 @@ async fn test_presentation_definition_success() {
                         organisation: None,
                         nonce_id: None,
                         interaction_type: InteractionType::Verification,
+                        expires_at: None,
                     }),
                 }))
             });
@@ -275,6 +276,7 @@ async fn test_submit_proof_failed_credential_suspended() {
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     };
 
     let interaction_id_copy = interaction_id.to_owned();
@@ -454,6 +456,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     };
 
     let interaction_id_copy = interaction_id.to_owned();

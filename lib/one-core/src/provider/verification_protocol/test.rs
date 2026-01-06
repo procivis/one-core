@@ -504,6 +504,7 @@ fn dummy_credential() -> Credential {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         }),
         key: None,
         credential_blob_id: Some(Uuid::new_v4().into()),

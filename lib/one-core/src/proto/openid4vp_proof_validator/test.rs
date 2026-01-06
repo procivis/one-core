@@ -448,6 +448,7 @@ fn test_data(
         organisation: None,
         nonce_id: None,
         interaction_type: InteractionType::Verification,
+        expires_at: None,
     };
     let claim_schema_required = ClaimSchema {
         key: "required_key".to_string(),

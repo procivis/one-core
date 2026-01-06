@@ -736,6 +736,7 @@ fn dummy_credential() -> Credential {
             organisation: None,
             nonce_id: None,
             interaction_type: InteractionType::Issuance,
+            expires_at: None,
         }),
         key: None,
         profile: None,

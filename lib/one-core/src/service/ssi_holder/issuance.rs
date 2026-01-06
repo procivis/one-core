@@ -755,6 +755,7 @@ impl SSIHolderService {
                 organisation: Some(organisation),
                 nonce_id: None,
                 interaction_type: InteractionType::Issuance,
+                expires_at: None,
             })
             .await?;
 

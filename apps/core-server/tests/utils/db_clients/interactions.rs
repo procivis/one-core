@@ -30,6 +30,7 @@ impl InteractionsDB {
             organisation: Some(organisation.to_owned()),
             nonce_id: None,
             interaction_type,
+            expires_at: None,
         };
 
         self.repository
