@@ -184,10 +184,10 @@ async fn test_issuer_submit_succeeds() {
         Some("http://example.com/".to_string()),
         Arc::new(generic_config().core),
         OpenID4VCIDraft13Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: false,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption: SecretSlice::from(vec![0; 32]),
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
@@ -336,10 +336,10 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Some("https://example.com/test/".to_string()),
         Arc::new(dummy_config()),
         OpenID4VCIDraft13Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: false,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption: SecretSlice::from(vec![0; 32]),
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
@@ -477,10 +477,10 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Some("https://example.com/test/".to_string()),
         Arc::new(config),
         OpenID4VCIDraft13Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: false,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption: SecretSlice::from(vec![0; 32]),
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
@@ -575,10 +575,10 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Some("base_url".to_string()),
         Arc::new(config),
         OpenID4VCIDraft13Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: false,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption: SecretSlice::from(vec![0; 32]),
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {

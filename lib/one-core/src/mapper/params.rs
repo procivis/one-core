@@ -1,6 +1,7 @@
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
+use time::Duration;
 
 use crate::provider::credential_formatter::error::FormatterError;
 
@@ -28,4 +29,12 @@ where
     Ok(SecretSlice::from(
         hex::decode(secret).map_err(|_| serde::de::Error::custom(ERROR_MSG))?,
     ))
+}
+
+pub(crate) fn deserialize_duration_seconds<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let seconds = i64::deserialize(deserializer)?;
+    Ok(Duration::seconds(seconds))
 }

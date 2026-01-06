@@ -371,6 +371,7 @@ pub enum CredentialStateBindingEnum {
     Revoked,
     Suspended,
     Error,
+    InteractionExpired,
 }
 
 #[derive(Clone, Debug, uniffi::Record, From)]

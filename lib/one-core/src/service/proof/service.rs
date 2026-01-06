@@ -650,7 +650,10 @@ impl ProofService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
 
-        Ok(EntityShareResponseDTO { url })
+        Ok(EntityShareResponseDTO {
+            url,
+            expires_at: None,
+        })
     }
 
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {

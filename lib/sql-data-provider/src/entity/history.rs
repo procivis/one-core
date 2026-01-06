@@ -117,6 +117,8 @@ pub enum HistoryAction {
     InteractionCreated,
     #[sea_orm(string_value = "INTERACTION_ERRORED")]
     InteractionErrored,
+    #[sea_orm(string_value = "INTERACTION_EXPIRED")]
+    InteractionExpired,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]

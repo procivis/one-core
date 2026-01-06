@@ -161,4 +161,6 @@ pub enum CredentialState {
     Suspended,
     #[sea_orm(string_value = "ERROR")]
     Error,
+    #[sea_orm(string_value = "INTERACTION_EXPIRED")]
+    InteractionExpired,
 }

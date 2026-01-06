@@ -491,11 +491,16 @@ impl CredentialService {
             &*self.session_provider,
         )?;
 
-        match credential.state {
-            CredentialStateEnum::Created | CredentialStateEnum::Pending => {
-                // continue
+        if !matches!(
+            credential.state,
+            CredentialStateEnum::Created
+                | CredentialStateEnum::Pending
+                | CredentialStateEnum::InteractionExpired
+        ) {
+            return Err(BusinessLogicError::InvalidCredentialState {
+                state: credential.state,
             }
-            state => return Err(BusinessLogicError::InvalidCredentialState { state }.into()),
+            .into());
         }
 
         let Some(issuer_identifier) = credential.issuer_identifier.as_ref() else {
@@ -533,13 +538,14 @@ impl CredentialService {
         let ShareResponse {
             url,
             interaction_id,
-            context,
+            interaction_data,
+            expires_at,
         } = exchange.issuer_share_credential(&credential).await?;
 
         add_new_interaction(
             interaction_id,
             &*self.interaction_repository,
-            serde_json::to_vec(&context).ok(),
+            interaction_data,
             Some(organisation.to_owned()),
             InteractionType::Issuance,
         )
@@ -548,7 +554,7 @@ impl CredentialService {
             .update_credential(
                 *credential_id,
                 UpdateCredentialRequest {
-                    state: (credential.state == CredentialStateEnum::Created)
+                    state: (credential.state != CredentialStateEnum::Pending)
                         .then_some(CredentialStateEnum::Pending),
                     interaction: Some(interaction_id),
                     ..Default::default()
@@ -557,7 +563,7 @@ impl CredentialService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
 
-        Ok(EntityShareResponseDTO { url })
+        Ok(EntityShareResponseDTO { url, expires_at })
     }
 
     // ============ Private methods

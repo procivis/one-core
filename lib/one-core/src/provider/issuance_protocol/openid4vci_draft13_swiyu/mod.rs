@@ -2,13 +2,13 @@ use std::sync::Arc;
 
 use secrecy::SecretSlice;
 use serde::Deserialize;
-use serde_json::Value;
 use shared_types::{CredentialId, HolderWalletUnitId};
+use time::Duration;
 use url::Url;
 
 use crate::config::core_config::DidType::WebVh;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
-use crate::mapper::params::deserialize_encryption_key;
+use crate::mapper::params::{deserialize_duration_seconds, deserialize_encryption_key};
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
@@ -44,9 +44,12 @@ pub(crate) const OID4VCI_DRAFT13_SWIYU_VERSION: &str = "draft-13-swiyu";
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCISwiyuParams {
-    pub pre_authorized_code_expires_in: u64,
-    pub token_expires_in: u64,
-    pub refresh_expires_in: u64,
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    pub pre_authorized_code_expires_in: Duration,
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    pub token_expires_in: Duration,
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    pub refresh_expires_in: Duration,
     #[serde(deserialize_with = "deserialize_encryption_key")]
     pub encryption: SecretSlice<u8>,
     pub redirect_uri: OpenID4VCRedirectUriParams,
@@ -169,7 +172,7 @@ impl IssuanceProtocol for OpenID4VCI13Swiyu {
     async fn issuer_share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<Value>, IssuanceProtocolError> {
+    ) -> Result<ShareResponse, IssuanceProtocolError> {
         let mut credential = credential.clone();
 
         // SWIYU only supports credential offer by value and does not create a preview from the offer.

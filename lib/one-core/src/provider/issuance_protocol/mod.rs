@@ -90,7 +90,7 @@ pub(crate) trait IssuanceProtocol: Send + Sync {
     async fn issuer_share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<serde_json::Value>, IssuanceProtocolError>;
+    ) -> Result<ShareResponse, IssuanceProtocolError>;
 
     /// Creates a newly issued credential
     async fn issuer_issue_credential(

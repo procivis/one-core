@@ -12,7 +12,6 @@ use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
 use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
 use shared_types::{
     BlobId, CertificateId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId,
     IdentifierId,
@@ -1228,7 +1227,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
     async fn issuer_share_credential(
         &self,
         credential: &Credential,
-    ) -> Result<ShareResponse<Value>, IssuanceProtocolError> {
+    ) -> Result<ShareResponse, IssuanceProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
@@ -1277,18 +1276,27 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             let offer_url = get_credential_offer_url(protocol_base_url.to_owned(), credential)?;
             query.append_pair(CREDENTIAL_OFFER_REFERENCE_QUERY_PARAM_KEY, &offer_url);
         }
+        let url = query.finish().to_string();
 
-        Ok(ShareResponse {
-            url: query.finish().to_string(),
-            interaction_id,
-            context: json!(OpenID4VCIIssuerInteractionDataDTO {
+        let interaction_data = Some(serialize_interaction_data(
+            &OpenID4VCIIssuerInteractionDataDTO {
                 pre_authorized_code_used: false,
                 access_token_hash: vec![],
                 access_token_expires_at: None,
                 refresh_token_hash: None,
                 refresh_token_expires_at: None,
-                notification_id: None
-            }),
+                notification_id: None,
+            },
+        )?);
+
+        let expires_at =
+            Some(OffsetDateTime::now_utc() + self.params.pre_authorized_code_expires_in);
+
+        Ok(ShareResponse {
+            url,
+            interaction_id,
+            interaction_data,
+            expires_at,
         })
     }
 

@@ -161,6 +161,7 @@ pub enum CredentialStateEnum {
     Revoked,
     Suspended,
     Error,
+    InteractionExpired,
 }
 
 pub type GetCredentialListResponseDTO = GetListResponse<CredentialListItemResponseDTO>;

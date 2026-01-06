@@ -245,6 +245,7 @@ pub(crate) enum CredentialStateRestEnum {
     Rejected,
     Revoked,
     Error,
+    InteractionExpired,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema)]

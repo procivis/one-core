@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialId, OrganisationId};
 use strum::Display;
-use uuid::Uuid;
+use time::OffsetDateTime;
 
 use crate::model::certificate::Certificate;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
@@ -138,10 +138,11 @@ pub(crate) struct SubmitIssuerResponse {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ShareResponse<T> {
+pub(crate) struct ShareResponse {
     pub url: String,
-    pub interaction_id: Uuid,
-    pub context: T,
+    pub interaction_id: InteractionId,
+    pub interaction_data: Option<Vec<u8>>,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug)]

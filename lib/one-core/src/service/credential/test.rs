@@ -583,6 +583,7 @@ async fn test_share_credential_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
+    let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_issuer_share_credential()
         .times(1)
@@ -590,7 +591,8 @@ async fn test_share_credential_success() {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
-                context: Default::default(),
+                interaction_data: None,
+                expires_at: Some(expires_at),
             })
         });
 
@@ -639,6 +641,7 @@ async fn test_share_credential_success() {
     assert!(result.is_ok());
     let result = result.unwrap();
     assert_eq!(result.url, expected_url);
+    assert_eq!(result.expires_at.unwrap(), expires_at);
 }
 
 #[tokio::test]

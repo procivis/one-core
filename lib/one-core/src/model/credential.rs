@@ -63,6 +63,7 @@ pub enum CredentialStateEnum {
     Revoked,
     Suspended,
     Error,
+    InteractionExpired,
 }
 
 pub enum SortableCredentialColumn {

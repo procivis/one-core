@@ -1,5 +1,6 @@
 use shared_types::OrganisationId;
 use strum::EnumString;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -41,6 +42,7 @@ pub struct GetListResponse<ResponseItem> {
 #[derive(Clone, Debug)]
 pub struct EntityShareResponseDTO {
     pub url: String,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

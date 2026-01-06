@@ -437,6 +437,8 @@ pub enum ClientIdSchemeBindingEnum {
 #[from(EntityShareResponseDTO)]
 pub struct ShareProofResponseBindingDTO {
     pub url: String,
+    #[from(with_fn = optional_time)]
+    pub expires_at: Option<String>,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]

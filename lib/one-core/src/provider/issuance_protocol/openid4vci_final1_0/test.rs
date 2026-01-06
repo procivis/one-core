@@ -108,10 +108,10 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Some("http://base_url".to_string()),
         Arc::new(inputs.config),
         inputs.params.unwrap_or(OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: false,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption: SecretSlice::from(vec![0; 32]),
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
@@ -487,10 +487,10 @@ async fn test_generate_share_credentials_offer_by_value() {
 
     let protocol = setup_protocol(TestInputs {
         params: Some(OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: true,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption: SecretSlice::from(vec![0; 32]),
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
@@ -1365,10 +1365,10 @@ async fn test_holder_reject_credential() {
         key_algorithm_provider,
         config: dummy_config(),
         params: Some(OpenID4VCIFinal1Params {
-            pre_authorized_code_expires_in: 10,
-            token_expires_in: 10,
+            pre_authorized_code_expires_in: Duration::seconds(10),
+            token_expires_in: Duration::seconds(10),
             credential_offer_by_value: true,
-            refresh_expires_in: 1000,
+            refresh_expires_in: Duration::seconds(1000),
             encryption,
             url_scheme: "openid-credential-offer".to_string(),
             redirect_uri: OpenID4VCRedirectUriParams {
@@ -1803,10 +1803,10 @@ async fn test_generate_share_credentials_custom_scheme() {
 
 fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
     OpenID4VCIFinal1Params {
-        pre_authorized_code_expires_in: 10,
-        token_expires_in: 10,
+        pre_authorized_code_expires_in: Duration::seconds(10),
+        token_expires_in: Duration::seconds(10),
         credential_offer_by_value: true,
-        refresh_expires_in: 1000,
+        refresh_expires_in: Duration::seconds(1000),
         encryption: SecretSlice::from(vec![0; 32]),
         url_scheme: issuance_url_scheme.to_string(),
         redirect_uri: OpenID4VCRedirectUriParams {

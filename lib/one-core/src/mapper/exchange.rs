@@ -12,7 +12,7 @@ pub(crate) fn get_exchange_param_pre_authorization_expires_in(
     exchange: &str,
 ) -> Result<Duration, ServiceError> {
     let fields = config.issuance_protocol.get_fields(exchange)?;
-    let pre_authorized_code_expires_in = match fields.r#type {
+    Ok(match fields.r#type {
         IssuanceProtocolType::OpenId4VciDraft13 => {
             let params = fields
                 .deserialize::<OpenID4VCIDraft13Params>()
@@ -40,9 +40,7 @@ pub(crate) fn get_exchange_param_pre_authorization_expires_in(
                 })?;
             params.pre_authorized_code_expires_in
         }
-    };
-
-    Ok(Duration::seconds(pre_authorized_code_expires_in as _))
+    })
 }
 
 pub(crate) fn get_exchange_param_token_expires_in(
@@ -50,7 +48,7 @@ pub(crate) fn get_exchange_param_token_expires_in(
     exchange: &str,
 ) -> Result<Duration, ServiceError> {
     let fields = config.issuance_protocol.get_fields(exchange)?;
-    let token_expires_in = match fields.r#type {
+    Ok(match fields.r#type {
         IssuanceProtocolType::OpenId4VciDraft13 => {
             let params = fields
                 .deserialize::<OpenID4VCIDraft13Params>()
@@ -78,9 +76,7 @@ pub(crate) fn get_exchange_param_token_expires_in(
                 })?;
             params.token_expires_in
         }
-    };
-
-    Ok(Duration::seconds(token_expires_in as _))
+    })
 }
 
 pub(crate) fn get_exchange_param_refresh_token_expires_in(
@@ -88,7 +84,7 @@ pub(crate) fn get_exchange_param_refresh_token_expires_in(
     exchange: &str,
 ) -> Result<Duration, ServiceError> {
     let fields = config.issuance_protocol.get_fields(exchange)?;
-    let refresh_expires_in = match fields.r#type {
+    Ok(match fields.r#type {
         IssuanceProtocolType::OpenId4VciDraft13 => {
             let params = fields
                 .deserialize::<OpenID4VCIDraft13Params>()
@@ -116,7 +112,5 @@ pub(crate) fn get_exchange_param_refresh_token_expires_in(
                 })?;
             params.refresh_expires_in
         }
-    };
-
-    Ok(Duration::seconds(refresh_expires_in as _))
+    })
 }

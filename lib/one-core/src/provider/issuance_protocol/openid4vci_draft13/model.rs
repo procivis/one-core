@@ -8,11 +8,11 @@ use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialFormat, CredentialSchemaId, DidValue, OrganisationId};
 use strum::{Display, EnumString};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use crate::mapper::opt_secret_string;
-use crate::mapper::params::deserialize_encryption_key;
+use crate::mapper::params::{deserialize_duration_seconds, deserialize_encryption_key};
 use crate::model::credential_schema::{
     KeyStorageSecurity, LayoutProperties, LayoutType, RevocationMethod,
 };
@@ -27,9 +27,12 @@ use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCIDraft13Params {
-    pub pre_authorized_code_expires_in: u64,
-    pub token_expires_in: u64,
-    pub refresh_expires_in: u64,
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    pub pre_authorized_code_expires_in: Duration,
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    pub token_expires_in: Duration,
+    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    pub refresh_expires_in: Duration,
     #[serde(default)]
     pub credential_offer_by_value: bool,
     #[serde(deserialize_with = "deserialize_encryption_key")]
