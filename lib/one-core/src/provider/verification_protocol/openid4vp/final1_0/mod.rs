@@ -469,7 +469,7 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
-    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
+    ) -> Result<ShareResponse, VerificationProtocolError> {
         let interaction_id = Uuid::new_v4();
 
         let Some(base_url) = &self.base_url else {
@@ -603,14 +603,20 @@ impl VerificationProtocol for OpenID4VPFinal1_0 {
         let encoded_authorization_request = serde_urlencoded::to_string(authorization_request)
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
+        let expires_at = self
+            .params
+            .verifier
+            .interaction_expires_in
+            .map(|interaction_expires_in| OffsetDateTime::now_utc() + interaction_expires_in);
+
         Ok(ShareResponse {
             url: format!(
                 "{}://?{encoded_authorization_request}",
                 self.params.url_scheme
             ),
             interaction_id,
-            context: serde_json::to_value(&interaction_content)
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?,
+            interaction_data: Some(serialize_interaction_data(&interaction_content)?),
+            expires_at,
         })
     }
 

@@ -6,6 +6,7 @@ use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
+use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -45,6 +46,8 @@ pub(crate) struct OpenID4Vp20Params {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VC20PresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
+    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    pub interaction_expires_in: Option<Duration>,
 }
 
 #[skip_serializing_none]

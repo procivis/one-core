@@ -132,6 +132,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: openid4vp-draft20
         verifier:
+          interactionExpiresIn: 3600
           supportedClientIdSchemes:
             [verifier_attestation, redirect_uri, did, x509_san_dns]
         holder:
@@ -149,6 +150,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: mdoc-openid4vp
         verifier:
+          interactionExpiresIn: 3600
           supportedClientIdSchemes: [x509_san_dns]
         holder:
           supportedClientIdSchemes: [x509_san_dns]
@@ -164,6 +166,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: openid4vp-draft25
         verifier:
+          interactionExpiresIn: 3600
           useDcql: false
           supportedClientIdSchemes:
             [verifier_attestation, redirect_uri, did, x509_san_dns, x509_hash]
@@ -184,6 +187,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: eudi-openid4vp
         verifier:
+          interactionExpiresIn: 3600
           supportedClientIdSchemes:
             [
               verifier_attestation,
@@ -217,6 +221,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: openid4vp
         verifier:
+          interactionExpiresIn: 3600
           useDcql: false
           supportedClientIdSchemes:
             [
@@ -246,6 +251,7 @@ verificationProtocol:
       public:
         useRequestUri: true
         verifier:
+          interactionExpiresIn: 3600
           supportedClientIdSchemes:
             [
               verifier_attestation,
@@ -277,6 +283,8 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+        verifier:
+          interactionExpiresIn: 3600
   OPENID4VP_FINAL1_HAIP:
     display:
       en: "OpenID4VP Final 1.0 (HAIP)"
@@ -288,6 +296,7 @@ verificationProtocol:
         useRequestUri: true
         urlScheme: haip-vp
         verifier:
+          interactionExpiresIn: 3600
           supportedClientIdSchemes:
             [
               verifier_attestation,

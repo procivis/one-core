@@ -3675,6 +3675,7 @@ async fn test_share_proof_created_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
+    let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_verifier_share_proof()
         .once()
@@ -3682,7 +3683,8 @@ async fn test_share_proof_created_success() {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
-                context: Default::default(),
+                interaction_data: None,
+                expires_at: Some(expires_at),
             })
         });
 
@@ -3739,6 +3741,7 @@ async fn test_share_proof_created_success() {
         .unwrap();
 
     assert_eq!(result.url, expected_url);
+    assert_eq!(result.expires_at.unwrap(), expires_at);
 }
 
 #[tokio::test]
@@ -3775,6 +3778,7 @@ async fn test_share_proof_pending_success() {
 
     let expected_url = "test_url";
     let interaction_id = Uuid::new_v4();
+    let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_verifier_share_proof()
         .once()
@@ -3782,7 +3786,8 @@ async fn test_share_proof_pending_success() {
             Ok(ShareResponse {
                 url: expected_url.to_owned(),
                 interaction_id,
-                context: Default::default(),
+                interaction_data: None,
+                expires_at: Some(expires_at),
             })
         });
 
@@ -3848,6 +3853,121 @@ async fn test_share_proof_pending_success() {
         .share_proof(&proof_id, ShareProofRequestDTO::default())
         .await;
     assert!(result.is_ok());
+    assert_eq!(result.unwrap().expires_at.unwrap(), expires_at);
+}
+
+#[tokio::test]
+async fn test_share_proof_interaction_expired_success() {
+    let proof_id = Uuid::new_v4().into();
+    let proof = construct_proof_with_state(&proof_id, ProofStateEnum::InteractionExpired);
+    let mut protocol = MockVerificationProtocol::default();
+    let mut protocol_provider = MockVerificationProtocolProvider::default();
+
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm
+        .expect_reconstruct_key()
+        .return_once(|_, _, _| {
+            let mut key_handle = MockSignaturePublicKeyHandle::default();
+            key_handle.expect_as_jwk().return_once(|| {
+                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: Some(JwkUse::Encryption),
+                    kid: None,
+                    crv: "123".to_string(),
+                    x: "456".to_string(),
+                    y: None,
+                }))
+            });
+            Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
+                Arc::new(key_handle),
+            )))
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .return_once(|_| Some(Arc::new(key_algorithm)));
+
+    let expected_url = "test_url";
+    let interaction_id = Uuid::new_v4();
+    let expires_at = OffsetDateTime::now_utc();
+    protocol
+        .expect_verifier_share_proof()
+        .once()
+        .returning(move |_, _, _, _, _| {
+            Ok(ShareResponse {
+                url: expected_url.to_owned(),
+                interaction_id,
+                interaction_data: None,
+                expires_at: Some(expires_at),
+            })
+        });
+
+    let protocol = Arc::new(protocol);
+
+    protocol_provider
+        .expect_get_protocol()
+        .once()
+        .returning(move |_| Some(protocol.clone()));
+
+    let mut proof_repository = MockProofRepository::default();
+    {
+        let res_clone = proof.clone();
+        proof_repository
+            .expect_get_proof()
+            .once()
+            .withf(move |id, _, _| id == &proof_id)
+            .returning(move |_, _, _| Ok(Some(res_clone.to_owned())));
+    }
+
+    let mut interaction_repository = MockInteractionRepository::new();
+    interaction_repository
+        .expect_create_interaction()
+        .once()
+        .returning(move |_| Ok(interaction_id));
+
+    proof_repository
+        .expect_update_proof()
+        .once()
+        .withf(move |id, update, _| {
+            id == &proof_id
+                && update.interaction == Some(Some(interaction_id))
+                && update.state == Some(ProofStateEnum::Pending)
+        })
+        .returning(|_, _, _| Ok(()));
+
+    let mut history_repository = MockHistoryRepository::new();
+    history_repository
+        .expect_create_history()
+        .returning(|_| Ok(Uuid::new_v4().into()));
+
+    let mut key_provider = MockKeyProvider::new();
+    key_provider.expect_get_key_storage().return_once(|_| {
+        let mut key_storage = MockKeyStorage::default();
+        key_storage
+            .expect_get_capabilities()
+            .return_once(|| KeyStorageCapabilities {
+                features: vec![],
+                algorithms: vec![],
+            });
+        Some(Arc::new(key_storage))
+    });
+
+    let service = setup_service(Repositories {
+        proof_repository,
+        protocol_provider,
+        history_repository,
+        interaction_repository,
+        key_algorithm_provider,
+        config: generic_config().core,
+        ..Default::default()
+    });
+
+    let result = service
+        .share_proof(&proof_id, ShareProofRequestDTO::default())
+        .await;
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap().expires_at.unwrap(), expires_at);
 }
 
 #[tokio::test]

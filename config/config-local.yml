@@ -151,7 +151,10 @@ verificationProtocol:
     display: "exchange.openid00_proximity"
     order: 4
     type: "OPENID4VP_PROXIMITY_DRAFT00"
-    params: {}
+    params:
+      public:
+        verifier:
+          interactionExpiresIn: 3600
 keyStorage:
   INTERNAL:
     params:
@@ -243,6 +246,6 @@ signer:
       private:
         payload:
           issuer: "https://issuer.example"
-          audience: [ "bli", "bla" ]
+          audience: ["bli", "bla"]
           expiry: 7200
         revocationMethod: TOKENSTATUSLIST

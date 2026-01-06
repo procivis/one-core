@@ -8,7 +8,7 @@ use mockall::predicate::eq;
 use serde_json::{Value, json};
 use shared_types::{CredentialFormat, DidValue};
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -99,6 +99,7 @@ fn generic_params() -> OpenID4Vp20Params {
             dcql_vp_token_single_presentation: false,
         },
         verifier: OpenID4VC20PresentationVerifierParams {
+            interaction_expires_in: Some(Duration::seconds(1000)),
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,
@@ -1050,6 +1051,7 @@ fn test_params(presentation_url_scheme: &str) -> OpenID4Vp20Params {
             dcql_vp_token_single_presentation: false,
         },
         verifier: OpenID4VC20PresentationVerifierParams {
+            interaction_expires_in: Some(Duration::seconds(1000)),
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,

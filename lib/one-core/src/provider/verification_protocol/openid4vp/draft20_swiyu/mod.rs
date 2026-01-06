@@ -4,16 +4,17 @@ use futures::future::BoxFuture;
 use maplit::hashmap;
 use serde::Deserialize;
 use serde_json::Value;
+use time::Duration;
 use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
+use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedToken;
 use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
-use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
@@ -32,6 +33,9 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
 };
+use crate::provider::verification_protocol::{
+    VerificationProtocol, deserialize_interaction_data, serialize_interaction_data,
+};
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 
 pub(crate) struct OpenID4VP20Swiyu {
@@ -46,6 +50,15 @@ pub(crate) struct OpenID4Vp20SwiyuParams {
     #[serde(default)]
     pub allow_insecure_http_transport: bool,
     pub redirect_uri: OpenID4VCRedirectUriParams,
+    #[serde(default)]
+    pub verifier: Option<OpenID4Vp20SwiyuPresentationVerifierParams>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4Vp20SwiyuPresentationVerifierParams {
+    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    pub interaction_expires_in: Option<Duration>,
 }
 
 impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
@@ -62,6 +75,9 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
             },
             verifier: OpenID4VC20PresentationVerifierParams {
                 supported_client_id_schemes: vec![ClientIdScheme::Did],
+                interaction_expires_in: value
+                    .verifier
+                    .and_then(|verifier| verifier.interaction_expires_in),
             },
             redirect_uri: value.redirect_uri,
             predefined_client_metadata: Some(OpenID4VPDraftClientMetadata {
@@ -206,7 +222,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         type_to_descriptor: TypeToDescriptorMapper,
         callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
-    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
+    ) -> Result<ShareResponse, VerificationProtocolError> {
         let mut response = self
             .inner
             .verifier_share_proof(
@@ -218,11 +234,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             )
             .await?;
         let mut interaction_data: OpenID4VPVerifierInteractionContent =
-            serde_json::from_value(response.context).map_err(|err| {
-                VerificationProtocolError::Failed(format!(
-                    "failed to parse interaction data: {err}"
-                ))
-            })?;
+            deserialize_interaction_data(response.interaction_data.as_ref())?;
         let mut response_url: Url = interaction_data
             .response_uri
             .ok_or(VerificationProtocolError::Failed(
@@ -244,11 +256,7 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
             VerificationProtocolError::Failed(format!("failed to transform response URL: {e}"))
         })?;
 
-        response.context = serde_json::to_value(&interaction_data).map_err(|err| {
-            VerificationProtocolError::Failed(format!(
-                "failed to serialize interaction data: {err}"
-            ))
-        })?;
+        response.interaction_data = Some(serialize_interaction_data(&interaction_data)?);
         response.url = url
             .query_pairs()
             .find(|(k, _)| k == "request_uri")

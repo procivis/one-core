@@ -125,7 +125,7 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
-    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError>;
+    ) -> Result<ShareResponse, VerificationProtocolError>;
 
     /// Checks if the submitted presentation complies with the given proof request.
     async fn verifier_handle_proof(

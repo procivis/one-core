@@ -304,7 +304,7 @@ impl VerificationProtocol for IsoMdl {
         _type_to_descriptor: TypeToDescriptorMapper,
         _callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
-    ) -> Result<ShareResponse<serde_json::Value>, VerificationProtocolError> {
+    ) -> Result<ShareResponse, VerificationProtocolError> {
         unimplemented!()
     }
 

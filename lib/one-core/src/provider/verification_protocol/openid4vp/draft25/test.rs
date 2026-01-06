@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
@@ -77,6 +77,7 @@ fn generic_params() -> OpenID4Vp25Params {
             dcql_vp_token_single_presentation: false,
         },
         verifier: OpenID4VC25PresentationVerifierParams {
+            interaction_expires_in: Some(Duration::seconds(1000)),
             use_dcql: false,
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,

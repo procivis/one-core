@@ -5,7 +5,7 @@ use std::sync::Arc;
 use dcql::DcqlQuery;
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
@@ -85,6 +85,7 @@ fn generic_params() -> Params {
             dcql_vp_token_single_presentation: false,
         },
         verifier: PresentationVerifierParams {
+            interaction_expires_in: Some(Duration::seconds(1000)),
             supported_client_id_schemes: vec![
                 ClientIdScheme::RedirectUri,
                 ClientIdScheme::VerifierAttestation,

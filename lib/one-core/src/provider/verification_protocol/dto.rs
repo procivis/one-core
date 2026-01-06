@@ -132,10 +132,11 @@ pub(crate) enum PresentationReference {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) struct ShareResponse<T> {
+pub(crate) struct ShareResponse {
     pub url: String,
     pub interaction_id: InteractionId,
-    pub context: T,
+    pub interaction_data: Option<Vec<u8>>,
+    pub expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Default)]

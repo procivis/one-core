@@ -577,7 +577,7 @@ impl ProofService {
         let previous_state = proof.state;
         if !matches!(
             previous_state,
-            ProofStateEnum::Created | ProofStateEnum::Pending
+            ProofStateEnum::Created | ProofStateEnum::Pending | ProofStateEnum::InteractionExpired
         ) {
             return Err(BusinessLogicError::InvalidProofState {
                 state: previous_state,
@@ -620,7 +620,8 @@ impl ProofService {
         let ShareResponse {
             url,
             interaction_id,
-            context,
+            interaction_data,
+            expires_at,
         } = exchange
             .verifier_share_proof(
                 &proof,
@@ -634,7 +635,7 @@ impl ProofService {
         add_new_interaction(
             interaction_id,
             &*self.interaction_repository,
-            serde_json::to_vec(&context).ok(),
+            interaction_data,
             Some(organisation.to_owned()),
             InteractionType::Verification,
         )
@@ -644,7 +645,7 @@ impl ProofService {
             .update_proof(
                 &proof.id,
                 UpdateProofRequest {
-                    state: (previous_state == ProofStateEnum::Created)
+                    state: (previous_state != ProofStateEnum::Pending)
                         .then_some(ProofStateEnum::Pending),
                     interaction: Some(Some(interaction_id)),
                     engagement: Some(Some(DEFAULT_ENGAGEMENT.to_string())),
@@ -655,10 +656,7 @@ impl ProofService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
         tracing::info!("Shared proof request {}", proof.id);
-        Ok(EntityShareResponseDTO {
-            url,
-            expires_at: None,
-        })
+        Ok(EntityShareResponseDTO { url, expires_at })
     }
 
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {

@@ -359,6 +359,7 @@ pub enum ProofStateBindingEnum {
     Rejected,
     Retracted,
     Error,
+    InteractionExpired,
 }
 
 #[derive(Clone, Debug, Into, From, uniffi::Enum)]

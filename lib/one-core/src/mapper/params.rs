@@ -38,3 +38,13 @@ where
     let seconds = i64::deserialize(deserializer)?;
     Ok(Duration::seconds(seconds))
 }
+
+pub(crate) fn deserialize_duration_seconds_option<'de, D>(
+    deserializer: D,
+) -> Result<Option<Duration>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let seconds = Option::<i64>::deserialize(deserializer)?;
+    Ok(seconds.map(Duration::seconds))
+}

@@ -246,5 +246,6 @@ fn action_from_state(state: ProofStateEnum) -> HistoryAction {
         ProofStateEnum::Rejected => HistoryAction::Rejected,
         ProofStateEnum::Error => HistoryAction::Errored,
         ProofStateEnum::Retracted => HistoryAction::Retracted,
+        ProofStateEnum::InteractionExpired => HistoryAction::InteractionExpired,
     }
 }

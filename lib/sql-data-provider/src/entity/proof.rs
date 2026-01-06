@@ -49,6 +49,8 @@ pub enum ProofRequestState {
     Retracted,
     #[sea_orm(string_value = "ERROR")]
     Error,
+    #[sea_orm(string_value = "INTERACTION_EXPIRED")]
+    InteractionExpired,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

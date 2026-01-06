@@ -55,6 +55,7 @@ pub(crate) enum ProofStateRestEnum {
     Rejected,
     Retracted,
     Error,
+    InteractionExpired,
 }
 
 /// The role the system has in relation to the proof.

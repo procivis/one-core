@@ -48,6 +48,7 @@ pub enum ProofStateEnum {
     Rejected,
     Retracted,
     Error,
+    InteractionExpired,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Display)]

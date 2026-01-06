@@ -8,9 +8,9 @@ use futures::future::BoxFuture;
 use key_agreement_key::KeyAgreementKey;
 use mqtt::oidc_mqtt_verifier::MqttVerifier;
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 use shared_types::{KeyId, ProofId};
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
@@ -32,6 +32,7 @@ use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
+use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionId, InteractionType};
@@ -63,7 +64,7 @@ use crate::provider::verification_protocol::mapper::proof_from_handle_invitation
 use crate::provider::verification_protocol::openid4vp::mapper::create_open_id_for_vp_presentation_definition;
 use crate::provider::verification_protocol::openid4vp::model::OpenID4VPPresentationDefinition;
 use crate::provider::verification_protocol::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, serialize_interaction_data,
 };
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
@@ -82,7 +83,17 @@ mod peer_encryption;
 pub(crate) struct OpenID4VPProximityDraft00Params {
     #[serde(default = "default_presentation_url_scheme")]
     pub url_scheme: String,
+    #[serde(default)]
+    pub verifier: Option<OpenID4VPProximityDraft00PresentationVerifierParams>,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenID4VPProximityDraft00PresentationVerifierParams {
+    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    pub interaction_expires_in: Option<Duration>,
+}
+
 pub struct OpenID4VPProximityDraft00 {
     ble: Option<BleWaiter>,
     ble_holder_transport: Option<BleHolderTransport>,
@@ -383,7 +394,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         type_to_descriptor: TypeToDescriptorMapper,
         on_submission_callback: Option<BoxFuture<'static, ()>>,
         _params: Option<ShareProofRequestParamsDTO>,
-    ) -> Result<ShareResponse<Value>, VerificationProtocolError> {
+    ) -> Result<ShareResponse, VerificationProtocolError> {
         let transport = get_transport(proof)?;
         let on_submission_callback = on_submission_callback.map(|fut| fut.shared());
 
@@ -420,6 +431,12 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             cancellation_token: Default::default(),
         };
 
+        let expires_at = self.params.verifier.as_ref().and_then(|verifier| {
+            verifier
+                .interaction_expires_in
+                .map(|interaction_expires_in| OffsetDateTime::now_utc() + interaction_expires_in)
+        });
+
         match transport.as_slice() {
             [TransportType::Ble] => {
                 let ble = self.ble.as_ref().ok_or_else(|| {
@@ -445,7 +462,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 .map(|url| ShareResponse {
                     url: url.to_string(),
                     interaction_id,
-                    context: json!({}),
+                    interaction_data: None,
+                    expires_at,
                 })
             }
             [TransportType::Http] => Err(VerificationProtocolError::Failed(
@@ -474,7 +492,8 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 .map(|url| ShareResponse {
                     url: url.to_string(),
                     interaction_id,
-                    context: json!({}),
+                    interaction_data: None,
+                    expires_at,
                 })
             }
 
@@ -523,14 +542,12 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
                 Ok(ShareResponse {
                     url: format!("{url}"),
                     interaction_id,
-                    context: serde_json::to_value(CreateProofInteractionData {
-                        transport: transport.iter().map(ToString::to_string).collect(),
-                    })
-                    .map_err(|e| {
-                        VerificationProtocolError::Failed(format!(
-                            "Failed to serialize create proof interaction data: {e}"
-                        ))
-                    })?,
+                    interaction_data: Some(serialize_interaction_data(
+                        &CreateProofInteractionData {
+                            transport: transport.iter().map(ToString::to_string).collect(),
+                        },
+                    )?),
+                    expires_at,
                 })
             }
             other => Err(VerificationProtocolError::Failed(format!(

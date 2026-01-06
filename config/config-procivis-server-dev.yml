@@ -55,4 +55,7 @@ verificationProtocol:
       de: "OpenID4VP Nahbereich"
     order: 5
     type: "OPENID4VP_PROXIMITY_DRAFT00"
-    params: {}
+    params:
+      public:
+        verifier:
+          interactionExpiresIn: 3600
