@@ -18,7 +18,7 @@ async-trait.workspace    = true
 autometrics.workspace    = true
 futures                  = { version = "0.3" }
 hex.workspace            = true
-itertools                = { version = "0.13" }
+itertools.workspace      = true
 migration                = { version = "0.1.0", path = "../migration", default-features = false }
 one-core                 = { version = "0.1.0", path = "../one-core" }
 one-dto-mapper.workspace = true

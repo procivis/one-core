@@ -17,7 +17,7 @@ strict = []
 
 [dependencies]
 axum.workspace = true
-axum-extra = { version = "0.10", features = ["typed-header"] }
+axum-extra = { version = "0.12", features = ["typed-header", "with-rejection"] }
 clap = { version = "4.5", features = ["derive"] }
 ct-codecs.workspace = true
 futures.workspace = true
@@ -29,10 +29,10 @@ one-core = { version = "0.1.0", path = "../../lib/one-core", features = ["config
 one-crypto = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
 proc-macros = { version = "0.1.0", path = "../../lib/proc-macros" }
-prometheus = { version = "0.13", default-features = false, features = ["process"] }
+prometheus = { version = "0.14", default-features = false, features = ["process"] }
 reqwest.workspace = true
 secrecy.workspace = true
-sentry = { version = "0.34", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing"] }
+sentry = { version = "0.46", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing", "native-tls"] }
 serde.workspace = true
 serde_json.workspace = true
 serde_qs.workspace = true
@@ -70,7 +70,6 @@ shadow-rs.workspace  = true
 [dev-dependencies]
 asn1-rs.workspace = true
 async-trait.workspace = true
-bs58.workspace = true
 dcql = { version = "0.1.0", path = "../../lib/dcql" }
 hex.workspace = true
 hex-literal.workspace = true
@@ -83,7 +82,7 @@ one-core = { version = "0.1.0", path = "../../lib/one-core", features = [
 ] }
 rand.workspace = true
 rcgen.workspace = true
-reqwest = { workspace = true, features = ["json"] }
+reqwest = { workspace = true, features = ["json", "form"] }
 sea-orm.workspace = true
 secrecy.workspace = true
 serde_json_path.workspace = true

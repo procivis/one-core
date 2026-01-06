@@ -44,7 +44,7 @@ pub enum FormatterError {
     #[error("JSON mapping error: `{0}`")]
     JsonMapping(String),
     #[error("Jsonptr assign error: `{0}`")]
-    JsonPtrAssignError(#[from] jsonptr::assign::AssignError),
+    JsonPtrAssignError(#[from] jsonptr::assign::Error),
     #[error("Jsonptr parse error: `{0}`")]
     JsonPtrParseError(#[from] jsonptr::ParseError),
     #[error("Float value is NaN")]

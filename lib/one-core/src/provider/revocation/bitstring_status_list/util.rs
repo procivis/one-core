@@ -93,11 +93,24 @@ mod test {
     const BITSTRING_ONE_REVOCATION: &str =
         "uH4sIAAAAAAAA_-3AsQAAAAACsNDypwqjZ2sAAAAAAAAAAAAAAAAAAACAtwE3F1_NAEAAAA";
 
+    // The test vectors below are generated with a newer version of the compression library producing
+    // slightly different bitstrings.
+
+    // test vector, no revocations
+    const BITSTRING_NO_REVOCATIONS_NEW: &str =
+        "uH4sIAAAAAAAA_-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIDOBobSVKsAQAAA";
+    const BITSTRING_ONE_REVOCATION_NEW: &str =
+        "uH4sIAAAAAAAA_-3BIQEAAAACIKf5f5UzLEADAAAAAAAAAAAAAAAAAAAA5Gw3F1_NAEAAAA";
+
     #[test]
     fn test_generate_bitstring() {
         assert_eq!(
+            generate_bitstring(vec![]).unwrap(),
+            BITSTRING_NO_REVOCATIONS_NEW
+        );
+        assert_eq!(
             generate_bitstring(vec![(0, false), (1, true), (2, false), (3, false)]).unwrap(),
-            BITSTRING_ONE_REVOCATION
+            BITSTRING_ONE_REVOCATION_NEW
         );
     }
 
@@ -106,8 +119,14 @@ mod test {
         assert!(!extract_bitstring_index(BITSTRING_ONE_REVOCATION.to_owned(), 0).unwrap());
         assert!(extract_bitstring_index(BITSTRING_ONE_REVOCATION.to_owned(), 1).unwrap());
 
+        assert!(!extract_bitstring_index(BITSTRING_ONE_REVOCATION_NEW.to_owned(), 0).unwrap());
+        assert!(extract_bitstring_index(BITSTRING_ONE_REVOCATION_NEW.to_owned(), 1).unwrap());
+
         assert!(!extract_bitstring_index(BITSTRING_NO_REVOCATIONS.to_owned(), 0).unwrap());
         assert!(!extract_bitstring_index(BITSTRING_NO_REVOCATIONS.to_owned(), 1).unwrap());
+
+        assert!(!extract_bitstring_index(BITSTRING_NO_REVOCATIONS_NEW.to_owned(), 0).unwrap());
+        assert!(!extract_bitstring_index(BITSTRING_NO_REVOCATIONS_NEW.to_owned(), 1).unwrap());
     }
 
     #[test]

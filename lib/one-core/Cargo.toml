@@ -17,9 +17,9 @@ bit-vec                    = { version = "0.8" }
 bon.workspace              = true
 bs58.workspace             = true
 ciborium                   = { version = "0.2" }
-convert_case               = { version = "0.6" }
-coset                      = { version = "0.3", features = ["std"] }
-crc                        = { version = "3.2.1" }
+convert_case               = { version = "0.10" }
+coset                      = { version = "0.4", features = ["std"] }
+crc                        = { version = "3.3" }
 ct-codecs.workspace        = true
 dashmap                    = "6.1.0"
 dcql                       = { version = "0.1.0", path = "../dcql" }
@@ -32,10 +32,10 @@ hkdf                       = { version = "0.12.4", features = ["std"] }
 human-sort                 = { version = "0.2" }
 indexmap.workspace         = true
 indoc.workspace            = true
-itertools                  = { version = "0.13" }
+itertools.workspace        = true
 json-ld                    = { version = "0.21" }
 json-syntax                = { version = "0.12", features = ["serde", "serde_json"] }
-jsonptr                    = { version = "0.6" }
+jsonptr                    = { version = "0.7" }
 maplit.workspace           = true
 mime                       = { version = "0.3" }
 mockall                    = { workspace = true, optional = true }
@@ -50,7 +50,7 @@ rand.workspace             = true
 rcgen.workspace            = true
 regex.workspace            = true
 reqwest.workspace          = true
-rumqttc                    = { version = "0.24", default-features = false, features = ["use-native-tls"] }
+rumqttc                    = { version = "0.25", default-features = false, features = ["use-native-tls"] }
 secrecy                    = { workspace = true }
 serde.workspace            = true
 serde_json.workspace       = true
@@ -77,14 +77,14 @@ uuid                       = { workspace = true, features = ["serde"] }
 x25519-dalek               = { version = "2.0", features = ["reusable_secrets", "serde"] }
 x509-parser                = { version = "0.18", features = ["verify"] }
 yasna                      = { version = "0.5" }
-zip                        = { version = "2.1" }
+zip                        = { version = "7.0", default-features = false, features = ["lzma", "deflate"]}
 
 [dev-dependencies]
 assert2                   = { version = "0.3" }
-jsonschema                = { version = "0.26", default-features = false }
+jsonschema                = { version = "0.38", default-features = false }
 mockall.workspace         = true
 one-crypto                = { version = "0.1.0", path = "../one-crypto", features = ["mock"] }
-rstest                    = { version = "0.23" }
+rstest                    = { version = "0.26" }
 rusty-fork                = { version = "0.3" }
 serde_json_path.workspace = true
 similar-asserts.workspace = true
