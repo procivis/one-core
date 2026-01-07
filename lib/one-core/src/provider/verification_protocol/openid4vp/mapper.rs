@@ -5,7 +5,7 @@ use std::sync::Arc;
 use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
-use shared_types::ProofId;
+use shared_types::{InteractionId, ProofId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -30,7 +30,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
 use crate::model::identifier::IdentifierType;
-use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::jwt::Jwt;

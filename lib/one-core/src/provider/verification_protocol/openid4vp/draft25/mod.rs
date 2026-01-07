@@ -430,7 +430,7 @@ impl VerificationProtocol for OpenID4VP25HTTP {
         _callback: Option<BoxFuture<'static, ()>>,
         params: Option<ShareProofRequestParamsDTO>,
     ) -> Result<ShareResponse, VerificationProtocolError> {
-        let interaction_id = Uuid::new_v4();
+        let interaction_id = Uuid::new_v4().into();
 
         let Some(base_url) = &self.base_url else {
             return Err(VerificationProtocolError::Failed("Missing base_url".into()));

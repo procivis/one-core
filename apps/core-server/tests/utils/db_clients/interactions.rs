@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
-use one_core::model::interaction::{Interaction, InteractionId, InteractionType};
+use one_core::model::interaction::{Interaction, InteractionType};
 use one_core::model::organisation::Organisation;
 use one_core::repository::interaction_repository::InteractionRepository;
+use shared_types::InteractionId;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -17,14 +18,14 @@ impl InteractionsDB {
 
     pub async fn create(
         &self,
-        id: Option<Uuid>,
+        id: Option<InteractionId>,
         data: &[u8],
         organisation: &Organisation,
         interaction_type: InteractionType,
         expires_at: Option<OffsetDateTime>,
     ) -> Interaction {
         let interaction = Interaction {
-            id: id.unwrap_or_else(Uuid::new_v4),
+            id: id.unwrap_or(Uuid::new_v4().into()),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             data: Some(data.into()),

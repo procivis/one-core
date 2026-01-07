@@ -1,10 +1,6 @@
-use std::str::FromStr;
-
 use autometrics::autometrics;
 use one_core::model::common::LockType;
-use one_core::model::interaction::{
-    Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
-};
+use one_core::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
 use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::ActiveValue::Unchanged;
@@ -13,9 +9,8 @@ use sea_orm::sea_query::Query;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect,
 };
-use shared_types::{CredentialId, NonceId, ProofId};
+use shared_types::{CredentialId, InteractionId, NonceId, ProofId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::InteractionProvider;
 use crate::entity::{credential, interaction, proof};
@@ -33,7 +28,7 @@ impl InteractionRepository for InteractionProvider {
             .insert(&self.db)
             .await
             .map_err(to_data_layer_error)?;
-        Ok(Uuid::from_str(&interaction.id)?)
+        Ok(interaction.id)
     }
 
     async fn update_interaction(
@@ -42,7 +37,7 @@ impl InteractionRepository for InteractionProvider {
         request: UpdateInteractionRequest,
     ) -> Result<(), DataLayerError> {
         let mut model: interaction::ActiveModel = request.into();
-        model.id = Unchanged(id.to_string());
+        model.id = Unchanged(id);
         model
             .update(&self.db)
             .await
@@ -56,7 +51,7 @@ impl InteractionRepository for InteractionProvider {
         relations: &InteractionRelations,
         lock: Option<LockType>,
     ) -> Result<Option<Interaction>, DataLayerError> {
-        let select = interaction::Entity::find_by_id(id.to_string());
+        let select = interaction::Entity::find_by_id(id);
         let select = match lock {
             None => select,
             Some(lock) => select.lock(map_lock_type(lock)),
@@ -86,9 +81,7 @@ impl InteractionRepository for InteractionProvider {
             None
         };
 
-        let interaction = interaction_from_models(interaction, organisation)?;
-
-        Ok(Some(interaction))
+        Ok(Some(interaction_from_models(interaction, organisation)))
     }
 
     async fn mark_nonce_as_used(

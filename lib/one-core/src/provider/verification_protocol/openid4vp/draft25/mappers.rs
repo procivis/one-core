@@ -1,12 +1,12 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
+use shared_types::InteractionId;
 use url::Url;
 
 use super::model::{
     OpenID4VP25AuthorizationRequest, OpenID4VP25AuthorizationRequestQueryParams, OpenID4Vp25Params,
 };
-use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;

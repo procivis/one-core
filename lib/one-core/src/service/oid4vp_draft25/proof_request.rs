@@ -1,8 +1,8 @@
 use dcql::DcqlQuery;
+use shared_types::InteractionId;
 use url::Url;
 
 use crate::mapper::oidc::determine_response_mode_openid4vp_draft;
-use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4VP25AuthorizationRequest;

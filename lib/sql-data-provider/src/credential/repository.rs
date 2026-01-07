@@ -10,7 +10,6 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use one_core::model::identifier::{Identifier, IdentifierRelations};
-use one_core::model::interaction::InteractionId;
 use one_core::repository::claim_repository::ClaimRepository;
 use one_core::repository::credential_repository::CredentialRepository;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -23,7 +22,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, FromQueryResult, JoinType, PaginatorTrait,
     QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
-use shared_types::{ClaimId, CredentialId, CredentialSchemaId, IdentifierId};
+use shared_types::{ClaimId, CredentialId, CredentialSchemaId, IdentifierId, InteractionId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -132,18 +131,15 @@ impl CredentialProvider {
         let interaction = if let Some(interaction_relations) = &relations.interaction {
             match &credential.interaction_id {
                 None => None,
-                Some(interaction_id) => {
-                    let interaction_id = Uuid::from_str(interaction_id)?;
-                    Some(
-                        self.interaction_repository
-                            .get_interaction(&interaction_id, interaction_relations, None)
-                            .await?
-                            .ok_or(DataLayerError::MissingRequiredRelation {
-                                relation: "credential-interaction",
-                                id: interaction_id.to_string(),
-                            })?,
-                    )
-                }
+                Some(interaction_id) => Some(
+                    self.interaction_repository
+                        .get_interaction(interaction_id, interaction_relations, None)
+                        .await?
+                        .ok_or(DataLayerError::MissingRequiredRelation {
+                            relation: "credential-interaction",
+                            id: interaction_id.to_string(),
+                        })?,
+                ),
             }
         } else {
             None
@@ -514,7 +510,7 @@ impl CredentialRepository for CredentialProvider {
 
         let interaction_id = match request.interaction {
             None => Unchanged(Default::default()),
-            Some(interaction_id) => Set(Some(interaction_id.to_string())),
+            Some(interaction_id) => Set(Some(interaction_id)),
         };
 
         let key_id = match request.key {

@@ -6,11 +6,10 @@ use one_crypto::jwe::EncryptionAlgorithm;
 use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
-use shared_types::{ClaimSchemaId, KeyId};
+use shared_types::{ClaimSchemaId, InteractionId, KeyId};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
-use uuid::Uuid;
 
 use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
 use crate::model::credential::Credential;
@@ -87,7 +86,7 @@ pub(crate) struct EncryptionInfo {
 pub struct OpenID4VPDirectPostRequestDTO {
     #[serde(flatten)]
     pub submission_data: VpSubmissionData,
-    pub state: Option<Uuid>,
+    pub state: Option<InteractionId>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
@@ -333,7 +332,7 @@ pub struct LdpVcAlgs {
 #[derive(Debug, Clone)]
 pub(crate) struct SubmissionRequestData {
     pub submission_data: VpSubmissionData,
-    pub state: Uuid,
+    pub state: InteractionId,
     pub mdoc_generated_nonce: Option<String>,
     pub encryption_key: Option<KeyId>,
 }

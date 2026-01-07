@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use serde::Serialize;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, InteractionId};
 use strum::{AsRefStr, Display, EnumString};
 use time::OffsetDateTime;
 
@@ -9,7 +9,6 @@ use crate::config::core_config::{DidType, IdentifierType, TransportType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::Did;
-use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::model::proof::{Proof, UpdateProofRequest};
 use crate::service::credential::dto::{

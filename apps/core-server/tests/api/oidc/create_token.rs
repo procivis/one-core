@@ -16,7 +16,7 @@ async fn test_oidc_issuer_create_token() {
 
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -87,7 +87,7 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -153,7 +153,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
 
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let data = json!({
         "pre_authorized_code_used": false,
         "access_token_hash": [],
@@ -228,7 +228,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
     // GIVEN
     let (context, org, _, identifier, ..) = TestContext::new_with_did(None).await;
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
 
     let refresh_token_expires_at = OffsetDateTime::now_utc() + time::Duration::seconds(60);
 

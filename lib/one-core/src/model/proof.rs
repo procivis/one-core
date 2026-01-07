@@ -1,4 +1,4 @@
-use shared_types::{BlobId, IdentifierId, ProofId};
+use shared_types::{BlobId, IdentifierId, InteractionId, ProofId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -7,7 +7,7 @@ use super::claim::{Claim, ClaimRelations};
 use super::common::GetListResponse;
 use super::credential::{Credential, CredentialRelations};
 use super::identifier::{Identifier, IdentifierRelations};
-use super::interaction::{Interaction, InteractionId, InteractionRelations};
+use super::interaction::{Interaction, InteractionRelations};
 use super::key::Key;
 use super::list_query::ListQuery;
 use super::proof_schema::{ProofSchema, ProofSchemaRelations};

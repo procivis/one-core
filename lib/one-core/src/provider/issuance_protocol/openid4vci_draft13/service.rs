@@ -3,7 +3,7 @@ use std::str::FromStr;
 use indexmap::IndexMap;
 use one_crypto::utilities;
 use secrecy::SecretString;
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, InteractionId};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -21,7 +21,7 @@ use crate::config::core_config::{CoreConfig, FormatType};
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
-use crate::model::interaction::{Interaction, InteractionId};
+use crate::model::interaction::Interaction;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCICredentialConfigurationData;
@@ -361,6 +361,9 @@ pub(crate) fn parse_access_token(access_token: &str) -> Result<InteractionId, Op
         return Err(OpenID4VCIError::InvalidToken);
     }
 
-    Uuid::from_str(splitted_token.next().ok_or(OpenID4VCIError::InvalidToken)?)
-        .map_err(|_| OpenID4VCIError::RuntimeError("Could not parse UUID".to_owned()))
+    Ok(
+        Uuid::from_str(splitted_token.next().ok_or(OpenID4VCIError::InvalidToken)?)
+            .map_err(|_| OpenID4VCIError::RuntimeError("Could not parse UUID".to_owned()))?
+            .into(),
+    )
 }

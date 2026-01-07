@@ -53,7 +53,7 @@ async fn test_delete_proof_claims_success() {
         )
         .await;
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let interaction = context
         .db
         .interactions

@@ -1,6 +1,7 @@
+use shared_types::InteractionId;
 use time::OffsetDateTime;
 
-use crate::model::interaction::{Interaction, InteractionId, InteractionType};
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::repository::interaction_repository::InteractionRepository;
 use crate::service::error::ServiceError;

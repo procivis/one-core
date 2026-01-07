@@ -1,10 +1,9 @@
-use shared_types::ProofId;
+use shared_types::{InteractionId, ProofId};
 
 use super::error::DataLayerError;
 use crate::model::claim::Claim;
 use crate::model::common::LockType;
 use crate::model::history::HistoryErrorMetadata;
-use crate::model::interaction::InteractionId;
 use crate::model::proof::{GetProofList, GetProofQuery, Proof, ProofRelations, UpdateProofRequest};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

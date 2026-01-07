@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::join_all;
-use shared_types::{CredentialId, DidId, DidValue, KeyId, OrganisationId};
+use shared_types::{CredentialId, DidId, DidValue, InteractionId, KeyId, OrganisationId};
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::{
@@ -21,9 +21,7 @@ use crate::model::did::Did;
 use crate::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierType,
 };
-use crate::model::interaction::{
-    Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
-};
+use crate::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;

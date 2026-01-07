@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use shared_types::{OrganisationId, ProofId};
+use shared_types::{InteractionId, OrganisationId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,7 +10,7 @@ use crate::model::common::LockType;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
-use crate::model::interaction::{InteractionId, InteractionRelations};
+use crate::model::interaction::InteractionRelations;
 use crate::model::proof::{
     GetProofList, GetProofQuery, Proof, ProofRelations, ProofRole, ProofStateEnum,
     UpdateProofRequest,

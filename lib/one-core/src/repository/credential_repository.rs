@@ -1,12 +1,11 @@
 use std::collections::HashSet;
 
-use shared_types::{ClaimId, CredentialId};
+use shared_types::{ClaimId, CredentialId, InteractionId};
 
 use super::error::DataLayerError;
 use crate::model::credential::{
     Credential, CredentialRelations, GetCredentialList, GetCredentialQuery, UpdateCredentialRequest,
 };
-use crate::model::interaction::InteractionId;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

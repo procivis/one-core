@@ -48,7 +48,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
     BlobId, ClaimSchemaId, CredentialFormat, CredentialSchemaId, DidId, DidValue, EntityId,
-    IdentifierId, KeyId, ProofId,
+    IdentifierId, InteractionId, KeyId, ProofId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -671,7 +671,7 @@ pub async fn create_proof_schema(
 }
 
 pub async fn create_interaction_with_id(
-    id: Uuid,
+    id: InteractionId,
     db_conn: &DbConn,
     data: &[u8],
     organisation: &Organisation,
@@ -706,7 +706,7 @@ pub async fn create_interaction(
     interaction_type: InteractionType,
 ) -> Interaction {
     create_interaction_with_id(
-        Uuid::new_v4(),
+        Uuid::new_v4().into(),
         db_conn,
         data,
         organisation,

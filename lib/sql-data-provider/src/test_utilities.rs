@@ -5,7 +5,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use one_core::model::credential::{Credential, CredentialStateEnum};
-use one_core::model::interaction::InteractionId;
 use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::WalletProviderType;
@@ -15,7 +14,7 @@ use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
-    HistoryId, IdentifierId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
+    HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
     RevocationListId, WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
@@ -213,7 +212,7 @@ pub async fn insert_proof_request_to_database(
     verifier_identifier_id: IdentifierId,
     proof_schema_id: &ProofSchemaId,
     verifier_key_id: KeyId,
-    interaction_id: Option<String>,
+    interaction_id: Option<InteractionId>,
     proof_blob_id: Option<BlobId>,
     engagement: Option<String>,
 ) -> Result<ProofId, DbErr> {
@@ -513,11 +512,11 @@ pub async fn insert_interaction(
     organisation_id: OrganisationId,
     nonce_id: Option<NonceId>,
     interaction_type: InteractionType,
-) -> Result<String, DbErr> {
+) -> Result<InteractionId, DbErr> {
     let now = OffsetDateTime::now_utc();
 
     let interaction = interaction::ActiveModel {
-        id: Set(Uuid::new_v4().to_string()),
+        id: Set(Uuid::new_v4().into()),
         created_date: Set(now),
         last_modified: Set(now),
         data: Set(Some(data.to_owned())),
@@ -536,7 +535,7 @@ pub async fn get_interaction(
     database: &DatabaseConnection,
     id: &InteractionId,
 ) -> Result<interaction::Model, DbErr> {
-    interaction::Entity::find_by_id(id.to_string())
+    interaction::Entity::find_by_id(id)
         .one(database)
         .await?
         .ok_or(DbErr::RecordNotFound(String::default()))

@@ -1,13 +1,13 @@
 use std::collections::HashMap;
 
 use dcql::DcqlQuery;
+use shared_types::InteractionId;
 use url::Url;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
 use crate::mapper::PublicKeyWithJwk;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
-use crate::model::interaction::InteractionId;
 use crate::model::key::JwkUse;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;

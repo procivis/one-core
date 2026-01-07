@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CertificateId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    CertificateId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId,
+    ProofSchemaId,
 };
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::interaction::InteractionId;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};

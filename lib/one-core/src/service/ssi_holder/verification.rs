@@ -4,7 +4,7 @@ use std::sync::Arc;
 use ApplicableCredentialOrFailureHintEnum::ApplicableCredentials;
 use futures::TryFutureExt;
 use itertools::Itertools;
-use shared_types::{ClaimId, CredentialId, ProofId};
+use shared_types::{ClaimId, CredentialId, InteractionId, ProofId};
 use url::Url;
 
 use super::SSIHolderService;
@@ -26,7 +26,7 @@ use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelation
 use crate::model::did::DidRelations;
 use crate::model::history::HistoryErrorMetadata;
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::{InteractionId, InteractionRelations};
+use crate::model::interaction::InteractionRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequest};

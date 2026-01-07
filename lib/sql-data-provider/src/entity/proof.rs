@@ -1,7 +1,9 @@
 use one_core::model::proof::{ProofRole as ModelProofRole, ProofStateEnum};
 use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
-use shared_types::{BlobId, CertificateId, DidId, IdentifierId, KeyId, ProofId, ProofSchemaId};
+use shared_types::{
+    BlobId, CertificateId, DidId, IdentifierId, InteractionId, KeyId, ProofId, ProofSchemaId,
+};
 use time::OffsetDateTime;
 
 #[derive(Clone, Debug, PartialEq, Eq, DeriveEntityModel)]
@@ -27,7 +29,7 @@ pub struct Model {
     pub proof_schema_id: Option<ProofSchemaId>,
     pub verifier_key_id: Option<KeyId>,
     pub verifier_certificate_id: Option<CertificateId>,
-    pub interaction_id: Option<String>,
+    pub interaction_id: Option<InteractionId>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]

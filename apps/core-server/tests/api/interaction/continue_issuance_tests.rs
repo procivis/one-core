@@ -15,7 +15,7 @@ async fn test_continue_issuance_endpoint() {
     let mock_server = MockServer::start().await;
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let authorization_code = "aUtH_CoDe";
     let credential_schema_id = Uuid::new_v4();
 

@@ -6,7 +6,7 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use secrecy::ExposeSecret;
 use serde_json::json;
-use shared_types::{CredentialFormat, DidId};
+use shared_types::{CredentialFormat, DidId, InteractionId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -139,7 +139,7 @@ fn generic_credential_schema() -> CredentialSchema {
 }
 
 fn dummy_interaction(
-    id: Option<Uuid>,
+    id: Option<InteractionId>,
     pre_authorized_code: bool,
     access_token_expires_at: Option<&str>,
     refresh_token: Option<&str>,
@@ -166,7 +166,7 @@ fn dummy_interaction(
     }
 
     Interaction {
-        id: id.unwrap_or(Uuid::new_v4()),
+        id: id.unwrap_or(Uuid::new_v4().into()),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         data: Some(data.to_string().into_bytes()),
@@ -829,7 +829,9 @@ async fn test_create_credential_success() {
             .once()
             .return_once(move |_, _| Ok(vec![clone]));
 
-        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
+        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+            .unwrap()
+            .into();
         interaction_repository
             .expect_get_interaction()
             .times(2)
@@ -1011,7 +1013,9 @@ async fn test_create_credential_success_sd_jwt_vc() {
             .once()
             .return_once(move |_, _| Ok(vec![clone]));
 
-        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
+        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+            .unwrap()
+            .into();
         interaction_repository
             .expect_get_interaction()
             .times(2)
@@ -1195,7 +1199,11 @@ async fn test_create_credential_success_mdoc() {
             .times(2)
             .returning(|_, _, _| {
                 Ok(Some(dummy_interaction(
-                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    Some(
+                        Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                            .unwrap()
+                            .into(),
+                    ),
                     true,
                     None,
                     None,
@@ -1616,7 +1624,9 @@ async fn test_create_credential_issuer_failed() {
             .once()
             .return_once(move |_, _| Ok(vec![clone]));
 
-        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap();
+        let interaction_id = Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+            .unwrap()
+            .into();
         interaction_repository
             .expect_get_interaction()
             .times(2)
@@ -1788,7 +1798,11 @@ async fn test_create_credential_nonce_reused() {
             .once()
             .return_once(|_, _, _| {
                 Ok(Some(dummy_interaction(
-                    Some(Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6").unwrap()),
+                    Some(
+                        Uuid::from_str("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+                            .unwrap()
+                            .into(),
+                    ),
                     true,
                     None,
                     None,
@@ -1989,7 +2003,9 @@ async fn test_valid_refresh_token_grant_type_creates_refresh_and_tokens() {
             move |_, _| Ok(Some(schema))
         });
 
-    let interaction_id: Uuid = "c62f4237-3c74-42f2-a5ff-c72489e025f7".parse().unwrap();
+    let interaction_id = Uuid::from_str("c62f4237-3c74-42f2-a5ff-c72489e025f7")
+        .unwrap()
+        .into();
     let refresh_token = "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA";
     let refresh_token_expires_at = "2077-10-28T07:03:38.4404734Z";
     let interaction = dummy_interaction(
@@ -2083,7 +2099,9 @@ async fn test_refresh_token_request_fails_if_refresh_token_is_expired() {
             move |_, _| Ok(Some(schema))
         });
 
-    let interaction_id: Uuid = "c62f4237-3c74-42f2-a5ff-c72489e025f7".parse().unwrap();
+    let interaction_id = Uuid::from_str("c62f4237-3c74-42f2-a5ff-c72489e025f7")
+        .unwrap()
+        .into();
     let refresh_token = "c62f4237-3c74-42f2-a5ff-c72489e025f7.AAAAA";
     // expired refresh token
     let refresh_token_expires_at = "2023-10-28T07:03:38.4404734Z";

@@ -169,7 +169,7 @@ async fn test_presentation_reject_ok() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             data: Some(interaction_data),
             last_modified: OffsetDateTime::now_utc(),

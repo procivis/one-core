@@ -10,6 +10,7 @@ use futures::stream::FuturesUnordered;
 use futures::{Stream, StreamExt, TryFutureExt, TryStreamExt};
 use one_crypto::utilities;
 use serde::de::DeserializeOwned;
+use shared_types::InteractionId;
 use tokio::select;
 use tokio::sync::Mutex;
 use tracing::{info, warn};
@@ -23,7 +24,6 @@ use super::{
     TRANSFER_SUMMARY_REPORT_UUID, TRANSFER_SUMMARY_REQUEST_UUID, TransferSummaryReport,
 };
 use crate::config::core_config::TransportType;
-use crate::model::interaction::InteractionId;
 use crate::proto::bluetooth_low_energy::BleError;
 use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter, OnConflict};
 use crate::proto::bluetooth_low_energy::low_level::ble_peripheral::TrackingBlePeripheral;

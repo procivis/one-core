@@ -1,7 +1,7 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialId, OrganisationId};
+use shared_types::{CredentialId, InteractionId, OrganisationId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -12,7 +12,6 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
-use crate::model::interaction::InteractionId;
 use crate::model::key::Key;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 

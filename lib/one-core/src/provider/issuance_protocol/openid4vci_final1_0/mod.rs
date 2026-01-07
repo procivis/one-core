@@ -14,7 +14,7 @@ use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     BlobId, CertificateId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId,
-    IdentifierId,
+    IdentifierId, InteractionId,
 };
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -59,7 +59,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
-use crate::model::interaction::{Interaction, InteractionId, UpdateInteractionRequest};
+use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
@@ -1228,7 +1228,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         &self,
         credential: &Credential,
     ) -> Result<ShareResponse, IssuanceProtocolError> {
-        let interaction_id = Uuid::new_v4();
+        let interaction_id: InteractionId = Uuid::new_v4().into();
 
         let mut url = Url::parse(&format!("{}://", self.params.url_scheme))
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;

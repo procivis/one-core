@@ -225,9 +225,7 @@ impl TryFrom<Proof> for proof::ActiveModel {
             verifier_certificate_id: Set(value
                 .verifier_certificate
                 .map(|certificate| certificate.id)),
-            interaction_id: Set(value
-                .interaction
-                .map(|interaction| interaction.id.to_string())),
+            interaction_id: Set(value.interaction.map(|interaction| interaction.id)),
             profile: Set(value.profile),
             proof_blob_id: Set(value.proof_blob_id),
             engagement: Set(value.engagement),

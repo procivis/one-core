@@ -1,12 +1,11 @@
 use one_crypto::CryptoProviderError;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
-    HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    HolderWalletUnitId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId,
     RevocationListEntryId, RevocationListId, TrustAnchorId, TrustEntityId, TrustEntityKey,
     WalletUnitId,
 };
 use thiserror::Error;
-use uuid::Uuid;
 
 use super::did::DidDeactivationError;
 use super::proof_schema::ProofSchemaImportError;
@@ -16,7 +15,6 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::did::KeyRole;
-use crate::model::interaction::InteractionId;
 use crate::model::proof::{ProofRole, ProofStateEnum};
 use crate::proto::nfc::NfcError;
 use crate::provider::blob_storage_provider::error::BlobStorageError;
@@ -270,7 +268,7 @@ pub enum BusinessLogicError {
     DidDeactivation(#[from] DidDeactivationError),
 
     #[error("Missing credentials for interaction: {interaction_id}")]
-    MissingCredentialsForInteraction { interaction_id: Uuid },
+    MissingCredentialsForInteraction { interaction_id: InteractionId },
 
     #[error("Missing revocation list for did: {did_id}")]
     MissingRevocationListForDid { did_id: DidId },
@@ -297,7 +295,7 @@ pub enum BusinessLogicError {
     MissingProofSchema { proof_schema_id: ProofSchemaId },
 
     #[error("Missing interaction for access token: {interaction_id}")]
-    MissingInteractionForAccessToken { interaction_id: Uuid },
+    MissingInteractionForAccessToken { interaction_id: InteractionId },
 
     #[error("Missing credential index on revocation list: {credential_id} for DID: {did}")]
     MissingCredentialIndexOnRevocationList {

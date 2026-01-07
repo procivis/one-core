@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use std::sync::Arc;
 use std::vec;
 
@@ -9,6 +8,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::interaction_repository::InteractionRepository;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use sea_orm::DbErr;
+use shared_types::InteractionId;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
 
@@ -45,7 +45,7 @@ async fn setup(repositories: Repositories) -> TestSetup {
 struct TestSetupWithInteraction {
     pub db: sea_orm::DatabaseConnection,
     pub provider: InteractionProvider,
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     pub data: Vec<u8>,
 }
 
@@ -68,8 +68,6 @@ async fn setup_with_interaction() -> TestSetupWithInteraction {
     .await
     .unwrap();
 
-    let id = Uuid::from_str(&id).unwrap();
-
     TestSetupWithInteraction {
         db: setup.db,
         provider: setup.provider,
@@ -87,7 +85,7 @@ async fn test_create_interaction() {
 
     let organisation = dummy_organisation(Some(organisation_id));
 
-    let id = Uuid::new_v4();
+    let id = Uuid::new_v4().into();
     let nonce_id = Uuid::new_v4().into();
     let interaction = Interaction {
         id,
@@ -144,8 +142,6 @@ async fn test_mark_nonce_as_used() {
         crate::entity::interaction::InteractionType::Issuance,
     )
     .await
-    .unwrap()
-    .parse()
     .unwrap();
 
     let nonce_id = Uuid::new_v4().into();
@@ -184,7 +180,7 @@ async fn test_mark_nonce_as_used_already_used() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id)
+        .mark_nonce_as_used(&interaction_id, nonce_id)
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));
 }
@@ -218,7 +214,7 @@ async fn test_mark_nonce_as_used_already_used_different_interaction() {
 
     let result = setup
         .provider
-        .mark_nonce_as_used(&interaction_id.parse().unwrap(), nonce_id)
+        .mark_nonce_as_used(&interaction_id, nonce_id)
         .await;
     assert!(matches!(result, Err(DataLayerError::AlreadyExists)));
 }

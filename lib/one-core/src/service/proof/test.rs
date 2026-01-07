@@ -6,7 +6,7 @@ use mockall::Sequence;
 use mockall::predicate::*;
 use rstest::rstest;
 use secrecy::SecretSlice;
-use shared_types::ProofId;
+use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -33,9 +33,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{
-    Interaction, InteractionId, InteractionRelations, InteractionType,
-};
+use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -704,7 +702,7 @@ async fn test_get_proof_with_array_holder() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             data: None,
@@ -970,7 +968,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             data: None,
@@ -1251,7 +1249,7 @@ async fn test_get_proof_with_object_array_holder() {
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             data: None,
@@ -3677,7 +3675,7 @@ async fn test_share_proof_created_success() {
     });
 
     let expected_url = "test_url";
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_verifier_share_proof()
@@ -3783,7 +3781,7 @@ async fn test_share_proof_pending_success() {
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_verifier_share_proof()
@@ -3895,7 +3893,7 @@ async fn test_share_proof_interaction_expired_success() {
         .return_once(|_| Some(Arc::new(key_algorithm)));
 
     let expected_url = "test_url";
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_verifier_share_proof()
@@ -4045,6 +4043,8 @@ async fn test_share_proof_fails_when_engagement_is_present() {
 async fn test_delete_proof_ok_for_allowed_state(
     #[values(ProofStateEnum::Created, ProofStateEnum::Pending)] state: ProofStateEnum,
 ) {
+    use shared_types::InteractionId;
+
     let proof_id = ProofId::from(Uuid::new_v4());
     let interaction_id = InteractionId::from(Uuid::new_v4());
 

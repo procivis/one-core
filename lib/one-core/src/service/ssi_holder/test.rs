@@ -6,7 +6,7 @@ use mockall::predicate::eq;
 use one_dto_mapper::try_convert_inner;
 use regex::Regex;
 use serde_json::json;
-use shared_types::OrganisationId;
+use shared_types::{InteractionId, OrganisationId};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -87,7 +87,7 @@ use crate::service::test_utilities::{
 #[tokio::test]
 async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_latest_state_is_requested()
  {
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let proof_id = Uuid::new_v4().into();
     let protocol = "OPENID4VP_DRAFT20";
 
@@ -156,7 +156,7 @@ async fn test_reject_proof_request_succeeds_and_sets_state_to_rejected_when_late
 #[tokio::test]
 async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
     let reject_proof_for_state = |state| async move {
-        let interaction_id = Uuid::new_v4();
+        let interaction_id = Uuid::new_v4().into();
         let proof_id = Uuid::new_v4().into();
         let protocol = "OPENID4VP_DRAFT20";
         let mut proof_repository = MockProofRepository::new();
@@ -206,7 +206,7 @@ async fn test_reject_proof_request_fails_when_latest_state_is_not_requested() {
 #[tokio::test]
 async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state_is_set_to_errored()
 {
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let proof_id = Uuid::new_v4().into();
     let protocol = "OPENID4VP_DRAFT20";
 
@@ -275,7 +275,7 @@ async fn test_reject_proof_request_suceeds_when_holder_reject_proof_errors_state
 #[tokio::test]
 async fn test_submit_proof_succeeds() {
     let identifier_id = Uuid::new_v4().into();
-    let interaction_id = Uuid::new_v4();
+    let interaction_id: InteractionId = Uuid::new_v4().into();
 
     let proof_id = Uuid::new_v4().into();
     let protocol = "protocol";
@@ -303,8 +303,8 @@ async fn test_submit_proof_succeeds() {
     let mut proof_repository = MockProofRepository::new();
     proof_repository
         .expect_get_proof_by_interaction_id()
-        .withf(move |_interaction_id: &Uuid, _| {
-            assert_eq!(_interaction_id, &interaction_id);
+        .withf(move |_interaction_id, _| {
+            assert_eq!(*_interaction_id, interaction_id);
             true
         })
         .once()
@@ -495,7 +495,7 @@ async fn test_submit_proof_succeeds() {
 #[tokio::test]
 async fn test_submit_proof_multiple_credentials_succeeds() {
     let identifier_id = Uuid::new_v4().into();
-    let interaction_id = Uuid::new_v4();
+    let interaction_id: InteractionId = Uuid::new_v4().into();
 
     let proof_id = Uuid::new_v4().into();
     let protocol = "protocol";
@@ -524,8 +524,8 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     let mut proof_repository = MockProofRepository::new();
     proof_repository
         .expect_get_proof_by_interaction_id()
-        .withf(move |_interaction_id: &Uuid, _| {
-            assert_eq!(_interaction_id, &interaction_id);
+        .withf(move |_interaction_id, _| {
+            assert_eq!(*_interaction_id, interaction_id);
             true
         })
         .once()
@@ -734,7 +734,7 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
 
 #[tokio::test]
 async fn test_submit_proof_repeating_claims() {
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let proof_id = Uuid::new_v4().into();
     let credential_id = Uuid::new_v4().into();
     let claim_id = Uuid::new_v4();
@@ -1139,7 +1139,7 @@ async fn test_accept_credential() {
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     service
         .accept_credential(interaction_id, None, Some(identifier_id), None, None, None)
         .await
@@ -1295,7 +1295,7 @@ async fn test_accept_credential_with_did() {
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     service
         .accept_credential(interaction_id, Some(did_id), None, None, None, None)
         .await
@@ -1341,7 +1341,7 @@ async fn test_reject_credential() {
         ..mock_ssi_holder_service()
     };
 
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     service.reject_credential(&interaction_id).await.unwrap();
 }
 
@@ -1428,7 +1428,7 @@ async fn test_initiate_issuance() {
 async fn test_continue_issuance() {
     // given
     let organisation = dummy_organisation(None);
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
 
     let interaction_data = OpenIDAuthorizationCodeFlowInteractionData {
         request: InitiateIssuanceRequestDTO {
@@ -1450,7 +1450,7 @@ async fn test_continue_issuance() {
         .expect_get_interaction()
         .return_once(move |_, _, _| {
             Ok(Some(Interaction {
-                id: Default::default(),
+                id: Uuid::new_v4().into(),
                 created_date: get_dummy_date(),
                 last_modified: get_dummy_date(),
                 data: Some(serde_json::to_vec(&interaction_data).unwrap()),
@@ -1528,7 +1528,7 @@ async fn test_initiate_issuance_pkce() {
 
             data.code_verifier.is_some()
         })
-        .return_once(|_| Ok(Uuid::new_v4()));
+        .return_once(|_| Ok(Uuid::new_v4().into()));
 
     let service = SSIHolderService {
         organisation_repository: Arc::new(organisation_repository),
@@ -1683,7 +1683,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             data: Some(b"interaction data".to_vec()),
@@ -1763,7 +1763,14 @@ async fn test_accept_credential_identifier_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None, None)
+        .accept_credential(
+            Uuid::new_v4().into(),
+            None,
+            Some(identifier_id),
+            None,
+            None,
+            None,
+        )
         .await;
     assert!(matches!(
         result,
@@ -1823,7 +1830,14 @@ async fn test_accept_credential_credential_org_mismatch() {
     };
 
     let result = service
-        .accept_credential(Uuid::new_v4(), None, Some(identifier_id), None, None, None)
+        .accept_credential(
+            Uuid::new_v4().into(),
+            None,
+            Some(identifier_id),
+            None,
+            None,
+            None,
+        )
         .await;
     assert!(matches!(
         result,
@@ -1869,7 +1883,7 @@ async fn test_reject_credential_credential_org_mismatch() {
         ..mock_ssi_holder_service()
     };
 
-    let result = service.reject_credential(&Uuid::new_v4()).await;
+    let result = service.reject_credential(&Uuid::new_v4().into()).await;
     assert!(matches!(
         result,
         Err(ServiceError::Validation(ValidationError::Forbidden))

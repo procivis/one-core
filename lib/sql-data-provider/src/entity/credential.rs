@@ -5,7 +5,8 @@ use one_dto_mapper::{From, Into};
 use sea_orm::entity::prelude::*;
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    BlobId, CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
+    BlobId, CertificateId, CredentialId, CredentialSchemaId, DidId, IdentifierId, InteractionId,
+    KeyId,
 };
 use time::OffsetDateTime;
 
@@ -34,7 +35,7 @@ pub struct Model {
 
     pub holder_identifier_id: Option<IdentifierId>,
 
-    pub interaction_id: Option<String>,
+    pub interaction_id: Option<InteractionId>,
 
     pub suspend_end_date: Option<OffsetDateTime>,
 

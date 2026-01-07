@@ -9,9 +9,7 @@ use one_core::model::did::{Did, DidRelations, DidType};
 use one_core::model::identifier::{
     Identifier, IdentifierRelations, IdentifierState, IdentifierType,
 };
-use one_core::model::interaction::{
-    Interaction, InteractionId, InteractionRelations, InteractionType,
-};
+use one_core::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use one_core::model::key::{Key, KeyRelations};
 use one_core::model::list_filter::ListFilterValue;
 use one_core::model::list_query::ListPagination;
@@ -36,7 +34,8 @@ use one_core::repository::proof_schema_repository::{
 use one_core::service::proof::dto::ProofFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set};
 use shared_types::{
-    ClaimId, ClaimSchemaId, DidId, IdentifierId, KeyId, OrganisationId, ProofId, ProofSchemaId,
+    ClaimId, ClaimSchemaId, DidId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId,
+    ProofSchemaId,
 };
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -157,17 +156,14 @@ async fn setup(
     .await
     .unwrap();
 
-    let interaction_id = Uuid::parse_str(
-        &insert_interaction(
-            &db,
-            &[1, 2, 3],
-            organisation_id,
-            None,
-            interaction::InteractionType::Verification,
-        )
-        .await
-        .unwrap(),
+    let interaction_id = insert_interaction(
+        &db,
+        &[1, 2, 3],
+        organisation_id,
+        None,
+        interaction::InteractionType::Verification,
     )
+    .await
     .unwrap();
 
     TestSetup {
@@ -239,7 +235,7 @@ async fn setup_with_proof(
         identifier_id,
         &proof_schema_id,
         key_id,
-        Some(interaction_id.to_string()),
+        Some(interaction_id),
         None,
         None,
     )
@@ -748,7 +744,7 @@ async fn test_get_proof_by_interaction_id_missing() {
     .await;
 
     let result = repository
-        .get_proof_by_interaction_id(&Uuid::new_v4(), &ProofRelations::default())
+        .get_proof_by_interaction_id(&Uuid::new_v4().into(), &ProofRelations::default())
         .await;
     assert!(matches!(result, Ok(None)));
 }

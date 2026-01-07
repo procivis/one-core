@@ -2,7 +2,7 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use shared_types::{ClaimId, CredentialId};
+use shared_types::{ClaimId, CredentialId, InteractionId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -13,7 +13,6 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::InteractionId;
 use crate::proto::session_provider::{SessionExt, SessionProvider};
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::error::DataLayerError;

@@ -441,7 +441,7 @@ fn test_data(
     let interaction = Interaction {
         id: Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
             .unwrap()
-            .to_owned(),
+            .into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         data: Some(interaction_data_serialized),

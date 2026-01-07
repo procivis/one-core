@@ -93,13 +93,13 @@ impl ProofService {
                         submission: Some(submission),
                         ..
                     } => (
-                        Uuid::from_str(&submission.presentation_submission.definition_id)?,
+                        Uuid::from_str(&submission.presentation_submission.definition_id)?.into(),
                         VpSubmissionData::Pex(submission),
                     ),
                     BLEVerifierProtocolData::V2 {
                         submission: Some(submission),
                         ..
-                    } => (Uuid::new_v4(), VpSubmissionData::Dcql(submission)),
+                    } => (Uuid::new_v4().into(), VpSubmissionData::Dcql(submission)),
                     _ => {
                         return Err(anyhow::anyhow!(
                             "BLE interaction missing presentation_submission"
@@ -124,11 +124,11 @@ impl ProofService {
 
                 let (state, submission_data) = match interaction_data.protocol_data {
                     MQTTVerifierProtocolData::V1 { submission, .. } => (
-                        Uuid::from_str(&submission.presentation_submission.definition_id)?,
+                        Uuid::from_str(&submission.presentation_submission.definition_id)?.into(),
                         VpSubmissionData::Pex(submission),
                     ),
                     MQTTVerifierProtocolData::V2 { submission, .. } => {
-                        (Uuid::new_v4(), VpSubmissionData::Dcql(submission))
+                        (Uuid::new_v4().into(), VpSubmissionData::Dcql(submission))
                     }
                 };
 

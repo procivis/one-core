@@ -1,12 +1,9 @@
 use serde::{Deserialize, Serialize};
-use shared_types::NonceId;
+use shared_types::{InteractionId, NonceId};
 use strum::{AsRefStr, EnumString};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use crate::model::organisation::{Organisation, OrganisationRelations};
-
-pub type InteractionId = Uuid;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Interaction {

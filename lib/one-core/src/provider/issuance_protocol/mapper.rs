@@ -41,7 +41,7 @@ pub(crate) fn interaction_from_handle_invitation(
     organisation: Option<Organisation>,
 ) -> Interaction {
     Interaction {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         data,

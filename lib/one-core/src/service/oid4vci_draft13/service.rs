@@ -6,7 +6,7 @@ use indexmap::IndexMap;
 use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
-use shared_types::{CredentialId, CredentialSchemaId};
+use shared_types::{CredentialId, CredentialSchemaId, InteractionId};
 use time::OffsetDateTime;
 use tokio_util::either::Either;
 use url::Url;
@@ -30,7 +30,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::interaction::{InteractionId, InteractionRelations, UpdateInteractionRequest};
+use crate::model::interaction::{InteractionRelations, UpdateInteractionRequest};
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::proto::key_verification::KeyVerification;
@@ -728,11 +728,13 @@ impl OID4VCIDraft13Service {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code,
                 tx_code: _,
-            } => Uuid::from_str(pre_authorized_code).map_err(|_| {
-                ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(
-                    OpenID4VCIError::InvalidRequest,
-                ))
-            })?,
+            } => Uuid::from_str(pre_authorized_code)
+                .map_err(|_| {
+                    ServiceError::OpenIDIssuanceError(OpenIDIssuanceError::OpenID4VCI(
+                        OpenID4VCIError::InvalidRequest,
+                    ))
+                })?
+                .into(),
             OpenID4VCITokenRequestDTO::AuthorizationCode { .. } => {
                 return Err(ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidGrant));
             }

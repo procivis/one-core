@@ -16,7 +16,8 @@ use one_dto_mapper::{From, Into, TryInto, convert_inner_of_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, DidId, HolderWalletUnitId, IdentifierId, KeyId, OrganisationId, ProofId,
+    CredentialId, DidId, HolderWalletUnitId, IdentifierId, InteractionId, KeyId, OrganisationId,
+    ProofId,
 };
 use strum::Display;
 use url::Url;
@@ -49,7 +50,7 @@ pub(crate) struct HandleInvitationRequestRestDTO {
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct HandleInvitationResponseRestDTO {
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     pub interaction_type: InteractionTypeRestEnum,
     /// Requested proof.
     pub proof_id: Option<ProofId>,
@@ -79,7 +80,7 @@ pub(crate) enum InteractionTypeRestEnum {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ContinueIssuanceResponseRestDTO {
     /// For reference.
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     pub interaction_type: InteractionTypeRestEnum,
     #[from(with_fn = convert_inner_of_inner)]
     pub key_storage_security_levels: Option<Vec<KeyStorageSecurityRestEnum>>,
@@ -136,7 +137,7 @@ pub(crate) enum OpenID4VCITxCodeInputModeRestDTO {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssuanceAcceptRequestRestDTO {
     /// The identifier associated with the particular issuance.
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     pub did_id: Option<DidId>,
     pub identifier_id: Option<IdentifierId>,
     /// If you are using a DID and it supports multiple keys for authentication,
@@ -150,14 +151,14 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssuanceRejectRequestRestDTO {
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PresentationRejectRequestRestDTO {
     /// The identifier associated with a particular verification interaction.
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -181,7 +182,7 @@ impl<T> From<SingleOrArray<T>> for Vec<T> {
 #[into(PresentationSubmitRequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PresentationSubmitRequestRestDTO {
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     #[into(with_fn = convert_inner_of_inner)]
     #[serde(deserialize_with = "deserialize_submit_credentials")]
     pub submit_credentials: HashMap<String, Vec<PresentationSubmitCredentialRequestRestDTO>>,
@@ -215,7 +216,7 @@ pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
 #[into(PresentationSubmitV2RequestDTO)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct PresentationSubmitV2RequestRestDTO {
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     #[into(with_fn = convert_inner_of_inner)]
     #[serde(deserialize_with = "deserialize_credential_submission")]
     pub submission: HashMap<String, Vec<PresentationSubmitV2CredentialRequestRestDTO>>,
@@ -265,7 +266,7 @@ pub(crate) struct ProposeProofRequestRestDTO {
 #[from(ProposeProofResponseDTO)]
 pub(crate) struct ProposeProofResponseRestDTO {
     pub proof_id: ProofId,
-    pub interaction_id: Uuid,
+    pub interaction_id: InteractionId,
     pub url: Option<String>,
 }
 

@@ -378,7 +378,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
             data: Some(b"interaction data".to_vec()),

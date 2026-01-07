@@ -744,7 +744,7 @@ pub fn proof_for_scan_to_verify(
         verifier_key: None,
         verifier_certificate: None,
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
             data: Some(interaction_data),

@@ -312,7 +312,9 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                .unwrap()
+                .into(),
             created_date: now,
             data: Some(vec![1, 2, 3]),
             last_modified: now,
@@ -610,7 +612,9 @@ async fn test_holder_accept_credential_success() {
     };
 
     let interaction = Interaction {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
@@ -825,7 +829,9 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     };
 
     let interaction = Interaction {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
@@ -1061,7 +1067,9 @@ async fn test_holder_accept_expired_credential_fails() {
     };
 
     let interaction = Interaction {
-        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+        id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+            .unwrap()
+            .into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
         data: Some(serde_json::to_vec(&interaction_data).unwrap()),
@@ -1273,7 +1281,9 @@ async fn test_holder_reject_credential() {
         };
 
         credential.interaction = Some(Interaction {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap(),
+            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
+                .unwrap()
+                .into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             data: Some(serde_json::to_vec(&interaction_data).unwrap()),
@@ -1713,7 +1723,7 @@ async fn inner_continue_issuance_test(
     storage_proxy
         .expect_create_interaction()
         .times(1)
-        .returning(|_| Ok(Uuid::new_v4()));
+        .returning(|_| Ok(Uuid::new_v4().into()));
     storage_proxy
         .expect_get_schema()
         .times(1)

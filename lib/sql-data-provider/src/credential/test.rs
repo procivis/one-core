@@ -1077,17 +1077,14 @@ async fn test_update_credential_success() {
         .await
         .unwrap();
 
-    let interaction_id = Uuid::parse_str(
-        &insert_interaction(
-            &db,
-            &[],
-            organisation_id,
-            None,
-            interaction::InteractionType::Issuance,
-        )
-        .await
-        .unwrap(),
+    let interaction_id = insert_interaction(
+        &db,
+        &[],
+        organisation_id,
+        None,
+        interaction::InteractionType::Issuance,
     )
+    .await
     .unwrap();
 
     assert!(
@@ -1197,17 +1194,14 @@ async fn test_update_credential_success_no_claims() {
         .await
         .unwrap();
 
-    let interaction_id = Uuid::parse_str(
-        &insert_interaction(
-            &db,
-            &[],
-            organisation_id,
-            None,
-            interaction::InteractionType::Issuance,
-        )
-        .await
-        .unwrap(),
+    let interaction_id = insert_interaction(
+        &db,
+        &[],
+        organisation_id,
+        None,
+        interaction::InteractionType::Issuance,
     )
+    .await
     .unwrap();
 
     assert!(

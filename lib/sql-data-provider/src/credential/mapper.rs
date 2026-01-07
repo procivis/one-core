@@ -3,14 +3,13 @@ use one_core::model::credential::{
 };
 use one_core::model::credential_schema::{CredentialSchema, LayoutType};
 use one_core::model::identifier::Identifier;
-use one_core::model::interaction::InteractionId;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
 use sea_orm::sea_query::query::IntoCondition;
 use sea_orm::sea_query::{ExprTrait, SimpleExpr};
 use sea_orm::{ActiveValue, ColumnTrait, IntoSimpleExpr, JoinType, RelationTrait, Set, Value};
-use shared_types::{BlobId, CertificateId, IdentifierId, KeyId};
+use shared_types::{BlobId, CertificateId, IdentifierId, InteractionId, KeyId};
 
 use crate::credential::entity_model::CredentialListEntityModel;
 use crate::entity::{claim, credential, credential_schema, identifier};
@@ -176,7 +175,7 @@ pub(super) fn request_to_active_model(
         issuer_identifier_id: Set(issuer_identifier_id),
         issuer_certificate_id: Set(issuer_certificate_id),
         holder_identifier_id: Set(holder_identifier_id),
-        interaction_id: Set(interaction_id.map(|id| id.to_string())),
+        interaction_id: Set(interaction_id),
         key_id: Set(key_id),
         role: Set(request.role.to_owned().into()),
         state: Set(request.state.into()),

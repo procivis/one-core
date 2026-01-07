@@ -174,7 +174,7 @@ async fn test_handle_invitation_success() {
                 }),
             ))
         });
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let mut mock_storage_access = MockStorageProxy::default();
     mock_storage_access
         .expect_create_interaction()
@@ -404,7 +404,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
     });
 
     let key_agreement = KeyAgreementKey::new_random();
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
 
     let url = protocol
         .schedule_verifier_flow(

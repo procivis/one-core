@@ -9,7 +9,7 @@ use key_agreement_key::KeyAgreementKey;
 use mqtt::oidc_mqtt_verifier::MqttVerifier;
 use serde::Deserialize;
 use serde_json::Value;
-use shared_types::{KeyId, ProofId};
+use shared_types::{InteractionId, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -35,7 +35,7 @@ use crate::config::core_config::{
 use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
-use crate::model::interaction::{Interaction, InteractionId, InteractionType};
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::proto::bluetooth_low_energy::ble_resource::BleWaiter;
@@ -383,7 +383,7 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
             VerificationProtocolError::Failed("Missing verifier key".to_string()),
         )?;
 
-        let interaction_id = Uuid::new_v4();
+        let interaction_id = Uuid::new_v4().into();
         let key_agreement = KeyAgreementKey::new_random();
 
         let (presentation_definition, dcql_query, verifier_did, auth_fn_ble, auth_fn_mqtt) =
@@ -681,7 +681,7 @@ pub(super) async fn create_interaction_and_proof(
 ) -> Result<(InteractionId, Proof), VerificationProtocolError> {
     let now = OffsetDateTime::now_utc();
     let interaction = Interaction {
-        id: Uuid::new_v4(),
+        id: Uuid::new_v4().into(),
         created_date: now,
         last_modified: now,
         data: interaction_data,

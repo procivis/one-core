@@ -5,7 +5,6 @@ use autometrics::autometrics;
 use one_core::model::claim::Claim;
 use one_core::model::common::LockType;
 use one_core::model::history::HistoryErrorMetadata;
-use one_core::model::interaction::InteractionId;
 use one_core::model::proof::{
     GetProofList, GetProofQuery, Proof, ProofClaim, ProofClaimRelations, ProofRelations,
     ProofStateEnum, UpdateProofRequest,
@@ -16,7 +15,7 @@ use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QueryOrder,
     QuerySelect, RelationTrait, Select, Set, SqlErr, Unchanged,
 };
-use shared_types::{ClaimId, ProofId};
+use shared_types::{ClaimId, InteractionId, ProofId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -160,7 +159,7 @@ impl ProofRepository for ProofProvider {
 
         let interaction_id = match proof.interaction {
             None => Unchanged(Default::default()),
-            Some(interaction_id) => Set(interaction_id.map(Into::into)),
+            Some(interaction_id) => Set(interaction_id),
         };
 
         let redirect_uri = match proof.redirect_uri {
@@ -352,7 +351,6 @@ impl ProofProvider {
         if let (Some(interaction_relations), Some(interaction_id)) =
             (&relations.interaction, proof_model.interaction_id)
         {
-            let interaction_id = Uuid::from_str(&interaction_id)?;
             let interaction = self
                 .interaction_repository
                 .get_interaction(&interaction_id, interaction_relations, None)

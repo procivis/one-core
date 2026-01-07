@@ -525,7 +525,7 @@ impl ProofService {
 
                 maybe_interaction = Some(
                     add_new_interaction(
-                        Uuid::new_v4(),
+                        Uuid::new_v4().into(),
                         &*self.interaction_repository,
                         serde_json::to_vec(&data).ok(),
                         proof_schema.organisation.clone(),
@@ -863,7 +863,7 @@ impl ProofService {
             None
         };
 
-        let interaction_id = Uuid::new_v4();
+        let interaction_id = Uuid::new_v4().into();
         let interaction_data = serde_json::to_vec(&MdocBleHolderInteractionData {
             organisation_id: request.organisation_id,
             service_uuid: ble_server.service_uuid,

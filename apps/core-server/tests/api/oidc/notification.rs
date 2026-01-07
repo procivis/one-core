@@ -79,7 +79,7 @@ async fn test_post_notification_credential_deleted() {
 }
 
 async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSchema) {
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let access_token = format!("{interaction_id}.test");
 
     let context = TestContext::new_with_token(&access_token, None).await;

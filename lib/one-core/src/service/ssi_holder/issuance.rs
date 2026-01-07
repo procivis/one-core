@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::{CredentialId, DidId, HolderWalletUnitId, IdentifierId, KeyId};
+use shared_types::{CredentialId, DidId, HolderWalletUnitId, IdentifierId, InteractionId, KeyId};
 use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
@@ -26,9 +26,7 @@ use crate::model::credential::{
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaRelations};
 use crate::model::did::DidRelations;
 use crate::model::identifier::IdentifierRelations;
-use crate::model::interaction::{
-    Interaction, InteractionId, InteractionRelations, InteractionType,
-};
+use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::oauth_client::{OAuthAuthorizationRequest, OAuthClientProvider};
 use crate::provider::blob_storage_provider::BlobStorageType;
@@ -715,7 +713,7 @@ impl SSIHolderService {
         let authorization_server = Url::parse(authorization_server)
             .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        let interaction_id = Uuid::new_v4();
+        let interaction_id: InteractionId = Uuid::new_v4().into();
         let mut authorization_request = OAuthAuthorizationRequest::new(
             request.client_id.clone(),
             request.scope.as_ref().map(|s| s.join(" ")),
@@ -791,11 +789,13 @@ impl SSIHolderService {
                 "Continuation URL authorization_code parameter not specified".to_string(),
             ))?;
 
-        let interaction_id = state.as_ref().try_into().map_err(|_| {
-            IssuanceProtocolError::InvalidRequest(
-                "Continuation URL state parameter has invalid format".to_string(),
-            )
-        })?;
+        let interaction_id = Uuid::parse_str(state.as_ref())
+            .map_err(|_| {
+                IssuanceProtocolError::InvalidRequest(
+                    "Continuation URL state parameter has invalid format".to_string(),
+                )
+            })?
+            .into();
 
         let interaction = self
             .interaction_repository

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use shared_types::ProofId;
+use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -84,7 +84,9 @@ async fn test_submit_proof_failed_credential_suspended() {
     let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "did:verifier:123".parse().unwrap();
     let mut proof_repository = MockProofRepository::new();
-    let interaction_id = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36").unwrap();
+    let interaction_id: InteractionId = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
+        .unwrap()
+        .into();
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
     let claim_id = Uuid::new_v4().into();
     let credential_schema = dummy_credential_schema();
@@ -135,7 +137,7 @@ async fn test_submit_proof_failed_credential_suspended() {
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = OffsetDateTime::now_utc();
     let interaction = Interaction {
-        id: interaction_id.to_owned(),
+        id: interaction_id,
         created_date: now,
         last_modified: now,
         data: Some(interaction_data_serialized),
@@ -262,7 +264,9 @@ async fn test_submit_proof_failed_on_validator_failure() {
     let proof_id: ProofId = Uuid::new_v4().into();
     let verifier_did = "did:verifier:123".parse().unwrap();
     let mut proof_repository = MockProofRepository::new();
-    let interaction_id = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36").unwrap();
+    let interaction_id: InteractionId = Uuid::parse_str("a83dabc3-1601-4642-84ec-7a5ad8a70d36")
+        .unwrap()
+        .into();
     let nonce = "7QqBfOcEcydceH6ZrXtu9fhDCvXjtLBv".to_string();
 
     let claim_id = Uuid::new_v4().into();
@@ -314,7 +318,7 @@ async fn test_submit_proof_failed_on_validator_failure() {
     let interaction_data_serialized = serde_json::to_vec(&interaction_data).unwrap();
     let now = OffsetDateTime::now_utc();
     let interaction = Interaction {
-        id: interaction_id.to_owned(),
+        id: interaction_id,
         created_date: now,
         last_modified: now,
         data: Some(interaction_data_serialized),

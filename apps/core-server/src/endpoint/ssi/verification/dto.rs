@@ -17,6 +17,7 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::json::JsonString;
 use serde_with::{OneOrMany, serde_as};
+use shared_types::InteractionId;
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -34,8 +35,7 @@ pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
     #[serde(flatten)]
     pub submission_data: VpSubmissionDataRestDTO,
     #[schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")]
-    #[into(with_fn = convert_inner)]
-    pub state: Option<Uuid>,
+    pub state: Option<InteractionId>,
 }
 
 /// Represents the different types of VP token submissions supported by OpenID4VP.

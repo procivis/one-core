@@ -712,7 +712,7 @@ fn dummy_credential() -> Credential {
             requires_app_attestation: false,
         }),
         interaction: Some(Interaction {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: OffsetDateTime::now_utc(),
             data: Some(b"interaction data".to_vec()),
             last_modified: OffsetDateTime::now_utc(),

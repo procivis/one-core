@@ -6,7 +6,7 @@ use one_core::model::certificate::{Certificate, CertificateState};
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::{Identifier, IdentifierType};
-use one_core::model::interaction::{InteractionId, InteractionType};
+use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
 use one_core::model::revocation_list::{
@@ -18,7 +18,7 @@ use one_core::provider::key_algorithm::eddsa::Eddsa;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialId, DidValue};
+use shared_types::{CredentialFormat, CredentialId, DidValue, InteractionId};
 use similar_asserts::assert_eq;
 use time::macros::format_description;
 use time::{Duration, OffsetDateTime};
@@ -262,7 +262,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
     const NUM_CREDENTIALS: usize = 10;
     for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
-        let interaction_id = Uuid::new_v4();
+        let interaction_id: InteractionId = Uuid::new_v4().into();
         let access_token = format!("{interaction_id}.test");
         let interaction_data = json!({
             "pre_authorized_code_used": true,
@@ -371,7 +371,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
     const NUM_CREDENTIALS: usize = 10;
     for _ in 0..NUM_CREDENTIALS {
         let schema_id = schema_id.clone();
-        let interaction_id = Uuid::new_v4();
+        let interaction_id: InteractionId = Uuid::new_v4().into();
         let access_token = format!("{interaction_id}.test");
         let interaction_data = json!({
             "pre_authorized_code_used": true,
@@ -572,7 +572,7 @@ struct TestIssuerSetup {
 }
 
 async fn issuer_setup(additional_config: Option<String>) -> TestIssuerSetup {
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let access_token = format!("{interaction_id}.test");
     let context = TestContext::new_with_token(&access_token, additional_config).await;
 
@@ -762,7 +762,7 @@ async fn test_post_issuer_credential_with(
 
 #[tokio::test]
 async fn test_post_issuer_credential_mdoc() {
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let access_token = format!("{interaction_id}.test");
 
     let context = TestContext::new_with_token(&access_token, None).await;

@@ -1,10 +1,8 @@
-use shared_types::{CredentialId, NonceId, ProofId};
+use shared_types::{CredentialId, InteractionId, NonceId, ProofId};
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
-use crate::model::interaction::{
-    Interaction, InteractionId, InteractionRelations, UpdateInteractionRequest,
-};
+use crate::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]

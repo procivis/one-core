@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use futures::future::BoxFuture;
-use shared_types::ProofId;
+use shared_types::{InteractionId, ProofId};
 use time::{Duration, OffsetDateTime};
 use tokio::select;
 use tokio::sync::Mutex;
@@ -13,7 +13,6 @@ use url::Url;
 use super::model::{MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData};
 use super::{ConfigParams, SubscriptionHandle, extract_host_and_port};
 use crate::config::core_config::TransportType;
-use crate::model::interaction::InteractionId;
 use crate::model::proof::Proof;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;

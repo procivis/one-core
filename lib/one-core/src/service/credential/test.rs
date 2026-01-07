@@ -582,7 +582,7 @@ async fn test_share_credential_success() {
     let mut protocol_provider = MockIssuanceProtocolProvider::default();
 
     let expected_url = "test_url";
-    let interaction_id = Uuid::new_v4();
+    let interaction_id = Uuid::new_v4().into();
     let expires_at = OffsetDateTime::now_utc();
     protocol
         .expect_issuer_share_credential()
