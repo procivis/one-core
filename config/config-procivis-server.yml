@@ -5,7 +5,7 @@ app:
   serverPort: 3000
   traceJson: true
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error"
-  sentryDsn: "https://2deca538f2c80d91bf6fd718fde96db6@o153694.ingest.sentry.io/4505940972142592"
+  sentryDsn: ""
   sentryEnvironment: ""
   hideErrorResponseCause: false
   allowInsecureHttpTransport: false
