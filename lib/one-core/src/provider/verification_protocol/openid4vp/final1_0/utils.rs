@@ -17,7 +17,7 @@ use crate::proto::certificate_validator::{
 };
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::credential_formatter::model::{
     CertificateDetails, IdentifierDetails, TokenVerifier,
@@ -37,7 +37,7 @@ use crate::provider::verification_protocol::openid4vp::validator::{
 use crate::validator::x509::is_dns_name_matching;
 
 async fn parse_referenced_data_from_x509_san_dns_token(
-    request_token: DecomposedToken<AuthorizationRequest>,
+    request_token: DecomposedJwt<AuthorizationRequest>,
     certificate_validator: &Arc<dyn CertificateValidator>,
 ) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
     let x5c = request_token
@@ -109,7 +109,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
 }
 
 async fn parse_referenced_data_from_x509_hash_token(
-    request_token: DecomposedToken<AuthorizationRequest>,
+    request_token: DecomposedJwt<AuthorizationRequest>,
     certificate_validator: &Arc<dyn CertificateValidator>,
 ) -> Result<(AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
     let x5c = request_token
@@ -162,7 +162,7 @@ async fn parse_referenced_data_from_x509_hash_token(
 }
 
 async fn parse_referenced_data_from_did_signed_token(
-    request_token: DecomposedToken<AuthorizationRequest>,
+    request_token: DecomposedJwt<AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<(AuthorizationRequest, DidValue), VerificationProtocolError> {
@@ -215,7 +215,7 @@ async fn parse_referenced_data_from_did_signed_token(
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
-    request_token: DecomposedToken<AuthorizationRequest>,
+    request_token: DecomposedJwt<AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
@@ -330,7 +330,7 @@ async fn retrieve_authorization_params_by_reference(
         .and_then(|r| String::from_utf8(r.body).context("Invalid response"))
         .map_err(VerificationProtocolError::Transport)?;
 
-    let request_token: DecomposedToken<AuthorizationRequest> = Jwt::decompose_token(&token)
+    let request_token: DecomposedJwt<AuthorizationRequest> = Jwt::decompose_token(&token)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     if let Some(audience) = &request_token.payload.audience {

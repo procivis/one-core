@@ -13,7 +13,7 @@ mod validator {
     use std::sync::Arc;
 
     use one_core::proto::jwt::Jwt;
-    use one_core::proto::jwt::model::{DecomposedToken, JWTPayload};
+    use one_core::proto::jwt::model::{DecomposedJwt, JWTPayload};
     use one_core::provider::credential_formatter::error::FormatterError;
     use one_core::validator::{
         validate_audience, validate_expiration_time, validate_not_before_time,
@@ -52,7 +52,7 @@ mod validator {
         pub(crate) async fn validate_sts_token<Payload: DeserializeOwned + Debug>(
             &self,
             token: &str,
-        ) -> Result<DecomposedToken<Payload>, StsError> {
+        ) -> Result<DecomposedJwt<Payload>, StsError> {
             if token.is_empty() {
                 return Err(StsError::EmptyToken);
             }

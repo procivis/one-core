@@ -16,7 +16,7 @@ use crate::proto::certificate_validator::{
 };
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
 use crate::provider::credential_formatter::model::{
@@ -35,7 +35,7 @@ use crate::provider::verification_protocol::openid4vp::validator::{
 use crate::validator::x509::is_dns_name_matching;
 
 async fn parse_referenced_data_from_x509_san_dns_token(
-    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
+    request_token: DecomposedJwt<OpenID4VP20AuthorizationRequest>,
     certificate_validator: &Arc<dyn CertificateValidator>,
 ) -> Result<(OpenID4VP20AuthorizationRequest, CertificateDetails), VerificationProtocolError> {
     let x5c = request_token
@@ -108,7 +108,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
 }
 
 async fn parse_referenced_data_from_did_signed_token(
-    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
+    request_token: DecomposedJwt<OpenID4VP20AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<(OpenID4VP20AuthorizationRequest, DidValue), VerificationProtocolError> {
@@ -161,7 +161,7 @@ async fn parse_referenced_data_from_did_signed_token(
 }
 
 async fn parse_referenced_data_from_verifier_attestation_token(
-    request_token: DecomposedToken<OpenID4VP20AuthorizationRequest>,
+    request_token: DecomposedJwt<OpenID4VP20AuthorizationRequest>,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
     certificate_validator: &Arc<dyn CertificateValidator>,
@@ -312,7 +312,7 @@ pub(crate) async fn interaction_data_from_openid4vp_20_query(
     let mut interaction_data: OpenID4VPHolderInteractionData = interaction_data.into();
 
     if let Some(token) = request {
-        let request_token: DecomposedToken<OpenID4VP20AuthorizationRequest> =
+        let request_token: DecomposedJwt<OpenID4VP20AuthorizationRequest> =
             Jwt::decompose_token(&token)
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

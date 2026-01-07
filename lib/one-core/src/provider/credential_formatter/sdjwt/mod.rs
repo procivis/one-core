@@ -22,7 +22,7 @@ use crate::proto::certificate_validator::{
 };
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::model::{
-    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+    DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
 use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -198,7 +198,7 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
         None => token,
         Some((without_claims, _)) => without_claims,
     };
-    let jwt: DecomposedToken<AnyPayload> = Jwt::decompose_token(without_claims)?;
+    let jwt: DecomposedJwt<AnyPayload> = Jwt::decompose_token(without_claims)?;
 
     if jwt.payload.custom.contains_key("vct") {
         Ok(SdJwtType::SdJwtVc)
@@ -531,7 +531,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 .await?;
         }
 
-        let DecomposedToken {
+        let DecomposedJwt {
             payload: kb_payload,
             ..
         } = decomposed_kb_token;

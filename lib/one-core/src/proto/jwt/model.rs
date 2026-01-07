@@ -74,7 +74,7 @@ pub struct JWTPayload<CustomPayload> {
 }
 
 #[derive(Debug)]
-pub struct DecomposedToken<Payload> {
+pub struct DecomposedJwt<Payload> {
     pub header: JWTHeader,
     pub payload: JWTPayload<Payload>,
     pub signature: Vec<u8>,

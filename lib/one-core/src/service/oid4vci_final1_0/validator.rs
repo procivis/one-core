@@ -5,7 +5,7 @@ use time::OffsetDateTime;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
 use crate::model::credential_schema::CredentialSchema;
-use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::issuance_protocol::error::OpenID4VCIError;
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
@@ -67,7 +67,7 @@ pub(crate) fn throw_if_access_token_invalid(
 }
 
 pub(crate) fn validate_timestamps(
-    token: &DecomposedToken<impl std::fmt::Debug>,
+    token: &DecomposedJwt<impl std::fmt::Debug>,
     leeway: u64,
 ) -> Result<(), ServiceError> {
     validate_issuance_time(&token.payload.issued_at, leeway)?;
@@ -77,7 +77,7 @@ pub(crate) fn validate_timestamps(
 }
 
 pub(crate) fn validate_pop_audience(
-    pop_token: &DecomposedToken<()>,
+    pop_token: &DecomposedJwt<()>,
     expected_audience: &str,
 ) -> Result<(), ServiceError> {
     let empty_vec = vec![];
@@ -96,8 +96,8 @@ pub(crate) fn validate_pop_audience(
 }
 
 pub(crate) fn verify_pop_signature(
-    pop_token: &DecomposedToken<()>,
-    wallet_unit_attestation: &DecomposedToken<WalletAppAttestationClaims>,
+    pop_token: &DecomposedJwt<()>,
+    wallet_unit_attestation: &DecomposedJwt<WalletAppAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let (_, alg) = key_algorithm_provider
@@ -134,7 +134,7 @@ pub(crate) fn verify_pop_signature(
 }
 
 pub(crate) fn verify_waa_signature(
-    wallet_app_attestation: &DecomposedToken<WalletAppAttestationClaims>,
+    wallet_app_attestation: &DecomposedJwt<WalletAppAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let waa_issuer_key =
@@ -174,7 +174,7 @@ pub(crate) fn verify_waa_signature(
 }
 
 pub(crate) fn extract_wallet_metadata(
-    wallet_app_attestation: &DecomposedToken<WalletAppAttestationClaims>,
+    wallet_app_attestation: &DecomposedJwt<WalletAppAttestationClaims>,
 ) -> Result<(String, String), ServiceError> {
     let name = wallet_app_attestation
         .payload
@@ -261,7 +261,7 @@ pub(crate) fn validate_key_attestation(
 
 pub(crate) fn verify_wua_waa_issuers_match(
     wua_jwt: &str,
-    waa: &DecomposedToken<WalletAppAttestationClaims>,
+    waa: &DecomposedJwt<WalletAppAttestationClaims>,
 ) -> Result<(), ServiceError> {
     let wua = crate::proto::jwt::Jwt::<WalletUnitAttestationClaims>::decompose_token(wua_jwt)?;
 

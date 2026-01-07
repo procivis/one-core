@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
+use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::SignatureProvider;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::OpenID4VCNonceParams;
@@ -58,7 +58,7 @@ pub(super) fn validate_nonce(
     base_url: Option<String>,
     nonce: &str,
 ) -> Result<Uuid, ServiceError> {
-    let DecomposedToken::<NonceJwtPayload> {
+    let DecomposedJwt::<NonceJwtPayload> {
         header,
         payload,
         signature,

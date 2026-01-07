@@ -5,7 +5,7 @@ use super::error::WalletProviderError;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::organisation::Organisation;
-use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::service::error::ServiceError;
 use crate::validator::{
     validate_audience, validate_expiration_time, validate_issuance_time, validate_not_before_time,
@@ -53,7 +53,7 @@ pub(super) fn validate_revocation_method(
 }
 
 pub(super) fn validate_proof_payload(
-    proof: &DecomposedToken<NoncePayload>,
+    proof: &DecomposedJwt<NoncePayload>,
     leeway: u64,
     base_url: Option<&str>,
     nonce: Option<&str>,

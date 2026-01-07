@@ -13,7 +13,7 @@ use crate::mapper::x509::der_chain_into_pem_chain;
 use crate::proto::certificate_validator::{
     CertSelection, CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
-use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::service::error::ServiceError;
 use crate::service::wallet_provider::dto::IOSBundle;
@@ -247,7 +247,7 @@ pub(crate) fn decode_cbor_base64<T: DeserializeOwned>(s: &str) -> Result<T, Wall
 }
 
 pub(crate) fn webauthn_signed_jwt_to_msg_and_sig<T>(
-    proof: &DecomposedToken<T>,
+    proof: &DecomposedJwt<T>,
 ) -> Result<(Vec<u8>, Vec<u8>), ServiceError> {
     #[derive(Debug, Deserialize)]
     #[serde(rename_all = "camelCase")]

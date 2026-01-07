@@ -6,7 +6,7 @@ use time::OffsetDateTime;
 use tokio_util::either::Either;
 
 use crate::model::key::PublicKeyJwk;
-use crate::proto::jwt::model::{DecomposedToken, JWTPayload};
+use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -35,7 +35,7 @@ impl OpenID4VCIProofJWTFormatter {
         ),
         FormatterError,
     > {
-        let DecomposedToken::<ProofOfPossession> {
+        let DecomposedJwt::<ProofOfPossession> {
             header,
             payload,
             signature,

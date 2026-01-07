@@ -13,7 +13,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::DidValue;
 
-use self::model::{DecomposedToken, JWTHeader, JWTPayload};
+use self::model::{DecomposedJwt, JWTHeader, JWTPayload};
 use crate::config::core_config::KeyAlgorithmType;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
@@ -133,7 +133,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
         verification: Option<&VerificationFn>,
         issuer_did: Option<DidValue>,
     ) -> Result<Jwt<Payload>, FormatterError> {
-        let DecomposedToken {
+        let DecomposedJwt {
             header,
             mut payload,
             signature,
@@ -213,7 +213,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
         Ok(jwt)
     }
 
-    pub fn decompose_token(token: &str) -> Result<DecomposedToken<Payload>, FormatterError> {
+    pub fn decompose_token(token: &str) -> Result<DecomposedJwt<Payload>, FormatterError> {
         let token = token.trim_matches(|c: char| c == '.' || c.is_whitespace());
         let mut jwt_parts = token.splitn(3, '.');
 
@@ -247,7 +247,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
             .transpose()?
             .unwrap_or_default();
 
-        Ok(DecomposedToken {
+        Ok(DecomposedJwt {
             header,
             payload,
             signature,
@@ -290,7 +290,7 @@ impl<Payload: Serialize> Jwt<Payload> {
     }
 }
 
-impl<T> DecomposedToken<T> {
+impl<T> DecomposedJwt<T> {
     pub async fn verify_signature(
         &self,
         public_key_source: PublicKeySource<'_>,

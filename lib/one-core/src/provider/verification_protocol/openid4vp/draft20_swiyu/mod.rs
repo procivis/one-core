@@ -13,7 +13,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::DecomposedToken;
+use crate::proto::jwt::model::DecomposedJwt;
 use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
@@ -166,10 +166,10 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         let token = String::from_utf8(response.body).map_err(|e| {
             VerificationProtocolError::Failed(format!("Invalid request object: {e}"))
         })?;
-        let params: DecomposedToken<OpenID4VP20AuthorizationRequest> = Jwt::decompose_token(&token)
+        let params: DecomposedJwt<OpenID4VP20AuthorizationRequest> = Jwt::decompose_token(&token)
             .map_err(|e| {
-                VerificationProtocolError::Failed(format!("Failed to decompose token: {e}"))
-            })?;
+            VerificationProtocolError::Failed(format!("Failed to decompose token: {e}"))
+        })?;
         let request_params = OpenID4VP20AuthorizationRequestQueryParams {
             client_id: params.payload.custom.client_id,
             request_uri: Some(url.to_string()),

@@ -49,7 +49,7 @@ use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
 };
 use crate::proto::jwt::model::{
-    DecomposedToken, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+    DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
 };
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
@@ -1019,7 +1019,7 @@ impl WalletProviderService {
 
     pub(super) async fn verify_attestation_proof(
         &self,
-        proof: &DecomposedToken<NoncePayload>,
+        proof: &DecomposedJwt<NoncePayload>,
         public_key: &KeyHandle,
         wallet_unit_os: WalletUnitOs,
         integrity_check_enabled: bool,
@@ -1042,7 +1042,7 @@ impl WalletProviderService {
 
     pub(super) async fn verify_device_signing_proof(
         &self,
-        proof: &DecomposedToken<NoncePayload>,
+        proof: &DecomposedJwt<NoncePayload>,
         public_key: &KeyHandle,
         leeway: u64,
         nonce: Option<&str>,
