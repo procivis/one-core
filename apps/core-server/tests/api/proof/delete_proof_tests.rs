@@ -20,7 +20,13 @@ async fn test_delete_proof_created_holder_success() {
     let interaction = context
         .db
         .interactions
-        .create(None, &[], &organisation, InteractionType::Verification)
+        .create(
+            None,
+            &[],
+            &organisation,
+            InteractionType::Verification,
+            None,
+        )
         .await;
 
     let blob = context
@@ -95,7 +101,13 @@ async fn test_delete_proof_accepted_holder_fail() {
     let interaction = context
         .db
         .interactions
-        .create(None, &[], &organisation, InteractionType::Verification)
+        .create(
+            None,
+            &[],
+            &organisation,
+            InteractionType::Verification,
+            None,
+        )
         .await;
     let proof = context
         .db

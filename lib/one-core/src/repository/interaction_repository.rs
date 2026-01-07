@@ -1,4 +1,4 @@
-use shared_types::NonceId;
+use shared_types::{CredentialId, NonceId, ProofId};
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
@@ -37,4 +37,8 @@ pub trait InteractionRepository: Send + Sync {
     ) -> Result<(), DataLayerError>;
 
     async fn delete_interaction(&self, id: &InteractionId) -> Result<(), DataLayerError>;
+
+    // interaction expiration check
+    async fn update_expired_credentials(&self) -> Result<Vec<CredentialId>, DataLayerError>;
+    async fn update_expired_proofs(&self) -> Result<Vec<ProofId>, DataLayerError>;
 }

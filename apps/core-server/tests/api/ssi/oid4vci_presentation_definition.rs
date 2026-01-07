@@ -124,6 +124,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
             interaction_data.to_string().as_bytes(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

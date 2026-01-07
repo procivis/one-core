@@ -7,6 +7,7 @@ use one_core::model::credential::{CredentialRole, CredentialStateEnum};
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::{HistoryAction, HistoryEntityType};
 use one_core::model::identifier::{IdentifierState, IdentifierType};
+use one_core::model::interaction::InteractionType;
 use one_core::model::proof::ProofStateEnum;
 use one_core::model::revocation_list::{RevocationListPurpose, StatusListType};
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
@@ -970,4 +971,177 @@ fn sign_jwt_helper(jwt_header_json: &str, payload_json: &str, key_pair: &KeyPair
     token.push('.');
     token.push_str(&signature_encoded);
     token
+}
+
+#[tokio::test]
+async fn test_run_interaction_expiration_check_no_update() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context.api.tasks.run("INTERACTION_EXPIRATION_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    assert_eq!(resp["updatedCredentials"].as_array().unwrap().len(), 0);
+    assert_eq!(resp["updatedProofs"].as_array().unwrap().len(), 0);
+}
+
+#[tokio::test]
+async fn test_run_interaction_expiration_check_with_update() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create("test", &organisation, "NONE", Default::default())
+        .await;
+
+    let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
+
+    let proof_schema = context
+        .db
+        .proof_schemas
+        .create(
+            "test",
+            &organisation,
+            vec![CreateProofInputSchema {
+                claims: vec![CreateProofClaim {
+                    id: claim_schema.id,
+                    key: &claim_schema.key,
+                    required: true,
+                    data_type: &claim_schema.data_type,
+                    array: false,
+                }],
+                credential_schema: &credential_schema,
+                validity_constraint: None,
+            }],
+        )
+        .await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, Default::default())
+        .await;
+    let did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::AssertionMethod,
+                    key: key.to_owned(),
+                    reference: "1".to_string(),
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+    let identifier = context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let proof_interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &[],
+            &organisation,
+            InteractionType::Verification,
+            Some(OffsetDateTime::now_utc()),
+        )
+        .await;
+    let proof = context
+        .db
+        .proofs
+        .create(
+            None,
+            &identifier,
+            Some(&proof_schema),
+            ProofStateEnum::Pending,
+            "OPENID4VP_DRAFT20",
+            Some(&proof_interaction),
+            key,
+            None,
+            None,
+        )
+        .await;
+
+    let credential_interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &[],
+            &organisation,
+            InteractionType::Issuance,
+            Some(OffsetDateTime::now_utc()),
+        )
+        .await;
+    let credential = context
+        .db
+        .credentials
+        .create(
+            &credential_schema,
+            CredentialStateEnum::Pending,
+            &identifier,
+            "OPENID4VCI_FINAL1",
+            TestingCredentialParams {
+                interaction: Some(credential_interaction),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.tasks.run("INTERACTION_EXPIRATION_CHECK").await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+
+    let updated_credentials = resp["updatedCredentials"].as_array().unwrap();
+    assert_eq!(updated_credentials.len(), 1);
+    assert_eq!(updated_credentials[0], credential.id.to_string());
+
+    let updated_proofs = resp["updatedProofs"].as_array().unwrap();
+    assert_eq!(updated_proofs.len(), 1);
+    assert_eq!(updated_proofs[0], proof.id.to_string());
+
+    let credential_history = context
+        .db
+        .histories
+        .get_by_entity_id(&credential.id.into())
+        .await;
+    assert_eq!(credential_history.total_items, 1);
+    assert_eq!(
+        credential_history.values[0].action,
+        HistoryAction::InteractionExpired
+    );
+
+    let proof_history = context
+        .db
+        .histories
+        .get_by_entity_id(&proof.id.into())
+        .await;
+    assert_eq!(proof_history.total_items, 1);
+    assert_eq!(
+        proof_history.values[0].action,
+        HistoryAction::InteractionExpired
+    );
 }

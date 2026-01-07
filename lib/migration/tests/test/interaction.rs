@@ -16,7 +16,8 @@ async fn test_db_schema_interaction() {
             "interaction_type",
             "expires_at",
         ])
-        .index("index-Interaction-NonceId-Unique", true, &["nonce_id"]);
+        .index("index-Interaction-NonceId-Unique", true, &["nonce_id"])
+        .index("index-Interaction-ExpiresAt", false, &["expires_at"]);
     interaction
         .column("id")
         .r#type(ColumnType::Uuid)

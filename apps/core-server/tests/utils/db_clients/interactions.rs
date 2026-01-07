@@ -21,6 +21,7 @@ impl InteractionsDB {
         data: &[u8],
         organisation: &Organisation,
         interaction_type: InteractionType,
+        expires_at: Option<OffsetDateTime>,
     ) -> Interaction {
         let interaction = Interaction {
             id: id.unwrap_or_else(Uuid::new_v4),
@@ -30,7 +31,7 @@ impl InteractionsDB {
             organisation: Some(organisation.to_owned()),
             nonce_id: None,
             interaction_type,
-            expires_at: None,
+            expires_at,
         };
 
         self.repository

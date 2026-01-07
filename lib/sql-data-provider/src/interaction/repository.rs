@@ -10,12 +10,15 @@ use one_core::repository::interaction_repository::InteractionRepository;
 use sea_orm::ActiveValue::Unchanged;
 use sea_orm::prelude::Expr;
 use sea_orm::sea_query::Query;
-use sea_orm::{ActiveModelTrait, ConnectionTrait, EntityTrait, QuerySelect};
-use shared_types::NonceId;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, ConnectionTrait, EntityTrait, QueryFilter, QuerySelect,
+};
+use shared_types::{CredentialId, NonceId, ProofId};
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::InteractionProvider;
-use crate::entity::interaction;
+use crate::entity::{credential, interaction, proof};
 use crate::interaction::mapper::interaction_from_models;
 use crate::mapper::{map_lock_type, to_data_layer_error, to_update_data_layer_error};
 
@@ -114,4 +117,121 @@ impl InteractionRepository for InteractionProvider {
             .map_err(|e| DataLayerError::Db(e.into()))?;
         Ok(())
     }
+
+    async fn update_expired_credentials(&self) -> Result<Vec<CredentialId>, DataLayerError> {
+        let now = now_truncated_to_milliseconds()?;
+
+        let stmt = self.db.get_database_backend().build(
+            Query::update()
+                .table(credential::Entity)
+                .value(
+                    credential::Column::State,
+                    credential::CredentialState::InteractionExpired,
+                )
+                .value(credential::Column::LastModified, now)
+                .and_where(
+                    Expr::col(credential::Column::Id).in_subquery(
+                        Query::select()
+                            .expr(Expr::col((credential::Entity, credential::Column::Id)))
+                            .from(credential::Entity)
+                            .inner_join(
+                                interaction::Entity,
+                                Expr::col((interaction::Entity, interaction::Column::Id)).equals((
+                                    credential::Entity,
+                                    credential::Column::InteractionId,
+                                )),
+                            )
+                            .cond_where(
+                                credential::Column::State.eq(credential::CredentialState::Pending),
+                            )
+                            .cond_where(interaction::Column::ExpiresAt.lt(now))
+                            .to_owned(),
+                    ),
+                ),
+        );
+        let result = self.db.execute(stmt).await.map_err(to_data_layer_error)?;
+        let rows_affected = result.rows_affected();
+        tracing::debug!("Expired credentials: affected rows: {rows_affected}");
+
+        let models: Vec<CredentialId> = credential::Entity::find()
+            .select_only()
+            .column(credential::Column::Id)
+            .filter(credential::Column::State.eq(credential::CredentialState::InteractionExpired))
+            .filter(credential::Column::LastModified.eq(now))
+            .into_tuple()
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+        tracing::debug!("Expired credentials, models: {}", models.len());
+
+        if rows_affected < models.len() as _ {
+            tracing::warn!(
+                "Updating expired credential interactions: Rows affected: {rows_affected}, but detected models: {}",
+                models.len()
+            );
+        }
+
+        Ok(models)
+    }
+
+    async fn update_expired_proofs(&self) -> Result<Vec<ProofId>, DataLayerError> {
+        let now = now_truncated_to_milliseconds()?;
+
+        let stmt = self.db.get_database_backend().build(
+            Query::update()
+                .table(proof::Entity)
+                .value(
+                    proof::Column::State,
+                    proof::ProofRequestState::InteractionExpired,
+                )
+                .value(proof::Column::LastModified, now)
+                .and_where(
+                    Expr::col(proof::Column::Id).in_subquery(
+                        Query::select()
+                            .expr(Expr::col((proof::Entity, proof::Column::Id)))
+                            .from(proof::Entity)
+                            .inner_join(
+                                interaction::Entity,
+                                Expr::col((interaction::Entity, interaction::Column::Id))
+                                    .equals((proof::Entity, proof::Column::InteractionId)),
+                            )
+                            .cond_where(proof::Column::State.eq(proof::ProofRequestState::Pending))
+                            .cond_where(interaction::Column::ExpiresAt.lt(now))
+                            .to_owned(),
+                    ),
+                ),
+        );
+        let result = self.db.execute(stmt).await.map_err(to_data_layer_error)?;
+        let rows_affected = result.rows_affected();
+        tracing::debug!("Expired proofs: affected rows: {rows_affected}");
+
+        let models: Vec<ProofId> = proof::Entity::find()
+            .select_only()
+            .column(proof::Column::Id)
+            .filter(proof::Column::State.eq(proof::ProofRequestState::InteractionExpired))
+            .filter(proof::Column::LastModified.eq(now))
+            .into_tuple()
+            .all(&self.db)
+            .await
+            .map_err(to_data_layer_error)?;
+        tracing::debug!("Expired proofs, models: {}", models.len());
+
+        if rows_affected < models.len() as _ {
+            tracing::warn!(
+                "Updating expired proof interactions: Rows affected: {rows_affected}, but detected models: {}",
+                models.len()
+            );
+        }
+
+        Ok(models)
+    }
+}
+
+/// keeps exactly 3 digits of fraction of seconds
+///
+/// necessary for SQL equals comparison
+fn now_truncated_to_milliseconds() -> Result<OffsetDateTime, DataLayerError> {
+    let now = OffsetDateTime::now_utc();
+    now.replace_millisecond(now.millisecond())
+        .map_err(|_| DataLayerError::MappingError)
 }

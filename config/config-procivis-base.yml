@@ -651,6 +651,10 @@ task:
     type: "HOLDER_CHECK_CREDENTIAL_STATUS"
     display: "task.holderCheckCredentialStatus"
     order: 3
+  INTERACTION_EXPIRATION_CHECK:
+    type: "INTERACTION_EXPIRATION_CHECK"
+    display: "task.interactionExpirationCheck"
+    order: 4
 cacheEntities:
   X509_CRL:
     cacheType: DB

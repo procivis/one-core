@@ -27,6 +27,7 @@ async fn test_get_credential_offer_success_jwt() {
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -124,6 +125,7 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -297,6 +299,7 @@ async fn test_get_credential_offer_success_certificate_identifier() {
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -372,6 +375,7 @@ async fn test_get_credential_offer_success_mdoc() {
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -448,6 +452,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
             "NONE".as_bytes(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

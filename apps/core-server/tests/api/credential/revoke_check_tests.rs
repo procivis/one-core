@@ -986,6 +986,7 @@ async fn test_revoke_check_mdoc_update() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1149,6 +1150,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
     let expired_credential = expired_mdoc_credential().await;
@@ -1312,6 +1314,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1479,6 +1482,7 @@ async fn test_revoke_check_token_update() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1627,6 +1631,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1777,6 +1782,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1925,6 +1931,7 @@ async fn test_suspended_to_valid_mdoc() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -2120,6 +2127,7 @@ async fn test_suspended_to_suspended_update_failed() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

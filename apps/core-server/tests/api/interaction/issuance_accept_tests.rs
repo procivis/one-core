@@ -178,6 +178,7 @@ async fn test_issuance_accept_openid4vc() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -415,6 +416,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -588,6 +590,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -762,6 +765,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -930,6 +934,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1099,6 +1104,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1236,6 +1242,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1344,6 +1351,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1464,6 +1472,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1582,6 +1591,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1718,6 +1728,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1832,6 +1843,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -1958,6 +1970,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -2108,6 +2121,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -2287,6 +2301,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -2521,6 +2536,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

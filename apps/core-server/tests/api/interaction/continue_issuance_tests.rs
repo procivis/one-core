@@ -44,6 +44,7 @@ async fn test_continue_issuance_endpoint() {
             &interaction_body,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -333,6 +334,7 @@ async fn test_continue_issuance_endpoint_failed_invalid_authorization_server() {
             &interaction_body,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await
         .id;

@@ -33,6 +33,7 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
     let credential = context
@@ -99,6 +100,7 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
             &interaction_data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
     let credential = context

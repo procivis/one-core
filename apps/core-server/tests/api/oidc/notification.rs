@@ -159,6 +159,7 @@ async fn setup_accepted_credential() -> (TestContext, Credential, CredentialSche
             &data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

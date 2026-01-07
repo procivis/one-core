@@ -4,6 +4,7 @@ use crate::service::error::ServiceError;
 
 pub mod certificate_check;
 pub mod holder_check_credential_status;
+pub mod interaction_expiration_check;
 pub mod provider;
 pub mod retain_proof_check;
 pub mod suspend_check;

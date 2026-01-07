@@ -62,6 +62,7 @@ async fn test_delete_proof_claims_success() {
             &[],
             &organisation,
             InteractionType::Verification,
+            None,
         )
         .await;
 

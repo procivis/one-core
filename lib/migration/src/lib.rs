@@ -189,6 +189,7 @@ mod m20251219_062738_claim_schema_table;
 mod m20251219_071908_certificate_table;
 mod m20251219_082217_did_table;
 mod m20260106_095023_interaction_expires_at;
+mod m20260107_044249_interaction_expiration_index;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -380,6 +381,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20251219_071908_certificate_table::Migration),
             Box::new(m20251219_082217_did_table::Migration),
             Box::new(m20260106_095023_interaction_expires_at::Migration),
+            Box::new(m20260107_044249_interaction_expiration_index::Migration),
         ]
     }
 }

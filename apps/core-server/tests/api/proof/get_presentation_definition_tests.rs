@@ -291,6 +291,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
             &get_open_id_interaction_data(&credential_schema),
             &organisation,
             InteractionType::Verification,
+            None,
         )
         .await;
 
@@ -367,6 +368,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
             &get_open_id_interaction_data(&credential_schema),
             &organisation,
             InteractionType::Verification,
+            None,
         )
         .await;
 
@@ -581,6 +583,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
             &get_open_id_interaction_data_without_vp_formats(&credential_schema),
             &organisation,
             InteractionType::Verification,
+            None,
         )
         .await;
 
@@ -1051,6 +1054,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
             .into_bytes(),
             &organisation,
             InteractionType::Verification,
+            None,
         )
         .await;
 

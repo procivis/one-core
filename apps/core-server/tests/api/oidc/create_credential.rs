@@ -139,6 +139,7 @@ async fn test_post_issuer_credential_in_parallel() {
             &serde_json::to_vec(&interaction_data).unwrap(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -277,6 +278,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
                 &serde_json::to_vec(&interaction_data).unwrap(),
                 &organisation,
                 InteractionType::Issuance,
+                None,
             )
             .await;
 
@@ -385,6 +387,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
                 &serde_json::to_vec(&interaction_data).unwrap(),
                 &organisation,
                 InteractionType::Issuance,
+                None,
             )
             .await;
 
@@ -698,6 +701,7 @@ async fn test_post_issuer_credential_with(
             &serde_json::to_vec(&interaction_data).unwrap(),
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -874,6 +878,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             &data,
             &organisation,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

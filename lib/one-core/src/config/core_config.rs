@@ -678,6 +678,9 @@ pub enum TaskType {
     #[serde(rename = "HOLDER_CHECK_CREDENTIAL_STATUS")]
     #[strum(serialize = "HOLDER_CHECK_CREDENTIAL_STATUS")]
     HolderCheckCredentialStatus,
+    #[serde(rename = "INTERACTION_EXPIRATION_CHECK")]
+    #[strum(serialize = "INTERACTION_EXPIRATION_CHECK")]
+    InteractionExpirationCheck,
 }
 
 pub type TrustManagementConfig = ConfigBlock<String, TrustManagementType>;

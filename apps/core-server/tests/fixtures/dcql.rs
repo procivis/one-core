@@ -24,6 +24,7 @@ pub(crate) async fn proof_for_dcql_query(
             &interaction_data_dcql(dcql_query),
             org,
             InteractionType::Verification,
+            None,
         )
         .await;
 

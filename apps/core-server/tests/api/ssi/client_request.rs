@@ -87,6 +87,7 @@ async fn test_get_client_request() {
             interaction_data.to_string().as_bytes(),
             &organisation,
             InteractionType::Verification,
+            None,
         )
         .await;
 

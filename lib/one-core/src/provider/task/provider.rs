@@ -6,17 +6,20 @@ use serde::de::DeserializeOwned;
 use super::Task;
 use super::certificate_check::CertificateCheck;
 use super::holder_check_credential_status::HolderCheckCredentialStatus;
+use super::interaction_expiration_check::InteractionExpirationCheckProvider;
 use super::retain_proof_check::RetainProofCheck;
 use super::suspend_check::SuspendCheckProvider;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{CoreConfig, Fields, TaskType};
 use crate::proto::certificate_validator::CertificateValidator;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::blob_storage_provider::BlobStorageProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::credential::CredentialService;
 
@@ -44,9 +47,11 @@ pub(crate) fn task_provider_from_config(
     proof_repository: Arc<dyn ProofRepository>,
     certificate_repository: Arc<dyn CertificateRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
+    interaction_repository: Arc<dyn InteractionRepository>,
     credential_service: CredentialService,
     certificate_validator: Arc<dyn CertificateValidator>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
+    session_provider: Arc<dyn SessionProvider>,
 ) -> Result<Arc<dyn TaskProvider>, ConfigValidationError> {
     let mut tasks: HashMap<String, Arc<dyn Task>> = HashMap::new();
 
@@ -77,6 +82,15 @@ pub(crate) fn task_provider_from_config(
                 credential_repository.clone(),
                 credential_service.clone(),
             )),
+            TaskType::InteractionExpirationCheck => {
+                Arc::new(InteractionExpirationCheckProvider::new(
+                    interaction_repository.clone(),
+                    history_repository.clone(),
+                    credential_repository.clone(),
+                    proof_repository.clone(),
+                    session_provider.clone(),
+                ))
+            }
         };
         tasks.insert(name.to_owned(), task);
     }

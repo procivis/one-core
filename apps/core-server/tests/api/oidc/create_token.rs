@@ -40,6 +40,7 @@ async fn test_oidc_issuer_create_token() {
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -110,6 +111,7 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -178,6 +180,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
+            None,
         )
         .await;
 
@@ -257,6 +260,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
             &serde_json::to_vec(&data).unwrap(),
             &org,
             InteractionType::Issuance,
+            None,
         )
         .await;
 

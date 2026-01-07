@@ -385,9 +385,11 @@ impl OneCore {
             data_provider.get_proof_repository(),
             data_provider.get_certificate_repository(),
             data_provider.get_identifier_repository(),
+            data_provider.get_interaction_repository(),
             credential_service.clone(),
             certificate_validator.clone(),
             blob_storage_provider.clone(),
+            session_provider.clone(),
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(

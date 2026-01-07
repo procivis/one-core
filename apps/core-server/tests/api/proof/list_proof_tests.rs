@@ -952,7 +952,13 @@ async fn test_list_proofs_with_org_by_interaction() {
     let interaction = context
         .db
         .interactions
-        .create(None, &[], &organisation, InteractionType::Verification)
+        .create(
+            None,
+            &[],
+            &organisation,
+            InteractionType::Verification,
+            None,
+        )
         .await;
 
     let mut proofs = vec![];
@@ -1135,7 +1141,13 @@ async fn test_list_proofs_by_role() {
     let interaction = context
         .db
         .interactions
-        .create(None, &[], &organisation, InteractionType::Verification)
+        .create(
+            None,
+            &[],
+            &organisation,
+            InteractionType::Verification,
+            None,
+        )
         .await;
     let holder_proof = context
         .db
