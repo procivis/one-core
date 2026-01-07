@@ -7,6 +7,7 @@ use one_crypto::signer::bbs::parse_bbs_input;
 use secrecy::SecretString;
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::key::PublicKeyJwk;
 
 #[derive(Clone)]
@@ -39,6 +40,12 @@ pub enum KeyHandleError {
 
     #[error("Signer error: `{0}`")]
     Signer(SignerError),
+}
+
+impl ErrorCodeMixin for KeyHandleError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0201
+    }
 }
 
 impl KeyHandle {

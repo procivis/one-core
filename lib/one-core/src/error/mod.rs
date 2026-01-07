@@ -722,6 +722,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Service validation error")]
     BR_0323,
+
+    #[strum(message = "Invalid signature validity boundary")]
+    BR_0324,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

@@ -41,6 +41,12 @@ pub enum KeyStorageError {
     UnsupportedFeature { feature: Features },
 }
 
+impl ErrorCodeMixin for KeyStorageProviderError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0039
+    }
+}
+
 impl ErrorCodeMixin for KeyStorageError {
     fn error_code(&self) -> ErrorCode {
         ErrorCode::BR_0039

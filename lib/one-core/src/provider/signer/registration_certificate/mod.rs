@@ -11,6 +11,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
+use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::{CertificateRelations, CertificateState};
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
@@ -22,19 +23,15 @@ use crate::model::key::{Key, KeyRelations};
 use crate::proto::clock::Clock;
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
-use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::revocation::error::RevocationError;
 use crate::provider::signer::Signer;
 use crate::provider::signer::dto::{CreateSignatureRequestDTO, CreateSignatureResponseDTO};
+use crate::provider::signer::error::SignerError;
 use crate::provider::signer::model::SignerCapabilities;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
-use crate::service::error::{
-    EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
-};
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -48,7 +45,7 @@ pub struct Params {
 pub struct PayloadParams {
     pub issuer: Option<Url>,
     pub audience: Option<Vec<String>>,
-    pub expiry: i64,
+    pub max_validity_duration: i64,
 }
 
 pub struct RegistrationCertificate {
@@ -81,6 +78,50 @@ impl RegistrationCertificate {
             history,
         }
     }
+
+    fn nbf_and_exp(
+        &self,
+        request: &CreateSignatureRequestDTO,
+    ) -> Result<(OffsetDateTime, OffsetDateTime), SignerError> {
+        let now = self.clock.now_utc();
+        let max_validity_duration = Duration::seconds(self.params.payload.max_validity_duration);
+        let nbf = match request.validity_start {
+            None => now,
+            Some(nbf) => {
+                if nbf < now {
+                    return Err(SignerError::ValidityBoundaryInThePast {
+                        validity_boundary: nbf,
+                    });
+                }
+                nbf
+            }
+        };
+        let exp = match request.validity_end {
+            None => nbf + max_validity_duration,
+            Some(exp) => {
+                if exp < now {
+                    return Err(SignerError::ValidityBoundaryInThePast {
+                        validity_boundary: exp,
+                    });
+                }
+                if exp < nbf {
+                    return Err(SignerError::ValidityStartAfterEnd {
+                        validity_start: nbf,
+                        validity_end: exp,
+                    });
+                }
+                if exp - nbf > max_validity_duration {
+                    return Err(SignerError::ValidityPeriodTooLong {
+                        validity_start: nbf,
+                        validity_end: exp,
+                        max_duration: max_validity_duration,
+                    });
+                }
+                exp
+            }
+        };
+        Ok((nbf, exp))
+    }
 }
 
 #[async_trait]
@@ -102,13 +143,10 @@ impl Signer for RegistrationCertificate {
     async fn sign(
         &self,
         request: CreateSignatureRequestDTO,
-    ) -> Result<CreateSignatureResponseDTO, ServiceError> {
+    ) -> Result<CreateSignatureResponseDTO, SignerError> {
         let now = self.clock.now_utc();
-
-        let payload: model::Payload =
-            serde_json::from_value(request.data.clone()).map_err(|e| {
-                ServiceError::Validation(ValidationError::DeserializationError(e.to_string()))
-            })?;
+        let (nbf, exp) = self.nbf_and_exp(&request)?;
+        let payload: model::Payload = serde_json::from_value(request.data.clone())?;
         let payload_name = payload.name.clone();
 
         let issuer = self
@@ -128,24 +166,24 @@ impl Signer for RegistrationCertificate {
                     }),
                 },
             )
-            .await?
-            .ok_or(ServiceError::EntityNotFound(
-                EntityNotFoundError::Identifier(request.issuer),
-            ))?;
+            .await
+            .error_while("Loading issuer identifier")?
+            .ok_or(SignerError::IdentifierNotFound(request.issuer))?;
 
         let jwt_id = match self.revocation.as_deref() {
             Some(list) => {
                 let list_entry_id = list
                     .add_signature("REGISTRATION_CERTIFICATE".to_owned(), &issuer)
-                    .await?;
+                    .await
+                    .error_while("Adding signature to revocation list")?;
                 Uuid::from(list_entry_id)
             }
             None => Uuid::new_v4(),
         };
         let jwt_payload = JWTPayload::<model::Payload> {
             issued_at: Some(now),
-            expires_at: Some(now + Duration::seconds(self.params.payload.expiry)),
-            invalid_before: None,
+            expires_at: Some(exp),
+            invalid_before: Some(nbf),
             issuer: None,
             subject: None,
             audience: self.params.payload.audience.clone(),
@@ -183,15 +221,14 @@ impl Signer for RegistrationCertificate {
         })
     }
 
-    async fn revoke(&self, id: Uuid) -> Result<(), ServiceError> {
+    async fn revoke(&self, id: Uuid) -> Result<(), SignerError> {
         match self.revocation.as_deref() {
-            Some(list) => {
-                list.revoke_signature("REGISTRATION_CERTIFICATE".to_owned(), id.into())
-                    .await
-            }
-            None => Err(RevocationError::OperationNotSupported(
-                "No revocation method configured for REGISTRATION_CERTIFICATE".to_string(),
-            )),
+            Some(list) => list
+                .revoke_signature("REGISTRATION_CERTIFICATE".to_owned(), id.into())
+                .await
+                .error_while("revoking registration certificate")
+                .map_err(SignerError::from),
+            None => Err(SignerError::RevocationNotSupported),
         }?;
 
         if let Err(error) = self
@@ -224,29 +261,22 @@ impl RegistrationCertificate {
         request: &CreateSignatureRequestDTO,
         issuer: Identifier,
         payload: JWTPayload<model::Payload>,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, SignerError> {
         let (key, key_id, pubkey_info) = self.get_signing_key_for_identifier(issuer, request)?;
 
         let key_algorithm = key
             .key_algorithm_type()
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-            .ok_or_else(|| {
-                ServiceError::MissingProvider(MissingProviderError::KeyAlgorithmProvider(
-                    KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        key.key_type.to_owned(),
-                    ),
-                ))
-            })?;
+            .ok_or_else(|| SignerError::MissingKeyAlgorithmProvider(key.key_type.to_owned()))?;
 
         let algorithm = key_algorithm
             .issuance_jose_alg_id()
-            .ok_or(ServiceError::MappingError("Missing JOSE alg".to_string()))?;
+            .ok_or(SignerError::MappingError("Missing JOSE alg".to_string()))?;
 
-        let signer = self.key_provider.get_signature_provider(
-            &key,
-            None,
-            self.key_algorithm_provider.clone(),
-        )?;
+        let signer = self
+            .key_provider
+            .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
+            .error_while("getting signature provider")?;
         let jwt = Jwt::new(
             "rc-wrp+jwt".to_owned(),
             algorithm.to_owned(),
@@ -254,29 +284,33 @@ impl RegistrationCertificate {
             pubkey_info,
             payload,
         );
-        Ok(jwt.tokenize(Some(&*signer)).await?)
+        Ok(jwt
+            .tokenize(Some(&*signer))
+            .await
+            .error_while("signing registration certificate")?)
     }
 
     fn get_signing_key_for_identifier(
         &self,
         ident: Identifier,
         request: &CreateSignatureRequestDTO,
-    ) -> Result<(Key, Option<String>, Option<JwtPublicKeyInfo>), ServiceError> {
+    ) -> Result<(Key, Option<String>, Option<JwtPublicKeyInfo>), SignerError> {
         Ok(match ident.r#type {
             IdentifierType::Did => {
-                let did = ident.did.ok_or(ServiceError::MappingError(
+                let did = ident.did.ok_or(SignerError::MappingError(
                     "Missing identifier did".to_owned(),
                 ))?;
 
+                let key_filter = KeyFilter::role_filter(KeyRole::AssertionMethod);
                 let assertion_key = match &request.issuer_key {
-                    Some(requested_key) => did.find_key(
-                        requested_key,
-                        &KeyFilter::role_filter(KeyRole::AssertionMethod),
-                    ),
-                    None => did
-                        .find_first_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod)),
-                }?
-                .ok_or(ValidationError::KeyNotFound)?;
+                    Some(requested_key) => did.find_key(requested_key, &key_filter),
+                    None => did.find_first_matching_key(&key_filter),
+                }
+                .error_while("Retrieving assertion method key from DID")?
+                .ok_or(SignerError::NoMatchingKeyOnDid {
+                    did: Box::new(did.did.clone()),
+                    filter: key_filter,
+                })?;
 
                 (
                     assertion_key.key.clone(),
@@ -285,37 +319,31 @@ impl RegistrationCertificate {
                 )
             }
             IdentifierType::Key => {
-                let key = ident.key.ok_or(ServiceError::MappingError(
+                let key = ident.key.ok_or(SignerError::MappingError(
                     "Missing identifier key".to_owned(),
                 ))?;
 
                 if let Some(requested_key) = &request.issuer_key
                     && *requested_key != key.id
                 {
-                    return Err(ServiceError::EntityNotFound(EntityNotFoundError::Key(
-                        *requested_key,
-                    )));
+                    return Err(SignerError::KeyNotFound(*requested_key));
                 }
 
                 let pubkey = key
                     .key_algorithm_type()
                     .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
                     .ok_or_else(|| {
-                        ServiceError::MissingProvider(MissingProviderError::KeyAlgorithmProvider(
-                            KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                                key.key_type.to_owned(),
-                            ),
-                        ))
+                        SignerError::MissingKeyAlgorithmProvider(key.key_type.to_owned())
                     })?
                     .reconstruct_key(&key.public_key, None, None)
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                    .error_while("Reconstructing signing key")?
                     .public_key_as_jwk()
-                    .map_err(|e| ServiceError::MappingError(e.to_string()))?;
+                    .error_while("Converting signing key to JWK")?;
 
                 (key, None, Some(JwtPublicKeyInfo::Jwk(pubkey.into())))
             }
             IdentifierType::Certificate => {
-                let certs = ident.certificates.ok_or(ServiceError::MappingError(
+                let certs = ident.certificates.ok_or(SignerError::MappingError(
                     "Missing identifier certificates".to_owned(),
                 ))?;
 
@@ -324,30 +352,24 @@ impl RegistrationCertificate {
                         let requested_cert = certs
                             .into_iter()
                             .find(|cert| cert.id == *requested_id)
-                            .ok_or(ServiceError::EntityNotFound(
-                                EntityNotFoundError::Certificate(*requested_id),
-                            ))?;
+                            .ok_or(SignerError::CertificateNotFound(*requested_id))?;
                         if requested_cert.state != CertificateState::Active {
-                            return Err(ServiceError::Other(
-                                "Certificate is not active".to_owned(),
-                            ));
+                            return Err(SignerError::CertificateNotActive(requested_cert.id));
                         }
                         requested_cert
                     }
                     None => certs
                         .into_iter()
                         .find(|cert| cert.state == CertificateState::Active)
-                        .ok_or(ServiceError::Other(
-                            "No valid certificates found".to_owned(),
-                        ))?,
+                        .ok_or(SignerError::NoActiveCertificates(ident.id))?,
                 };
 
-                let key = selected_cert.key.ok_or(ServiceError::MappingError(
+                let key = selected_cert.key.ok_or(SignerError::MappingError(
                     "Missing key for certificate".to_owned(),
                 ))?;
                 let pubkey_info = Some(JwtPublicKeyInfo::X5c(
                     pem_chain_into_x5c(&selected_cert.chain)
-                        .map_err(|e| ServiceError::MappingError(e.to_string()))?,
+                        .map_err(|e| SignerError::MappingError(e.to_string()))?,
                 ));
                 (key, None, pubkey_info)
             }
@@ -366,7 +388,7 @@ impl TryFrom<Option<&crate::config::core_config::Params>> for Params {
 
         // GEN-5.2.4-08: The `exp` field in the WRPRC payload shall indicate a time not later than
         // 12 months after the issuance time specified in the `iat` field specified in GEN-5.2.4-01.
-        if Duration::seconds(result.payload.expiry) > Duration::days(365) {
+        if Duration::seconds(result.payload.max_validity_duration) > Duration::days(365) {
             return Err(Error::custom(
                 "expiry cannot occur later than 12 months after issuance (GEN-5.2.4-08)",
             ));

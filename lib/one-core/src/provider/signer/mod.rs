@@ -1,9 +1,10 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::service::error::ServiceError;
+use crate::provider::signer::error::SignerError;
 
 pub mod dto;
+pub mod error;
 pub mod model;
 pub mod provider;
 pub mod registration_certificate;
@@ -16,7 +17,7 @@ pub trait Signer: Send + Sync {
     async fn sign(
         &self,
         request: dto::CreateSignatureRequestDTO,
-    ) -> Result<dto::CreateSignatureResponseDTO, ServiceError>;
+    ) -> Result<dto::CreateSignatureResponseDTO, SignerError>;
 
-    async fn revoke(&self, id: Uuid) -> Result<(), ServiceError>;
+    async fn revoke(&self, id: Uuid) -> Result<(), SignerError>;
 }

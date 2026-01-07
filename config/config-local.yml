@@ -248,5 +248,5 @@ signer:
         payload:
           issuer: "https://issuer.example"
           audience: ["bli", "bla"]
-          expiry: 7200
+          maxValidityDuration: 2592000 # 30 days
         revocationMethod: TOKENSTATUSLIST

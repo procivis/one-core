@@ -60,7 +60,7 @@ pub struct Did {
     pub organisation: Option<Organisation>,
 }
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug)]
 pub struct KeyFilter {
     pub role: Option<KeyRole>,
     pub algorithms: Option<Vec<KeyAlgorithmType>>,

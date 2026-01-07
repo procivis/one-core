@@ -28,6 +28,7 @@ use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
+use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
@@ -135,6 +136,9 @@ pub enum ServiceError {
 
     #[error("NFC error: `{0}`")]
     NfcError(#[from] NfcError),
+
+    #[error("Signer error: `{0}`")]
+    SignerError(#[from] SignerError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -783,7 +787,8 @@ impl ErrorCodeMixin for ServiceError {
             Self::VerificationProtocolError(error) => error.error_code(),
             Self::CryptoError(_) => ErrorCode::BR_0050,
             Self::FormatterError(error) => error.error_code(),
-            Self::KeyStorageError(_) | Self::KeyStorageProvider(_) => ErrorCode::BR_0039,
+            Self::KeyStorageError(error) => error.error_code(),
+            Self::KeyStorageProvider(error) => error.error_code(),
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::OpenID4VCError(_) | Self::OpenID4VCIError(_) | Self::OpenIDIssuanceError(_) => {
                 ErrorCode::BR_0048
@@ -793,19 +798,20 @@ impl ErrorCodeMixin for ServiceError {
             Self::MissingSigner(_) => ErrorCode::BR_0060,
             Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
             Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,
-            Self::KeyAlgorithmError(_) => ErrorCode::BR_0063,
+            Self::KeyAlgorithmError(error) => error.error_code(),
             Self::KeyAlgorithmProviderError(_) => ErrorCode::BR_0063,
             Self::DidMethodError(_) => ErrorCode::BR_0064,
             Self::DidMethodProviderError(error) => error.error_code(),
             Self::ValidationError(_) => ErrorCode::BR_0323,
             Self::Other(_) => ErrorCode::BR_0000,
-            Self::Revocation(_) => ErrorCode::BR_0101,
+            Self::Revocation(error) => error.error_code(),
             Self::TrustManagementError(_) => ErrorCode::BR_0185,
-            Self::KeyHandleError(_) => ErrorCode::BR_0201,
+            Self::KeyHandleError(error) => error.error_code(),
             Self::BlobStorageError(_) => ErrorCode::BR_0251,
             Self::WalletProviderError(error) => error.error_code(),
             Self::WalletUnitAttestationError(error) => error.error_code(),
             Self::NfcError(error) => error.error_code(),
+            Self::SignerError(error) => error.error_code(),
         }
     }
 }

@@ -12,11 +12,13 @@ impl SignatureService {
         let signature_type = request.signer.to_owned();
         let identifier = request.issuer;
         let result = match self.signer_provider.get_from_type(request.signer.as_str()) {
-            Some(signer) => signer.sign(request).await,
-            None => Err(ServiceError::MissingProvider(MissingProviderError::Signer(
-                request.signer,
-            ))),
-        }?;
+            Some(signer) => signer.sign(request).await?,
+            None => {
+                return Err(ServiceError::MissingProvider(MissingProviderError::Signer(
+                    request.signer,
+                )));
+            }
+        };
         tracing::info!(
             "Created signature {} using identifier {identifier}: signature type `{}`",
             result.id,

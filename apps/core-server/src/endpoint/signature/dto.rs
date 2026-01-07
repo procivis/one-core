@@ -1,11 +1,13 @@
 use one_core::provider::signer::dto::{CreateSignatureRequestDTO, CreateSignatureResponseDTO};
 use one_dto_mapper::{From, Into};
-use proc_macros::ModifySchema;
+use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{CertificateId, IdentifierId, KeyId};
+use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+#[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateSignatureRequestDTO)]
 #[serde(rename_all = "camelCase")]
@@ -21,6 +23,11 @@ pub(crate) struct CreateSignatureRequestRestDTO {
     pub signer: String,
     /// Signer-specific request data.
     pub data: serde_json::Value,
+
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub validity_start: Option<OffsetDateTime>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub validity_end: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

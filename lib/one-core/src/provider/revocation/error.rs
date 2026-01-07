@@ -3,6 +3,7 @@
 use shared_types::{CredentialId, IdentifierId};
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::KeyRole;
 use crate::proto::http_client;
@@ -57,4 +58,10 @@ pub enum RevocationError {
     JsonError(#[from] serde_json::Error),
     #[error("Data layer error: `{0}`")]
     DataLayerError(#[from] DataLayerError),
+}
+
+impl ErrorCodeMixin for RevocationError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0101
+    }
 }

@@ -3,6 +3,8 @@
 use one_crypto::SignerError;
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
+
 #[derive(Debug, Error)]
 pub enum KeyAlgorithmProviderError {
     #[error("Cannot find key algorithm `{0}`")]
@@ -22,4 +24,10 @@ pub enum KeyAlgorithmError {
     SignerError(#[from] SignerError),
     #[error("Not supported for type: `{0}`")]
     NotSupported(String),
+}
+
+impl ErrorCodeMixin for KeyAlgorithmError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0063
+    }
 }
