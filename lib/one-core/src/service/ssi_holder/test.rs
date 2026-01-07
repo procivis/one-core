@@ -359,9 +359,9 @@ async fn test_submit_proof_succeeds() {
     let mut formatter = MockCredentialFormatter::new();
 
     formatter
-        .expect_format_credential_presentation()
+        .expect_prepare_selective_disclosure()
         .once()
-        .returning(|presentation, _, _| Ok(presentation.token));
+        .returning(|presentation| Ok(presentation.token));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -425,10 +425,6 @@ async fn test_submit_proof_succeeds() {
         })
         .once()
         .returning(|_, _| Ok(Default::default()));
-
-    verification_protocol
-        .expect_holder_get_holder_binding_context()
-        .returning(|_, _| Ok(None));
 
     let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
     verification_protocol_provider
@@ -585,9 +581,9 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
     let mut formatter = MockCredentialFormatter::new();
 
     formatter
-        .expect_format_credential_presentation()
+        .expect_prepare_selective_disclosure()
         .times(2)
-        .returning(|presentation, _, _| Ok(presentation.token));
+        .returning(|presentation| Ok(presentation.token));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -661,10 +657,6 @@ async fn test_submit_proof_multiple_credentials_succeeds() {
         })
         .once()
         .returning(|_, _| Ok(Default::default()));
-
-    verification_protocol
-        .expect_holder_get_holder_binding_context()
-        .returning(|_, _| Ok(None));
 
     let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
     verification_protocol_provider
@@ -824,8 +816,8 @@ async fn test_submit_proof_repeating_claims() {
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
-        .expect_format_credential_presentation()
-        .returning(|presentation, _, _| Ok(presentation.token));
+        .expect_prepare_selective_disclosure()
+        .returning(|presentation| Ok(presentation.token));
 
     let mut formatter_provider = MockCredentialFormatterProvider::new();
     let formatter = Arc::new(formatter);
@@ -909,10 +901,6 @@ async fn test_submit_proof_repeating_claims() {
         })
         .once()
         .returning(|_, _| Ok(Default::default()));
-
-    verification_protocol
-        .expect_holder_get_holder_binding_context()
-        .returning(|_, _| Ok(None));
 
     let mut verification_protocol_provider = MockVerificationProtocolProvider::new();
     verification_protocol_provider

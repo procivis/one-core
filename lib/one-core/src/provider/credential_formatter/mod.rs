@@ -87,11 +87,9 @@ pub trait CredentialFormatter: Send + Sync {
     /// For those formats capable of selective disclosure, call this with the keys of the claims
     /// to be shared. The token is processed and returns the correctly formatted presentation
     /// containing only the selected attributes.
-    async fn format_credential_presentation(
+    async fn prepare_selective_disclosure(
         &self,
         credential: CredentialPresentation,
-        holder_binding_ctx: Option<HolderBindingCtx>,
-        holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError>;
 
     /// Returns the leeway time.

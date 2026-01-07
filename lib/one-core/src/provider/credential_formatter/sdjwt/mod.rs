@@ -12,7 +12,7 @@ use time::{Duration, OffsetDateTime};
 
 use super::model::{
     AuthenticationFn, CertificateDetails, CredentialClaim, HolderBindingCtx, IdentifierDetails,
-    PublicKeySource, SettableClaims, VerificationFn,
+    PublicKeySource, SettableClaims, SignatureProvider, VerificationFn,
 };
 use crate::mapper::x509::{pem_chain_into_x5c, x5c_into_pem_chain};
 use crate::model::did::KeyRole;
@@ -210,8 +210,6 @@ pub(crate) fn detect_sdjwt_type_from_token(token: &str) -> Result<SdJwtType, For
 pub(crate) async fn prepare_sd_presentation(
     presentation: CredentialPresentation,
     hasher: &dyn Hasher,
-    holder_binding_ctx: Option<HolderBindingCtx>,
-    holder_binding_fn: Option<AuthenticationFn>,
     user_claim_path: &[String],
 ) -> Result<String, FormatterError> {
     let model::DecomposedToken {
@@ -232,15 +230,6 @@ pub(crate) async fn prepare_sd_presentation(
     let mut token = jwt.to_owned();
     append_disclosures(&mut token, disclosures);
 
-    if jwt_payload.proof_of_possession_key.is_some() {
-        let holder_binding_ctx = holder_binding_ctx.ok_or(FormatterError::Failed(
-            "holder binding required, but no context provided".to_string(),
-        ))?;
-        let holder_binding_fn = holder_binding_fn.ok_or(FormatterError::Failed(
-            "holder binding required, but no signature provider provided".to_string(),
-        ))?;
-        append_key_binding_token(hasher, holder_binding_ctx, holder_binding_fn, &mut token).await?;
-    }
     Ok(token)
 }
 
@@ -254,10 +243,10 @@ fn append_disclosures(token: &mut String, disclosures: Vec<String>) {
     }
 }
 
-async fn append_key_binding_token(
+pub(crate) async fn append_key_binding_token(
     hasher: &dyn Hasher,
     holder_binding_ctx: HolderBindingCtx,
-    holder_binding_fn: AuthenticationFn,
+    holder_binding_fn: &dyn SignatureProvider,
     token: &mut String,
 ) -> Result<(), FormatterError> {
     const KEY_BINDING_TYPE: &str = "kb+jwt";
@@ -278,18 +267,12 @@ async fn append_key_binding_token(
         },
         ..Default::default()
     };
-    let kb_token = Jwt::new(
-        KEY_BINDING_TYPE.to_string(),
-        alg,
-        holder_binding_fn.get_key_id(),
-        None,
-        payload,
-    )
-    .tokenize(Some(&*holder_binding_fn))
-    .await
-    .map_err(|err| {
-        FormatterError::CouldNotFormat(format!("failed to tokenize key binding token: {err}"))
-    })?;
+    let kb_token = Jwt::new(KEY_BINDING_TYPE.to_string(), alg, None, None, payload)
+        .tokenize(Some(holder_binding_fn))
+        .await
+        .map_err(|err| {
+            FormatterError::CouldNotFormat(format!("failed to tokenize key binding token: {err}"))
+        })?;
     token.push_str(&kb_token);
     Ok(())
 }

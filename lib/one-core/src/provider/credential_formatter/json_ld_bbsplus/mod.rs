@@ -237,11 +237,9 @@ impl CredentialFormatter for JsonLdBbsplus {
         convert_to_detail_credential(vc, mandatory_pointers, &metadata_claims)
     }
 
-    async fn format_credential_presentation(
+    async fn prepare_selective_disclosure(
         &self,
         credential: CredentialPresentation,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
-        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let mut vcdm: VcdmCredential = serde_json::from_str(&credential.token).map_err(|e| {
             FormatterError::CouldNotFormat(format!("Could not deserialize base proof: {e}"))

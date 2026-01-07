@@ -15,7 +15,7 @@ use url::Url;
 use crate::config::core_config::FormatType;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::dto::PresentationDefinitionV2ResponseDTO;
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
 use crate::service::storage_proxy::StorageAccess;
@@ -109,13 +109,6 @@ pub(crate) trait VerificationProtocol: Send + Sync {
         context: serde_json::Value,
         storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionV2ResponseDTO, VerificationProtocolError>;
-
-    /// Takes the VP interaction context and returns a holder binding context, if any.
-    fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        _context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError>;
 
     /// Generates QR-code content to start the proof request flow.
     async fn verifier_share_proof(

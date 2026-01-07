@@ -671,7 +671,7 @@ async fn test_format_credential_presentation() {
     };
 
     let result = jwt_formatter
-        .format_credential_presentation(credential_presentation, None, None)
+        .prepare_selective_disclosure(credential_presentation)
         .await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), jwt_token);
@@ -683,7 +683,7 @@ async fn test_format_credential_presentation() {
     };
 
     let result = jwt_formatter
-        .format_credential_presentation(credential_presentation, None, None)
+        .prepare_selective_disclosure(credential_presentation)
         .await;
     assert!(result.is_ok());
     assert_eq!(result.unwrap(), jwt_token);

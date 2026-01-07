@@ -21,7 +21,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::key_verification::KeyVerification;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -56,13 +56,6 @@ impl ScanToVerify {
 impl VerificationProtocol for ScanToVerify {
     fn holder_can_handle(&self, _url: &Url) -> bool {
         false
-    }
-    fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        _context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        Ok(None)
     }
 
     async fn holder_handle_invitation(

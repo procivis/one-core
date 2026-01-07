@@ -283,11 +283,9 @@ impl CredentialFormatter for MdocFormatter {
     }
 
     // Extract issuer_signed, keep only the claims that the verifier asked for, re-encode issuer_signed that back to the same format
-    async fn format_credential_presentation(
+    async fn prepare_selective_disclosure(
         &self,
         credential: CredentialPresentation,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
-        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         let mut issuer_signed: IssuerSigned = decode_cbor_base64(&credential.token)?;
 

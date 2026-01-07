@@ -30,9 +30,10 @@ pub struct FormattedPresentation {
     pub oidc_format: String,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct FormatPresentationCtx {
     pub nonce: Option<String>,
+    pub audience: Option<String>,
     pub mdoc_session_transcript: Option<Vec<u8>>,
 }
 

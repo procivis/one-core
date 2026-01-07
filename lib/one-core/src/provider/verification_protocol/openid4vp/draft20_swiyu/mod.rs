@@ -14,7 +14,7 @@ use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::DecomposedToken;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::verification_protocol::dto::{
     FormattedCredentialPresentation, InvitationResponseDTO, PresentationDefinitionResponseDTO,
     PresentationDefinitionV2ResponseDTO, PresentationDefinitionVersion, ShareResponse,
@@ -145,14 +145,6 @@ impl VerificationProtocol for OpenID4VP20Swiyu {
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
         todo!()
-    }
-
-    fn holder_get_holder_binding_context(
-        &self,
-        proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        self.inner.holder_get_holder_binding_context(proof, context)
     }
 
     async fn holder_handle_invitation(

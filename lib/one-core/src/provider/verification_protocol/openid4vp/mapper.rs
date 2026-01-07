@@ -377,7 +377,8 @@ fn format_path(
 
 pub(crate) fn cred_to_presentation_format_type(credential_format_type: FormatType) -> FormatType {
     match credential_format_type {
-        FormatType::Jwt | FormatType::PhysicalCard | FormatType::SdJwt => FormatType::Jwt,
+        FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+        FormatType::SdJwt => FormatType::SdJwt,
         FormatType::SdJwtVc => FormatType::SdJwtVc,
         FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
         FormatType::Mdoc => FormatType::Mdoc,

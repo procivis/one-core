@@ -25,7 +25,7 @@ use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -186,8 +186,7 @@ impl OpenID4VPFinal1_0 {
         for credential_presentation in credential_presentations {
             let credential_format = format_to_type(&credential_presentation, &self.config)?;
             let presentation_format = match credential_format {
-                // W3C SD-JWT will be enveloped using JWT presentation formatter
-                FormatType::SdJwt => FormatType::Jwt,
+                FormatType::SdJwt => FormatType::SdJwt,
                 FormatType::SdJwtVc => FormatType::SdJwtVc,
                 FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
                 FormatType::Mdoc => FormatType::Mdoc,
@@ -259,27 +258,6 @@ impl OpenID4VPFinal1_0 {
 impl VerificationProtocol for OpenID4VPFinal1_0 {
     async fn retract_proof(&self, _proof: &Proof) -> Result<(), VerificationProtocolError> {
         Ok(())
-    }
-
-    fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
-
-        Ok(Some(HolderBindingCtx {
-            nonce: interaction_data
-                .nonce
-                .ok_or(VerificationProtocolError::Failed(
-                    "missing nonce".to_string(),
-                ))?,
-            audience: encode_client_id_with_scheme(
-                interaction_data.client_id,
-                interaction_data.client_id_scheme,
-            ),
-        }))
     }
 
     fn holder_can_handle(&self, url: &Url) -> bool {
@@ -693,6 +671,10 @@ fn format_presentation_context(
     } else {
         FormatPresentationCtx {
             nonce: Some(verifier_nonce),
+            audience: Some(encode_client_id_with_scheme(
+                interaction_data.client_id.clone(),
+                interaction_data.client_id_scheme,
+            )),
             ..Default::default()
         }
     };

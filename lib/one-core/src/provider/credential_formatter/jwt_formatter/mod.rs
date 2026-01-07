@@ -187,11 +187,9 @@ impl CredentialFormatter for JWTFormatter {
         DetailCredential::try_from(jwt).map_err(|e| FormatterError::Failed(e.to_string()))
     }
 
-    async fn format_credential_presentation(
+    async fn prepare_selective_disclosure(
         &self,
         credential: CredentialPresentation,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
-        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         Ok(credential.token)
     }

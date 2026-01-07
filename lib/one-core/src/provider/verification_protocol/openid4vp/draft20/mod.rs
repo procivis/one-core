@@ -22,7 +22,7 @@ use crate::model::proof::{Proof, ProofStateEnum, UpdateProofRequest};
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::openid_metadata::OpenIDMetadataFetcher;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -188,24 +188,6 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         _submission: &[u8],
     ) -> Result<Vec<DetailCredential>, VerificationProtocolError> {
         todo!()
-    }
-
-    fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        let interaction_data: OpenID4VPHolderInteractionData =
-            serde_json::from_value(context).map_err(VerificationProtocolError::JsonError)?;
-
-        Ok(Some(HolderBindingCtx {
-            nonce: interaction_data
-                .nonce
-                .ok_or(VerificationProtocolError::Failed(
-                    "missing nonce".to_string(),
-                ))?,
-            audience: interaction_data.client_id,
-        }))
     }
 
     async fn holder_handle_invitation(

@@ -35,7 +35,7 @@ use crate::proto::bluetooth_low_energy::ble_resource::{Abort, BleWaiter};
 use crate::proto::nfc::NfcError;
 use crate::proto::nfc::hce::NfcHce;
 use crate::provider::credential_formatter::mdoc_formatter::util::EmbeddedCbor;
-use crate::provider::credential_formatter::model::{DetailCredential, HolderBindingCtx};
+use crate::provider::credential_formatter::model::DetailCredential;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::presentation_formatter::model::{
@@ -96,14 +96,6 @@ impl IsoMdl {
 impl VerificationProtocol for IsoMdl {
     fn holder_can_handle(&self, _url: &Url) -> bool {
         false
-    }
-
-    fn holder_get_holder_binding_context(
-        &self,
-        _proof: &Proof,
-        _context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        Ok(None)
     }
 
     async fn holder_handle_invitation(

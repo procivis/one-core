@@ -13,17 +13,15 @@ use uuid::Uuid;
 
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
-use crate::proto::jwt::Jwt;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, HolderBindingCtx,
-    Issuer, MockSignatureProvider, PublishedClaim,
+    CredentialData, CredentialPresentation, CredentialSchema, CredentialStatus, Issuer,
+    MockSignatureProvider, PublishedClaim,
 };
 use crate::provider::credential_formatter::nest_claims;
 use crate::provider::credential_formatter::sdjwt::disclosures::{
     DisclosureArray, compute_object_disclosures, parse_disclosure, select_disclosures,
 };
-use crate::provider::credential_formatter::sdjwt::model::{Disclosure, KeyBindingPayload};
+use crate::provider::credential_formatter::sdjwt::model::Disclosure;
 use crate::provider::credential_formatter::sdjwt::prepare_sd_presentation;
 use crate::provider::credential_formatter::vcdm::{
     ContextType, VcdmCredential, VcdmCredentialSubject,
@@ -40,12 +38,6 @@ async fn test_prepare_sd_presentation() {
     let key_id = "key-id";
     let key_alg = "ES256";
     let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}~");
-    let audience = "some-aud";
-    let nonce = "nonce";
-    let holder_binding_ctx = HolderBindingCtx {
-        nonce: nonce.to_string(),
-        audience: audience.to_string(),
-    };
 
     let mut signer = MockSignatureProvider::default();
     signer
@@ -65,8 +57,6 @@ async fn test_prepare_sd_presentation() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        Some(holder_binding_ctx),
-        Some(Box::new(signer)),
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -87,8 +77,6 @@ async fn test_prepare_sd_presentation() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        None,
-        None,
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -108,8 +96,6 @@ async fn test_prepare_sd_presentation() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        None,
-        None,
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -127,8 +113,6 @@ async fn test_prepare_sd_presentation() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        None,
-        None,
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -149,12 +133,6 @@ async fn test_prepare_sd_presentation_malformed() {
     let key_alg = "ES256";
     // malformed: no trailing ~
     let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}");
-    let audience = "some-aud";
-    let nonce = "nonce";
-    let holder_binding_ctx = HolderBindingCtx {
-        nonce: nonce.to_string(),
-        audience: audience.to_string(),
-    };
 
     let mut signer = MockSignatureProvider::default();
     signer
@@ -174,8 +152,6 @@ async fn test_prepare_sd_presentation_malformed() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        Some(holder_binding_ctx),
-        Some(Box::new(signer)),
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -196,8 +172,6 @@ async fn test_prepare_sd_presentation_malformed() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        None,
-        None,
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -217,8 +191,6 @@ async fn test_prepare_sd_presentation_malformed() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        None,
-        None,
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -236,8 +208,6 @@ async fn test_prepare_sd_presentation_malformed() {
     let result = prepare_sd_presentation(
         presentation,
         &SHA256,
-        None,
-        None,
         &W3C_USER_CLAIM_PATH
             .iter()
             .map(ToString::to_string)
@@ -245,109 +215,6 @@ async fn test_prepare_sd_presentation_malformed() {
     )
     .await;
     assert!(result.is_ok_and(|token| !token.contains(key_name) && !token.contains(key_age)));
-}
-
-#[tokio::test]
-async fn test_prepare_sd_presentation_with_kb() {
-    let jwt_token = "ewogICJhbGciOiAiYWxnb3JpdGhtIiwKICAidHlwIjogIlNESldUIgp9.eyJpYXQiOjE2OTkyNzAyNjYsImV4cCI6MTc2MjM0MjI2NiwibmJmIjoxNjk5MjcwMjIxLCJpc3MiOiJkaWQ6aXNzdWVyOnRlc3QiLCJzdWIiOiJkaWQ6aG9sZGVyOnRlc3QiLCJqdGkiOiI5YTQxNGE2MC05ZTZiLTQ3NTctODAxMS05YWE4NzBlZjQ3ODgiLCJjbmYiOnsiandrIjp7Imt0eSI6IkVDIiwidXNlIjoic2lnIiwiY3J2IjoiUC0yNTYiLCJ4IjoiMTh3SExlSWdXOXdWTjZWRDFUeGdwcXkyTHN6WWtNZjZKOG5qVkFpYnZoTSIsInkiOiItVjRkUzRVYUxNZ1BfNGZZNGo4aXI3Y2wxVFhsRmRBZ2N4NTVvN1RrY1NBIn19LCJ2YyI6eyJAY29udGV4dCI6WyJodHRwczovL3d3dy53My5vcmcvMjAxOC9jcmVkZW50aWFscy92MSIsImh0dHBzOi8vd3d3LnRlc3Rjb250ZXh0LmNvbS92MSJdLCJ0eXBlIjpbIlZlcmlmaWFibGVDcmVkZW50aWFsIiwiVHlwZTEiXSwiY3JlZGVudGlhbFN1YmplY3QiOnsiX3NkIjpbIkhabk1zenlDZERkTDFqSG5Wck5aZHRmdjhiSlR0Z25wa1NfbEl6SDI0eTgiLCJCT1QzNU1ZSnc1bzlLaTdEMFdxSlh2LXdKMDFkcXotbFF0T3Fod01pdnFvIl19LCJjcmVkZW50aWFsU3RhdHVzIjp7ImlkIjoiZGlkOnN0YXR1czppZCIsInR5cGUiOiJUWVBFIiwic3RhdHVzUHVycG9zZSI6IlBVUlBPU0UiLCJGaWVsZDEiOiJWYWwxIn19LCJfc2RfYWxnIjoic2hhLTI1NiJ9";
-    let key_name = "WyJNVEl6WVdKaiIsIm5hbWUiLCJKb2huIl0";
-    let key_age = "WyJNVEl6WVdKaiIsImFnZSIsIjQyIl0";
-    let key_id = "key-id";
-    let key_alg = "ES256";
-    let token = format!("{jwt_token}.QUJD~{key_name}~{key_age}~");
-    let audience = "some-aud";
-    let nonce = "nonce";
-    let holder_binding_ctx = HolderBindingCtx {
-        nonce: nonce.to_string(),
-        audience: audience.to_string(),
-    };
-
-    let mut signer = MockSignatureProvider::default();
-    signer
-        .expect_get_key_id()
-        .returning(|| Some(key_id.to_string()));
-    signer
-        .expect_jose_alg()
-        .returning(|| Some(key_alg.to_string()));
-    signer.expect_sign().returning(|_| Ok(vec![0; 32]));
-
-    let presentation = CredentialPresentation {
-        token: token.clone(),
-        disclosed_keys: vec!["name".to_string()],
-    };
-
-    // With holder binding context and signer
-    let result = prepare_sd_presentation(
-        presentation.clone(),
-        &SHA256,
-        Some(holder_binding_ctx.clone()),
-        Some(Box::new(signer)),
-        &W3C_USER_CLAIM_PATH
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>(),
-    )
-    .await
-    .unwrap();
-    assert!(result.contains(key_name));
-    let (_, kb_token) = result.rsplit_once('~').unwrap();
-    assert!(!kb_token.is_empty());
-    assert!(kb_token.ends_with(".AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")); // fake sig: vec![0;32]
-    let kb_jwt = Jwt::<KeyBindingPayload>::build_from_token(kb_token, None, None)
-        .await
-        .unwrap();
-    assert_eq!(kb_jwt.header.key_id, Some(key_id.to_string()));
-    assert_eq!(kb_jwt.header.algorithm, key_alg);
-    assert_eq!(kb_jwt.payload.audience.unwrap().first().unwrap(), audience);
-    assert_eq!(kb_jwt.payload.custom.nonce, nonce);
-    assert_eq!(
-        kb_jwt.payload.custom.sd_hash,
-        // hash over token + revealed disclosures (which should be ony key_name)
-        SHA256
-            .hash_base64_url(format!("{jwt_token}.QUJD~{key_name}~").as_bytes())
-            .unwrap()
-    );
-
-    // Without holder binding context and signer
-    let result = prepare_sd_presentation(
-        presentation.clone(),
-        &SHA256,
-        None,
-        Some(Box::new(MockSignatureProvider::default())),
-        &W3C_USER_CLAIM_PATH
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>(),
-    )
-    .await;
-    assert!(matches!(result, Err(FormatterError::Failed(_))));
-
-    // With holder binding context and no signer
-    let result = prepare_sd_presentation(
-        presentation.clone(),
-        &SHA256,
-        Some(holder_binding_ctx),
-        None,
-        &W3C_USER_CLAIM_PATH
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>(),
-    )
-    .await;
-    assert!(matches!(result, Err(FormatterError::Failed(_))));
-    // Without holder binding context and no signer
-    let result = prepare_sd_presentation(
-        presentation.clone(),
-        &SHA256,
-        None,
-        None,
-        &W3C_USER_CLAIM_PATH
-            .iter()
-            .map(ToString::to_string)
-            .collect::<Vec<_>>(),
-    )
-    .await;
-    assert!(matches!(result, Err(FormatterError::Failed(_))));
 }
 
 #[test]

@@ -43,9 +43,7 @@ use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::mqtt_client::MqttClient;
-use crate::provider::credential_formatter::model::{
-    AuthenticationFn, DetailCredential, HolderBindingCtx,
-};
+use crate::provider::credential_formatter::model::{AuthenticationFn, DetailCredential};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -368,23 +366,6 @@ impl VerificationProtocol for OpenID4VPProximityDraft00 {
         _storage_access: &StorageAccess,
     ) -> Result<PresentationDefinitionResponseDTO, VerificationProtocolError> {
         Err(VerificationProtocolError::OperationNotSupported)
-    }
-
-    fn holder_get_holder_binding_context(
-        &self,
-        proof: &Proof,
-        context: serde_json::Value,
-    ) -> Result<Option<HolderBindingCtx>, VerificationProtocolError> {
-        let transport = TransportType::try_from(proof.transport.as_str()).map_err(|err| {
-            VerificationProtocolError::Failed(format!("Invalid transport type: {err}"))
-        })?;
-
-        let interaction_data = self.parse_interaction_data(context, transport)?;
-        let holder_binding_context = HolderBindingCtx {
-            nonce: interaction_data.nonce,
-            audience: interaction_data.client_id,
-        };
-        Ok(Some(holder_binding_context))
     }
 
     async fn verifier_share_proof(
@@ -755,8 +736,7 @@ pub(super) async fn create_presentation(
     for credential_presentation in &params.credential_presentations {
         let credential_format = format_to_type(credential_presentation, &params.config)?;
         let presentation_format = match credential_format {
-            // W3C SD-JWT will be enveloped using JWT presentation formatter
-            FormatType::SdJwt => FormatType::Jwt,
+            FormatType::SdJwt => FormatType::SdJwt,
             FormatType::SdJwtVc => FormatType::SdJwtVc,
             FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
             FormatType::Mdoc => FormatType::Mdoc,
@@ -925,6 +905,7 @@ fn format_presentation_context(
     } else {
         FormatPresentationCtx {
             nonce: Some(params.nonce.to_owned()),
+            audience: Some(params.client_id.to_owned()),
             ..Default::default()
         }
     };

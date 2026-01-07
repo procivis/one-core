@@ -4,6 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
+use serde_json::Value;
 use shared_types::DidValue;
 use time::Duration;
 
@@ -13,10 +14,13 @@ use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
-    AuthenticationFn, IdentifierDetails, VerificationFn,
+    AuthenticationFn, HolderBindingCtx, IdentifierDetails, VerificationFn,
 };
-use crate::provider::credential_formatter::sdjwt::SdJwtHolderBindingParams;
+use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
 use crate::provider::credential_formatter::sdjwt::model::KeyBindingPayload;
+use crate::provider::credential_formatter::sdjwt::{
+    SdJwtHolderBindingParams, append_key_binding_token,
+};
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVc;
 use crate::provider::presentation_formatter::PresentationFormatter;
 use crate::provider::presentation_formatter::model::{
@@ -68,25 +72,53 @@ impl PresentationFormatter for SdjwtVCPresentationFormatter {
     async fn format_presentation(
         &self,
         credentials: Vec<CredentialToPresent>,
-        _holder_binding_fn: AuthenticationFn,
+        holder_binding_fn: AuthenticationFn,
         _holder_did: &Option<DidValue>,
-        _context: FormatPresentationCtx,
+        context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        if credentials.len() != 1 {
-            return Err(FormatterError::Failed(
-                "SD-JWT VC formatter only supports single credential presentations".to_string(),
-            ));
-        }
-        let credential = credentials
-            .into_iter()
-            .next()
-            .ok_or(FormatterError::Failed(
-                "Empty credential list passed to format_presentation".to_string(),
-            ))?;
+        let [credential] = credentials.as_slice() else {
+            return Err(FormatterError::Failed(format!(
+                "SD_JWT_VC presentation formatter only supports single credential presentations, received {} credentials",
+                credentials.len()
+            )));
+        };
 
-        // The holder binding has been added by the credential formatter already
+        let mut vp_token = credential.credential_token.clone();
+
+        let jwt = parse_token(&vp_token)?;
+        let decomposed_token = Jwt::<Value>::decompose_token(jwt.jwt)?;
+        let hash_alg = decomposed_token
+            .payload
+            .custom
+            .get("_sd_alg")
+            .and_then(|alg| alg.as_str())
+            .unwrap_or("sha-256");
+
+        let hasher = self.crypto.get_hasher(hash_alg)?;
+
+        // As per https://www.ietf.org/archive/id/draft-ietf-oauth-selective-disclosure-jwt-22.html#section-4.3
+        // Both nonce and audience are required
+        let FormatPresentationCtx {
+            nonce: Some(nonce),
+            audience: Some(audience),
+            ..
+        } = context
+        else {
+            return Err(FormatterError::Failed(
+                "Missing nonce or audience in context, cannot format presentation SD-JWT VC with key binding token".to_owned(),
+            ));
+        };
+
+        append_key_binding_token(
+            &*hasher,
+            HolderBindingCtx { nonce, audience },
+            &*holder_binding_fn,
+            &mut vp_token,
+        )
+        .await?;
+
         Ok(FormattedPresentation {
-            vp_token: credential.credential_token,
+            vp_token,
             oidc_format: "vc+sd-jwt".to_string(),
         })
     }

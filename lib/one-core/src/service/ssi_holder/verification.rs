@@ -33,7 +33,7 @@ use crate::model::proof::{Proof, ProofRelations, ProofStateEnum, UpdateProofRequ
 use crate::proto::identifier_creator::{IdentifierRole, RemoteIdentifierRelation};
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::{CredentialPresentation, HolderBindingCtx};
+use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::provider::verification_protocol::VerificationProtocol;
@@ -206,8 +206,6 @@ impl SSIHolderService {
 
         let mut disclosed_claims = HashMap::<ClaimId, Claim>::new();
         let mut credential_presentations: Vec<FormattedCredentialPresentation> = vec![];
-        let holder_binding_ctx =
-            verification_protocol.holder_get_holder_binding_context(&proof, interaction_data)?;
 
         for (requested_credential_id, submitted_credentials) in submission.submit_credentials {
             let requested_credential = requested_credentials
@@ -293,7 +291,6 @@ impl SSIHolderService {
                 let (presentation, validity_credential_presentation) = self
                     .prepare_credential_presentation(
                         credential_presentation,
-                        holder_binding_ctx.clone(),
                         credential,
                         &*formatter,
                     )
@@ -390,7 +387,6 @@ impl SSIHolderService {
     async fn prepare_credential_presentation(
         &self,
         credential_presentation: CredentialPresentation,
-        holder_binding_ctx: Option<HolderBindingCtx>,
         credential: &Credential,
         formatter: &dyn CredentialFormatter,
     ) -> Result<(String, Option<String>), ServiceError> {
@@ -401,20 +397,8 @@ impl SSIHolderService {
                 "credential_schema missing".to_string(),
             ))?;
 
-        let authn_fn = credential
-            .key
-            .as_ref()
-            .map(|key| {
-                self.key_provider.get_signature_provider(
-                    key,
-                    None,
-                    self.key_algorithm_provider.clone(),
-                )
-            })
-            .transpose()?;
-
         let presentation = formatter
-            .format_credential_presentation(credential_presentation, holder_binding_ctx, authn_fn)
+            .prepare_selective_disclosure(credential_presentation)
             .await?;
 
         let revocation_method: Fields<RevocationType> = self
@@ -460,7 +444,7 @@ impl SSIHolderService {
             };
 
             let formatted_lvvc_presentation = formatter
-                .format_credential_presentation(lvvc_presentation, None, None)
+                .prepare_selective_disclosure(lvvc_presentation)
                 .await?;
             Some(formatted_lvvc_presentation)
         } else {
@@ -515,8 +499,6 @@ impl SSIHolderService {
             .map(|interaction| serde_json::from_slice(interaction))
             .ok_or_else(|| ServiceError::MappingError("missing interaction".into()))?
             .map_err(|err| ServiceError::MappingError(err.to_string()))?;
-        let holder_binding_ctx = verification_protocol
-            .holder_get_holder_binding_context(&proof, interaction_data.clone())?;
         let presentation_definition = verification_protocol
             .holder_get_presentation_definition_v2(&proof, interaction_data, &self.storage_proxy())
             .await?;
@@ -566,7 +548,6 @@ impl SSIHolderService {
                         query_id.to_owned(),
                         credential_id,
                         &presented_paths,
-                        holder_binding_ctx.to_owned(),
                     )
                     .await?;
 
@@ -677,7 +658,6 @@ impl SSIHolderService {
         credential_query_id: String,
         credential_id: CredentialId,
         presented_paths: &[String],
-        holder_binding_ctx: Option<HolderBindingCtx>,
     ) -> Result<(FormattedCredentialPresentation, Vec<Claim>), ServiceError> {
         let blob_storage = self
             .blob_storage_provider
@@ -739,12 +719,7 @@ impl SSIHolderService {
             disclosed_keys: paths_to_leafs(presented_paths),
         };
         let (presentation, validity_credential_presentation) = self
-            .prepare_credential_presentation(
-                credential_presentation,
-                holder_binding_ctx,
-                &credential,
-                &*formatter,
-            )
+            .prepare_credential_presentation(credential_presentation, &credential, &*formatter)
             .await?;
 
         let (holder_did, key, jwk_key_id) = holder_did_key_jwk_from_credential(&credential)?;

@@ -94,11 +94,9 @@ impl CredentialFormatter for PhysicalCardFormatter {
         OptiocalBarcodeCredential::from_token(token)?.try_into()
     }
 
-    async fn format_credential_presentation(
+    async fn prepare_selective_disclosure(
         &self,
         _credential: CredentialPresentation,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
-        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         todo!()
     }

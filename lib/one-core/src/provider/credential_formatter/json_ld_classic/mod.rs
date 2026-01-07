@@ -168,11 +168,9 @@ impl CredentialFormatter for JsonLdClassic {
         self.extract_credentials_internal(credential, None).await
     }
 
-    async fn format_credential_presentation(
+    async fn prepare_selective_disclosure(
         &self,
         credential: CredentialPresentation,
-        _holder_binding_ctx: Option<HolderBindingCtx>,
-        _holder_binding_fn: Option<AuthenticationFn>,
     ) -> Result<String, FormatterError> {
         Ok(credential.token)
     }

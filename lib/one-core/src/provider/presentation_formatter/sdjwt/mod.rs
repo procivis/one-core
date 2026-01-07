@@ -3,15 +3,19 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
+use serde_json::Value;
 use shared_types::DidValue;
 use time::Duration;
 
+use crate::config::core_config::FormatType;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{AuthenticationFn, VerificationFn};
+use crate::provider::credential_formatter::model::{
+    AuthenticationFn, HolderBindingCtx, VerificationFn,
+};
+use crate::provider::credential_formatter::sdjwt::append_key_binding_token;
 use crate::provider::credential_formatter::sdjwt::disclosures::parse_token;
-use crate::provider::credential_formatter::sdjwt::model::DecomposedToken;
 use crate::provider::credential_formatter::sdjwt_formatter::extract_credentials_internal;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::PresentationFormatter;
@@ -65,39 +69,72 @@ impl PresentationFormatter for SdjwtPresentationFormatter {
         holder_did: &Option<DidValue>,
         context: FormatPresentationCtx,
     ) -> Result<FormattedPresentation, FormatterError> {
-        if credentials.len() != 1 {
-            return Err(FormatterError::Failed(
-                "SD-JWT formatter only supports single credential presentations".to_string(),
+        let mut processed_credentials = Vec::with_capacity(credentials.len());
+
+        for credential in &credentials {
+            let mut vp_token = credential.credential_token.clone();
+            let jwt = parse_token(&vp_token)?;
+            let jwt_payload = Jwt::<Value>::decompose_token(jwt.jwt)?.payload;
+
+            // The CNF claim is optional as per https://www.w3.org/TR/vc-jose-cose/#cnf
+            // We only append a key binding token if the CNF is present
+            // All presented credentials are wrapped in a JWT verifiable presentation
+            if jwt_payload.proof_of_possession_key.is_none() {
+                processed_credentials.push(CredentialToPresent {
+                    credential_token: vp_token,
+                    credential_format: FormatType::SdJwt,
+                    lvvc_credential_token: credential.lvvc_credential_token.clone(),
+                });
+
+                continue;
+            }
+
+            let FormatPresentationCtx {
+                nonce: Some(nonce),
+                audience: Some(audience),
+                ..
+            } = context.clone()
+            else {
+                return Err(FormatterError::Failed(
+                "Missing nonce or audience in context, cannot format presentation SD-JWT with key binding token".to_owned(),
             ));
-        }
+            };
 
-        let credential = credentials.first().ok_or(FormatterError::Failed(
-            "Empty credential list passed to format_presentation".to_string(),
-        ))?;
+            let hash_alg = jwt_payload
+                .custom
+                .get("_sd_alg")
+                .and_then(|alg| alg.as_str())
+                .unwrap_or("sha-256");
 
-        let DecomposedToken { jwt, .. } = parse_token(&credential.credential_token)?;
-        let decomposed_token = Jwt::<()>::decompose_token(jwt)?;
-        if decomposed_token.payload.proof_of_possession_key.is_some() {
-            return Ok(FormattedPresentation {
-                vp_token: credential.credential_token.to_owned(),
-                oidc_format: "vc+sd-jwt".to_string(),
+            let hasher = self.crypto.get_hasher(hash_alg)?;
+
+            append_key_binding_token(
+                &*hasher,
+                HolderBindingCtx {
+                    nonce: nonce.clone(),
+                    audience: audience.clone(),
+                },
+                &*holder_binding_fn,
+                &mut vp_token,
+            )
+            .await?;
+
+            processed_credentials.push(CredentialToPresent {
+                credential_token: vp_token,
+                credential_format: FormatType::SdJwt,
+                lvvc_credential_token: credential.lvvc_credential_token.clone(),
             });
         }
 
-        if decomposed_token.payload.subject.is_none() {
-            return Err(FormatterError::Failed(
-                "Credential has neither subject nor cnf claim. Cannot create holder binding proof."
-                    .to_string(),
-            ));
-        }
+        let jwt_formatter = JwtVpPresentationFormatter::new(self.key_algorithm_provider.clone());
 
-        // ONE-6254: There is no cnf claim in old legacy SD-JWT credentials. Instead, there is a sub
-        // claim referring to a holder did. For legacy compatibility, wrap in W3C verifiable presentation
-        // signed by a key matching the holder did.
-        // Remove once legacy credential compatibility is no longer needed.
-        let jwt_formatter = JwtVpPresentationFormatter::new(self.key_algorithm_provider.to_owned());
         jwt_formatter
-            .format_presentation(credentials, holder_binding_fn, holder_did, context)
+            .format_presentation(
+                processed_credentials,
+                holder_binding_fn,
+                holder_did,
+                context,
+            )
             .await
     }
 

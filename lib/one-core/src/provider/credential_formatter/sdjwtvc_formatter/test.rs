@@ -1911,7 +1911,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         disclosed_keys: vec!["object/measurements/0/air pollution".to_string()],
     };
     let presentation = formatter
-        .format_credential_presentation(credential_presentation, None, None)
+        .prepare_selective_disclosure(credential_presentation)
         .await
         .expect("failed to format presentation");
     // Order of disclosures does not matter
@@ -1962,7 +1962,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         ],
     };
     let presentation = formatter
-        .format_credential_presentation(credential_presentation, None, None)
+        .prepare_selective_disclosure(credential_presentation)
         .await
         .expect("failed to format presentation");
     // Order of disclosures does not matter

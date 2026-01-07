@@ -90,16 +90,17 @@ pub(crate) async fn pex_submission_data(
                 key_algorithm_provider.clone(),
             )
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-        let ctx = if presentation_format_type == FormatType::Mdoc {
-            let client_id = if protocol == VerificationProtocolType::OpenId4VpDraft25 {
-                &encode_client_id_with_scheme_draft25(
-                    interaction_data.client_id.clone(),
-                    interaction_data.client_id_scheme,
-                )
-            } else {
-                &interaction_data.client_id
-            };
 
+        let client_id = if protocol == VerificationProtocolType::OpenId4VpDraft25 {
+            &encode_client_id_with_scheme_draft25(
+                interaction_data.client_id.clone(),
+                interaction_data.client_id_scheme,
+            )
+        } else {
+            &interaction_data.client_id
+        };
+
+        let ctx = if presentation_format_type == FormatType::Mdoc {
             mdoc_presentation_context(mdoc_draft_handover(
                 client_id,
                 response_uri,
@@ -108,7 +109,8 @@ pub(crate) async fn pex_submission_data(
             )?)?
         } else {
             FormatPresentationCtx {
-                nonce: Some(verifier_nonce.clone()),
+                nonce: Some(verifier_nonce.to_owned()),
+                audience: Some(client_id.to_owned()),
                 ..Default::default()
             }
         };
