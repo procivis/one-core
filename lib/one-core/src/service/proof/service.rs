@@ -952,7 +952,9 @@ impl ProofService {
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
         match proof.state {
-            ProofStateEnum::Created | ProofStateEnum::Pending => {
+            ProofStateEnum::Created
+            | ProofStateEnum::Pending
+            | ProofStateEnum::InteractionExpired => {
                 self.exchange_retract_proof(&proof).await?;
                 self.hard_delete_proof(&proof).await?
             }

@@ -4041,7 +4041,12 @@ async fn test_share_proof_fails_when_engagement_is_present() {
 #[rstest]
 #[tokio::test]
 async fn test_delete_proof_ok_for_allowed_state(
-    #[values(ProofStateEnum::Created, ProofStateEnum::Pending)] state: ProofStateEnum,
+    #[values(
+        ProofStateEnum::Created,
+        ProofStateEnum::Pending,
+        ProofStateEnum::InteractionExpired
+    )]
+    state: ProofStateEnum,
 ) {
     use shared_types::InteractionId;
 
