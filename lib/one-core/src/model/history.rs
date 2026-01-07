@@ -76,6 +76,8 @@ pub enum HistoryAction {
     InteractionCreated,
     InteractionErrored,
     InteractionExpired,
+    RegistrationCertificateCreated,
+    RegistrationCertificateRevoked,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
