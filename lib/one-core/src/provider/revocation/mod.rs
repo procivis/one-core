@@ -86,7 +86,7 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         signature_type: String,
         issuer: &Identifier,
-    ) -> Result<RevocationListEntryId, RevocationError>;
+    ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError>;
 
     /// Issuer: mark previously-issued signature as revoked
     async fn revoke_signature(

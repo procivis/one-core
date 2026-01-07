@@ -170,15 +170,20 @@ impl Signer for RegistrationCertificate {
             .error_while("Loading issuer identifier")?
             .ok_or(SignerError::IdentifierNotFound(request.issuer))?;
 
-        let jwt_id = match self.revocation.as_deref() {
+        let (jwt_id, status) = match self.revocation.as_deref() {
             Some(list) => {
-                let list_entry_id = list
+                let (list_entry_id, revocation_info) = list
                     .add_signature("REGISTRATION_CERTIFICATE".to_owned(), &issuer)
                     .await
                     .error_while("Adding signature to revocation list")?;
-                Uuid::from(list_entry_id)
+                (
+                    Uuid::from(list_entry_id),
+                    Some(model::Status {
+                        status_list: revocation_info.credential_status.additional_fields,
+                    }),
+                )
             }
-            None => Uuid::new_v4(),
+            None => (Uuid::new_v4(), None),
         };
         let jwt_payload = JWTPayload::<model::Payload> {
             issued_at: Some(now),
@@ -189,7 +194,7 @@ impl Signer for RegistrationCertificate {
             audience: self.params.payload.audience.clone(),
             jwt_id: Some(jwt_id.to_string()),
             proof_of_possession_key: None,
-            custom: payload,
+            custom: model::Payload { status, ..payload },
         };
         let signed_jwt = self
             .create_and_sign_jwt(&request, issuer, jwt_payload)

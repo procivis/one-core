@@ -75,12 +75,6 @@ const PAYLOAD: &str = r#"
       "value": "Federal Agency for Breakthrough Innovations"
     }
   ]],
-  "status": {
-    "status_list": {
-      "idx": 0,
-      "uri": "https://example.com/statuslists/1"
-    }
-  },
   "act": {
     "sub": "DE:EX-987654381"
   }

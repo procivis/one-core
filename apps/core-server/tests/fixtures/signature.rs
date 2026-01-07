@@ -16,7 +16,6 @@ pub fn dummy_registration_certificate_payload() -> serde_json::Value {
         "entitlements": [
             "https://uri.etsi.org/19475/Entitlement/PID_Provider"
         ],
-        "service": [],
-        "status": {}
+        "service": []
     })
 }

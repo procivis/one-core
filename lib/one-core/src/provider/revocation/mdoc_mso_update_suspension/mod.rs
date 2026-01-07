@@ -89,7 +89,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
         &self,
         _signature_type: String,
         _issuer: &Identifier,
-    ) -> Result<RevocationListEntryId, RevocationError> {
+    ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
         ))

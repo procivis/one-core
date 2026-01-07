@@ -441,11 +441,12 @@ impl RevocationMethod for TokenStatusList {
         &self,
         signature_type: String,
         issuer: &Identifier,
-    ) -> Result<RevocationListEntryId, RevocationError> {
+    ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let result = self
             .create_entry(RevocationListEntityId::Signature(signature_type), issuer)
             .await?;
-        Ok(result.0)
+
+        Ok(result)
     }
 
     async fn revoke_signature(

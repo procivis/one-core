@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
@@ -21,7 +23,7 @@ pub struct Payload {
     pub data_protection_authority: Option<DataProtectionAuthority>,
     pub policy_id: Vec<String>,
     pub certificate_policy: Url,
-    pub status: serde_json::Value,
+    pub status: Option<Status>,
     pub provided_attestations: Option<Vec<ProvidedAttestation>>,
     pub credentials: Option<Vec<Credential>>,
     pub purpose: Option<Vec<MultiLangString>>,
@@ -91,6 +93,11 @@ pub struct DataProtectionAuthority {
     pub uri: String,
 }
 
+#[derive(Debug, Serialize)]
+pub struct Status {
+    pub status_list: HashMap<String, serde_json::Value>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ProvidedAttestation {
@@ -142,7 +149,6 @@ impl<'de> Deserialize<'de> for Payload {
             pub data_protection_authority: Option<DataProtectionAuthority>,
             pub policy_id: Vec<String>,
             pub certificate_policy: Url,
-            pub status: serde_json::Value,
             pub provided_attestations: Option<Vec<ProvidedAttestation>>,
             pub credentials: Option<Vec<Credential>>,
             pub purpose: Option<Vec<MultiLangString>>,
@@ -192,7 +198,6 @@ impl<'de> Deserialize<'de> for Payload {
             data_protection_authority: proto.data_protection_authority,
             policy_id: proto.policy_id,
             certificate_policy: proto.certificate_policy,
-            status: proto.status,
             provided_attestations: proto.provided_attestations,
             credentials: proto.credentials,
             purpose: proto.purpose,
@@ -200,6 +205,7 @@ impl<'de> Deserialize<'de> for Payload {
             public_body: proto.public_body,
             support_uri: proto.support_uri,
             intermediary: proto.intermediary,
+            status: None,
         })
     }
 }
