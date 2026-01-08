@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{VecSkipError, serde_as, skip_serializing_none};
 use time::Duration;
 use url::Url;
 
@@ -86,6 +86,7 @@ pub(crate) struct AuthorizationRequest {
     pub redirect_uri: Option<String>,
 }
 
+#[serde_as]
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct OpenID4VPFinal1_0ClientMetadata {
@@ -94,6 +95,7 @@ pub struct OpenID4VPFinal1_0ClientMetadata {
     #[serde(default)]
     pub jwks_uri: Option<String>,
     pub vp_formats_supported: HashMap<String, OpenID4VpPresentationFormat>,
+    #[serde_as(as = "Option<VecSkipError<_>>")]
     #[serde(default)]
     pub encrypted_response_enc_values_supported:
         Option<Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>>,
@@ -103,4 +105,38 @@ pub struct OpenID4VPFinal1_0ClientMetadata {
     pub id_token_encrypted_response_alg: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub subject_syntax_types_supported: Vec<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::provider::verification_protocol::openid4vp::model::AuthorizationEncryptedResponseContentEncryptionAlgorithm;
+
+    #[test]
+    fn test_client_metadata_skips_unknown_encryption_algorithms() {
+        let json = r#"{
+            "vp_formats_supported": {},
+            "encrypted_response_enc_values_supported": [
+                "A128GCM",
+                "A192GCM",
+                "A256GCM",
+                "A128CBC-HS256",
+                "A192CBC-HS384",
+                "A256CBC-HS512"
+            ]
+        }"#;
+
+        let metadata: OpenID4VPFinal1_0ClientMetadata = serde_json::from_str(json).unwrap();
+
+        assert_eq!(
+            metadata.encrypted_response_enc_values_supported,
+            Some(vec![
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128GCM,
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256,
+            ])
+        );
+    }
 }
