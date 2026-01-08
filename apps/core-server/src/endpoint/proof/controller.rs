@@ -222,11 +222,11 @@ pub(crate) async fn post_proof(
     ),
     summary = "Request a proof",
     description = indoc::formatdoc! {"
-        Creates a share endpoint URL from a proof request. A wallet holder can use this URL to access
+        Creates a share URL from a proof request. A wallet holder can use this URL to access
         the proof request.
 
-        For proof requests made with OID4VC, a Client ID Scheme can be specified in the params. If no
-        scheme is specified the default scheme from the configuration will be used.
+        For proof requests made with OID4VC, a Client ID Scheme can be specified in the params.
+        If no scheme is specified the default scheme from the configuration will be used.
     "},
 )]
 #[require_permissions(Permission::ProofShare)]

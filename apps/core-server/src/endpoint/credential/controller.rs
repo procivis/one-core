@@ -252,7 +252,10 @@ pub(crate) async fn suspend_credential(
         ("bearer" = [])
     ),
     summary = "Issue a credential",
-    description = "Creates a share endpoint URL. A wallet holder can use this to access the offered credential.",
+    description = indoc::formatdoc! {"
+        Creates a share URL. A wallet holder can use this to access the
+        offered credential.
+    "},
 )]
 #[require_permissions(Permission::CredentialShare)]
 pub(crate) async fn share_credential(

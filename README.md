@@ -30,7 +30,7 @@ See the [key features][key] and complete solution [architecture][archi].
 
 ### Prerequisites
 
-- Rust 1.88+ - [Install via rustup.rs][rust]
+- Rust 1.92+ - [Install via rustup.rs][rust]
 - Docker with Docker Compose - [Docker Desktop][dock] recommended for
   easiest setup
 - Install cargo-make: `cargo install cargo-make`

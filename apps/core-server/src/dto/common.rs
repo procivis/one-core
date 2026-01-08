@@ -110,7 +110,10 @@ where
 #[from("one_core::model::common::EntityShareResponseDTO")]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct EntityShareResponseRestDTO {
+    /// Share URL, typically encoded as a QR code.
     pub url: String,
+    /// URL becomes unusable by wallet holder at this time. Call the share
+    /// endpoint again to get a new URL.
     #[serde(serialize_with = "front_time_option")]
     #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
     pub expires_at: Option<OffsetDateTime>,
