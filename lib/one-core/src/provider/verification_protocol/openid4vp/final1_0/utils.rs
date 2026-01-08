@@ -166,7 +166,7 @@ async fn parse_referenced_data_from_did_signed_token(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<(AuthorizationRequest, DidValue), VerificationProtocolError> {
-    let client_id = &request_token.payload.custom.client_id;
+    let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     let Some(kid) = request_token.header.key_id.clone() else {
         return Err(VerificationProtocolError::Failed(

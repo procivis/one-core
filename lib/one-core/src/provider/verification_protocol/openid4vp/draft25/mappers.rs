@@ -180,7 +180,7 @@ pub(crate) fn encode_client_id_with_scheme_draft25(
 }
 
 pub(super) fn decode_client_id_with_scheme(
-    client_id_with_scheme: String,
+    client_id_with_scheme: &str,
 ) -> Result<(String, ClientIdScheme), VerificationProtocolError> {
     let (client_id_scheme, client_id_without_prefix) = client_id_with_scheme
         .split_once(':')
@@ -193,7 +193,7 @@ pub(super) fn decode_client_id_with_scheme(
     })?;
 
     let client_id = match client_id_scheme {
-        ClientIdScheme::Did => client_id_with_scheme.as_str(),
+        ClientIdScheme::Did => client_id_with_scheme,
         _ => client_id_without_prefix,
     };
 
@@ -213,7 +213,7 @@ impl TryFrom<OpenID4VP25AuthorizationRequestQueryParams> for OpenID4VP25Authoriz
                 .map_err(|e| VerificationProtocolError::InvalidRequest(e.to_string()))
         }
 
-        let (client_id, _) = decode_client_id_with_scheme(query_params.client_id)?;
+        let (client_id, _) = decode_client_id_with_scheme(&query_params.client_id)?;
 
         Ok(OpenID4VP25AuthorizationRequest {
             client_id,
@@ -253,7 +253,7 @@ impl TryFrom<OpenID4VP25AuthorizationRequest> for OpenID4VPHolderInteractionData
     type Error = VerificationProtocolError;
 
     fn try_from(value: OpenID4VP25AuthorizationRequest) -> Result<Self, Self::Error> {
-        let (client_id, client_id_scheme) = decode_client_id_with_scheme(value.client_id)?;
+        let (client_id, client_id_scheme) = decode_client_id_with_scheme(&value.client_id)?;
 
         Ok(Self {
             client_id,

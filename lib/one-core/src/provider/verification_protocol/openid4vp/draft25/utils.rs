@@ -44,8 +44,7 @@ async fn parse_referenced_data_from_x509_san_dns_token(
         .x5c
         .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
 
-    let (client_id, _) =
-        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
+    let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     let pem_chain = x5c_into_pem_chain(&x5c)
         .map_err(|err| VerificationProtocolError::Failed(err.to_string()))?;
@@ -118,7 +117,7 @@ async fn parse_referenced_data_from_x509_hash_token(
         .ok_or(VerificationProtocolError::Failed("x5c missing".to_string()))?;
 
     let (client_id, client_id_scheme) =
-        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
+        decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     if client_id_scheme != ClientIdScheme::X509Hash {
         return Err(VerificationProtocolError::InvalidRequest(format!(
@@ -173,7 +172,7 @@ async fn parse_referenced_data_from_did_signed_token(
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: &Arc<dyn DidMethodProvider>,
 ) -> Result<(OpenID4VP25AuthorizationRequest, DidValue), VerificationProtocolError> {
-    let client_id = request_token.payload.custom.client_id.clone();
+    let (client_id, _) = decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     let Some(kid) = request_token.header.key_id.clone() else {
         return Err(VerificationProtocolError::Failed(
@@ -352,7 +351,7 @@ async fn retrieve_authorization_params_by_reference(
     }
 
     let (_, client_id_scheme) =
-        decode_client_id_with_scheme(request_token.payload.custom.client_id.clone())?;
+        decode_client_id_with_scheme(&request_token.payload.custom.client_id)?;
 
     if !params
         .holder
