@@ -29,6 +29,7 @@ ignore = [
     { id = "RUSTSEC-2023-0071", reason = "no safe upgrade available, can be avoided by not using RSA in mysql server" },
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error crate unmaintained, indirect dependency of a few libs" },
     { id = "RUSTSEC-2022-0040", reason = "`owning_ref` doesn't seem to be used anywhere inside json-ld" },
+    { id = "RUSTSEC-2025-0141", reason = "`bincode` crate discontinued" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
