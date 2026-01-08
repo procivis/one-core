@@ -47,7 +47,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_expiration_time, validate_issuance_time,
 };
-use crate::util::authority_key_identifier::get_aki_for_pem_chain;
+use crate::util::authority_key_identifier::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 use crate::validator::throw_if_proof_state_not_in;
 
 pub(crate) struct OpenId4VpProofValidatorProto {
@@ -1034,21 +1034,17 @@ fn check_issuer_is_trusted_authority(
         ));
     };
 
-    let Some(issuer_aki) = get_aki_for_pem_chain(issuer_certificate.chain.as_bytes()) else {
-        return Err(OpenID4VCError::ValidationError(
-            "Failed to retrieve Authority Key Identifier for credential issuer".to_owned(),
-        ));
-    };
+    let issuer_akis = get_akis_for_pem_chain(issuer_certificate.chain.as_bytes()).map_err(|e| {
+        OpenID4VCError::ValidationError(format!(
+            "Failed to retrieve Authority Key Identifier for credential issuer: {e}"
+        ))
+    })?;
 
     let trusted_akis = get_trusted_akis(authorities);
 
     for trusted_aki in &trusted_akis {
-        // This is very inefficient.
-        // We could use something like `bstr::ByteSlice::contains_str()`,
-        // or maybe `.contains_bytes()` once the following gets implemented:
-        // https://github.com/rust-lang/rust/issues/134149
-        for window in issuer_aki.windows(trusted_aki.len()) {
-            if window.iter().eq(trusted_aki.iter()) {
+        for issuer_aki in &issuer_akis {
+            if issuer_aki == trusted_aki {
                 return Ok(());
             }
         }
@@ -1059,16 +1055,15 @@ fn check_issuer_is_trusted_authority(
     ))
 }
 
-pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<Vec<u8>> {
+pub(crate) fn get_trusted_akis(authorities: &[TrustedAuthority]) -> Vec<AuthorityKeyIdentifier> {
     // DCQL spec says that AKI values should be provided as base64url-encoded strings.
     // We need to decode those before we can match them against stored AKIs.
-
-    let mut akis: Vec<Vec<u8>> = Vec::new();
+    let mut akis: Vec<AuthorityKeyIdentifier> = Vec::new();
     for authority in authorities {
         if let TrustedAuthority::AuthorityKeyId { values } = &authority {
             for value in values {
                 match Base64UrlSafeNoPadding::decode_to_vec(value.as_bytes(), None) {
-                    Ok(bytes) => akis.push(bytes),
+                    Ok(bytes) => akis.push(AuthorityKeyIdentifier(bytes)),
                     Err(_) => { /* Discard invalid values */ }
                 }
             }

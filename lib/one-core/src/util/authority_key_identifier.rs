@@ -1,35 +1,35 @@
-use crate::proto::certificate_validator::parse::parse_chain_to_x509_attributes;
+use x509_parser::extensions::ParsedExtension;
+use x509_parser::pem::Pem;
 
-pub fn get_aki_for_pem_chain(pem_chain: &[u8]) -> Option<Vec<u8>> {
-    parse_chain_to_x509_attributes(pem_chain)
-        .ok()
-        .and_then(|attrs| {
-            attrs
-                .extensions
-                .into_iter()
-                .find(|ext| ext.oid == "2.5.29.35")
-                .map(|ext| ext.value)
-        })
-        .and_then(|ext_value| {
-            ext_value
-                .split("\n")
-                .filter_map(|entry| entry.strip_prefix("Key ID: "))
-                .next()
-                .and_then(parse_serial)
-        })
-}
+use crate::service::error::ValidationError;
 
-// x509-parser has a format_serial() function, but no associated parse_serial(),
-// so we have to implement it ourselves.
-/// Parses a string in "xx:xx:xx" format (sequence of hex-encoded bytes)
-/// into a vector of raw byte values.
-fn parse_serial(value: &str) -> Option<Vec<u8>> {
-    let mut result: Vec<u8> = Vec::with_capacity(1 + value.len() / 3);
-    for part in value.split(":") {
-        match u8::from_str_radix(part, 16) {
-            Ok(value) => result.push(value),
-            Err(_) => return None,
-        }
-    }
-    Some(result)
+#[derive(Eq, PartialEq)]
+pub struct AuthorityKeyIdentifier(pub Vec<u8>);
+
+pub fn get_akis_for_pem_chain(
+    pem_chain: &[u8],
+) -> Result<Vec<AuthorityKeyIdentifier>, ValidationError> {
+    Pem::iter_from_buffer(pem_chain)
+        .filter_map(|item| match item {
+            Ok(pem) => match pem.parse_x509() {
+                Ok(x509_cert) => x509_cert
+                    .extensions()
+                    .iter()
+                    .filter_map(|ext| match ext.parsed_extension() {
+                        ParsedExtension::AuthorityKeyIdentifier(aki) => Some(aki),
+                        _ => None,
+                    })
+                    .filter_map(|aki| aki.key_identifier.as_ref())
+                    .map(|key_id| AuthorityKeyIdentifier(key_id.0.to_owned()))
+                    .next() // RFC 5280 disallows more than 1 instance of an extension
+                    .map(Ok),
+                Err(e) => Some(Err(ValidationError::CertificateParsingFailed(
+                    e.to_string(),
+                ))),
+            },
+            Err(e) => Some(Err(ValidationError::CertificateParsingFailed(
+                e.to_string(),
+            ))),
+        })
+        .collect()
 }

@@ -38,7 +38,7 @@ use crate::service::credential::dto::{
 use crate::service::credential::mapper::credential_detail_response_from_model;
 use crate::service::credential_schema::dto::CredentialSchemaDetailResponseDTO;
 use crate::service::storage_proxy::StorageAccess;
-use crate::util::authority_key_identifier::get_aki_for_pem_chain;
+use crate::util::authority_key_identifier::{AuthorityKeyIdentifier, get_akis_for_pem_chain};
 
 /// Retrieve the "presentation definition" for the given DCQL query.
 ///
@@ -324,46 +324,27 @@ pub(super) async fn filter_credentials_by_trusted_authorities(
     }
 
     let trusted_akis = get_trusted_akis(authorities);
+    credentials.retain(|cred| credential_issuer_in_aki_list(cred, trusted_akis.as_slice()));
+}
 
-    /*
-     * The OpenID4VP spec says (in pt 6.1.1):
-     * > "A Credential is identified as a match to a Trusted Authorities Query
-     * > if it matches with one of the provided values in one of the provided types."
-     *
-     * Start by marking all credentials as not matching anything,
-     * and only change this if a value-match is found.
-     */
-    let mut keep = vec![false; credentials.len()];
+fn credential_issuer_in_aki_list(credential: &Credential, list: &[AuthorityKeyIdentifier]) -> bool {
+    let Some(issuer_cert) = credential.issuer_certificate.as_ref() else {
+        return false;
+    };
 
-    'cred: for (idx, credential) in credentials.iter().enumerate() {
-        let credential_aki = match credential
-            .issuer_certificate
-            .as_ref()
-            .and_then(|cert| get_aki_for_pem_chain(cert.chain.as_bytes()))
-        {
-            Some(value) => value,
-            None => continue 'cred,
-        };
+    let Ok(issuer_akis) = get_akis_for_pem_chain(issuer_cert.chain.as_bytes()) else {
+        return false;
+    };
 
-        // Currently, we support only filtering on AKIs.
-        // Iterate directly over `trusted_akis` instead of going over `authorities` again.
-        for trusted_aki in &trusted_akis {
-            // This is very inefficient.
-            // We could use something like `bstr::ByteSlice::contains_str()`,
-            // or maybe `.contains_bytes()` once the following gets implemented:
-            // https://github.com/rust-lang/rust/issues/134149
-            for window in credential_aki.windows(trusted_aki.len()) {
-                #[allow(clippy::indexing_slicing)]
-                if window.iter().eq(trusted_aki.iter()) {
-                    keep[idx] = true;
-                    continue 'cred;
-                }
+    for issuer_aki in issuer_akis {
+        for aki in list {
+            if issuer_aki == *aki {
+                return true;
             }
         }
     }
 
-    let mut keep_iter = keep.into_iter();
-    credentials.retain(|_| keep_iter.next().unwrap_or_default());
+    false
 }
 
 fn failure_hint(

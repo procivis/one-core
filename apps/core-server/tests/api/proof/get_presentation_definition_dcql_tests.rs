@@ -2356,7 +2356,7 @@ mod trusted_authorities {
     use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
     use one_core::model::certificate::Certificate;
     use one_core::model::organisation::Organisation;
-    use one_core::util::authority_key_identifier::get_aki_for_pem_chain;
+    use one_core::util::authority_key_identifier::get_akis_for_pem_chain;
     use similar_asserts::assert_eq;
 
     use super::*;
@@ -2396,8 +2396,9 @@ mod trusted_authorities {
     }
 
     fn aki_for_cert(cert: &Certificate) -> String {
-        let aki = get_aki_for_pem_chain(cert.chain.as_bytes()).unwrap();
-        Base64UrlSafeNoPadding::encode_to_string(aki).unwrap()
+        let vec = get_akis_for_pem_chain(cert.chain.as_bytes()).unwrap();
+        let first = vec.into_iter().next().unwrap();
+        Base64UrlSafeNoPadding::encode_to_string(first.0.as_slice()).unwrap()
     }
 
     async fn create_db_cert(
@@ -2508,7 +2509,11 @@ mod trusted_authorities {
         let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
             .id("test_id")
             .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
-                values: vec![root_ca_aki],
+                values: vec![
+                    // Add a bogus value to test whether a single match is sufficient
+                    Base64UrlSafeNoPadding::encode_to_string("does-not-match").unwrap(),
+                    root_ca_aki,
+                ],
             }])
             .claims(vec![
                 ClaimQuery::builder()
@@ -2612,7 +2617,11 @@ mod trusted_authorities {
         let credential_query = CredentialQuery::sd_jwt_vc(vec![vct.to_string()])
             .id("test_id")
             .trusted_authorities(vec![TrustedAuthority::AuthorityKeyId {
-                values: vec![intermediate_ca_aki],
+                values: vec![
+                    // Add a bogus value to test whether a single match is sufficient
+                    Base64UrlSafeNoPadding::encode_to_string("does-not-match").unwrap(),
+                    intermediate_ca_aki,
+                ],
             }])
             .claims(vec![
                 ClaimQuery::builder()
