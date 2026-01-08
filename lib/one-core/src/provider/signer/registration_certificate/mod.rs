@@ -21,8 +21,7 @@ use crate::model::history::{
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::key::{Key, KeyRelations};
 use crate::proto::clock::Clock;
-use crate::proto::jwt::model::JWTPayload;
-use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
+use crate::proto::jwt::JwtPublicKeyInfo;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
@@ -30,6 +29,9 @@ use crate::provider::signer::Signer;
 use crate::provider::signer::dto::{CreateSignatureRequestDTO, CreateSignatureResponseDTO};
 use crate::provider::signer::error::SignerError;
 use crate::provider::signer::model::SignerCapabilities;
+use crate::provider::signer::registration_certificate::model::{
+    WRPRegistrationCertificate, WRPRegistrationCertificatePayload,
+};
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 
@@ -146,7 +148,7 @@ impl Signer for RegistrationCertificate {
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
         let now = self.clock.now_utc();
         let (nbf, exp) = self.nbf_and_exp(&request)?;
-        let payload: model::Payload = serde_json::from_value(request.data.clone())?;
+        let payload: model::RequestData = serde_json::from_value(request.data.clone())?;
         let payload_name = payload.name.clone();
 
         let issuer = self
@@ -185,16 +187,19 @@ impl Signer for RegistrationCertificate {
             }
             None => (Uuid::new_v4(), None),
         };
-        let jwt_payload = JWTPayload::<model::Payload> {
+        let jwt_payload = WRPRegistrationCertificatePayload {
             issued_at: Some(now),
             expires_at: Some(exp),
             invalid_before: Some(nbf),
             issuer: None,
-            subject: None,
+            subject: payload.subject.clone(),
             audience: self.params.payload.audience.clone(),
             jwt_id: Some(jwt_id.to_string()),
             proof_of_possession_key: None,
-            custom: model::Payload { status, ..payload },
+            custom: model::Payload {
+                status,
+                ..payload.into()
+            },
         };
         let signed_jwt = self
             .create_and_sign_jwt(&request, issuer, jwt_payload)
@@ -265,7 +270,7 @@ impl RegistrationCertificate {
         &self,
         request: &CreateSignatureRequestDTO,
         issuer: Identifier,
-        payload: JWTPayload<model::Payload>,
+        payload: WRPRegistrationCertificatePayload,
     ) -> Result<String, SignerError> {
         let (key, key_id, pubkey_info) = self.get_signing_key_for_identifier(issuer, request)?;
 
@@ -282,7 +287,7 @@ impl RegistrationCertificate {
             .key_provider
             .get_signature_provider(&key, None, self.key_algorithm_provider.clone())
             .error_while("getting signature provider")?;
-        let jwt = Jwt::new(
+        let jwt = WRPRegistrationCertificate::new(
             "rc-wrp+jwt".to_owned(),
             algorithm.to_owned(),
             key_id,

@@ -1,18 +1,46 @@
 use std::collections::HashMap;
 
+use one_dto_mapper::From;
 use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use url::Url;
 
+use crate::proto::jwt::JwtImpl;
+use crate::proto::jwt::model::SerdeSkippable;
 // Payload specification according to spec from:
 // https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.01.01_60/ts_119475v010101p.pdf
 
+pub type WRPRegistrationCertificate = JwtImpl<Subject, Payload>;
+pub type WRPRegistrationCertificatePayload = crate::proto::jwt::model::Payload<Subject, Payload>;
+
 // 5.2.4 Payload Attributes
-#[derive(Debug, Serialize)]
+#[derive(Debug)]
+pub struct RequestData {
+    pub name: String,
+    pub subject: Subject,
+    pub country: String,
+    pub registry_uri: Option<Url>,
+    pub service: Vec<Vec<MultiLangString>>,
+    pub entitlements: Vec<Entitlement>,
+    pub privacy_policy: String,
+    pub info_uri: String,
+    pub data_protection_authority: Option<DataProtectionAuthority>,
+    pub policy_id: Vec<String>,
+    pub certificate_policy: Url,
+    pub status: Option<Status>,
+    pub provided_attestations: Option<Vec<ProvidedAttestation>>,
+    pub credentials: Option<Vec<Credential>>,
+    pub purpose: Option<Vec<MultiLangString>>,
+    pub intended_use_id: Option<String>,
+    pub public_body: Option<bool>,
+    pub support_uri: Option<Url>,
+    pub intermediary: Option<Intermediary>,
+}
+
+#[derive(Debug, Serialize, Deserialize, From)]
+#[from(RequestData)]
 pub struct Payload {
     pub name: String,
-    #[serde(rename = "sub")]
-    pub subject: Subject,
     pub country: String,
     pub registry_uri: Option<Url>,
     pub service: Vec<Vec<MultiLangString>>,
@@ -34,7 +62,7 @@ pub struct Payload {
     pub intermediary: Option<Intermediary>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, untagged)]
 pub enum Subject {
     LegalPerson {
@@ -46,6 +74,12 @@ pub enum Subject {
         given_name: String,
         family_name: String,
     },
+}
+
+impl SerdeSkippable for Subject {
+    fn skip(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -93,7 +127,7 @@ pub struct DataProtectionAuthority {
     pub uri: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Status {
     pub status_list: HashMap<String, serde_json::Value>,
 }
@@ -128,14 +162,14 @@ pub struct Intermediary {
     pub subject: String,
 }
 
-impl<'de> Deserialize<'de> for Payload {
+impl<'de> Deserialize<'de> for RequestData {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
-        pub struct PayloadProto {
+        pub struct RequestDataProto {
             pub name: String,
             #[serde(rename = "sub")]
             pub subject: Subject,
@@ -159,7 +193,7 @@ impl<'de> Deserialize<'de> for Payload {
             pub intermediary: Option<Intermediary>,
         }
 
-        let proto = PayloadProto::deserialize(deserializer)?;
+        let proto = RequestDataProto::deserialize(deserializer)?;
 
         // GEN-5.2.4-03: The `entitlements` field specified in GEN-5.2.4-01 shall include
         // at least one entitlement specified in clause A.2.

@@ -13,8 +13,9 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::DidValue;
 
-use self::model::{DecomposedJwt, JWTHeader, JWTPayload};
+use self::model::{DecomposedJwt, JWTHeader};
 use crate::config::core_config::KeyAlgorithmType;
+use crate::proto::jwt::model::{DecomposedToken, Payload, SerdeSkippable};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     CredentialClaim, PublicKeySource, SignatureProvider, TokenVerifier, VerificationFn,
@@ -53,10 +54,12 @@ impl TokenVerifier for Box<dyn TokenVerifier> {
     }
 }
 
+pub type Jwt<CustomPayload> = JwtImpl<Option<String>, CustomPayload>;
+
 #[derive(Debug)]
-pub struct Jwt<Payload> {
+pub struct JwtImpl<Subject: SerdeSkippable, CustomPayload> {
     pub header: JWTHeader,
-    pub payload: JWTPayload<Payload>,
+    pub payload: Payload<Subject, CustomPayload>,
 }
 
 #[derive(Debug, Clone)]
@@ -65,14 +68,14 @@ pub enum JwtPublicKeyInfo {
     X5c(Vec<String>),
 }
 
-impl<Payload> Jwt<Payload> {
+impl<Subject: SerdeSkippable, CustomPayload> JwtImpl<Subject, CustomPayload> {
     pub fn new(
         r#type: String,
         algorithm: String,
         key_id: Option<String>,
         public_key_info: Option<JwtPublicKeyInfo>,
-        payload: JWTPayload<Payload>,
-    ) -> Jwt<Payload> {
+        payload: Payload<Subject, CustomPayload>,
+    ) -> JwtImpl<Subject, CustomPayload> {
         Self::new_with_attestation(r#type, algorithm, key_id, public_key_info, None, payload)
     }
 
@@ -82,8 +85,8 @@ impl<Payload> Jwt<Payload> {
         key_id: Option<String>,
         public_key_info: Option<JwtPublicKeyInfo>,
         attestation_jwt: Option<String>,
-        payload: JWTPayload<Payload>,
-    ) -> Jwt<Payload> {
+        payload: Payload<Subject, CustomPayload>,
+    ) -> JwtImpl<Subject, CustomPayload> {
         let (jwk, x5c) = match public_key_info {
             None => (None, None),
             Some(JwtPublicKeyInfo::Jwk(jwk)) => (Some(jwk), None),
@@ -100,11 +103,13 @@ impl<Payload> Jwt<Payload> {
             x5c,
         };
 
-        Jwt { header, payload }
+        JwtImpl { header, payload }
     }
 }
 
-impl<Payload: WithMetadata + Serialize> Jwt<Payload> {
+impl<Subject: Serialize + SerdeSkippable, CustomPayload: WithMetadata + Serialize>
+    JwtImpl<Subject, CustomPayload>
+{
     pub fn get_metadata_claims(&self) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
         let value = serde_json::to_value(&self.payload)
             .map_err(|e| FormatterError::JsonMapping(e.to_string()))?;
@@ -127,18 +132,22 @@ impl<Payload: WithMetadata + Serialize> Jwt<Payload> {
     }
 }
 
-impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
+impl<Subject, CustomPayload> JwtImpl<Subject, CustomPayload>
+where
+    Subject: DeserializeOwned + Debug + SerdeSkippable,
+    CustomPayload: DeserializeOwned + Debug,
+{
     pub async fn build_from_token(
         token: &str,
         verification: Option<&VerificationFn>,
         issuer_did: Option<DidValue>,
-    ) -> Result<Jwt<Payload>, FormatterError> {
-        let DecomposedJwt {
+    ) -> Result<JwtImpl<Subject, CustomPayload>, FormatterError> {
+        let DecomposedToken {
             header,
             mut payload,
             signature,
             unverified_jwt,
-        } = Jwt::decompose_token(token)?;
+        } = JwtImpl::decompose_token(token)?;
 
         if let (Some(issuer), Some(issuer_did)) = (&payload.issuer, &issuer_did)
             && issuer != issuer_did.as_str()
@@ -208,12 +217,14 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
                 .map_err(|e| FormatterError::CouldNotVerify(e.to_string()))?;
         }
 
-        let jwt = Jwt { header, payload };
+        let jwt = JwtImpl { header, payload };
 
         Ok(jwt)
     }
 
-    pub fn decompose_token(token: &str) -> Result<DecomposedJwt<Payload>, FormatterError> {
+    pub fn decompose_token(
+        token: &str,
+    ) -> Result<DecomposedToken<Subject, CustomPayload>, FormatterError> {
         let token = token.trim_matches(|c: char| c == '.' || c.is_whitespace());
         let mut jwt_parts = token.splitn(3, '.');
 
@@ -236,7 +247,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
         let payload_decoded = Base64UrlSafeNoPadding::decode_to_vec(payload, None)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
-        let payload: JWTPayload<Payload> = serde_json::from_slice(&payload_decoded)
+        let payload: Payload<Subject, CustomPayload> = serde_json::from_slice(&payload_decoded)
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?;
 
         let signature = maybe_signature
@@ -247,7 +258,7 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
             .transpose()?
             .unwrap_or_default();
 
-        Ok(DecomposedJwt {
+        Ok(DecomposedToken {
             header,
             payload,
             signature,
@@ -256,7 +267,9 @@ impl<Payload: DeserializeOwned + Debug> Jwt<Payload> {
     }
 }
 
-impl<Payload: Serialize> Jwt<Payload> {
+impl<Subject: Serialize + SerdeSkippable, CustomPayload: Serialize>
+    JwtImpl<Subject, CustomPayload>
+{
     // todo: this probably needs to be a "sign" function on an UnsignedJwt type
     pub async fn tokenize(
         &self,

@@ -1,3 +1,4 @@
+use one_core::provider::signer::registration_certificate::model::WRPRegistrationCertificate;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 
@@ -47,7 +48,8 @@ async fn test_fail_on_unknown_signer() {
 #[tokio::test]
 async fn test_sign_wrprc_custom_validty_success() {
     let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
-    let now = OffsetDateTime::now_utc();
+    // the JWT timestamps will not contain fractional seconds
+    let now = OffsetDateTime::now_utc().replace_millisecond(0).unwrap();
     let nbf = now + time::Duration::days(1);
     let exp = now + time::Duration::days(2);
     let resp = context
@@ -64,7 +66,11 @@ async fn test_sign_wrprc_custom_validty_success() {
         })
         .await;
     assert_eq!(resp.status(), 201);
-    // TODO: actually check exp and nbf, requires JWT parser to read sub as object
+    let resp = resp.json_value().await;
+    let decomposed_token =
+        WRPRegistrationCertificate::decompose_token(resp["result"].as_str().unwrap()).unwrap();
+    assert_eq!(decomposed_token.payload.invalid_before.unwrap(), nbf);
+    assert_eq!(decomposed_token.payload.expires_at.unwrap(), exp);
 }
 
 #[tokio::test]
