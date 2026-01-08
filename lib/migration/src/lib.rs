@@ -190,6 +190,15 @@ mod m20251219_071908_certificate_table;
 mod m20251219_082217_did_table;
 mod m20260106_095023_interaction_expires_at;
 mod m20260107_044249_interaction_expiration_index;
+mod m20260108_021732_key_did_table;
+mod m20260108_030619_organisation_table;
+mod m20260108_040905_proof_schema_table;
+mod m20260108_042643_proof_input_schema_table;
+mod m20260108_051341_proof_input_claim_schema_table;
+mod m20260108_060501_proof_table;
+mod m20260108_062033_validity_credential_table;
+mod m20260108_070117_remote_entity_cache_table;
+mod m20260108_072951_blob_storage_table;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -382,6 +391,15 @@ impl MigratorTrait for Migrator {
             Box::new(m20251219_082217_did_table::Migration),
             Box::new(m20260106_095023_interaction_expires_at::Migration),
             Box::new(m20260107_044249_interaction_expiration_index::Migration),
+            Box::new(m20260108_021732_key_did_table::Migration),
+            Box::new(m20260108_030619_organisation_table::Migration),
+            Box::new(m20260108_040905_proof_schema_table::Migration),
+            Box::new(m20260108_042643_proof_input_schema_table::Migration),
+            Box::new(m20260108_051341_proof_input_claim_schema_table::Migration),
+            Box::new(m20260108_060501_proof_table::Migration),
+            Box::new(m20260108_062033_validity_credential_table::Migration),
+            Box::new(m20260108_070117_remote_entity_cache_table::Migration),
+            Box::new(m20260108_072951_blob_storage_table::Migration),
         ]
     }
 }

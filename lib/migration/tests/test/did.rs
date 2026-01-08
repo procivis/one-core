@@ -80,3 +80,37 @@ async fn test_db_schema_did() {
         .nullable(true);
     did.column("log").r#type(ColumnType::Text).nullable(true);
 }
+
+#[tokio::test]
+async fn test_db_schema_key_did() {
+    let schema = fetch_schema().await;
+
+    let key_did = schema
+        .table("key_did")
+        .columns(&["did_id", "key_id", "role", "reference"]);
+    key_did
+        .column("did_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key()
+        .foreign_key("fk-KeyDid-DidId", "did", "id");
+    key_did
+        .column("key_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key()
+        .foreign_key("fk-KeyDid-KeyId", "key", "id");
+    key_did
+        .column("role")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    key_did
+        .column("reference")
+        .r#type(ColumnType::String(Some(4000)))
+        .nullable(false)
+        .default(None);
+}

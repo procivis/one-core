@@ -43,6 +43,7 @@ pub(super) enum ColumnType {
     TimestampMilliseconds,
     TimestampSeconds,
     Unsigned,
+    BigInt,
     Boolean,
     Blob,
     Json,

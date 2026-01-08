@@ -251,11 +251,11 @@ pub(super) fn create_list_response(
 }
 
 pub(super) fn get_proof_claim_active_model(
-    proof_id: &ProofId,
+    proof_id: ProofId,
     claim: &Claim,
 ) -> proof_claim::ActiveModel {
     proof_claim::ActiveModel {
-        proof_id: Set(proof_id.to_string()),
-        claim_id: Set(claim.id.to_string()),
+        proof_id: Set(proof_id),
+        claim_id: Set(claim.id),
     }
 }

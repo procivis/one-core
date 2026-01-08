@@ -205,3 +205,43 @@ async fn test_db_schema_claim() {
         .nullable(false)
         .default(None);
 }
+
+#[tokio::test]
+async fn test_db_schema_validity_credential() {
+    let schema = fetch_schema().await;
+
+    let validity_credential = schema.table("validity_credential").columns(&[
+        "id",
+        "created_date",
+        "credential",
+        "credential_id",
+        "type",
+    ]);
+    validity_credential
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    validity_credential
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    validity_credential
+        .column("credential")
+        .r#type(ColumnType::Blob)
+        .nullable(false)
+        .default(None);
+    validity_credential
+        .column("credential_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-Lvvc-CredentialId", "credential", "id");
+    validity_credential
+        .column("type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+}

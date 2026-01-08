@@ -50,7 +50,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum Organisation {
+pub(crate) enum Organisation {
     Table,
     Id,
     Name,

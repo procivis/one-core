@@ -209,7 +209,7 @@ impl From<super::ColumnType> for ColumnType {
             super::ColumnType::TimestampMilliseconds | super::ColumnType::TimestampSeconds => {
                 Self::Custom("datetime".into())
             }
-            super::ColumnType::Unsigned => Self::BigInteger,
+            super::ColumnType::Unsigned | super::ColumnType::BigInt => Self::BigInteger,
             super::ColumnType::Boolean => Self::Boolean,
             super::ColumnType::Blob => Self::Blob,
             super::ColumnType::Json => Self::Json,

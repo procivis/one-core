@@ -224,6 +224,10 @@ impl From<ColumnType> for Type {
                 unsigned: Some(true),
                 ..Default::default()
             }),
+            ColumnType::BigInt => Self::BigInt(NumericAttr {
+                maximum: Some(20),
+                ..Default::default()
+            }),
             ColumnType::Boolean => Self::TinyInt(NumericAttr {
                 maximum: Some(1),
                 ..Default::default()

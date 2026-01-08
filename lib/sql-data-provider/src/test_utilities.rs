@@ -292,7 +292,7 @@ pub async fn insert_proof_schema_with_claims_to_database(
         for claim in input.claims {
             proof_input_claim_schema::ActiveModel {
                 proof_input_schema_id: Set(input_id.id),
-                claim_schema_id: Set(claim.id.to_string()),
+                claim_schema_id: Set(claim.id),
                 required: Set(claim.required),
                 order: Set(claim.order as _),
             }
@@ -332,8 +332,8 @@ pub async fn insert_many_proof_claim_to_database(
     let models = proof_claims
         .iter()
         .map(|(proof_id, claim_id)| proof_claim::ActiveModel {
-            claim_id: Set(claim_id.to_string()),
-            proof_id: Set(proof_id.to_string()),
+            claim_id: Set(*claim_id),
+            proof_id: Set(*proof_id),
         });
 
     proof_claim::Entity::insert_many(models)

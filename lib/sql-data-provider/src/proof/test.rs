@@ -689,8 +689,8 @@ async fn test_get_proof_with_relations() {
     .await
     .unwrap();
     proof_claim::ActiveModel {
-        claim_id: Set(claim_id.to_string()),
-        proof_id: Set(proof_id.to_string()),
+        claim_id: Set(claim_id),
+        proof_id: Set(proof_id),
     }
     .insert(&db)
     .await

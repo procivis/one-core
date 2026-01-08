@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::anyhow;
 use autometrics::autometrics;
 use futures::FutureExt;
@@ -14,9 +12,8 @@ use one_core::repository::proof_schema_repository::ProofSchemaRepository;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, Set, Unchanged,
 };
-use shared_types::{ClaimSchemaId, CredentialSchemaId, ProofSchemaId};
+use shared_types::{CredentialSchemaId, ProofSchemaId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::ProofSchemaProvider;
 use crate::common::list_query_with_base_model;
@@ -56,7 +53,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
                     .ok_or(DataLayerError::IncorrectParameters)?;
 
                 let input_schema = proof_input_schema::ActiveModel {
-                    order: Set(order as i32),
+                    order: Set(order as _),
                     created_date: Set(now),
                     last_modified: Set(now),
                     validity_constraint: Set(schema.validity_constraint),
@@ -69,7 +66,7 @@ impl ProofSchemaRepository for ProofSchemaProvider {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let proof_input_schemas_with_order: Vec<(i32, ProofInputSchema)> =
+        let proof_input_schemas_with_order: Vec<(u32, ProofInputSchema)> =
             proof_input_schemas_active_model
                 .iter()
                 .zip(proof_input_schemas)
@@ -132,9 +129,9 @@ impl ProofSchemaRepository for ProofSchemaProvider {
 
                 for (order, claim_schema) in claim_schemas.iter().enumerate() {
                     let schema = proof_input_claim_schema::ActiveModel {
-                        claim_schema_id: Set(claim_schema.schema.id.to_string()),
+                        claim_schema_id: Set(claim_schema.schema.id),
                         proof_input_schema_id: Set(model.id),
-                        order: Set(order as i32),
+                        order: Set(order as _),
                         required: Set(claim_schema.required),
                     };
 
@@ -272,8 +269,8 @@ impl ProofSchemaProvider {
 
                 let claim_schema_ids = input_schema_claim_schema
                     .iter()
-                    .map(|item| Uuid::from_str(&item.claim_schema_id).map(Into::into))
-                    .collect::<Result<Vec<ClaimSchemaId>, _>>()?;
+                    .map(|item| item.claim_schema_id)
+                    .collect();
 
                 let claim_schemas = self
                     .claim_schema_repository
@@ -286,7 +283,7 @@ impl ProofSchemaProvider {
                     .map(|(model, schema)| ProofInputClaimSchema {
                         schema,
                         required: model.required,
-                        order: model.order as u32,
+                        order: model.order,
                     })
                     .collect();
 

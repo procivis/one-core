@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::claim::Claim;
@@ -17,7 +15,6 @@ use sea_orm::{
 };
 use shared_types::{ClaimId, InteractionId, ProofId};
 use time::OffsetDateTime;
-use uuid::Uuid;
 
 use super::ProofProvider;
 use super::mapper::{
@@ -135,7 +132,7 @@ impl ProofRepository for ProofProvider {
     ) -> Result<(), DataLayerError> {
         let proof_claim_models: Vec<proof_claim::ActiveModel> = claims
             .iter()
-            .map(|claim| get_proof_claim_active_model(proof_id, claim))
+            .map(|claim| get_proof_claim_active_model(*proof_id, claim))
             .collect();
 
         proof_claim::Entity::insert_many(proof_claim_models)
@@ -408,10 +405,7 @@ impl ProofProvider {
             .await
             .map_err(|e| DataLayerError::Db(e.into()))?;
 
-        let claim_ids: Vec<ClaimId> = proof_claims
-            .iter()
-            .map(|item| Uuid::from_str(&item.claim_id).map(ClaimId::from))
-            .collect::<Result<Vec<_>, _>>()?;
+        let claim_ids: Vec<ClaimId> = proof_claims.iter().map(|item| item.claim_id).collect();
 
         Ok(if claim_ids.is_empty() {
             vec![]

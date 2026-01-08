@@ -1,15 +1,16 @@
 use sea_orm::entity::prelude::*;
+use shared_types::ClaimSchemaId;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "proof_input_claim_schema")]
 pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
-    pub claim_schema_id: String,
+    pub claim_schema_id: ClaimSchemaId,
 
     #[sea_orm(primary_key, auto_increment = false)]
     pub proof_input_schema_id: i64,
 
-    pub order: i32,
+    pub order: u32,
     pub required: bool,
 }
 
