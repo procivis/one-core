@@ -308,6 +308,19 @@ sdk:android:build:
       - target/bindings/android
     expire_in: 5 days
 
+sdk:typescript:interface:
+  stage: sdk_build
+  tags:
+    - rust
+  needs: []
+  when: manual
+  script:
+    - makers generate_ts
+  artifacts:
+    paths:
+      - target/uniffi/ts/one-core-uniffi-intf.ts
+    expire_in: 10 days
+
 sdk:upload_artifacts:
   stage: sdk_artifact
   extends:

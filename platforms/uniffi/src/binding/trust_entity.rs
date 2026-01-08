@@ -267,12 +267,29 @@ pub enum TrustEntityRoleBindingEnum {
     Both,
 }
 
-#[derive(Clone, Debug, From, Into, uniffi::Enum)]
-#[from(TrustEntityType)]
-#[into(TrustEntityType)]
+#[derive(Clone, Debug, uniffi::Enum)]
 pub enum TrustEntityTypeBindingEnum {
     Did,
-    CertificateAuthority,
+    /// certificate authority
+    Ca,
+}
+
+impl From<TrustEntityType> for TrustEntityTypeBindingEnum {
+    fn from(value: TrustEntityType) -> Self {
+        match value {
+            TrustEntityType::Did => Self::Did,
+            TrustEntityType::CertificateAuthority => Self::Ca,
+        }
+    }
+}
+
+impl From<TrustEntityTypeBindingEnum> for TrustEntityType {
+    fn from(value: TrustEntityTypeBindingEnum) -> Self {
+        match value {
+            TrustEntityTypeBindingEnum::Did => Self::Did,
+            TrustEntityTypeBindingEnum::Ca => Self::CertificateAuthority,
+        }
+    }
 }
 
 #[derive(Clone, Debug, From, Into, uniffi::Enum)]

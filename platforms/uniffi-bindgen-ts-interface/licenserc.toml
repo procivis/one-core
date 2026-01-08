@@ -1,0 +1,2 @@
+excludes   = ["templates", "*.toml"]
+headerPath = "LICENSE.txt"

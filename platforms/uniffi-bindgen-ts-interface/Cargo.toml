@@ -1,0 +1,19 @@
+[package]
+authors           = ["Procivis"]
+edition.workspace = true
+name              = "uniffi-bindgen-ts-interface"
+publish           = false
+version           = "0.1.0"
+
+[dependencies]
+anyhow.workspace         = true
+askama                   = "0.14"
+camino                   = "1.2"
+cargo_metadata           = "0.19"
+clap.workspace           = true
+heck                     = "0.5"
+serde.workspace          = true
+textwrap                 = "0.16"
+toml                     = "0.9"
+uniffi.workspace         = true
+uniffi_bindgen.workspace = true

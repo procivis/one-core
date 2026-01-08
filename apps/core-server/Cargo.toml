@@ -18,7 +18,7 @@ strict = []
 [dependencies]
 axum.workspace = true
 axum-extra = { version = "0.12", features = ["typed-header", "with-rejection"] }
-clap = { version = "4.5", features = ["derive"] }
+clap.workspace = true
 ct-codecs.workspace = true
 futures.workspace = true
 headers = { version = "0.4" }
@@ -32,7 +32,13 @@ proc-macros = { version = "0.1.0", path = "../../lib/proc-macros" }
 prometheus = { version = "0.14", default-features = false, features = ["process"] }
 reqwest.workspace = true
 secrecy.workspace = true
-sentry = { version = "0.46", default-features = false, features = ["backtrace", "panic", "reqwest", "tracing", "native-tls"] }
+sentry = { version = "0.46", default-features = false, features = [
+    "backtrace",
+    "panic",
+    "reqwest",
+    "tracing",
+    "native-tls",
+] }
 serde.workspace = true
 serde_json.workspace = true
 serde_qs.workspace = true
