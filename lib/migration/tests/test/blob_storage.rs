@@ -1,8 +1,8 @@
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_blob_storage() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let blob_storage = schema.table("blob_storage").columns(&[
         "id",

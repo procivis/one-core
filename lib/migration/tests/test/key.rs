@@ -1,10 +1,10 @@
 use sea_orm::DbBackend;
 
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_key() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let mut columns = vec![
         "id",

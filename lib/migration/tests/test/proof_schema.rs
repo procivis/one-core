@@ -1,10 +1,10 @@
 use sea_orm::DbBackend;
 
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_proof_schema() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let mut columns = vec![
         "id",
@@ -73,7 +73,7 @@ async fn test_db_schema_proof_schema() {
 
 #[tokio::test]
 async fn test_db_schema_proof_input_schema() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let proof_input_schema = schema.table("proof_input_schema").columns(&[
         "id",
@@ -129,7 +129,7 @@ async fn test_db_schema_proof_input_schema() {
 
 #[tokio::test]
 async fn test_db_schema_proof_input_claim_schema() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let proof_input_claim_schema = schema.table("proof_input_claim_schema").columns(&[
         "claim_schema_id",

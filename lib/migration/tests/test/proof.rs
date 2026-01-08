@@ -1,8 +1,8 @@
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_proof() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let proof = schema
         .table("proof")
@@ -117,7 +117,7 @@ async fn test_db_schema_proof() {
 
 #[tokio::test]
 async fn test_db_schema_proof_claim() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let proof_claim = schema
         .table("proof_claim")

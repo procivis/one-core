@@ -1,11 +1,19 @@
 use std::fmt::Debug;
+use std::sync::Arc;
 
 use sea_orm::DbBackend;
+use tokio::sync::OnceCell;
 
 mod mysql;
 mod sqlite;
 
-pub(super) async fn fetch_schema() -> Box<dyn Schema> {
+static SCHEMA: OnceCell<Arc<dyn Schema>> = OnceCell::const_new();
+
+pub(super) async fn get_schema() -> &'static Arc<dyn Schema> {
+    SCHEMA.get_or_init(fetch_schema).await
+}
+
+async fn fetch_schema() -> Arc<dyn Schema> {
     let url = std::env::var("ONE_app__databaseUrl").unwrap_or("sqlite::memory:".to_string());
     let schema = if url.starts_with("mysql:") {
         mysql::get_mysql_schema(&url).await
@@ -13,10 +21,10 @@ pub(super) async fn fetch_schema() -> Box<dyn Schema> {
         sqlite::get_sqlite_schema(&url).await
     };
     println!("DB: {:?}", schema.backend());
-    schema
+    schema.into()
 }
 
-pub(super) trait Schema: Debug {
+pub(super) trait Schema: Debug + Send + Sync {
     fn backend(&self) -> DbBackend;
     fn table(&self, name: &str) -> Box<dyn Table>;
 }

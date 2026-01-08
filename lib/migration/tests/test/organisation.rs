@@ -1,8 +1,8 @@
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_organisation() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let organisation = schema
         .table("organisation")

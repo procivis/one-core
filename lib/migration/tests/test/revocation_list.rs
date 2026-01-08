@@ -1,8 +1,8 @@
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_revocation_list() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let revocation_list = schema
         .table("revocation_list")
@@ -71,7 +71,7 @@ async fn test_db_schema_revocation_list() {
 
 #[tokio::test]
 async fn test_db_schema_revocation_list_entry() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let revocation_list_entry = schema
         .table("revocation_list_entry")

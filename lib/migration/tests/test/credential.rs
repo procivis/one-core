@@ -1,8 +1,8 @@
-use crate::fixtures::{ColumnType, fetch_schema};
+use crate::fixtures::{ColumnType, get_schema};
 
 #[tokio::test]
 async fn test_db_schema_credential() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let credential = schema
         .table("credential")
@@ -150,7 +150,7 @@ async fn test_db_schema_credential() {
 
 #[tokio::test]
 async fn test_db_schema_claim() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let claim = schema.table("claim").columns(&[
         "id",
@@ -208,7 +208,7 @@ async fn test_db_schema_claim() {
 
 #[tokio::test]
 async fn test_db_schema_validity_credential() {
-    let schema = fetch_schema().await;
+    let schema = get_schema().await;
 
     let validity_credential = schema.table("validity_credential").columns(&[
         "id",
