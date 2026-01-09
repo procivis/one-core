@@ -530,7 +530,7 @@ async fn test_get_issuer_metadata_mdoc() {
     );
     assert_eq!(
         credential.cryptographic_binding_methods_supported.unwrap(),
-        vec!["jwk".to_string(), "did:key".to_string()]
+        vec!["cose_key".to_string()]
     );
     assert_eq!(
         credential

@@ -16,9 +16,8 @@ use super::model::{
     OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO, OpenID4VCITokenResponseDTO,
 };
-use crate::config::core_config::{CoreConfig, IdentifierType, Params};
+use crate::config::core_config::{IdentifierType, Params};
 use crate::config::{ConfigError, ConfigParsingError};
-use crate::mapper::oidc::map_to_openid4vp_format;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, KeyStorageSecurity,
@@ -154,23 +153,13 @@ impl From<LayoutProperties> for CredentialSchemaLayoutPropertiesRequestDTO {
 pub(super) fn credentials_supported_mdoc(
     schema: CredentialSchema,
     credential_metadata: OpenID4VCICredentialMetadataResponseDTO,
-    config: &CoreConfig,
-    cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
 ) -> Result<OpenID4VCICredentialConfigurationData, IssuanceProtocolError> {
-    let format_type = config
-        .format
-        .get_fields(&schema.format)
-        .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-        .r#type;
-
     let credential_configuration = OpenID4VCICredentialConfigurationData {
-        format: map_to_openid4vp_format(&format_type)
-            .map_err(|error| IssuanceProtocolError::Failed(error.to_string()))?
-            .to_string(),
+        format: "mso_mdoc".to_string(),
         doctype: Some(schema.schema_id.clone()),
         credential_metadata: Some(credential_metadata),
-        cryptographic_binding_methods_supported: Some(cryptographic_binding_methods_supported),
+        cryptographic_binding_methods_supported: Some(vec!["cose_key".to_string()]),
         proof_types_supported,
         scope: Some(schema.schema_id),
         ..Default::default()

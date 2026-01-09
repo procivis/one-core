@@ -16,7 +16,6 @@ use super::model::{
     Timestamp,
 };
 use super::validator::throw_if_credential_state_not_eq;
-use crate::config::core_config::CoreConfig;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
@@ -35,13 +34,11 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::validator::{
     throw_if_token_request_invalid, validate_refresh_token,
 };
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) fn create_issuer_metadata_response(
     protocol_base_url: &str,
     protocol_id: &str,
     oidc_format: &str,
     schema: &CredentialSchema,
-    config: &CoreConfig,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
@@ -52,7 +49,6 @@ pub(crate) fn create_issuer_metadata_response(
     > = credential_configurations_supported(
         oidc_format,
         schema,
-        config,
         cryptographic_binding_methods_supported,
         proof_types_supported,
         credential_signing_alg_values_supported,
@@ -85,7 +81,6 @@ pub(crate) fn create_issuer_metadata_response(
 fn credential_configurations_supported(
     oidc_format: &str,
     credential_schema: &CredentialSchema,
-    config: &CoreConfig,
     cryptographic_binding_methods_supported: Vec<String>,
     proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     credential_signing_alg_values_supported: Vec<String>,
@@ -172,8 +167,6 @@ fn credential_configurations_supported(
             "mso_mdoc" => credentials_supported_mdoc(
                 credential_schema.clone(),
                 credential_metadata,
-                config,
-                cryptographic_binding_methods_supported,
                 proof_types_supported,
             )
             .map_err(|e| OpenID4VCIError::RuntimeError(e.to_string()))?,

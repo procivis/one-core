@@ -144,7 +144,6 @@ impl OID4VCIFinal1_0Service {
             &self.protocol_id,
             &oidc_format,
             &schema,
-            &self.config,
             map_cryptographic_binding_methods_supported(
                 &self.did_method_provider.supported_method_names(),
                 &format_capabilities.holder_identifier_types,

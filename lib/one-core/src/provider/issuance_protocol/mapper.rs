@@ -98,9 +98,10 @@ pub(super) async fn autogenerate_holder_binding(
         .await
         .map_err(|e| IssuanceProtocolError::BindingAutogenerationFailure(e.to_string()))?;
 
-    // generate did only if jwk binding method is not supported by the issuer
+    // generate did only if jwk/cose_key binding method is not supported by the issuer
     if let Some(methods) = cryptographic_binding_methods_supported
         && !methods.contains(&"jwk".to_string())
+        && !methods.contains(&"cose_key".to_string())
     {
         return generate_holder_binding_did(
             methods,
