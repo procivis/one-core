@@ -710,12 +710,21 @@ impl OpenID4VCIFinal1_0 {
                 }
             });
 
+        let client_id = interaction_data
+            .continue_issuance
+            .as_ref()
+            .map(|ci| ci.client_id.clone());
+
+        // As per https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#name-proof-types
+        // the iss field in the proof JWT MUST be the client_id of the Client making the Credential request.
+        // This claim MUST be omitted if the access token authorizing the issuance call was obtained from a Pre-Authorized Code
         let proof_jwt = OpenID4VCIProofJWTFormatter::format_proof(
             interaction_data.issuer_url.to_owned(),
             jwk,
             nonce,
             key_attestation,
             auth_fn,
+            client_id,
         )
         .await
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
