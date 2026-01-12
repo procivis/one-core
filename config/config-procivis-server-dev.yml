@@ -59,3 +59,15 @@ verificationProtocol:
       public:
         verifier:
           interactionExpiresIn: 3600
+signer:
+  REGISTRATION_CERTIFICATE:
+    display: "did.key"
+    order: 0
+    type: REGISTRATION_CERTIFICATE
+    params:
+      private:
+        payload:
+          issuer: "https://core.dev.procivis-one"
+          audience: ["bli", "bla"]
+          maxValidityDuration: 2592000 # 30 days
+        revocationMethod: TOKENSTATUSLIST
