@@ -130,18 +130,21 @@ impl OpenID4VPFinal1_0 {
         let Some(OpenID4VPClientMetadata::Final1_0(mut client_metadata)) =
             interaction_data.client_metadata.clone()
         else {
-            // metadata_uri (if any) has been resolved before, no need to check
-            return Ok(None);
+            return Err(VerificationProtocolError::InvalidRequest(
+                "failed to parse interaction_data".to_string(),
+            ));
         };
 
-        let supported_encryption_algs = match client_metadata
+        // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-encrypted-responses
+        // When a response_mode requires encryption (direct_post.jwt),
+        // this MUST be present for anything other than the default single value of A128GCM.
+        // Otherwise, this SHOULD be absent.
+        let supported_encryption_algs = client_metadata
             .encrypted_response_enc_values_supported
             .clone()
-        {
-            // Encrypted presentations not supported
-            None => return Ok(None),
-            Some(alg) => alg,
-        };
+            .unwrap_or(vec![
+                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128GCM,
+            ]);
 
         if client_metadata
             .jwks
@@ -180,7 +183,32 @@ impl OpenID4VPFinal1_0 {
         interaction_data: &OpenID4VPHolderInteractionData,
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
-        let encryption_info = self.encryption_info_from_metadata(interaction_data).await?;
+
+        let Some(response_mode) = interaction_data.response_mode.as_deref() else {
+            return Err(VerificationProtocolError::InvalidRequest(
+                "response_mode is None".to_string(),
+            ));
+        };
+
+        // As per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-8.3.1
+        // the response should be encrypted only if the response type is direct_post.jwt
+        let encryption_info = match response_mode {
+            "direct_post" => None,
+            "direct_post.jwt" => Some(
+                self.encryption_info_from_metadata(interaction_data)
+                    .await?
+                    .ok_or(VerificationProtocolError::InvalidRequest(
+                        "direct_post.jwt requires encryption, but no verifier keys are available"
+                            .to_string(),
+                    ))?,
+            ),
+            _ => {
+                return Err(VerificationProtocolError::InvalidRequest(format!(
+                    "unsupported response_mode {}",
+                    &response_mode
+                )));
+            }
+        };
 
         // For DCQL each credential gets a presentation individually
         for credential_presentation in credential_presentations {
@@ -192,13 +220,6 @@ impl OpenID4VPFinal1_0 {
                 FormatType::Mdoc => FormatType::Mdoc,
                 FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
             };
-
-            if encryption_info.is_none() && presentation_format == FormatType::Mdoc {
-                return Err(VerificationProtocolError::Failed(
-                    "MDOC presentation requires encryption but no verifier EC keys are available"
-                        .to_string(),
-                ));
-            }
 
             let presentation_formatter = self
                 .presentation_formatter_provider
@@ -650,11 +671,18 @@ fn format_presentation_context(
             ));
         };
 
-        let encryption_key = metadata
-            .jwks
-            .as_ref()
-            .and_then(|jwks| jwks.keys.first())
-            .map(|key| key.jwk.clone().into());
+        let encryption_key = if matches!(
+            interaction_data.response_mode.as_deref(),
+            Some("direct_post.jwt")
+        ) {
+            metadata
+                .jwks
+                .as_ref()
+                .and_then(|jwks| jwks.keys.first())
+                .map(|key| key.jwk.clone().into())
+        } else {
+            None
+        };
 
         mdoc_presentation_context(Handover::OID4VPFinal1_0(
             OID4VPFinal1_0Handover::compute(

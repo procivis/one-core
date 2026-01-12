@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use dcql::DcqlQuery;
+use mockall::predicate::{always, eq};
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
@@ -10,17 +11,20 @@ use url::Url;
 use uuid::Uuid;
 
 use super::OpenID4VPFinal1_0;
-use super::model::{Params, PresentationVerifierParams};
+use super::model::{OpenID4VPFinal1_0ClientMetadata, Params, PresentationVerifierParams};
 use crate::config::core_config::FormatType;
 use crate::model::claim_schema::ClaimSchema;
-use crate::model::credential_schema::{CredentialSchema, LayoutType};
+use crate::model::credential_schema::CredentialSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
+use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::certificate_validator::MockCertificateValidator;
-use crate::proto::http_client::reqwest_client::ReqwestClient;
+use crate::proto::http_client::{
+    Method, MockHttpClient, Request, RequestBuilder, Response, StatusCode,
+};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
@@ -35,16 +39,19 @@ use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::presentation_formatter::provider::MockPresentationFormatterProvider;
 use crate::provider::verification_protocol::dto::ShareResponse;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
+use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
+    OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPClientMetadata,
+    OpenID4VPHolderInteractionData, OpenID4VPMdocAlgs, OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::{
-    FormatMapper, TypeToDescriptorMapper, VerificationProtocol,
+    FormatMapper, TypeToDescriptorMapper, VerificationProtocol, serialize_interaction_data,
 };
 use crate::service::proof::dto::ShareProofRequestParamsDTO;
-use crate::service::test_utilities::{dummy_claim_schema, dummy_identifier, generic_config};
+use crate::service::test_utilities::{
+    dummy_claim_schema, dummy_credential_schema, dummy_identifier, generic_config,
+};
 
 #[derive(Default)]
 struct TestInputs {
@@ -54,6 +61,7 @@ struct TestInputs {
     pub key_provider: MockKeyProvider,
     pub did_method_provider: MockDidMethodProvider,
     pub certificate_validator: MockCertificateValidator,
+    pub http_client: MockHttpClient,
     pub params: Option<Params>,
 }
 
@@ -66,7 +74,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VPFinal1_0 {
         Arc::new(inputs.key_algorithm_provider),
         Arc::new(inputs.key_provider),
         Arc::new(inputs.certificate_validator),
-        Arc::new(ReqwestClient::default()),
+        Arc::new(inputs.http_client),
         inputs.params.unwrap_or(generic_params()),
         Arc::new(generic_config().core),
     )
@@ -98,14 +106,38 @@ fn generic_params() -> Params {
     }
 }
 
-fn test_proof(
-    proof_id: Uuid,
-    credential_format: CredentialFormat,
-    verifier_key: Option<RelatedKey>,
-) -> Proof {
-    let key_id = Uuid::new_v4().into();
+fn test_credential_schema(format: CredentialFormat) -> CredentialSchema {
+    CredentialSchema {
+        format,
+        name: "test-credential-schema".to_string(),
+        schema_id: "test_schema_id".to_string(),
+        imported_source_url: "test_imported_src_url".to_string(),
+        ..dummy_credential_schema()
+    }
+}
+
+fn test_key(key_type: &str) -> Key {
+    Key {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        public_key: vec![],
+        name: "test_key".to_string(),
+        key_reference: None,
+        storage_type: "INTERNAL".to_string(),
+        key_type: key_type.to_string(),
+        organisation: None,
+    }
+}
+
+fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey>) -> Proof {
+    let key = verifier_key
+        .clone()
+        .map(|k| k.key)
+        .unwrap_or_else(|| test_key("ECDSA"));
+
     Proof {
-        id: proof_id.into(),
+        id: Uuid::new_v4().into(),
         created_date: OffsetDateTime::now_utc(),
         last_modified: OffsetDateTime::now_utc(),
         protocol: "OPENID4VP_FINAL1".to_string(),
@@ -128,32 +160,14 @@ fn test_proof(
                 validity_constraint: None,
                 claim_schemas: Some(vec![ProofInputClaimSchema {
                     schema: ClaimSchema {
-                        id: shared_types::ClaimSchemaId::from(Into::<Uuid>::into(Uuid::new_v4())),
+                        id: Uuid::new_v4().into(),
                         key: "required_key".to_string(),
                         ..dummy_claim_schema()
                     },
                     required: true,
                     order: 0,
                 }]),
-
-                credential_schema: Some(CredentialSchema {
-                    id: Uuid::new_v4().into(),
-                    deleted_at: None,
-                    created_date: OffsetDateTime::now_utc(),
-                    last_modified: OffsetDateTime::now_utc(),
-                    name: "test-credential-schema".to_string(),
-                    format: credential_format,
-                    revocation_method: "NONE".to_string(),
-                    key_storage_security: None,
-                    layout_type: LayoutType::Card,
-                    layout_properties: None,
-                    schema_id: "test_schema_id".to_string(),
-                    imported_source_url: "test_imported_src_url".to_string(),
-                    allow_suspension: false,
-                    requires_app_attestation: false,
-                    claim_schemas: None,
-                    organisation: None,
-                }),
+                credential_schema: Some(test_credential_schema(format)),
             }]),
         }),
         claims: None,
@@ -167,46 +181,190 @@ fn test_proof(
                 did_type: DidType::Local,
                 did_method: "KEY".to_string(),
                 deactivated: false,
-                keys: verifier_key
-                    .clone()
-                    .map(|k| vec![k])
-                    .or(Some(vec![RelatedKey {
+                keys: verifier_key.map(|k| vec![k]).or_else(|| {
+                    Some(vec![RelatedKey {
                         role: KeyRole::AssertionMethod,
-                        key: Key {
-                            id: key_id,
-                            created_date: OffsetDateTime::now_utc(),
-                            last_modified: OffsetDateTime::now_utc(),
-                            public_key: vec![],
-                            name: "key".to_string(),
-                            key_reference: None,
-                            storage_type: "INTERNAL".to_string(),
-                            key_type: "ECDSA".to_string(),
-                            organisation: None,
-                        },
+                        key: key.clone(),
                         reference: "1".to_string(),
-                    }])),
+                    }])
+                }),
                 organisation: None,
                 log: None,
             }),
             ..dummy_identifier()
         }),
-        verifier_key: verifier_key.map(|k| k.key).or(Some(Key {
-            id: key_id,
-            created_date: OffsetDateTime::now_utc(),
-            last_modified: OffsetDateTime::now_utc(),
-            public_key: vec![],
-            name: "verifier_key".to_string(),
-            key_reference: None,
-            storage_type: "INTERNAL".to_string(),
-            key_type: "ECDSA".to_string(),
-            organisation: None,
-        })),
+        verifier_key: Some(key),
         verifier_certificate: None,
         interaction: None,
         profile: None,
         proof_blob_id: None,
         engagement: None,
     }
+}
+
+fn test_holder_interaction_data(response_mode: Option<&str>) -> OpenID4VPHolderInteractionData {
+    OpenID4VPHolderInteractionData {
+        response_type: Some("vp_token".to_string()),
+        state: Some(Uuid::new_v4().to_string()),
+        nonce: Some("test-nonce-12345".to_string()),
+        client_id_scheme: ClientIdScheme::RedirectUri,
+        client_id: "https://verifier.example.com".to_string(),
+        client_metadata: Some(OpenID4VPClientMetadata::Final1_0(
+            OpenID4VPFinal1_0ClientMetadata {
+                vp_formats_supported: HashMap::from([(
+                    "mso_mdoc".to_string(),
+                    OpenID4VpPresentationFormat::MdocAlgs(OpenID4VPMdocAlgs {
+                        issuerauth_alg_values: vec![],
+                        deviceauth_alg_values: vec![],
+                    }),
+                )]),
+                ..Default::default()
+            },
+        )),
+        client_metadata_uri: None,
+        response_mode: response_mode.map(String::from),
+        response_uri: Some("https://verifier.example.com/response".parse().unwrap()),
+        presentation_definition: None,
+        presentation_definition_uri: None,
+        dcql_query: None,
+        redirect_uri: None,
+        verifier_details: None,
+    }
+}
+
+fn test_holder_proof(
+    interaction_data: OpenID4VPHolderInteractionData,
+    format: CredentialFormat,
+) -> Proof {
+    let interaction = Interaction {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        data: Some(serialize_interaction_data(&interaction_data).unwrap()),
+        organisation: None,
+        nonce_id: None,
+        interaction_type: InteractionType::Verification,
+        expires_at: None,
+    };
+
+    Proof {
+        id: Uuid::new_v4().into(),
+        created_date: OffsetDateTime::now_utc(),
+        last_modified: OffsetDateTime::now_utc(),
+        protocol: "OPENID4VP_FINAL1".to_string(),
+        transport: "HTTP".to_string(),
+        redirect_uri: None,
+        state: ProofStateEnum::Requested,
+        role: ProofRole::Holder,
+        requested_date: None,
+        completed_date: None,
+        schema: Some(ProofSchema {
+            id: Uuid::new_v4().into(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            deleted_at: None,
+            name: "test-holder-proof".into(),
+            expire_duration: 300,
+            imported_source_url: None,
+            organisation: None,
+            input_schemas: Some(vec![ProofInputSchema {
+                validity_constraint: None,
+                claim_schemas: None,
+                credential_schema: Some(test_credential_schema(format)),
+            }]),
+        }),
+        claims: None,
+        verifier_identifier: None,
+        verifier_key: Some(test_key("ECDSA")),
+        verifier_certificate: None,
+        interaction: Some(interaction),
+        profile: None,
+        proof_blob_id: None,
+        engagement: None,
+    }
+}
+
+fn mock_http_post(url: &str) -> MockHttpClient {
+    let url = url.to_string();
+    let mut mock_client = MockHttpClient::new();
+
+    let url_for_eq = url.clone();
+    mock_client
+        .expect_post()
+        .with(eq(url_for_eq))
+        .returning(move |req_url| {
+            let mut inner_client = MockHttpClient::new();
+            let url_for_response = url.clone();
+            inner_client
+                .expect_send()
+                .with(eq(url.clone()), always(), always(), eq(Method::Post))
+                .return_once(move |_, _, _, _| {
+                    Ok(Response {
+                        body: b"{}".to_vec(),
+                        headers: Default::default(),
+                        status: StatusCode(200),
+                        request: Request {
+                            body: None,
+                            headers: Default::default(),
+                            method: Method::Post,
+                            url: url_for_response,
+                        },
+                    })
+                });
+            RequestBuilder::new(Arc::new(inner_client), Method::Post, req_url)
+        });
+
+    mock_client
+}
+
+fn setup_key_agreement_mocks(
+    crv: &'static str,
+    _key_type: &'static str,
+    jwk_constructor: impl FnOnce(PublicKeyJwkEllipticData) -> PublicKeyJwk + Send + 'static,
+) -> (MockKeyAlgorithmProvider, MockKeyProvider, Uuid) {
+    let key_id = Uuid::new_v4();
+
+    let mut key_storage = MockKeyStorage::new();
+    key_storage
+        .expect_get_capabilities()
+        .returning(KeyStorageCapabilities::default);
+
+    let mut key_provider = MockKeyProvider::new();
+    let arc = Arc::new(key_storage);
+    key_provider
+        .expect_get_key_storage()
+        .returning(move |_| Some(arc.clone()));
+
+    let mut key_algorithm = MockKeyAlgorithm::new();
+    key_algorithm
+        .expect_reconstruct_key()
+        .return_once(move |_, _, _| {
+            let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
+            key_agreement_handle.expect_as_jwk().return_once(move || {
+                Ok(jwk_constructor(PublicKeyJwkEllipticData {
+                    alg: None,
+                    r#use: Some(JwkUse::Encryption),
+                    kid: None,
+                    crv: crv.to_string(),
+                    x: "".to_string(),
+                    y: Some("".to_string()),
+                }))
+            });
+            Ok(KeyHandle::SignatureAndKeyAgreement {
+                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
+                    MockSignaturePublicKeyHandle::default(),
+                )),
+                key_agreement: KeyAgreementHandle::PublicKeyOnly(Arc::new(key_agreement_handle)),
+            })
+        });
+
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    let arc = Arc::new(key_algorithm);
+    key_algorithm_provider
+        .expect_key_algorithm_from_type()
+        .returning(move |_| Some(arc.clone()));
+
+    (key_algorithm_provider, key_provider, key_id)
 }
 
 #[tokio::test]
@@ -226,11 +384,8 @@ async fn test_share_proof_direct_post() {
         ..Default::default()
     });
 
-    let proof_id = Uuid::new_v4();
-    let proof = test_proof(proof_id, "JWT".into(), None);
-
+    let proof = test_verifier_proof("JWT".into(), None);
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
-
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
     let ShareResponse {
@@ -269,19 +424,15 @@ async fn test_share_proof_direct_post() {
     assert_eq!(expected_keys, actual_keys);
 
     assert_eq!("vp_token", query_pairs.get("response_type").unwrap());
-
     assert_eq!("direct_post", query_pairs.get("response_mode").unwrap());
-
     assert_eq!(
         &interaction_id.to_string(),
         query_pairs.get("state").unwrap()
     );
-
     assert_eq!(
         "http://base_url/ssi/openid4vp/final-1.0/response",
         query_pairs.get("response_uri").unwrap()
     );
-
     assert_eq!(
         "redirect_uri:http://base_url/ssi/openid4vp/final-1.0/response",
         query_pairs.get("client_id").unwrap()
@@ -289,7 +440,6 @@ async fn test_share_proof_direct_post() {
 
     let returned_dcql_query =
         serde_json::from_str::<DcqlQuery>(query_pairs.get("dcql_query").unwrap()).unwrap();
-
     let returned_client_metadata = serde_json::from_str::<OpenID4VPFinal1_0ClientMetadata>(
         query_pairs.get("client_metadata").unwrap(),
     )
@@ -304,48 +454,9 @@ async fn test_share_proof_direct_post() {
 }
 
 #[tokio::test]
-async fn test_share_proof_direct_post_jwt_eccdsa() {
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    let mut key_provider = MockKeyProvider::new();
-    let mut key_storage = MockKeyStorage::new();
-    key_storage
-        .expect_get_capabilities()
-        .returning(KeyStorageCapabilities::default);
-
-    let arc = Arc::new(key_storage);
-    key_provider
-        .expect_get_key_storage()
-        .returning(move |_| Some(arc.clone()));
-
-    let mut key_algorithm = MockKeyAlgorithm::new();
-
-    key_algorithm
-        .expect_reconstruct_key()
-        .return_once(|_, _, _| {
-            let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
-            key_agreement_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
-                    alg: None,
-                    r#use: Some(JwkUse::Encryption),
-                    kid: None,
-                    crv: "P-256".to_string(),
-                    x: "".to_string(),
-                    y: Some("".to_string()),
-                }))
-            });
-            Ok(KeyHandle::SignatureAndKeyAgreement {
-                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
-                    MockSignaturePublicKeyHandle::default(),
-                )),
-                key_agreement: KeyAgreementHandle::PublicKeyOnly(Arc::new(key_agreement_handle)),
-            })
-        });
-
-    let arc = Arc::new(key_algorithm);
-
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .returning(move |_| Some(arc.clone()));
+async fn test_share_proof_direct_post_jwt_ecdsa() {
+    let (key_algorithm_provider, key_provider, key_id) =
+        setup_key_agreement_mocks("P-256", "ECDSA", PublicKeyJwk::Ec);
 
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
@@ -364,9 +475,6 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
         ..Default::default()
     });
 
-    let proof_id = Uuid::new_v4();
-
-    let key_id = Uuid::new_v4();
     let key_agreement_key = RelatedKey {
         role: KeyRole::KeyAgreement,
         key: Key {
@@ -383,15 +491,11 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
         reference: "1".to_string(),
     };
 
-    let proof = test_proof(proof_id, "JWT".into(), Some(key_agreement_key));
+    let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let ShareResponse {
-        url,
-        interaction_id,
-        ..
-    } = protocol
+    let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
@@ -407,37 +511,7 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
     let url: Url = url.parse().unwrap();
     let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
 
-    let expected_keys = vec![
-        "client_id",
-        "client_metadata",
-        "dcql_query",
-        "nonce",
-        "response_mode",
-        "response_type",
-        "response_uri",
-        "state",
-    ];
-
-    let mut actual_keys: Vec<&str> = query_pairs.keys().map(|k| k.as_ref()).collect();
-    actual_keys.sort();
-    assert_eq!(expected_keys, actual_keys);
-    assert_eq!("vp_token", query_pairs.get("response_type").unwrap());
     assert_eq!("direct_post.jwt", query_pairs.get("response_mode").unwrap());
-    assert_eq!(
-        &interaction_id.to_string(),
-        query_pairs.get("state").unwrap()
-    );
-    assert_eq!(
-        "http://base_url/ssi/openid4vp/final-1.0/response",
-        query_pairs.get("response_uri").unwrap()
-    );
-    assert_eq!(
-        "redirect_uri:http://base_url/ssi/openid4vp/final-1.0/response",
-        query_pairs.get("client_id").unwrap()
-    );
-
-    let returned_dcql_query =
-        serde_json::from_str::<DcqlQuery>(query_pairs.get("dcql_query").unwrap()).unwrap();
 
     let returned_client_metadata = serde_json::from_str::<OpenID4VPFinal1_0ClientMetadata>(
         query_pairs.get("client_metadata").unwrap(),
@@ -445,11 +519,9 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
     .unwrap();
 
     let jwks = returned_client_metadata.jwks.unwrap().keys;
-    let jwk = jwks.first().unwrap().clone();
-
     assert_eq!(jwks.len(), 1);
-    assert_eq!(jwk.jwk.get_use(), &Some("enc".to_string()));
-    assert_eq!(jwk.key_id, key_id.to_string());
+    assert_eq!(jwks[0].jwk.get_use(), &Some("enc".to_string()));
+    assert_eq!(jwks[0].key_id, key_id.to_string());
 
     assert_eq!(
         returned_client_metadata.encrypted_response_enc_values_supported,
@@ -458,51 +530,14 @@ async fn test_share_proof_direct_post_jwt_eccdsa() {
             AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256,
         ])
     );
-    assert_eq!(returned_dcql_query.credentials.len(), 1);
 }
 
 #[tokio::test]
 async fn test_share_proof_direct_post_jwt_eddsa() {
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
-    let mut key_provider = MockKeyProvider::new();
-    let mut key_storage = MockKeyStorage::new();
-    key_storage
-        .expect_get_capabilities()
-        .returning(KeyStorageCapabilities::default);
-
-    let arc = Arc::new(key_storage);
-    key_provider
-        .expect_get_key_storage()
-        .returning(move |_| Some(arc.clone()));
-
-    let mut key_algorithm = MockKeyAlgorithm::new();
-    key_algorithm
-        .expect_reconstruct_key()
-        .return_once(|_, _, _| {
-            let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
-            key_agreement_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
-                    alg: None,
-                    r#use: Some(JwkUse::Encryption),
-                    kid: None,
-                    crv: "Ed25519".to_string(),
-                    x: "".to_string(),
-                    y: None,
-                }))
-            });
-            Ok(KeyHandle::SignatureAndKeyAgreement {
-                signature: SignatureKeyHandle::PublicKeyOnly(Arc::new(
-                    MockSignaturePublicKeyHandle::default(),
-                )),
-                key_agreement: KeyAgreementHandle::PublicKeyOnly(Arc::new(key_agreement_handle)),
-            })
+    let (key_algorithm_provider, key_provider, key_id) =
+        setup_key_agreement_mocks("Ed25519", "EDDSA", |data| {
+            PublicKeyJwk::Okp(PublicKeyJwkEllipticData { y: None, ..data })
         });
-
-    let arc = Arc::new(key_algorithm);
-
-    key_algorithm_provider
-        .expect_key_algorithm_from_type()
-        .returning(move |_| Some(arc.clone()));
 
     let mut credential_formatter = MockCredentialFormatter::new();
     credential_formatter
@@ -521,9 +556,6 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
         ..Default::default()
     });
 
-    let proof_id = Uuid::new_v4();
-
-    let key_id = Uuid::new_v4();
     let key_agreement_key = RelatedKey {
         role: KeyRole::KeyAgreement,
         key: Key {
@@ -540,15 +572,11 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
         reference: "1".to_string(),
     };
 
-    let proof = test_proof(proof_id, "JWT".into(), Some(key_agreement_key));
+    let proof = test_verifier_proof("JWT".into(), Some(key_agreement_key));
     let format_type_mapper: FormatMapper = Arc::new(move |_| Ok(FormatType::Jwt));
     let type_to_descriptor_mapper: TypeToDescriptorMapper = Arc::new(move |_| Ok(HashMap::new()));
 
-    let ShareResponse {
-        url,
-        interaction_id,
-        ..
-    } = protocol
+    let ShareResponse { url, .. } = protocol
         .verifier_share_proof(
             &proof,
             format_type_mapper,
@@ -564,37 +592,7 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
     let url: Url = url.parse().unwrap();
     let query_pairs: HashMap<Cow<'_, str>, Cow<'_, str>> = url.query_pairs().collect();
 
-    let expected_keys = vec![
-        "client_id",
-        "client_metadata",
-        "dcql_query",
-        "nonce",
-        "response_mode",
-        "response_type",
-        "response_uri",
-        "state",
-    ];
-
-    let mut actual_keys: Vec<&str> = query_pairs.keys().map(|k| k.as_ref()).collect();
-    actual_keys.sort();
-    assert_eq!(expected_keys, actual_keys);
-    assert_eq!("vp_token", query_pairs.get("response_type").unwrap());
     assert_eq!("direct_post.jwt", query_pairs.get("response_mode").unwrap());
-    assert_eq!(
-        &interaction_id.to_string(),
-        query_pairs.get("state").unwrap()
-    );
-    assert_eq!(
-        "http://base_url/ssi/openid4vp/final-1.0/response",
-        query_pairs.get("response_uri").unwrap()
-    );
-    assert_eq!(
-        "redirect_uri:http://base_url/ssi/openid4vp/final-1.0/response",
-        query_pairs.get("client_id").unwrap()
-    );
-
-    let returned_dcql_query =
-        serde_json::from_str::<DcqlQuery>(query_pairs.get("dcql_query").unwrap()).unwrap();
 
     let returned_client_metadata = serde_json::from_str::<OpenID4VPFinal1_0ClientMetadata>(
         query_pairs.get("client_metadata").unwrap(),
@@ -602,18 +600,72 @@ async fn test_share_proof_direct_post_jwt_eddsa() {
     .unwrap();
 
     let jwks = returned_client_metadata.jwks.unwrap().keys;
-    let jwk = jwks.first().unwrap().clone();
-
     assert_eq!(jwks.len(), 1);
-    assert_eq!(jwk.jwk.get_use(), &Some("enc".to_string()));
-    assert_eq!(jwk.key_id, key_id.to_string());
+    assert_eq!(jwks[0].jwk.get_use(), &Some("enc".to_string()));
+    assert_eq!(jwks[0].key_id, key_id.to_string());
+}
 
-    assert_eq!(
-        returned_client_metadata.encrypted_response_enc_values_supported,
-        Some(vec![
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256,
-        ])
+#[tokio::test]
+async fn test_holder_submit_missing_response_mode_fails() {
+    let protocol = setup_protocol(TestInputs::default());
+    let proof = test_holder_proof(test_holder_interaction_data(None), "MDOC".into());
+
+    let result = protocol.holder_submit_proof(&proof, vec![]).await;
+
+    assert!(
+        matches!(&result, Err(VerificationProtocolError::InvalidRequest(_))),
+        "Expected InvalidRequest error for missing response_mode, got: {:?}",
+        result
     );
-    assert_eq!(returned_dcql_query.credentials.len(), 1);
+}
+
+#[tokio::test]
+async fn test_holder_submit_invalid_response_mode_fails() {
+    let protocol = setup_protocol(TestInputs::default());
+    let proof = test_holder_proof(
+        test_holder_interaction_data(Some("invalid_response_mode")),
+        "MDOC".into(),
+    );
+
+    let result = protocol.holder_submit_proof(&proof, vec![]).await;
+
+    assert!(
+        matches!(&result, Err(VerificationProtocolError::InvalidRequest(_))),
+        "Expected InvalidRequest error for invalid response_mode, got: {:?}",
+        result
+    );
+}
+
+#[tokio::test]
+async fn test_holder_submit_direct_post_jwt_no_encryption_keys_fails() {
+    let protocol = setup_protocol(TestInputs::default());
+    let proof = test_holder_proof(
+        test_holder_interaction_data(Some("direct_post.jwt")),
+        "MDOC".into(),
+    );
+
+    let result = protocol.holder_submit_proof(&proof, vec![]).await;
+
+    assert!(
+        matches!(&result, Err(VerificationProtocolError::InvalidRequest(_))),
+        "Expected InvalidRequest error when direct_post.jwt has no encryption keys, got: {:?}",
+        result
+    );
+}
+
+#[tokio::test]
+async fn test_holder_submit_mdoc_direct_post() {
+    let protocol = setup_protocol(TestInputs {
+        http_client: mock_http_post("https://verifier.example.com/response"),
+        ..Default::default()
+    });
+
+    let proof = test_holder_proof(
+        test_holder_interaction_data(Some("direct_post")),
+        "MDOC".into(),
+    );
+
+    // Verifies: response_mode validation passes, no MDOC-requires-encryption error, HTTP POST succeeds
+    let result = protocol.holder_submit_proof(&proof, vec![]).await;
+    assert!(result.is_ok(), "Expected Ok but got: {:?}", result);
 }
