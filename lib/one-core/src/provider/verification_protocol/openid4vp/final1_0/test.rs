@@ -524,6 +524,7 @@ async fn test_share_proof_direct_post_jwt_ecdsa() {
     assert_eq!(
         returned_client_metadata.encrypted_response_enc_values_supported,
         Some(vec![
+            EncryptionAlgorithm::A128GCM,
             EncryptionAlgorithm::A256GCM,
             EncryptionAlgorithm::A128CBCHS256,
         ])

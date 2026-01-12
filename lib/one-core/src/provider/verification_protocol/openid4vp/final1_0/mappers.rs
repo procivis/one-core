@@ -36,6 +36,7 @@ pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
             keys: vec![key_agreement_key],
         });
         metadata.encrypted_response_enc_values_supported = Some(vec![
+            EncryptionAlgorithm::A128GCM,
             EncryptionAlgorithm::A256GCM,
             EncryptionAlgorithm::A128CBCHS256,
         ]);
