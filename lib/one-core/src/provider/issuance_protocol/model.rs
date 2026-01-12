@@ -51,6 +51,7 @@ pub(crate) enum InvitationResponseEnum {
     },
 }
 
+#[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCIProofTypeSupported {
     pub proof_signing_alg_values_supported: Vec<String>,
