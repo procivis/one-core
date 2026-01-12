@@ -3,10 +3,10 @@
 use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use serde::Serialize;
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 
 use super::dto::{DidDocumentDTO, DidServiceEndointDTO, DidVerificationMethodDTO};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::PublicKeyJwk;
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize)]
 pub enum Operation {
@@ -68,7 +68,7 @@ pub struct DidVerificationMethod {
     pub id: String,
     pub r#type: String,
     pub controller: String,
-    pub public_key_jwk: PublicKeyJwk,
+    pub public_key_jwk: PublicJwk,
 }
 
 #[derive(Debug, Clone)]

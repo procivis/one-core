@@ -120,8 +120,7 @@ impl PresentationFormatter for JwtVpPresentationFormatter {
                 .map_err(|e| FormatterError::Failed(e.to_string()))?;
             Some(JwtPublicKeyInfo::Jwk(
                 key.public_key_as_jwk()
-                    .map_err(|e| FormatterError::Failed(e.to_string()))?
-                    .into(),
+                    .map_err(|e| FormatterError::Failed(e.to_string()))?,
             ))
         } else {
             None

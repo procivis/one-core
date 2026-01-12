@@ -6,10 +6,10 @@ use axum_extra::extract::WithRejection;
 use one_core::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use one_core::service::error::{BusinessLogicError, ServiceError};
 use shared_types::ProofId;
+use standardized_types::openid4vp::ClientMetadata;
 
 use super::super::super::dto::{OpenID4VCIErrorResponseRestDTO, OpenID4VCIErrorRestEnum};
 use super::super::dto::{OpenID4VPDirectPostRequestRestDTO, OpenID4VPDirectPostResponseRestDTO};
-use super::dto::OpenID4VPFinal1_0ClientMetadataResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::router::AppState;
 
@@ -100,7 +100,7 @@ pub(crate) async fn oid4vp_final1_0_direct_post(
         ("id" = ProofId, Path, description = "Proof id")
     ),
     responses(
-        (status = 200, description = "OK", body = OpenID4VPFinal1_0ClientMetadataResponseRestDTO),
+        (status = 200, description = "OK", body = ClientMetadata),
         (status = 400, description = "OIDC Verifier errors", body = OpenID4VCIErrorResponseRestDTO),
         (status = 404, description = "Proof does not exist"),
         (status = 500, description = "Server error"),
@@ -123,11 +123,7 @@ pub(crate) async fn oid4vp_final1_0_client_metadata(
         .await;
 
     match result {
-        Ok(value) => (
-            StatusCode::OK,
-            Json(OpenID4VPFinal1_0ClientMetadataResponseRestDTO::from(value)),
-        )
-            .into_response(),
+        Ok(value) => (StatusCode::OK, Json(value)).into_response(),
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {error}");
             (

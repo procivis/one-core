@@ -1,7 +1,7 @@
-use one_core::model::key::PublicKeyJwk;
 use one_core::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use serde_json::json;
 use shared_types::WalletUnitId;
+use standardized_types::jwk::PublicJwk;
 
 use crate::utils::api_clients::{HttpClient, Response};
 
@@ -18,7 +18,7 @@ impl WalletProviderApi {
         &self,
         wallet_provider: &str,
         os: &str,
-        jwk: Option<&PublicKeyJwk>,
+        jwk: Option<&PublicJwk>,
         proof: Option<&str>,
     ) -> Response {
         let mut body = json!( {

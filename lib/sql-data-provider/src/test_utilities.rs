@@ -5,7 +5,6 @@ use std::fmt::Debug;
 use std::hash::Hash;
 
 use one_core::model::credential::{Credential, CredentialStateEnum};
-use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::WalletProviderType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
@@ -18,6 +17,7 @@ use shared_types::{
     RevocationListId, WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
+use standardized_types::jwk::PublicJwk;
 use time::macros::datetime;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -712,7 +712,7 @@ pub fn random_jwk_string() -> String {
     serde_json::to_string(&random_jwk()).unwrap()
 }
 
-pub fn random_jwk() -> PublicKeyJwk {
+pub fn random_jwk() -> PublicJwk {
     let unique_suffix = Ecdsa.generate_key().unwrap();
     unique_suffix.key.public_key_as_jwk().unwrap()
 }

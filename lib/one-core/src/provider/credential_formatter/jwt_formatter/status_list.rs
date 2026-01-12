@@ -155,7 +155,7 @@ impl JWTFormatter {
                     .public_key_as_jwk()
                     .map_err(|e| FormatterError::Failed(e.to_string()))?;
 
-                (None, Some(JwtPublicKeyInfo::Jwk(key.into())))
+                (None, Some(JwtPublicKeyInfo::Jwk(key)))
             }
         };
 

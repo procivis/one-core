@@ -4,6 +4,7 @@ use futures::future::BoxFuture;
 use maplit::hashmap;
 use serde::Deserialize;
 use serde_json::Value;
+use standardized_types::openid4vp::{PresentationFormat, SdJwtVcAlgs};
 use time::Duration;
 use url::Url;
 
@@ -27,8 +28,7 @@ use crate::provider::verification_protocol::openid4vp::draft20::model::{
 };
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
-    OpenID4VPDraftClientMetadata, OpenID4VPVcSdJwtAlgs, OpenID4VPVerifierInteractionContent,
-    OpenID4VpPresentationFormat,
+    OpenID4VPDraftClientMetadata, OpenID4VPVerifierInteractionContent,
 };
 use crate::provider::verification_protocol::openid4vp::{
     FormatMapper, StorageAccess, TypeToDescriptorMapper, VerificationProtocolError,
@@ -82,8 +82,8 @@ impl From<OpenID4Vp20SwiyuParams> for OpenID4Vp20Params {
             redirect_uri: value.redirect_uri,
             predefined_client_metadata: Some(OpenID4VPDraftClientMetadata {
                 vp_formats: hashmap! {
-                    "dc+sd-jwt".to_string() =>  OpenID4VpPresentationFormat::SdJwtVcAlgs(
-                        OpenID4VPVcSdJwtAlgs {
+                    "dc+sd-jwt".to_string() =>  PresentationFormat::SdJwtVcAlgs(
+                        SdJwtVcAlgs {
                             sd_jwt_alg_values: vec!["ES256".to_string()],
                             kb_jwt_alg_values: vec!["ES256".to_string()]
                         }

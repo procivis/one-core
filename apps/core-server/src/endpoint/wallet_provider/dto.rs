@@ -5,12 +5,12 @@ use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, WalletUnitId};
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::deserialize::deserialize_timestamp;
 use crate::dto::common::ListQueryParamsRest;
-use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
 use crate::serialize::{front_time, front_time_option};
 pub(crate) type ListWalletUnitsQuery =
     ListQueryParamsRest<WalletUnitFilterQueryParamsRestDTO, SortableWalletUnitColumnRest>;
@@ -47,7 +47,7 @@ pub(crate) struct WalletUnitResponseRestDTO {
     pub wallet_provider_type: WalletProviderTypeRestEnum,
     pub wallet_provider_name: String,
     #[from(with_fn = convert_inner)]
-    pub authentication_key_jwk: Option<PublicKeyJwkRestDTO>,
+    pub authentication_key_jwk: Option<PublicJwk>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize, ToSchema, From, Into)]

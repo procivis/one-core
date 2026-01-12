@@ -11,6 +11,7 @@ use serde::de::Error;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_with::skip_serializing_none;
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 use strum::{Display, IntoStaticStr};
 use time::OffsetDateTime;
 use url::Url;
@@ -24,7 +25,6 @@ use crate::config::core_config::{
 use crate::model::certificate::Certificate;
 use crate::model::credential_schema::{LayoutProperties, LayoutType};
 use crate::model::identifier::Identifier;
-use crate::model::key::PublicKeyJwk;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 
 pub type AuthenticationFn = Box<dyn SignatureProvider>;
@@ -39,12 +39,12 @@ pub enum PublicKeySource<'a> {
         x5c: &'a [String],
     },
     Jwk {
-        jwk: Cow<'a, PublicKeyJwk>,
+        jwk: Cow<'a, PublicJwk>,
     },
 }
 
-impl<'a> From<&'a PublicKeyJwk> for PublicKeySource<'a> {
-    fn from(value: &'a PublicKeyJwk) -> Self {
+impl<'a> From<&'a PublicJwk> for PublicKeySource<'a> {
+    fn from(value: &'a PublicJwk) -> Self {
         Self::Jwk {
             jwk: Cow::Borrowed(value),
         }
@@ -94,7 +94,7 @@ pub struct CertificateDetails {
 pub enum IdentifierDetails {
     Did(DidValue),
     Certificate(CertificateDetails),
-    Key(PublicKeyJwk),
+    Key(PublicJwk),
 }
 
 impl IdentifierDetails {
@@ -115,7 +115,7 @@ impl IdentifierDetails {
     }
 
     #[allow(dead_code)]
-    pub(crate) fn public_key_jwk(&self) -> Option<&PublicKeyJwk> {
+    pub(crate) fn public_key_jwk(&self) -> Option<&PublicJwk> {
         match &self {
             IdentifierDetails::Key(key) => Some(key),
             _ => None,

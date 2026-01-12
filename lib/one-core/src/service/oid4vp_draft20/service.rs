@@ -295,7 +295,7 @@ impl OID4VPDraft20Service {
             let encryption_key_id = interaction_data
                 .encryption_key
                 .as_ref()
-                .map(|key| key.key_id.to_string())
+                .and_then(|key| key.kid())
                 .ok_or(ServiceError::MappingError(
                     "missing encryption key".to_string(),
                 ))?;

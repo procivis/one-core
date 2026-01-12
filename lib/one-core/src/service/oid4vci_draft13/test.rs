@@ -9,6 +9,7 @@ use secrecy::ExposeSecret;
 use serde_json::json;
 use shared_types::{CredentialFormat, DidId, InteractionId};
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -22,7 +23,6 @@ use crate::model::credential_schema::{
 use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
@@ -915,7 +915,7 @@ async fn test_create_credential_success() {
                     r#type: "".to_string(),
                     controller: did_value.to_string(),
                     // proof.jwt did key
-                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Okp(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -1092,7 +1092,7 @@ async fn test_create_credential_success_sd_jwt_vc() {
                     r#type: "".to_string(),
                     controller: did_value.to_string(),
                     // proof.jwt did key
-                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Okp(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -1270,7 +1270,7 @@ async fn test_create_credential_success_mdoc() {
                     r#type: "".to_string(),
                     controller: did_value.to_string(),
                     // proof.jwt did key
-                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Okp(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -1862,7 +1862,7 @@ async fn test_create_credential_issuer_failed() {
                     r#type: "".to_string(),
                     controller: did_value.to_string(),
                     // proof.jwt did key
-                    public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Okp(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

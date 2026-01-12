@@ -231,7 +231,7 @@ fn create_verification_method(
         id,
         r#type: "JsonWebKey2020".to_string(),
         controller: did,
-        public_key_jwk: public_key_jwk.into(),
+        public_key_jwk,
     })
 }
 

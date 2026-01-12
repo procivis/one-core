@@ -8,6 +8,7 @@ use secrecy::SecretSlice;
 use serde_json::{Value, json};
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -28,7 +29,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::{CreateLocalIdentifierRequest, MockIdentifierCreator};
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
@@ -685,7 +686,7 @@ async fn test_holder_accept_credential_success() {
         .returning(|_, _, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -899,7 +900,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .returning(|_, _, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -1151,7 +1152,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .returning(|_, _, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -1328,7 +1329,7 @@ async fn test_holder_reject_credential() {
 
                 let mut public_key = MockSignaturePublicKeyHandle::default();
                 public_key.expect_as_jwk().return_once(|| {
-                    Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    Ok(PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

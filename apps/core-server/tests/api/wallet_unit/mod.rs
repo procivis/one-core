@@ -1,11 +1,11 @@
 use std::ops::Add;
 
-use one_core::model::key::PublicKeyJwk;
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_core::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
 use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 
 pub mod get_wallet_unit_tests;
@@ -15,7 +15,7 @@ pub mod holder_wallet_unit_status_tests;
 pub mod list_wallet_unit_tests;
 pub mod revoke_wallet_unit_tests;
 
-async fn create_wallet_unit_attestation(wallet_key: PublicKeyJwk, base_url: String) -> String {
+async fn create_wallet_unit_attestation(wallet_key: PublicJwk, base_url: String) -> String {
     let provider_key = Ecdsa.generate_key().unwrap();
     let now = OffsetDateTime::now_utc();
     let jwt = Jwt::<()>::new(
@@ -23,7 +23,7 @@ async fn create_wallet_unit_attestation(wallet_key: PublicKeyJwk, base_url: Stri
         "ES256".to_string(),
         None,
         Some(JwtPublicKeyInfo::Jwk(
-            provider_key.key.public_key_as_jwk().unwrap().into(),
+            provider_key.key.public_key_as_jwk().unwrap(),
         )),
         JWTPayload {
             issued_at: Some(now),
@@ -33,9 +33,7 @@ async fn create_wallet_unit_attestation(wallet_key: PublicKeyJwk, base_url: Stri
             subject: Some(format!("{base_url}/PROCIVIS_ONE")),
             proof_of_possession_key: Some(ProofOfPossessionKey {
                 key_id: None,
-                jwk: ProofOfPossessionJwk::Jwk {
-                    jwk: wallet_key.into(),
-                },
+                jwk: ProofOfPossessionJwk::Jwk { jwk: wallet_key },
             }),
             ..Default::default()
         },

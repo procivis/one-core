@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::DidValue;
-
-use crate::service::key::dto::PublicKeyJwkDTO;
+use standardized_types::jwk::PublicJwk;
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
@@ -45,5 +44,5 @@ pub struct DidVerificationMethodDTO {
     pub id: String,
     pub r#type: String,
     pub controller: String,
-    pub public_key_jwk: PublicKeyJwkDTO,
+    pub public_key_jwk: PublicJwk,
 }

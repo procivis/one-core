@@ -4,9 +4,10 @@ use one_crypto::signer::ecdsa::ECDSASigner;
 use one_crypto::{Signer, SignerError};
 use serde::Deserialize;
 use shared_types::KeyId;
+use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk, PublicKeyJwk};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::ecdsa::{
     ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase,
 };
@@ -80,7 +81,7 @@ impl KeyStorage for SecureElementKeyProvider {
         &self,
         _key_id: KeyId,
         _key_algorithm: KeyAlgorithmType,
-        _jwk: PrivateKeyJwk,
+        _jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
             .get_capabilities()
@@ -173,7 +174,7 @@ struct SecureElementKeyHandle {
 }
 
 impl SignaturePublicKeyHandle for SecureElementKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
         ecdsa_public_key_as_jwk(&self.key.public_key, None)
     }
 

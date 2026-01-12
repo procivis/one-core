@@ -11,8 +11,8 @@ use hmac::Mac;
 use secrecy::{ExposeSecret, ExposeSecretMut, SecretSlice};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use serde_with::skip_serializing_none;
-use strum::Display;
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
 
 use crate::HmacSha256;
 use crate::encryption::EncryptionError;
@@ -44,34 +44,12 @@ pub struct JweHeader<T> {
     pub ephemeral_public_key: T,
 }
 
-#[skip_serializing_none]
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub struct RemoteJwk {
-    pub kty: String,
-    pub crv: String,
-    pub x: String,
-    pub y: Option<String>,
-}
-
-/// Encryption algorithms as defined in the IANA registry:
-/// https://www.iana.org/assignments/jose/jose.xhtml#web-signature-encryption-algorithms
-#[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize, Display)]
-pub enum EncryptionAlgorithm {
-    // AES GCM using 256-bit key
-    A128GCM,
-    A256GCM,
-    #[serde(rename = "A128CBC-HS256")]
-    #[strum(to_string = "A128CBC-HS256")]
-    // AES CBC using 128-bit key and HMAC SHA-256
-    A128CBCHS256,
-}
-
 /// Construct JWE using AES256GCM encryption
 pub fn build_jwe(
     payload: &[u8],
     header: Header,
     shared_secret: SecretSlice<u8>,
-    remote_jwk: RemoteJwk,
+    remote_jwk: PublicJwk,
     encryption_alg: EncryptionAlgorithm,
 ) -> Result<String, EncryptionError> {
     let apu_b64 = Base64UrlSafeNoPadding::encode_to_string(&header.agreement_partyuinfo)
@@ -282,7 +260,7 @@ pub fn extract_jwe_header(jwe: &str) -> Result<Header, EncryptionError> {
         .ok_or_else(|| EncryptionError::Crypto("Invalid JWE".to_string()))?;
 
     let header_bytes = decode_b64(header_b64, "JWE header")?;
-    let header: JweHeader<RemoteJwk> = serde_json::from_slice(&header_bytes)
+    let header: JweHeader<PublicJwk> = serde_json::from_slice(&header_bytes)
         .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {e}")))?;
 
     let agreement_partyuinfo =
@@ -304,7 +282,7 @@ pub trait PrivateKeyAgreementHandle: Send + Sync {
     /// Diffie-Hellman key exchange
     async fn shared_secret(
         &self,
-        remote_jwk: &RemoteJwk,
+        remote_jwk: &PublicJwk,
     ) -> Result<SecretSlice<u8>, EncryptionError>;
 }
 
@@ -329,7 +307,7 @@ impl EncryptedJWE {
         &self,
         private_key_handle: &dyn PrivateKeyAgreementHandle,
     ) -> Result<Vec<u8>, EncryptionError> {
-        let header: JweHeader<RemoteJwk> = serde_json::from_slice(&self.protected_header)
+        let header: JweHeader<PublicJwk> = serde_json::from_slice(&self.protected_header)
             .map_err(|e| EncryptionError::Crypto(format!("Failed to parse JWE header: {e}")))?;
 
         let shared_secret = self.derive_shared_secret(private_key_handle).await?;
@@ -385,7 +363,7 @@ impl EncryptedJWE {
         &self,
         private_key_handle: &dyn PrivateKeyAgreementHandle,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
-        let header: JweHeader<RemoteJwk> =
+        let header: JweHeader<PublicJwk> =
             serde_json::from_slice(&self.protected_header).map_err(|e| {
                 EncryptionError::Crypto(format!("Failed to decode JWK to secret key: {e}"))
             })?;
@@ -398,7 +376,7 @@ impl EncryptedJWE {
     fn derive_encryption_key(
         &self,
         shared_secret: &SecretSlice<u8>,
-        header: &JweHeader<RemoteJwk>,
+        header: &JweHeader<PublicJwk>,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         let apu = decode_b64(header.agreement_partyuinfo.as_str(), "apu")?;
         let apv = decode_b64(header.agreement_partyvinfo.as_str(), "apv")?;
@@ -499,6 +477,7 @@ pub(crate) fn decode_b64(base64_input: &str, name: &str) -> Result<Vec<u8>, Encr
 #[cfg(test)]
 mod test {
     use similar_asserts::assert_eq;
+    use standardized_types::jwk::PublicJwkEc;
 
     use super::*;
     use crate::jwe::EncryptionAlgorithm::{A128CBCHS256, A128GCM, A256GCM};
@@ -517,7 +496,7 @@ mod test {
         impl PrivateKeyAgreementHandle for Wrapper {
             async fn shared_secret(
                 &self,
-                remote_jwk: &RemoteJwk,
+                remote_jwk: &PublicJwk,
             ) -> Result<SecretSlice<u8>, EncryptionError> {
                 ECDSASigner::shared_secret_p256(&self.key.to_bytes().to_vec().into(), remote_jwk)
             }
@@ -547,7 +526,7 @@ mod test {
         impl PrivateKeyAgreementHandle for Wrapper {
             async fn shared_secret(
                 &self,
-                remote_jwk: &RemoteJwk,
+                remote_jwk: &PublicJwk,
             ) -> Result<SecretSlice<u8>, EncryptionError> {
                 EDDSASigner::shared_secret_x25519(&self.key.to_vec().into(), remote_jwk)
             }
@@ -628,12 +607,14 @@ mod test {
             185, 127, 8, 220, 210, 43, 60, 110, 151, 231, 212, 11, 160, 247, 208, 50, 2, 70, 29,
             59, 74, 15, 220, 210, 56, 58, 108, 68, 29, 73, 222, 66,
         ]);
-        let remote_jwk = RemoteJwk {
-            kty: "EC".to_string(),
+        let remote_jwk = PublicJwk::Ec(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
             crv: "P-256".to_string(),
             x: "Fo4TzyDJOu5SGMnJx0en6u1EmRkUWCwvhS3BOA8UOqo".to_string(),
             y: Some("J9BMexfC9wE_3-E5Z-EbDFUKEIMwBOBReKT9bEx2KdU".to_string()),
-        };
+        });
 
         let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk, A256GCM).unwrap();
         let extracted_header = extract_jwe_header(&jwe).unwrap();
@@ -668,12 +649,14 @@ mod test {
             15, 180, 14, 191, 235, 127, 224, 178, 119, 167, 9, 251, 183, 199, 13, 60, 54, 14, 104,
             238, 55, 240, 60, 67, 165, 233, 126, 97, 200, 236, 182, 114,
         ]);
-        let remote_jwk = RemoteJwk {
-            kty: "OKP".to_string(),
+        let remote_jwk = PublicJwk::Okp(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
             crv: "X25519".to_string(),
             x: "RIAzhfGXIA-OtO-0fWhNKykMRNn8n14US7otIAN_eSM".to_string(),
             y: None,
-        };
+        });
 
         let jwe = build_jwe(payload, header.clone(), shared_secret, remote_jwk, A256GCM).unwrap();
         let extracted_header = extract_jwe_header(&jwe).unwrap();
@@ -708,12 +691,14 @@ mod test {
             15, 180, 14, 191, 235, 127, 224, 178, 119, 167, 9, 251, 183, 199, 13, 60, 54, 14, 104,
             238, 55, 240, 60, 67, 165, 233, 126, 97, 200, 236, 182, 114,
         ]);
-        let remote_jwk = RemoteJwk {
-            kty: "OKP".to_string(),
+        let remote_jwk = PublicJwk::Okp(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
             crv: "X25519".to_string(),
             x: "RIAzhfGXIA-OtO-0fWhNKykMRNn8n14US7otIAN_eSM".to_string(),
             y: None,
-        };
+        });
 
         let jwe = build_jwe(
             payload,

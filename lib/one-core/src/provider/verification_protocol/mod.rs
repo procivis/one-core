@@ -7,9 +7,9 @@ use dto::{
 };
 use error::VerificationProtocolError;
 use futures::future::BoxFuture;
-use openid4vp::model::OpenID4VpPresentationFormat;
 use serde::de::Deserialize;
 use shared_types::CredentialFormat;
+use standardized_types::openid4vp::PresentationFormat;
 use url::Url;
 
 use crate::config::core_config::FormatType;
@@ -50,10 +50,7 @@ pub(crate) fn serialize_interaction_data<DataDTO: ?Sized + serde::Serialize>(
 pub(crate) type FormatMapper =
     Arc<dyn Fn(&CredentialFormat) -> Result<FormatType, VerificationProtocolError> + Send + Sync>;
 pub(crate) type TypeToDescriptorMapper = Arc<
-    dyn Fn(
-            &FormatType,
-        )
-            -> Result<HashMap<String, OpenID4VpPresentationFormat>, VerificationProtocolError>
+    dyn Fn(&FormatType) -> Result<HashMap<String, PresentationFormat>, VerificationProtocolError>
         + Send
         + Sync,
 >;

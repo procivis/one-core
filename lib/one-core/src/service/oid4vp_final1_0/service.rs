@@ -2,6 +2,7 @@ use std::str::FromStr;
 
 use one_crypto::jwe::{decrypt_jwe_payload, extract_jwe_header};
 use shared_types::{BlobId, KeyId, ProofId};
+use standardized_types::openid4vp::ClientMetadata;
 use tracing::warn;
 
 use super::OID4VPFinal1_0Service;
@@ -29,7 +30,6 @@ use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::{
     create_open_id_for_vp_client_metadata_final1_0, decode_client_id_with_scheme,
 };
-use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_redirect_uri,
@@ -173,10 +173,7 @@ impl OID4VPFinal1_0Service {
         })
     }
 
-    pub async fn get_client_metadata(
-        &self,
-        id: ProofId,
-    ) -> Result<OpenID4VPFinal1_0ClientMetadata, ServiceError> {
+    pub async fn get_client_metadata(&self, id: ProofId) -> Result<ClientMetadata, ServiceError> {
         validate_verification_protocol_config_exists(
             &self.config,
             &[VerificationProtocolType::OpenId4VpFinal1_0],
@@ -293,7 +290,7 @@ impl OID4VPFinal1_0Service {
             let encryption_key_id = interaction_data
                 .encryption_key
                 .as_ref()
-                .map(|key| key.key_id.to_string())
+                .and_then(|key| key.kid())
                 .ok_or(ServiceError::MappingError(
                     "missing encryption key".to_string(),
                 ))?;

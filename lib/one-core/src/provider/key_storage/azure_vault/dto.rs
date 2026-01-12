@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
+use standardized_types::jwk::PrivateJwk;
 
 use crate::mapper::secret_string;
-use crate::model::key::PrivateKeyJwk;
+use crate::model::key::PrivateJwkExt;
 use crate::provider::key_storage::error::KeyStorageError;
 
 #[derive(Serialize)]
@@ -40,23 +41,21 @@ pub(super) struct AzureHsmJWKRequest {
     pub d_component: SecretString,
 }
 
-impl TryFrom<PrivateKeyJwk> for AzureHsmJWKRequest {
+impl TryFrom<PrivateJwk> for AzureHsmJWKRequest {
     type Error = KeyStorageError;
 
-    fn try_from(value: PrivateKeyJwk) -> Result<Self, Self::Error> {
+    fn try_from(value: PrivateJwk) -> Result<Self, Self::Error> {
         match value {
-            PrivateKeyJwk::Ec(jwk) => Ok(Self {
+            PrivateJwk::Ec(jwk) => Ok(Self {
                 key_type: "EC-HSM".to_string(),
                 curve_name: jwk.crv,
                 x_component: jwk.x,
                 y_component: jwk.y,
                 d_component: jwk.d,
             }),
-            PrivateKeyJwk::Okp(_) | PrivateKeyJwk::Mlwe(_) => {
-                Err(KeyStorageError::UnsupportedKeyType {
-                    key_type: value.supported_key_type().to_string(),
-                })
-            }
+            PrivateJwk::Okp(_) | PrivateJwk::Mlwe(_) => Err(KeyStorageError::UnsupportedKeyType {
+                key_type: value.supported_key_type().to_string(),
+            }),
         }
     }
 }

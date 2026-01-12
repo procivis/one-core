@@ -17,6 +17,7 @@ use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use shared_types::{CredentialId, CredentialSchemaId, DidValue};
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::format_description::FormatItem;
 use time::format_description::well_known::Rfc3339;
 use time::macros::format_description;
@@ -42,7 +43,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::model::revocation_list::StatusListType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
@@ -645,7 +645,7 @@ pub async fn try_verify_detached_signature_with_provider(
     device_signature: &coset::CoseSign1,
     payload: &[u8],
     external_aad: &[u8],
-    issuer_key: &PublicKeyJwk,
+    issuer_key: &PublicJwk,
     verifier: &dyn TokenVerifier,
 ) -> Result<(), SignerError> {
     let sig_data = coset::sig_structure_data(
@@ -898,7 +898,7 @@ async fn try_extract_did(
     did_resolver: &dyn DidMethodProvider,
     holder_did: &DidValue,
     holder_key_id: Option<&String>,
-) -> Result<PublicKeyJwk, FormatterError> {
+) -> Result<PublicJwk, FormatterError> {
     let did_document = did_resolver
         .resolve(holder_did)
         .await
@@ -917,14 +917,14 @@ async fn try_extract_did(
     )))
 }
 
-async fn try_build_cose_key(key: PublicKeyJwk) -> Result<CoseKey, FormatterError> {
+async fn try_build_cose_key(key: PublicJwk) -> Result<CoseKey, FormatterError> {
     let base64decode = |v| {
         Base64UrlSafeNoPadding::decode_to_vec(v, None)
             .map_err(|err| FormatterError::Failed(format!("Failed base64 decoding key {err}")))
     };
 
     Ok(match key {
-        PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        PublicJwk::Ec(PublicJwkEc {
             crv, x, y: Some(y), ..
         }) if &crv == "P-256" => {
             let x = base64decode(x)?;
@@ -933,7 +933,7 @@ async fn try_build_cose_key(key: PublicKeyJwk) -> Result<CoseKey, FormatterError
             CoseKeyBuilder::new_ec2_pub_key(iana::EllipticCurve::P_256, x, y).build()
         }
 
-        PublicKeyJwk::Okp(key) if key.crv == "Ed25519" => {
+        PublicJwk::Okp(key) if key.crv == "Ed25519" => {
             let x = base64decode(key.x)?;
 
             CoseKeyBuilder::new_okp_key()

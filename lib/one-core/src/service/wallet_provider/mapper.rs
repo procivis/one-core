@@ -1,8 +1,8 @@
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::WalletProviderType;
-use crate::model::key::PublicKeyJwk;
 use crate::model::organisation::Organisation;
 use crate::model::wallet_unit::{WalletUnit, WalletUnitStatus};
 use crate::provider::key_algorithm::key::KeyHandle;
@@ -19,7 +19,7 @@ pub(crate) fn wallet_unit_from_request(
     request: RegisterWalletUnitRequestDTO,
     organisation: Organisation,
     wallet_provider_type: WalletProviderType,
-    public_key: Option<&PublicKeyJwk>,
+    public_key: Option<&PublicJwk>,
     now: OffsetDateTime,
     nonce: Option<String>,
 ) -> Result<WalletUnit, ServiceError> {

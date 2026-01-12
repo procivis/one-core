@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
+use standardized_types::openid4vp::{ClientMetadataJwks, PresentationFormat};
 use time::{Duration, OffsetDateTime};
 
 use super::error::OpenID4VCError;
 use super::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, EncryptionInfo,
-    OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks,
-    OpenID4VPHolderInteractionData, OpenID4VpPresentationFormat,
+    AuthorizationEncryptedResponseAlgorithm, EncryptionInfo, OpenID4VPClientMetadata,
+    OpenID4VPHolderInteractionData,
 };
-use crate::mapper::PublicKeyWithJwk;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -20,24 +20,18 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 
 pub(crate) fn create_open_id_for_vp_client_metadata_draft(
-    jwk: Option<PublicKeyWithJwk>,
-    vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
+    jwk: Option<PublicJwk>,
+    vp_formats: HashMap<String, PresentationFormat>,
 ) -> OpenID4VPDraftClientMetadata {
     let mut metadata = OpenID4VPDraftClientMetadata {
         vp_formats,
         ..Default::default()
     };
     if let Some(jwk) = jwk {
-        metadata.jwks = Some(OpenID4VPClientMetadataJwks {
-            keys: vec![OpenID4VPClientMetadataJwkDTO {
-                key_id: jwk.key_id.to_string(),
-                jwk: jwk.jwk.into(),
-            }],
-        });
+        metadata.jwks = Some(ClientMetadataJwks { keys: vec![jwk] });
         metadata.authorization_encrypted_response_alg =
             Some(AuthorizationEncryptedResponseAlgorithm::EcdhEs);
-        metadata.authorization_encrypted_response_enc =
-            Some(AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM);
+        metadata.authorization_encrypted_response_enc = Some(EncryptionAlgorithm::A256GCM);
     }
 
     metadata

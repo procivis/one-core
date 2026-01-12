@@ -130,9 +130,9 @@ mod test {
     use mockall::predicate::*;
     use serde_json::json;
     use similar_asserts::assert_eq;
+    use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 
     use super::*;
-    use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
     use crate::proto::certificate_validator::MockCertificateValidator;
     use crate::provider::did_method::error::DidMethodProviderError;
     use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
@@ -152,8 +152,8 @@ mod test {
                     id: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb#zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
                     r#type: "JsonWebKey2020".to_owned(),
                     controller: "did:key:zDnaeTiq1PdzvZXUaMdezchcMJQpBdH2VN4pgrrEhMCCbmwSb".to_owned(),
-                    public_key_jwk: PublicKeyJwk::Ec(
-                        PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Ec(
+                        PublicJwkEc {
                             alg: None,
                             r#use: None,
                             kid: None,

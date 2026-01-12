@@ -28,7 +28,7 @@ impl TryFrom<Jwt<VP>> for ExtractedPresentation {
             .collect::<Result<Vec<_>, FormatterError>>()?;
 
         let issuer = Some(match (jwt.payload.issuer, jwt.header.jwk) {
-            (None, Some(jwk)) => IdentifierDetails::Key(jwk.into()),
+            (None, Some(jwk)) => IdentifierDetails::Key(jwk),
             (Some(issuer), None) => IdentifierDetails::Did(
                 issuer
                     .parse()

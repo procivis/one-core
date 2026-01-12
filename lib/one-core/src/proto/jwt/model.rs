@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
 use crate::provider::credential_formatter::MetadataClaimSchema;
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,7 +23,7 @@ pub struct JWTHeader {
 
     // https://www.rfc-editor.org/rfc/rfc7515.html#section-4.1.3
     #[serde(rename = "jwk", default)]
-    pub jwk: Option<PublicKeyJwkDTO>,
+    pub jwk: Option<PublicJwk>,
 
     // https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#name-verifier-attestation-jwt
     #[serde(rename = "jwt", default)]
@@ -111,14 +111,14 @@ pub struct ProofOfPossessionKey {
 #[serde(untagged)]
 pub enum ProofOfPossessionJwk {
     Jwk {
-        jwk: PublicKeyJwkDTO,
+        jwk: PublicJwk,
     },
     /// Swiyu SD-JWT is incorrectly formatting the `cnf` claim
-    Swiyu(PublicKeyJwkDTO),
+    Swiyu(PublicJwk),
 }
 
 impl ProofOfPossessionJwk {
-    pub fn jwk(&self) -> &PublicKeyJwkDTO {
+    pub fn jwk(&self) -> &PublicJwk {
         match self {
             ProofOfPossessionJwk::Jwk { jwk } => jwk,
             ProofOfPossessionJwk::Swiyu(jwk) => jwk,

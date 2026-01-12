@@ -1,15 +1,14 @@
 use similar_asserts::assert_eq;
 
 use super::*;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 
 struct TestData {
-    jwk: PublicKeyJwk,
+    jwk: PublicJwk,
     serialized: Vec<u8>,
 }
 fn get_test_key() -> TestData {
     TestData {
-        jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        jwk: PublicJwk::Okp(PublicJwkEc {
             alg: None,
             r#use: None,
             kid: None,

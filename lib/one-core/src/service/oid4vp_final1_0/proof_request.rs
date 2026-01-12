@@ -2,23 +2,19 @@ use std::collections::HashMap;
 
 use dcql::DcqlQuery;
 use shared_types::InteractionId;
+use standardized_types::jwk::{JwkUse, PublicJwk};
+use standardized_types::openid4vp::{
+    ClientMetadata, MdocAlgs, PresentationFormat, SdJwtVcAlgs, W3CJwtAlgs, W3CLdpAlgs,
+};
 use url::Url;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
-use crate::mapper::PublicKeyWithJwk;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::IdentifierType;
-use crate::model::key::JwkUse;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::{
-    AuthorizationRequest, OpenID4VPFinal1_0ClientMetadata,
-};
-use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPMdocAlgs, OpenID4VPVcSdJwtAlgs, OpenID4VPW3CJwtAlgs, OpenID4VPW3CLdpAlgs,
-    OpenID4VpPresentationFormat,
-};
+use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
 use crate::service::error::{ServiceError, ValidationError};
 
 pub(crate) fn generate_authorization_request_params_final1_0(
@@ -27,7 +23,7 @@ pub(crate) fn generate_authorization_request_params_final1_0(
     client_id: String,
     response_uri: String,
     interaction_id: &InteractionId,
-    client_metadata: OpenID4VPFinal1_0ClientMetadata,
+    client_metadata: ClientMetadata,
 ) -> Result<AuthorizationRequest, VerificationProtocolError> {
     Ok(AuthorizationRequest {
         response_type: Some("vp_token".to_string()),
@@ -45,14 +41,14 @@ pub(crate) fn generate_authorization_request_params_final1_0(
     })
 }
 
-fn determine_response_mode_final1_0(metadata: &OpenID4VPFinal1_0ClientMetadata) -> String {
+fn determine_response_mode_final1_0(metadata: &ClientMetadata) -> String {
     if metadata.encrypted_response_enc_values_supported.is_some() {
         "direct_post.jwt".to_string()
     } else {
         "direct_post".to_string()
     }
 }
-pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresentationFormat> {
+pub(crate) fn generate_vp_formats_supported() -> HashMap<String, PresentationFormat> {
     let mut formats = HashMap::new();
 
     let jose_algs = vec!["EdDSA".to_owned(), "ES256".to_owned()];
@@ -61,13 +57,13 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresen
     // only including the entries specified in the final standard for now
     formats.insert(
         "jwt_vc_json".to_owned(),
-        OpenID4VpPresentationFormat::W3CJwtAlgs(OpenID4VPW3CJwtAlgs {
+        PresentationFormat::W3CJwtAlgs(W3CJwtAlgs {
             alg_values: jose_algs.to_owned(),
         }),
     );
     formats.insert(
         "ldp_vc".to_owned(),
-        OpenID4VpPresentationFormat::W3CLdpAlgs(OpenID4VPW3CLdpAlgs {
+        PresentationFormat::W3CLdpAlgs(W3CLdpAlgs {
             proof_type_values: vec!["DataIntegrityProof".to_string()],
             cryptosuite_values: vec![
                 "bbs-2023".to_string(),
@@ -78,14 +74,14 @@ pub(crate) fn generate_vp_formats_supported() -> HashMap<String, OpenID4VpPresen
     );
     formats.insert(
         "mso_mdoc".to_owned(),
-        OpenID4VpPresentationFormat::MdocAlgs(OpenID4VPMdocAlgs {
+        PresentationFormat::MdocAlgs(MdocAlgs {
             issuerauth_alg_values: cose_algs.to_owned(),
             deviceauth_alg_values: cose_algs,
         }),
     );
     formats.insert(
         "dc+sd-jwt".to_owned(),
-        OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+        PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
             sd_jwt_alg_values: jose_algs.to_owned(),
             kb_jwt_alg_values: jose_algs,
         }),
@@ -98,7 +94,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
-) -> Result<Option<PublicKeyWithJwk>, VerificationProtocolError> {
+) -> Result<Option<PublicJwk>, VerificationProtocolError> {
     let Some(verifier_identifier) = proof.verifier_identifier.as_ref() else {
         return Err(VerificationProtocolError::Failed(
             "verifier_identifier is None".to_string(),
@@ -171,7 +167,7 @@ pub(crate) fn select_key_agreement_key_from_proof(
         return Ok(None);
     }
 
-    let key_agreement_key = key_algorithm
+    let key_agreement_jwk = key_algorithm
         .reconstruct_key(
             &candidate_encryption_key.public_key,
             None,
@@ -183,11 +179,9 @@ pub(crate) fn select_key_agreement_key_from_proof(
         .transpose()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-    if let Some(key_agreement_key) = key_agreement_key {
-        Ok(Some(PublicKeyWithJwk {
-            key_id: candidate_encryption_key.id,
-            jwk: key_agreement_key,
-        }))
+    if let Some(mut key_agreement_jwk) = key_agreement_jwk {
+        key_agreement_jwk.set_kid(candidate_encryption_key.id.to_string());
+        Ok(Some(key_agreement_jwk))
     } else {
         Ok(None)
     }

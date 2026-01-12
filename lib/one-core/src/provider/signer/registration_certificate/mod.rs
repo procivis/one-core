@@ -350,7 +350,7 @@ impl RegistrationCertificate {
                     .public_key_as_jwk()
                     .error_while("Converting signing key to JWK")?;
 
-                (key, None, Some(JwtPublicKeyInfo::Jwk(pubkey.into())))
+                (key, None, Some(JwtPublicKeyInfo::Jwk(pubkey)))
             }
             IdentifierType::Certificate => {
                 let certs = ident.certificates.ok_or(SignerError::MappingError(

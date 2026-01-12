@@ -16,6 +16,7 @@ use shared_types::{
     BlobId, CertificateId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId,
     IdentifierId, InteractionId,
 };
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -42,7 +43,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
-use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::proto::certificate_validator::{
@@ -687,7 +688,7 @@ impl OpenID4VCI13 {
         &self,
         interaction_data: &HolderInteractionData,
         holder_did: Option<&DidValue>,
-        holder_key: PublicKeyJwk,
+        holder_key: PublicJwk,
         schema: &CredentialSchema,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
@@ -716,7 +717,7 @@ impl OpenID4VCI13 {
                 {
                     None
                 } else if methods.contains(&"jwk".to_string()) {
-                    Some(holder_key.into())
+                    Some(holder_key)
                 } else {
                     None
                 }
@@ -2372,7 +2373,7 @@ async fn prepare_certificate_identifier(
 }
 
 async fn prepare_key_identifier(
-    public_key: &PublicKeyJwk,
+    public_key: &PublicJwk,
     organisation: &Organisation,
     storage_access: &StorageAccess,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,

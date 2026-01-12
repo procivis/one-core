@@ -4,6 +4,12 @@ use std::sync::Arc;
 
 use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
+use standardized_types::openid4vp::{
+    ClientMetadata, ClientMetadataJwks, GenericAlgs, MdocAlgs, PresentationFormat, SdJwtVcAlgs,
+    W3CJwtAlgs, W3CLdpAlgs,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -13,7 +19,7 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofInputSchema, ProofSchema};
 use crate::proto::identifier_creator::MockIdentifierCreator;
@@ -30,14 +36,12 @@ use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::KeyStorageCapabilities;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::*;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
 use crate::service::error::ServiceError;
-use crate::service::key::dto::{PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO};
 use crate::service::test_utilities::*;
 
 #[derive(Default)]
@@ -70,10 +74,10 @@ fn setup_service(mocks: Mocks) -> OID4VPFinal1_0Service {
     )
 }
 
-fn jwt_format_map() -> HashMap<String, OpenID4VpPresentationFormat> {
+fn jwt_format_map() -> HashMap<String, PresentationFormat> {
     HashMap::from([(
         "jwt_vc_json".to_string(),
-        OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+        PresentationFormat::GenericAlgList(GenericAlgs {
             alg: vec!["EdDSA".to_string(), "ES256".to_string()],
         }),
     )])
@@ -520,7 +524,7 @@ async fn test_get_client_metadata_success() {
                 let signature_key_handle = MockSignaturePublicKeyHandle::default();
                 let mut key_agreement_handle = MockPublicKeyAgreementHandle::default();
                 key_agreement_handle.expect_as_jwk().return_once(|| {
-                    Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                    Ok(PublicJwk::Okp(PublicJwkEc {
                         alg: Some("ECDH-ES".to_string()),
                         r#use: Some(JwkUse::Encryption),
                         kid: None,
@@ -562,27 +566,21 @@ async fn test_get_client_metadata_success() {
     });
     let result = service.get_client_metadata(proof_id).await.unwrap();
     assert_eq!(
-        OpenID4VPFinal1_0ClientMetadata {
-            jwks: Some(OpenID4VPClientMetadataJwks {
-                keys: vec![OpenID4VPClientMetadataJwkDTO {
-                    key_id: "c322aa7f-9803-410d-b891-939b279fb965"
-                        .parse::<Uuid>()
-                        .unwrap()
-                        .into(),
-                    jwk: PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
-                        alg: Some("ECDH-ES".to_string()),
-                        r#use: Some("enc".to_string()),
-                        kid: None,
-                        crv: "123".to_string(),
-                        x: "456".to_string(),
-                        y: None,
-                    }),
-                }]
+        ClientMetadata {
+            jwks: Some(ClientMetadataJwks {
+                keys: vec![PublicJwk::Okp(PublicJwkEc {
+                    alg: Some("ECDH-ES".to_string()),
+                    r#use: Some(JwkUse::Encryption),
+                    kid: Some("c322aa7f-9803-410d-b891-939b279fb965".to_string()),
+                    crv: "123".to_string(),
+                    x: "456".to_string(),
+                    y: None,
+                }),]
             }),
             vp_formats_supported: HashMap::from([
                 (
                     "ldp_vc".to_string(),
-                    OpenID4VpPresentationFormat::W3CLdpAlgs(OpenID4VPW3CLdpAlgs {
+                    PresentationFormat::W3CLdpAlgs(W3CLdpAlgs {
                         proof_type_values: vec!["DataIntegrityProof".to_string()],
                         cryptosuite_values: vec![
                             "bbs-2023".to_string(),
@@ -593,28 +591,28 @@ async fn test_get_client_metadata_success() {
                 ),
                 (
                     "mso_mdoc".to_string(),
-                    OpenID4VpPresentationFormat::MdocAlgs(OpenID4VPMdocAlgs {
+                    PresentationFormat::MdocAlgs(MdocAlgs {
                         issuerauth_alg_values: vec![-7, -8, -9, -19],
                         deviceauth_alg_values: vec![-7, -8, -9, -19],
                     })
                 ),
                 (
                     "dc+sd-jwt".to_string(),
-                    OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+                    PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
                         sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                         kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     })
                 ),
                 (
                     "jwt_vc_json".to_string(),
-                    OpenID4VpPresentationFormat::W3CJwtAlgs(OpenID4VPW3CJwtAlgs {
+                    PresentationFormat::W3CJwtAlgs(W3CJwtAlgs {
                         alg_values: vec!["EdDSA".to_string(), "ES256".to_string()]
                     })
                 ),
             ]),
             encrypted_response_enc_values_supported: Some(vec![
-                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
-                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256
+                EncryptionAlgorithm::A256GCM,
+                EncryptionAlgorithm::A128CBCHS256
             ]),
             ..Default::default()
         },

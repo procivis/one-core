@@ -308,7 +308,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -522,7 +522,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -789,7 +789,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

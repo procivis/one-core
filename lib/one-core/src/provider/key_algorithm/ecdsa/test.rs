@@ -1,11 +1,11 @@
 use similar_asserts::assert_eq;
+use standardized_types::jwk::PrivateJwkEc;
 
 use super::*;
-use crate::model::key::{PrivateKeyJwkEllipticData, PublicKeyJwkEllipticData};
 
 #[test]
 fn test_jwk_to_bytes() {
-    let jwk = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+    let jwk = PublicJwk::Ec(PublicJwkEc {
         alg: None,
         r#use: None,
         kid: None,
@@ -29,17 +29,19 @@ async fn test_generate_key() {
     let key = es256_alg.generate_key().unwrap();
 
     let jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
-    let PublicKeyJwk::Ec(jwk) = jwk else {
+    let PublicJwk::Ec(jwk) = jwk else {
         panic!("invalid key type");
     };
     assert_eq!("P-256", jwk.crv);
 
-    let recipient_jwk = RemoteJwk {
-        kty: "EC".to_string(),
+    let recipient_jwk = PublicJwk::Ec(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
         crv: "P-256".to_string(),
         x: "KRJIXU-pyEcHURRRQ54jTh9PTTmBYog57rQD1uCsvwo".to_string(),
         y: Some("d31DZcRSqaxAUGBt70HB7uCZdufA6uKdL6BvAzUhbJU".to_string()),
-    };
+    });
 
     // verify if it succeeds for given JWK
     let _shared_secret = key
@@ -58,7 +60,7 @@ async fn test_parse_jwk() {
     // given
     let es256_alg = Ecdsa {};
 
-    let private_jwk = PrivateKeyJwk::Ec(PrivateKeyJwkEllipticData {
+    let private_jwk = PrivateJwk::Ec(PrivateJwkEc {
         r#use: None,
         kid: None,
         crv: "P-256".to_string(),
@@ -92,7 +94,7 @@ async fn test_parse_jwk_invalid_crv() {
     // given
     let es256_alg = Ecdsa {};
 
-    let private_jwk = PrivateKeyJwk::Ec(PrivateKeyJwkEllipticData {
+    let private_jwk = PrivateJwk::Ec(PrivateJwkEc {
         r#use: None,
         kid: None,
         crv: "P-512".to_string(),

@@ -7,10 +7,11 @@ use one_crypto::encryption::{decrypt_data, encrypt_data};
 use secrecy::SecretSlice;
 use serde::Deserialize;
 use shared_types::KeyId;
+use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::mapper::params::deserialize_encryption_key;
-use crate::model::key::{Key, PrivateKeyJwk};
+use crate::model::key::{Key, PrivateJwkExt};
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::KeyStorage;
@@ -80,7 +81,7 @@ impl KeyStorage for InternalKeyProvider {
         &self,
         _key_id: KeyId,
         key_type: KeyAlgorithmType,
-        jwk: PrivateKeyJwk,
+        jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
             .get_capabilities()

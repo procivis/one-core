@@ -68,8 +68,7 @@ pub(crate) async fn prepare_bearer_token(
         Some(
             key_algorithm
                 .reconstruct_key(&key.public_key, None, None)?
-                .public_key_as_jwk()?
-                .into(),
+                .public_key_as_jwk()?,
         )
     } else {
         None

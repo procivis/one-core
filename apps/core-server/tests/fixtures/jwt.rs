@@ -21,9 +21,8 @@ pub(crate) async fn signed_jwt<T: Serialize>(
         "JWT".to_string(),
         alg.to_string(),
         None,
-        iss.is_none().then_some(JwtPublicKeyInfo::Jwk(
-            key.key.public_key_as_jwk().unwrap().into(),
-        )),
+        iss.is_none()
+            .then_some(JwtPublicKeyInfo::Jwk(key.key.public_key_as_jwk().unwrap())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now.add(Duration::hours(10))),

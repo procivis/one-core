@@ -1,14 +1,14 @@
 use serde::Deserialize;
+use standardized_types::jwk::PublicJwk;
 use url::Url;
 
 use crate::proto::http_client::HttpClient;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 pub async fn resolve_jwks_url(
     issuer_url: Url,
     http_client: &dyn HttpClient,
-) -> Result<Vec<PublicKeyJwkDTO>, FormatterError> {
+) -> Result<Vec<PublicJwk>, FormatterError> {
     let issuer_url_path = issuer_url.path().trim_end_matches('/').to_string();
 
     const PATH_PREFIX: &str = "/.well-known/jwt-vc-issuer";
@@ -38,11 +38,7 @@ pub async fn resolve_jwks_url(
         ));
     }
 
-    let keys = get_jwks_list(&response, http_client)
-        .await?
-        .into_iter()
-        .map(|key| key.jwk)
-        .collect();
+    let keys = get_jwks_list(&response, http_client).await?;
 
     Ok(keys)
 }
@@ -50,7 +46,7 @@ pub async fn resolve_jwks_url(
 async fn get_jwks_list(
     dto: &SdJwtVcIssuerMetadataDTO,
     http_client: &dyn HttpClient,
-) -> Result<Vec<SdJwtVcIssuerMetadataJwkKeyDTO>, FormatterError> {
+) -> Result<Vec<PublicJwk>, FormatterError> {
     if let Some(jwks) = &dto.jwks {
         Ok(jwks.keys.clone())
     } else if let Some(jwks_uri) = &dto.jwks_uri {
@@ -82,14 +78,5 @@ pub(super) struct SdJwtVcIssuerMetadataDTO {
 
 #[derive(Clone, Debug, Deserialize)]
 pub(super) struct SdJwtVcIssuerMetadataJwkDTO {
-    pub keys: Vec<SdJwtVcIssuerMetadataJwkKeyDTO>,
-}
-
-#[derive(Clone, Debug, Deserialize)]
-pub(super) struct SdJwtVcIssuerMetadataJwkKeyDTO {
-    // TODO: this could be used for matching SD-JWT header with key
-    // #[serde(rename = "kid")]
-    // pub key_id: String,
-    #[serde(flatten)]
-    pub jwk: PublicKeyJwkDTO,
+    pub keys: Vec<PublicJwk>,
 }

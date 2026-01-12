@@ -1,21 +1,20 @@
-use one_dto_mapper::{From, convert_inner};
+use one_dto_mapper::From;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::WalletUnitId;
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::key::PublicKeyJwk;
 use crate::model::wallet_unit::{WalletProviderType, WalletUnit, WalletUnitOs, WalletUnitStatus};
 use crate::provider::credential_formatter::sdjwtvc_formatter::model::SdJwtVcStatus;
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Clone, Debug)]
 pub struct RegisterWalletUnitRequestDTO {
     pub wallet_provider: String,
     pub os: WalletUnitOs,
-    pub public_key: Option<PublicKeyJwkDTO>,
+    pub public_key: Option<PublicJwk>,
     pub proof: Option<String>,
 }
 
@@ -213,8 +212,7 @@ pub struct GetWalletUnitResponseDTO {
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    #[from(with_fn = convert_inner)]
-    pub authentication_key_jwk: Option<PublicKeyJwkDTO>,
+    pub authentication_key_jwk: Option<PublicJwk>,
 }
 
 pub type GetWalletUnitListResponseDTO = GetListResponse<GetWalletUnitResponseDTO>;
@@ -249,7 +247,7 @@ pub struct WalletAppAttestationClaims {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct WalletUnitAttestationClaims {
     pub key_storage: Vec<KeyStorageSecurityLevel>,
-    pub attested_keys: Vec<PublicKeyJwk>,
+    pub attested_keys: Vec<PublicJwk>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
     pub status: Option<SdJwtVcStatus>,
 }

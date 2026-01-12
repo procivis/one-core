@@ -2,12 +2,13 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{MockNativeKeyStorage, Params, SecureElementKeyProvider};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk, PrivateKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
 use crate::provider::key_storage::model::StorageGeneratedKey;
@@ -99,7 +100,7 @@ async fn test_import_failure() {
         .import(
             key_id.into(),
             KeyAlgorithmType::Eddsa,
-            PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+            PrivateJwk::Okp(PrivateJwkEc {
                 r#use: None,
                 kid: None,
                 crv: "".to_string(),

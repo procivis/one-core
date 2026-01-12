@@ -2,11 +2,12 @@ use std::collections::HashSet;
 
 use serde_json::json;
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 
 use super::DidKeys;
 use super::error::DidMethodError;
 use super::model::DidVerificationMethod;
-use crate::model::key::{Key, PublicKeyJwk};
+use crate::model::key::Key;
 
 pub const ENC: &str = "enc";
 pub const SIG: &str = "sig";
@@ -21,7 +22,7 @@ pub fn jwk_context() -> serde_json::Value {
 pub fn jwk_verification_method(
     id: String,
     did: &DidValue,
-    jwk: PublicKeyJwk,
+    jwk: PublicJwk,
 ) -> DidVerificationMethod {
     DidVerificationMethod {
         id,

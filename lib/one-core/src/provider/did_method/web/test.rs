@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use shared_types::DidId;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc, PublicJwkRsa};
 use uuid::Uuid;
 use wiremock::http::Method;
 use wiremock::matchers::{method, path};
@@ -16,9 +17,6 @@ use crate::provider::did_method::keys::{Keys, MinMax};
 use crate::provider::did_method::model::AmountOfKeys;
 use crate::provider::did_method::web::{
     Params, WebDidMethod, did_value_to_url, fetch_did_web_document,
-};
-use crate::service::key::dto::{
-    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkRsaDataDTO,
 };
 
 static JSON_DATA: &str = r#"
@@ -261,7 +259,7 @@ async fn test_did_web_fetch() {
 
     assert_eq!(
         methods[0].public_key_jwk,
-        PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+        PublicJwk::Okp(PublicJwkEc {
             alg: None,
             r#use: None,
             kid: None,
@@ -272,7 +270,7 @@ async fn test_did_web_fetch() {
     );
     assert_eq!(
         methods[1].public_key_jwk,
-        PublicKeyJwkDTO::Okp(PublicKeyJwkEllipticDataDTO {
+        PublicJwk::Okp(PublicJwkEc {
             alg: None,
             r#use: None,
             kid: None,
@@ -283,7 +281,7 @@ async fn test_did_web_fetch() {
     );
     assert_eq!(
         methods[2].public_key_jwk,
-        PublicKeyJwkDTO::Ec(PublicKeyJwkEllipticDataDTO {
+        PublicJwk::Ec(PublicJwkEc {
             alg: None,
             r#use: None,
             kid: None,
@@ -294,7 +292,7 @@ async fn test_did_web_fetch() {
     );
     assert_eq!(
         methods[3].public_key_jwk,
-        PublicKeyJwkDTO::Rsa(PublicKeyJwkRsaDataDTO {
+        PublicJwk::Rsa(PublicJwkRsa {
             alg: None,
             r#use: None,
             kid: None,

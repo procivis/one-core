@@ -5,12 +5,13 @@ use secrecy::SecretSlice;
 use serde_json::json;
 use shared_types::DidId;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyDidMethod;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::provider::did_method::model::{AmountOfKeys, DidDocument, DidVerificationMethod};
 use crate::provider::did_method::{DidKeys, DidMethod};
 use crate::provider::key_algorithm::MockKeyAlgorithm;
@@ -49,7 +50,7 @@ async fn test_did_key_resolve_details_eddsa() {
         .return_once(|_, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Okp(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -87,8 +88,8 @@ async fn test_did_key_resolve_details_eddsa() {
                 id: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp#z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
                 r#type: "JsonWebKey2020".to_owned(),
                 controller: "did:key:z6MkiTBz1ymuepAQ4HEHYSF1H8quG5GLVVQR3djdX3mDooWp".to_owned(),
-                public_key_jwk: PublicKeyJwk::Okp(
-                    PublicKeyJwkEllipticData {
+                public_key_jwk: PublicJwk::Okp(
+                    PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -146,7 +147,7 @@ async fn test_did_key_resolve_details_ecdsa() {
         .return_once(|_, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -184,8 +185,8 @@ async fn test_did_key_resolve_details_ecdsa() {
                 id: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv#zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
                 r#type: "JsonWebKey2020".to_owned(),
                 controller: "did:key:zDnaerx9CtbPJ1q36T5Ln5wYt3MQYeGRG5ehnPAmxcf5mDZpv".to_owned(),
-                public_key_jwk: PublicKeyJwk::Ec(
-                    PublicKeyJwkEllipticData {
+                public_key_jwk: PublicJwk::Ec(
+                    PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,
@@ -247,7 +248,7 @@ async fn test_did_key_resolve_details_bbs() {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle
                 .expect_as_jwk()
-                .return_once(||  Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                .return_once(||  Ok(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,
@@ -281,8 +282,8 @@ async fn test_did_key_resolve_details_bbs() {
                 id: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo#zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
                 r#type: "JsonWebKey2020".to_owned(),
                 controller: "did:key:zUC71hWmiaLNZL97NxPkesvV6jV5UuxT2UUMo9fMGfsh5nV5NLU2HVFdX2DcDn8dQDKvur2U1tMjy34nnjEFF3dfdJgYRCBi5Sxup75PNNZrtJTrqrM23m9tUZ7KX9TM9dT38mo".to_owned(),
-                public_key_jwk: PublicKeyJwk::Okp(
-                    PublicKeyJwkEllipticData {
+                public_key_jwk: PublicJwk::Okp(
+                    PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

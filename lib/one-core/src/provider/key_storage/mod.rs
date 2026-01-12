@@ -1,9 +1,10 @@
 use async_trait;
 use one_crypto::SignerError;
 use shared_types::KeyId;
+use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::key::KeyHandle;
 
 pub mod azure_vault;
@@ -35,7 +36,7 @@ pub trait KeyStorage: Send + Sync {
         &self,
         key_id: KeyId,
         key_algorithm: KeyAlgorithmType,
-        jwk: PrivateKeyJwk,
+        jwk: PrivateJwk,
     ) -> Result<model::StorageGeneratedKey, error::KeyStorageError>;
 
     /// Access to key operations

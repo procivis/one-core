@@ -38,8 +38,6 @@ use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::did_method::jwk::jwk_helpers::encode_to_did;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::key::dto::PublicKeyJwkDTO;
-
 pub mod disclosures;
 pub mod mapper;
 pub mod model;
@@ -86,7 +84,6 @@ pub(crate) async fn format_credential<T: Serialize>(
                             Some(KeyRole::AssertionMethod),
                         )
                         .map(|verification_method| verification_method.public_key_jwk.clone())
-                        .map(PublicKeyJwkDTO::from)
                         .map(|jwk| {
                             let jwk = match additional_inputs.swiyu_proof_of_possession {
                                 false => ProofOfPossessionJwk::Jwk { jwk },
@@ -118,12 +115,9 @@ pub(crate) async fn format_credential<T: Serialize>(
                             FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
                         })?;
 
-                    let jwk = jwk
-                        .public_key_as_jwk()
-                        .map_err(|e| {
-                            FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
-                        })?
-                        .into();
+                    let jwk = jwk.public_key_as_jwk().map_err(|e| {
+                        FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
+                    })?;
 
                     let jwk = match additional_inputs.swiyu_proof_of_possession {
                         false => ProofOfPossessionJwk::Jwk { jwk },
@@ -367,7 +361,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
 
                     let jwk = jwks
                         .iter()
-                        .find(|dto| dto.get_kid().as_deref() == header_key_id)
+                        .find(|dto| dto.kid() == header_key_id)
                         .or(jwks.first())
                         .ok_or(FormatterError::CouldNotExtractCredentials(
                             "empty JWK list".to_string(),

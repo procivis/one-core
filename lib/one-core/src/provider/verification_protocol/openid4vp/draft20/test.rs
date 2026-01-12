@@ -8,6 +8,7 @@ use mockall::predicate::eq;
 use serde_json::{Value, json};
 use shared_types::{CredentialFormat, DidValue};
 use similar_asserts::assert_eq;
+use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -44,9 +45,8 @@ use crate::provider::verification_protocol::dto::ShareResponse;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::draft20::model::OpenID4VC20PresentationVerifierParams;
 use crate::provider::verification_protocol::openid4vp::model::{
-    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams, OpenID4VPAlgs,
+    ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
     OpenID4VPDraftClientMetadata, OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
-    OpenID4VpPresentationFormat,
 };
 use crate::provider::verification_protocol::{
     FormatMapper, TypeToDescriptorMapper, VerificationProtocol, deserialize_interaction_data,
@@ -542,7 +542,7 @@ async fn test_handle_invitation_proof_success() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+            PresentationFormat::GenericAlgList(GenericAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -748,7 +748,7 @@ async fn test_handle_invitation_proof_failed() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+            PresentationFormat::GenericAlgList(GenericAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -936,7 +936,7 @@ fn test_serialize_and_deserialize_interaction_data() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+            PresentationFormat::GenericAlgList(GenericAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),

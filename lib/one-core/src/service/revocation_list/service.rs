@@ -112,7 +112,7 @@ impl RevocationListService {
                         ),
                     ))?;
 
-                let token_issuer_key = key_algorithm.parse_jwk(&token_issuer_key.into())?;
+                let token_issuer_key = key_algorithm.parse_jwk(&token_issuer_key)?;
 
                 if holder_key.key_type != alg_type.to_string()
                     || holder_key.public_key != token_issuer_key.public_key_as_raw()

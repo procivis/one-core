@@ -6,18 +6,22 @@ use one_dto_mapper::convert_inner;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use shared_types::{InteractionId, ProofId};
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
+use standardized_types::openid4vp::{
+    ClientMetadata, GenericAlgs, LdpVcAlgs, PresentationFormat, SdJwtVcAlgs,
+};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::model::{
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, JwePayload, LdpVcAlgs,
-    OpenID4VCVerifierAttestationPayload, OpenID4VPAlgs, OpenID4VPClientMetadataJwkDTO,
-    OpenID4VPHolderInteractionData, OpenID4VPPresentationDefinition,
-    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
+    JwePayload, OpenID4VCVerifierAttestationPayload, OpenID4VPHolderInteractionData,
+    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
+    OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor,
-    OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVcSdJwtAlgs,
-    OpenID4VPVerifierInteractionContent, ProvedCredential, VpSubmissionData,
+    OpenID4VPPresentationDefinitionLimitDisclosurePreference, OpenID4VPVerifierInteractionContent,
+    ProvedCredential, VpSubmissionData,
 };
 use super::{JWTSigner, get_jwt_signer, jwe_presentation};
 use crate::config::core_config::{CoreConfig, FormatType, VerificationProtocolType};
@@ -50,9 +54,8 @@ use crate::provider::verification_protocol::mapper::{
     create_presentation_definition_field, credential_model_to_credential_dto,
 };
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPClientMetadata, OpenID4VPDraftClientMetadata, OpenID4VpPresentationFormat,
+    OpenID4VPClientMetadata, OpenID4VPDraftClientMetadata,
 };
 use crate::provider::verification_protocol::openid4vp::service::create_open_id_for_vp_client_metadata_draft;
 use crate::provider::verification_protocol::openid4vp::{
@@ -162,13 +165,13 @@ pub(crate) fn get_claim_name_by_json_path(
 
 // TODO: This method needs to be refactored as soon as we have a new config value access and remove the static values from this method
 // only for use with Draft implementations
-pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresentationFormat> {
+pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, PresentationFormat> {
     let mut formats = HashMap::new();
-    let algorithms = OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+    let algorithms = PresentationFormat::GenericAlgList(GenericAlgs {
         alg: vec!["EdDSA".to_owned(), "ES256".to_owned()],
     });
 
-    let sd_jwt_algorithms = OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+    let sd_jwt_algorithms = PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
         sd_jwt_alg_values: vec!["EdDSA".to_owned(), "ES256".to_owned()],
         kb_jwt_alg_values: vec!["EdDSA".to_owned(), "ES256".to_owned()],
     });
@@ -177,7 +180,7 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresen
     formats.insert("jwt_vc_json".to_owned(), algorithms.clone());
     formats.insert(
         "ldp_vp".to_owned(),
-        OpenID4VpPresentationFormat::LdpVcAlgs(LdpVcAlgs {
+        PresentationFormat::LdpVcAlgs(LdpVcAlgs {
             proof_type: vec!["DataIntegrityProof".to_owned()],
         }),
     );
@@ -189,7 +192,7 @@ pub(crate) fn create_open_id_for_vp_formats() -> HashMap<String, OpenID4VpPresen
 
 pub fn create_format_map(
     format_type: &FormatType,
-) -> Result<HashMap<String, OpenID4VpPresentationFormat>, VerificationProtocolError> {
+) -> Result<HashMap<String, PresentationFormat>, VerificationProtocolError> {
     match format_type {
         FormatType::Jwt | FormatType::Mdoc => {
             let key = map_to_openid4vp_format(format_type)
@@ -197,7 +200,7 @@ pub fn create_format_map(
                 .to_string();
             Ok(HashMap::from([(
                 key,
-                OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+                PresentationFormat::GenericAlgList(GenericAlgs {
                     alg: vec!["EdDSA".to_string(), "ES256".to_string()],
                 }),
             )]))
@@ -208,7 +211,7 @@ pub fn create_format_map(
                 .to_string();
             Ok(HashMap::from([(
                 key,
-                OpenID4VpPresentationFormat::SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs {
+                PresentationFormat::SdJwtVcAlgs(SdJwtVcAlgs {
                     sd_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                     kb_jwt_alg_values: vec!["EdDSA".to_string(), "ES256".to_string()],
                 }),
@@ -219,7 +222,7 @@ pub fn create_format_map(
         }
         FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => Ok(HashMap::from([(
             "ldp_vc".to_string(),
-            OpenID4VpPresentationFormat::LdpVcAlgs(LdpVcAlgs {
+            PresentationFormat::LdpVcAlgs(LdpVcAlgs {
                 proof_type: vec!["DataIntegrityProof".to_string()],
             }),
         )])),
@@ -388,8 +391,8 @@ pub(crate) async fn encrypted_params(
     interaction_data: &OpenID4VPHolderInteractionData,
     submission_data: VpSubmissionData,
     holder_nonce: &str,
-    verifier_key: OpenID4VPClientMetadataJwkDTO,
-    encryption_algorithm: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+    verifier_key: PublicJwk,
+    encryption_algorithm: EncryptionAlgorithm,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<HashMap<String, String>, VerificationProtocolError> {
     let aud = interaction_data
@@ -414,8 +417,7 @@ pub(crate) async fn encrypted_params(
 
     let response = jwe_presentation::build_jwe(
         payload,
-        verifier_key.jwk.into(),
-        verifier_key.key_id,
+        verifier_key,
         holder_nonce,
         &verifier_nonce,
         encryption_algorithm,
@@ -475,7 +477,7 @@ pub fn extract_presentation_ctx_from_interaction_content(
         issuance_date: None,
         expiration_date: None,
         mdoc_session_transcript: None,
-        verifier_key: content.encryption_key.map(|k| k.jwk.into()),
+        verifier_key: content.encryption_key,
     }
 }
 
@@ -628,8 +630,8 @@ impl From<OpenID4VPDraftClientMetadata> for OpenID4VPClientMetadata {
     }
 }
 
-impl From<OpenID4VPFinal1_0ClientMetadata> for OpenID4VPClientMetadata {
-    fn from(value: OpenID4VPFinal1_0ClientMetadata) -> Self {
+impl From<ClientMetadata> for OpenID4VPClientMetadata {
+    fn from(value: ClientMetadata) -> Self {
         Self::Final1_0(value)
     }
 }
@@ -731,7 +733,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     let proof_of_possession_key = Some(ProofOfPossessionKey {
         key_id: None,
-        jwk: ProofOfPossessionJwk::Jwk { jwk: jwk.into() },
+        jwk: ProofOfPossessionJwk::Jwk { jwk },
     });
 
     let verifier_did = proof

@@ -1,46 +1,43 @@
 use std::sync::Arc;
 
 use serde::Deserialize;
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
+use standardized_types::openid4vp::{ClientMetadata, ClientMetadataJwks};
 use url::Url;
 
 use super::model::{AuthorizationRequest, AuthorizationRequestQueryParams, Params};
-use crate::mapper::PublicKeyWithJwk;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
 use crate::provider::verification_protocol::openid4vp::mapper::{
     format_authorization_request_client_id_scheme_did,
     format_authorization_request_client_id_scheme_verifier_attestation,
     format_authorization_request_client_id_scheme_x509,
 };
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme,
-    OpenID4VPClientMetadataJwkDTO, OpenID4VPClientMetadataJwks, OpenID4VPHolderInteractionData,
+    ClientIdScheme, OpenID4VPHolderInteractionData,
 };
 use crate::service::oid4vp_final1_0::proof_request::generate_vp_formats_supported;
 
 pub(crate) fn create_open_id_for_vp_client_metadata_final1_0(
-    key_agreement_key: Option<PublicKeyWithJwk>,
-) -> Result<OpenID4VPFinal1_0ClientMetadata, VerificationProtocolError> {
+    key_agreement_key: Option<PublicJwk>,
+) -> Result<ClientMetadata, VerificationProtocolError> {
     let vp_formats_supported = generate_vp_formats_supported();
 
-    let mut metadata = OpenID4VPFinal1_0ClientMetadata {
+    let mut metadata = ClientMetadata {
         vp_formats_supported,
         ..Default::default()
     };
 
     if let Some(key_agreement_key) = key_agreement_key {
-        metadata.jwks = Some(OpenID4VPClientMetadataJwks {
-            keys: vec![OpenID4VPClientMetadataJwkDTO {
-                key_id: key_agreement_key.key_id.to_string(),
-                jwk: key_agreement_key.jwk.into(),
-            }],
+        metadata.jwks = Some(ClientMetadataJwks {
+            keys: vec![key_agreement_key],
         });
         metadata.encrypted_response_enc_values_supported = Some(vec![
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A256GCM,
-            AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128CBCHS256,
+            EncryptionAlgorithm::A256GCM,
+            EncryptionAlgorithm::A128CBCHS256,
         ]);
     }
 

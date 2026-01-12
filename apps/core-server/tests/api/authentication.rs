@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use axum::http::Method;
-use one_core::model::key::PublicKeyJwk;
 use one_core::proto::jwt::mapper::bin_to_b64url_string;
 use one_core::proto::jwt::model::JWTPayload;
 use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
@@ -11,6 +10,7 @@ use one_core::provider::key_algorithm::model::GeneratedKey;
 use one_crypto::Signer;
 use one_crypto::signer::eddsa::EDDSASigner;
 use serde_json::json;
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::matchers::{method, path};
@@ -144,7 +144,7 @@ async fn test_sts_authentication_success() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk)),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
@@ -190,7 +190,7 @@ async fn test_sts_authentication_fails_invalid_aud() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.clone().into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
@@ -216,7 +216,7 @@ async fn test_sts_authentication_fails_invalid_iss() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.clone().into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
@@ -243,7 +243,7 @@ async fn test_sts_authentication_fails_expired_token() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.clone().into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now - Duration::from_secs(5)),
@@ -269,7 +269,7 @@ async fn test_sts_authentication_fails_invalid_nbf() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.clone().into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
@@ -296,7 +296,7 @@ async fn test_sts_authentication_fails_invalid_signature() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.clone().into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
@@ -325,7 +325,7 @@ async fn test_sts_authentication_fails_signed_with_different_kid() {
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.clone().into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk.clone())),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),
@@ -343,7 +343,7 @@ async fn test_sts_authentication_fails_signed_with_different_kid() {
     test_sts_authentication_invalid_token(key, jwk, token).await;
 }
 
-async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicKeyJwk, jwt: Jwt<()>) {
+async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicJwk, jwt: Jwt<()>) {
     // given
     let mock_server = MockServer::builder().start().await;
     let config = indoc::formatdoc! {"
@@ -395,9 +395,9 @@ async fn test_sts_authentication_invalid_token(key: GeneratedKey, jwk: PublicKey
     similar_asserts::assert_eq!(resp.status(), 401);
 }
 
-pub(super) fn to_jwk_with_kid(key: &GeneratedKey, kid: Uuid) -> PublicKeyJwk {
+pub(super) fn to_jwk_with_kid(key: &GeneratedKey, kid: Uuid) -> PublicJwk {
     let mut jwk = key.key.public_key_as_jwk().unwrap();
-    if let PublicKeyJwk::Okp(k) = &mut jwk {
+    if let PublicJwk::Okp(k) = &mut jwk {
         k.kid = Some(kid.to_string());
     }
     jwk

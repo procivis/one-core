@@ -10,6 +10,7 @@ use secrecy::SecretSlice;
 use serde_json::{Value, json};
 use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -28,7 +29,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
@@ -743,7 +744,7 @@ async fn test_holder_accept_credential_success() {
         .returning(|_, _, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -890,16 +891,14 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
                         valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
                         update_at: None,
                         invalid_before: None,
-                        issuer: IdentifierDetails::Key(PublicKeyJwk::Ec(
-                            PublicKeyJwkEllipticData {
-                                alg: None,
-                                r#use: None,
-                                kid: None,
-                                crv: "P-256".to_string(),
-                                x: "ShVYnVH7gJEbuydvCuxK3erCLINJQ27Ym_HU-I2uSkQ".to_string(),
-                                y: Some("4oKwI2kCcDpDpC6ZNVpkO9v0UjLKqMNEXuMDHjRMnPM".to_string()),
-                            },
-                        )),
+                        issuer: IdentifierDetails::Key(PublicJwk::Ec(PublicJwkEc {
+                            alg: None,
+                            r#use: None,
+                            kid: None,
+                            crv: "P-256".to_string(),
+                            x: "ShVYnVH7gJEbuydvCuxK3erCLINJQ27Ym_HU-I2uSkQ".to_string(),
+                            y: Some("4oKwI2kCcDpDpC6ZNVpkO9v0UjLKqMNEXuMDHjRMnPM".to_string()),
+                        })),
                         subject: None,
                         claims: CredentialSubject {
                             id: None,
@@ -965,7 +964,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .returning(|_, _, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -1190,7 +1189,7 @@ async fn test_holder_accept_expired_credential_fails() {
         .returning(|_, _, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,
@@ -1335,7 +1334,7 @@ async fn test_holder_reject_credential() {
 
                 let mut public_key = MockSignaturePublicKeyHandle::default();
                 public_key.expect_as_jwk().return_once(|| {
-                    Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    Ok(PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

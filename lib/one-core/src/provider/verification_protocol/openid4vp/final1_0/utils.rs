@@ -6,6 +6,7 @@ use std::sync::Arc;
 use anyhow::Context;
 use serde_json::json;
 use shared_types::DidValue;
+use standardized_types::openid4vp::PresentationFormat;
 use url::Url;
 
 use super::mappers::decode_client_id_with_scheme;
@@ -28,7 +29,7 @@ use crate::provider::verification_protocol::openid4vp::VerificationProtocolError
 use crate::provider::verification_protocol::openid4vp::final1_0::encode_client_id_with_scheme;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData, OpenID4VpPresentationFormat,
+    OpenID4VPHolderInteractionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
@@ -261,8 +262,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         ))?
         .jwk
         .jwk()
-        .to_owned()
-        .into();
+        .to_owned();
 
     alg.parse_jwk(&public_key_cnf)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
@@ -559,8 +559,8 @@ pub(crate) fn validate_interaction_data(
     }
 
     match jwt_vc_json {
-        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
-        Some(OpenID4VpPresentationFormat::W3CJwtAlgs(jwt_vc_json)) => {
+        None | Some(PresentationFormat::Empty(_)) => {}
+        Some(PresentationFormat::W3CJwtAlgs(jwt_vc_json)) => {
             if !is_supported(&jwt_vc_json.alg_values, &jose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "client_metadata.vp_formats_supported entry for 'jwt_vc_json' ({:?}) does not contain a supported algorithm",
@@ -576,8 +576,8 @@ pub(crate) fn validate_interaction_data(
     };
 
     match ldp_vc {
-        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
-        Some(OpenID4VpPresentationFormat::W3CLdpAlgs(ldp_vc)) => {
+        None | Some(PresentationFormat::Empty(_)) => {}
+        Some(PresentationFormat::W3CLdpAlgs(ldp_vc)) => {
             if !is_supported(
                 &ldp_vc.proof_type_values,
                 &["DataIntegrityProof".to_string()],
@@ -610,8 +610,8 @@ pub(crate) fn validate_interaction_data(
     }
 
     match sd_jwt_vc {
-        None | Some(OpenID4VpPresentationFormat::Empty(_)) => {}
-        Some(OpenID4VpPresentationFormat::SdJwtVcAlgs(sd_jwt_vc)) => {
+        None | Some(PresentationFormat::Empty(_)) => {}
+        Some(PresentationFormat::SdJwtVcAlgs(sd_jwt_vc)) => {
             if !is_supported(&sd_jwt_vc.sd_jwt_alg_values, &jose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "client_metadata.vp_formats_supported entry for 'dc+sd-jwt' ({:?}) does not contain a supported algorithm",
@@ -636,14 +636,14 @@ pub(crate) fn validate_interaction_data(
     // As per section B.3.2.3.2, ISO/IEC DTS 18013-7, an empty object is allowed
     match mso_mdoc {
         None
-        | Some(OpenID4VpPresentationFormat::Empty(_))
+        | Some(PresentationFormat::Empty(_))
         // EUDI compatibility shim: allow null object and null values
-        | Some(OpenID4VpPresentationFormat::Other(serde_json::Value::Null)) => {}
-         Some(OpenID4VpPresentationFormat::Other(val)) if *val == json!({
+        | Some(PresentationFormat::Other(serde_json::Value::Null)) => {}
+         Some(PresentationFormat::Other(val)) if *val == json!({
                 "issuerauth_alg_values": null,
                 "deviceauth_alg_values": null
             }) => {}
-        Some(OpenID4VpPresentationFormat::MdocAlgs(mso_mdoc)) => {
+        Some(PresentationFormat::MdocAlgs(mso_mdoc)) => {
             if !is_supported(&mso_mdoc.issuerauth_alg_values, &cose_supported) {
                 return Err(VerificationProtocolError::InvalidRequest(format!(
                     "client_metadata.vp_formats_supported entry for 'mso_mdoc' ({:?}) do not contain supported algorithms",

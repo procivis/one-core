@@ -1,8 +1,8 @@
 use one_dto_mapper::From;
 use shared_types::{WalletUnitAttestedKeyId, WalletUnitId};
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
-use crate::model::key::PublicKeyJwk;
 use crate::model::revocation_list::{RevocationList, RevocationListRelations};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -12,7 +12,7 @@ pub struct WalletUnitAttestedKey {
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub expiration_date: OffsetDateTime,
-    pub public_key_jwk: PublicKeyJwk,
+    pub public_key_jwk: PublicJwk,
 
     // Relations
     pub revocation: Option<WalletUnitAttestedKeyRevocationInfo>,
@@ -35,5 +35,5 @@ pub struct WalletUnitAttestedKeyUpsertRequest {
     pub id: WalletUnitAttestedKeyId,
     pub wallet_unit_id: WalletUnitId,
     pub expiration_date: OffsetDateTime,
-    pub public_key_jwk: PublicKeyJwk,
+    pub public_key_jwk: PublicJwk,
 }

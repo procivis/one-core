@@ -104,7 +104,7 @@ async fn test_authorization(
         "STS".to_string(),
         "EdDSA".to_string(),
         jwk.kid().map(ToString::to_string),
-        Some(JwtPublicKeyInfo::Jwk(jwk.into())),
+        Some(JwtPublicKeyInfo::Jwk(jwk)),
         JWTPayload {
             issued_at: Some(now),
             expires_at: Some(now + Duration::from_secs(3600)),

@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use shared_types::DidValue;
+use standardized_types::openid4vp::PresentationFormat;
 use url::Url;
 
 use super::model::{
@@ -27,7 +28,7 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::openid4vp::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCVerifierAttestationPayload, OpenID4VPClientMetadata,
-    OpenID4VPHolderInteractionData, OpenID4VpPresentationFormat,
+    OpenID4VPHolderInteractionData,
 };
 use crate::provider::verification_protocol::openid4vp::validator::{
     validate_against_redirect_uris, validate_san_dns_matching_client_id,
@@ -207,8 +208,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         ))?
         .jwk
         .jwk()
-        .to_owned()
-        .into();
+        .to_owned();
 
     alg.parse_jwk(&public_key_cnf)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
@@ -511,7 +511,7 @@ pub(crate) fn validate_interaction_data(
     }
 
     if let Some(jwt_vp) = jwt_vp {
-        let OpenID4VpPresentationFormat::GenericAlgList(jwt_vp_json) = jwt_vp else {
+        let PresentationFormat::GenericAlgList(jwt_vp_json) = jwt_vp else {
             return Err(VerificationProtocolError::InvalidRequest(
                 "invalid client_metadata.vp_formats[\"jwt_vp_json\"] structure".to_string(),
             ))?;
@@ -527,7 +527,7 @@ pub(crate) fn validate_interaction_data(
 
     if let Some(ldp_vp) = ldp_vp {
         match ldp_vp {
-            OpenID4VpPresentationFormat::LdpVcAlgs(ldp_vp_json) => {
+            PresentationFormat::LdpVcAlgs(ldp_vp_json) => {
                 if !ldp_vp_json
                     .proof_type
                     .contains(&"DataIntegrityProof".to_string())
@@ -539,7 +539,7 @@ pub(crate) fn validate_interaction_data(
                 }
             }
             // TODO: Backwards compatibility,previous core versions incorrectly encoded the ldp_vp as a GenericAlgList
-            OpenID4VpPresentationFormat::GenericAlgList(algs) => {
+            PresentationFormat::GenericAlgList(algs) => {
                 if !algs.alg.contains(&"EdDSA".to_string()) {
                     Err(VerificationProtocolError::InvalidRequest(
                         "client_metadata.vp_formats[\"ldp_vp\"] must contain 'EdDSA' algorithm"
@@ -558,8 +558,8 @@ pub(crate) fn validate_interaction_data(
     // TODO: Backwards compatibility, see ONE-5021
     if let Some(sd_jwt_vp) = sd_jwt_vp {
         let algorithms = match sd_jwt_vp {
-            OpenID4VpPresentationFormat::GenericAlgList(algs) => &algs.alg,
-            OpenID4VpPresentationFormat::SdJwtVcAlgs(algs) => &algs.sd_jwt_alg_values,
+            PresentationFormat::GenericAlgList(algs) => &algs.alg,
+            PresentationFormat::SdJwtVcAlgs(algs) => &algs.sd_jwt_alg_values,
             _ => {
                 return Err(VerificationProtocolError::InvalidRequest(
                     "invalid client_metadata.vp_formats[\"vc+sd-jwt\"] structure".to_string(),
@@ -577,7 +577,7 @@ pub(crate) fn validate_interaction_data(
     };
 
     match mso_vp {
-        Some(OpenID4VpPresentationFormat::GenericAlgList(mso_mdoc)) => {
+        Some(PresentationFormat::GenericAlgList(mso_mdoc)) => {
             if !mso_mdoc.alg.contains(&"ES256".to_string())
                 && !mso_mdoc.alg.contains(&"EdDSA".to_string())
             {
@@ -588,7 +588,7 @@ pub(crate) fn validate_interaction_data(
             }
         }
         // As per the spec ONE-4912 - the mso_mdoc may contain no algorithms / be an empty object
-        Some(OpenID4VpPresentationFormat::Empty(_)) => {
+        Some(PresentationFormat::Empty(_)) => {
             return Ok(());
         }
         Some(_) => {

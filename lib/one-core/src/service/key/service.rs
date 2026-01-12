@@ -5,11 +5,12 @@ use anyhow::{Context, bail};
 use one_crypto::signer::ecdsa::ECDSASigner;
 use rcgen::{PKCS_ECDSA_P256_SHA256, PKCS_ED25519, SignatureAlgorithm};
 use shared_types::{KeyId, OrganisationId};
+use standardized_types::jwk::PrivateJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::KeyService;
-use super::dto::{GetKeyListResponseDTO, KeyRequestDTO, PrivateKeyJwkDTO};
+use super::dto::{GetKeyListResponseDTO, KeyRequestDTO};
 use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -112,7 +113,7 @@ impl KeyService {
                 .await
                 .error_while("generating key")?,
             Some(jwk) => provider
-                .import(key_id, key_type, jwk.into())
+                .import(key_id, key_type, jwk)
                 .await
                 .error_while("importing key")?,
         };
@@ -350,7 +351,7 @@ impl rcgen::SigningKey for SigningKeyAdapter {
 
 fn extract_jwk(
     mut request: KeyRequestDTO,
-) -> Result<(KeyRequestDTO, Option<PrivateKeyJwkDTO>), ServiceError> {
+) -> Result<(KeyRequestDTO, Option<PrivateJwk>), ServiceError> {
     let Some(raw_jwk) = request
         .storage_params
         .as_object_mut()
@@ -359,7 +360,7 @@ fn extract_jwk(
         return Ok((request, None));
     };
 
-    serde_json::from_value::<PrivateKeyJwkDTO>(raw_jwk)
+    serde_json::from_value::<PrivateJwk>(raw_jwk)
         .map(|jwk| (request, Some(jwk)))
         .map_err(|err| ServiceError::MappingError(format!("failed to decode jwk: {err}")))
 }

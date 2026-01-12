@@ -6,9 +6,9 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::SignerError;
 use one_crypto::signer::bbs::{BBSSigner, BbsDeriveInput, BbsProofInput};
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
+use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyHandle, KeyHandleError, MultiMessageSignatureKeyHandle,
@@ -87,8 +87,8 @@ impl KeyAlgorithm for BBS {
         todo!()
     }
 
-    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError> {
-        if let PublicKeyJwk::Okp(data) = key {
+    fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
+        if let PublicJwk::Okp(data) = key {
             let x = Base64UrlSafeNoPadding::decode_to_vec(&data.x, None)
                 .map_err(|e| KeyAlgorithmError::Failed(e.to_string()))?;
             let y = Base64UrlSafeNoPadding::decode_to_vec(
@@ -112,7 +112,7 @@ impl KeyAlgorithm for BBS {
         }
     }
 
-    fn parse_private_jwk(&self, _jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
+    fn parse_private_jwk(&self, _jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
         Err(KeyAlgorithmError::Failed("invalid kty".to_string()))
     }
 
@@ -152,10 +152,10 @@ impl BBSPublicKeyHandle {
 }
 
 impl MultiMessageSignaturePublicKeyHandle for BBSPublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
         let (x, y) = BBSSigner::get_public_key_coordinates(&self.public_key)
             .map_err(KeyHandleError::Signer)?;
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+        Ok(PublicJwk::Okp(PublicJwkEc {
             alg: None,
             r#use: self.r#use.clone(),
             kid: None,

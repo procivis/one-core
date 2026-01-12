@@ -16,13 +16,14 @@ use one_crypto::{CryptoProvider, Signer, SignerError};
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use shared_types::KeyId;
+use standardized_types::jwk::{PrivateJwk, PublicJwk};
 use time::{Duration, OffsetDateTime};
 use tokio::sync::Mutex;
 use url::Url;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk, PublicKeyJwk};
+use crate::model::key::{Key, PrivateJwkExt};
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::ecdsa::{
     ecdsa_public_key_as_jwk, ecdsa_public_key_as_multibase,
@@ -105,7 +106,7 @@ impl KeyStorage for AzureVaultKeyProvider {
         &self,
         key_id: KeyId,
         key_type: KeyAlgorithmType,
-        jwk: PrivateKeyJwk,
+        jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
             .get_capabilities()
@@ -218,7 +219,7 @@ impl AzureVaultKeyHandle {
 }
 
 impl SignaturePublicKeyHandle for AzureVaultKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
         ecdsa_public_key_as_jwk(&self.key.public_key, None)
     }
 

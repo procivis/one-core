@@ -2,17 +2,16 @@ use std::borrow::Cow;
 
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use tokio_util::either::Either;
 
-use crate::model::key::PublicKeyJwk;
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
 };
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
 
@@ -28,7 +27,7 @@ impl OpenID4VCIProofJWTFormatter {
         jwt: &str,
         verifier: Box<dyn TokenVerifier>,
         expected_nonce: &Option<String>,
-    ) -> Result<Either<(DidValue, String), PublicKeyJwk>, FormatterError> {
+    ) -> Result<Either<(DidValue, String), PublicJwk>, FormatterError> {
         let DecomposedJwt::<ProofOfPossession> {
             header,
             payload,
@@ -104,8 +103,6 @@ impl OpenID4VCIProofJWTFormatter {
                 Either::Left((did, key_id.clone()))
             }
             (None, Some(jwk)) => {
-                let jwk = jwk.into();
-
                 let key_handle =
                     verifier
                         .key_algorithm_provider()
@@ -130,7 +127,7 @@ impl OpenID4VCIProofJWTFormatter {
     pub async fn format_proof(
         issuer_url: String,
         holder_key_id: Option<String>,
-        jwk: Option<PublicKeyJwkDTO>,
+        jwk: Option<PublicJwk>,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
@@ -177,7 +174,7 @@ mod test {
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
     use crate::model::did::KeyRole;
-    use crate::model::key::{Key, PublicKeyJwk};
+    use crate::model::key::Key;
     use crate::proto::certificate_validator::MockCertificateValidator;
     use crate::proto::key_verification::KeyVerification;
     use crate::provider::credential_formatter::model::SignatureProvider;
@@ -216,7 +213,7 @@ mod test {
         let proof = OpenID4VCIProofJWTFormatter::format_proof(
             "https://example.com".to_string(),
             None,
-            Some(jwk.into()),
+            Some(jwk),
             Some("nonce".to_string()),
             auth_fn,
         )
@@ -236,7 +233,7 @@ mod test {
         let proof = OpenID4VCIProofJWTFormatter::format_proof(
             "https://example.com".to_string(),
             None,
-            Some(jwk.into()),
+            Some(jwk),
             Some("nonce".to_string()),
             auth_fn,
         )
@@ -344,7 +341,7 @@ mod test {
             .unwrap()
     }
 
-    fn pk_jwk() -> PublicKeyJwk {
+    fn pk_jwk() -> PublicJwk {
         let key_algorithm = Eddsa;
         let key_handle = key_algorithm
             .reconstruct_key(&public_key(), None, None)

@@ -178,9 +178,7 @@ async fn test_format_credential_a() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Jwk {
-                jwk: dummy_jwk().into()
-            },
+            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
         })
     );
 
@@ -355,9 +353,7 @@ async fn test_format_credential_with_array() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Jwk {
-                jwk: dummy_jwk().into()
-            },
+            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
         })
     );
 
@@ -493,9 +489,7 @@ async fn test_format_credential_with_array_sd() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Jwk {
-                jwk: dummy_jwk().into()
-            },
+            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
         })
     );
 

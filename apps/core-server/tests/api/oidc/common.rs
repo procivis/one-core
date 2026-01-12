@@ -8,7 +8,6 @@ use one_core::provider::key_algorithm::key::KeyHandle;
 use one_core::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use one_core::provider::key_storage::KeyStorage;
 use one_core::provider::key_storage::internal::{InternalKeyProvider, Params};
-use one_core::service::key::dto::PublicKeyJwkDTO;
 use serde_json::json;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -97,8 +96,7 @@ pub async fn proof_jwt_for(
     if let Some(holder_key_id) = holder_key_id {
         header["kid"] = holder_key_id.into();
     } else {
-        header["jwk"] =
-            serde_json::to_value(PublicKeyJwkDTO::from(key.public_key_as_jwk().unwrap())).unwrap();
+        header["jwk"] = serde_json::to_value(key.public_key_as_jwk().unwrap()).unwrap();
     }
 
     let mut payload = json!({

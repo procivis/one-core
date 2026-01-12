@@ -211,7 +211,7 @@ async fn test_register_wallet_unit() {
     let request = RegisterWalletUnitRequestDTO {
         wallet_provider: procivis_one_provider.to_string(),
         os: WalletUnitOs::Android,
-        public_key: Some(holder_jwk.public_key_as_jwk().unwrap().into()),
+        public_key: Some(holder_jwk.public_key_as_jwk().unwrap()),
         proof: Some(proof),
     };
 
@@ -419,7 +419,7 @@ async fn create_proof() -> (String, KeyHandle) {
             algorithm: "ES256".to_string(),
             key_id: None,
             r#type: None,
-            jwk: Some(jwk.clone().into()),
+            jwk: Some(jwk.clone()),
             jwt: None,
             key_attestation: None,
             x5c: None,

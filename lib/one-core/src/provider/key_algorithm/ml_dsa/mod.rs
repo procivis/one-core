@@ -7,9 +7,9 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::signer::crydi3::CRYDI3Signer;
 use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
+use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkMlwe};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkMlweData};
 use crate::provider::key_algorithm::KeyAlgorithm;
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
@@ -84,8 +84,8 @@ impl KeyAlgorithm for MlDsa {
         todo!()
     }
 
-    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError> {
-        if let PublicKeyJwk::Mlwe(data) = key {
+    fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
+        if let PublicJwk::Mlwe(data) = key {
             let Some(alg) = &data.alg else {
                 return Err(KeyAlgorithmError::Failed("alg is required".to_string()));
             };
@@ -106,8 +106,8 @@ impl KeyAlgorithm for MlDsa {
         }
     }
 
-    fn parse_private_jwk(&self, jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
-        if let PrivateKeyJwk::Mlwe(data) = jwk {
+    fn parse_private_jwk(&self, jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
+        if let PrivateJwk::Mlwe(data) = jwk {
             if data.alg != "CRYDI3" {
                 return Err(KeyAlgorithmError::Failed(format!(
                     "unsupported alg {}",
@@ -168,8 +168,8 @@ impl MlDsaPrivateKeyHandle {
 }
 
 impl SignaturePublicKeyHandle for MlDsaPublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        Ok(PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
+        Ok(PublicJwk::Mlwe(PublicJwkMlwe {
             r#use: self.r#use.clone(),
             kid: None,
             alg: Some("CRYDI3".to_string()),

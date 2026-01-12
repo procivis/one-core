@@ -1188,6 +1188,7 @@ dependencies = [
  "shared-types",
  "similar-asserts",
  "sql-data-provider",
+ "standardized-types",
  "strum 0.27.2",
  "thiserror 2.0.17",
  "time",
@@ -3771,6 +3772,7 @@ dependencies = [
  "similar-asserts",
  "sophia_api",
  "sophia_c14n",
+ "standardized-types",
  "strum 0.27.2",
  "tempfile",
  "thiserror 2.0.17",
@@ -3848,6 +3850,7 @@ dependencies = [
  "serde_with",
  "sha2 0.10.9",
  "similar-asserts",
+ "standardized-types",
  "strum 0.27.2",
  "thiserror 2.0.17",
  "tokio",
@@ -5965,6 +5968,7 @@ dependencies = [
  "serde_json",
  "shared-types",
  "similar-asserts",
+ "standardized-types",
  "tempfile",
  "time",
  "tokio",
@@ -6176,6 +6180,19 @@ name = "stable_deref_trait"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
+
+[[package]]
+name = "standardized-types"
+version = "0.1.0"
+dependencies = [
+ "proc-macros",
+ "secrecy",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "strum 0.27.2",
+ "utoipa",
+]
 
 [[package]]
 name = "static-iref"

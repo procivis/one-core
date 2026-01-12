@@ -1,5 +1,4 @@
 use one_core::model::identifier::IdentifierType;
-use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::UpdateOrganisationRequest;
 use one_core::model::revocation_list::{
     RevocationListEntityId, RevocationListEntryStatus, RevocationListPurpose,
@@ -12,6 +11,7 @@ use one_core::model::wallet_unit_attested_key::{
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -134,7 +134,7 @@ async fn test_revoke_wallet_unit_success() {
     );
 }
 
-fn public_key_jwk() -> PublicKeyJwk {
+fn public_key_jwk() -> PublicJwk {
     let key_pair = Ecdsa.generate_key().unwrap();
     key_pair.key.public_key_as_jwk().unwrap()
 }

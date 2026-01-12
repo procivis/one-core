@@ -6,12 +6,12 @@ use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 
 use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::did::KeyRole;
-use crate::model::key::PublicKeyJwk;
 use crate::model::proof::{Proof, ProofStateEnum};
 use crate::model::proof_schema::ProofInputSchema;
 use crate::proto::certificate_validator::CertificateValidator;
@@ -958,7 +958,7 @@ fn check_did_method_allowed(
 }
 
 async fn check_matching_key_with_did(
-    key: &PublicKeyJwk,
+    key: &PublicJwk,
     did: &DidValue,
     did_method_provider: &dyn DidMethodProvider,
 ) -> Result<(), OpenID4VCError> {

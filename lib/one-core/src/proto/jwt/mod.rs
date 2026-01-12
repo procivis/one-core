@@ -12,6 +12,7 @@ use one_crypto::SignerError;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 
 use self::model::{DecomposedJwt, JWTHeader};
 use crate::config::core_config::KeyAlgorithmType;
@@ -21,7 +22,6 @@ use crate::provider::credential_formatter::model::{
     CredentialClaim, PublicKeySource, SignatureProvider, TokenVerifier, VerificationFn,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[cfg(test)]
 mod test;
@@ -64,7 +64,7 @@ pub struct JwtImpl<Subject: SerdeSkippable, CustomPayload> {
 
 #[derive(Debug, Clone)]
 pub enum JwtPublicKeyInfo {
-    Jwk(PublicKeyJwkDTO),
+    Jwk(PublicJwk),
     X5c(Vec<String>),
 }
 
@@ -192,7 +192,7 @@ where
                 },
                 (None, Some(x5c), None) => PublicKeySource::X5c { x5c },
                 (None, None, Some(jwk)) => PublicKeySource::Jwk {
-                    jwk: Cow::Owned(jwk.to_owned().into()),
+                    jwk: Cow::Owned(jwk.to_owned()),
                 },
                 (None, None, None) => {
                     return Err(FormatterError::CouldNotVerify(

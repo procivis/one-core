@@ -9,6 +9,8 @@ use mappers::{create_openid4vp_final1_0_authorization_request, encode_client_id_
 use model::Params;
 use one_crypto::utilities;
 use serde_json::Value;
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
@@ -47,8 +49,7 @@ use crate::provider::verification_protocol::openid4vp::dcql::{
 };
 use crate::provider::verification_protocol::openid4vp::final1_0::mappers::create_open_id_for_vp_client_metadata_final1_0;
 use crate::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm, ClientIdScheme, DcqlSubmission,
-    JwePayload, OpenID4VPClientMetadata, OpenID4VPClientMetadataJwkDTO,
+    ClientIdScheme, DcqlSubmission, JwePayload, OpenID4VPClientMetadata,
     OpenID4VPDirectPostResponseDTO, OpenID4VPHolderInteractionData,
     OpenID4VPVerifierInteractionContent, VpSubmissionData,
 };
@@ -91,8 +92,8 @@ pub(crate) struct OpenID4VPFinal1_0 {
 }
 
 struct EncryptionInfo {
-    verifier_key: OpenID4VPClientMetadataJwkDTO,
-    supported_algorithms: Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    verifier_key: PublicJwk,
+    supported_algorithms: Vec<EncryptionAlgorithm>,
 }
 
 impl OpenID4VPFinal1_0 {
@@ -142,9 +143,7 @@ impl OpenID4VPFinal1_0 {
         let supported_encryption_algs = client_metadata
             .encrypted_response_enc_values_supported
             .clone()
-            .unwrap_or(vec![
-                AuthorizationEncryptedResponseContentEncryptionAlgorithm::A128GCM,
-            ]);
+            .unwrap_or(vec![EncryptionAlgorithm::A128GCM]);
 
         if client_metadata
             .jwks
@@ -679,7 +678,7 @@ fn format_presentation_context(
                 .jwks
                 .as_ref()
                 .and_then(|jwks| jwks.keys.first())
-                .map(|key| key.jwk.clone().into())
+                .cloned()
         } else {
             None
         };
@@ -713,8 +712,8 @@ async fn encrypted_params(
     interaction_data: OpenID4VPHolderInteractionData,
     submission_data: VpSubmissionData,
     holder_nonce: &str,
-    verifier_key: OpenID4VPClientMetadataJwkDTO,
-    encryption_algorithms: Vec<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    verifier_key: PublicJwk,
+    encryption_algorithms: Vec<EncryptionAlgorithm>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<HashMap<String, String>, VerificationProtocolError> {
     let aud = interaction_data
@@ -746,8 +745,7 @@ async fn encrypted_params(
 
     let response = jwe_presentation::build_jwe(
         payload,
-        verifier_key.jwk.into(),
-        verifier_key.key_id,
+        verifier_key,
         holder_nonce,
         &verifier_nonce,
         selected_encryption_alg,

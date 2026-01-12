@@ -130,11 +130,11 @@ mod test {
     use serde_json::json;
     use serde_json_path::JsonPath;
     use similar_asserts::assert_eq;
+    use standardized_types::jwk::{PublicJwk, PublicJwkEc};
     use time::macros::datetime;
 
     use super::*;
     use crate::config::core_config::KeyAlgorithmType;
-    use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
     use crate::proto::http_client::{Method, MockHttpClient, Request, Response, StatusCode};
     use crate::provider::credential_formatter::vcdm::VcdmProof;
     use crate::provider::did_method::DidMethod;
@@ -308,7 +308,7 @@ mod test {
             id: format!("{did}#auth-key-01"),
             r#type: "JsonWebKey2020".to_string(),
             controller: did.to_string(),
-            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: Some("auth-key-01".to_string()),

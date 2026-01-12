@@ -1,13 +1,13 @@
 use anyhow::Context;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use shared_types::DidValue;
+use standardized_types::jwk::{JwkUse, PublicJwk};
 
-use crate::provider::did_method::common::{ENC, SIG, jwk_context, jwk_verification_method};
+use crate::provider::did_method::common::{jwk_context, jwk_verification_method};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
-use crate::service::key::dto::PublicKeyJwkDTO;
 
-pub fn extract_jwk(did: &DidValue) -> Result<PublicKeyJwkDTO, DidMethodError> {
+pub fn extract_jwk(did: &DidValue) -> Result<PublicJwk, DidMethodError> {
     let tail = did
         .as_str()
         .strip_prefix("did:jwk:")
@@ -21,10 +21,10 @@ pub fn extract_jwk(did: &DidValue) -> Result<PublicKeyJwkDTO, DidMethodError> {
         .map_err(|err| DidMethodError::ResolutionError(format!("Failed to deserialize jwk: {err}")))
 }
 
-pub fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocument {
+pub fn generate_document(did: &DidValue, jwk: PublicJwk) -> DidDocument {
     let did_url = format!("{did}#0");
     let urls = Some(vec![did_url.clone()]);
-    let verification_method = jwk_verification_method(did_url, did, jwk.clone().into());
+    let verification_method = jwk_verification_method(did_url, did, jwk.clone());
 
     let mut template = DidDocument {
         context: jwk_context(),
@@ -39,14 +39,14 @@ pub fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocument {
         service: None,
     };
 
-    match jwk.get_use() {
-        Some(val) if val == SIG => {
+    match jwk.r#use() {
+        Some(val) if *val == JwkUse::Signature => {
             template.authentication.clone_from(&urls);
             template.assertion_method.clone_from(&urls);
             template.capability_invocation.clone_from(&urls);
             template.capability_delegation = urls;
         }
-        Some(val) if val == ENC => {
+        Some(val) if *val == JwkUse::Encryption => {
             template.key_agreement = urls;
         }
         _ => {
@@ -61,7 +61,7 @@ pub fn generate_document(did: &DidValue, jwk: PublicKeyJwkDTO) -> DidDocument {
     template
 }
 
-pub fn encode_to_did(jwk: &PublicKeyJwkDTO) -> Result<DidValue, DidMethodError> {
+pub fn encode_to_did(jwk: &PublicJwk) -> Result<DidValue, DidMethodError> {
     let jwk = serde_json::to_string(jwk)
         .map_err(|err| DidMethodError::CouldNotCreate(format!("Failed to serialize jwk: {err}")))?;
 

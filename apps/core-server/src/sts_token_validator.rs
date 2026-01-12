@@ -175,10 +175,10 @@ mod fetcher {
     use std::sync::Arc;
     use std::time::Duration;
 
-    use one_core::model::key::PublicKeyJwk;
     use one_core::provider::key_algorithm::KeyAlgorithm;
     use one_core::provider::key_algorithm::eddsa::Eddsa;
     use one_core::provider::key_algorithm::error::KeyAlgorithmError;
+    use standardized_types::jwk::PublicJwk;
     use thiserror::Error;
     use time::OffsetDateTime;
 
@@ -260,7 +260,7 @@ mod fetcher {
     #[derive(serde::Deserialize)]
     #[serde(rename_all = "camelCase")]
     struct JwksDTO {
-        keys: Vec<PublicKeyJwk>,
+        keys: Vec<PublicJwk>,
     }
 }
 

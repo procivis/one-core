@@ -5,13 +5,13 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_crypto::encryption::EncryptionError;
-use one_crypto::jwe::{PrivateKeyAgreementHandle, RemoteJwk};
+use one_crypto::jwe::PrivateKeyAgreementHandle;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
 use secrecy::{ExposeSecret, SecretSlice};
+use standardized_types::jwk::{JwkUse, PrivateJwk, PublicJwk, PublicJwkEc};
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{JwkUse, PrivateKeyJwk, PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::key::{
     KeyAgreementHandle, KeyHandle, KeyHandleError, PublicKeyAgreementHandle, SignatureKeyHandle,
@@ -117,8 +117,8 @@ impl KeyAlgorithm for Eddsa {
         todo!()
     }
 
-    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<KeyHandle, KeyAlgorithmError> {
-        let PublicKeyJwk::Okp(data) = key else {
+    fn parse_jwk(&self, key: &PublicJwk) -> Result<KeyHandle, KeyAlgorithmError> {
+        let PublicJwk::Okp(data) = key else {
             return Err(KeyAlgorithmError::Failed("invalid kty".to_string()));
         };
 
@@ -153,9 +153,9 @@ impl KeyAlgorithm for Eddsa {
         }
     }
 
-    fn parse_private_jwk(&self, jwk: PrivateKeyJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
+    fn parse_private_jwk(&self, jwk: PrivateJwk) -> Result<GeneratedKey, KeyAlgorithmError> {
         match jwk {
-            PrivateKeyJwk::Okp(data) => {
+            PrivateJwk::Okp(data) => {
                 if data.crv != "Ed25519" {
                     return Err(KeyAlgorithmError::Failed(format!(
                         "unsupported crv {}",
@@ -231,7 +231,7 @@ impl EddsaPrivateKeyHandle {
 }
 
 impl SignaturePublicKeyHandle for EddsaPublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
         eddsa_public_key_as_jwk(&self.public_key, "Ed25519", self.r#use.clone())
     }
 
@@ -259,15 +259,15 @@ impl SignaturePrivateKeyHandle for EddsaPrivateKeyHandle {
 impl PrivateKeyAgreementHandle for EddsaPrivateKeyHandle {
     async fn shared_secret(
         &self,
-        remote_jwk: &RemoteJwk,
+        remote_jwk: &PublicJwk,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         EDDSASigner::shared_secret_x25519(&self.private_key, remote_jwk)
     }
 }
 
 impl PublicKeyAgreementHandle for EddsaPublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
+        Ok(PublicJwk::Okp(PublicJwkEc {
             alg: Some("ECDH-ES".to_string()),
             // the only possible use for a x25519 key
             r#use: Some(JwkUse::Encryption),
@@ -299,8 +299,8 @@ impl X25519PublicKeyHandle {
 }
 
 impl PublicKeyAgreementHandle for X25519PublicKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
-        Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
+        Ok(PublicJwk::Okp(PublicJwkEc {
             alg: Some("ECDH-ES".to_string()),
             // the only possible use for a x25519 key
             r#use: Some(JwkUse::Encryption),
@@ -326,13 +326,13 @@ pub(crate) fn eddsa_public_key_as_jwk(
     public_key: &[u8],
     curve: &str,
     r#use: Option<JwkUse>,
-) -> Result<PublicKeyJwk, KeyHandleError> {
+) -> Result<PublicJwk, KeyHandleError> {
     let alg = match r#use {
         Some(JwkUse::Encryption) => Some("ECDH-ES".to_string()),
         Some(JwkUse::Signature) => Some("EdDSA".to_string()),
         _ => None,
     };
-    Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+    Ok(PublicJwk::Okp(PublicJwkEc {
         alg,
         r#use,
         kid: None,

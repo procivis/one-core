@@ -59,7 +59,7 @@ impl DidMethod for JWKDidMethod {
             .public_key_as_jwk()
             .map_err(|e| DidMethodError::CouldNotCreate(e.to_string()))?;
 
-        encode_to_did(&jwk.into()).map(|did| DidCreated { did, log: None })
+        encode_to_did(&jwk).map(|did| DidCreated { did, log: None })
     }
 
     async fn resolve(&self, did: &DidValue) -> Result<DidDocument, DidMethodError> {

@@ -3,10 +3,11 @@ use std::sync::Arc;
 use one_crypto::signer::eddsa::EDDSASigner;
 use one_crypto::{Signer, SignerError};
 use shared_types::KeyId;
+use standardized_types::jwk::{PrivateJwk, PublicJwk};
 
 use super::secure_element::NativeKeyStorage;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk, PublicKeyJwk};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::eddsa::{
     eddsa_public_key_as_jwk, eddsa_public_key_as_multibase,
 };
@@ -49,7 +50,7 @@ impl KeyStorage for RemoteSecureElementKeyProvider {
         &self,
         _key_id: KeyId,
         _key_algorithm: KeyAlgorithmType,
-        _jwk: PrivateKeyJwk,
+        _jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
             .get_capabilities()
@@ -121,7 +122,7 @@ struct RemoteSecureElementKeyHandle {
 }
 
 impl SignaturePublicKeyHandle for RemoteSecureElementKeyHandle {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
         eddsa_public_key_as_jwk(&self.key.public_key, "Ed25519", None)
     }
 

@@ -7,6 +7,7 @@ use one_crypto::hasher::sha256::SHA256;
 use one_crypto::utilities::generate_alphanumeric;
 use one_dto_mapper::convert_inner;
 use shared_types::{EntityId, IdentifierId, OrganisationId, WalletUnitId};
+use standardized_types::jwk::PublicJwk;
 use time::Duration;
 use uuid::Uuid;
 
@@ -38,7 +39,7 @@ use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
 use crate::model::identifier::{IdentifierRelations, IdentifierType};
-use crate::model::key::{KeyRelations, PublicKeyJwk};
+use crate::model::key::KeyRelations;
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::revocation_list::RevocationListRelations;
 use crate::model::wallet_unit::{
@@ -159,8 +160,7 @@ impl WalletProviderService {
             let public_key_jwk = request
                 .public_key
                 .clone()
-                .ok_or(WalletProviderError::MissingPublicKey)?
-                .into();
+                .ok_or(WalletProviderError::MissingPublicKey)?;
             let public_key = self.parse_jwk(&proof.header.algorithm, &public_key_jwk)?;
             self.verify_device_signing_proof(
                 &proof,
@@ -258,7 +258,7 @@ impl WalletProviderService {
         request: RegisterWalletUnitRequestDTO,
         organisation: Organisation,
         wallet_provider_type: WalletProviderType,
-        public_key_jwk: PublicKeyJwk,
+        public_key_jwk: PublicJwk,
     ) -> Result<RegisterWalletUnitResponseDTO, ServiceError> {
         let now = self.clock.now_utc();
         let organisation_id = organisation.id;
@@ -387,35 +387,35 @@ impl WalletProviderService {
         // This is necessary as the attestation key might have limitations in regard to general
         // purpose crypto signatures.
         // E.g. on iOS the attestation key is only able to produce WebAuthn signatures.
-        let jwk = if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
-            let device_signing_key_proof =
-                Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)?;
-            let (_, alg) = self
-                .key_algorithm_provider
-                .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
-                .ok_or(MissingProviderError::KeyAlgorithmProvider(
-                    KeyAlgorithmProviderError::MissingAlgorithmImplementation(
-                        device_signing_key_proof.header.algorithm.clone(),
-                    ),
-                ))?;
-            let device_signing_key =
-                PublicKeyJwk::from(device_signing_key_proof.header.jwk.clone().ok_or(
+        let jwk =
+            if let Some(device_signing_key_proof) = &request.device_signing_key_proof {
+                let device_signing_key_proof =
+                    Jwt::<NoncePayload>::decompose_token(device_signing_key_proof)?;
+                let (_, alg) = self
+                    .key_algorithm_provider
+                    .key_algorithm_from_jose_alg(&device_signing_key_proof.header.algorithm)
+                    .ok_or(MissingProviderError::KeyAlgorithmProvider(
+                        KeyAlgorithmProviderError::MissingAlgorithmImplementation(
+                            device_signing_key_proof.header.algorithm.clone(),
+                        ),
+                    ))?;
+                let device_signing_key = device_signing_key_proof.header.jwk.clone().ok_or(
                     ServiceError::MappingError(
                         "Missing JWK in device signing key header".to_string(),
                     ),
-                )?);
-            let device_signing_key_handle = alg.parse_jwk(&device_signing_key)?;
-            self.verify_device_signing_proof(
-                &device_signing_key_proof,
-                &device_signing_key_handle,
-                config_params.device_auth_leeway,
-                Some(wallet_unit_nonce),
-            )
-            .await?;
-            device_signing_key
-        } else {
-            attested_public_key.public_key_as_jwk()?
-        };
+                )?;
+                let device_signing_key_handle = alg.parse_jwk(&device_signing_key)?;
+                self.verify_device_signing_proof(
+                    &device_signing_key_proof,
+                    &device_signing_key_handle,
+                    config_params.device_auth_leeway,
+                    Some(wallet_unit_nonce),
+                )
+                .await?;
+                device_signing_key
+            } else {
+                attested_public_key.public_key_as_jwk()?
+            };
 
         self.wallet_unit_repository
             .update_wallet_unit(
@@ -791,7 +791,7 @@ impl WalletProviderService {
         &self,
         wallet_provider_name: &str,
         config_params: &WalletProviderParams,
-        holder_binding_jwk: PublicKeyJwk,
+        holder_binding_jwk: PublicJwk,
         auth_fn: &AuthenticationFn,
         issuer_public_key_info: JwtPublicKeyInfo,
     ) -> Result<Jwt<WalletAppAttestationClaims>, ServiceError> {
@@ -822,7 +822,7 @@ impl WalletProviderService {
                 proof_of_possession_key: Some(ProofOfPossessionKey {
                     key_id: None,
                     jwk: ProofOfPossessionJwk::Jwk {
-                        jwk: holder_binding_jwk.into(),
+                        jwk: holder_binding_jwk,
                     },
                 }),
                 custom: WalletAppAttestationClaims {
@@ -839,7 +839,7 @@ impl WalletProviderService {
         &self,
         wallet_provider_name: &str,
         config_params: &WalletProviderParams,
-        holder_binding_jwk: PublicKeyJwk,
+        holder_binding_jwk: PublicJwk,
         key_storage_security_level: KeyStorageSecurityLevel,
         auth_fn: &AuthenticationFn,
         issuer_public_key_info: JwtPublicKeyInfo,
@@ -976,7 +976,7 @@ impl WalletProviderService {
                     .map_err(|e| {
                         ServiceError::MappingError(format!("Failed to get key handle: {e}"))
                     })?;
-                JwtPublicKeyInfo::Jwk(key_handle.public_key_as_jwk()?.into())
+                JwtPublicKeyInfo::Jwk(key_handle.public_key_as_jwk()?)
             }
             IdentifierType::Certificate => {
                 let cert = issuer_identifier
@@ -1003,7 +1003,7 @@ impl WalletProviderService {
     fn parse_jwk(
         &self,
         key_algorithm: &str,
-        jwk: &PublicKeyJwk,
+        jwk: &PublicJwk,
     ) -> Result<KeyHandle, WalletProviderError> {
         let (_, key_algorithm) = self
             .key_algorithm_provider
@@ -1053,7 +1053,7 @@ impl WalletProviderService {
         validate_proof_payload(proof, leeway, self.base_url.as_deref(), nonce)
     }
 
-    async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicKeyJwk, ServiceError> {
+    pub async fn verify_pop(&self, pop: &str, leeway: u64) -> Result<PublicJwk, ServiceError> {
         let pop_token = Jwt::<NoncePayload>::decompose_token(pop)?;
         let jwk = pop_token
             .header
@@ -1061,8 +1061,7 @@ impl WalletProviderService {
             .clone()
             .ok_or(WalletProviderError::CouldNotVerifyProof(
                 "Missing jwk".to_string(),
-            ))?
-            .into();
+            ))?;
         let key_handle = self.parse_jwk(&pop_token.header.algorithm, &jwk)?;
         key_handle
             .verify(pop_token.unverified_jwt.as_bytes(), &pop_token.signature)
@@ -1206,7 +1205,7 @@ impl WalletProviderService {
 }
 
 struct KeyAttestationInput {
-    holder_jwk: PublicKeyJwk,
+    holder_jwk: PublicJwk,
     security_level: KeyStorageSecurityLevel,
     key: AttestedKeyInput,
 }

@@ -5,6 +5,7 @@ use one_crypto::{CryptoProvider, CryptoProviderImpl, Hasher, MockHasher};
 use secrecy::SecretString;
 use serde_json::json;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -16,7 +17,7 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use super::dto::AzureHsmGetTokenResponse;
 use super::{AzureVaultKeyProvider, Params};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk, PrivateKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -269,7 +270,7 @@ async fn test_azure_vault_import() {
         .import(
             Uuid::new_v4().into(),
             KeyAlgorithmType::Ecdsa,
-            PrivateKeyJwk::Ec(PrivateKeyJwkEllipticData {
+            PrivateJwk::Ec(PrivateJwkEc {
                 r#use: None,
                 kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
                 crv: "P-256".to_string(),
@@ -294,7 +295,7 @@ async fn test_azure_vault_import_unsupported_key_type() {
         .import(
             Uuid::new_v4().into(),
             KeyAlgorithmType::Eddsa,
-            PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+            PrivateJwk::Okp(PrivateJwkEc {
                 r#use: None,
                 kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
                 crv: "P-256".to_string(),
@@ -322,7 +323,7 @@ async fn test_azure_vault_import_jwk_invalid_key_type() {
         .import(
             Uuid::new_v4().into(),
             KeyAlgorithmType::Ecdsa,
-            PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+            PrivateJwk::Okp(PrivateJwkEc {
                 r#use: None,
                 kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
                 crv: "P-256".to_string(),

@@ -12,6 +12,7 @@ members = [
   "lib/one-core",
   "lib/one-crypto",
   "lib/shared-types",
+  "lib/standardized-types",
   "lib/sql-data-provider",
 
   "platforms/uniffi",
@@ -57,6 +58,7 @@ serde_urlencoded   = { version = "0.7" }
 serde_with         = { version = "3.8", features = ["json", "time_0_3"] }
 shadow-rs          = { version = "1.5" }
 shared-types       = { version = "0.1.0", path = "lib/shared-types", features = ["sea-orm"] }
+standardized-types = { version = "0.1.0", path = "lib/standardized-types"}
 similar-asserts    = { version = "1.7" }
 strum              = { version = "0.27", features = ["derive"] }
 tempfile           = { version = "3.10" }

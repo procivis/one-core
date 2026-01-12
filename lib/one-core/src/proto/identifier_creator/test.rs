@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use assert2::let_assert;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -13,7 +14,7 @@ use super::{
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
 use crate::model::certificate::{Certificate, CertificateState, GetCertificateList};
 use crate::model::identifier::{GetIdentifierList, Identifier};
-use crate::model::key::{GetKeyList, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::{GetKeyList, Key};
 use crate::proto::certificate_validator::{MockCertificateValidator, ParsedCertificate};
 use crate::proto::transaction_manager::NoTransactionManager;
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
@@ -266,7 +267,7 @@ async fn test_get_or_create_remote_identifier_key_existing() {
     let (identifier, relation) = creator
         .get_or_create_remote_identifier(
             &Some(dummy_organisation(None)),
-            &IdentifierDetails::Key(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,

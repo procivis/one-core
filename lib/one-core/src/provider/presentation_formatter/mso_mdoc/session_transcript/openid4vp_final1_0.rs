@@ -2,8 +2,8 @@ use ciborium::cbor;
 use coset::CborSerializable;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use sha2::{Digest, Sha256};
+use standardized_types::jwk::PublicJwk;
 
-use crate::model::key::PublicKeyJwk;
 use crate::provider::credential_formatter::mdoc_formatter::util::Bstr;
 
 /// OpenID4VP Final Handover
@@ -20,7 +20,7 @@ impl OID4VPFinal1_0Handover {
         client_id: &str,
         response_uri: &str,
         nonce: &str,
-        verifier_key: Option<&PublicKeyJwk>,
+        verifier_key: Option<&PublicJwk>,
     ) -> Result<Self, anyhow::Error> {
         let client_id = client_id.trim_end_matches('/');
         let response_uri = response_uri.trim_end_matches('/');
@@ -76,33 +76,33 @@ impl<'a> Deserialize<'a> for OID4VPFinal1_0Handover {
 ///
 /// - inspired by: <https://docs.rs/biscuit/0.7.0/src/biscuit/jwk.rs.html#276>
 /// - using SHA-256 hash function
-fn jwk_thumbprint(verifier_key: &PublicKeyJwk) -> Result<Vec<u8>, anyhow::Error> {
+fn jwk_thumbprint(verifier_key: &PublicJwk) -> Result<Vec<u8>, anyhow::Error> {
     use serde::ser::SerializeMap;
 
     let mut serializer = serde_json::Serializer::new(Vec::new());
     let mut map = serializer.serialize_map(None)?;
     match verifier_key {
-        PublicKeyJwk::Ec(params) => {
+        PublicJwk::Ec(params) => {
             map.serialize_entry("crv", &params.crv)?;
             map.serialize_entry("kty", "EC")?;
             map.serialize_entry("x", &params.x)?;
             map.serialize_entry("y", &params.y)?;
         }
-        PublicKeyJwk::Rsa(params) => {
+        PublicJwk::Rsa(params) => {
             map.serialize_entry("e", &params.e)?;
             map.serialize_entry("kty", "RSA")?;
             map.serialize_entry("n", &params.n)?;
         }
-        PublicKeyJwk::Okp(params) => {
+        PublicJwk::Okp(params) => {
             map.serialize_entry("crv", &params.crv)?;
             map.serialize_entry("kty", "OKP")?;
             map.serialize_entry("x", &params.x)?;
         }
-        PublicKeyJwk::Oct(params) => {
+        PublicJwk::Oct(params) => {
             map.serialize_entry("k", &params.k)?;
             map.serialize_entry("kty", "oct")?;
         }
-        PublicKeyJwk::Mlwe(params) => {
+        PublicJwk::Mlwe(params) => {
             map.serialize_entry("alg", &params.alg)?;
             map.serialize_entry("kty", "MLWE")?;
             map.serialize_entry("x", &params.x)?;
@@ -116,9 +116,9 @@ fn jwk_thumbprint(verifier_key: &PublicKeyJwk) -> Result<Vec<u8>, anyhow::Error>
 mod tests {
     use hex_literal::hex;
     use similar_asserts::assert_eq;
+    use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 
     use super::OID4VPFinal1_0Handover;
-    use crate::model::key::{JwkUse, PublicKeyJwk, PublicKeyJwkEllipticData};
 
     #[tokio::test]
     async fn test_oid4vp_handover_compute_against_test_vector() {
@@ -127,7 +127,7 @@ mod tests {
             "82714f70656e494434565048616e646f7665725820048bc053c00442af9b8eed494cefdd9d95240d254b046b11b68013722aad38ac"
         );
 
-        let jwk = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+        let jwk = PublicJwk::Ec(PublicJwkEc {
             alg: Some("ES256".to_string()),
             r#use: Some(JwkUse::Encryption),
             kid: Some("1".to_string()),

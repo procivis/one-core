@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use mockall::predicate::eq;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::jwk::JWKDidMethod;
 use crate::provider::did_method::model::{
@@ -40,7 +41,7 @@ async fn test_resolve_jwk_did_without_use_field() {
             id: "did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9#0".to_string(),
             r#type: "JsonWebKey2020".to_string(),
             controller: "did:jwk:eyJjcnYiOiJQLTI1NiIsImt0eSI6IkVDIiwieCI6ImFjYklRaXVNczNpOF91c3pFakoydHBUdFJNNEVVM3l6OTFQSDZDZEgyVjAiLCJ5IjoiX0tjeUxqOXZXTXB0bm1LdG00NkdxRHo4d2Y3NEk1TEtncmwyR3pIM25TRSJ9".to_string(),
-            public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,
@@ -81,7 +82,7 @@ async fn test_resolve_jwk_did_with_use_enc_field() {
             id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9#0".to_string(),
             r#type: "JsonWebKey2020".to_string(),
             controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJYMjU1MTkiLCJ1c2UiOiJlbmMiLCJ4IjoiM3A3YmZYdDl3YlRUVzJIQzdPUTFOei1EUThoYmVHZE5yZngtRkctSUswOCJ9".to_string(),
-            public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            public_key_jwk: PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: Some(JwkUse::Encryption),
                 kid: None,
@@ -122,7 +123,7 @@ async fn test_resolve_jwk_did_with_use_sig_field() {
             id: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ#0".to_string(),
             r#type: "JsonWebKey2020".to_string(),
             controller: "did:jwk:eyJrdHkiOiJPS1AiLCJjcnYiOiJFZDI1NTE5IiwidXNlIjoic2lnIiwieCI6IjNwN2JmWHQ5d2JUVFcySEM3T1ExTnotRFE4aGJlR2ROcmZ4LUZHLUlLMDgifQ".to_string(),
-            public_key_jwk: PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            public_key_jwk: PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: Some(JwkUse::Signature),
                 kid: None,
@@ -184,7 +185,7 @@ async fn test_create_did_jwk_success() {
         .return_once(|_, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Ec(PublicJwkEc {
                     alg: None,
                     r#use: None,
                     kid: None,

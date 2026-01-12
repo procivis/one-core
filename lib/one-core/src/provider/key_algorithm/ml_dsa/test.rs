@@ -1,11 +1,11 @@
 use similar_asserts::assert_eq;
+use standardized_types::jwk::PrivateJwkMlwe;
 
 use super::*;
-use crate::model::key::PrivateKeyJwkMlweData;
 
 #[test]
 fn test_jwk_to_bytes() {
-    let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+    let jwk = PublicJwk::Mlwe(PublicJwkMlwe {
         r#use: None,
         kid: None,
         alg: Some("CRYDI3".to_owned()),
@@ -24,7 +24,7 @@ fn test_jwk_to_bytes() {
 
 #[test]
 fn test_jwk_to_bytes_fail_wrong_variant() {
-    let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+    let jwk = PublicJwk::Mlwe(PublicJwkMlwe {
         r#use: None,
         kid: None,
         alg: Some("CRYDI5".to_owned()), // Incorrect variant
@@ -37,7 +37,7 @@ fn test_jwk_to_bytes_fail_wrong_variant() {
 
 #[test]
 fn test_jwk_to_bytes_fail_missing_alg() {
-    let jwk = PublicKeyJwk::Mlwe(PublicKeyJwkMlweData {
+    let jwk = PublicJwk::Mlwe(PublicJwkMlwe {
         r#use: None,
         kid: None,
         alg: None,
@@ -52,7 +52,7 @@ async fn test_parse_jwk() {
     // given
     let ml_dsa = MlDsa;
 
-    let private_jwk = PrivateKeyJwk::Mlwe(PrivateKeyJwkMlweData {
+    let private_jwk = PrivateJwk::Mlwe(PrivateJwkMlwe {
         r#use: None,
         kid: None,
         alg: "CRYDI3".to_owned(),
@@ -390,7 +390,7 @@ async fn test_parse_jwk_invalid_alg() {
     // given
     let ml_dsa = MlDsa;
 
-    let private_jwk = PrivateKeyJwk::Mlwe(PrivateKeyJwkMlweData {
+    let private_jwk = PrivateJwk::Mlwe(PrivateJwkMlwe {
         r#use: None,
         kid: None,
         alg: "P-512".to_string(),

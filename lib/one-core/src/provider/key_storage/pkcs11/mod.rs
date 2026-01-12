@@ -1,8 +1,9 @@
 use one_crypto::SignerError;
 use shared_types::KeyId;
+use standardized_types::jwk::PrivateJwk;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::key_storage::KeyStorage;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -29,7 +30,7 @@ impl KeyStorage for PKCS11KeyProvider {
         &self,
         _key_id: KeyId,
         _key_algorithm: KeyAlgorithmType,
-        _jwk: PrivateKeyJwk,
+        _jwk: PrivateJwk,
     ) -> Result<StorageGeneratedKey, KeyStorageError> {
         if !self
             .get_capabilities()

@@ -1,4 +1,5 @@
 use shared_types::{DidId, DidValue};
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -12,7 +13,7 @@ use crate::model::identifier::{
     Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierState,
     IdentifierType,
 };
-use crate::model::key::{Key, KeyFilterValue, KeyListQuery, PublicKeyJwk};
+use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
@@ -196,7 +197,7 @@ impl IdentifierCreatorProto {
     pub(super) async fn get_or_create_key_identifier(
         &self,
         organisation: Option<&Organisation>,
-        public_key: &PublicKeyJwk,
+        public_key: &PublicJwk,
         role: IdentifierRole,
     ) -> Result<(Key, Identifier), ServiceError> {
         let parsed_key = self.key_algorithm_provider.parse_jwk(public_key)?;

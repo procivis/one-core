@@ -10,6 +10,7 @@ use coset::{RegisteredLabelWithPrivate, SignatureContext, iana};
 use one_crypto::SignerError;
 use serde::Deserialize;
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 use url::Url;
 use uuid::Uuid;
 
@@ -22,7 +23,6 @@ use self::session_transcript::{Handover, SessionTranscript};
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::mapper::{decode_cbor_base64, encode_cbor_base64};
-use crate::model::key::PublicKeyJwk;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -384,7 +384,7 @@ async fn try_verify_device_signed(
     session_transcript: SessionTranscript,
     doctype: &str,
     signature: &coset::CoseSign1,
-    holder_key: &PublicKeyJwk,
+    holder_key: &PublicJwk,
     verify_fn: &VerificationFn,
 ) -> Result<(), FormatterError> {
     let device_namespaces = EmbeddedCbor::new([].into()).map_err(|err| {
@@ -435,7 +435,7 @@ async fn try_verify_detached_signature_with_provider(
     device_signature: &coset::CoseSign1,
     payload: &[u8],
     external_aad: &[u8],
-    issuer_key: &PublicKeyJwk,
+    issuer_key: &PublicJwk,
     verifier: &dyn TokenVerifier,
 ) -> Result<(), SignerError> {
     let sig_data = coset::sig_structure_data(

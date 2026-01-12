@@ -1,13 +1,13 @@
 use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::{OrganisationId, WalletUnitId};
+use standardized_types::jwk::PublicJwk;
 use strum::{AsRefStr, Display};
 use time::OffsetDateTime;
 
 use super::common::GetListResponse;
 use super::list_query::ListQuery;
 use crate::config;
-use crate::model::key::PublicKeyJwk;
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit_attested_key::{
@@ -24,7 +24,7 @@ pub struct WalletUnit {
     pub status: WalletUnitStatus,
     pub wallet_provider_type: WalletProviderType,
     pub wallet_provider_name: String,
-    pub authentication_key_jwk: Option<PublicKeyJwk>,
+    pub authentication_key_jwk: Option<PublicJwk>,
     pub last_issuance: Option<OffsetDateTime>,
     pub nonce: Option<String>,
 
@@ -98,6 +98,6 @@ pub type GetWalletUnitList = GetListResponse<WalletUnit>;
 pub struct UpdateWalletUnitRequest {
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<OffsetDateTime>,
-    pub authentication_key_jwk: Option<PublicKeyJwk>,
+    pub authentication_key_jwk: Option<PublicJwk>,
     pub attested_keys: Option<Vec<WalletUnitAttestedKey>>,
 }

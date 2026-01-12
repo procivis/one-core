@@ -5,7 +5,8 @@ use ct_codecs::{Base64UrlSafe, Base64UrlSafeNoPadding, Decoder, Encoder};
 use one_dto_mapper::{convert_inner, try_convert_inner};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
-use shared_types::{CredentialId, KeyId};
+use shared_types::CredentialId;
+use standardized_types::jwk::{JwkUse, PublicJwk};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -20,7 +21,6 @@ use crate::model::credential_schema::{
 };
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
-use crate::model::key::{JwkUse, PublicKeyJwk};
 use crate::model::proof::Proof;
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -210,16 +210,11 @@ pub(crate) fn extracted_credential_to_model(
     })
 }
 
-pub(crate) struct PublicKeyWithJwk {
-    pub key_id: KeyId,
-    pub jwk: PublicKeyJwk,
-}
-
 pub(crate) fn get_encryption_key_jwk_from_proof(
     proof: &Proof,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     config: &CoreConfig,
-) -> Result<Option<PublicKeyWithJwk>, ServiceError> {
+) -> Result<Option<PublicJwk>, ServiceError> {
     let verifier_identifier =
         proof
             .verifier_identifier
@@ -294,12 +289,11 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
         None
     };
 
-    Ok(Some(PublicKeyWithJwk {
-        key_id: encryption_key.id,
-        jwk: key_algorithm
-            .reconstruct_key(&encryption_key.public_key, None, r#use)?
-            .public_key_as_jwk()?,
-    }))
+    let mut jwk = key_algorithm
+        .reconstruct_key(&encryption_key.public_key, None, r#use)?
+        .public_key_as_jwk()?;
+    jwk.set_kid(encryption_key.id.to_string());
+    Ok(Some(jwk))
 }
 
 pub(crate) fn encode_cbor_base64<T: Serialize>(t: T) -> Result<String, FormatterError> {

@@ -7,6 +7,7 @@ use mockall::predicate::eq;
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -16,7 +17,6 @@ use super::{ConfigParams, MqttHolderTransport, generate_session_keys};
 use crate::config::core_config::{Fields, KeyAlgorithmType, TransportType};
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
 use crate::proto::mqtt_client::{MockMqttClient, MockMqttTopic, MqttClient};
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
@@ -207,7 +207,7 @@ async fn test_handle_invitation_success() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: did.to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

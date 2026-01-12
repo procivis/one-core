@@ -1,11 +1,11 @@
 use similar_asserts::assert_eq;
+use standardized_types::jwk::PrivateJwkEc;
 
 use super::*;
-use crate::model::key::{PrivateKeyJwkEllipticData, PublicKeyJwkEllipticData};
 
 #[test]
 fn test_jwk_to_bytes() {
-    let jwk = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+    let jwk = PublicJwk::Okp(PublicJwkEc {
         alg: None,
         r#use: None,
         kid: None,
@@ -29,7 +29,7 @@ async fn test_generate_ed25519() {
     let key = eddsa.generate_key().unwrap();
 
     let jwk = key.key.key_agreement().unwrap().public().as_jwk().unwrap();
-    let PublicKeyJwk::Okp(jwk) = jwk else {
+    let PublicJwk::Okp(jwk) = jwk else {
         panic!("invalid key type");
     };
     assert_eq!("X25519", jwk.crv);
@@ -39,12 +39,14 @@ async fn test_generate_ed25519() {
 async fn test_shared_secret_against_ed25519() {
     let key = Eddsa.generate_key().unwrap();
 
-    let recipient_jwk = RemoteJwk {
-        kty: "OKP".to_string(),
+    let recipient_jwk = PublicJwk::Okp(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
         crv: "Ed25519".to_string(),
         x: "0yErlKcMCx5DG6zmgoUnnFvLBEQuuYWQSYILwV2O9TM".to_string(),
         y: None,
-    };
+    });
 
     let _shared_secret = key
         .key
@@ -61,12 +63,14 @@ async fn test_shared_secret_against_ed25519() {
 async fn test_shared_secret_against_x25519() {
     let key = Eddsa.generate_key().unwrap();
 
-    let recipient_jwk = RemoteJwk {
-        kty: "OKP".to_string(),
+    let recipient_jwk = PublicJwk::Okp(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
         crv: "X25519".to_string(),
         x: "SzTHbXw_wfwSvQumRdHmSTW7tGTDWNKIt7ABGS2E9kc".to_string(),
         y: None,
-    };
+    });
 
     let _shared_secret = key
         .key
@@ -84,7 +88,7 @@ async fn test_parse_jwk_eddsa() {
     // given
     let eddsa = Eddsa;
 
-    let public_jwk = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+    let public_jwk = PublicJwk::Okp(PublicJwkEc {
         alg: None,
         r#use: None,
         kid: None,
@@ -93,7 +97,7 @@ async fn test_parse_jwk_eddsa() {
         y: None,
     });
 
-    let private_jwk = PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+    let private_jwk = PrivateJwk::Okp(PrivateJwkEc {
         r#use: None,
         kid: None,
         crv: "Ed25519".to_string(),
@@ -123,7 +127,7 @@ async fn test_parse_jwk_eddsa() {
 async fn test_parse_jwk_x25519() {
     // given
 
-    let public_jwk = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+    let public_jwk = PublicJwk::Okp(PublicJwkEc {
         alg: None,
         r#use: None,
         kid: None,
@@ -173,7 +177,7 @@ async fn test_parse_jwk_invalid_crv() {
     // given
     let eddsa = Eddsa;
 
-    let private_jwk = PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+    let private_jwk = PrivateJwk::Okp(PrivateJwkEc {
         r#use: None,
         kid: None,
         crv: "P-512".to_string(),

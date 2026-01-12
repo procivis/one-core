@@ -1,9 +1,10 @@
 use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use ed25519_compact::{PublicKey, SecretKey, Seed, x25519};
 use secrecy::{ExposeSecret, SecretSlice};
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 
 use crate::encryption::EncryptionError;
-use crate::jwe::{RemoteJwk, decode_b64};
+use crate::jwe::decode_b64;
 use crate::{Signer, SignerError};
 
 pub struct EDDSASigner;
@@ -83,7 +84,7 @@ impl EDDSASigner {
 
     pub fn shared_secret_x25519(
         private_key_ed25519: &SecretSlice<u8>,
-        recipient_jwk: &RemoteJwk,
+        recipient_jwk: &PublicJwk,
     ) -> Result<SecretSlice<u8>, EncryptionError> {
         let secret_key = SecretKey::from_slice(private_key_ed25519.expose_secret())
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
@@ -98,25 +99,32 @@ impl EDDSASigner {
         Ok(SecretSlice::from(shared_secret.to_vec()))
     }
 
-    pub fn ed25519_to_x25519_jwk(public_key_ed25519: &[u8]) -> Result<RemoteJwk, EncryptionError> {
+    pub fn ed25519_to_x25519_jwk(public_key_ed25519: &[u8]) -> Result<PublicJwk, EncryptionError> {
         let public_key = PublicKey::from_slice(public_key_ed25519)
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
         let public_x25519 = x25519::PublicKey::from_ed25519(&public_key)
             .map_err(|e| EncryptionError::Crypto(e.to_string()))?;
 
-        Ok(RemoteJwk {
-            kty: "OKP".to_string(),
+        Ok(PublicJwk::Okp(PublicJwkEc {
+            alg: None,
+            r#use: None,
+            kid: None,
             crv: "X25519".to_string(),
             x: Base64UrlSafeNoPadding::encode_to_string(public_x25519.to_vec()).map_err(|e| {
                 EncryptionError::Crypto(format!("Failed to serialize public key bytes: {e}"))
             })?,
             y: None,
-        })
+        }))
     }
 
     fn get_public_key_from_jwk(
-        remote_jwk: &RemoteJwk,
+        remote_jwk: &PublicJwk,
     ) -> Result<x25519::PublicKey, EncryptionError> {
+        let PublicJwk::Okp(remote_jwk) = remote_jwk else {
+            return Err(EncryptionError::Crypto(format!(
+                "Expected OKP jwk, got {remote_jwk:?}"
+            )));
+        };
         match remote_jwk.crv.as_str() {
             "Ed25519" => {
                 let ed25519_pub_key = Self::ed25519_pub_key_from_jwk(remote_jwk)?;
@@ -132,7 +140,7 @@ impl EDDSASigner {
     }
 
     fn x25519_pub_key_from_jwk(
-        remote_jwk: &RemoteJwk,
+        remote_jwk: &PublicJwkEc,
     ) -> Result<x25519::PublicKey, EncryptionError> {
         let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
         let pub_key = x25519::PublicKey::from_slice(&x).map_err(|e| {
@@ -141,7 +149,7 @@ impl EDDSASigner {
         Ok(pub_key)
     }
 
-    fn ed25519_pub_key_from_jwk(remote_jwk: &RemoteJwk) -> Result<PublicKey, EncryptionError> {
+    fn ed25519_pub_key_from_jwk(remote_jwk: &PublicJwkEc) -> Result<PublicKey, EncryptionError> {
         let x = decode_b64(remote_jwk.x.as_str(), "x coordinate")?;
         let pub_key = PublicKey::from_slice(&x).map_err(|e| {
             EncryptionError::Crypto(format!("Failed to decode peer public key: {e}"))

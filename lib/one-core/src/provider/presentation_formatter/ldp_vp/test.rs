@@ -7,9 +7,9 @@ use one_crypto::{MockCryptoProvider, MockHasher};
 use serde_json::{Value, json};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 
 use crate::config::core_config::{FormatType, KeyAlgorithmType, VerificationProtocolType};
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::http_client::HttpClient;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::credential_formatter::model::{MockSignatureProvider, MockTokenVerifier};
@@ -265,7 +265,7 @@ async fn test_parse_presentation_multi_tokens() {
                     id: "did-vm-id".to_string(),
                     r#type: "did-vm-type".to_string(),
                     controller: "did-vm-controller".to_string(),
-                    public_key_jwk: PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+                    public_key_jwk: PublicJwk::Ec(PublicJwkEc {
                         alg: None,
                         r#use: None,
                         kid: None,

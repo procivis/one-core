@@ -8,6 +8,7 @@ use rstest::rstest;
 use secrecy::SecretSlice;
 use shared_types::{InteractionId, ProofId};
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -34,7 +35,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::history::GetHistoryList;
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::interaction::{Interaction, InteractionRelations, InteractionType};
-use crate::model::key::{JwkUse, Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
@@ -3642,7 +3643,7 @@ async fn test_share_proof_created_success() {
         .return_once(|_, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Okp(PublicJwkEc {
                     alg: None,
                     r#use: Some(JwkUse::Encryption),
                     kid: None,
@@ -3761,7 +3762,7 @@ async fn test_share_proof_pending_success() {
         .return_once(|_, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Okp(PublicJwkEc {
                     alg: None,
                     r#use: Some(JwkUse::Encryption),
                     kid: None,
@@ -3873,7 +3874,7 @@ async fn test_share_proof_interaction_expired_success() {
         .return_once(|_, _, _| {
             let mut key_handle = MockSignaturePublicKeyHandle::default();
             key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+                Ok(PublicJwk::Okp(PublicJwkEc {
                     alg: None,
                     r#use: Some(JwkUse::Encryption),
                     kid: None,

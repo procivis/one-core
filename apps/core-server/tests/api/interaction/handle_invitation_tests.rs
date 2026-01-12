@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::str::FromStr;
 
 use one_core::provider::verification_protocol::openid4vp::model::{
-    OpenID4VPAlgs, OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
-    OpenID4VpPresentationFormat,
+    OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
+use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
 use url::Url;
 use uuid::Uuid;
 use wiremock::http::Method;
@@ -1117,7 +1117,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_reference() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+            PresentationFormat::GenericAlgList(GenericAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -1172,7 +1172,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+            PresentationFormat::GenericAlgList(GenericAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),
@@ -1211,7 +1211,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_proof_by_value_dcql() {
         jwks: Default::default(),
         vp_formats: HashMap::from([(
             "jwt_vp_json".to_string(),
-            OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+            PresentationFormat::GenericAlgList(GenericAlgs {
                 alg: vec!["EdDSA".to_string()],
             }),
         )]),

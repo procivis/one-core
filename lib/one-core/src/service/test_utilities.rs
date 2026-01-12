@@ -4,6 +4,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Encoder};
 use indoc::indoc;
 use serde::{Deserialize, Serialize};
 use shared_types::{DidValue, OrganisationId};
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use time::macros::datetime;
 use uuid::Uuid;
@@ -22,7 +23,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidType};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
-use crate::model::key::{Key, PublicKeyJwk, PublicKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
@@ -616,8 +617,8 @@ pub fn dummy_did_document(did: &DidValue) -> DidDocument {
     }
 }
 
-pub fn dummy_jwk() -> PublicKeyJwk {
-    PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+pub fn dummy_jwk() -> PublicJwk {
+    PublicJwk::Ec(PublicJwkEc {
         alg: None,
         r#use: None,
         kid: None,

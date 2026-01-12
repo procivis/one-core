@@ -4,12 +4,13 @@ use mockall::predicate;
 use mockall::predicate::{always, eq};
 use secrecy::{ExposeSecret, SecretSlice};
 use similar_asserts::assert_eq;
+use standardized_types::jwk::{PrivateJwk, PrivateJwkEc};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::{InternalKeyProvider, decrypt_data};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{Key, PrivateKeyJwk, PrivateKeyJwkEllipticData};
+use crate::model::key::Key;
 use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::key::{
     KeyHandle, MockSignaturePrivateKeyHandle, MockSignaturePublicKeyHandle, SignatureKeyHandle,
@@ -181,7 +182,7 @@ async fn test_internal_import() {
         .import(
             Uuid::new_v4().into(),
             KeyAlgorithmType::Ecdsa,
-            PrivateKeyJwk::Ec(PrivateKeyJwkEllipticData {
+            PrivateJwk::Ec(PrivateJwkEc {
                 r#use: None,
                 kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
                 crv: "P-256".to_string(),
@@ -209,7 +210,7 @@ async fn test_internal_import_jwk_invalid_key_type() {
         .import(
             Uuid::new_v4().into(),
             KeyAlgorithmType::Ecdsa,
-            PrivateKeyJwk::Okp(PrivateKeyJwkEllipticData {
+            PrivateJwk::Okp(PrivateJwkEc {
                 r#use: None,
                 kid: Some("13ae667d-392b-4c00-8896-079909fe85d7".to_string()),
                 crv: "P-256".to_string(),

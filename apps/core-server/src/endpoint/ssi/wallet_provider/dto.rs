@@ -5,10 +5,10 @@ use proc_macros::options_not_nullable;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as};
 use shared_types::WalletUnitId;
+use standardized_types::jwk::PublicJwk;
 use utoipa::ToSchema;
 
 use crate::deserialize::one_or_many;
-use crate::endpoint::ssi::dto::PublicKeyJwkRestDTO;
 use crate::endpoint::wallet_provider::dto::WalletUnitOsRestEnum;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
@@ -67,8 +67,7 @@ pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub wallet_provider: String,
     pub os: WalletUnitOsRestEnum,
-    #[into(with_fn = convert_inner)]
-    pub public_key: Option<PublicKeyJwkRestDTO>,
+    pub public_key: Option<PublicJwk>,
     pub proof: Option<String>,
 }
 

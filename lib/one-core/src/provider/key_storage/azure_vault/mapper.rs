@@ -3,12 +3,12 @@ use std::sync::Arc;
 use anyhow::anyhow;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder};
 use one_crypto::{CryptoProvider, SignerError};
+use standardized_types::jwk::PrivateJwk;
 
 use super::dto::{
     AzureHsmGenerateKeyRequest, AzureHsmGenerateKeyResponseKey, AzureHsmGetTokenRequest,
     AzureHsmImportKeyRequest, AzureHsmSignRequest,
 };
-use crate::model::key::PrivateKeyJwk;
 use crate::provider::key_storage::error::KeyStorageError;
 
 pub(super) fn create_get_token_request(
@@ -32,7 +32,7 @@ pub(super) fn create_generate_key_request() -> AzureHsmGenerateKeyRequest {
 }
 
 pub(super) fn create_import_key_request(
-    jwk: PrivateKeyJwk,
+    jwk: PrivateJwk,
 ) -> Result<AzureHsmImportKeyRequest, KeyStorageError> {
     Ok(AzureHsmImportKeyRequest {
         key: jwk.try_into()?,

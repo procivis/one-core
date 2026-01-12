@@ -5,6 +5,7 @@ use std::sync::Arc;
 use itertools::Itertools;
 use secrecy::SecretSlice;
 use serde_json::json;
+use standardized_types::jwk::{JwkUse, PublicJwk};
 
 use super::KeyAlgorithm;
 use super::bbs::BBS;
@@ -15,7 +16,6 @@ use super::key::KeyHandle;
 use super::ml_dsa::MlDsa;
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmConfig, KeyAlgorithmType};
-use crate::model::key::{JwkUse, PublicKeyJwk};
 
 #[derive(Clone)]
 pub struct ParsedKey {
@@ -37,7 +37,7 @@ pub trait KeyAlgorithmProvider: Send + Sync {
         cose_alg: i32,
     ) -> Option<(KeyAlgorithmType, Arc<dyn KeyAlgorithm>)>;
 
-    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<ParsedKey, KeyAlgorithmProviderError>;
+    fn parse_jwk(&self, key: &PublicJwk) -> Result<ParsedKey, KeyAlgorithmProviderError>;
     fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError>;
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<ParsedKey, KeyAlgorithmProviderError>;
 
@@ -90,7 +90,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
             .map(|(id, alg)| (id.to_owned(), alg.clone()))
     }
 
-    fn parse_jwk(&self, key: &PublicKeyJwk) -> Result<ParsedKey, KeyAlgorithmProviderError> {
+    fn parse_jwk(&self, key: &PublicJwk) -> Result<ParsedKey, KeyAlgorithmProviderError> {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_jwk(key) {
                 return Ok(ParsedKey {

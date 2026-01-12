@@ -1,7 +1,6 @@
 use std::ops::Sub;
 use std::sync::Arc;
 
-use one_core::model::key::PublicKeyJwk;
 use one_core::model::organisation::Organisation;
 use one_core::model::wallet_unit::{
     GetWalletUnitList, UpdateWalletUnitRequest, WalletProviderType, WalletUnit,
@@ -10,6 +9,7 @@ use one_core::model::wallet_unit::{
 use one_core::model::wallet_unit_attested_key::WalletUnitAttestedKey;
 use one_core::repository::wallet_unit_repository::WalletUnitRepository;
 use shared_types::WalletUnitId;
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -23,7 +23,7 @@ pub struct TestWalletUnit {
     pub name: Option<String>,
     pub nonce: Option<String>,
     pub last_modified: Option<OffsetDateTime>,
-    pub public_key: Option<PublicKeyJwk>,
+    pub public_key: Option<PublicJwk>,
     pub status: Option<WalletUnitStatus>,
     pub last_issuance: Option<Option<OffsetDateTime>>,
     pub attested_keys: Option<Vec<WalletUnitAttestedKey>>,

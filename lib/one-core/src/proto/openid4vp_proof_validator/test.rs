@@ -7,6 +7,7 @@ use one_dto_mapper::try_convert_inner;
 use serde_json::json;
 use shared_types::{DidValue, ProofId};
 use similar_asserts::assert_eq;
+use standardized_types::openid4vp::{GenericAlgs, PresentationFormat};
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
@@ -38,13 +39,12 @@ use crate::provider::revocation::model::RevocationState;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::provider::verification_protocol::openid4vp::model::{
-    DcqlSubmission, NestedPresentationSubmissionDescriptorDTO, OpenID4VPAlgs,
-    OpenID4VPPresentationDefinition, OpenID4VPPresentationDefinitionConstraint,
-    OpenID4VPPresentationDefinitionConstraintField,
+    DcqlSubmission, NestedPresentationSubmissionDescriptorDTO, OpenID4VPPresentationDefinition,
+    OpenID4VPPresentationDefinitionConstraint, OpenID4VPPresentationDefinitionConstraintField,
     OpenID4VPPresentationDefinitionConstraintFieldFilter,
     OpenID4VPPresentationDefinitionInputDescriptor, OpenID4VPVerifierInteractionContent,
-    OpenID4VpPresentationFormat, PexSubmission, PresentationSubmissionDescriptorDTO,
-    PresentationSubmissionMappingDTO, SubmissionRequestData, VpSubmissionData,
+    PexSubmission, PresentationSubmissionDescriptorDTO, PresentationSubmissionMappingDTO,
+    SubmissionRequestData, VpSubmissionData,
 };
 use crate::service::test_utilities::{
     dummy_claim_schema, dummy_credential_schema, dummy_did, dummy_identifier, dummy_organisation,
@@ -88,10 +88,10 @@ fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
     )
 }
 
-fn jwt_format_map() -> HashMap<String, OpenID4VpPresentationFormat> {
+fn jwt_format_map() -> HashMap<String, PresentationFormat> {
     HashMap::from([(
         "jwt_vc_json".to_string(),
-        OpenID4VpPresentationFormat::GenericAlgList(OpenID4VPAlgs {
+        PresentationFormat::GenericAlgList(GenericAlgs {
             alg: vec!["EdDSA".to_string(), "ES256".to_string()],
         }),
     )])

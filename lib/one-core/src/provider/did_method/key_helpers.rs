@@ -1,6 +1,6 @@
 use shared_types::DidValue;
+use standardized_types::jwk::PublicJwk;
 
-use crate::model::key::PublicKeyJwk;
 use crate::provider::did_method::common::{jwk_context, jwk_verification_method};
 use crate::provider::did_method::error::DidMethodError;
 use crate::provider::did_method::model::DidDocument;
@@ -64,7 +64,7 @@ pub fn decode_did(did: &DidValue) -> Result<DecodedDidKey, DidMethodError> {
 pub fn generate_document(
     decoded: DecodedDidKey,
     did: &DidValue,
-    public_key_jwk: PublicKeyJwk,
+    public_key_jwk: PublicJwk,
 ) -> Result<DidDocument, DidMethodError> {
     let verification_method = jwk_verification_method(
         format!("{}#{}", did, decoded.multibase),

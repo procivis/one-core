@@ -9,11 +9,11 @@ use pem::{EncodeConfig, LineEnding, Pem, encode_many_config};
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer, de, ser};
 use serde_with::skip_serializing_none;
+use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
 use crate::config::core_config::KeyAlgorithmType;
-use crate::model::key::{PublicKeyJwk, PublicKeyJwkEllipticData};
 use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, EnforceKeyUsage, ParsedCertificate,
 };
@@ -406,7 +406,7 @@ pub(crate) fn try_extract_mobile_security_object(
 }
 pub(crate) fn try_extract_holder_public_key(
     CoseSign1(issuer_auth): &CoseSign1,
-) -> Result<PublicKeyJwk, FormatterError> {
+) -> Result<PublicJwk, FormatterError> {
     let mso = issuer_auth
         .payload
         .as_ref()
@@ -441,7 +441,7 @@ pub(crate) fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing P-256  Y value in params")?;
 
-            let key = PublicKeyJwk::Ec(PublicKeyJwkEllipticData {
+            let key = PublicJwk::Ec(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,
@@ -467,7 +467,7 @@ pub(crate) fn try_extract_holder_public_key(
                 .and_then(|v| Base64UrlSafeNoPadding::encode_to_string(v).ok())
                 .context("Missing Ed25519 X value in params")?;
 
-            let key = PublicKeyJwk::Okp(PublicKeyJwkEllipticData {
+            let key = PublicJwk::Okp(PublicJwkEc {
                 alg: None,
                 r#use: None,
                 kid: None,

@@ -129,7 +129,7 @@ impl HolderWalletUnitProtoImpl {
             "JWT".to_string(),
             jose_alg,
             None,
-            Some(JwtPublicKeyInfo::Jwk(public_key.into())),
+            Some(JwtPublicKeyInfo::Jwk(public_key)),
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: Some(now + Duration::hours(10)),
@@ -193,7 +193,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             ServiceError::MappingError("Wallet unit attestation issuer key not found".to_string()),
         )?;
 
-        let issuer_identifier = IdentifierDetails::Key(issuer_key.clone().into());
+        let issuer_identifier = IdentifierDetails::Key(issuer_key.clone());
 
         let (revocation_provider, _) = self
             .revocation_method_provider

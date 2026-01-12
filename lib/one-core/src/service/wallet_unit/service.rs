@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use shared_types::{HolderWalletUnitId, WalletUnitId};
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -11,7 +12,7 @@ use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySo
 use crate::model::holder_wallet_unit::{
     CreateHolderWalletUnitRequest, HolderWalletUnitRelations, UpdateHolderWalletUnitRequest,
 };
-use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::wallet_unit::{WalletUnitOs, WalletUnitStatus};
 use crate::model::wallet_unit_attestation::WalletUnitAttestationRelations;
@@ -288,7 +289,7 @@ impl WalletUnitService {
         let register_request = RegisterWalletUnitRequestDTO {
             wallet_provider: provider_info.name.clone(),
             os,
-            public_key: Some(key_handle.public_key_as_jwk()?.into()),
+            public_key: Some(key_handle.public_key_as_jwk()?),
             proof: Some(signed_proof),
         };
 
@@ -490,7 +491,7 @@ impl WalletUnitService {
         &self,
         now: OffsetDateTime,
         auth_fn: AuthenticationFn,
-        public_key: PublicKeyJwk,
+        public_key: PublicJwk,
         wallet_provider_name: &str,
         audience: &str,
         nonce: String,
@@ -501,7 +502,7 @@ impl WalletUnitService {
                 "No JOSE alg specified".to_string(),
             ))?,
             None,
-            Some(JwtPublicKeyInfo::Jwk(public_key.into())),
+            Some(JwtPublicKeyInfo::Jwk(public_key)),
             JWTPayload {
                 issued_at: Some(now),
                 expires_at: Some(now + Duration::minutes(60)),

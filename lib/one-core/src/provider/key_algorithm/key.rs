@@ -5,10 +5,10 @@ use one_crypto::encryption::EncryptionError;
 use one_crypto::jwe::PrivateKeyAgreementHandle;
 use one_crypto::signer::bbs::parse_bbs_input;
 use secrecy::SecretString;
+use standardized_types::jwk::PublicJwk;
 use thiserror::Error;
 
 use crate::error::{ErrorCode, ErrorCodeMixin};
-use crate::model::key::PublicKeyJwk;
 
 #[derive(Clone)]
 pub enum KeyHandle {
@@ -79,7 +79,7 @@ impl KeyHandle {
     }
 
     /// helper functions
-    pub fn public_key_as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError> {
+    pub fn public_key_as_jwk(&self) -> Result<PublicJwk, KeyHandleError> {
         match &self {
             Self::SignatureOnly(value) => value.public().as_jwk(),
             Self::SignatureAndKeyAgreement { signature, .. } => signature.public().as_jwk(),
@@ -187,7 +187,7 @@ impl SignatureKeyHandle {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait SignaturePublicKeyHandle: Send + Sync {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError>;
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError>;
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
     fn as_raw(&self) -> Vec<u8>;
 
@@ -229,7 +229,7 @@ impl KeyAgreementHandle {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait PublicKeyAgreementHandle: Send + Sync {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError>;
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError>;
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
     fn as_raw(&self) -> Vec<u8>;
 }
@@ -263,7 +263,7 @@ impl MultiMessageSignatureKeyHandle {
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait MultiMessageSignaturePublicKeyHandle: Send + Sync {
-    fn as_jwk(&self) -> Result<PublicKeyJwk, KeyHandleError>;
+    fn as_jwk(&self) -> Result<PublicJwk, KeyHandleError>;
     fn as_multibase(&self) -> Result<String, KeyHandleError>;
     fn as_raw(&self) -> Vec<u8>;
 

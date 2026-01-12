@@ -1,0 +1,18 @@
+[package]
+name = "standardized-types"
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+version.workspace = true
+
+[dependencies]
+secrecy.workspace       = true
+serde                   = { workspace = true, features = ["derive"] }
+serde_with.workspace    = true
+serde_json.workspace    = true
+strum.workspace         = true
+utoipa                  = { workspace = true, optional = true }
+proc-macros             = { version = "0.1.0", path = "../../lib/proc-macros" }
+
+[lints]
+workspace = true

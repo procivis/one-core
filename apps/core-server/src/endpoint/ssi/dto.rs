@@ -5,15 +5,8 @@ use one_core::provider::did_method::dto::{
 };
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::revocation::lvvc::dto::IssuerResponseDTO;
-use one_core::provider::verification_protocol::openid4vp::model::{
-    AuthorizationEncryptedResponseAlgorithm,
-    AuthorizationEncryptedResponseContentEncryptionAlgorithm,
-};
+use one_core::provider::verification_protocol::openid4vp::model::AuthorizationEncryptedResponseAlgorithm;
 use one_core::service::error::ServiceError;
-use one_core::service::key::dto::{
-    PublicKeyJwkDTO, PublicKeyJwkEllipticDataDTO, PublicKeyJwkMlweDataDTO, PublicKeyJwkOctDataDTO,
-    PublicKeyJwkRsaDataDTO,
-};
 use one_core::service::ssi_issuer::dto::{
     JsonLDContextDTO, JsonLDContextResponseDTO, JsonLDEntityDTO, JsonLDInlineEntityDTO,
     JsonLDNestedContextDTO, JsonLDNestedEntityDTO, SdJwtVcClaimDTO, SdJwtVcClaimDisplayDTO,
@@ -36,7 +29,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{DidValue, TrustAnchorId, TrustEntityId, TrustEntityKey};
-use strum::Display;
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use url::Url;
 use utoipa::ToSchema;
@@ -87,81 +80,7 @@ pub(crate) struct DidVerificationMethodRestDTO {
     pub id: String,
     pub r#type: String,
     pub controller: String,
-    pub public_key_jwk: PublicKeyJwkRestDTO,
-}
-
-/// JWK representation of the public key used to verify the DID.
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
-#[serde(rename_all = "camelCase")]
-#[serde(tag = "kty")]
-#[from(PublicKeyJwkDTO)]
-#[into(PublicKeyJwkDTO)]
-pub(crate) enum PublicKeyJwkRestDTO {
-    #[serde(rename = "EC")]
-    Ec(PublicKeyJwkEllipticDataRestDTO),
-    #[serde(rename = "RSA")]
-    Rsa(PublicKeyJwkRsaDataRestDTO),
-    #[serde(rename = "OKP")]
-    Okp(PublicKeyJwkEllipticDataRestDTO),
-    #[serde(rename = "oct")]
-    Oct(PublicKeyJwkOctDataRestDTO),
-    #[serde(rename = "MLWE")]
-    Mlwe(PublicKeyJwkMlweDataRestDTO),
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
-#[from(PublicKeyJwkMlweDataDTO)]
-#[into(PublicKeyJwkMlweDataDTO)]
-pub(crate) struct PublicKeyJwkMlweDataRestDTO {
-    pub r#use: Option<String>,
-    pub alg: Option<String>,
-    pub x: String,
-    #[schema(ignore)]
-    #[serde(default, skip_serializing)]
-    pub kid: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
-#[from(PublicKeyJwkOctDataDTO)]
-#[into(PublicKeyJwkOctDataDTO)]
-pub(crate) struct PublicKeyJwkOctDataRestDTO {
-    pub alg: Option<String>,
-    pub r#use: Option<String>,
-    pub k: String,
-    #[schema(ignore)]
-    #[serde(default, skip_serializing)]
-    pub kid: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
-#[from(PublicKeyJwkRsaDataDTO)]
-#[into(PublicKeyJwkRsaDataDTO)]
-pub(crate) struct PublicKeyJwkRsaDataRestDTO {
-    pub r#use: Option<String>,
-    pub alg: Option<String>,
-    pub e: String,
-    pub n: String,
-    #[schema(ignore)]
-    #[serde(default, skip_serializing)]
-    pub kid: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, From, Into)]
-#[from(PublicKeyJwkEllipticDataDTO)]
-#[into(PublicKeyJwkEllipticDataDTO)]
-pub(crate) struct PublicKeyJwkEllipticDataRestDTO {
-    pub r#use: Option<String>,
-    pub alg: Option<String>,
-    pub crv: String,
-    pub x: String,
-    pub y: Option<String>,
-    #[schema(ignore)]
-    #[serde(default, skip_serializing)]
-    pub kid: Option<String>,
+    pub public_key_jwk: PublicJwk,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
@@ -192,16 +111,6 @@ pub(crate) enum OpenID4VCIErrorRestEnum {
 pub(crate) enum OID4VPAuthorizationEncryptedResponseAlgorithm {
     #[serde(rename = "ECDH-ES")]
     EcdhEs,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq, ToSchema, Display, From)]
-#[from(AuthorizationEncryptedResponseContentEncryptionAlgorithm)]
-pub(crate) enum OID4VPAuthorizationEncryptedResponseContentEncryptionAlgorithm {
-    A128GCM,
-    A256GCM,
-    #[serde(rename = "A128CBC-HS256")]
-    #[strum(serialize = "A128CBC-HS256")]
-    A128CBCHS256,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

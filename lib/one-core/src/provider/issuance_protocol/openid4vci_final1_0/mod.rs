@@ -16,6 +16,7 @@ use shared_types::{
     BlobId, CertificateId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId,
     IdentifierId, InteractionId,
 };
+use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -60,7 +61,7 @@ use crate::model::credential_schema::{
 use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
-use crate::model::key::{Key, KeyRelations, PublicKeyJwk};
+use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
 use crate::proto::http_client::HttpClient;
@@ -687,7 +688,7 @@ impl OpenID4VCIFinal1_0 {
         &self,
         interaction_data: &HolderInteractionData,
         holder_did: Option<&DidValue>,
-        holder_key: PublicKeyJwk,
+        holder_key: PublicJwk,
         nonce: Option<String>,
         auth_fn: AuthenticationFn,
         access_token: &str,
@@ -704,7 +705,7 @@ impl OpenID4VCIFinal1_0 {
                 {
                     None
                 } else if methods.contains(&"jwk".to_string()) {
-                    Some(holder_key.into())
+                    Some(holder_key)
                 } else {
                     None
                 }

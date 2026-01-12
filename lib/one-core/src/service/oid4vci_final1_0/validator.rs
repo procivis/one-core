@@ -1,5 +1,6 @@
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
+use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
 use crate::config::ConfigValidationError;
@@ -118,7 +119,7 @@ pub(crate) fn verify_pop_signature(
         .to_owned();
 
     let pop_signer_key_handle = alg
-        .parse_jwk(&jwk.into())
+        .parse_jwk(&jwk)
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
 
     pop_signer_key_handle
@@ -152,7 +153,7 @@ pub(crate) fn verify_waa_signature(
             OpenID4VCIError::InvalidRequest,
         ))?;
 
-    let jwk = waa_issuer_key.clone().into();
+    let jwk = waa_issuer_key.clone();
 
     let waa_issuer_key_handle = alg
         .parse_jwk(&jwk)
@@ -204,7 +205,7 @@ pub(crate) fn validate_key_attestation(
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
     expected_key_storage_security_level: KeyStorageSecurityLevel,
     leeway: u64,
-) -> Result<Vec<crate::model::key::PublicKeyJwk>, ServiceError> {
+) -> Result<Vec<PublicJwk>, ServiceError> {
     let wua = crate::proto::jwt::Jwt::<WalletUnitAttestationClaims>::decompose_token(
         key_attestation_jwt,
     )?;
@@ -238,7 +239,7 @@ pub(crate) fn validate_key_attestation(
             ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)
         })?;
 
-    let jwk = wua_issuer_key.clone().into();
+    let jwk = wua_issuer_key.clone();
     let wua_issuer_key_handle = alg.parse_jwk(&jwk).map_err(|_| {
         tracing::debug!("failed to parse key attestation issuer key");
         ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest)

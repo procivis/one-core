@@ -2,11 +2,12 @@ use std::collections::HashMap;
 
 use anyhow::Context;
 use dcql::DcqlQuery;
-use one_crypto::jwe::EncryptionAlgorithm;
-use one_dto_mapper::Into;
 use serde::{Deserialize, Serialize};
 use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{ClaimSchemaId, InteractionId, KeyId};
+use standardized_types::jwa::EncryptionAlgorithm;
+use standardized_types::jwk::PublicJwk;
+use standardized_types::openid4vp::{ClientMetadata, ClientMetadataJwks, PresentationFormat};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
@@ -15,8 +16,6 @@ use super::mapper::{deserialize_with_serde_json, unix_timestamp_option};
 use crate::model::credential::Credential;
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::provider::verification_protocol::openid4vp::final1_0::model::OpenID4VPFinal1_0ClientMetadata;
-use crate::service::key::dto::PublicKeyJwkDTO;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct JwePayload {
@@ -77,8 +76,8 @@ pub enum VpSubmissionData {
 
 #[derive(Debug)]
 pub(crate) struct EncryptionInfo {
-    pub verifier_key: OpenID4VPClientMetadataJwkDTO,
-    pub alg: AuthorizationEncryptedResponseContentEncryptionAlgorithm,
+    pub verifier_key: PublicJwk,
+    pub alg: EncryptionAlgorithm,
 }
 
 #[skip_serializing_none]
@@ -126,31 +125,18 @@ pub enum AuthorizationEncryptedResponseAlgorithm {
     EcdhEs,
 }
 
-// https://datatracker.ietf.org/doc/html/rfc7518#section-5.1
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Display, Into)]
-#[into(EncryptionAlgorithm)]
-pub enum AuthorizationEncryptedResponseContentEncryptionAlgorithm {
-    A128GCM,
-    // AES GCM using 256-bit key
-    A256GCM,
-    #[serde(rename = "A128CBC-HS256")]
-    #[strum(serialize = "A128CBC-HS256")]
-    A128CBCHS256,
-}
-
 #[skip_serializing_none]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct OpenID4VPDraftClientMetadata {
     #[serde(default)]
-    pub jwks: Option<OpenID4VPClientMetadataJwks>,
+    pub jwks: Option<ClientMetadataJwks>,
     #[serde(default)]
     pub jwks_uri: Option<String>,
-    pub vp_formats: HashMap<String, OpenID4VpPresentationFormat>,
+    pub vp_formats: HashMap<String, PresentationFormat>,
     #[serde(default)]
     pub authorization_encrypted_response_alg: Option<AuthorizationEncryptedResponseAlgorithm>,
     #[serde(default)]
-    pub authorization_encrypted_response_enc:
-        Option<AuthorizationEncryptedResponseContentEncryptionAlgorithm>,
+    pub authorization_encrypted_response_enc: Option<EncryptionAlgorithm>,
     #[serde(default)]
     pub id_token_encrypted_response_enc: Option<String>,
     #[serde(default)]
@@ -163,12 +149,12 @@ pub struct OpenID4VPDraftClientMetadata {
 #[serde(untagged)]
 pub(crate) enum OpenID4VPClientMetadata {
     Draft(OpenID4VPDraftClientMetadata),
-    Final1_0(OpenID4VPFinal1_0ClientMetadata),
+    Final1_0(ClientMetadata),
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Default, PartialEq)]
 pub struct OpenID4VPClientMetadataJwks {
-    pub keys: Vec<OpenID4VPClientMetadataJwkDTO>,
+    pub keys: Vec<PublicJwk>,
 }
 
 /// Interaction data used for OpenID4VP on verifier side
@@ -191,7 +177,7 @@ pub(crate) struct OpenID4VPVerifierInteractionContent {
     pub client_id: String,
     pub client_id_scheme: Option<ClientIdScheme>,
     pub response_uri: Option<String>,
-    pub encryption_key: Option<OpenID4VPClientMetadataJwkDTO>,
+    pub encryption_key: Option<PublicJwk>,
 }
 
 #[derive(Clone, Deserialize, Serialize, Debug, PartialEq)]
@@ -206,7 +192,7 @@ pub struct OpenID4VPPresentationDefinitionInputDescriptor {
     pub id: String,
     pub name: Option<String>,
     pub purpose: Option<String>,
-    pub format: HashMap<String, OpenID4VpPresentationFormat>,
+    pub format: HashMap<String, PresentationFormat>,
     pub constraints: OpenID4VPPresentationDefinitionConstraint,
 }
 
@@ -244,89 +230,6 @@ pub struct OpenID4VPPresentationDefinitionConstraintField {
 pub struct OpenID4VPPresentationDefinitionConstraintFieldFilter {
     pub r#type: String,
     pub r#const: String,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct OpenID4VPClientMetadataJwkDTO {
-    #[serde(rename = "kid")]
-    pub key_id: String,
-    #[serde(flatten)]
-    pub jwk: PublicKeyJwkDTO,
-}
-
-// All vp_formats_supported fields are optional,
-// this variant is matched first
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct OpenID4VpEmptyEntry {}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(untagged)]
-pub enum OpenID4VpPresentationFormat {
-    Empty(OpenID4VpEmptyEntry),
-    SdJwtVcAlgs(OpenID4VPVcSdJwtAlgs),
-    LdpVcAlgs(LdpVcAlgs),
-    W3CJwtAlgs(OpenID4VPW3CJwtAlgs),
-    W3CLdpAlgs(OpenID4VPW3CLdpAlgs),
-    MdocAlgs(OpenID4VPMdocAlgs),
-    GenericAlgList(OpenID4VPAlgs),
-    Other(serde_json::Value),
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct OpenID4VPVcSdJwtAlgs {
-    #[serde(
-        rename = "sd-jwt_alg_values",
-        skip_serializing_if = "Vec::is_empty",
-        default
-    )]
-    pub sd_jwt_alg_values: Vec<String>,
-    #[serde(
-        rename = "kb-jwt_alg_values",
-        skip_serializing_if = "Vec::is_empty",
-        default
-    )]
-    pub kb_jwt_alg_values: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct OpenID4VPAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub alg: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct OpenID4VPW3CJwtAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub alg_values: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct OpenID4VPW3CLdpAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub proof_type_values: Vec<String>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub cryptosuite_values: Vec<String>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct OpenID4VPMdocAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub issuerauth_alg_values: Vec<i32>,
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub deviceauth_alg_values: Vec<i32>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-#[serde(deny_unknown_fields)]
-pub struct LdpVcAlgs {
-    #[serde(skip_serializing_if = "Vec::is_empty", default)]
-    pub proof_type: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
