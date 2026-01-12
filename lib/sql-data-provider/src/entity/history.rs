@@ -119,10 +119,6 @@ pub enum HistoryAction {
     InteractionErrored,
     #[sea_orm(string_value = "INTERACTION_EXPIRED")]
     InteractionExpired,
-    #[sea_orm(string_value = "REGISTRATION_CERTIFICATE_CREATED")]
-    RegistrationCertificateCreated,
-    #[sea_orm(string_value = "REGISTRATION_CERTIFICATE_REVOKED")]
-    RegistrationCertificateRevoked,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, From, Into)]
