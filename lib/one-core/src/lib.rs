@@ -701,7 +701,10 @@ impl OneCore {
                 config,
                 session_provider,
             ),
-            signature_service: SignatureService::new(signer_provider),
+            signature_service: SignatureService::new(
+                signer_provider,
+                data_provider.get_revocation_list_repository(),
+            ),
         })
     }
 

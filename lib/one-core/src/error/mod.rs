@@ -725,6 +725,12 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid signature validity boundary")]
     BR_0324,
+
+    #[strum(message = "Missing signer provider")]
+    BR_0326,
+
+    #[strum(message = "Invalid signature id")]
+    BR_0327,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

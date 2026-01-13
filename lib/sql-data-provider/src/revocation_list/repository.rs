@@ -315,7 +315,7 @@ impl RevocationListRepository for RevocationListProvider {
         entry_id: RevocationListEntryId,
     ) -> Result<Option<RevocationListEntry>, DataLayerError> {
         let mut entries = self
-            .get_filered_entries(vec![
+            .get_filtered_entries(vec![
                 revocation_list_entry::Column::Id
                     .eq(entry_id)
                     .into_condition(),
@@ -328,9 +328,21 @@ impl RevocationListRepository for RevocationListProvider {
         &self,
         list_id: RevocationListId,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
-        self.get_filered_entries(vec![
+        self.get_filtered_entries(vec![
             revocation_list_entry::Column::RevocationListId
                 .eq(list_id.to_string())
+                .into_condition(),
+        ])
+        .await
+    }
+
+    async fn get_entries_by_id(
+        &self,
+        entry_ids: Vec<RevocationListEntryId>,
+    ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
+        self.get_filtered_entries(vec![
+            revocation_list_entry::Column::Id
+                .is_in(entry_ids)
                 .into_condition(),
         ])
         .await
@@ -338,12 +350,13 @@ impl RevocationListRepository for RevocationListProvider {
 }
 
 impl RevocationListProvider {
-    async fn get_filered_entries(
+    async fn get_filtered_entries(
         &self,
         filters: Vec<sea_orm::Condition>,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError> {
         #[derive(FromQueryResult, Debug)]
         struct Entry {
+            pub id: RevocationListEntryId,
             pub index: u32,
             pub credential_id: Option<CredentialId>,
             pub status: RevocationListEntryStatus,
@@ -352,14 +365,7 @@ impl RevocationListProvider {
         }
 
         let query = {
-            let mut query = revocation_list_entry::Entity::find()
-                .select_only()
-                .column(revocation_list_entry::Column::Index)
-                .column(revocation_list_entry::Column::CredentialId)
-                .column(revocation_list_entry::Column::Status)
-                .column(revocation_list_entry::Column::Type)
-                .column(revocation_list_entry::Column::SignatureType);
-
+            let mut query = revocation_list_entry::Entity::find();
             for filter in filters {
                 query = query.filter(filter)
             }
@@ -390,6 +396,7 @@ impl RevocationListProvider {
                     },
                 }?;
                 Ok(RevocationListEntry {
+                    id: entry.id,
                     entity_info,
                     index: entry.index as usize,
                     status: entry.status.into(),

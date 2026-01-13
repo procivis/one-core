@@ -2,6 +2,7 @@ use serde::Serialize;
 use serde_with::skip_serializing_none;
 use shared_types::{CertificateId, IdentifierId, KeyId};
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 use crate::utils::api_clients::{HttpClient, Response};
 
@@ -32,5 +33,12 @@ impl SignaturesApi {
     pub async fn create(&self, request: TestCreateSignatureRequest) -> Response {
         let request = serde_json::to_value(request).unwrap();
         self.client.post("/api/signature/v1", request).await
+    }
+
+    pub async fn revocation_check(&self, ids: Vec<Uuid>) -> Response {
+        let request = serde_json::json!({ "signatureIds": ids });
+        self.client
+            .post("/api/signature/v1/revocation-check", request)
+            .await
     }
 }

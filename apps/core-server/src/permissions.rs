@@ -56,6 +56,7 @@ pub enum Permission {
     ProofShare,
     RegistrationCertificateCreate,
     RegistrationCertificateRevoke,
+    RegistrationCertificateRevocationCheck,
     StsOrganisationCreate,
     StsOrganisationDelete,
     StsOrganisationDetail,

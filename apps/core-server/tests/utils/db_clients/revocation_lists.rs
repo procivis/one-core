@@ -7,7 +7,7 @@ use one_core::model::revocation_list::{
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::{CredentialId, IdentifierId, RevocationListId};
+use shared_types::{CredentialId, IdentifierId, RevocationListEntryId, RevocationListId};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -83,11 +83,11 @@ impl RevocationListsDB {
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
         index_on_status_list: usize,
-    ) {
+    ) -> RevocationListEntryId {
         self.repository
             .create_entry(list_id, entity_id, index_on_status_list)
             .await
-            .unwrap();
+            .unwrap()
     }
 
     pub async fn update_entry(

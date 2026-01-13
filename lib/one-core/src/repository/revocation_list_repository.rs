@@ -64,4 +64,9 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         list_id: RevocationListId,
     ) -> Result<Vec<RevocationListEntry>, DataLayerError>;
+
+    async fn get_entries_by_id(
+        &self,
+        entry_ids: Vec<RevocationListEntryId>,
+    ) -> Result<Vec<RevocationListEntry>, DataLayerError>;
 }

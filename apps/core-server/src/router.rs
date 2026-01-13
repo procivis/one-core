@@ -467,6 +467,10 @@ fn get_management_endpoints(
                 .route(
                     "/api/signature/v1/{id}/revoke",
                     post(signature::controller::revoke_signature),
+                )
+                .route(
+                    "/api/signature/v1/revocation-check",
+                    post(signature::controller::revocation_check),
                 );
         } else if let Some(paths) = openapi_paths {
             paths.shift_remove("/api/signature/v1");

@@ -42,7 +42,8 @@ async fn test_fail_on_unknown_signer() {
             validity_end: None,
         })
         .await;
-    assert_eq!(resp.status(), 500);
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0326");
 }
 
 #[tokio::test]

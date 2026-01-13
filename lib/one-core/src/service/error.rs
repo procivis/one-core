@@ -1152,7 +1152,7 @@ impl ErrorCodeMixin for MissingProviderError {
             Self::Task(_) => ErrorCode::BR_0103,
             Self::TrustManager(_) => ErrorCode::BR_0132,
             Self::BlobStorage(_) => ErrorCode::BR_0252,
-            Self::Signer(_) => ErrorCode::BR_0000,
+            Self::Signer(_) => ErrorCode::BR_0326,
         }
     }
 }

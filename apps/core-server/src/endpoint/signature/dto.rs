@@ -1,4 +1,7 @@
+use std::collections::HashMap;
+
 use one_core::provider::signer::dto::{CreateSignatureRequestDTO, CreateSignatureResponseDTO};
+use one_core::service::signature::dto::{SignatureState, SignatureStatusInfo};
 use one_dto_mapper::{From, Into};
 use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
@@ -38,4 +41,34 @@ pub(crate) struct CreateSignatureResponseRestDTO {
     pub id: Uuid,
     /// Signer-specific signature representation.
     pub result: String,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SignatureRevocationCheckRequestRestDTO {
+    pub signature_ids: Vec<Uuid>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SignatureRevocationCheckResponseRestDTO {
+    #[serde(flatten)]
+    pub result: HashMap<Uuid, SignatureStatusInfoRestDTO>,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SignatureStatusInfo)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SignatureStatusInfoRestDTO {
+    pub state: SignatureStateRestEnum,
+    pub r#type: String,
+}
+
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(SignatureState)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub(crate) enum SignatureStateRestEnum {
+    Active,
+    Revoked,
 }

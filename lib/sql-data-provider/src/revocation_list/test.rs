@@ -253,6 +253,7 @@ async fn test_get_entries_non_empty() {
     assert_eq!(
         results[0],
         RevocationListEntry {
+            id: results[0].id, // id can be arbitrarily chosen
             entity_info: RevocationListEntityInfo::WalletUnitAttestedKey,
             index: 1,
             status: RevocationListEntryStatus::Active,
@@ -261,6 +262,7 @@ async fn test_get_entries_non_empty() {
     assert_eq!(
         results[1],
         RevocationListEntry {
+            id: results[1].id, // id can be arbitrarily chosen
             entity_info: RevocationListEntityInfo::Credential(credential_id),
             index: 2,
             status: RevocationListEntryStatus::Active,
