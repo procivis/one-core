@@ -87,6 +87,8 @@ async fn test_issue_wallet_attestations_success() {
         "oauth-client-attestation+jwt"
     );
     assert!(waa_jwt.payload.proof_of_possession_key.is_some());
+    // Verify sub claim is set to wallet_client_id from config
+    assert_eq!(waa_jwt.payload.subject, Some("eudiw-abca".to_string()));
 
     let wua = Jwt::<serde_json::Value>::decompose_token(resp_json["wua"][0].as_str().unwrap());
     let Ok(wua_jwt) = wua else {
@@ -357,6 +359,8 @@ async fn test_issue_waa_only_with_existing_attested_keys_success() {
         "oauth-client-attestation+jwt"
     );
     assert!(waa_jwt.payload.proof_of_possession_key.is_some());
+    // Verify sub claim is set to wallet_client_id from config
+    assert_eq!(waa_jwt.payload.subject, Some("eudiw-abca".to_string()));
     // One Updated entry for WAA
     assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Updated, 1).await;
     let wallet_unit = context

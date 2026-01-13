@@ -1,5 +1,5 @@
 use serde_json::json;
-use shared_types::{DidId, KeyId, OrganisationId};
+use shared_types::{DidId, HolderWalletUnitId, KeyId, OrganisationId};
 use uuid::Uuid;
 
 use super::{HttpClient, Response};
@@ -34,12 +34,14 @@ impl InteractionsApi {
         did_id: impl Into<Option<DidId>>,
         key_id: impl Into<Option<KeyId>>,
         tx_code: impl Into<Option<&str>>,
+        holder_wallet_unit_id: impl Into<Option<HolderWalletUnitId>>,
     ) -> Response {
         let body = json!({
           "interactionId": interaction_id.into(),
           "didId": did_id.into(),
           "keyId": key_id.into(),
           "txCode": tx_code.into(),
+          "holderWalletUnitId": holder_wallet_unit_id.into(),
         });
 
         self.client

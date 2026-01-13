@@ -978,6 +978,22 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                         "Wallet attestation is required".to_string(),
                     ))?;
 
+                // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
+                // The WAA sub (subject) claim MUST specify client_id value of the OAuth Client.
+                // The WAA PoP iss (issuer) claim MUST specify client_id value of the OAuth Client.
+                // The WAA PoP issuer must equal the WAA Subject
+                let waa_jwt: Jwt<()> =
+                    Jwt::build_from_token(waa, None, None).await.map_err(|e| {
+                        IssuanceProtocolError::Failed(format!("Failed to parse WAA: {e}"))
+                    })?;
+
+                let client_id = waa_jwt
+                    .payload
+                    .subject
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "WAA missing subject claim".to_string(),
+                    ))?;
+
                 let challenge =
                     if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
                         Some(self.holder_fetch_challenge(challenge_endpoint).await?)
@@ -1007,6 +1023,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                     &wallet_unit_auth_key,
                     &interaction_data.issuer_url,
                     challenge,
+                    &client_id,
                 )
                 .await?;
 
@@ -2303,6 +2320,7 @@ async fn create_wallet_unit_attestation_pop(
     key: &Key,
     audience: &str,
     challenge: Option<String>,
+    client_id: &str,
 ) -> Result<String, IssuanceProtocolError> {
     #[derive(Serialize)]
     struct WalletUnitPopCustomClaims {
@@ -2333,7 +2351,7 @@ async fn create_wallet_unit_attestation_pop(
             invalid_before: Some(now),
             audience: Some(vec![audience.to_string()]),
             jwt_id: Some(Uuid::new_v4().to_string()),
-            issuer: None,
+            issuer: Some(client_id.to_string()),
             subject: None,
             proof_of_possession_key: None,
             custom: WalletUnitPopCustomClaims { challenge },

@@ -77,6 +77,7 @@ walletProvider:
     params:
       public:
         walletLink: "https://docs.procivis.ch/components/wallet-app"
+        walletClientId: "eudiw-abca"
         walletRegistration: OPTIONAL
         walletAppAttestation:
           expirationTime: 86400 # 24*60*60 seconds

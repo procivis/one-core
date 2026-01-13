@@ -28,6 +28,7 @@ walletProvider:
       public:
         walletName: "Procivis One Dev Wallet"
         walletLink: "https://procivis.ch"
+        walletClientId: "eudiw-abca"
         walletRegistration: OPTIONAL
         walletAppAttestation:
           expirationTime: 86400 # 24*60*60 seconds

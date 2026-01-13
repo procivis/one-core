@@ -71,6 +71,7 @@ pub struct IssueWalletUnitAttestationResponseDTO {
 pub(super) struct WalletProviderParams {
     pub wallet_name: String,
     pub wallet_link: String,
+    pub wallet_client_id: String,
     // Information for wallet whether it enforces having a wallet unit attestation when starting app
     pub wallet_registration: WalletRegistrationRequirement,
     pub wallet_app_attestation: WalletAppAttestationParams,

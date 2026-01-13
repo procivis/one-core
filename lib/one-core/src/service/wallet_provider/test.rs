@@ -75,6 +75,7 @@ fn wallet_provider_config(
         params: Some(Params {
             public: Some(json!({
                 "walletName": "Procivis One Dev Wallet",
+                "walletClientId": "mock-client-id",
                 "walletLink": "https://procivis.ch",
                 "walletRegistration": "MANDATORY",
                 "walletAppAttestation": {

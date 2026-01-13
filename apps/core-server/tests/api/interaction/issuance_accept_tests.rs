@@ -9,6 +9,7 @@ use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
 use one_core::model::interaction::InteractionType;
+use one_core::proto::jwt::Jwt;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use rcgen::CertificateParams;
@@ -20,6 +21,7 @@ use uuid::Uuid;
 
 use crate::fixtures::certificate::{create_ca_cert, create_cert, ecdsa, eddsa, fingerprint};
 use crate::fixtures::presentation::w3c_jwt_vc;
+use crate::fixtures::wallet_provider::create_wallet_unit_attestation_issuer_identifier;
 use crate::fixtures::{
     ClaimData, TestingCredentialParams, TestingDidParams, TestingIdentifierParams,
     TestingKeyParams, encrypted_token,
@@ -27,7 +29,9 @@ use crate::fixtures::{
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::holder_wallet_unit::TestHolderWalletUnit;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
+use crate::utils::db_clients::wallet_units::TestWalletUnit;
 use crate::utils::field_match::FieldHelpers;
 
 async fn random_document() -> String {
@@ -221,7 +225,7 @@ async fn test_issuance_accept_openid4vc() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -448,7 +452,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -630,7 +634,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -806,7 +810,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -978,7 +982,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -1145,7 +1149,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None)
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None, None)
         .await;
 
     assert_eq!(resp.status(), 200);
@@ -1284,7 +1288,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, None, None, None)
+        .issuance_accept(interaction.id, None, None, None, None)
         .await;
 
     assert_eq!(resp.status(), 200);
@@ -1374,7 +1378,13 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, Some(Uuid::new_v4().into()), None, None)
+        .issuance_accept(
+            interaction.id,
+            Some(Uuid::new_v4().into()),
+            None,
+            None,
+            None,
+        )
         .await;
 
     // THEN
@@ -1500,6 +1510,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
             holder_did.id,
             Some(Uuid::new_v4().into()),
             None,
+            None,
         )
         .await;
 
@@ -1614,7 +1625,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None)
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None, None)
         .await;
 
     // THEN
@@ -1751,7 +1762,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None)
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None, None)
         .await;
 
     // THEN
@@ -1866,7 +1877,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -1993,7 +2004,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None)
+        .issuance_accept(interaction.id, holder_did.id, Some(key.id), None, None)
         .await;
 
     // THEN
@@ -2164,7 +2175,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, Some(tx_code))
+        .issuance_accept(interaction.id, holder_did.id, None, Some(tx_code), None)
         .await;
 
     // THEN
@@ -2348,7 +2359,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -2618,7 +2629,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
     let resp = context
         .api
         .interactions
-        .issuance_accept(interaction.id, holder_did.id, None, None)
+        .issuance_accept(interaction.id, holder_did.id, None, None, None)
         .await;
 
     // THEN
@@ -2719,4 +2730,253 @@ fn complex_document() -> &'static str {
                 "type": "ProcivisOneSchema2024"
             }
         }"#
+}
+
+#[tokio::test]
+async fn test_waa_pop_iss_equals_waa_sub() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    create_wallet_unit_attestation_issuer_identifier(&context, &organisation).await;
+
+    let holder_key_params = ecdsa_testing_params();
+    let holder_public_jwk = Ecdsa
+        .reconstruct_key(holder_key_params.public_key.as_ref().unwrap(), None, None)
+        .unwrap()
+        .public_key_as_jwk()
+        .unwrap();
+
+    let holder_auth_key = context
+        .db
+        .keys
+        .create(&organisation, holder_key_params)
+        .await;
+
+    let wallet_unit = context
+        .db
+        .wallet_units
+        .create(
+            organisation.clone(),
+            TestWalletUnit {
+                public_key: Some(holder_public_jwk),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let holder_wallet_unit = context
+        .db
+        .holder_wallet_units
+        .create(
+            organisation.clone(),
+            holder_auth_key,
+            TestHolderWalletUnit {
+                wallet_provider_url: Some(context.config.app.core_base_url.clone()),
+                provider_wallet_unit_id: Some(wallet_unit.id),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let issuer_key = Ecdsa.generate_key().unwrap();
+    let multibase = issuer_key.key.public_key_as_multibase().unwrap();
+    let issuer_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                did_type: Some(DidType::Remote),
+                did: Some(format!("did:key:{multibase}").parse().unwrap()),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(issuer_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(issuer_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let holder_did_key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+    let holder_did = context
+        .db
+        .dids
+        .create(
+            Some(organisation.clone()),
+            TestingDidParams {
+                keys: Some(vec![RelatedKey {
+                    role: KeyRole::Authentication,
+                    key: holder_did_key,
+                    reference: "1".to_string(),
+                }]),
+                did: Some(
+                    DidValue::from_str("did:key:zDnaeY6V3KGKLzgK3C2hbb4zMpeVKbrtWhEP4WXUyTAbshioQ")
+                        .unwrap(),
+                ),
+                ..Default::default()
+            },
+        )
+        .await;
+    context
+        .db
+        .identifiers
+        .create(
+            &organisation,
+            TestingIdentifierParams {
+                did: Some(holder_did.clone()),
+                r#type: Some(IdentifierType::Did),
+                is_remote: Some(holder_did.did_type == DidType::Remote),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let schema_id = Uuid::new_v4();
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "test_waa_pop",
+            &organisation,
+            "NONE",
+            TestingCreateSchemaParams {
+                claim_schemas: Some(vec![CredentialSchemaClaim {
+                    schema: ClaimSchema {
+                        id: schema_id.into(),
+                        key: "string".to_string(),
+                        data_type: "STRING".to_string(),
+                        created_date: datetime!(2024-10-20 12:00 +1),
+                        last_modified: datetime!(2024-10-20 12:00 +1),
+                        array: false,
+                        metadata: false,
+                    },
+                    required: true,
+                }]),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let interaction_data = serde_json::to_vec(&json!({
+        "issuer_url": "http://127.0.0.1",
+        "credential_endpoint": format!("{}/ssi/openid4vci/final-1.0/{}/credential", context.server_mock.uri(), credential_schema.id),
+        "access_token": encrypted_token("123"),
+        "access_token_expires_at": null,
+        "token_endpoint": format!("{}/ssi/openid4vci/final-1.0/{}/token", context.server_mock.uri(), credential_schema.id),
+        "nonce_endpoint": format!("{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce", context.server_mock.uri()),
+        "grants":{
+            "urn:ietf:params:oauth:grant-type:pre-authorized_code":{
+                "pre-authorized_code":"76f2355d-c9cb-4db6-8779-2f3b81062f8e"
+            }
+        },
+        "credential_metadata": {
+            "display": [
+                {
+                    "lang": "en",
+                    "name": "test_waa_pop"
+                }
+            ]
+        },
+        "credential_configuration_id": "dummy-config-id",
+        "protocol": "OPENID4VCI_FINAL1",
+        "format": "jwt_vc_json",
+        "token_endpoint_auth_methods_supported": ["attest_jwt_client_auth"]
+    }))
+    .unwrap();
+
+    let interaction = context
+        .db
+        .interactions
+        .create(
+            None,
+            &interaction_data,
+            &organisation,
+            InteractionType::Issuance,
+            None,
+        )
+        .await;
+
+    let jwt_credential = w3c_jwt_vc(
+        &issuer_key,
+        "ES256",
+        issuer_did.did.clone(),
+        holder_did.did.clone(),
+        json!({"string":"value"}),
+    )
+    .await;
+
+    context
+        .server_mock
+        .ssi_credential_endpoint_final1(credential_schema.id, "123", jwt_credential, 1, None)
+        .await;
+
+    context
+        .server_mock
+        .ssi_nonce_endpoint("OPENID4VCI_FINAL1", "test-nonce", 1)
+        .await;
+
+    context
+        .server_mock
+        .token_endpoint_final1(credential_schema.id, "123")
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .interactions
+        .issuance_accept(
+            interaction.id,
+            holder_did.id,
+            None,
+            None,
+            holder_wallet_unit.id,
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+
+    let requests = context.server_mock.received_requests().await.unwrap();
+    let token_request = requests
+        .iter()
+        .find(|r| r.url.path().contains("/token"))
+        .expect("Token request not found");
+
+    let waa_header = token_request
+        .headers
+        .get("oauth-client-attestation")
+        .expect("OAuth-Client-Attestation header not found");
+    let waa_pop_header = token_request
+        .headers
+        .get("oauth-client-attestation-pop")
+        .expect("OAuth-Client-Attestation-PoP header not found");
+
+    let waa =
+        Jwt::<()>::decompose_token(waa_header.to_str().unwrap()).expect("Failed to parse WAA JWT");
+    let waa_pop = Jwt::<()>::decompose_token(waa_pop_header.to_str().unwrap())
+        .expect("Failed to parse WAA PoP JWT");
+
+    assert_eq!(
+        waa_pop.payload.issuer, waa.payload.subject,
+        "WAA PoP 'iss' must equal WAA 'sub' per OAuth Attestation-Based Client Auth spec section 5.2"
+    );
+
+    assert_eq!(
+        waa.payload.subject,
+        Some("eudiw-abca".to_string()),
+        "WAA 'sub' should be wallet_client_id from config"
+    );
 }

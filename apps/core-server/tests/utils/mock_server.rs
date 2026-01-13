@@ -22,6 +22,10 @@ impl MockServer {
         self.mock.uri()
     }
 
+    pub async fn received_requests(&self) -> Option<Vec<wiremock::Request>> {
+        self.mock.received_requests().await
+    }
+
     pub async fn refresh_token(&self, schema_id: impl Display) {
         Mock::given(method(Method::POST))
             .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
@@ -41,6 +45,22 @@ impl MockServer {
     pub async fn token_endpoint(&self, schema_id: impl Display, test_token: impl Serialize) {
         Mock::given(method(Method::POST))
             .and(path(format!("/ssi/openid4vci/draft-13/{schema_id}/token")))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!(
+                {
+                    "access_token": test_token,
+                    "expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "refresh_token": test_token,
+                    "refresh_token_expires_in": OffsetDateTime::now_utc().unix_timestamp() + 3600,
+                    "token_type": "bearer"
+                }
+            )))
+            .mount(&self.mock)
+            .await;
+    }
+
+    pub async fn token_endpoint_final1(&self, schema_id: impl Display, test_token: impl Serialize) {
+        Mock::given(method(Method::POST))
+            .and(path(format!("/ssi/openid4vci/final-1.0/{schema_id}/token")))
             .respond_with(ResponseTemplate::new(200).set_body_json(json!(
                 {
                     "access_token": test_token,

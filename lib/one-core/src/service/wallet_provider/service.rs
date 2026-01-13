@@ -601,7 +601,6 @@ impl WalletProviderService {
                 .verify_pop(&waa_request.proof, config_params.device_auth_leeway)
                 .await?;
             let attestation = self.create_waa(
-                &wallet_unit.wallet_provider_name,
                 &config_params,
                 holder_jwk,
                 &auth_fn,
@@ -789,7 +788,6 @@ impl WalletProviderService {
 
     fn create_waa(
         &self,
-        wallet_provider_name: &str,
         config_params: &WalletProviderParams,
         holder_binding_jwk: PublicJwk,
         auth_fn: &AuthenticationFn,
@@ -813,10 +811,9 @@ impl WalletProviderService {
                 ))),
                 invalid_before: Some(now),
                 issuer: self.base_url.clone(),
-                subject: self
-                    .base_url
-                    .clone()
-                    .map(|base_url| format!("{base_url}/{wallet_provider_name}")),
+                // As per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5.1
+                // sub: REQUIRED. The sub (subject) claim MUST specify client_id value of the OAuth Client.
+                subject: Some(config_params.wallet_client_id.clone()),
                 audience: None,
                 jwt_id: None,
                 proof_of_possession_key: Some(ProofOfPossessionKey {
