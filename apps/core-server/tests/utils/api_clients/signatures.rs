@@ -1,4 +1,5 @@
 use serde::Serialize;
+use serde_with::skip_serializing_none;
 use shared_types::{CertificateId, IdentifierId, KeyId};
 use time::OffsetDateTime;
 
@@ -8,6 +9,7 @@ pub struct SignaturesApi {
     client: HttpClient,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TestCreateSignatureRequest {

@@ -24,9 +24,9 @@ pub(crate) struct CreateSignatureRequestRestDTO {
     /// Signer-specific request data.
     pub data: serde_json::Value,
 
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_start: Option<OffsetDateTime>,
-    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_end: Option<OffsetDateTime>,
 }
 
