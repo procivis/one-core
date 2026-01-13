@@ -199,6 +199,8 @@ mod m20260108_060501_proof_table;
 mod m20260108_062033_validity_credential_table;
 mod m20260108_070117_remote_entity_cache_table;
 mod m20260108_072951_blob_storage_table;
+mod m20260113_112557_trust_entity_table;
+mod m20260113_114843_trust_anchor_table;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -400,6 +402,8 @@ impl MigratorTrait for Migrator {
             Box::new(m20260108_062033_validity_credential_table::Migration),
             Box::new(m20260108_070117_remote_entity_cache_table::Migration),
             Box::new(m20260108_072951_blob_storage_table::Migration),
+            Box::new(m20260113_112557_trust_entity_table::Migration),
+            Box::new(m20260113_114843_trust_anchor_table::Migration),
         ]
     }
 }

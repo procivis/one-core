@@ -31,3 +31,5 @@ mod proof_tests;
 mod remote_entity_cache_tests;
 #[path = "test/revocation_list.rs"]
 mod revocation_list_tests;
+#[path = "test/trust.rs"]
+mod trust_tests;
