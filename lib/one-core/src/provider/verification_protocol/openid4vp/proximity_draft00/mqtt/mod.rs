@@ -117,8 +117,9 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
+        // ONE-8357: always send enveloped messages from holder side
         identify_topic
-            .send(identity_request.encode())
+            .send(identity_request.encode(), true)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
@@ -145,15 +146,17 @@ impl ProximityHolderTransport for MqttHolderTransport {
         &self,
         context: &mut Self::Context,
     ) -> Result<String, VerificationProtocolError> {
-        let presentation_request_bytes = context
+        let (presentation_request_bytes, enveloped) = context
             .presentation_definition_topic
             .recv()
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-        context
+        let token = context
             .encryption
             .decrypt(&presentation_request_bytes)
-            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
+            .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+        tracing::debug!("Received enveloped={enveloped} MQTT message");
+        Ok(token)
     }
 
     fn interaction_data_from_authz_request(
@@ -229,7 +232,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         presentation_submission_topic
-            .send(encrypted)
+            .send(encrypted, true)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
     }
@@ -266,7 +269,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         reject_topic
-            .send(encrypted)
+            .send(encrypted, true)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 

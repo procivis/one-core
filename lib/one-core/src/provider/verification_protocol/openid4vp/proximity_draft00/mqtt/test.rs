@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use dcql::DcqlQuery;
 use futures::FutureExt;
-use mockall::predicate::eq;
+use mockall::predicate::{always, eq};
 use serde_json::json;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
@@ -249,7 +249,8 @@ async fn test_handle_invitation_success() {
     let mut identify_topic = MockMqttTopic::default();
     identify_topic
         .expect_send()
-        .return_once(move |identity_request| {
+        .with(always(), eq(true))
+        .return_once(move |identity_request, _| {
             let request = IdentityRequest::parse(identity_request).unwrap();
 
             let mut lock = handle.lock().unwrap();
@@ -269,7 +270,7 @@ async fn test_handle_invitation_success() {
 
             let encryption = generate_verifier_encryption(verifier_key, holder_identity_request);
 
-            Ok(encryption.encrypt(&signed).unwrap())
+            Ok((encryption.encrypt(&signed).unwrap(), true))
         });
 
     let mut mqtt_client = MockMqttClient::default();
@@ -328,24 +329,27 @@ async fn test_presentation_reject_success() {
     let holder_session_keys = generate_session_keys(verifier_key.public_key_bytes()).unwrap();
 
     let mut reject_topic = MockMqttTopic::default();
-    reject_topic.expect_send().return_once(move |data| {
-        let verifier_encryption = generate_verifier_encryption(
-            verifier_key,
-            IdentityRequest {
-                key: holder_session_keys.public_key,
-                nonce: holder_session_keys.nonce,
-                version: ProtocolVersion::V2,
-            },
-        );
+    reject_topic
+        .expect_send()
+        .with(always(), eq(true))
+        .return_once(move |data, _| {
+            let verifier_encryption = generate_verifier_encryption(
+                verifier_key,
+                IdentityRequest {
+                    key: holder_session_keys.public_key,
+                    nonce: holder_session_keys.nonce,
+                    version: ProtocolVersion::V2,
+                },
+            );
 
-        let timestamp: i64 = verifier_encryption.decrypt(&data).unwrap();
-        let now = OffsetDateTime::now_utc();
-        let timestamp_date = OffsetDateTime::from_unix_timestamp(timestamp).unwrap();
-        let diff = now - timestamp_date;
-        assert!(diff < Duration::minutes(5));
+            let timestamp: i64 = verifier_encryption.decrypt(&data).unwrap();
+            let now = OffsetDateTime::now_utc();
+            let timestamp_date = OffsetDateTime::from_unix_timestamp(timestamp).unwrap();
+            let diff = now - timestamp_date;
+            assert!(diff < Duration::minutes(5));
 
-        Ok(())
-    });
+            Ok(())
+        });
 
     let mut mqtt_client = MockMqttClient::default();
 
@@ -392,7 +396,7 @@ async fn test_share_proof_for_mqtt_returns_url() {
         .returning(move |_, _, _| {
             // this is called in a spawned task so we don't care whether it fails for this test
             let mut topic = MockMqttTopic::default();
-            topic.expect_recv().returning(|| Ok(vec![]));
+            topic.expect_recv().returning(|| Ok((vec![], true)));
 
             Ok(Box::new(topic))
         });

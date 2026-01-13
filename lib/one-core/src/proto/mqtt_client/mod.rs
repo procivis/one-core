@@ -3,8 +3,8 @@ pub mod rumqttc_client;
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
 pub trait MqttTopic: Send + Sync {
-    async fn send(&self, bytes: Vec<u8>) -> anyhow::Result<()>;
-    async fn recv(&mut self) -> anyhow::Result<Vec<u8>>;
+    async fn send(&self, bytes: Vec<u8>, enveloped: bool) -> anyhow::Result<()>;
+    async fn recv(&mut self) -> anyhow::Result<(Vec<u8>, bool /* enveloped */)>;
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]

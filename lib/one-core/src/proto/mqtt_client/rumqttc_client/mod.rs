@@ -22,12 +22,12 @@ struct Envelope {
 
 struct Topic {
     connected_clients: usize,
-    tx: broadcast::Sender<Vec<u8>>,
+    tx: broadcast::Sender<(Vec<u8>, bool)>,
 }
 
 impl Topic {
-    fn notify(&self, value: Vec<u8>) {
-        let result = self.tx.send(value);
+    fn notify(&self, value: Vec<u8>, enveloped: bool) {
+        let result = self.tx.send((value, enveloped));
         if let Err(err) = result {
             warn!("MQTT failed to send data: {err}")
         }
@@ -98,9 +98,12 @@ impl RumqttcClient {
                         _ => continue,
                     };
 
-                    let msg: Envelope = match bincode::deserialize(&p.payload) {
-                        Ok(v) => v,
-                        Err(_) => continue,
+                    let msg: Result<Envelope, _> = bincode::deserialize(&p.payload);
+
+                    // ONE-8357: based on whether bincode deserialization succeeds or not, treat the payload as enveloped or not
+                    let (payload, enveloped) = match msg {
+                        Ok(v) => (v.payload, true),
+                        Err(_) => (p.payload.to_vec(), false),
                     };
 
                     let topics = topics.read().await;
@@ -109,7 +112,7 @@ impl RumqttcClient {
                         continue;
                     };
 
-                    subscription.notify(msg.payload)
+                    subscription.notify(payload, enveloped)
                 }
             }
         });
@@ -177,7 +180,7 @@ struct RumqttcTopic {
     sender_id: Uuid,
     broker_addr: BrokerAddr,
     topic_name: String,
-    incoming: broadcast::Receiver<Vec<u8>>,
+    incoming: broadcast::Receiver<(Vec<u8>, bool)>,
     client: AsyncClient,
     topics: Topics,
     brokers: Brokers,
@@ -236,12 +239,16 @@ impl Drop for RumqttcTopic {
 #[async_trait::async_trait]
 impl MqttTopic for RumqttcTopic {
     #[tracing::instrument(level = "debug", skip(self, payload), err(Debug))]
-    async fn send(&self, payload: Vec<u8>) -> anyhow::Result<()> {
-        let msg = bincode::serialize(&Envelope {
-            sender_id: self.sender_id,
-            payload,
-        })
-        .context("failed to serialize")?;
+    async fn send(&self, payload: Vec<u8>, enveloped: bool) -> anyhow::Result<()> {
+        let msg = if enveloped {
+            bincode::serialize(&Envelope {
+                sender_id: self.sender_id,
+                payload,
+            })
+            .context("failed to serialize")?
+        } else {
+            payload
+        };
 
         self.client
             .publish(&self.topic_name, QoS::AtMostOnce, false, msg)
@@ -250,7 +257,7 @@ impl MqttTopic for RumqttcTopic {
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
-    async fn recv(&mut self) -> anyhow::Result<Vec<u8>> {
+    async fn recv(&mut self) -> anyhow::Result<(Vec<u8>, bool)> {
         self.incoming
             .recv()
             .await

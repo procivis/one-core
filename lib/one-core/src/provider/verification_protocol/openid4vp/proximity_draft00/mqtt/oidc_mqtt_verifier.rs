@@ -141,15 +141,16 @@ impl MqttVerifier {
 }
 
 pub(crate) struct MqttVerifierTransport {
-    pub identify: Box<dyn MqttTopic>,
-    pub presentation_definition: Box<dyn MqttTopic>,
-    pub accept: Box<dyn MqttTopic>,
-    pub reject: Box<dyn MqttTopic>,
+    identify: Box<dyn MqttTopic>,
+    presentation_definition: Box<dyn MqttTopic>,
+    accept: Box<dyn MqttTopic>,
+    reject: Box<dyn MqttTopic>,
 }
 
 pub(crate) struct MqttVerifierContext {
     identity_request: IdentityRequest,
     shared_key: PeerEncryption,
+    enveloping: bool,
 }
 
 impl WithProtocolVersion for MqttVerifierContext {
@@ -170,7 +171,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
         &mut self,
         key_agreement: &KeyAgreementKey,
     ) -> Result<Self::Context, VerificationProtocolError> {
-        let identify_bytes = self
+        let (identify_bytes, enveloped) = self
             .identify
             .recv()
             .await
@@ -185,6 +186,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
         Ok(MqttVerifierContext {
             identity_request,
             shared_key,
+            enveloping: enveloped,
         })
     }
 
@@ -198,7 +200,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             .encrypt(&signed_presentation_request)
             .map_err(VerificationProtocolError::Transport)?;
         self.presentation_definition
-            .send(bytes)
+            .send(bytes, context.enveloping)
             .await
             .map_err(VerificationProtocolError::Transport)
     }
@@ -207,7 +209,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
         &mut self,
         context: &mut Self::Context,
     ) -> Result<HolderResponse, VerificationProtocolError> {
-        let response = select! {
+        let (response, enveloped) = select! {
             biased;
             _ = wallet_reject(&mut *self.reject, &context.shared_key) => {
                 return Ok(HolderResponse::Rejection)
@@ -215,6 +217,13 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             response = self.accept.recv() => response
         }
         .map_err(VerificationProtocolError::Transport)?;
+
+        if enveloped != context.enveloping {
+            tracing::warn!(
+                "Mismatched enveloping, identity_request: {}, presentation: {enveloped}",
+                context.enveloping
+            );
+        }
 
         Ok(HolderResponse::Submission(
             match context.identity_request.version {
@@ -283,7 +292,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
 
 async fn wallet_reject(rejection_topic: &mut dyn MqttTopic, shared_key: &PeerEncryption) {
     loop {
-        let Ok(reject) = rejection_topic.recv().await else {
+        let Ok((reject, _)) = rejection_topic.recv().await else {
             continue;
         };
 
@@ -299,5 +308,96 @@ async fn wallet_reject(rejection_topic: &mut dyn MqttTopic, shared_key: &PeerEnc
                 break;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use mockall::predicate::{always, eq};
+    use similar_asserts::assert_eq;
+
+    use super::*;
+    use crate::proto::mqtt_client::MockMqttTopic;
+
+    #[tokio::test]
+    async fn test_mqtt_verifier_transport_enveloped() {
+        let mut identify = MockMqttTopic::new();
+        identify.expect_recv().once().return_once(|| {
+            Ok((
+                IdentityRequest {
+                    key: [0u8; 32],
+                    nonce: [0u8; 12],
+                    version: ProtocolVersion::V1,
+                }
+                .encode(),
+                true,
+            ))
+        });
+        let mut presentation_definition = MockMqttTopic::new();
+        presentation_definition
+            .expect_send()
+            .once()
+            .with(always(), eq(true))
+            .returning(|_, _| Ok(()));
+
+        let mut transport = MqttVerifierTransport {
+            identify: Box::new(identify),
+            presentation_definition: Box::new(presentation_definition),
+            accept: Box::new(MockMqttTopic::new()),
+            reject: Box::new(MockMqttTopic::new()),
+        };
+
+        let context = transport
+            .wallet_connect(&KeyAgreementKey::new_random())
+            .await
+            .unwrap();
+
+        assert_eq!(context.enveloping, true);
+
+        transport
+            .send_presentation_request(&context, "request".to_string())
+            .await
+            .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_mqtt_verifier_transport_non_enveloped() {
+        let mut identify = MockMqttTopic::new();
+        identify.expect_recv().once().return_once(|| {
+            Ok((
+                IdentityRequest {
+                    key: [0u8; 32],
+                    nonce: [0u8; 12],
+                    version: ProtocolVersion::V1,
+                }
+                .encode(),
+                false,
+            ))
+        });
+        let mut presentation_definition = MockMqttTopic::new();
+        presentation_definition
+            .expect_send()
+            .once()
+            .with(always(), eq(false))
+            .returning(|_, _| Ok(()));
+
+        let mut transport = MqttVerifierTransport {
+            identify: Box::new(identify),
+            presentation_definition: Box::new(presentation_definition),
+            accept: Box::new(MockMqttTopic::new()),
+            reject: Box::new(MockMqttTopic::new()),
+        };
+
+        let context = transport
+            .wallet_connect(&KeyAgreementKey::new_random())
+            .await
+            .unwrap();
+
+        assert_eq!(context.enveloping, false);
+
+        transport
+            .send_presentation_request(&context, "request".to_string())
+            .await
+            .unwrap();
     }
 }
