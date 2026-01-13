@@ -704,7 +704,9 @@ impl OpenID4VCIFinal1_0 {
                         .any(|method| &format!("did:{}", holder_did.method()) == method)
                 {
                     None
-                } else if methods.contains(&"jwk".to_string()) {
+                } else if methods.contains(&"jwk".to_string())
+                    | methods.contains(&"cose_key".to_string())
+                {
                     Some(holder_key)
                 } else {
                     None

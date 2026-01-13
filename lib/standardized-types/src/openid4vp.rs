@@ -3,11 +3,12 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{VecSkipError, serde_as, skip_serializing_none};
 
 use crate::jwa::EncryptionAlgorithm;
 use crate::jwk::PublicJwk;
 
+#[serde_as]
 #[skip_serializing_none]
 #[cfg_attr(feature = "utoipa", proc_macros::options_not_nullable)]
 #[derive(Clone, Serialize, Deserialize, Debug, PartialEq, Default)]
@@ -18,6 +19,7 @@ pub struct ClientMetadata {
     #[serde(default)]
     pub jwks_uri: Option<String>,
     pub vp_formats_supported: HashMap<String, PresentationFormat>,
+    #[serde_as(as = "Option<VecSkipError<_>>")]
     #[serde(default)]
     pub encrypted_response_enc_values_supported: Option<Vec<EncryptionAlgorithm>>,
     #[serde(default)]
