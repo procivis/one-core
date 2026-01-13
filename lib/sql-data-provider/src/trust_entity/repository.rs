@@ -1,5 +1,7 @@
 use autometrics::autometrics;
+use futures::FutureExt;
 use one_core::model::trust_entity::{TrustEntity, TrustEntityRelations, UpdateTrustEntityRequest};
+use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_entity_repository::TrustEntityRepository;
 use one_core::service::trust_entity::dto::{
@@ -28,7 +30,7 @@ impl TrustEntityRepository for TrustEntityProvider {
     async fn create(&self, entity: TrustEntity) -> Result<TrustEntityId, DataLayerError> {
         let trust_anchor = entity.trust_anchor.ok_or(DataLayerError::MappingError)?;
 
-        let value = trust_entity::ActiveModel {
+        let model = trust_entity::ActiveModel {
             id: Set(entity.id),
             created_date: Set(entity.created_date),
             last_modified: Set(entity.last_modified),
@@ -45,12 +47,21 @@ impl TrustEntityRepository for TrustEntityProvider {
             entity_key: Set(entity.entity_key.into()),
             content: Set(entity.content.map(|s| s.as_bytes().to_vec())),
             organisation_id: Set(entity.organisation.map(|org| org.id)),
-        }
-        .insert(&self.db)
-        .await
-        .map_err(to_data_layer_error)?;
+        };
 
-        Ok(value.id)
+        let result = self
+            .db
+            .tx_with_config(
+                async { model.insert(&self.db).await.map_err(to_data_layer_error) }.boxed(),
+                // In isolation mode "read committed" InnoDB will _not_ create gap locks. Given there
+                // are multiple unique indexes, this is necessary to avoid deadlocks during parallel
+                // inserts.
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await??;
+
+        Ok(result.id)
     }
 
     async fn get_by_entity_key(

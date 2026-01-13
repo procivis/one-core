@@ -1,6 +1,7 @@
 use autometrics::autometrics;
 use futures::FutureExt;
 use one_core::model::trust_anchor::TrustAnchor;
+use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::trust_anchor_repository::TrustAnchorRepository;
 use one_core::service::trust_anchor::dto::{GetTrustAnchorsResponseDTO, ListTrustAnchorsQueryDTO};
@@ -25,7 +26,18 @@ use crate::trust_anchor::entities::TrustAnchorsListItemEntityModel;
 impl TrustAnchorRepository for TrustAnchorProvider {
     async fn create(&self, anchor: TrustAnchor) -> Result<TrustAnchorId, DataLayerError> {
         let anchor: trust_anchor::ActiveModel = anchor.into();
-        let result = anchor.insert(&self.db).await.map_err(to_data_layer_error)?;
+
+        let result = self
+            .db
+            .tx_with_config(
+                async { anchor.insert(&self.db).await.map_err(to_data_layer_error) }.boxed(),
+                // In isolation mode "read committed" InnoDB will _not_ create gap locks. Given there
+                // are multiple unique indexes, this is necessary to avoid deadlocks during parallel
+                // inserts.
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await??;
 
         Ok(result.id)
     }

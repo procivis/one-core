@@ -8,7 +8,7 @@ use super::{
 use crate::config::core_config::CoreConfig;
 use crate::model::identifier::Identifier;
 use crate::model::organisation::Organisation;
-use crate::proto::transaction_manager::TransactionManager;
+use crate::proto::transaction_manager::{IsolationLevel, TransactionManager};
 use crate::provider::credential_formatter::model::{CertificateDetails, IdentifierDetails};
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -122,23 +122,31 @@ impl IdentifierCreator for IdentifierCreatorProto {
     ) -> Result<Identifier, ServiceError> {
         Ok(self
             .tx_manager
-            .tx(async {
-                Ok::<_, ServiceError>(match request {
-                    CreateLocalIdentifierRequest::Did(did_request) => {
-                        self.create_local_did_identifier(name, did_request, organisation)
+            .tx_with_config(
+                async {
+                    Ok::<_, ServiceError>(match request {
+                        CreateLocalIdentifierRequest::Did(did_request) => {
+                            self.create_local_did_identifier(name, did_request, organisation)
+                                .await?
+                        }
+                        CreateLocalIdentifierRequest::Certificate(certificates) => {
+                            self.create_local_certificate_identifier(
+                                name,
+                                certificates,
+                                organisation,
+                            )
                             .await?
-                    }
-                    CreateLocalIdentifierRequest::Certificate(certificates) => {
-                        self.create_local_certificate_identifier(name, certificates, organisation)
-                            .await?
-                    }
-                    CreateLocalIdentifierRequest::Key(key) => {
-                        self.create_local_key_identifier(name, key, organisation)
-                            .await?
-                    }
-                })
-            }
-            .boxed())
+                        }
+                        CreateLocalIdentifierRequest::Key(key) => {
+                            self.create_local_key_identifier(name, key, organisation)
+                                .await?
+                        }
+                    })
+                }
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
             .await??)
     }
 }
