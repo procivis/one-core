@@ -48,6 +48,7 @@ workflow:
     on_new_commit: conservative
 
 stages:
+  - lint
   - test
   - docs
   - tests
@@ -174,7 +175,6 @@ tests:mariadb:
     - *delete_network
 
 tests:sqlite:
-  needs: []
   extends:
     - .cargo_tests
   before_script:
@@ -187,7 +187,7 @@ tests:sqlite:
 
 linter:clippy:
   interruptible: true
-  stage: test
+  stage: lint
   needs: []
   script:
     - cargo clippy --all-targets --message-format=json -- -D warnings > clippy.json
@@ -199,7 +199,7 @@ linter:clippy:
 
 linter:rustfmt:
   interruptible: true
-  stage: test
+  stage: lint
   needs: []
   script:
     - TOOLCHAIN_VERSION=$(rustup toolchain list | grep nightly | head -n1 | awk '{print $1}')
@@ -207,7 +207,7 @@ linter:rustfmt:
 
 linter:dependencies:
   interruptible: true
-  stage: test
+  stage: lint
   script:
     - cargo deny --format json check 2> deny.json || true
     - cargo deny check
