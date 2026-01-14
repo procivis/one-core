@@ -1,0 +1,295 @@
+use crate::fixtures::{ColumnType, get_schema};
+
+#[tokio::test]
+async fn test_db_schema_wallet_unit() {
+    let schema = get_schema().await;
+
+    let wallet_unit = schema
+        .table("wallet_unit")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "last_issuance",
+            "name",
+            "status",
+            "os",
+            "nonce",
+            "organisation_id",
+            "wallet_provider_type",
+            "wallet_provider_name",
+            "authentication_key_jwk",
+        ])
+        .index(
+            "index-WalletUnit-Organisation-AuthenticationKey-Unique",
+            true,
+            &["authentication_key_jwk", "organisation_id"],
+        );
+    wallet_unit
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    wallet_unit
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("last_issuance")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(true);
+    wallet_unit
+        .column("name")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("status")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("os")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("nonce")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
+    wallet_unit
+        .column("organisation_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-WalletUnit-OrganisationId", "organisation", "id");
+    wallet_unit
+        .column("wallet_provider_type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("wallet_provider_name")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    wallet_unit
+        .column("authentication_key_jwk")
+        .r#type(ColumnType::Text)
+        .nullable(true);
+}
+
+#[tokio::test]
+async fn test_db_schema_holder_wallet_unit() {
+    let schema = get_schema().await;
+
+    let holder_wallet_unit = schema
+        .table("holder_wallet_unit")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "organisation_id",
+            "authentication_key_id",
+            "wallet_provider_name",
+            "wallet_provider_type",
+            "wallet_provider_url",
+            "provider_wallet_unit_id",
+            "status",
+        ])
+        .index(
+            "index-HolderWalletUnit-AuthenticationKey-Unique",
+            true,
+            &["authentication_key_id"],
+        );
+    holder_wallet_unit
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    holder_wallet_unit
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    holder_wallet_unit
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    holder_wallet_unit
+        .column("organisation_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-HolderWalletUnit-Organisation", "organisation", "id");
+    holder_wallet_unit
+        .column("authentication_key_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-HolderWalletUnitAuthKey-Key", "key", "id");
+    holder_wallet_unit
+        .column("wallet_provider_name")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    holder_wallet_unit
+        .column("wallet_provider_type")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    holder_wallet_unit
+        .column("wallet_provider_url")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+    holder_wallet_unit
+        .column("provider_wallet_unit_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None);
+    holder_wallet_unit
+        .column("status")
+        .r#type(ColumnType::String(None))
+        .nullable(false)
+        .default(None);
+}
+
+#[tokio::test]
+async fn test_db_schema_wallet_unit_attestation() {
+    let schema = get_schema().await;
+
+    let wallet_unit_attestation = schema
+        .table("wallet_unit_attestation")
+        .columns(&[
+            "id",
+            "created_date",
+            "last_modified",
+            "expiration_date",
+            "attestation",
+            "holder_wallet_unit_id",
+            "attested_key_id",
+            "revocation_list_url",
+            "revocation_list_index",
+        ])
+        .index(
+            "index-WalletUnitAttestation-AttestedKey-Unique",
+            true,
+            &["attested_key_id"],
+        );
+    wallet_unit_attestation
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    wallet_unit_attestation
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attestation
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attestation
+        .column("expiration_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attestation
+        .column("attestation")
+        .r#type(ColumnType::Blob)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attestation
+        .column("holder_wallet_unit_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key(
+            "fk-WalletUnitAttestation-HolderWalletUnit",
+            "holder_wallet_unit",
+            "id",
+        );
+    wallet_unit_attestation
+        .column("attested_key_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-WalletUnitAttestation-KeyId", "key", "id");
+    wallet_unit_attestation
+        .column("revocation_list_url")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
+    wallet_unit_attestation
+        .column("revocation_list_index")
+        .r#type(ColumnType::Unsigned)
+        .nullable(true);
+}
+
+#[tokio::test]
+async fn test_db_schema_wallet_unit_attested_key() {
+    let schema = get_schema().await;
+
+    let wallet_unit_attested_key = schema.table("wallet_unit_attested_key").columns(&[
+        "id",
+        "created_date",
+        "last_modified",
+        "expiration_date",
+        "public_key_jwk",
+        "wallet_unit_id",
+        "revocation_list_entry_id",
+    ]);
+    wallet_unit_attested_key
+        .column("id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .primary_key();
+    wallet_unit_attested_key
+        .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attested_key
+        .column("last_modified")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attested_key
+        .column("expiration_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attested_key
+        .column("public_key_jwk")
+        .r#type(ColumnType::Text)
+        .nullable(false)
+        .default(None);
+    wallet_unit_attested_key
+        .column("wallet_unit_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(false)
+        .default(None)
+        .foreign_key("fk-WalletUnitAttestedKey-WalletUnit", "wallet_unit", "id");
+    wallet_unit_attested_key
+        .column("revocation_list_entry_id")
+        .r#type(ColumnType::Uuid)
+        .nullable(true)
+        .foreign_key(
+            "fk-WalletUnitAttestedKey-RevocationListEntry",
+            "revocation_list_entry",
+            "id",
+        );
+}
