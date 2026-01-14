@@ -67,7 +67,6 @@ use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
-use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::storage_proxy::MockStorageProxy;
 use crate::service::test_utilities::{
     dummy_did, dummy_identifier, dummy_key, dummy_organisation, get_dummy_date,
@@ -120,7 +119,6 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
                 allowed_schemes: vec!["https".to_string()],
             },
             nonce: None,
-            enable_credential_preview: true,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
         }),
@@ -354,37 +352,23 @@ async fn test_generate_offer_did() {
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential_did();
 
-    let keys = credential.claims.clone().unwrap_or_default();
-
-    let credential_subject = prepare_preview_claims_for_offer(&keys, true).unwrap();
-
     let offer = create_credential_offer(
         &protocol_base_url,
         &interaction_id.to_string(),
-        &credential,
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
-        credential_subject,
     )
     .unwrap();
 
     assert_eq!(
         json!(&offer),
         json!({
-        "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
-            "issuer_did": "did:example:123",
+            "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
-            },
-            "credential_subject": {
-                "keys": {
-                    "NUMBER": {
-                        "value": "123"
-                    }
-                }
             }
         })
     )
@@ -396,17 +380,11 @@ async fn test_generate_offer_certificate() {
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential_certificate();
 
-    let keys = credential.claims.clone().unwrap_or_default();
-
-    let credential_subject = prepare_preview_claims_for_offer(&keys, true).unwrap();
-
     let offer = create_credential_offer(
         &protocol_base_url,
         &interaction_id.to_string(),
-        &credential,
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
-        credential_subject,
     )
     .unwrap();
 
@@ -414,60 +392,11 @@ async fn test_generate_offer_certificate() {
         json!(&offer),
         json!({
             "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
-            "issuer_certificate": "<dummy test cert chain>",
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
             ],
             "grants": {
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
-            },
-            "credential_subject": {
-                "keys": {
-                    "NUMBER": {
-                        "value": "123"
-                    }
-                },
-            }
-        })
-    )
-}
-
-#[tokio::test]
-async fn test_generate_offer_claims_without_values() {
-    let protocol_base_url = "BASE_URL/ssi/openid4vci/final-1.0".to_string();
-    let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
-    let credential = generic_credential_certificate();
-
-    let keys = credential.claims.clone().unwrap_or_default();
-
-    let credential_subject = prepare_preview_claims_for_offer(&keys, false).unwrap();
-
-    let offer = create_credential_offer(
-        &protocol_base_url,
-        &interaction_id.to_string(),
-        &credential,
-        &credential.schema.as_ref().unwrap().id,
-        &credential.schema.as_ref().unwrap().schema_id,
-        credential_subject,
-    )
-    .unwrap();
-
-    assert_eq!(
-        json!(&offer),
-        json!({
-            "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
-            "issuer_certificate": "<dummy test cert chain>",
-            "credential_configuration_ids" : [
-                credential.schema.as_ref().unwrap().schema_id,
-            ],
-            "grants": {
-                "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
-            },
-            "credential_subject": {
-                "keys": {
-                    "NUMBER": {
-                    }
-                }
             }
         })
     )
@@ -502,7 +431,6 @@ async fn test_generate_share_credentials_offer_by_value() {
                 allowed_schemes: vec!["https".to_string()],
             },
             nonce: None,
-            enable_credential_preview: true,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
         }),
@@ -515,11 +443,6 @@ async fn test_generate_share_credentials_offer_by_value() {
     assert!(
         result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Ffinal-1.0%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
     );
-    assert!(
-        result
-            .url
-            .contains("%22issuer_did%22%3A%22did%3Aexample%3A123%22")
-    )
 }
 
 #[tokio::test]
@@ -1392,7 +1315,6 @@ async fn test_holder_reject_credential() {
                 allowed_schemes: vec!["https".to_string()],
             },
             nonce: None,
-            enable_credential_preview: true,
             oauth_attestation_leeway: 60,
             key_attestation_leeway: 60,
         }),
@@ -1830,7 +1752,6 @@ fn test_params(issuance_url_scheme: &str) -> OpenID4VCIFinal1Params {
             allowed_schemes: vec!["https".to_string()],
         },
         nonce: None,
-        enable_credential_preview: true,
         oauth_attestation_leeway: 60,
         key_attestation_leeway: 60,
     }

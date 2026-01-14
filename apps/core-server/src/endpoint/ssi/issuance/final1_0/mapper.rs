@@ -1,15 +1,15 @@
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
-    ExtendedSubjectClaimsDTO, OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign,
-    OpenID4VCIIssuerMetadataResponseDTO, OpenID4VCITokenRequestDTO, Timestamp,
+    OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesign, OpenID4VCIIssuerMetadataResponseDTO,
+    OpenID4VCITokenRequestDTO, Timestamp,
 };
 use one_core::service::credential_schema::dto::CredentialSchemaCodeTypeEnum;
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
 use super::dto::{
-    ExtendedSubjectClaimsRestDTO, OpenID4VCIErrorResponseRestDTO,
-    OpenID4VCIIssuerMetadataResponseRestDTO, OpenID4VCITokenRequestRestDTO, TimestampRest,
+    OpenID4VCIErrorResponseRestDTO, OpenID4VCIIssuerMetadataResponseRestDTO,
+    OpenID4VCITokenRequestRestDTO, TimestampRest,
 };
 use crate::endpoint::ssi::issuance::final1_0::dto::OpenID4VCIIssuerMetadataCredentialMetadataProcivisDesignRestDTO;
 
@@ -41,18 +41,6 @@ impl From<OpenID4VCIIssuerMetadataResponseDTO> for OpenID4VCIIssuerMetadataRespo
                 .collect(),
             display: convert_inner_of_inner(value.display),
             nonce_endpoint: value.nonce_endpoint,
-        }
-    }
-}
-
-impl From<ExtendedSubjectClaimsDTO> for ExtendedSubjectClaimsRestDTO {
-    fn from(value: ExtendedSubjectClaimsDTO) -> Self {
-        Self {
-            claims: value
-                .claims
-                .into_iter()
-                .map(|(key, value)| (key, value.into()))
-                .collect(),
         }
     }
 }

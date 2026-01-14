@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::mapper::credentials_supported_mdoc;
 use super::model::{
-    ExtendedSubjectDTO, OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
+    OpenID4VCIGrants, OpenID4VCIIssuerInteractionDataDTO,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCIPreAuthorizedCodeGrant, OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO,
@@ -18,7 +18,6 @@ use super::model::{
 use super::validator::throw_if_credential_state_not_eq;
 use crate::model::credential::{Credential, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchema;
-use crate::model::identifier::IdentifierType;
 use crate::model::interaction::Interaction;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
 use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
@@ -319,43 +318,17 @@ pub(crate) fn get_credential_schema_base_url(
 pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
     pre_authorized_code: &str,
-    credential: &Credential,
     credential_schema_uuid: &CredentialSchemaId,
     credential_schema_id: &str,
-    credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, OpenIDIssuanceError> {
-    let issuer_identifier =
-        credential
-            .issuer_identifier
-            .as_ref()
-            .ok_or(OpenID4VCIError::RuntimeError(
-                "Missing issuer_identifier".to_owned(),
-            ))?;
-    let (issuer_did, issuer_certificate) = match issuer_identifier.r#type {
-        IdentifierType::Key => (None, None),
-        IdentifierType::Did => (
-            issuer_identifier.did.as_ref().map(|did| did.did.clone()),
-            None,
-        ),
-        IdentifierType::Certificate => (
-            None,
-            credential
-                .issuer_certificate
-                .as_ref()
-                .map(|issuer_certificate| issuer_certificate.chain.clone()),
-        ),
-    };
     Ok(OpenID4VCIFinal1CredentialOfferDTO {
         credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
-        issuer_did,
-        issuer_certificate,
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),
             tx_code: None,
             authorization_server: None,
         }),
-        credential_subject: Some(credential_subject),
     })
 }
 

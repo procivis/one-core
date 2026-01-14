@@ -4,14 +4,13 @@ use one_core::provider::credential_formatter::vcdm::ContextType;
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
 use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
 use one_core::provider::issuance_protocol::openid4vci_final1_0::model::{
-    CredentialSigningAlgValue, ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant,
+    CredentialSigningAlgValue, OpenID4VCIAuthorizationCodeGrant,
     OpenID4VCICredentialConfigurationData, OpenID4VCICredentialDefinition,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialMetadataClaimResponseDTO,
     OpenID4VCICredentialMetadataResponseDTO, OpenID4VCICredentialRequestDTO,
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
-    OpenID4VCICredentialSubjectItem, OpenID4VCICredentialValueDetails,
-    OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants, OpenID4VCIIssuerMetadataClaimDisplay,
-    OpenID4VCIIssuerMetadataCredentialMetadataImage,
+    OpenID4VCICredentialSubjectItem, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIGrants,
+    OpenID4VCIIssuerMetadataClaimDisplay, OpenID4VCIIssuerMetadataCredentialMetadataImage,
     OpenID4VCIIssuerMetadataCredentialSupportedDisplayDTO,
     OpenID4VCIIssuerMetadataDisplayResponseDTO, OpenID4VCIIssuerMetadataLogoDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
@@ -25,7 +24,6 @@ use one_dto_mapper::{From, Into, convert_inner, convert_inner_of_inner};
 use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
-use shared_types::DidValue;
 use utoipa::ToSchema;
 
 use crate::endpoint::credential_schema::dto::CredentialSchemaCodeTypeRestEnum;
@@ -336,33 +334,6 @@ pub(crate) struct OpenID4VCIFinal1CredentialOfferRestDTO {
     pub credential_issuer: String,
     pub credential_configuration_ids: Vec<String>,
     pub grants: OpenID4VCIGrantsRestDTO,
-
-    #[from(with_fn = convert_inner)]
-    pub credential_subject: Option<ExtendedSubjectRestDTO>,
-    #[from(with_fn = convert_inner)]
-    pub issuer_did: Option<DidValue>,
-    pub issuer_certificate: Option<String>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Serialize, Debug, From, ToSchema)]
-#[from(ExtendedSubjectDTO)]
-pub(crate) struct ExtendedSubjectRestDTO {
-    #[from(with_fn = convert_inner)]
-    pub keys: Option<ExtendedSubjectClaimsRestDTO>,
-}
-
-#[derive(Clone, Serialize, Debug, ToSchema)]
-pub(crate) struct ExtendedSubjectClaimsRestDTO {
-    #[serde(flatten)]
-    pub claims: IndexMap<String, ProcivisSubjectClaimValueRestDTO>,
-}
-
-#[options_not_nullable]
-#[derive(Clone, Serialize, Debug, From, ToSchema)]
-#[from(OpenID4VCICredentialValueDetails)]
-pub(crate) struct ProcivisSubjectClaimValueRestDTO {
-    pub value: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

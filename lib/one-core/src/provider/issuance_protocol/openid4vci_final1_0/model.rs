@@ -6,7 +6,7 @@ use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{DidValue, OrganisationId};
+use shared_types::OrganisationId;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -18,7 +18,7 @@ use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
     OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCRedirectUriParams,
-    default_enable_credential_preview, default_issuance_url_scheme,
+    default_issuance_url_scheme,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -41,9 +41,6 @@ pub(crate) struct OpenID4VCIFinal1Params {
     pub redirect_uri: OpenID4VCRedirectUriParams,
 
     pub nonce: Option<OpenID4VCNonceParams>,
-
-    #[serde(default = "default_enable_credential_preview")]
-    pub enable_credential_preview: bool,
 
     pub oauth_attestation_leeway: u64,
 
@@ -454,25 +451,6 @@ pub struct OpenID4VCIFinal1CredentialOfferDTO {
     pub credential_issuer: String,
     pub credential_configuration_ids: Vec<String>,
     pub grants: OpenID4VCIGrants,
-
-    // This is a custom field with credential values
-    pub credential_subject: Option<ExtendedSubjectDTO>,
-    // This is a custom field with the issuer did
-    pub issuer_did: Option<DidValue>,
-    // This is a custom field with the issuer certificate
-    pub issuer_certificate: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ExtendedSubjectDTO {
-    pub keys: Option<ExtendedSubjectClaimsDTO>,
-}
-
-#[derive(Clone, Serialize, Deserialize, Debug, Default)]
-pub struct ExtendedSubjectClaimsDTO {
-    #[serde(flatten)]
-    pub claims: IndexMap<String, OpenID4VCICredentialValueDetails>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -683,12 +661,6 @@ impl<'de> Deserialize<'de> for OpenID4VCICredentialSubjectItem {
 pub struct CredentialSubjectDisplay {
     pub name: Option<String>,
     pub locale: Option<String>,
-}
-
-#[skip_serializing_none]
-#[derive(Clone, Serialize, Deserialize, Debug, PartialEq)]
-pub struct OpenID4VCICredentialValueDetails {
-    pub value: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

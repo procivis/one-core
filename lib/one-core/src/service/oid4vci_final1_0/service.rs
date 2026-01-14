@@ -28,7 +28,6 @@ use crate::mapper::exchange::{
 };
 use crate::model::blob::{Blob, BlobType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::claim::{Claim, ClaimRelations};
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::LockType;
 use crate::model::credential::{
@@ -53,9 +52,8 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::mapper::{
     map_cryptographic_binding_methods_supported, map_proof_types_supported,
 };
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
-    ExtendedSubjectClaimsDTO, ExtendedSubjectDTO, OAuthAuthorizationServerMetadata,
-    OpenID4VCICredentialRequestDTO, OpenID4VCICredentialRequestProofs,
-    OpenID4VCICredentialValueDetails, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
+    OAuthAuthorizationServerMetadata, OpenID4VCICredentialRequestDTO,
+    OpenID4VCICredentialRequestProofs, OpenID4VCIFinal1CredentialOfferDTO, OpenID4VCIFinal1Params,
     OpenID4VCIIssuerInteractionDataDTO, OpenID4VCIIssuerMetadataResponseDTO,
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
@@ -250,19 +248,11 @@ impl OID4VCIFinal1_0Service {
             .get_credential(
                 &credential_id,
                 &CredentialRelations {
-                    claims: Some(ClaimRelations {
-                        schema: Some(ClaimSchemaRelations::default()),
-                    }),
-                    issuer_identifier: Some(IdentifierRelations {
-                        did: Some(Default::default()),
-                        ..Default::default()
-                    }),
                     schema: Some(CredentialSchemaRelations {
                         claim_schemas: Some(ClaimSchemaRelations::default()),
                         ..Default::default()
                     }),
                     interaction: Some(InteractionRelations::default()),
-                    issuer_certificate: Some(Default::default()),
                     ..Default::default()
                 },
             )
@@ -302,33 +292,16 @@ impl OID4VCIFinal1_0Service {
                 "interaction missing".to_string(),
             ))?;
 
-        let url = self
+        let protocol_base_url = self
             .protocol_base_url
             .as_ref()
             .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
 
-        let claims = credential
-            .claims
-            .as_ref()
-            .ok_or(ServiceError::MappingError("claims missing".to_string()))?
-            .iter()
-            .map(|claim| claim.to_owned())
-            .collect::<Vec<_>>();
-
-        let params: OpenID4VCIFinal1Params =
-            self.config.issuance_protocol.get(&credential.protocol)?;
-
-        let credential_subject =
-            prepare_preview_claims_for_offer(&claims, params.enable_credential_preview)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?;
-
         Ok(create_credential_offer(
-            url,
+            protocol_base_url,
             &interaction.id.to_string(),
-            &credential,
             &credential_schema_id,
             &credential_schema.schema_id,
-            credential_subject,
         )?)
     }
 
@@ -1113,31 +1086,4 @@ impl OID4VCIFinal1_0Service {
         let c_nonce = generate_nonce(params, self.base_url.to_owned()).await?;
         Ok(OpenID4VCINonceResponseDTO { c_nonce })
     }
-}
-
-pub(crate) fn prepare_preview_claims_for_offer(
-    claims: &[Claim],
-    include_claim_values: bool,
-) -> Result<ExtendedSubjectDTO, OpenIDIssuanceError> {
-    Ok(ExtendedSubjectDTO {
-        keys: Some(ExtendedSubjectClaimsDTO {
-            claims: claims
-                .iter()
-                .filter_map(|claim| {
-                    // If no value is present, the claim is filtered out / not included in the preview
-                    let claim_value = claim.value.clone()?;
-
-                    Some((
-                        claim.path.clone(),
-                        OpenID4VCICredentialValueDetails {
-                            value: match include_claim_values {
-                                true => Some(claim_value),
-                                false => None,
-                            },
-                        },
-                    ))
-                })
-                .collect(),
-        }),
-    })
 }

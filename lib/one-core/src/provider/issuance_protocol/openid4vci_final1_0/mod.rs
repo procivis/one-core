@@ -95,7 +95,6 @@ use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_final1_0::dto::{
     OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
 };
-use crate::service::oid4vci_final1_0::service::prepare_preview_claims_for_offer;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 use crate::validator::key_security::match_key_security_level;
@@ -1275,25 +1274,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .as_ref()
             .ok_or(IssuanceProtocolError::Failed("Missing base_url".to_owned()))?;
 
-        let claims = credential
-            .claims
-            .as_ref()
-            .ok_or(IssuanceProtocolError::Failed("Missing claims".to_owned()))?
-            .iter()
-            .map(|claim| claim.to_owned())
-            .collect::<Vec<_>>();
-
-        let credential_subject = prepare_preview_claims_for_offer(&claims, true)
-            .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
-
         if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
                 protocol_base_url,
                 &interaction_id.to_string(),
-                credential,
                 &credential_schema.id,
                 &credential_schema.schema_id,
-                credential_subject,
             )
             .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
