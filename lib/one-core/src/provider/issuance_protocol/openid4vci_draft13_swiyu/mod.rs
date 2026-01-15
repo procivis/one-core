@@ -125,7 +125,7 @@ impl OpenID4VCI13Swiyu {
 #[async_trait::async_trait]
 impl IssuanceProtocol for OpenID4VCI13Swiyu {
     async fn holder_can_handle(&self, url: &Url) -> bool {
-        self.inner.holder_can_handle(url).await
+        url.scheme() == "swiyu"
     }
 
     async fn holder_handle_invitation(

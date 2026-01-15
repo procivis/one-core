@@ -420,12 +420,27 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {
         // specific SD-JWT VC claims
-        let sd_jwt_vc_claims = vec![MetadataClaimSchema {
+        let mut sd_jwt_vc_claims = vec![MetadataClaimSchema {
             key: "vct".to_string(),
             data_type: "STRING".to_string(),
             array: false,
             required: true,
         }];
+
+        if self.params.swiyu_mode {
+            sd_jwt_vc_claims.push(MetadataClaimSchema {
+                key: "vct_metadata_uri".to_string(),
+                data_type: "STRING".to_string(),
+                array: false,
+                required: false,
+            });
+            sd_jwt_vc_claims.push(MetadataClaimSchema {
+                key: "vct_metadata_uri#integrity".to_string(),
+                data_type: "STRING".to_string(),
+                array: false,
+                required: false,
+            });
+        }
 
         [jwt_metadata_claims(), sd_jwt_vc_claims].concat()
     }
