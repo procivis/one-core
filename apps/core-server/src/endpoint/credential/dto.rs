@@ -257,7 +257,7 @@ pub(crate) enum SearchType {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialQuery
 pub(crate) struct CredentialsFilterQueryParamsRest {
     /// Specify the organization from which to return credentials.
     #[param(nullable = false)]
@@ -364,7 +364,7 @@ pub(crate) enum SortableCredentialColumnRestEnum {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateCredentialRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCredentialRequestRestDTO {
     /// UUID of the credential schema to use for this credential. The `id`
     /// field is returned when creating a credential schema; do not use the
@@ -409,7 +409,7 @@ pub(crate) struct CreateCredentialRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CredentialRequestClaimDTO)]
 pub(crate) struct CredentialRequestClaimRestDTO {
     /// ID of the attribute from the credential schema.
@@ -425,7 +425,7 @@ pub(crate) struct CredentialRequestClaimRestDTO {
 /// Array of credentials to be checked for revocation status.
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CredentialRevocationCheckRequestRestDTO {
     pub credential_ids: Vec<CredentialId>,
     pub force_refresh: Option<bool>,
@@ -433,7 +433,7 @@ pub(crate) struct CredentialRevocationCheckRequestRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(SuspendCredentialRequestDTO)]
 pub(crate) struct SuspendCredentialRequestRestDTO {
     /// Specify the time when the credential will reactivate, or omit for an indefinite suspension.

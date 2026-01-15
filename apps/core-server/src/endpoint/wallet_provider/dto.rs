@@ -80,7 +80,7 @@ pub(crate) enum WalletProviderTypeRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside ListWalletUnitsQuery
 pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
     /// Specify the organization from which to return wallet units.
     #[param(nullable = false)]

@@ -29,7 +29,7 @@ use crate::endpoint::credential_schema::dto::KeyStorageSecurityRestEnum;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = "https://example.com/credential-offer")]
     /// Typically encoded as a QR code or deep link by the issuer or verifier.
@@ -134,7 +134,7 @@ pub(crate) enum OpenID4VCITxCodeInputModeRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssuanceAcceptRequestRestDTO {
     /// The identifier associated with the particular issuance.
     pub interaction_id: InteractionId,
@@ -149,13 +149,13 @@ pub(crate) struct IssuanceAcceptRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssuanceRejectRequestRestDTO {
     pub interaction_id: InteractionId,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct PresentationRejectRequestRestDTO {
     /// The identifier associated with a particular verification interaction.
     pub interaction_id: InteractionId,
@@ -180,7 +180,7 @@ impl<T> From<SingleOrArray<T>> for Vec<T> {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(PresentationSubmitRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct PresentationSubmitRequestRestDTO {
     pub interaction_id: InteractionId,
     #[into(with_fn = convert_inner_of_inner)]
@@ -202,7 +202,7 @@ where
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(PresentationSubmitCredentialRequestDTO)]
 pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
     /// Select a credential.
@@ -214,7 +214,7 @@ pub(crate) struct PresentationSubmitCredentialRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(PresentationSubmitV2RequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct PresentationSubmitV2RequestRestDTO {
     pub interaction_id: InteractionId,
     #[into(with_fn = convert_inner_of_inner)]
@@ -236,7 +236,7 @@ where
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(PresentationSubmitV2CredentialRequestDTO)]
 pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
     /// Submitted credential.
@@ -249,7 +249,7 @@ pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = ProposeProofRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProposeProofRequestRestDTO {
     #[try_into(infallible)]
     pub protocol: String,
@@ -272,7 +272,7 @@ pub(crate) struct ProposeProofResponseRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct InitiateIssuanceRequestRestDTO {
     /// Organization to place the issued credential into.
     pub organisation_id: Option<OrganisationId>,
@@ -293,6 +293,11 @@ pub(crate) struct InitiateIssuanceRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(InitiateIssuanceAuthorizationDetailDTO)]
 #[serde(rename_all = "camelCase")]
+// > Additional authorization_details data fields MAY be defined and used
+// > when the type value is openid_credential. Note that this effectively
+// > defines an authorization details type that is never considered invalid
+// > due to unknown fields.
+// https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-5.1.1-4
 pub(crate) struct InitiateIssuanceAuthorizationDetailRestDTO {
     pub r#type: String,
     pub credential_configuration_id: String,
@@ -307,7 +312,7 @@ pub(crate) struct InitiateIssuanceResponseRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ContinueIssuanceRequestRestDTO {
     #[schema(example = "myapp://example/credential-offer?code=xxx&clientId=myWallet&...")]
     /// Starts with the `redirectUri` and is used to continue the

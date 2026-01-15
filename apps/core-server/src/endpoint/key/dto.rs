@@ -20,7 +20,7 @@ use crate::serialize::front_time;
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto, ModifySchema)]
 #[try_into(T = KeyRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyRequestRestDTO {
     /// Specify the organization.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
@@ -116,7 +116,7 @@ pub(crate) enum SortableKeyColumnRestDTO {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetKeyQuery
 pub(crate) struct KeyFilterQueryParamsRest {
     /// Specify the organization from which to retrieve keys.
     #[param(nullable = false)]
@@ -167,7 +167,7 @@ pub(crate) type GetKeyQuery =
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyGenerateCSRRequestRestDTO {
     pub profile: KeyGenerateCSRRequestProfileRest,
     pub subject: KeyGenerateCSRRequestSubjectRestDTO,
@@ -184,7 +184,7 @@ pub(crate) enum KeyGenerateCSRRequestProfileRest {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(KeyGenerateCSRRequestSubjectDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyGenerateCSRRequestSubjectRestDTO {
     /// Two-letter country code.
     pub country_name: Option<String>,

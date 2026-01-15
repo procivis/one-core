@@ -14,7 +14,7 @@ use crate::serialize::front_time;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateTrustAnchorRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateTrustAnchorRequestRestDTO {
     /// Must be unique.
     pub name: String,
@@ -81,7 +81,7 @@ pub(crate) enum ExactTrustAnchorFilterColumnRestEnum {
 }
 
 #[derive(Clone, Debug, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside ListTrustAnchorsQuery
 pub(crate) struct TrustAnchorsFilterQueryParamsRest {
     /// Return only trust anchors with a name starting with this string.
     /// Not case-sensitive.

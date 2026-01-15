@@ -13,7 +13,7 @@ use uuid::Uuid;
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateSignatureRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateSignatureRequestRestDTO {
     /// Issuer ID.
     pub issuer: IdentifierId,

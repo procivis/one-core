@@ -34,7 +34,7 @@ use crate::serialize::front_time;
 
 #[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Validate, TryInto)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = CreateIdentifierRequestDTO, Error = ServiceError)]
 pub(crate) struct CreateIdentifierRequestRestDTO {
     #[try_into(infallible)]
@@ -51,7 +51,7 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
 
 #[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Into, ModifySchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateIdentifierDidRequestDTO)]
 pub(crate) struct CreateIdentifierDidRequestRestDTO {
     pub name: Option<String>,
@@ -65,7 +65,7 @@ pub(crate) struct CreateIdentifierDidRequestRestDTO {
 
 #[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateCertificateRequestDTO)]
 pub(crate) struct CreateCertificateRequestRestDTO {
     pub name: Option<String>,
@@ -158,7 +158,7 @@ pub(crate) enum SortableIdentifierColumnRest {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetIdentifierQuery
 pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     /// Filter by one or more UUIDs.
     #[param(rename = "ids[]", nullable = false)]
@@ -241,7 +241,7 @@ pub(crate) struct GetIdentifierListResponseRestDTO {
 }
 
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(ResolveTrustEntitiesRequestDTO)]
 pub(crate) struct ResolveTrustEntitiesRequestRestDTO {
     #[into(with_fn = "convert_inner")]
@@ -250,7 +250,7 @@ pub(crate) struct ResolveTrustEntitiesRequestRestDTO {
 
 #[options_not_nullable]
 #[derive(Debug, Deserialize, ToSchema, Validate, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(ResolveTrustEntityRequestDTO)]
 pub(crate) struct ResolveTrustEntityRequestRestDTO {
     pub id: IdentifierId,

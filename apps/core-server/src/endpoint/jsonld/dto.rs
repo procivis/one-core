@@ -3,6 +3,7 @@ use utoipa::{IntoParams, ToSchema};
 
 #[derive(Debug, Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct ResolveJsonLDContextQuery {
     pub url: String,
 }

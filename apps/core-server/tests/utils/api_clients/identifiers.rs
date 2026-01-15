@@ -44,7 +44,6 @@ impl IdentifiersApi {
                       },
                       "method": "KEY",
                       "name": did_name,
-                      "organisationId": organisation_id,
                       "params": {}
                     },
                     "organisationId": organisation_id

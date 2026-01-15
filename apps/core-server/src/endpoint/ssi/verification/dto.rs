@@ -28,7 +28,7 @@ use crate::serialize::front_time_option;
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VPDirectPostRequestDTO)]
 pub(crate) struct OpenID4VPDirectPostRequestRestDTO {
-    #[serde(flatten)]
+    #[serde(flatten)] // Prevents using deny_unknown_fields
     pub submission_data: VpSubmissionDataRestDTO,
     #[schema(example = "3fa85f64-5717-4562-b3fc-2c963f66afa6")]
     pub state: Option<InteractionId>,
@@ -73,6 +73,7 @@ pub(crate) struct ResponseSubmissionRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(PresentationSubmissionMappingDTO)]
 pub(crate) struct PresentationSubmissionMappingRestDTO {
     pub id: String,
@@ -83,6 +84,7 @@ pub(crate) struct PresentationSubmissionMappingRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(PresentationSubmissionDescriptorDTO)]
 pub(crate) struct PresentationSubmissionDescriptorRestDTO {
     pub id: String,
@@ -94,6 +96,7 @@ pub(crate) struct PresentationSubmissionDescriptorRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(NestedPresentationSubmissionDescriptorDTO)]
 pub(crate) struct NestedPresentationSubmissionDescriptorRestDTO {
     pub format: String,

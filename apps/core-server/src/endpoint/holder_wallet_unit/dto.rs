@@ -16,7 +16,7 @@ use crate::serialize::front_time;
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = dto::HolderRegisterWalletUnitRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
@@ -30,7 +30,7 @@ pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, From)]
 #[into(dto::WalletProviderDTO)]
 #[from(dto::WalletProviderDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct WalletProviderRestDTO {
     pub url: String,
     pub r#type: WalletProviderTypeRestEnum,

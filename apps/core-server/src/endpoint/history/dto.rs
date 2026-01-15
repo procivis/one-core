@@ -29,7 +29,7 @@ pub(crate) type GetHistoryQuery =
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateHistoryRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateHistoryRequestRestDTO {
     pub action: HistoryAction,
     pub name: String,
@@ -230,7 +230,7 @@ pub(crate) enum SortableHistoryColumnRestDTO {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetHistoryQuery
 pub(crate) struct HistoryFilterQueryParamsRest {
     /// Return only events associated with the specified entity type(s).
     #[param(rename = "entityTypes[]", inline, nullable = false)]

@@ -20,7 +20,7 @@ pub(crate) enum CacheTypeRestEnum {
 }
 
 #[derive(Clone, Deserialize, Debug, Default, IntoParams, PartialEq, Eq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into_params(parameter_in = Query)]
 pub(crate) struct DeleteCacheQuery {
     #[param(rename = "types[]", inline, nullable = false)]

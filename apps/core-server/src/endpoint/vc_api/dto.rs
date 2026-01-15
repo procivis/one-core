@@ -15,7 +15,7 @@ use super::error::DidResolverError;
 use crate::endpoint::ssi::dto::DidDocumentRestDTO;
 
 #[derive(Debug, Deserialize, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CredentialIssueRequest)]
 pub struct CredentialIssueRequestDTO {
     pub credential: VcdmCredential,
@@ -25,7 +25,7 @@ pub struct CredentialIssueRequestDTO {
 #[skip_serializing_none]
 #[derive(Debug, Deserialize, Default, Into)]
 #[into(CredentialIssueOptions)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct IssueOptionsDTO {
     pub signature_algorithm: String,
     pub credential_format: String,
@@ -41,7 +41,7 @@ pub struct CredentialIssueResponseDTO {
 }
 
 #[derive(Debug, Deserialize, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CredentialVerifiyRequest)]
 pub struct CredentialVerifyRequestDTO {
     pub verifiable_credential: VcdmCredential,
@@ -50,7 +50,7 @@ pub struct CredentialVerifyRequestDTO {
 
 #[skip_serializing_none]
 #[derive(Debug, Deserialize, Default, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(VerifyOptions)]
 pub struct VerifyOptionsDTO {
     #[into(with_fn = convert_inner)]
@@ -69,7 +69,7 @@ pub struct CredentialVerifyResponseDTO {
 }
 
 #[derive(Debug, Deserialize, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(PresentationVerifyRequest)]
 pub struct PresentationVerifyRequestDTO {
     pub verifiable_presentation: LdPresentation,

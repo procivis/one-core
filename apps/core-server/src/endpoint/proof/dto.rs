@@ -71,7 +71,7 @@ pub(crate) enum ProofRoleRestEnum {
 #[options_not_nullable(skip_serializing_none = false)]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into, ModifySchema)]
 #[into(CreateProofRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateProofRequestRestDTO {
     /// Choose a proof schema to use.
     pub proof_schema_id: ProofSchemaId,
@@ -133,7 +133,7 @@ pub(crate) struct CreateProofRequestRestDTO {
 /// Only for use when verifying VC Barcodes.
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ScanToVerifyRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ScanToVerifyRequestRestDTO {
     pub credential: String,
     pub barcode: String,
@@ -161,7 +161,7 @@ pub(crate) enum SortableProofColumnRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetProofQuery
 pub(crate) struct ProofsFilterQueryParamsRest {
     /// Specify the organization from which to return proof requests.
     #[param(nullable = false)]
@@ -485,6 +485,7 @@ pub(crate) struct ProofInputRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(ShareProofRequestDTO)]
 pub(crate) struct ShareProofRequestRestDTO {
     #[into(with_fn = "convert_inner")]
@@ -495,7 +496,7 @@ pub(crate) struct ShareProofRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
 #[into(ShareProofRequestParamsDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ShareProofRequestParamsRestDTO {
     #[into(with_fn = "convert_inner")]
     #[serde(default)]

@@ -310,7 +310,7 @@ pub(crate) struct SdJwtVcClaimDisplayRestDTO {
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Default)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct PatchTrustEntityRequestRestDTO {
     /// Update the entity's status on the trust anchor.
     #[schema(nullable = false)]
@@ -370,7 +370,7 @@ pub enum PatchTrustEntityActionRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = CreateTrustEntityFromDidPublisherRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct SSIPostTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     #[serde(default)]

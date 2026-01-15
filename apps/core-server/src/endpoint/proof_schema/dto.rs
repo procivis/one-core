@@ -27,7 +27,7 @@ use crate::serialize::{front_time, front_time_option};
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, TryInto)]
 #[try_into(T = CreateProofSchemaRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[schema(min_length = 1)]
@@ -50,7 +50,7 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Validate, Into)]
 #[into(ProofInputSchemaRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ProofInputSchemaRequestRestDTO {
     /// ID of the credential schema from which the `claimSchemas` object
     /// is assembled.
@@ -66,7 +66,7 @@ pub(crate) struct ProofInputSchemaRequestRestDTO {
 /// Defines the set of attributes being requested when making proof requests
 /// using this schema.
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateProofSchemaClaimRequestDTO)]
 pub(crate) struct ClaimProofSchemaRequestRestDTO {
     /// The `id` of the attribute being requested, from the `claims` object.
@@ -78,7 +78,7 @@ pub(crate) struct ClaimProofSchemaRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaRequestDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaRequestRestDTO {
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
@@ -87,7 +87,7 @@ pub(crate) struct ImportProofSchemaRequestRestDTO {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaRestDTO {
     #[try_into(infallible)]
     pub id: ProofSchemaId,
@@ -114,7 +114,7 @@ pub(crate) struct ImportProofSchemaRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaInputSchemaDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub claim_schemas: Vec<ImportProofSchemaClaimSchemaRestDTO>,
@@ -125,7 +125,7 @@ pub(crate) struct ImportProofSchemaInputSchemaRestDTO {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(ImportProofSchemaClaimSchemaDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaClaimSchemaRestDTO {
     pub id: Uuid,
     pub requested: bool,
@@ -143,7 +143,7 @@ pub(crate) struct ImportProofSchemaClaimSchemaRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T=ImportProofSchemaCredentialSchemaDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[try_into(infallible)]
     pub id: Uuid,
@@ -186,7 +186,7 @@ pub(crate) type GetProofSchemaQuery =
     ListQueryParamsRest<ProofSchemasFilterQueryParamsRest, SortableProofSchemaColumnRestEnum>;
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetProofSchemaQuery
 pub(crate) struct ProofSchemasFilterQueryParamsRest {
     /// Specify the organization from which to return proof schemas.
     #[param(nullable = false)]

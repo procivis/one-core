@@ -16,7 +16,7 @@ use crate::serialize::{front_time, front_time_option};
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(CreateOrganisationRequestDTO)]
 pub(crate) struct CreateOrganisationRequestRestDTO {
     #[into(with_fn = convert_inner)]
@@ -25,7 +25,7 @@ pub(crate) struct CreateOrganisationRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Default, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct UpsertOrganisationRequestRestDTO {
     #[schema(value_type = String, example = "My Organization")]
     pub name: Option<String>,
@@ -78,7 +78,7 @@ pub(crate) enum SortableOrganisationColumnRestDTO {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetOrganisationQuery
 pub(crate) struct OrganisationFilterQueryParamsRest {
     /// Return all organisations with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]

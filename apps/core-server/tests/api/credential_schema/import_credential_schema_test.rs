@@ -20,13 +20,21 @@ async fn test_import_credential_schema_fails_deactivated_organisation() {
         )
         .await;
 
-    let credential_schema = context
-        .api
-        .credential_schemas
-        .get(&credential_schema.id)
-        .await
-        .json_value()
-        .await;
+    let credential_schema = {
+        let mut value = context
+            .api
+            .credential_schemas
+            .get(&credential_schema.id)
+            .await
+            .json_value()
+            .await;
+
+        let object = value.as_object_mut().unwrap();
+        object.remove("externalSchema");
+        object.remove("requiresAppAttestation");
+
+        value
+    };
 
     let organisation2 = context.db.organisations.create().await;
     context.db.organisations.deactivate(&organisation2.id).await;
@@ -60,17 +68,24 @@ async fn test_import_credential_schema_success_with_same_name() {
         )
         .await;
 
-    let mut credential_schema_json = context
-        .api
-        .credential_schemas
-        .get(&credential_schema.id)
-        .await
-        .json_value()
-        .await;
-
     let imported_schema_id = Uuid::new_v4();
-    credential_schema_json["id"] = json!(imported_schema_id);
-    credential_schema_json["schemaId"] = json!(imported_schema_id);
+    let credential_schema_json = {
+        let mut value = context
+            .api
+            .credential_schemas
+            .get(&credential_schema.id)
+            .await
+            .json_value()
+            .await;
+
+        let object = value.as_object_mut().unwrap();
+        object.remove("externalSchema");
+        object.remove("requiresAppAttestation");
+        object.insert("id".to_owned(), json!(imported_schema_id));
+        object.insert("schemaId".to_owned(), json!(imported_schema_id));
+
+        value
+    };
 
     // WHEN
     let resp = context

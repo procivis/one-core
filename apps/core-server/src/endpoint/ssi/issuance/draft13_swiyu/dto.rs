@@ -133,6 +133,9 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, IntoParams)]
+// No serde(deny_unknown_fields): final version of the spec allows for defining
+// additional parameters. The draft doesn't say anything about allowing
+// or disallowing those; allow for consistency.
 pub(crate) struct OpenID4VCITokenRequestRestDTO {
     #[param(example = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
     pub grant_type: String,
@@ -144,7 +147,7 @@ pub(crate) struct OpenID4VCITokenRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
     pub r#type: Option<Vec<String>>,
     pub types: Option<Vec<String>>,
@@ -164,6 +167,7 @@ pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[serde(deny_unknown_fields)]
 #[try_into(T = OpenID4VCICredentialRequestDTO, Error = ServiceError)]
 pub(crate) struct OpenID4VCICredentialRequestRestDTO {
     #[try_into(infallible)]
@@ -179,6 +183,7 @@ pub(crate) struct OpenID4VCICredentialRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(OpenID4VCIProofRequestDTO)]
 pub(crate) struct OpenID4VCIProofRequestRestDTO {
     pub proof_type: String,

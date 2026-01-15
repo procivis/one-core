@@ -13,7 +13,7 @@ use crate::endpoint::wallet_provider::dto::WalletUnitOsRestEnum;
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::IssueWalletUnitAttestationRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssueWalletUnitAttestationRequestRestDTO {
     #[into(with_fn = convert_inner)]
     #[serde(default)]
@@ -24,6 +24,7 @@ pub(crate) struct IssueWalletUnitAttestationRequestRestDTO {
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(dto::IssueWaaRequestDTO)]
 pub struct IssueWaaRequestRestDTO {
     pub proof: String,
@@ -31,7 +32,7 @@ pub struct IssueWaaRequestRestDTO {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::IssueWuaRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct IssueWuaRequestRestDTO {
     pub proof: String,
     pub security_level: KeyStorageSecurityLevelRestEnum,
@@ -63,7 +64,7 @@ pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::RegisterWalletUnitRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct RegisterWalletUnitRequestRestDTO {
     pub wallet_provider: String,
     pub os: WalletUnitOsRestEnum,
@@ -83,7 +84,7 @@ pub(crate) struct RegisterWalletUnitResponseRestDTO {
 #[serde_as]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(dto::WalletUnitActivationRequestDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct WalletUnitActivationRequestRestDTO {
     #[serde_as(as = "OneOrMany<_>")]
     #[schema(schema_with = one_or_many::<String>)]

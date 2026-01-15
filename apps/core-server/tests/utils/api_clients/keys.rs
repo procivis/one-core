@@ -136,8 +136,6 @@ impl KeysApi {
 
     pub async fn generate_mdl_csr(&self, key_id: &str) -> Response {
         let body = json!({
-            "exp": "2023-06-09T14:19:57.000Z",
-            "nbf": "2023-06-09T14:19:58.000Z",
             "profile": "MDL",
             "subject": {
                 "commonName": "test",
@@ -152,8 +150,6 @@ impl KeysApi {
 
     pub async fn generate_generic_csr(&self, key_id: &str) -> Response {
         let body = json!({
-            "exp": "2023-06-09T14:19:57.000Z",
-            "nbf": "2023-06-09T14:19:58.000Z",
             "profile": "GENERIC",
             "subject": {}
         });

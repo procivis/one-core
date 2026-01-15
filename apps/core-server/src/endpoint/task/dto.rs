@@ -4,7 +4,7 @@ use utoipa::ToSchema;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, ModifySchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct TaskRequestRestDTO {
     /// Choose a task to run. Check the `task` object of the configuration
     /// for supported options and reference the configuration instance.

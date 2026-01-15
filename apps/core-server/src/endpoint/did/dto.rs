@@ -102,7 +102,7 @@ pub(crate) struct DidResponseKeysRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = CreateDidRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateDidRequestRestDTO {
     /// The DID name must be unique within the organization.
     #[try_into(infallible)]
@@ -128,7 +128,7 @@ pub(crate) struct CreateDidRequestRestDTO {
 /// method used for different purposes. Related guide: [Keys object](/dids#keys-object)
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(CreateDidRequestKeysDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateDidRequestKeysRestDTO {
     #[into(with_fn = convert_inner)]
     pub authentication: Vec<KeyId>,
@@ -174,7 +174,7 @@ pub(crate) enum KeyRoleRestEnum {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] //  // No deny_unknown_fields because of flattening inside GetDidQuery
 pub(crate) struct DidFilterQueryParamsRest {
     /// Return only DIDs with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
@@ -215,7 +215,7 @@ pub(crate) struct DidFilterQueryParamsRest {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, Into)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(DidPatchRequestDTO)]
 pub(crate) struct DidPatchRequestRestDTO {
     pub deactivated: Option<bool>,

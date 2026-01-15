@@ -57,7 +57,7 @@ impl From<NoIncludesSupported> for one_core::model::list_query::NoInclude {
 }
 
 #[derive(Clone, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // "deny_unknown_fields" cannot be used with "flatten"
 pub(crate) struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSupported> {
     // pagination
     pub page: u32,

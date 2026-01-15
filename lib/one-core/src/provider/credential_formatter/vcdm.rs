@@ -31,6 +31,8 @@ impl From<Url> for ContextType {
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+// No serde(deny_unknown_fields) here because the specification allows
+// for extending with custom context & properties. (see section 5.2)
 // https://www.w3.org/TR/vc-data-model-2.0/#verifiable-credentials
 pub struct VcdmCredential {
     #[serde(rename = "@context")]
@@ -264,7 +266,7 @@ pub type Claims = HashMap<String, String>;
 
 #[skip_serializing_none]
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct VcdmProof {
     #[serde(rename = "@context")]
     pub context: Option<IndexSet<ContextType>>,

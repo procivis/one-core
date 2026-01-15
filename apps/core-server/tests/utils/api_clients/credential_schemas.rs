@@ -89,9 +89,9 @@ impl CredentialSchemasApi {
           "revocationMethod": params.revocation_method.unwrap_or("NONE".into()),
           "layoutType": "CARD",
           "layoutProperties": {
-            "backgroundColor": "bg-color",
-            "backgroundImage": "bg-image",
-            "labelColor": "label-color",
+            "background": {
+                "color": "bg-color"
+            },
             "primaryAttribute": primary_attribute,
           },
           "schemaId": params.schema_id,

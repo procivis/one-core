@@ -25,7 +25,7 @@ use crate::serialize::front_time;
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateTrustEntityRequestRestDTO {
     /// Specify the entity name.
     pub(super) name: String,
@@ -181,7 +181,7 @@ pub(crate) type ListTrustEntitiesQuery =
     ListQueryParamsRest<TrustEntityFilterQueryParamsRestDto, SortableTrustEntityColumnRestEnum>;
 
 #[derive(Clone, Debug, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside ListTrustEntitiesQuery
 pub(crate) struct TrustEntityFilterQueryParamsRestDto {
     /// Return only entities with a name starting with this string. Not case-sensitive.
     #[param(nullable = false)]
@@ -260,7 +260,7 @@ pub(crate) struct ListTrustEntitiesResponseItemRestDTO {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
 #[try_into(T = CreateRemoteTrustEntityRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateRemoteTrustEntityRequestRestDTO {
     /// Specify trust anchor ID.
     #[serde(default)]

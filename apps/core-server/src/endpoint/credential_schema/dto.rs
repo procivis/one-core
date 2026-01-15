@@ -119,7 +119,7 @@ pub(crate) enum CredentialSchemasExactColumn {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialSchemaQuery
 pub(crate) struct CredentialSchemasFilterQueryParamsRest {
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
@@ -198,7 +198,7 @@ pub(crate) enum KeyStorageSecurityRestEnum {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Validate, TryInto, ModifySchema)]
 #[try_into(T=CreateCredentialSchemaRequestDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[validate(length(min = 1))]
     #[try_into(infallible)]
@@ -275,6 +275,7 @@ pub(crate) enum CredentialSchemaLayoutType {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema, Into, ModifySchema)]
+#[serde(deny_unknown_fields)]
 #[into(CredentialClaimSchemaRequestDTO)]
 pub(crate) struct CredentialClaimSchemaRequestRestDTO {
     pub key: String,
@@ -295,7 +296,7 @@ pub(crate) struct CredentialClaimSchemaRequestRestDTO {
 /// Design the appearance of the credential in the holder's wallet.
 #[options_not_nullable]
 #[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesRequestDTO, Error=ServiceError)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaLayoutPropertiesResponseDTO)]
 pub(crate) struct CredentialSchemaLayoutPropertiesRestDTO {
@@ -324,7 +325,7 @@ pub(crate) struct CredentialSchemaLayoutPropertiesRestDTO {
 
 #[options_not_nullable]
 #[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T = one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesRequestDTO, Error = ServiceError)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaBackgroundPropertiesResponseDTO)]
 pub(crate) struct CredentialSchemaBackgroundPropertiesRestDTO {
@@ -338,7 +339,7 @@ pub(crate) struct CredentialSchemaBackgroundPropertiesRestDTO {
 
 #[options_not_nullable]
 #[derive(Debug, Clone, PartialEq, Eq, TryInto, From, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T=one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesRequestDTO, Error = ServiceError)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaLogoPropertiesResponseDTO)]
 pub(crate) struct CredentialSchemaLogoPropertiesRestDTO {
@@ -354,7 +355,7 @@ pub(crate) struct CredentialSchemaLogoPropertiesRestDTO {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Into, From, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[into(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesDTO)]
 #[from(one_core::service::credential_schema::dto::CredentialSchemaCodePropertiesDTO)]
 pub(crate) struct CredentialSchemaCodePropertiesRestDTO {
@@ -381,7 +382,7 @@ pub(crate) struct CredentialSchemaShareResponseRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO, Error = ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportCredentialSchemaRequestRestDTO {
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
@@ -391,7 +392,7 @@ pub(crate) struct ImportCredentialSchemaRequestRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestSchemaDTO, Error=ServiceError)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[try_into(infallible)]
     pub id: Uuid,
@@ -434,7 +435,7 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, Into, ToSchema)]
 #[into(one_core::service::credential_schema::dto::ImportCredentialSchemaClaimSchemaDTO)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
@@ -456,7 +457,7 @@ pub(crate) struct ImportCredentialSchemaClaimSchemaRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, TryInto, ToSchema)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaLayoutPropertiesDTO, Error=ServiceError)]
 pub(crate) struct ImportCredentialSchemaLayoutPropertiesRestDTO {
     #[serde(default)]

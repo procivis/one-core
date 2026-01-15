@@ -50,6 +50,8 @@ impl CredentialEnvelope {
 #[serde_as]
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+// No serde(deny_unknown_fields) here, can be extended
+// with custom context & properties
 pub struct LdPresentation {
     #[serde(rename = "@context")]
     pub context: IndexSet<ContextType>,

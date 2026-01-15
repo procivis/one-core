@@ -189,6 +189,8 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema)]
+// No serde(deny_unknown_fields): "Additional Token Request parameters MAY be defined and used"
+// https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-6.1-9
 pub(crate) struct OpenID4VCITokenRequestRestDTO {
     #[schema(example = "urn:ietf:params:oauth:grant-type:pre-authorized_code")]
     pub grant_type: String,
@@ -220,6 +222,7 @@ pub(crate) struct OpenID4VCICredentialDefinitionRequestRestDTO {
 
 #[options_not_nullable]
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[serde(deny_unknown_fields)]
 #[into(OpenID4VCICredentialRequestDTO)]
 pub(crate) struct OpenID4VCIFinal1CredentialRequestRestDTO {
     #[serde(flatten)]
@@ -257,6 +260,9 @@ pub(crate) enum OpenID4VCINotificationEventRest {
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[into(OpenID4VCINotificationRequestDTO)]
+// > Additional Notification Request parameters MAY be defined and used.
+// > The Credential Issuer MUST ignore any unrecognized parameters.
+// https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#section-11.1-3
 pub(crate) struct OpenID4VCINotificationRequestRestDTO {
     pub notification_id: String,
     pub event: OpenID4VCINotificationEventRest,
