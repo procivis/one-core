@@ -7,7 +7,9 @@ use serde_with::{OneOrMany, serde_as, skip_serializing_none};
 use shared_types::{ClaimSchemaId, InteractionId, KeyId};
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
-use standardized_types::openid4vp::{ClientMetadata, ClientMetadataJwks, PresentationFormat};
+use standardized_types::openid4vp::{
+    ClientMetadata, ClientMetadataJwks, PresentationFormat, ResponseMode,
+};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use url::Url;
@@ -263,7 +265,7 @@ pub(crate) struct OpenID4VPHolderInteractionData {
     #[serde(deserialize_with = "deserialize_with_serde_json")]
     pub client_metadata: Option<OpenID4VPClientMetadata>,
     pub client_metadata_uri: Option<Url>,
-    pub response_mode: Option<String>,
+    pub response_mode: Option<ResponseMode>,
     pub response_uri: Option<Url>,
     #[serde(default)]
     #[serde(deserialize_with = "deserialize_with_serde_json")]

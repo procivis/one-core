@@ -119,3 +119,12 @@ pub struct LdpVcAlgs {
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub proof_type: Vec<String>,
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
+pub enum ResponseMode {
+    #[serde(rename = "direct_post")]
+    DirectPost,
+    #[serde(rename = "direct_post.jwt")]
+    DirectPostJwt,
+}

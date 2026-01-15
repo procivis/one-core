@@ -8,7 +8,7 @@ use shared_types::CredentialFormat;
 use similar_asserts::assert_eq;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::{JwkUse, PublicJwk, PublicJwkEc};
-use standardized_types::openid4vp::{ClientMetadata, MdocAlgs, PresentationFormat};
+use standardized_types::openid4vp::{ClientMetadata, MdocAlgs, PresentationFormat, ResponseMode};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -204,7 +204,9 @@ fn test_verifier_proof(format: CredentialFormat, verifier_key: Option<RelatedKey
     }
 }
 
-fn test_holder_interaction_data(response_mode: Option<&str>) -> OpenID4VPHolderInteractionData {
+fn test_holder_interaction_data(
+    response_mode: Option<ResponseMode>,
+) -> OpenID4VPHolderInteractionData {
     OpenID4VPHolderInteractionData {
         response_type: Some("vp_token".to_string()),
         state: Some(Uuid::new_v4().to_string()),
@@ -222,7 +224,7 @@ fn test_holder_interaction_data(response_mode: Option<&str>) -> OpenID4VPHolderI
             ..Default::default()
         })),
         client_metadata_uri: None,
-        response_mode: response_mode.map(String::from),
+        response_mode,
         response_uri: Some("https://verifier.example.com/response".parse().unwrap()),
         presentation_definition: None,
         presentation_definition_uri: None,
@@ -618,27 +620,10 @@ async fn test_holder_submit_missing_response_mode_fails() {
 }
 
 #[tokio::test]
-async fn test_holder_submit_invalid_response_mode_fails() {
-    let protocol = setup_protocol(TestInputs::default());
-    let proof = test_holder_proof(
-        test_holder_interaction_data(Some("invalid_response_mode")),
-        "MDOC".into(),
-    );
-
-    let result = protocol.holder_submit_proof(&proof, vec![]).await;
-
-    assert!(
-        matches!(&result, Err(VerificationProtocolError::InvalidRequest(_))),
-        "Expected InvalidRequest error for invalid response_mode, got: {:?}",
-        result
-    );
-}
-
-#[tokio::test]
 async fn test_holder_submit_direct_post_jwt_no_encryption_keys_fails() {
     let protocol = setup_protocol(TestInputs::default());
     let proof = test_holder_proof(
-        test_holder_interaction_data(Some("direct_post.jwt")),
+        test_holder_interaction_data(Some(ResponseMode::DirectPostJwt)),
         "MDOC".into(),
     );
 
@@ -659,7 +644,7 @@ async fn test_holder_submit_mdoc_direct_post() {
     });
 
     let proof = test_holder_proof(
-        test_holder_interaction_data(Some("direct_post")),
+        test_holder_interaction_data(Some(ResponseMode::DirectPost)),
         "MDOC".into(),
     );
 

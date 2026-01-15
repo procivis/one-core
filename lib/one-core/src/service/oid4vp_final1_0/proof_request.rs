@@ -4,7 +4,7 @@ use dcql::DcqlQuery;
 use shared_types::InteractionId;
 use standardized_types::jwk::{JwkUse, PublicJwk};
 use standardized_types::openid4vp::{
-    ClientMetadata, MdocAlgs, PresentationFormat, SdJwtVcAlgs, W3CJwtAlgs, W3CLdpAlgs,
+    ClientMetadata, MdocAlgs, PresentationFormat, ResponseMode, SdJwtVcAlgs, W3CJwtAlgs, W3CLdpAlgs,
 };
 use url::Url;
 
@@ -41,11 +41,11 @@ pub(crate) fn generate_authorization_request_params_final1_0(
     })
 }
 
-fn determine_response_mode_final1_0(metadata: &ClientMetadata) -> String {
+fn determine_response_mode_final1_0(metadata: &ClientMetadata) -> ResponseMode {
     if metadata.encrypted_response_enc_values_supported.is_some() {
-        "direct_post.jwt".to_string()
+        ResponseMode::DirectPostJwt
     } else {
-        "direct_post".to_string()
+        ResponseMode::DirectPost
     }
 }
 pub(crate) fn generate_vp_formats_supported() -> HashMap<String, PresentationFormat> {

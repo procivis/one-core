@@ -479,14 +479,11 @@ pub(crate) fn validate_interaction_data(
     )?;
     assert_query_param(response_type, &["vp_token"], "response_type")?;
 
-    let response_mode = interaction_data.response_mode.as_ref().ok_or(
-        VerificationProtocolError::InvalidRequest("response_mode is None".to_string()),
-    )?;
-    assert_query_param(
-        response_mode,
-        &["direct_post", "direct_post.jwt"],
-        "response_mode",
-    )?;
+    interaction_data
+        .response_mode
+        .ok_or(VerificationProtocolError::InvalidRequest(
+            "response_mode is None".to_string(),
+        ))?;
 
     let Some(OpenID4VPClientMetadata::Draft(client_metadata)) =
         interaction_data.client_metadata.as_ref()

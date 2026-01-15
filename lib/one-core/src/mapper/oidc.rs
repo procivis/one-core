@@ -1,4 +1,5 @@
 use shared_types::CredentialFormat;
+use standardized_types::openid4vp::ResponseMode;
 
 use crate::config::core_config::FormatType;
 use crate::model::proof::Proof;
@@ -36,7 +37,7 @@ pub(crate) fn detect_format_with_crypto_suite(
 /// - `direct_post` for everything else
 pub(crate) fn determine_response_mode_openid4vp_draft(
     proof: &Proof,
-) -> Result<String, VerificationProtocolError> {
+) -> Result<ResponseMode, VerificationProtocolError> {
     let mut format_iter = proof
         .schema
         .iter()
@@ -55,9 +56,10 @@ pub(crate) fn determine_response_mode_openid4vp_draft(
 
     let mdoc_only = format_iter.all(|format| format.as_ref() == "MDOC");
 
-    let response_mode = match mdoc_only {
-        true => "direct_post.jwt".to_string(),
-        false => "direct_post".to_string(),
+    let response_mode = if mdoc_only {
+        ResponseMode::DirectPostJwt
+    } else {
+        ResponseMode::DirectPost
     };
     Ok(response_mode)
 }

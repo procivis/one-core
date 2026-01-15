@@ -11,6 +11,7 @@ use one_crypto::utilities;
 use serde_json::Value;
 use standardized_types::jwa::EncryptionAlgorithm;
 use standardized_types::jwk::PublicJwk;
+use standardized_types::openid4vp::ResponseMode;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
@@ -183,17 +184,18 @@ impl OpenID4VPFinal1_0 {
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
 
-        let Some(response_mode) = interaction_data.response_mode.as_deref() else {
-            return Err(VerificationProtocolError::InvalidRequest(
-                "response_mode is None".to_string(),
-            ));
-        };
+        let response_mode =
+            interaction_data
+                .response_mode
+                .ok_or(VerificationProtocolError::InvalidRequest(
+                    "response_mode is None".to_string(),
+                ))?;
 
         // As per https://openid.net/specs/openid-4-verifiable-presentations-1_0.html#section-8.3.1
         // the response should be encrypted only if the response type is direct_post.jwt
         let encryption_info = match response_mode {
-            "direct_post" => None,
-            "direct_post.jwt" => Some(
+            ResponseMode::DirectPost => None,
+            ResponseMode::DirectPostJwt => Some(
                 self.encryption_info_from_metadata(interaction_data)
                     .await?
                     .ok_or(VerificationProtocolError::InvalidRequest(
@@ -201,12 +203,6 @@ impl OpenID4VPFinal1_0 {
                             .to_string(),
                     ))?,
             ),
-            _ => {
-                return Err(VerificationProtocolError::InvalidRequest(format!(
-                    "unsupported response_mode {}",
-                    &response_mode
-                )));
-            }
         };
 
         // For DCQL each credential gets a presentation individually
@@ -670,10 +666,8 @@ fn format_presentation_context(
             ));
         };
 
-        let encryption_key = if matches!(
-            interaction_data.response_mode.as_deref(),
-            Some("direct_post.jwt")
-        ) {
+        let encryption_key = if interaction_data.response_mode == Some(ResponseMode::DirectPostJwt)
+        {
             metadata
                 .jwks
                 .as_ref()
