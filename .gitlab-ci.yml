@@ -150,7 +150,7 @@ before_script:
     CHECK_LINT: false
   trigger:
     project: procivis/one/one-tests
-    branch: v1.68.3
+    branch: v1.68.4
     strategy: depend
     forward:
       pipeline_variables: true
@@ -270,7 +270,7 @@ build_image_acr:
     EXTRA_BUILD_ARGS: >-
       --build-arg BASE_IMAGE=$BUILD_IMAGE
   parallel:
-    matrix: !reference [ .one_core, clients_matrix ]
+    matrix: !reference [.one_core, clients_matrix]
 
 sdk:ios:bitrise:
   stage: sdk_build

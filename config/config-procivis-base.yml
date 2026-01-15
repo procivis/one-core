@@ -24,7 +24,7 @@ format:
         embedLayoutProperties: true
   JSON_LD_CLASSIC:
     type: "JSON_LD_CLASSIC"
-    display: "format.jsonld_classic"
+    display: "format.jsonldClassic"
     order: 320
     params:
       public:
@@ -32,7 +32,7 @@ format:
         embedLayoutProperties: true
   JSON_LD_BBSPLUS:
     type: "JSON_LD_BBSPLUS"
-    display: "format.jsonld_bbsplus"
+    display: "format.jsonldBbsplus"
     order: 330
     params:
       public:
@@ -50,7 +50,7 @@ format:
         leeway: 60
   SD_JWT_VC:
     type: "SD_JWT_VC"
-    display: "format.sdjwt_vc"
+    display: "format.sdjwtVc"
     order: 200
     priority: 100
     params:
@@ -109,7 +109,7 @@ issuanceProtocol:
           enabled: true
           allowedSchemes: ["https"]
   OPENID4VCI_FINAL1:
-    display: exchange.openIdFinal1
+    display: exchange.openid4vciFinal1
     order: 3
     type: "OPENID4VCI_FINAL1"
     params:
@@ -159,7 +159,9 @@ verificationProtocol:
           enabled: true
           allowedSchemes: ["https"]
   MDOC_OPENID4VP:
-    display: "exchange.mdocOpenid"
+    display:
+      en: "OpenID4VP (ISO 18013-7 Annex B)"
+      de: "OpenID4VP (ISO 18013-7 Annex B)"
     order: 2
     type: "OPENID4VP_DRAFT20"
     params:
@@ -174,9 +176,22 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
+  OPENID4VP_DRAFT20_SWIYU:
+    display:
+      en: "OpenID4VP draft 20 (SWIYU)"
+      de: "OpenID4VP draft 20 (SWIYU)"
+    order: 3
+    type: "OPENID4VP_DRAFT20_SWIYU"
+    params:
+      public:
+        redirectUri:
+          enabled: true
+          allowedSchemes: ["https"]
+        verifier:
+          interactionExpiresIn: 3600
   OPENID4VP_DRAFT25:
     display: "exchange.openid4vp25"
-    order: 3
+    order: 10
     type: "OPENID4VP_DRAFT25"
     params:
       public:
@@ -193,76 +208,9 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-  OPENID4VP_FINAL1_EUDI:
-    display:
-      en: "OpenID4VP Final 1.0 (EUDI)"
-      de: "OpenID4VP Final 1.0 (EUDI)"
-    order: 8
-    type: "OPENID4VP_FINAL1"
-    params:
-      public:
-        useRequestUri: true
-        urlScheme: eudi-openid4vp
-        verifier:
-          interactionExpiresIn: 3600
-          supportedClientIdSchemes:
-            [
-              verifier_attestation,
-              redirect_uri,
-              decentralized_identifier,
-              x509_san_dns,
-              x509_hash,
-            ]
-        holder:
-          supportedClientIdSchemes:
-            [
-              verifier_attestation,
-              redirect_uri,
-              decentralized_identifier,
-              x509_san_dns,
-              x509_hash,
-            ]
-          # EUDI compatibility flag for non-standard compliant vp_token formatting
-          dcqlVpTokenSinglePresentation: true
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
-  OPENID4VP_DRAFT25_EUDI:
-    display:
-      en: "OpenID4VP Draft 25 (EUDI)"
-      de: "OpenID4VP Draft 25 (EUDI)"
-    order: 10
-    type: "OPENID4VP_DRAFT25"
-    params:
-      public:
-        useRequestUri: true
-        urlScheme: openid4vp
-        verifier:
-          interactionExpiresIn: 3600
-          useDcql: false
-          supportedClientIdSchemes:
-            [
-              verifier_attestation,
-              redirect_uri,
-              decentralized_identifier,
-              x509_san_dns,
-              x509_hash,
-            ]
-        holder:
-          supportedClientIdSchemes:
-            [
-              verifier_attestation,
-              redirect_uri,
-              decentralized_identifier,
-              x509_san_dns,
-              x509_hash,
-            ]
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
   OPENID4VP_FINAL1:
     display: "exchange.openid4vpFinal1"
-    order: 4
+    order: 20
     type: "OPENID4VP_FINAL1"
     params:
       public:
@@ -289,24 +237,11 @@ verificationProtocol:
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
-  OPENID4VP_DRAFT20_SWIYU:
-    display:
-      en: "OpenID4VP draft 20 (SWIYU)"
-      de: "OpenID4VP draft 20 (SWIYU)"
-    order: 9
-    type: "OPENID4VP_DRAFT20_SWIYU"
-    params:
-      public:
-        redirectUri:
-          enabled: true
-          allowedSchemes: ["https"]
-        verifier:
-          interactionExpiresIn: 3600
   OPENID4VP_FINAL1_HAIP:
     display:
-      en: "OpenID4VP Final 1.0 (HAIP)"
-      de: "OpenID4VP Final 1.0 (HAIP)"
-    order: 11
+      en: "OpenID4VP final 1.0 (HAIP)"
+      de: "OpenID4VP final 1.0 (HAIP)"
+    order: 21
     type: "OPENID4VP_FINAL1"
     params:
       public:
@@ -331,6 +266,8 @@ verificationProtocol:
               x509_san_dns,
               x509_hash,
             ]
+          # EUDI compatibility flag for non-standard compliant vp_token formatting
+          dcqlVpTokenSinglePresentation: true
         redirectUri:
           enabled: true
           allowedSchemes: ["https"]
@@ -482,7 +419,7 @@ datatype:
         holder:
           valueExtraction: ENABLED
   BIRTH_DATE:
-    display: "datatype.birth_date"
+    display: "datatype.birthDate"
     type: "DATE"
     order: 310
     params:
@@ -599,7 +536,7 @@ keyAlgorithm:
     params: null
     holderPriority: 100
   BBS_PLUS:
-    display: "keyAlgorithm.bbs_plus"
+    display: "keyAlgorithm.bbsPlus"
     order: 2
     params: null
   DILITHIUM:
