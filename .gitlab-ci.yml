@@ -150,7 +150,7 @@ before_script:
     CHECK_LINT: false
   trigger:
     project: procivis/one/one-tests
-    branch: v1.68.4
+    branch: v1.68.5
     strategy: depend
     forward:
       pipeline_variables: true
