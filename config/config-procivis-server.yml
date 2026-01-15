@@ -3,7 +3,7 @@ app:
   coreBaseUrl: "http://0.0.0.0:3000"
   serverIp: "0.0.0.0"
   serverPort: 3000
-  traceJson: true
+  traceJson: false
   traceLevel: "debug,hyper=error,sea_orm=info,sqlx::query=error,reqwest=error"
   sentryDsn: ""
   sentryEnvironment: ""
