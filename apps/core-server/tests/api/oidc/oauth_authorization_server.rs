@@ -17,7 +17,7 @@ async fn test_oauth_authorization_server_metadata() {
     let resp = context
         .api
         .ssi
-        .oauth_authorization_server(credential_schema.id)
+        .oauth_authorization_server("OPENID4VCI_FINAL1", credential_schema.id)
         .await;
 
     // THEN
@@ -28,7 +28,7 @@ async fn test_oauth_authorization_server_metadata() {
     let openid_credential_issuer_resp = context
         .api
         .ssi
-        .openid_credential_issuer_final1(credential_schema.id)
+        .openid_credential_issuer_final1("OPENID4VCI_FINAL1", credential_schema.id)
         .await
         .json_value()
         .await;
@@ -44,7 +44,10 @@ async fn test_oauth_authorization_server_metadata() {
         context.config.app.core_base_url
     );
 
-    assert_eq!(format!("{issuer}/{}", credential_schema.id), resp["issuer"]);
+    assert_eq!(
+        format!("{issuer}/OPENID4VCI_FINAL1/{}", credential_schema.id),
+        resp["issuer"]
+    );
     assert_eq!(
         format!("{issuer}/{}/token", credential_schema.id),
         resp["token_endpoint"]
@@ -94,7 +97,7 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
     let resp = context
         .api
         .ssi
-        .oauth_authorization_server(credential_schema.id)
+        .oauth_authorization_server("OPENID4VCI_FINAL1", credential_schema.id)
         .await;
 
     // THEN
@@ -104,7 +107,7 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
     let openid_credential_issuer_resp = context
         .api
         .ssi
-        .openid_credential_issuer_final1(credential_schema.id)
+        .openid_credential_issuer_final1("OPENID4VCI_FINAL1", credential_schema.id)
         .await
         .json_value()
         .await;
@@ -119,7 +122,10 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
         context.config.app.core_base_url
     );
 
-    assert_eq!(format!("{issuer}/{}", credential_schema.id), resp["issuer"]);
+    assert_eq!(
+        format!("{issuer}/OPENID4VCI_FINAL1/{}", credential_schema.id),
+        resp["issuer"]
+    );
     assert_eq!(
         format!("{issuer}/{}/token", credential_schema.id),
         resp["token_endpoint"]
@@ -170,7 +176,7 @@ async fn test_oauth_authorization_server_metadata_nonexistent_schema() {
     let resp = context
         .api
         .ssi
-        .oauth_authorization_server(nonexistent_id)
+        .oauth_authorization_server("OPENID4VCI_FINAL1", nonexistent_id)
         .await;
 
     // THEN

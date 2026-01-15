@@ -83,7 +83,7 @@ pub(crate) async fn revoke_signature(
 "},
 )]
 #[require_permissions(Permission::RegistrationCertificateRevocationCheck)]
-pub(crate) async fn revocation_check(
+pub(crate) async fn signature_revocation_check(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
         Json<SignatureRevocationCheckRequestRestDTO>,

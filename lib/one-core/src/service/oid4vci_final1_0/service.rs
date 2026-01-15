@@ -8,7 +8,6 @@ use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, InteractionId};
 use time::OffsetDateTime;
 use tokio_util::either::Either;
-use url::Url;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -17,8 +16,8 @@ use super::mapper::interaction_data_to_dto;
 use super::nonce::{generate_nonce, validate_nonce};
 use super::validator::{
     self, extract_wallet_metadata, throw_if_access_token_invalid,
-    throw_if_credential_request_invalid, validate_config_entity_presence, validate_pop_audience,
-    validate_timestamps, verify_pop_signature, verify_waa_signature, verify_wua_waa_issuers_match,
+    throw_if_credential_request_invalid, validate_pop_audience, validate_timestamps,
+    verify_pop_signature, verify_waa_signature, verify_wua_waa_issuers_match,
 };
 use crate::config::ConfigValidationError;
 use crate::config::core_config::{FormatType, IssuanceProtocolType};
@@ -77,9 +76,14 @@ use crate::validator::throw_if_credential_state_not_eq;
 impl OID4VCIFinal1_0Service {
     pub async fn get_issuer_metadata(
         &self,
+        protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OpenID4VCIIssuerMetadataResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            protocol_id,
+        )?;
 
         let protocol_base_url =
             self.protocol_base_url
@@ -139,7 +143,7 @@ impl OID4VCIFinal1_0Service {
 
         create_issuer_metadata_response(
             protocol_base_url,
-            &self.protocol_id,
+            protocol_id,
             &oidc_format,
             &schema,
             map_cryptographic_binding_methods_supported(
@@ -158,10 +162,16 @@ impl OID4VCIFinal1_0Service {
 
     pub async fn oauth_authorization_server(
         &self,
+        protocol_id: &str,
         credential_schema_id: &CredentialSchemaId,
     ) -> Result<OAuthAuthorizationServerMetadataResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-        let issuer = self
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            protocol_id,
+        )?;
+
+        let protocol_base_url = self
             .protocol_base_url
             .as_ref()
             .ok_or(ServiceError::Other("Missing base_url".to_owned()))?;
@@ -200,27 +210,21 @@ impl OID4VCIFinal1_0Service {
             (None, None)
         };
 
+        let credential_issuer = format!("{protocol_base_url}/{protocol_id}/{credential_schema_id}");
+
         Ok(OAuthAuthorizationServerMetadata {
-            issuer: format!("{issuer}/{credential_schema_id}")
+            issuer: credential_issuer
                 .parse()
                 .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
-            authorization_endpoint: Some(
-                Url::parse(&format!("{issuer}/{credential_schema_id}/authorize")).map_err(
-                    |_| {
-                        IssuanceProtocolError::InvalidRequest(
-                            "Invalid authorization url".to_string(),
-                        )
-                    },
-                )?,
-            ),
+            authorization_endpoint: None,
             token_endpoint: Some(
-                format!("{issuer}/{credential_schema_id}/token")
+                format!("{protocol_base_url}/{credential_schema_id}/token")
                     .parse()
                     .map_err(|e| {
                         ServiceError::MappingError(format!("Invalid token endpoint URL: {e}"))
                     })?,
             ),
-            jwks_uri: Some(format!("{issuer}/{credential_schema_id}/jwks")),
+            jwks_uri: None,
             pushed_authorization_request_endpoint: None,
             code_challenge_methods_supported: vec![],
             response_types_supported: vec!["code".to_string(), "token".to_string()],
@@ -241,8 +245,6 @@ impl OID4VCIFinal1_0Service {
         credential_schema_id: CredentialSchemaId,
         credential_id: CredentialId,
     ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let credential = self
             .credential_repository
             .get_credential(
@@ -261,6 +263,12 @@ impl OID4VCIFinal1_0Service {
         let Some(credential) = credential else {
             return Err(EntityNotFoundError::Credential(credential_id).into());
         };
+
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            &credential.protocol,
+        )?;
 
         throw_if_credential_state_not_eq(&credential, CredentialStateEnum::Pending)
             .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
@@ -299,6 +307,7 @@ impl OID4VCIFinal1_0Service {
 
         Ok(create_credential_offer(
             protocol_base_url,
+            &credential.protocol,
             &interaction.id.to_string(),
             &credential_schema_id,
             &credential_schema.schema_id,
@@ -311,8 +320,6 @@ impl OID4VCIFinal1_0Service {
         access_token: &str,
         request: OpenID4VCICredentialRequestDTO,
     ) -> Result<OpenID4VCICredentialResponseDTO, ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let Some(schema) = self
             .credential_schema_repository
             .get_credential_schema(
@@ -695,8 +702,6 @@ impl OID4VCIFinal1_0Service {
         access_token: &str,
         request: OpenID4VCINotificationRequestDTO,
     ) -> Result<(), ServiceError> {
-        validate_config_entity_presence(&self.config)?;
-
         let interaction_id = parse_access_token(access_token)?;
         let Some(interaction) = self
             .interaction_repository
@@ -745,6 +750,12 @@ impl OID4VCIFinal1_0Service {
         }) else {
             return Err(OpenID4VCIError::InvalidNotificationRequest.into());
         };
+
+        validate_issuance_protocol_type(
+            IssuanceProtocolType::OpenId4VciFinal1_0,
+            &self.config,
+            &credential.protocol,
+        )?;
 
         match (credential.state, &request.event) {
             (
@@ -839,15 +850,6 @@ impl OID4VCIFinal1_0Service {
             .await?
             .ok_or(EntityNotFoundError::CredentialSchema(*credential_schema_id))?;
 
-        let wallet_app_attestation_token = self
-            .validate_oauth_client_attestation(
-                oauth_client_attestation,
-                oauth_client_attestation_pop,
-                &credential_schema,
-                params.oauth_attestation_leeway,
-            )
-            .await?;
-
         let interaction_id = match &request {
             OpenID4VCITokenRequestDTO::PreAuthorizedCode {
                 pre_authorized_code,
@@ -881,6 +883,16 @@ impl OID4VCIFinal1_0Service {
             &self.config,
             &credential.protocol,
         )?;
+
+        let wallet_app_attestation_token = self
+            .validate_oauth_client_attestation(
+                oauth_client_attestation,
+                oauth_client_attestation_pop,
+                &credential_schema,
+                &credential.protocol,
+                params.oauth_attestation_leeway,
+            )
+            .await?;
 
         // both refresh and access token have the same structure
         let generate_new_token = || {
@@ -1009,6 +1021,7 @@ impl OID4VCIFinal1_0Service {
         oauth_client_attestation: Option<&str>,
         oauth_client_attestation_pop: Option<&str>,
         credential_schema: &CredentialSchema,
+        protocol_id: &str,
         leeway: u64,
     ) -> Result<Option<WalletAppAttestationDTO>, ServiceError> {
         // If the credential schema does not require client attestation, no tokens are expected
@@ -1041,7 +1054,7 @@ impl OID4VCIFinal1_0Service {
         let expected_audience = self
             .protocol_base_url
             .as_ref()
-            .map(|base_url| format!("{base_url}/{}", credential_schema.id))
+            .map(|base_url| format!("{base_url}/{protocol_id}/{}", credential_schema.id))
             .ok_or(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidRequest,
             ))?;

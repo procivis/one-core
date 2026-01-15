@@ -53,14 +53,16 @@ pub(crate) fn create_issuer_metadata_response(
         credential_signing_alg_values_supported,
     )?;
 
-    let schema_base_url = get_credential_schema_base_url(&schema.id, protocol_base_url);
+    let credential_schema_id = schema.id;
 
     Ok(OpenID4VCIIssuerMetadataResponseDTO {
-        credential_issuer: schema_base_url.to_owned(),
+        credential_issuer: format!("{protocol_base_url}/{protocol_id}/{credential_schema_id}"),
         authorization_servers: None,
-        credential_endpoint: format!("{schema_base_url}/credential"),
+        credential_endpoint: format!("{protocol_base_url}/{credential_schema_id}/credential"),
         nonce_endpoint: Some(format!("{protocol_base_url}/{protocol_id}/nonce")),
-        notification_endpoint: Some(format!("{schema_base_url}/notification")),
+        notification_endpoint: Some(format!(
+            "{protocol_base_url}/{credential_schema_id}/notification"
+        )),
         credential_configurations_supported,
         display: Some(vec![OpenID4VCIIssuerMetadataDisplayResponseDTO {
             name: schema
@@ -308,21 +310,15 @@ pub(crate) fn get_protocol_base_url(base_url: &str) -> String {
     format!("{base_url}/ssi/openid4vci/final-1.0")
 }
 
-pub(crate) fn get_credential_schema_base_url(
-    credential_schema_id: &CredentialSchemaId,
-    protocol_base_url: &str,
-) -> String {
-    format!("{protocol_base_url}/{credential_schema_id}")
-}
-
 pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
+    protocol_id: &str,
     pre_authorized_code: &str,
     credential_schema_uuid: &CredentialSchemaId,
     credential_schema_id: &str,
 ) -> Result<OpenID4VCIFinal1CredentialOfferDTO, OpenIDIssuanceError> {
     Ok(OpenID4VCIFinal1CredentialOfferDTO {
-        credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
+        credential_issuer: format!("{protocol_base_url}/{protocol_id}/{credential_schema_uuid}"),
         credential_configuration_ids: vec![credential_schema_id.to_string()],
         grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),

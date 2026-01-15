@@ -22,9 +22,10 @@ use crate::router::AppState;
 
 #[utoipa::path(
     get,
-    path = "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{id}",
+    path = "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}",
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("protocol_id" = String, Path, description = "Issuance protocol id"),
+        ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCIIssuerMetadataResponseRestDTO),
@@ -40,12 +41,15 @@ use crate::router::AppState;
 )]
 pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+    WithRejection(Path((protocol_id, credential_schema_id)), _): WithRejection<
+        Path<(String, CredentialSchemaId)>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let result = state
         .core
         .oid4vci_final1_0_service
-        .get_issuer_metadata(&id)
+        .get_issuer_metadata(&protocol_id, &credential_schema_id)
         .await;
 
     match result {
@@ -71,9 +75,10 @@ pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
 
 #[utoipa::path(
     get,
-    path = "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{id}",
+    path = "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}",
     params(
-        ("id" = CredentialSchemaId, Path, description = "Credential schema id")
+        ("protocol_id" = String, Path, description = "Issuance protocol id"),
+        ("credential_schema_id" = CredentialSchemaId, Path, description = "Credential schema id")
     ),
     responses(
         (status = 200, description = "OK", body = OAuthAuthorizationServerMetadataRestDTO),
@@ -89,7 +94,10 @@ pub(crate) async fn oid4vci_final1_0_get_issuer_metadata(
 )]
 pub(crate) async fn oid4vci_final1_0_oauth_authorization_server(
     state: State<AppState>,
-    WithRejection(Path(id), _): WithRejection<Path<CredentialSchemaId>, ErrorResponseRestDTO>,
+    WithRejection(Path((protocol_id, credential_schema_id)), _): WithRejection<
+        Path<(String, CredentialSchemaId)>,
+        ErrorResponseRestDTO,
+    >,
 ) -> Response {
     let result: Result<
         one_core::service::oid4vci_final1_0::dto::OAuthAuthorizationServerMetadataResponseDTO,
@@ -97,7 +105,7 @@ pub(crate) async fn oid4vci_final1_0_oauth_authorization_server(
     > = state
         .core
         .oid4vci_final1_0_service
-        .oauth_authorization_server(&id)
+        .oauth_authorization_server(&protocol_id, &credential_schema_id)
         .await;
 
     match result {
@@ -433,9 +441,9 @@ pub(crate) async fn oid4vci_final1_0_credential_notification(
 
 #[utoipa::path(
     post,
-    path = "/ssi/openid4vci/final-1.0/{id}/nonce",
+    path = "/ssi/openid4vci/final-1.0/{protocol_id}/nonce",
     params(
-        ("id" = String, Path, description = "Issuance protocol id")
+        ("protocol_id" = String, Path, description = "Issuance protocol id")
     ),
     responses(
         (status = 200, description = "OK", body = OpenID4VCINonceResponseRestDTO),

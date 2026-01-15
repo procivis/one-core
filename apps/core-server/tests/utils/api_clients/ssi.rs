@@ -158,11 +158,12 @@ impl SSIApi {
 
     pub async fn openid_credential_issuer_final1(
         &self,
+        protocol_id: &str,
         credential_schema_id: impl Into<Uuid>,
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
         let url = format!(
-            "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
+            "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}"
         );
         self.client.get(&url).await
     }
@@ -240,11 +241,12 @@ impl SSIApi {
 
     pub async fn oauth_authorization_server(
         &self,
+        protocol_id: &str,
         credential_schema_id: impl Into<Uuid>,
     ) -> Response {
         let credential_schema_id = credential_schema_id.into();
         let url = format!(
-            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
+            "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}"
         );
         self.client.get(&url).await
     }

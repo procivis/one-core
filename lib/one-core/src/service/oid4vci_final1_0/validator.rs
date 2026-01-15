@@ -286,22 +286,6 @@ pub(crate) fn verify_wua_waa_issuers_match(
     Ok(())
 }
 
-pub(super) fn validate_config_entity_presence(
-    config: &CoreConfig,
-) -> Result<(), ConfigValidationError> {
-    if !config
-        .issuance_protocol
-        .iter()
-        .any(|(_, v)| v.r#type == IssuanceProtocolType::OpenId4VciFinal1_0)
-    {
-        Err(ConfigValidationError::EntryNotFound(
-            "No exchange method with type OPENID4VCI_FINAL1".to_string(),
-        ))
-    } else {
-        Ok(())
-    }
-}
-
 pub(super) fn get_config_entity(
     config: &CoreConfig,
 ) -> Result<OpenID4VCIFinal1Params, ConfigValidationError> {

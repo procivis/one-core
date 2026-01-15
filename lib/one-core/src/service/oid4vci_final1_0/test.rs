@@ -74,7 +74,6 @@ struct Mocks {
 fn setup_service(mocks: Mocks) -> OID4VCIFinal1_0Service {
     OID4VCIFinal1_0Service::new(
         Some("http://127.0.0.1:3000".to_string()),
-        "OPENID4VCI_FINAL1".to_string(),
         Arc::new(mocks.credential_schema_repository),
         Arc::new(mocks.credential_repository),
         Arc::new(mocks.interaction_repository),
@@ -288,7 +287,9 @@ async fn test_get_issuer_metadata_jwt() {
         formatter_provider,
         ..Default::default()
     });
-    let result = service.get_issuer_metadata(&schema.id).await;
+    let result = service
+        .get_issuer_metadata("OPENID4VCI_FINAL1", &schema.id)
+        .await;
     assert!(result.is_ok());
     let result = result.unwrap();
 
@@ -396,7 +397,10 @@ async fn test_get_issuer_metadata_sd_jwt() {
         formatter_provider,
         ..Default::default()
     });
-    let result = service.get_issuer_metadata(&schema.id).await.unwrap();
+    let result = service
+        .get_issuer_metadata("OPENID4VCI_FINAL1", &schema.id)
+        .await
+        .unwrap();
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("vc+sd-jwt".to_string(), credential.format);
     assert_eq!(
@@ -521,7 +525,10 @@ async fn test_get_issuer_metadata_mdoc() {
         formatter_provider,
         ..Default::default()
     });
-    let result = service.get_issuer_metadata(&schema.id).await.unwrap();
+    let result = service
+        .get_issuer_metadata("OPENID4VCI_FINAL1", &schema.id)
+        .await
+        .unwrap();
     let credential = result.credential_configurations_supported[0].to_owned();
     assert_eq!("mso_mdoc".to_string(), credential.format);
     assert_eq!(
@@ -2175,8 +2182,21 @@ async fn test_create_token_eudi_compliant_without_attestation_fails() {
             move |_, _| Ok(Some(schema))
         });
 
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Pending,
+        false,
+        Some(schema.clone()),
+    );
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(|_, _| Ok(vec![credential]));
+
     let service = setup_service(Mocks {
         credential_schema_repository,
+        credential_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2221,8 +2241,21 @@ async fn test_create_token_eudi_compliant_with_only_attestation_fails() {
             move |_, _| Ok(Some(schema))
         });
 
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Pending,
+        false,
+        Some(schema.clone()),
+    );
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(|_, _| Ok(vec![credential]));
+
     let service = setup_service(Mocks {
         credential_schema_repository,
+        credential_repository,
         config: generic_config().core,
         ..Default::default()
     });
@@ -2266,8 +2299,21 @@ async fn test_create_token_non_eudi_with_attestation_fails() {
             move |_, _| Ok(Some(schema))
         });
 
+    let mut credential_repository = MockCredentialRepository::default();
+    let credential = dummy_credential(
+        "OPENID4VCI_FINAL1",
+        CredentialStateEnum::Pending,
+        false,
+        Some(schema.clone()),
+    );
+    credential_repository
+        .expect_get_credentials_by_interaction_id()
+        .once()
+        .return_once(|_, _| Ok(vec![credential]));
+
     let service = setup_service(Mocks {
         credential_schema_repository,
+        credential_repository,
         config: generic_config().core,
         ..Default::default()
     });

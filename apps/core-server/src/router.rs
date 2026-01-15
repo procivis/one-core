@@ -230,7 +230,7 @@ fn get_management_endpoints(
             )
             .route(
                 "/api/credential/v1/revocation-check",
-                post(credential::controller::revocation_check),
+                post(credential::controller::credential_revocation_check),
             )
             .route(
                 "/api/proof-request/v1/{id}/share",
@@ -470,11 +470,12 @@ fn get_management_endpoints(
                 )
                 .route(
                     "/api/signature/v1/revocation-check",
-                    post(signature::controller::revocation_check),
+                    post(signature::controller::signature_revocation_check),
                 );
         } else if let Some(paths) = openapi_paths {
             paths.shift_remove("/api/signature/v1");
             paths.shift_remove("/api/signature/v1/{id}/revoke");
+            paths.shift_remove("/api/signature/v1/revocation-check");
         }
 
         if config.enable_server_info {
@@ -544,11 +545,11 @@ fn get_external_endpoints(
                 post(ssi::issuance::draft13::controller::oid4vci_draft13_credential_notification),
             )
             .route(
-                "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{id}",
+                "/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_get_issuer_metadata),
             )
             .route(
-                "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{id}",
+                "/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{protocol_id}/{credential_schema_id}",
                 get(ssi::issuance::final1_0::controller::oid4vci_final1_0_oauth_authorization_server),
             )
             .route(
@@ -567,7 +568,7 @@ fn get_external_endpoints(
                 "/ssi/openid4vci/final-1.0/{id}/notification",
                 post(ssi::issuance::final1_0::controller::oid4vci_final1_0_credential_notification),
             ).route(
-                "/ssi/openid4vci/final-1.0/{id}/nonce",
+                "/ssi/openid4vci/final-1.0/{protocol_id}/nonce",
                 post(ssi::issuance::final1_0::controller::oid4vci_final1_0_nonce),
             )
             .route(

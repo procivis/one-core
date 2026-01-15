@@ -100,7 +100,7 @@ async fn test_get_issuer_configuration_final1_0() {
     let _handle = run_server(listener, config, &db_conn).await;
 
     let url = format!(
-        "{base_url}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{}",
+        "{base_url}/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/{}",
         credential_schema.id
     );
 
@@ -112,18 +112,16 @@ async fn test_get_issuer_configuration_final1_0() {
     let resp: Value = resp.json().await.unwrap();
 
     let issuer = format!(
-        "{base_url}/ssi/openid4vci/final-1.0/{}",
+        "{base_url}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/{}",
         credential_schema.id
     );
 
     assert_eq!(issuer, resp["issuer"].as_str().unwrap());
     assert_eq!(
-        format!("{issuer}/authorize"),
-        resp["authorization_endpoint"].as_str().unwrap()
-    );
-    assert_eq!(
-        format!("{issuer}/token"),
+        format!(
+            "{base_url}/ssi/openid4vci/final-1.0/{}/token",
+            credential_schema.id
+        ),
         resp["token_endpoint"].as_str().unwrap()
     );
-    assert_eq!(format!("{issuer}/jwks"), resp["jwks_uri"].as_str().unwrap());
 }

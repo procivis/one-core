@@ -19,7 +19,6 @@ use wiremock::{Mock, MockServer, ResponseTemplate};
 use crate::config::core_config::{
     CoreConfig, Fields, FormatType, KeyAlgorithmType, KeySecurityLevelType,
 };
-use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
@@ -159,42 +158,6 @@ fn generic_credential_did() -> Credential {
         did: Some(issuer_did),
         key: None,
         certificates: None,
-    };
-    generic_credential(issuer_identifier)
-}
-
-fn generic_credential_certificate() -> Credential {
-    let now = OffsetDateTime::now_utc();
-    let id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965")
-        .unwrap()
-        .into();
-    let issuer_identifier = Identifier {
-        id,
-        created_date: now,
-        last_modified: now,
-        name: "certificate identifier 1".to_string(),
-        r#type: IdentifierType::Certificate,
-        is_remote: true,
-        state: IdentifierState::Active,
-        deleted_at: None,
-        organisation: None,
-        did: None,
-        key: None,
-        certificates: Some(vec![Certificate {
-            id: Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb966")
-                .unwrap()
-                .into(),
-            identifier_id: id,
-            organisation_id: None,
-            created_date: now,
-            last_modified: now,
-            expiry_date: now + Duration::hours(12),
-            name: "certificate 1".to_string(),
-            chain: "<dummy test cert chain>".to_string(),
-            fingerprint: "123456".to_string(),
-            state: CertificateState::Active,
-            key: None,
-        }]),
     };
     generic_credential(issuer_identifier)
 }
@@ -347,13 +310,14 @@ fn dummy_config() -> CoreConfig {
 }
 
 #[tokio::test]
-async fn test_generate_offer_did() {
+async fn test_generate_offer() {
     let protocol_base_url = "BASE_URL/ssi/openid4vci/final-1.0".to_string();
     let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
     let credential = generic_credential_did();
 
     let offer = create_credential_offer(
         &protocol_base_url,
+        &credential.protocol,
         &interaction_id.to_string(),
         &credential.schema.as_ref().unwrap().id,
         &credential.schema.as_ref().unwrap().schema_id,
@@ -363,35 +327,7 @@ async fn test_generate_offer_did() {
     assert_eq!(
         json!(&offer),
         json!({
-            "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
-            "credential_configuration_ids" : [
-                credential.schema.as_ref().unwrap().schema_id,
-            ],
-            "grants": {
-                "urn:ietf:params:oauth:grant-type:pre-authorized_code": { "pre-authorized_code": "c322aa7f-9803-410d-b891-939b279fb965" }
-            }
-        })
-    )
-}
-
-#[tokio::test]
-async fn test_generate_offer_certificate() {
-    let protocol_base_url = "BASE_URL/ssi/openid4vci/final-1.0".to_string();
-    let interaction_id = Uuid::from_str("c322aa7f-9803-410d-b891-939b279fb965").unwrap();
-    let credential = generic_credential_certificate();
-
-    let offer = create_credential_offer(
-        &protocol_base_url,
-        &interaction_id.to_string(),
-        &credential.schema.as_ref().unwrap().id,
-        &credential.schema.as_ref().unwrap().schema_id,
-    )
-    .unwrap();
-
-    assert_eq!(
-        json!(&offer),
-        json!({
-            "credential_issuer": "BASE_URL/ssi/openid4vci/final-1.0/c322aa7f-9803-410d-b891-939b279fb965",
+            "credential_issuer": format!("BASE_URL/ssi/openid4vci/final-1.0/{}/c322aa7f-9803-410d-b891-939b279fb965", credential.protocol),
             "credential_configuration_ids" : [
                 credential.schema.as_ref().unwrap().schema_id,
             ],
@@ -441,7 +377,7 @@ async fn test_generate_share_credentials_offer_by_value() {
     // Everything except for interaction id is here.
     // Generating token with predictable interaction id is tested somewhere else.
     assert!(
-        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Ffinal-1.0%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%7B%22pre-authorized_code%22%3A%"#)
+        result.url.starts_with(r#"openid-credential-offer://?credential_offer=%7B%22credential_issuer%22%3A%22http%3A%2F%2Fbase_url%2Fssi%2Fopenid4vci%2Ffinal-1.0%2FOPENID4VCI_FINAL1%2Fc322aa7f-9803-410d-b891-939b279fb965%22%2C%22credential_configuration_ids%22%3A%5B%22CredentialSchemaId%22%5D%2C%22grants%22%3A%7B%22urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Apre-authorized_code%22%3A%"#)
     );
 }
 

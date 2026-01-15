@@ -17,7 +17,7 @@ async fn test_get_credential_issuer_metadata_jwt() {
     let resp = context
         .api
         .ssi
-        .openid_credential_issuer_final1(credential_schema.id)
+        .openid_credential_issuer_final1("OPENID4VCI_FINAL1", credential_schema.id)
         .await;
 
     // THEN
@@ -25,12 +25,18 @@ async fn test_get_credential_issuer_metadata_jwt() {
     let resp = resp.json_value().await;
 
     let issuer = format!(
-        "{}/ssi/openid4vci/final-1.0/{}",
+        "{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/{}",
         context.config.app.core_base_url, credential_schema.id
     );
 
     assert_eq!(issuer, resp["credential_issuer"]);
-    assert_eq!(format!("{issuer}/credential"), resp["credential_endpoint"]);
+    assert_eq!(
+        format!(
+            "{}/ssi/openid4vci/final-1.0/{}/credential",
+            context.config.app.core_base_url, credential_schema.id
+        ),
+        resp["credential_endpoint"]
+    );
     assert_eq!(
         format!(
             "{}/ssi/openid4vci/final-1.0/OPENID4VCI_FINAL1/nonce",

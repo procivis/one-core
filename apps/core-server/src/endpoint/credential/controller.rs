@@ -299,7 +299,7 @@ pub(crate) async fn share_credential(
     "},
 )]
 #[require_permissions(Permission::CredentialEdit)]
-pub(crate) async fn revocation_check(
+pub(crate) async fn credential_revocation_check(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
         Json<CredentialRevocationCheckRequestRestDTO>,

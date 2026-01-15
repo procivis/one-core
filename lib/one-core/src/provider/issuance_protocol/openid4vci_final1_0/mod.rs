@@ -1277,6 +1277,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         if self.params.credential_offer_by_value {
             let offer = create_credential_offer(
                 protocol_base_url,
+                &credential.protocol,
                 &interaction_id.to_string(),
                 &credential_schema.id,
                 &credential_schema.schema_id,
