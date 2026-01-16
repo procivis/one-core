@@ -4033,8 +4033,8 @@ dependencies = [
 
 [[package]]
 name = "pairing_crypto"
-version = "0.4.2"
-source = "git+https://github.com/procivis/pairing_crypto?rev=6d9f5df#6d9f5df911070b6e12b7d709e6f73c084220fedf"
+version = "0.4.3"
+source = "git+https://github.com/procivis/pairing_crypto?rev=0ec3629#0ec3629ce8ca2cb7c6442fce214235017a8e9b1f"
 dependencies = [
  "blstrs 0.6.1",
  "digest 0.9.0",
