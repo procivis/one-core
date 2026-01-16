@@ -141,6 +141,12 @@ verificationProtocol:
           allowedSchemes: ["http", "https"]
         verifier:
           useDcql: true
+  OPENID4VP_DRAFT25_EUDI:
+    params:
+      public:
+        allowInsecureHttpTransport: true
+        redirectUri:
+          allowedSchemes: ["http", "https"]
   OPENID4VP_FINAL1:
     params:
       public:
