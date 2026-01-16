@@ -7,6 +7,7 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialFormat, CredentialSchemaId, DidValue, OrganisationId};
+use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use strum::{Display, EnumString};
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -75,7 +76,7 @@ pub(crate) struct OAuthAuthorizationServerMetadata {
     #[serde(default)]
     pub grant_types_supported: Vec<String>,
     #[serde(default)]
-    pub token_endpoint_auth_methods_supported: Vec<String>,
+    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
 
     /// Attestation-Based Client Authentication challenge endpoint
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-13.1>

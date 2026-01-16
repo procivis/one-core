@@ -20,6 +20,7 @@ use proc_macros::options_not_nullable;
 use secrecy::SecretString;
 use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
+use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use utoipa::{IntoParams, ToSchema};
 
 use crate::endpoint::ssi::issuance::draft13::dto::WalletStorageTypeRestEnum;
@@ -123,7 +124,7 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub grant_types_supported: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
-    pub token_endpoint_auth_methods_supported: Vec<String>,
+    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     #[from(with_fn = convert_inner)]
     pub challenge_endpoint: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

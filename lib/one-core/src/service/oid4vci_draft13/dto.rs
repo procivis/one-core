@@ -1,5 +1,6 @@
 use one_dto_mapper::{From, Into};
 use serde::Deserialize;
+use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 
 use crate::provider::issuance_protocol::model::SubmitIssuerResponse;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -30,7 +31,7 @@ pub struct OAuthAuthorizationServerMetadataResponseDTO {
     #[serde(default)]
     pub grant_types_supported: Vec<String>,
     #[serde(default)]
-    pub token_endpoint_auth_methods_supported: Vec<String>,
+    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     pub challenge_endpoint: Option<String>,
     pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,

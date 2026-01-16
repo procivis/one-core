@@ -17,6 +17,7 @@ use shared_types::{
     IdentifierId, InteractionId,
 };
 use standardized_types::jwk::PublicJwk;
+use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -81,6 +82,7 @@ use crate::provider::issuance_protocol::mapper::autogenerate_holder_binding;
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
     OpenID4VCIFinal1CredentialOfferDTO, TokenRequestWalletAttestationRequest,
+    WalletAttestationResult,
 };
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
@@ -519,6 +521,185 @@ impl OpenID4VCIFinal1_0 {
         Ok(response.attestation_challenge)
     }
 
+    /// Prepares wallet attestations (WAA/WUA) based on issuer requirements.
+    async fn prepare_wallet_attestations(
+        &self,
+        interaction_data: &HolderInteractionData,
+        key: &Key,
+        holder_wallet_unit_id: Option<HolderWalletUnitId>,
+    ) -> Result<WalletAttestationResult, IssuanceProtocolError> {
+        // DEVIATION: RFC8414 specifies `client_secret_basic` as the default when
+        // token_endpoint_auth_methods_supported is absent, but some issuers (e.g. swiyu) don't publish this field.
+        // Treating empty/missing as `none` to avoid interop issues
+        let token_endpoint_auth_methods = interaction_data
+            .token_endpoint_auth_methods_supported
+            .as_deref()
+            .unwrap_or(&[TokenEndpointAuthMethod::None]);
+
+        let wallet_attestation_supported =
+            token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::AttestJwtClientAuth);
+
+        // See https://gitlab.procivis.ch/procivis/one/one-core/-/merge_requests/2585#note_86705
+        // Some issuers advertise "public", which is not documented / defined by any specification
+        // We treat it as the rfc7591 defined "none"
+        let has_public_auth = token_endpoint_auth_methods.contains(&TokenEndpointAuthMethod::None)
+            || token_endpoint_auth_methods
+                .contains(&TokenEndpointAuthMethod::Other("public".to_string()));
+
+        let wallet_attestation_required = wallet_attestation_supported && !has_public_auth;
+
+        let wallet_unit_provided = holder_wallet_unit_id.is_some();
+
+        if wallet_attestation_required && !wallet_unit_provided {
+            return Err(IssuanceProtocolError::Failed(
+                "holder wallet unit id is required".to_string(),
+            ));
+        }
+
+        let use_wallet_attestation =
+            wallet_attestation_required || (wallet_attestation_supported && wallet_unit_provided);
+
+        let issuer_accepted_levels =
+            interaction_data_to_accepted_key_storage_security(interaction_data);
+        let key_storage_security_level = if let Some(accepted_levels) = &issuer_accepted_levels {
+            Some(
+                match_key_security_level(
+                    &key.storage_type,
+                    accepted_levels,
+                    &*self.key_security_level_provider,
+                )
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+            )
+        } else {
+            None
+        };
+
+        let wallet_attestations_issuance_request =
+            match (use_wallet_attestation, &key_storage_security_level) {
+                (true, Some(level)) => Some(IssueWalletAttestationRequest::WuaAndWaa(key, *level)),
+                (true, None) => Some(IssueWalletAttestationRequest::Waa),
+                (false, Some(level)) => Some(IssueWalletAttestationRequest::Wua(key, *level)),
+                (false, None) => None,
+            };
+
+        let wallet_attestations_issuance_response = match wallet_attestations_issuance_request {
+            None => None,
+            Some(request) => {
+                let wallet_unit_id =
+                    holder_wallet_unit_id
+                        .as_ref()
+                        .ok_or(IssuanceProtocolError::Failed(
+                            "holder wallet unit id is required".to_string(),
+                        ))?;
+
+                let response = self
+                    .holder_wallet_unit_proto
+                    .issue_wallet_attestations(wallet_unit_id, request)
+                    .await
+                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+
+                Some(response)
+            }
+        };
+
+        // Create WAA proof-of-possession if using WAA
+        let waa_request = match (
+            use_wallet_attestation,
+            &wallet_attestations_issuance_response,
+        ) {
+            (true, Some(issuance_response)) => {
+                let waa = issuance_response
+                    .waa
+                    .first()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Wallet attestation is required".to_string(),
+                    ))?;
+
+                // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
+                // The WAA sub (subject) claim MUST specify client_id value of the OAuth Client.
+                let waa_jwt: Jwt<()> =
+                    Jwt::build_from_token(waa, None, None).await.map_err(|e| {
+                        IssuanceProtocolError::Failed(format!("Failed to parse WAA: {e}"))
+                    })?;
+
+                let client_id = waa_jwt
+                    .payload
+                    .subject
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "WAA missing subject claim".to_string(),
+                    ))?;
+
+                let challenge =
+                    if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
+                        Some(self.holder_fetch_challenge(challenge_endpoint).await?)
+                    } else {
+                        None
+                    };
+
+                // Get the wallet unit's authentication key for signing the PoP
+                let wallet_unit_auth_key = self
+                    .holder_wallet_unit_proto
+                    .get_authentication_key(holder_wallet_unit_id.as_ref().ok_or(
+                        IssuanceProtocolError::Failed(
+                            "holder wallet unit id is required for WAA PoP".to_string(),
+                        ),
+                    )?)
+                    .await
+                    .map_err(|e| {
+                        IssuanceProtocolError::Failed(format!(
+                            "Failed to get authentication key: {e}"
+                        ))
+                    })?;
+
+                let signed_proof = create_wallet_unit_attestation_pop(
+                    &*self.key_provider,
+                    self.key_algorithm_provider.clone(),
+                    &wallet_unit_auth_key,
+                    &interaction_data.issuer_url,
+                    challenge,
+                    &client_id,
+                )
+                .await?;
+
+                Ok(Some(TokenRequestWalletAttestationRequest {
+                    wallet_attestation: waa.to_owned(),
+                    wallet_attestation_pop: signed_proof,
+                }))
+            }
+            (true, None) => Err(IssuanceProtocolError::Failed(
+                "Wallet attestation issuance failed".to_string(),
+            )),
+            (false, _) => Ok(None),
+        }?;
+
+        // Extract WUA proof if key attestation is required
+        let key_attestations_required = key_storage_security_level.is_some();
+        let wua_proof = match (
+            key_attestations_required,
+            &wallet_attestations_issuance_response,
+        ) {
+            (true, Some(issuance_response)) => {
+                let wua = issuance_response
+                    .wua
+                    .first()
+                    .ok_or(IssuanceProtocolError::Failed(
+                        "Key attestation is required".to_string(),
+                    ))?;
+
+                Ok(Some(wua.to_owned()))
+            }
+            (true, None) => Err(IssuanceProtocolError::Failed(
+                "Key attestation is required".to_string(),
+            )),
+            (false, _) => Ok(None),
+        }?;
+
+        Ok(WalletAttestationResult {
+            waa_request,
+            wua_proof,
+        })
+    }
+
     async fn holder_process_accepted_credential(
         &self,
         issuer_response: SubmitIssuerResponse,
@@ -917,151 +1098,12 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
 
         let key = &holder_binding.key;
 
-        let wallet_attestation_required = interaction_data
-            .token_endpoint_auth_methods_supported
-            .as_ref()
-            .unwrap_or(&vec![])
-            .contains(&"attest_jwt_client_auth".to_string());
-
-        let issuer_accepted_levels =
-            interaction_data_to_accepted_key_storage_security(&interaction_data);
-        let key_storage_security_level = if let Some(accepted_levels) = &issuer_accepted_levels {
-            Some(
-                match_key_security_level(
-                    &key.storage_type,
-                    accepted_levels,
-                    &*self.key_security_level_provider,
-                )
-                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
-            )
-        } else {
-            None
-        };
-
-        let wallet_attestations_issuance_request =
-            match (wallet_attestation_required, &key_storage_security_level) {
-                (true, Some(key_storage_security_level)) => Some(
-                    IssueWalletAttestationRequest::WuaAndWaa(key, *key_storage_security_level),
-                ),
-                (true, None) => Some(IssueWalletAttestationRequest::Waa),
-                (false, Some(key_storage_security_level)) => Some(
-                    IssueWalletAttestationRequest::Wua(key, *key_storage_security_level),
-                ),
-                (false, None) => None,
-            };
-
-        let wallet_attestations_issuance_response = match wallet_attestations_issuance_request {
-            None => None,
-            Some(wallet_attestation_request) => {
-                let holder_wallet_unit_id = holder_wallet_unit_id.ok_or(
-                    IssuanceProtocolError::Failed("holder wallet unit id is required".to_string()),
-                )?;
-
-                let wallet_attestation = self
-                    .holder_wallet_unit_proto
-                    .issue_wallet_attestations(&holder_wallet_unit_id, wallet_attestation_request)
-                    .await
-                    .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-                Some(wallet_attestation)
-            }
-        };
-
-        let waa_and_proof = match (
-            wallet_attestation_required,
-            &wallet_attestations_issuance_response,
-        ) {
-            (true, Some(issuance_response)) => {
-                let waa = issuance_response
-                    .waa
-                    .first()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Wallet attestation is required".to_string(),
-                    ))?;
-
-                // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
-                // The WAA sub (subject) claim MUST specify client_id value of the OAuth Client.
-                // The WAA PoP iss (issuer) claim MUST specify client_id value of the OAuth Client.
-                // The WAA PoP issuer must equal the WAA Subject
-                let waa_jwt: Jwt<()> =
-                    Jwt::build_from_token(waa, None, None).await.map_err(|e| {
-                        IssuanceProtocolError::Failed(format!("Failed to parse WAA: {e}"))
-                    })?;
-
-                let client_id = waa_jwt
-                    .payload
-                    .subject
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "WAA missing subject claim".to_string(),
-                    ))?;
-
-                let challenge =
-                    if let Some(challenge_endpoint) = &interaction_data.challenge_endpoint {
-                        Some(self.holder_fetch_challenge(challenge_endpoint).await?)
-                    } else {
-                        None
-                    };
-
-                // Get the wallet unit's authentication key for signing the PoP
-                // The PoP must be signed with the key that matches the cnf.jwk in the WAA
-                let wallet_unit_auth_key = self
-                    .holder_wallet_unit_proto
-                    .get_authentication_key(&holder_wallet_unit_id.ok_or(
-                        IssuanceProtocolError::Failed(
-                            "holder wallet unit id is required for WAA PoP".to_string(),
-                        ),
-                    )?)
-                    .await
-                    .map_err(|e| {
-                        IssuanceProtocolError::Failed(format!(
-                            "Failed to get authentication key: {e}"
-                        ))
-                    })?;
-
-                let signed_proof = create_wallet_unit_attestation_pop(
-                    &*self.key_provider,
-                    self.key_algorithm_provider.clone(),
-                    &wallet_unit_auth_key,
-                    &interaction_data.issuer_url,
-                    challenge,
-                    &client_id,
-                )
-                .await?;
-
-                Ok(Some(TokenRequestWalletAttestationRequest {
-                    wallet_attestation: waa.to_owned(),
-                    wallet_attestation_pop: signed_proof,
-                }))
-            }
-            (true, None) => Err(IssuanceProtocolError::Failed(
-                "Wallet attestation is required".to_string(),
-            )),
-            (false, _) => Ok(None),
-        }?;
-
-        let key_attestations_required = key_storage_security_level.is_some();
-        let wua_proof = match (
-            key_attestations_required,
-            &wallet_attestations_issuance_response,
-        ) {
-            (true, Some(issuance_response)) => {
-                let wua = issuance_response
-                    .wua
-                    .first()
-                    .ok_or(IssuanceProtocolError::Failed(
-                        "Key attestation is required".to_string(),
-                    ))?;
-
-                Ok(Some(wua.to_owned()))
-            }
-            (true, None) => Err(IssuanceProtocolError::Failed(
-                "Key attestation is required".to_string(),
-            )),
-            (false, _) => Ok(None),
-        }?;
+        let attestation_result = self
+            .prepare_wallet_attestations(&interaction_data, key, holder_wallet_unit_id)
+            .await?;
 
         let token_response = self
-            .holder_fetch_token(&interaction_data, tx_code, waa_and_proof)
+            .holder_fetch_token(&interaction_data, tx_code, attestation_result.waa_request)
             .await?;
         let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 
@@ -1144,7 +1186,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 Some(nonce),
                 auth_fn,
                 token_response.access_token.expose_secret(),
-                wua_proof,
+                attestation_result.wua_proof,
             )
             .await?;
 

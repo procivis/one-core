@@ -7,6 +7,7 @@ use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::OrganisationId;
+use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use strum::Display;
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -74,7 +75,7 @@ pub(crate) struct OAuthAuthorizationServerMetadata {
     #[serde(default)]
     pub grant_types_supported: Vec<String>,
     #[serde(default)]
-    pub token_endpoint_auth_methods_supported: Vec<String>,
+    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
 
     /// Attestation-Based Client Authentication challenge endpoint
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-13.1>
@@ -134,7 +135,7 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     #[serde(default)]
-    pub token_endpoint_auth_methods_supported: Option<Vec<String>>,
+    pub token_endpoint_auth_methods_supported: Option<Vec<TokenEndpointAuthMethod>>,
     #[serde(default)]
     pub credential_metadata: Option<OpenID4VCICredentialMetadataResponseDTO>,
     pub credential_configuration_id: String,
@@ -693,4 +694,12 @@ pub struct ContinueIssuanceAuthorizationDetailDTO {
 pub(super) struct TokenRequestWalletAttestationRequest {
     pub wallet_attestation: String,
     pub wallet_attestation_pop: String,
+}
+
+#[derive(Debug, Default)]
+pub(super) struct WalletAttestationResult {
+    /// WAA with proof-of-possession for token request (if WAA is used)
+    pub waa_request: Option<TokenRequestWalletAttestationRequest>,
+    /// WUA proof for credential request (if key attestation is required)
+    pub wua_proof: Option<String>,
 }

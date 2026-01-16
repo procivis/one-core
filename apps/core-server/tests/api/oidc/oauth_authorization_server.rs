@@ -66,9 +66,12 @@ async fn test_oauth_authorization_server_metadata() {
         "urn:ietf:params:oauth:grant-type:pre-authorized_code"
     );
 
-    // Check token endpoint auth methods (should be absent for non-EUDI compliant schemas)
-    let auth_methods = &resp["token_endpoint_auth_methods_supported"];
-    assert!(auth_methods.is_null());
+    // Check token endpoint auth methods (should be "none")
+    let auth_methods = resp["token_endpoint_auth_methods_supported"]
+        .as_array()
+        .unwrap();
+    assert_eq!(auth_methods.len(), 1);
+    assert_eq!(auth_methods[0], "none");
 
     // These fields should also be absent when attest_jwt_client_auth is not supported
     assert!(resp["client_attestation_signing_alg_values_supported"].is_null());

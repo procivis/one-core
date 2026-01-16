@@ -6,6 +6,7 @@ use one_crypto::utilities;
 use one_dto_mapper::convert_inner;
 use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, InteractionId};
+use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::OffsetDateTime;
 use tokio_util::either::Either;
 use uuid::Uuid;
@@ -190,9 +191,9 @@ impl OID4VCIFinal1_0Service {
         };
 
         let token_endpoint_auth_methods_supported = if credential_schema.requires_app_attestation {
-            vec!["attest_jwt_client_auth".to_string()]
+            vec![TokenEndpointAuthMethod::AttestJwtClientAuth]
         } else {
-            vec![]
+            vec![TokenEndpointAuthMethod::None]
         };
 
         // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
@@ -200,7 +201,8 @@ impl OID4VCIFinal1_0Service {
         let (
             client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported,
-        ) = if token_endpoint_auth_methods_supported.contains(&"attest_jwt_client_auth".to_string())
+        ) = if token_endpoint_auth_methods_supported
+            .contains(&TokenEndpointAuthMethod::AttestJwtClientAuth)
         {
             (
                 Some(vec!["ES256".to_string()]),
