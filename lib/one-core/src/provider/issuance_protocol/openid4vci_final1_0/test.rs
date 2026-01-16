@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 use assert2::let_assert;
-use mockall::predicate;
+use mockall::predicate::{always, eq};
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
@@ -30,12 +30,14 @@ use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
-use crate::proto::identifier_creator::{CreateLocalIdentifierRequest, MockIdentifierCreator};
+use crate::proto::identifier_creator::{
+    CreateLocalIdentifierRequest, IdentifierRole, MockIdentifierCreator, RemoteIdentifierRelation,
+};
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::credential_formatter::MockCredentialFormatter;
-use crate::provider::credential_formatter::model::MockSignatureProvider;
+use crate::provider::credential_formatter::model::{IdentifierDetails, MockSignatureProvider};
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
 use crate::provider::did_method::provider::MockDidMethodProvider;
 use crate::provider::did_method::{DidCreated, MockDidMethod};
@@ -493,7 +495,7 @@ async fn test_holder_accept_credential_success() {
     let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq(CredentialFormat::from("JWT")))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter_clone.clone()));
     formatter_provider
         .expect_get_formatter_by_type()
@@ -506,19 +508,9 @@ async fn test_holder_accept_credential_success() {
         .returning(move |_, _| Ok(Some(schema.clone())));
 
     storage_access
-        .expect_get_did_by_value()
-        .returning(|_, _| Ok(Some(dummy_did())));
-
-    storage_access
         .expect_update_interaction()
         .once()
         .returning(move |_, _| Ok(()));
-
-    let identifier = dummy_identifier();
-    storage_access.expect_get_identifier_for_did().returning({
-        let identifier = identifier.clone();
-        move |_| Ok(identifier.clone())
-    });
 
     key_provider
         .expect_get_signature_provider()
@@ -560,10 +552,22 @@ async fn test_holder_accept_credential_success() {
             )))
         });
 
+    let identifier = dummy_identifier();
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once({
+            let identifier = identifier.clone();
+            move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
+        });
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
         key_algorithm_provider,
+        identifier_creator,
         config: dummy_config(),
         ..Default::default()
     });
@@ -699,7 +703,7 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq(CredentialFormat::from("JWT")))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter_clone.clone()));
     formatter_provider
         .expect_get_formatter_by_type()
@@ -710,16 +714,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .expect_get_schema()
         .once()
         .returning(move |_, _| Ok(Some(schema.clone())));
-
-    storage_access
-        .expect_get_key_by_raw_key_and_type()
-        .once()
-        .returning(|_, _, _| Ok(None));
-
-    storage_access
-        .expect_get_identifier_for_key()
-        .once()
-        .returning(move |_, _| Ok(None));
 
     storage_access
         .expect_update_interaction()
@@ -754,30 +748,48 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         })
     });
 
-    key_algorithm_provider
-        .expect_reconstruct_key()
-        .returning(|_, _, _, _| {
+    let jwk = PublicJwk::Ec(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
+        y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
+    });
+    key_algorithm_provider.expect_reconstruct_key().returning({
+        let jwk = jwk.clone();
+        move |_, _, _, _| {
+            let jwk = jwk.clone();
             let mut key_handle = MockSignaturePublicKeyHandle::default();
-            key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicJwk::Ec(PublicJwkEc {
-                    alg: None,
-                    r#use: None,
-                    kid: None,
-                    crv: "P-256".to_string(),
-                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
-                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
-                }))
-            });
+            key_handle.expect_as_jwk().return_once(|| Ok(jwk));
 
             Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
                 Arc::new(key_handle),
             )))
+        }
+    });
+
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(
+            always(),
+            eq(IdentifierDetails::Key(jwk)),
+            eq(IdentifierRole::Issuer),
+        )
+        .returning(|_, _, _| {
+            Ok((
+                dummy_identifier(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
         });
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
         key_algorithm_provider,
+        identifier_creator,
         config: dummy_config(),
         ..Default::default()
     });
@@ -815,18 +827,8 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     assert_eq!(issuer_response.credential, "credential");
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 
-    let create_key = result.create_key.expect("should return create key");
-    let create_identifier = result
-        .create_identifier
-        .expect("should return create identifier");
-    assert_eq!(Some(create_key), create_identifier.key);
-
     let create_credential = result.create_credential.unwrap();
     assert_eq!(create_credential.id, credential.id);
-    assert_eq!(
-        create_credential.issuer_identifier.unwrap().id,
-        create_identifier.id
-    );
 }
 
 #[tokio::test]
@@ -941,7 +943,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     let formatter_clone = formatter.clone();
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq(CredentialFormat::from("JWT")))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| Some(formatter_clone.clone()));
     formatter_provider
         .expect_get_formatter_by_type()
@@ -954,19 +956,9 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
         .returning(move |_, _| Ok(Some(schema.clone())));
 
     storage_access
-        .expect_get_did_by_value()
-        .returning(|_, _| Ok(Some(dummy_did())));
-
-    storage_access
         .expect_update_interaction()
         .once()
         .returning(move |_, _| Ok(()));
-
-    let identifier = dummy_identifier();
-    storage_access.expect_get_identifier_for_did().returning({
-        let identifier = identifier.clone();
-        move |_| Ok(identifier.clone())
-    });
 
     key_provider
         .expect_get_signature_provider()
@@ -1060,6 +1052,16 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
             })
         });
 
+    let issuer_identifier = dummy_identifier();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once({
+            let identifier = issuer_identifier.clone();
+            move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
+        });
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
@@ -1084,7 +1086,7 @@ async fn test_holder_accept_credential_autogenerate_holder_binding() {
     assert_eq!(create_credential.id, credential.id);
     assert_eq!(
         create_credential.issuer_identifier.unwrap().id,
-        identifier.id
+        issuer_identifier.id
     );
 }
 
@@ -1328,7 +1330,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
     let mut metadata_cache = MockOpenIDMetadataFetcher::new();
     metadata_cache
             .expect_get()
-            .with(predicate::eq(format!(
+            .with(eq(format!(
                 "{issuer_url}.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}"
             )))
             .once()
@@ -1354,7 +1356,7 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
 
     metadata_cache
         .expect_get()
-        .with(predicate::eq(format!(
+        .with(eq(format!(
             "{issuer_url}.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )))
         .once()
@@ -1446,7 +1448,7 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
 
     metadata_cache
         .expect_get()
-        .with(predicate::eq(format!("http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}")))
+        .with(eq(format!("http://issuer/.well-known/oauth-authorization-server/ssi/openid4vci/final-1.0/{credential_schema_id}")))
         .once()
         .returning({
             let credential_issuer = credential_issuer.clone();
@@ -1474,7 +1476,7 @@ async fn inner_continue_issuance_test(with_scope: bool, with_credential_configur
 
     metadata_cache
         .expect_get()
-        .with(predicate::eq(format!(
+        .with(eq(format!(
             "http://issuer/.well-known/openid-credential-issuer/ssi/openid4vci/final-1.0/{credential_schema_id}"
         )))
         .once()
@@ -1613,9 +1615,7 @@ async fn test_can_handle_issuance_success_with_custom_url_scheme() {
     let mut metadata_cache = MockOpenIDMetadataFetcher::new();
     metadata_cache
         .expect_get()
-        .with(predicate::eq(
-            "http://base_url/.well-known/openid-credential-issuer",
-        ))
+        .with(eq("http://base_url/.well-known/openid-credential-issuer"))
         .returning(|_| Ok(dummy_issuer_metadata()));
 
     let protocol = setup_protocol(TestInputs {

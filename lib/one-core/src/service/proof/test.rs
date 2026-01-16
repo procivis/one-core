@@ -82,15 +82,12 @@ use crate::provider::verification_protocol::openid4vp::proximity_draft00::ble::m
     BLEOpenID4VPInteractionDataVerifier, BLEVerifierProtocolData,
 };
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
-use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::claim_repository::MockClaimRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::did_repository::MockDidRepository;
 use crate::repository::history_repository::MockHistoryRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::proof_schema_repository::MockProofSchemaRepository;
@@ -107,7 +104,6 @@ struct Repositories {
     pub proof_repository: MockProofRepository,
     pub key_algorithm_provider: MockKeyAlgorithmProvider,
     pub proof_schema_repository: MockProofSchemaRepository,
-    pub did_repository: MockDidRepository,
     pub identifier_repository: MockIdentifierRepository,
     pub claim_repository: MockClaimRepository,
     pub credential_repository: MockCredentialRepository,
@@ -124,8 +120,6 @@ struct Repositories {
     pub organisation_repository: MockOrganisationRepository,
     pub validity_credential_repository: MockValidityCredentialRepository,
     pub certificate_validator: MockCertificateValidator,
-    pub certificate_repository: MockCertificateRepository,
-    pub key_repository: MockKeyRepository,
     pub blob_storage_provider: MockBlobStorageProvider,
     pub nfc_hce_provider: Option<MockNfcHce>,
     pub session_provider: Option<Arc<dyn SessionProvider>>,
@@ -138,8 +132,6 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.proof_repository),
         Arc::new(repositories.key_algorithm_provider),
         Arc::new(repositories.proof_schema_repository),
-        Arc::new(repositories.did_repository),
-        Arc::new(repositories.certificate_repository),
         Arc::new(repositories.identifier_repository),
         Arc::new(repositories.claim_repository),
         Arc::new(repositories.credential_repository),
@@ -158,7 +150,6 @@ fn setup_service(repositories: Repositories) -> ProofService {
         Arc::new(repositories.organisation_repository),
         Arc::new(repositories.validity_credential_repository),
         Arc::new(repositories.certificate_validator),
-        Arc::new(repositories.key_repository),
         Arc::new(repositories.blob_storage_provider),
         repositories.nfc_hce_provider.map(|m| {
             let m: Arc<dyn NfcHce> = Arc::new(m);

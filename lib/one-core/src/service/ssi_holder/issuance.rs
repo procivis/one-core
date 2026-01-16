@@ -658,18 +658,6 @@ impl SSIHolderService {
         &self,
         update_response: UpdateResponse,
     ) -> Result<SubmitIssuerResponse, ServiceError> {
-        if let Some(create_did) = update_response.create_did {
-            self.did_repository.create_did(create_did).await?;
-        }
-        if let Some(create_key) = update_response.create_key {
-            self.key_repository.create_key(create_key).await?;
-        }
-        if let Some(create_identifier) = update_response.create_identifier {
-            self.identifier_repository.create(create_identifier).await?;
-        }
-        if let Some(certificate) = update_response.create_certificate {
-            self.certificate_repository.create(certificate).await?;
-        }
         if let Some(create_credential_schema) = update_response.create_credential_schema {
             self.credential_schema_importer
                 .import_credential_schema(create_credential_schema)

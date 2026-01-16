@@ -62,13 +62,10 @@ use crate::provider::verification_protocol::dto::{
 };
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::provider::MockVerificationProtocolProvider;
-use crate::repository::certificate_repository::MockCertificateRepository;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::repository::did_repository::MockDidRepository;
 use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::interaction_repository::MockInteractionRepository;
-use crate::repository::key_repository::MockKeyRepository;
 use crate::repository::organisation_repository::MockOrganisationRepository;
 use crate::repository::proof_repository::MockProofRepository;
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -1041,12 +1038,8 @@ async fn test_accept_credential() {
                     redirect_uri: None,
                     notification_id: None,
                 },
-                create_did: None,
-                create_certificate: None,
-                create_identifier: None,
                 update_credential: None,
                 update_credential_schema: None,
-                create_key: None,
                 create_credential: None,
                 create_credential_schema: None,
             })
@@ -1197,12 +1190,8 @@ async fn test_accept_credential_with_did() {
                     redirect_uri: None,
                     notification_id: None,
                 },
-                create_did: None,
-                create_certificate: None,
-                create_identifier: None,
                 update_credential: None,
                 update_credential_schema: None,
-                create_key: None,
                 create_credential: None,
                 create_credential_schema: None,
             })
@@ -1592,10 +1581,7 @@ fn mock_ssi_holder_service() -> SSIHolderService {
         interaction_repository: Arc::new(MockInteractionRepository::new()),
         credential_schema_repository: Arc::new(MockCredentialSchemaRepository::new()),
         validity_credential_repository: Arc::new(MockValidityCredentialRepository::new()),
-        did_repository: Arc::new(MockDidRepository::new()),
-        key_repository: Arc::new(MockKeyRepository::new()),
         identifier_repository: Arc::new(MockIdentifierRepository::new()),
-        certificate_repository: Arc::new(MockCertificateRepository::new()),
         key_provider: Arc::new(MockKeyProvider::new()),
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         key_security_level_provider: Arc::new(MockKeySecurityLevelProvider::new()),

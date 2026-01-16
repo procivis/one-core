@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 
 use assert2::let_assert;
 use indexmap::IndexMap;
-use mockall::predicate::{self, eq};
+use mockall::predicate::{always, eq};
 use one_crypto::encryption::encrypt_data;
 use secrecy::SecretSlice;
 use serde_json::{Value, json};
@@ -32,7 +32,9 @@ use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
-use crate::proto::identifier_creator::{MockIdentifierCreator, RemoteIdentifierRelation};
+use crate::proto::identifier_creator::{
+    IdentifierRole, MockIdentifierCreator, RemoteIdentifierRelation,
+};
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
 use crate::provider::caching_loader::{CacheError, ResolverError};
@@ -669,7 +671,7 @@ async fn test_holder_accept_credential_success() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq(CredentialFormat::from("JWT")))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
             formatter.expect_get_leeway().returning(|| 1000);
@@ -708,16 +710,6 @@ async fn test_holder_accept_credential_success() {
     storage_access
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
-
-    storage_access
-        .expect_get_did_by_value()
-        .returning(|_, _| Ok(Some(dummy_did())));
-
-    let identifier = dummy_identifier();
-    storage_access.expect_get_identifier_for_did().returning({
-        let identifier = identifier.clone();
-        move |_| Ok(identifier.clone())
-    });
 
     key_provider
         .expect_get_signature_provider()
@@ -759,10 +751,22 @@ async fn test_holder_accept_credential_success() {
             )))
         });
 
+    let identifier = dummy_identifier();
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(always(), always(), eq(IdentifierRole::Issuer))
+        .return_once({
+            let identifier = identifier.clone();
+            move |_, _, _| Ok((identifier, RemoteIdentifierRelation::Key(dummy_key())))
+        });
+
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
         key_algorithm_provider,
+        identifier_creator,
         config: dummy_config(),
         ..Default::default()
     });
@@ -874,42 +878,47 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         .mount(&mock_server)
         .await;
 
+    let jwk = PublicJwk::Ec(PublicJwkEc {
+        alg: None,
+        r#use: None,
+        kid: None,
+        crv: "P-256".to_string(),
+        x: "ShVYnVH7gJEbuydvCuxK3erCLINJQ27Ym_HU-I2uSkQ".to_string(),
+        y: Some("4oKwI2kCcDpDpC6ZNVpkO9v0UjLKqMNEXuMDHjRMnPM".to_string()),
+    });
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq(CredentialFormat::from("JWT")))
-        .returning(move |_| {
-            let mut formatter = MockCredentialFormatter::new();
-            formatter.expect_get_leeway().returning(|| 1000);
+        .with(eq(CredentialFormat::from("JWT")))
+        .returning({
+            let jwk = jwk.clone();
+            move |_| {
+                let mut formatter = MockCredentialFormatter::new();
+                formatter.expect_get_leeway().returning(|| 1000);
 
-            formatter
-                .expect_extract_credentials()
-                .returning(move |_, _, _, _| {
-                    Ok(DetailCredential {
-                        id: None,
-                        issuance_date: None,
-                        valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
-                        valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
-                        update_at: None,
-                        invalid_before: None,
-                        issuer: IdentifierDetails::Key(PublicJwk::Ec(PublicJwkEc {
-                            alg: None,
-                            r#use: None,
-                            kid: None,
-                            crv: "P-256".to_string(),
-                            x: "ShVYnVH7gJEbuydvCuxK3erCLINJQ27Ym_HU-I2uSkQ".to_string(),
-                            y: Some("4oKwI2kCcDpDpC6ZNVpkO9v0UjLKqMNEXuMDHjRMnPM".to_string()),
-                        })),
-                        subject: None,
-                        claims: CredentialSubject {
+                formatter.expect_extract_credentials().returning({
+                    let jwk = jwk.clone();
+                    move |_, _, _, _| {
+                        Ok(DetailCredential {
                             id: None,
-                            claims: HashMap::new(),
-                        },
-                        status: vec![],
-                        credential_schema: None,
-                    })
+                            issuance_date: None,
+                            valid_from: Some(OffsetDateTime::now_utc() - Duration::days(1)),
+                            valid_until: Some(OffsetDateTime::now_utc() + Duration::days(1)),
+                            update_at: None,
+                            invalid_before: None,
+                            issuer: IdentifierDetails::Key(jwk.clone()),
+                            subject: None,
+                            claims: CredentialSubject {
+                                id: None,
+                                claims: HashMap::new(),
+                            },
+                            status: vec![],
+                            credential_schema: None,
+                        })
+                    }
                 });
 
-            Some(Arc::new(formatter))
+                Some(Arc::new(formatter))
+            }
         });
 
     storage_access
@@ -922,14 +931,6 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     storage_access
         .expect_update_interaction()
         .returning(|_, _| Ok(()));
-
-    storage_access
-        .expect_get_key_by_raw_key_and_type()
-        .returning(|_, _, _| Ok(None));
-
-    storage_access
-        .expect_get_identifier_for_key()
-        .returning(move |_, _| Ok(None));
 
     key_provider
         .expect_get_signature_provider()
@@ -959,30 +960,40 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
         })
     });
 
-    key_algorithm_provider
-        .expect_reconstruct_key()
-        .returning(|_, _, _, _| {
+    key_algorithm_provider.expect_reconstruct_key().returning({
+        let jwk = jwk.clone();
+        move |_, _, _, _| {
+            let jwk = jwk.clone();
             let mut key_handle = MockSignaturePublicKeyHandle::default();
-            key_handle.expect_as_jwk().return_once(|| {
-                Ok(PublicJwk::Ec(PublicJwkEc {
-                    alg: None,
-                    r#use: None,
-                    kid: None,
-                    crv: "P-256".to_string(),
-                    x: "igrFmi0whuihKnj9R3Om1SoMph72wUGeFaBbzG2vzns".to_owned(),
-                    y: Some("efsX5b10x8yjyrj4ny3pGfLcY7Xby1KzgqOdqnsrJIM".to_owned()),
-                }))
-            });
+            key_handle.expect_as_jwk().return_once(|| Ok(jwk));
 
             Ok(KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(
                 Arc::new(key_handle),
             )))
+        }
+    });
+
+    let mut identifier_creator = MockIdentifierCreator::new();
+    identifier_creator
+        .expect_get_or_create_remote_identifier()
+        .once()
+        .with(
+            always(),
+            eq(IdentifierDetails::Key(jwk)),
+            eq(IdentifierRole::Issuer),
+        )
+        .returning(|_, _, _| {
+            Ok((
+                dummy_identifier(),
+                RemoteIdentifierRelation::Key(dummy_key()),
+            ))
         });
 
     let openid_provider = setup_protocol(TestInputs {
         formatter_provider,
         key_provider,
         key_algorithm_provider,
+        identifier_creator,
         config: dummy_config(),
         ..Default::default()
     });
@@ -1020,18 +1031,8 @@ async fn test_holder_accept_credential_none_existing_issuer_key_id_success() {
     assert_eq!(issuer_response.credential, "credential");
     assert_eq!(issuer_response.notification_id.unwrap(), "notification_id");
 
-    let create_key = result.create_key.expect("should return create key");
-    let create_identifier = result
-        .create_identifier
-        .expect("should return create identifier");
-    assert_eq!(Some(create_key), create_identifier.key);
-
     let update_credential = result.update_credential.unwrap();
     assert_eq!(update_credential.0, credential.id);
-    assert_eq!(
-        update_credential.1.issuer_identifier_id.unwrap(),
-        create_identifier.id
-    );
 }
 
 #[tokio::test]
@@ -1124,7 +1125,7 @@ async fn test_holder_accept_expired_credential_fails() {
 
     formatter_provider
         .expect_get_credential_formatter()
-        .with(predicate::eq(CredentialFormat::from("JWT")))
+        .with(eq(CredentialFormat::from("JWT")))
         .returning(move |_| {
             let mut formatter = MockCredentialFormatter::new();
             formatter.expect_get_leeway().returning(|| 1000);

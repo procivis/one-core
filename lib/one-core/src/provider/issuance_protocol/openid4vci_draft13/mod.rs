@@ -13,8 +13,7 @@ use one_dto_mapper::convert_inner;
 use secrecy::{ExposeSecret, SecretString};
 use serde::Deserialize;
 use shared_types::{
-    BlobId, CertificateId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId,
-    IdentifierId, InteractionId,
+    BlobId, CredentialFormat, CredentialId, DidValue, HolderWalletUnitId, InteractionId,
 };
 use standardized_types::jwk::PublicJwk;
 use time::{Duration, OffsetDateTime};
@@ -31,7 +30,7 @@ use crate::config::core_config::{
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::{detect_format_with_crypto_suite, map_to_openid4vp_format};
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
-use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
+use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -40,8 +39,8 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, UpdateCredentialSchemaRequest,
 };
-use crate::model::did::{Did, DidRelations, DidType, KeyFilter, KeyRole};
-use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierState, IdentifierType};
+use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
@@ -516,7 +515,6 @@ impl OpenID4VCI13 {
         issuer_response: SubmitIssuerResponse,
         credential: &Credential,
         holder_binding: HolderBindingInput,
-        storage_access: &StorageAccess,
     ) -> Result<UpdateResponse, IssuanceProtocolError> {
         let schema = credential
             .schema
@@ -600,36 +598,27 @@ impl OpenID4VCI13 {
                 "Missing credential schema organisation".to_string(),
             ))?;
 
-        let identifier_updates = match response_credential.issuer {
-            IdentifierDetails::Did(did) => {
-                prepare_did_identifier(
-                    did,
-                    organisation,
-                    storage_access,
-                    &*self.did_method_provider,
-                )
-                .await?
-            }
-            IdentifierDetails::Certificate(certificate) => {
-                prepare_certificate_identifier(certificate, organisation, storage_access).await?
-            }
-            IdentifierDetails::Key(public_key) => {
-                prepare_key_identifier(
-                    &public_key,
-                    organisation,
-                    storage_access,
-                    self.key_algorithm_provider.as_ref(),
-                )
-                .await?
-            }
+        let (issuer_dentifier, issuer_identifier_relation) = self
+            .identifier_creator
+            .get_or_create_remote_identifier(
+                &Some(organisation.to_owned()),
+                &response_credential.issuer,
+                IdentifierRole::Issuer,
+            )
+            .await
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
+        let issuer_certificate_id = if let RemoteIdentifierRelation::Certificate(certificate) =
+            issuer_identifier_relation
+        {
+            Some(certificate.id)
+        } else {
+            None
         };
+
         let redirect_uri = issuer_response.redirect_uri.clone();
 
         Ok(UpdateResponse {
             result: issuer_response,
-            create_did: identifier_updates.create_did,
-            create_certificate: identifier_updates.create_certificate,
-            create_identifier: identifier_updates.create_identifier,
             update_credential_schema: Some(UpdateCredentialSchemaRequest {
                 id: schema.id,
                 revocation_method,
@@ -642,8 +631,8 @@ impl OpenID4VCI13 {
             update_credential: Some((
                 credential.id,
                 UpdateCredentialRequest {
-                    issuer_identifier_id: Some(identifier_updates.issuer_identifier_id),
-                    issuer_certificate_id: identifier_updates.issuer_certificate_id,
+                    issuer_identifier_id: Some(issuer_dentifier.id),
+                    issuer_certificate_id,
                     holder_identifier_id: Some(holder_binding.identifier.id),
                     key: Some(holder_binding.key.id),
                     redirect_uri: Some(redirect_uri),
@@ -653,7 +642,6 @@ impl OpenID4VCI13 {
                 },
             )),
             create_credential: None,
-            create_key: identifier_updates.create_key,
         })
     }
 
@@ -1045,12 +1033,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
         let result = self
-            .holder_process_accepted_credential(
-                credential_response,
-                &credential,
-                holder_binding,
-                storage_access,
-            )
+            .holder_process_accepted_credential(credential_response, &credential, holder_binding)
             .await;
 
         if let (Some(notification_id), Some(notification_endpoint)) =
@@ -2223,229 +2206,4 @@ fn collect_keys(
     }
 
     item_paths
-}
-
-struct IdentifierUpdates {
-    issuer_identifier_id: IdentifierId,
-    issuer_certificate_id: Option<CertificateId>,
-    create_did: Option<Did>,
-    create_identifier: Option<Identifier>,
-    create_certificate: Option<Certificate>,
-    create_key: Option<Key>,
-}
-
-async fn prepare_did_identifier(
-    issuer_did_value: DidValue,
-    organisation: &Organisation,
-    storage_access: &StorageAccess,
-    did_method_provider: &dyn DidMethodProvider,
-) -> Result<IdentifierUpdates, IssuanceProtocolError> {
-    match storage_access
-        .get_did_by_value(&issuer_did_value, organisation.id)
-        .await
-        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
-    {
-        Some(did) => {
-            let identifier = storage_access
-                .get_identifier_for_did(&did.id)
-                .await
-                .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-
-            Ok(IdentifierUpdates {
-                issuer_identifier_id: identifier.id,
-                issuer_certificate_id: None,
-                create_did: None,
-                create_identifier: None,
-                create_certificate: None,
-                create_key: None,
-            })
-        }
-        None => {
-            let now = OffsetDateTime::now_utc();
-            let did_method = did_method_provider
-                .get_did_method_id(&issuer_did_value)
-                .ok_or(IssuanceProtocolError::Failed(format!(
-                    "unsupported issuer did method: {issuer_did_value}"
-                )))?;
-            let id = Uuid::new_v4().into();
-            let did = Did {
-                id,
-                name: format!("issuer {id}"),
-                created_date: now,
-                last_modified: now,
-                did: issuer_did_value,
-                did_type: DidType::Remote,
-                did_method,
-                keys: None,
-                deactivated: false,
-                organisation: Some(organisation.clone()),
-                log: None,
-            };
-
-            let id: IdentifierId = Uuid::new_v4().into();
-            Ok(IdentifierUpdates {
-                issuer_identifier_id: id,
-                issuer_certificate_id: None,
-                create_did: Some(did.to_owned()),
-                create_identifier: Some(Identifier {
-                    id,
-                    name: did.name.to_owned(),
-                    created_date: now,
-                    last_modified: now,
-                    did: Some(did),
-                    key: None,
-                    certificates: None,
-                    is_remote: true,
-                    deleted_at: None,
-                    r#type: IdentifierType::Did,
-                    state: IdentifierState::Active,
-                    organisation: Some(organisation.clone()),
-                }),
-                create_certificate: None,
-                create_key: None,
-            })
-        }
-    }
-}
-
-async fn prepare_certificate_identifier(
-    certificate: CertificateDetails,
-    organisation: &Organisation,
-    storage_access: &StorageAccess,
-) -> Result<IdentifierUpdates, IssuanceProtocolError> {
-    match storage_access
-        .get_certificate_by_fingerprint(&certificate.fingerprint, organisation.id)
-        .await
-        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
-    {
-        Some(certificate) => Ok(IdentifierUpdates {
-            issuer_identifier_id: certificate.identifier_id,
-            issuer_certificate_id: Some(certificate.id),
-            create_did: None,
-            create_identifier: None,
-            create_certificate: None,
-            create_key: None,
-        }),
-
-        None => {
-            let now = OffsetDateTime::now_utc();
-            let id = Uuid::new_v4().into();
-            let identifier_id: IdentifierId = Uuid::new_v4().into();
-            let certificate = Certificate {
-                id,
-                identifier_id,
-                name: certificate
-                    .subject_common_name
-                    .unwrap_or(format!("issuer certificate {id}")),
-                chain: certificate.chain,
-                fingerprint: certificate.fingerprint,
-                state: CertificateState::Active,
-                created_date: now,
-                last_modified: now,
-                organisation_id: Some(organisation.id),
-                expiry_date: certificate.expiry,
-                key: None,
-            };
-
-            Ok(IdentifierUpdates {
-                issuer_identifier_id: identifier_id,
-                issuer_certificate_id: Some(certificate.id),
-                create_did: None,
-                create_identifier: Some(Identifier {
-                    id: identifier_id,
-                    name: format!("issuer {identifier_id}"),
-                    created_date: now,
-                    last_modified: now,
-                    did: None,
-                    key: None,
-                    certificates: None,
-                    is_remote: true,
-                    deleted_at: None,
-                    r#type: IdentifierType::Certificate,
-                    state: IdentifierState::Active,
-                    organisation: Some(organisation.clone()),
-                }),
-                create_certificate: Some(certificate),
-                create_key: None,
-            })
-        }
-    }
-}
-
-async fn prepare_key_identifier(
-    public_key: &PublicJwk,
-    organisation: &Organisation,
-    storage_access: &StorageAccess,
-    key_algorithm_provider: &dyn KeyAlgorithmProvider,
-) -> Result<IdentifierUpdates, IssuanceProtocolError> {
-    let parsed_key = key_algorithm_provider
-        .parse_jwk(public_key)
-        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-    let now = OffsetDateTime::now_utc();
-
-    let key = storage_access
-        .get_key_by_raw_key_and_type(
-            parsed_key.key.public_key_as_raw(),
-            parsed_key.algorithm_type,
-            organisation.id,
-        )
-        .await
-        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-
-    let (key, create_key) = if let Some(key) = key {
-        (key, None)
-    } else {
-        let key_id = Uuid::new_v4().into();
-        let key = Key {
-            id: key_id,
-            created_date: now,
-            last_modified: now,
-            name: format!("Issuer {key_id}"),
-            organisation: Some(organisation.clone()),
-            public_key: parsed_key.key.public_key_as_raw(),
-            key_reference: None,
-            storage_type: "INTERNAL".to_string(),
-            key_type: parsed_key.algorithm_type.to_string(),
-        };
-        (key.clone(), Some(key))
-    };
-
-    let identifier = storage_access
-        .get_identifier_for_key(key.id, organisation.id)
-        .await
-        .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
-
-    if let Some(identifier) = identifier {
-        Ok(IdentifierUpdates {
-            issuer_identifier_id: identifier.id,
-            issuer_certificate_id: None,
-            create_did: None,
-            create_identifier: None,
-            create_certificate: None,
-            create_key,
-        })
-    } else {
-        let identifier_id = Uuid::new_v4().into();
-        Ok(IdentifierUpdates {
-            issuer_identifier_id: identifier_id,
-            issuer_certificate_id: None,
-            create_did: None,
-            create_identifier: Some(Identifier {
-                id: identifier_id,
-                created_date: now,
-                last_modified: now,
-                name: format!("Issuer {identifier_id}"),
-                r#type: IdentifierType::Key,
-                is_remote: true,
-                state: IdentifierState::Active,
-                deleted_at: None,
-                organisation: Some(organisation.clone()),
-                did: None,
-                key: Some(key.clone()),
-                certificates: None,
-            }),
-            create_certificate: None,
-            create_key,
-        })
-    }
 }

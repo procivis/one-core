@@ -15,15 +15,12 @@ use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::presentation_formatter::provider::PresentationFormatterProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::verification_protocol::provider::VerificationProtocolProvider;
-use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::claim_repository::ClaimRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::did_repository::DidRepository;
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::repository::proof_schema_repository::ProofSchemaRepository;
@@ -41,12 +38,9 @@ pub struct ProofService {
     proof_repository: Arc<dyn ProofRepository>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     proof_schema_repository: Arc<dyn ProofSchemaRepository>,
-    did_repository: Arc<dyn DidRepository>,
-    certificate_repository: Arc<dyn CertificateRepository>,
     identifier_repository: Arc<dyn IdentifierRepository>,
     claim_repository: Arc<dyn ClaimRepository>,
     credential_repository: Arc<dyn CredentialRepository>,
-    key_repository: Arc<dyn KeyRepository>,
     credential_schema: Arc<dyn CredentialSchemaRepository>,
     history_repository: Arc<dyn HistoryRepository>,
     interaction_repository: Arc<dyn InteractionRepository>,
@@ -74,8 +68,6 @@ impl ProofService {
         proof_repository: Arc<dyn ProofRepository>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
-        did_repository: Arc<dyn DidRepository>,
-        certificate_repository: Arc<dyn CertificateRepository>,
         identifier_repository: Arc<dyn IdentifierRepository>,
         claim_repository: Arc<dyn ClaimRepository>,
         credential_repository: Arc<dyn CredentialRepository>,
@@ -92,7 +84,6 @@ impl ProofService {
         organisation_repository: Arc<dyn OrganisationRepository>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         certificate_validator: Arc<dyn CertificateValidator>,
-        key_repository: Arc<dyn KeyRepository>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         nfc_hce_provider: Option<Arc<dyn NfcHce>>,
         session_provider: Arc<dyn SessionProvider>,
@@ -104,15 +95,12 @@ impl ProofService {
             proof_repository,
             key_algorithm_provider,
             proof_schema_repository,
-            did_repository,
-            certificate_repository,
             identifier_repository,
             claim_repository,
             credential_repository,
             credential_schema,
             history_repository,
             interaction_repository,
-            key_repository,
             credential_formatter_provider,
             presentation_formatter_provider,
             revocation_method_provider,

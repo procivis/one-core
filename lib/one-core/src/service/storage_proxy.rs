@@ -2,12 +2,9 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use futures::future::join_all;
-use shared_types::{CredentialId, DidId, DidValue, InteractionId, KeyId, OrganisationId};
+use shared_types::{CredentialId, InteractionId, OrganisationId};
 
-use crate::config::core_config::KeyAlgorithmType;
-use crate::model::certificate::{
-    Certificate, CertificateFilterValue, CertificateListQuery, CertificateRelations,
-};
+use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::credential::{
@@ -17,22 +14,14 @@ use crate::model::credential::{
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, GetCredentialSchemaQuery,
 };
-use crate::model::did::Did;
-use crate::model::identifier::{
-    Identifier, IdentifierFilterValue, IdentifierListQuery, IdentifierRelations, IdentifierType,
-};
+use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{Interaction, InteractionRelations, UpdateInteractionRequest};
-use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterCondition, ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
 use crate::model::organisation::OrganisationRelations;
-use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
-use crate::repository::did_repository::DidRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::interaction_repository::InteractionRepository;
-use crate::repository::key_repository::KeyRepository;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, CredentialSchemaListIncludeEntityTypeEnum,
 };
@@ -82,45 +71,13 @@ pub(crate) trait StorageProxy: Send + Sync {
         schema_ids: &[String],
         organisation_id: OrganisationId,
     ) -> anyhow::Result<Option<CredentialSchema>>;
-
-    /// Obtain a DID by its address, from a chosen storage layer.
-    async fn get_did_by_value(
-        &self,
-        value: &DidValue,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Did>>;
-
-    async fn get_certificate_by_fingerprint(
-        &self,
-        fingerprint: &str,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Certificate>>;
-
-    async fn get_key_by_raw_key_and_type(
-        &self,
-        raw_key: Vec<u8>,
-        key_type: KeyAlgorithmType,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Key>>;
-
-    async fn get_identifier_for_key(
-        &self,
-        key_id: KeyId,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Identifier>>;
-
-    async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier>;
 }
 pub(crate) type StorageAccess = dyn StorageProxy;
 
 pub(crate) struct StorageProxyImpl {
-    pub interactions: Arc<dyn InteractionRepository>,
-    pub credential_schemas: Arc<dyn CredentialSchemaRepository>,
-    pub credentials: Arc<dyn CredentialRepository>,
-    pub dids: Arc<dyn DidRepository>,
-    pub certificates: Arc<dyn CertificateRepository>,
-    pub keys: Arc<dyn KeyRepository>,
-    pub identifiers: Arc<dyn IdentifierRepository>,
+    interactions: Arc<dyn InteractionRepository>,
+    credential_schemas: Arc<dyn CredentialSchemaRepository>,
+    credentials: Arc<dyn CredentialRepository>,
 }
 
 impl StorageProxyImpl {
@@ -128,19 +85,11 @@ impl StorageProxyImpl {
         interactions: Arc<dyn InteractionRepository>,
         credential_schemas: Arc<dyn CredentialSchemaRepository>,
         credentials: Arc<dyn CredentialRepository>,
-        dids: Arc<dyn DidRepository>,
-        certificates: Arc<dyn CertificateRepository>,
-        keys: Arc<dyn KeyRepository>,
-        identifiers: Arc<dyn IdentifierRepository>,
     ) -> Self {
         Self {
             interactions,
             credential_schemas,
             credentials,
-            dids,
-            certificates,
-            keys,
-            identifiers,
         }
     }
 }
@@ -315,84 +264,6 @@ impl StorageProxy for StorageProxyImpl {
             .into_iter()
             .next()
             .context("No credential by interaction id")?)
-    }
-
-    async fn get_did_by_value(
-        &self,
-        value: &DidValue,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Did>> {
-        self.dids
-            .get_did_by_value(value, Some(Some(organisation_id)), &Default::default())
-            .await
-            .context("Could not fetch did by value")
-    }
-
-    async fn get_certificate_by_fingerprint(
-        &self,
-        fingerprint: &str,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Certificate>> {
-        let list = self
-            .certificates
-            .list(CertificateListQuery {
-                filtering: Some(
-                    CertificateFilterValue::Fingerprint(fingerprint.to_owned()).condition()
-                        & CertificateFilterValue::OrganisationId(organisation_id),
-                ),
-                ..Default::default()
-            })
-            .await?;
-        Ok(list.values.into_iter().next())
-    }
-
-    async fn get_key_by_raw_key_and_type(
-        &self,
-        raw_key: Vec<u8>,
-        key_type: KeyAlgorithmType,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Key>> {
-        let keys = self
-            .keys
-            .get_key_list(KeyListQuery {
-                filtering: Some(
-                    KeyFilterValue::RawPublicKey(raw_key).condition()
-                        & KeyFilterValue::KeyTypes(vec![key_type.to_string()])
-                        & KeyFilterValue::OrganisationId(organisation_id),
-                ),
-                ..Default::default()
-            })
-            .await?;
-        Ok(keys.values.into_iter().next())
-    }
-
-    async fn get_identifier_for_key(
-        &self,
-        key_id: KeyId,
-        organisation_id: OrganisationId,
-    ) -> anyhow::Result<Option<Identifier>> {
-        let identifiers = self
-            .identifiers
-            .get_identifier_list(IdentifierListQuery {
-                filtering: Some(
-                    IdentifierFilterValue::KeyIds(vec![key_id]).condition()
-                        & IdentifierFilterValue::Types(vec![IdentifierType::Key])
-                        & IdentifierFilterValue::OrganisationId(organisation_id),
-                ),
-                ..Default::default()
-            })
-            .await?;
-        Ok(identifiers.values.into_iter().next())
-    }
-
-    async fn get_identifier_for_did(&self, did_id: &DidId) -> anyhow::Result<Identifier> {
-        self.identifiers
-            .get_from_did_id(*did_id, &Default::default())
-            .await
-            .context("Could not fetch identifier by didId")
-            .and_then(|identifier| {
-                identifier.ok_or(anyhow::anyhow!("Could not find identifier by didId"))
-            })
     }
 
     async fn create_credential(&self, credential: Credential) -> anyhow::Result<CredentialId> {

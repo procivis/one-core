@@ -54,10 +54,6 @@ impl SSIHolderService {
             self.interaction_repository.clone(),
             self.credential_schema_repository.clone(),
             self.credential_repository.clone(),
-            self.did_repository.clone(),
-            self.certificate_repository.clone(),
-            self.key_repository.clone(),
-            self.identifier_repository.clone(),
         )
     }
 }

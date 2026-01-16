@@ -5,14 +5,10 @@ use shared_types::{CredentialId, InteractionId, OrganisationId};
 use strum::Display;
 use time::OffsetDateTime;
 
-use crate::model::certificate::Certificate;
 use crate::model::credential::{Credential, UpdateCredentialRequest};
 use crate::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, UpdateCredentialSchemaRequest,
 };
-use crate::model::did::Did;
-use crate::model::identifier::Identifier;
-use crate::model::key::Key;
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -119,10 +115,6 @@ pub enum OpenID4VCITxCodeInputMode {
 #[derive(Clone, Debug)]
 pub(crate) struct UpdateResponse {
     pub result: SubmitIssuerResponse,
-    pub create_did: Option<Did>,
-    pub create_key: Option<Key>,
-    pub create_certificate: Option<Certificate>,
-    pub create_identifier: Option<Identifier>,
     pub create_credential: Option<Credential>,
     pub create_credential_schema: Option<CredentialSchema>,
     pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,
