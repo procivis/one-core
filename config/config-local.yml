@@ -245,7 +245,9 @@ credentialIssuer:
         clientId: procivis-wallet-dev
 signer:
   REGISTRATION_CERTIFICATE:
-    display: "did.key"
+    display:
+      en: Wallet Relying Party Registration Certificate
+      de: Wallet Relying Party Registration Certificate
     order: 0
     type: REGISTRATION_CERTIFICATE
     params:

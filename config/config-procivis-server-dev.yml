@@ -61,13 +61,15 @@ verificationProtocol:
           interactionExpiresIn: 3600
 signer:
   REGISTRATION_CERTIFICATE:
-    display: "did.key"
+    display:
+      en: Wallet Relying Party Registration Certificate
+      de: Wallet Relying Party Registration Certificate
     order: 0
     type: REGISTRATION_CERTIFICATE
     params:
       private:
         payload:
           issuer: "https://core.dev.procivis-one"
-          audience: ["bli", "bla"]
+          audience: ["wrpr"]
           maxValidityDuration: 2592000 # 30 days
         revocationMethod: TOKENSTATUSLIST

@@ -24,3 +24,17 @@ keyStorage:
       private:
         vaultUrl: "https://procivis-one-demo.vault.azure.net"
         clientId: "9b645db1-39eb-485c-af62-47b3a498bec2"
+signer:
+  REGISTRATION_CERTIFICATE:
+    display:
+      en: Wallet Relying Party Registration Certificate
+      de: Wallet Relying Party Registration Certificate
+    order: 0
+    type: REGISTRATION_CERTIFICATE
+    params:
+      private:
+        payload:
+          issuer: "https://core.demo.procivis-one"
+          audience: ["wrpr"]
+          maxValidityDuration: 604800 # 7 days
+        revocationMethod: TOKENSTATUSLIST
