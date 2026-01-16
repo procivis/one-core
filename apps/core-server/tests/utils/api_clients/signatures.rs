@@ -35,6 +35,11 @@ impl SignaturesApi {
         self.client.post("/api/signature/v1", request).await
     }
 
+    pub async fn revoke(&self, entry_id: Uuid) -> Response {
+        let url = format!("/api/signature/v1/{}/revoke", entry_id);
+        self.client.post(url.as_str(), None).await
+    }
+
     pub async fn revocation_check(&self, ids: Vec<Uuid>) -> Response {
         let request = serde_json::json!({ "signatureIds": ids });
         self.client

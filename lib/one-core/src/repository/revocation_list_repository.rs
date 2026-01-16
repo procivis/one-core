@@ -22,6 +22,12 @@ pub trait RevocationListRepository: Send + Sync {
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
 
+    async fn get_revocation_list_by_entry_id(
+        &self,
+        entry_id: RevocationListEntryId,
+        relations: &RevocationListRelations,
+    ) -> Result<Option<RevocationList>, DataLayerError>;
+
     async fn get_revocation_by_issuer_identifier_id(
         &self,
         issuer_identifier_id: IdentifierId,

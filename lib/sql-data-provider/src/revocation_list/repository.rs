@@ -111,6 +111,24 @@ impl RevocationListRepository for RevocationListProvider {
         }
     }
 
+    async fn get_revocation_list_by_entry_id(
+        &self,
+        entry_id: RevocationListEntryId,
+        relations: &RevocationListRelations,
+    ) -> Result<Option<RevocationList>, DataLayerError> {
+        match revocation_list_entry::Entity::find_by_id(entry_id)
+            .one(&self.db)
+            .await
+        {
+            Ok(Some(entry)) => {
+                self.get_revocation_list(&entry.revocation_list_id, relations)
+                    .await
+            }
+            Ok(None) => Ok(None),
+            Err(e) => Err(to_data_layer_error(e)),
+        }
+    }
+
     async fn get_revocation_by_issuer_identifier_id(
         &self,
         issuer_identifier_id: IdentifierId,

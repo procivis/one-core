@@ -24,8 +24,8 @@ use crate::model::did::{DidRelations, KeyFilter, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
-    RevocationListPurpose, StatusListCredentialFormat, StatusListType, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_unit::WalletUnitRelations;
 use crate::model::wallet_unit_attested_key::{
@@ -454,15 +454,73 @@ impl RevocationMethod for TokenStatusList {
         signature_type: String,
         signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError> {
-        self.revocation_list_repository
-            .update_entry(
-                UpdateRevocationListEntryId::Signature(signature_type, signature_id),
-                UpdateRevocationListEntryRequest {
-                    status: Some(RevocationListEntryStatus::Revoked),
-                },
-            )
-            .await?;
-        Ok(())
+        self.transaction_manager
+            .tx(async move {
+                self.revocation_list_repository
+                    .update_entry(
+                        UpdateRevocationListEntryId::Signature(signature_type, signature_id),
+                        UpdateRevocationListEntryRequest {
+                            status: Some(RevocationListEntryStatus::Revoked),
+                        },
+                    )
+                    .await?;
+
+                let current_list = self
+                    .revocation_list_repository
+                    .get_revocation_list_by_entry_id(
+                        signature_id,
+                        &RevocationListRelations {
+                            issuer_identifier: Some(IdentifierRelations {
+                                certificates: Some(CertificateRelations {
+                                    key: Some(Default::default()),
+                                    ..Default::default()
+                                }),
+                                did: Some(DidRelations {
+                                    keys: Some(Default::default()),
+                                    ..Default::default()
+                                }),
+                                key: Some(Default::default()),
+                                ..Default::default()
+                            }),
+                        },
+                    )
+                    .await?
+                    .ok_or(RevocationError::MappingError(
+                        "Missing list for revocation entry".to_owned(),
+                    ))?;
+                let issuer =
+                    current_list
+                        .issuer_identifier
+                        .ok_or(RevocationError::MappingError(
+                            "Missing revocation list issuer".to_owned(),
+                        ))?;
+
+                let current_entries = self
+                    .revocation_list_repository
+                    .get_entries(current_list.id)
+                    .await?;
+
+                let encoded_list = generate_token_from_entries(current_entries).await?;
+
+                let list_credential = format_status_list_credential(
+                    &current_list.id,
+                    &issuer,
+                    encoded_list,
+                    &*self.key_provider,
+                    &self.key_algorithm_provider,
+                    &self.core_base_url,
+                    &*self.get_formatter_for_issuance()?,
+                )
+                .await?;
+
+                self.revocation_list_repository
+                    .update_credentials(&current_list.id, list_credential.into_bytes())
+                    .await?;
+
+                Ok::<_, RevocationError>(())
+            }
+            .boxed())
+            .await?
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
