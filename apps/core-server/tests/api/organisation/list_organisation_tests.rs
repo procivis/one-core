@@ -68,3 +68,29 @@ async fn test_list_organisation_deactivated_success() {
     assert!(values[0]["name"].is_string());
     assert!(values[0]["deactivatedAt"].is_string());
 }
+
+#[tokio::test]
+async fn test_list_organisation_unknown_query_param() {
+    // GIVEN
+    let context = TestContext::new(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .client
+        .get("/api/organisation/v1?page=1&pageSize=1&unknown=something")
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let resp = resp.json_value().await;
+
+    let code = resp["code"].as_str().unwrap();
+    assert_eq!(code, "BR_0084",);
+
+    let message = resp["cause"]["message"].as_str().unwrap();
+    assert_eq!(
+        message,
+        "Query extraction error: Unknown query params: unknown"
+    );
+}

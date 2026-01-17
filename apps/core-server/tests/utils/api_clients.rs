@@ -210,6 +210,7 @@ pub struct Client {
     pub holder_wallet_units: HolderWalletUnitsApi,
     pub signatures: SignaturesApi,
     pub base_url: String,
+    pub client: HttpClient,
 }
 
 impl Client {
@@ -243,8 +244,9 @@ impl Client {
             wallet_provider: WalletProviderApi::new(client.clone()),
             wallet_units: WalletUnitsApi::new(client.clone()),
             holder_wallet_units: HolderWalletUnitsApi::new(client.clone()),
-            signatures: SignaturesApi::new(client),
+            signatures: SignaturesApi::new(client.clone()),
             base_url,
+            client,
         }
     }
 }

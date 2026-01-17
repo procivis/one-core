@@ -1,8 +1,9 @@
+use std::collections::HashMap;
 use std::fmt;
 
 use one_dto_mapper::{From, Into};
 use proc_macros::options_not_nullable;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -57,7 +58,7 @@ impl From<NoIncludesSupported> for one_core::model::list_query::NoInclude {
 }
 
 #[derive(Clone, Deserialize, Debug)]
-#[serde(rename_all = "camelCase")] // "deny_unknown_fields" cannot be used with "flatten"
+#[serde(rename_all = "camelCase")]
 pub(crate) struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSupported> {
     // pagination
     pub page: u32,
@@ -72,6 +73,10 @@ pub(crate) struct ListQueryParamsRest<Filter, SortColumn, Include = NoIncludesSu
     pub filter: Filter,
 
     pub include: Option<Vec<Include>>,
+
+    // "deny_unknown_fields" cannot be used with "flatten", replaced with custom logic
+    #[serde(flatten, deserialize_with = "refuse_unknown_params")]
+    _refuse_unknown_params: (),
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, ToSchema, Into)]
@@ -156,6 +161,22 @@ impl<'de, const MAX: u32> Deserialize<'de> for PageSize<MAX> {
 
         Ok(PageSize(size))
     }
+}
+
+fn refuse_unknown_params<'de, D>(deserializer: D) -> Result<(), D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let unknown_params = HashMap::<String, serde_json::Value>::deserialize(deserializer)?;
+    if unknown_params.is_empty() {
+        return Ok(());
+    }
+
+    let extra_keys: Vec<_> = unknown_params.keys().map(|k| k.as_str()).collect();
+    Err(serde::de::Error::custom(format!(
+        "Unknown query params: {}",
+        extra_keys.join(", ")
+    )))
 }
 
 #[cfg(test)]
