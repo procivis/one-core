@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use autometrics::autometrics;
+use futures::FutureExt;
 use futures::stream::{self, StreamExt};
 use itertools::Either;
 use one_core::model::credential_schema::{
@@ -7,13 +8,14 @@ use one_core::model::credential_schema::{
     GetCredentialSchemaQuery, UpdateCredentialSchemaRequest,
 };
 use one_core::model::organisation::Organisation;
+use one_core::proto::transaction_manager::IsolationLevel;
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use sea_orm::ActiveValue::Set;
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, ModelTrait, PaginatorTrait, QueryFilter,
-    QueryOrder, SqlErr, Unchanged,
+    QueryOrder, Unchanged,
 };
 use shared_types::{ClaimSchemaId, CredentialSchemaId, OrganisationId};
 use time::OffsetDateTime;
@@ -29,6 +31,7 @@ use crate::mapper::{to_data_layer_error, to_update_data_layer_error};
 #[autometrics]
 #[async_trait::async_trait]
 impl CredentialSchemaRepository for CredentialSchemaProvider {
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn create_credential_schema(
         &self,
         schema: CredentialSchema,
@@ -39,24 +42,33 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
             .ok_or(DataLayerError::MappingError)?;
 
         let credential_schema: credential_schema::ActiveModel = schema.try_into()?;
-        let credential_schema =
-            credential_schema
-                .insert(&self.db)
-                .await
-                .map_err(|e| match e.sql_err() {
-                    Some(SqlErr::UniqueConstraintViolation(_)) => DataLayerError::AlreadyExists,
-                    Some(_) | None => DataLayerError::Db(e.into()),
-                })?;
 
-        if !claim_schemas.is_empty() {
-            let claim_schema_models =
-                claim_schemas_to_model_vec(claim_schemas, &credential_schema.id);
+        let credential_schema = self
+            .db
+            .tx_with_config(
+                async {
+                    let credential_schema = credential_schema
+                        .insert(&self.db)
+                        .await
+                        .map_err(to_data_layer_error)?;
 
-            claim_schema::Entity::insert_many(claim_schema_models)
-                .exec(&self.db)
-                .await
-                .map_err(|e| DataLayerError::Db(e.into()))?;
-        }
+                    if !claim_schemas.is_empty() {
+                        let claim_schema_models =
+                            claim_schemas_to_model_vec(claim_schemas, &credential_schema.id);
+
+                        claim_schema::Entity::insert_many(claim_schema_models)
+                            .exec(&self.db)
+                            .await
+                            .map_err(|e| DataLayerError::Db(e.into()))?;
+                    }
+
+                    Ok::<_, DataLayerError>(credential_schema)
+                }
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await??;
 
         Ok(credential_schema.id)
     }
@@ -328,6 +340,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         Ok(())
     }
 
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn get_by_schema_id_and_organisation(
         &self,
         schema_id: &str,
@@ -355,6 +368,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                 .map_err(to_data_layer_error)?;
 
             if schemas.is_empty() {
+                tracing::warn!("No claim-schemas");
                 return Err(DataLayerError::MappingError);
             }
 

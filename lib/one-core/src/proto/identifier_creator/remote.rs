@@ -17,6 +17,8 @@ use crate::model::key::{Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::ListFilterValue;
 use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
+use crate::proto::identifier_creator::RemoteIdentifierRelation;
+use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::error::{MissingProviderError, ServiceError};
 
 impl IdentifierCreatorProto {
@@ -275,5 +277,123 @@ impl IdentifierCreatorProto {
             .await?;
 
         Ok((key, identifier))
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    pub(super) async fn get_identifier(
+        &self,
+        organisation: &Option<Organisation>,
+        details: &IdentifierDetails,
+    ) -> Result<(Identifier, RemoteIdentifierRelation), ServiceError> {
+        match details {
+            IdentifierDetails::Did(did_value) => {
+                let did = self
+                    .did_repository
+                    .get_did_by_value(
+                        did_value,
+                        organisation.as_ref().map(|org| Some(org.id)),
+                        &DidRelations::default(),
+                    )
+                    .await?
+                    .ok_or(ServiceError::MappingError("Did not found".to_string()))?;
+
+                let identifier = self
+                    .identifier_repository
+                    .get_from_did_id(
+                        did.id,
+                        &IdentifierRelations {
+                            did: Some(Default::default()),
+                            ..Default::default()
+                        },
+                    )
+                    .await?
+                    .ok_or(ServiceError::MappingError(
+                        "Identifier not found".to_string(),
+                    ))?;
+
+                Ok((identifier, RemoteIdentifierRelation::Did(did)))
+            }
+            IdentifierDetails::Certificate(certificate_details) => {
+                let organisation_id = organisation
+                    .as_ref()
+                    .map(|org| CertificateFilterValue::OrganisationId(org.id));
+
+                let list = self
+                    .certificate_repository
+                    .list(CertificateListQuery {
+                        filtering: Some(
+                            CertificateFilterValue::Fingerprint(
+                                certificate_details.fingerprint.to_owned(),
+                            )
+                            .condition()
+                                & organisation_id,
+                        ),
+                        ..Default::default()
+                    })
+                    .await?;
+
+                let Some(certificate) = list.values.into_iter().next() else {
+                    return Err(ServiceError::MappingError(
+                        "Certificate not found".to_string(),
+                    ));
+                };
+
+                let identifier = self
+                    .identifier_repository
+                    .get(certificate.identifier_id, &Default::default())
+                    .await?
+                    .ok_or(ServiceError::MappingError(
+                        "Certificate identifier not found".to_string(),
+                    ))?;
+
+                Ok((
+                    identifier,
+                    RemoteIdentifierRelation::Certificate(certificate),
+                ))
+            }
+            IdentifierDetails::Key(public_jwk) => {
+                let parsed_key = self.key_algorithm_provider.parse_jwk(public_jwk)?;
+                let organisation_id = organisation.as_ref().map(|org| org.id);
+
+                let list = self
+                    .key_repository
+                    .get_key_list(KeyListQuery {
+                        filtering: Some(
+                            KeyFilterValue::RawPublicKey(parsed_key.key.public_key_as_raw())
+                                .condition()
+                                & KeyFilterValue::KeyTypes(vec![
+                                    parsed_key.algorithm_type.to_string(),
+                                ])
+                                & organisation_id.map(KeyFilterValue::OrganisationId),
+                        ),
+                        ..Default::default()
+                    })
+                    .await?;
+
+                let Some(key) = list.values.into_iter().next() else {
+                    return Err(ServiceError::MappingError("Key not found".to_string()));
+                };
+
+                let identifier = self
+                    .identifier_repository
+                    .get_identifier_list(IdentifierListQuery {
+                        filtering: Some(
+                            IdentifierFilterValue::KeyIds(vec![key.id]).condition()
+                                & IdentifierFilterValue::Types(vec![IdentifierType::Key])
+                                & organisation_id.map(IdentifierFilterValue::OrganisationId),
+                        ),
+                        ..Default::default()
+                    })
+                    .await?
+                    .values
+                    .into_iter()
+                    .next()
+                    .ok_or(ServiceError::MappingError(
+                        "Identifier not found".to_string(),
+                    ))?;
+
+                Ok((identifier, RemoteIdentifierRelation::Key(key)))
+            }
+        }
     }
 }

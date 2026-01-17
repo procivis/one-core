@@ -61,6 +61,7 @@ use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
 use crate::model::organisation::{Organisation, OrganisationRelations};
 use crate::model::validity_credential::{Mdoc, ValidityCredentialType};
+use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::{
     IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
@@ -93,7 +94,7 @@ use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::error::MissingProviderError;
+use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
 use crate::service::oid4vci_final1_0::dto::{
     OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
 };
@@ -121,6 +122,7 @@ pub(crate) struct OpenID4VCIFinal1_0 {
     credential_repository: Arc<dyn CredentialRepository>,
     key_repository: Arc<dyn KeyRepository>,
     identifier_creator: Arc<dyn IdentifierCreator>,
+    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -145,6 +147,7 @@ impl OpenID4VCIFinal1_0 {
         credential_repository: Arc<dyn CredentialRepository>,
         key_repository: Arc<dyn KeyRepository>,
         identifier_creator: Arc<dyn IdentifierCreator>,
+        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
         validity_credential_repository: Arc<dyn ValidityCredentialRepository>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_provider: Arc<dyn RevocationMethodProvider>,
@@ -166,6 +169,7 @@ impl OpenID4VCIFinal1_0 {
             credential_repository,
             key_repository,
             identifier_creator,
+            credential_schema_importer,
             validity_credential_repository,
             formatter_provider,
             revocation_provider,
@@ -841,7 +845,8 @@ impl OpenID4VCIFinal1_0 {
         credential.protocol = self.config_id.to_owned();
         credential.interaction = Some(interaction.to_owned());
 
-        let credential_schema_updates = prepare_credential_schema(
+        let update_credential_schema = prepare_credential_schema(
+            self.credential_schema_importer.as_ref(),
             schema.to_owned(),
             organisation,
             storage_access,
@@ -851,8 +856,7 @@ impl OpenID4VCIFinal1_0 {
 
         Ok(UpdateResponse {
             result: issuer_response,
-            update_credential_schema: credential_schema_updates.update,
-            create_credential_schema: credential_schema_updates.create,
+            update_credential_schema,
             update_credential: None,
             create_credential: Some(credential),
         })
@@ -2073,92 +2077,113 @@ async fn create_and_store_interaction(
     Ok(interaction)
 }
 
-#[derive(Debug, Default)]
-struct CredentialSchemaUpdates {
-    update: Option<UpdateCredentialSchemaRequest>,
-    create: Option<CredentialSchema>,
-}
-
 async fn prepare_credential_schema(
+    credential_schema_importer: &dyn CredentialSchemaImporter,
     credential_schema: CredentialSchema,
     organisation: &Organisation,
     storage_access: &StorageAccess,
     credential: &mut Credential,
-) -> Result<CredentialSchemaUpdates, IssuanceProtocolError> {
+) -> Result<Option<UpdateCredentialSchemaRequest>, IssuanceProtocolError> {
     let stored_schema = storage_access
         .get_schema(&credential_schema.schema_id, organisation.id)
         .await
         .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?;
 
     if let Some(stored_schema) = stored_schema {
-        let claims = credential
-            .claims
-            .as_mut()
-            .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
-
-        let stored_claim_schemas =
-            stored_schema
-                .claim_schemas
-                .as_ref()
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing claim_schemas".to_string(),
-                ))?;
-
-        let parsed_claim_schemas =
-            credential_schema
-                .claim_schemas
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing claim_schemas".to_string(),
-                ))?;
-
-        let mut new_claim_schemas = vec![];
-        for parsed_claim_schema in parsed_claim_schemas {
-            let stored_claim_schema = stored_claim_schemas
-                .iter()
-                .find(|schema| schema.schema.key == parsed_claim_schema.schema.key);
-
-            if let Some(stored_claim_schema) = stored_claim_schema {
-                // link all matching credential claims to the stored claim_schema
-                claims
-                    .iter_mut()
-                    .filter(|claim| {
-                        claim
-                            .schema
-                            .as_ref()
-                            .is_some_and(|schema| schema.id == parsed_claim_schema.schema.id)
-                    })
-                    .for_each(|claim| {
-                        claim.schema = Some(stored_claim_schema.schema.to_owned());
-                    });
-            } else {
-                new_claim_schemas.push(parsed_claim_schema);
-            }
-        }
-
-        let id = stored_schema.id;
-        credential.schema = Some(stored_schema);
-
-        if new_claim_schemas.is_empty() {
-            return Ok(Default::default());
-        }
-
-        Ok(CredentialSchemaUpdates {
-            update: Some(UpdateCredentialSchemaRequest {
-                id,
-                revocation_method: None,
-                format: None,
-                claim_schemas: Some(new_claim_schemas),
-                layout_type: None,
-                layout_properties: None,
-            }),
-            create: None,
-        })
+        prepare_credential_schema_updates(credential_schema, stored_schema, credential)
     } else {
-        Ok(CredentialSchemaUpdates {
-            update: None,
-            create: Some(credential_schema),
-        })
+        match credential_schema_importer
+            .import_credential_schema(credential_schema.clone())
+            .await
+        {
+            Ok(schema) => {
+                credential.schema = Some(schema);
+                return Ok(None);
+            }
+            Err(ServiceError::BusinessLogic(BusinessLogicError::CredentialSchemaAlreadyExists)) => {
+                tracing::debug!("Conflicting schema detected during parsing, refetching");
+            }
+            Err(e) => {
+                return Err(IssuanceProtocolError::Failed(e.to_string()));
+            }
+        };
+
+        // refetch and try again
+        let stored_schema = storage_access
+            .get_schema(&credential_schema.schema_id, organisation.id)
+            .await
+            .map_err(|err| IssuanceProtocolError::Failed(err.to_string()))?
+            .ok_or(IssuanceProtocolError::Failed(
+                "Credential schema not found".to_string(),
+            ))?;
+
+        prepare_credential_schema_updates(credential_schema, stored_schema, credential)
     }
+}
+
+fn prepare_credential_schema_updates(
+    parsed_schema: CredentialSchema,
+    stored_schema: CredentialSchema,
+    credential: &mut Credential,
+) -> Result<Option<UpdateCredentialSchemaRequest>, IssuanceProtocolError> {
+    let claims = credential
+        .claims
+        .as_mut()
+        .ok_or(IssuanceProtocolError::Failed("Missing claims".to_string()))?;
+
+    let stored_claim_schemas =
+        stored_schema
+            .claim_schemas
+            .as_ref()
+            .ok_or(IssuanceProtocolError::Failed(
+                "Missing claim_schemas".to_string(),
+            ))?;
+
+    let parsed_claim_schemas = parsed_schema
+        .claim_schemas
+        .ok_or(IssuanceProtocolError::Failed(
+            "Missing claim_schemas".to_string(),
+        ))?;
+
+    let mut new_claim_schemas = vec![];
+    for parsed_claim_schema in parsed_claim_schemas {
+        let stored_claim_schema = stored_claim_schemas
+            .iter()
+            .find(|schema| schema.schema.key == parsed_claim_schema.schema.key);
+
+        if let Some(stored_claim_schema) = stored_claim_schema {
+            // link all matching credential claims to the stored claim_schema
+            claims
+                .iter_mut()
+                .filter(|claim| {
+                    claim
+                        .schema
+                        .as_ref()
+                        .is_some_and(|schema| schema.id == parsed_claim_schema.schema.id)
+                })
+                .for_each(|claim| {
+                    claim.schema = Some(stored_claim_schema.schema.to_owned());
+                });
+        } else {
+            new_claim_schemas.push(parsed_claim_schema);
+        }
+    }
+
+    let id = stored_schema.id;
+    credential.schema = Some(stored_schema);
+
+    if new_claim_schemas.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(UpdateCredentialSchemaRequest {
+        id,
+        revocation_method: None,
+        format: None,
+        claim_schemas: Some(new_claim_schemas),
+        layout_type: None,
+        layout_properties: None,
+    }))
 }
 
 async fn create_wallet_unit_attestation_pop(

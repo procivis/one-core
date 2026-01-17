@@ -654,15 +654,11 @@ impl SSIHolderService {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn resolve_update_issuer_response(
         &self,
         update_response: UpdateResponse,
     ) -> Result<SubmitIssuerResponse, ServiceError> {
-        if let Some(create_credential_schema) = update_response.create_credential_schema {
-            self.credential_schema_importer
-                .import_credential_schema(create_credential_schema)
-                .await?;
-        }
         if let Some(update_credential_schema) = update_response.update_credential_schema {
             self.credential_schema_repository
                 .update_credential_schema(update_credential_schema)

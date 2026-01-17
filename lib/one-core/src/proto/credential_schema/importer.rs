@@ -13,6 +13,7 @@ use crate::model::list_filter::{ListFilterValue, StringMatch, StringMatchType};
 use crate::model::list_query::ListPagination;
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::repository::credential_schema_repository::CredentialSchemaRepository;
+use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO,
 };
@@ -53,6 +54,7 @@ impl CredentialSchemaImporterProto {
 
 #[async_trait::async_trait]
 impl CredentialSchemaImporter for CredentialSchemaImporterProto {
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn import_credential_schema(
         &self,
         mut credential_schema: CredentialSchema,
@@ -93,7 +95,13 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
         self.repository
             .create_credential_schema(credential_schema.clone())
             .await
-            .map_err(ServiceError::from)?;
+            .map_err(|e| {
+                if matches!(e, DataLayerError::AlreadyExists) {
+                    ServiceError::from(BusinessLogicError::CredentialSchemaAlreadyExists)
+                } else {
+                    e.into()
+                }
+            })?;
 
         Ok(credential_schema)
     }

@@ -114,6 +114,7 @@ pub(crate) fn issuance_protocol_provider_from_config(
                     credential_repository.clone(),
                     key_repository.clone(),
                     identifier_creator.clone(),
+                    credential_schema_importer.clone(),
                     validity_credential_repository.clone(),
                     formatter_provider.clone(),
                     revocation_provider.clone(),

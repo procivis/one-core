@@ -29,6 +29,7 @@ use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
+use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::proto::identifier_creator::{
     CreateLocalIdentifierRequest, IdentifierRole, MockIdentifierCreator, RemoteIdentifierRelation,
@@ -98,6 +99,7 @@ fn setup_protocol(inputs: TestInputs) -> OpenID4VCIFinal1_0 {
         Arc::new(inputs.credential_repository),
         Arc::new(inputs.key_repository),
         Arc::new(inputs.identifier_creator),
+        Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(inputs.validity_credential_repository),
         Arc::new(inputs.formatter_provider),
         Arc::new(inputs.revocation_provider),

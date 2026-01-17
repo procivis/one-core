@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use crate::config::core_config;
-use crate::proto::credential_schema::importer::CredentialSchemaImporter;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::IdentifierCreator;
 use crate::proto::session_provider::SessionProvider;
@@ -50,7 +49,6 @@ pub struct SSIHolderService {
     client: Arc<dyn HttpClient>,
     blob_storage_provider: Arc<dyn BlobStorageProvider>,
     session_provider: Arc<dyn SessionProvider>,
-    credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
     identifier_creator: Arc<dyn IdentifierCreator>,
 }
 
@@ -74,7 +72,6 @@ impl SSIHolderService {
         client: Arc<dyn HttpClient>,
         blob_storage_provider: Arc<dyn BlobStorageProvider>,
         session_provider: Arc<dyn SessionProvider>,
-        credential_schema_importer: Arc<dyn CredentialSchemaImporter>,
         identifier_creator: Arc<dyn IdentifierCreator>,
     ) -> Self {
         Self {
@@ -95,7 +92,6 @@ impl SSIHolderService {
             blob_storage_provider,
             session_provider,
             key_security_level_provider,
-            credential_schema_importer,
             identifier_creator,
         }
     }

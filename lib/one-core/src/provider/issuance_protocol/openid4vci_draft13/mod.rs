@@ -627,7 +627,6 @@ impl OpenID4VCI13 {
                 layout_type,
                 layout_properties,
             }),
-            create_credential_schema: None,
             update_credential: Some((
                 credential.id,
                 UpdateCredentialRequest {

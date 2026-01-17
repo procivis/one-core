@@ -6,9 +6,7 @@ use strum::Display;
 use time::OffsetDateTime;
 
 use crate::model::credential::{Credential, UpdateCredentialRequest};
-use crate::model::credential_schema::{
-    CredentialSchema, KeyStorageSecurity, UpdateCredentialSchemaRequest,
-};
+use crate::model::credential_schema::{KeyStorageSecurity, UpdateCredentialSchemaRequest};
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -116,7 +114,6 @@ pub enum OpenID4VCITxCodeInputMode {
 pub(crate) struct UpdateResponse {
     pub result: SubmitIssuerResponse,
     pub create_credential: Option<Credential>,
-    pub create_credential_schema: Option<CredentialSchema>,
     pub update_credential: Option<(CredentialId, UpdateCredentialRequest)>,
     pub update_credential_schema: Option<UpdateCredentialSchemaRequest>,
 }

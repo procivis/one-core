@@ -24,6 +24,7 @@ use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::validity_credential::{ValidityCredential, ValidityCredentialType};
+use crate::proto::credential_schema::importer::MockCredentialSchemaImporter;
 use crate::proto::http_client::MockHttpClient;
 use crate::proto::identifier_creator::MockIdentifierCreator;
 use crate::proto::wallet_unit::MockHolderWalletUnitProto;
@@ -171,6 +172,7 @@ async fn test_issuer_submit_succeeds() {
         Arc::new(credential_repository),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
+        Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(MockValidityCredentialRepository::new()),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -324,6 +326,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(credential_repository),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
+        Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -467,6 +470,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(credential_repository),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
+        Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
         Arc::new(revocation_method_provider),
@@ -566,6 +570,7 @@ async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_fut
         Arc::new(credential_repository),
         Arc::new(MockKeyRepository::new()),
         Arc::new(MockIdentifierCreator::new()),
+        Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(validity_credential_repository),
         Arc::new(MockCredentialFormatterProvider::new()),
         Arc::new(MockRevocationMethodProvider::new()),

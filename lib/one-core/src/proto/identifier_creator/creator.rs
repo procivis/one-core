@@ -14,6 +14,7 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
+use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
 use crate::service::error::ServiceError;
@@ -63,57 +64,71 @@ impl IdentifierCreatorProto {
 
 #[async_trait::async_trait]
 impl IdentifierCreator for IdentifierCreatorProto {
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn get_or_create_remote_identifier(
         &self,
         organisation: &Option<Organisation>,
         details: &IdentifierDetails,
         role: IdentifierRole,
     ) -> Result<(Identifier, RemoteIdentifierRelation), ServiceError> {
-        Ok(self
+        let result = self
             .tx_manager
-            .tx(async {
-                Ok::<_, ServiceError>(match details {
-                    IdentifierDetails::Did(did_value) => {
-                        let (did, identifier) = self
-                            .get_or_create_did_and_identifier(organisation, did_value, role)
-                            .await?;
-                        (identifier, RemoteIdentifierRelation::Did(did))
-                    }
-                    IdentifierDetails::Certificate(CertificateDetails {
-                        chain,
-                        fingerprint,
-                        ..
-                    }) => {
-                        let (certificate, identifier) = self
-                            .get_or_create_certificate_identifier(
-                                organisation,
-                                chain.to_owned(),
-                                fingerprint.to_owned(),
-                                role,
-                            )
-                            .await?;
+            .tx_with_config(
+                async {
+                    Ok::<_, ServiceError>(match details {
+                        IdentifierDetails::Did(did_value) => {
+                            let (did, identifier) = self
+                                .get_or_create_did_and_identifier(organisation, did_value, role)
+                                .await?;
+                            (identifier, RemoteIdentifierRelation::Did(did))
+                        }
+                        IdentifierDetails::Certificate(CertificateDetails {
+                            chain,
+                            fingerprint,
+                            ..
+                        }) => {
+                            let (certificate, identifier) = self
+                                .get_or_create_certificate_identifier(
+                                    organisation,
+                                    chain.to_owned(),
+                                    fingerprint.to_owned(),
+                                    role,
+                                )
+                                .await?;
 
-                        (
-                            identifier,
-                            RemoteIdentifierRelation::Certificate(certificate),
-                        )
-                    }
-                    IdentifierDetails::Key(public_key_jwk) => {
-                        let (key, identifier) = self
-                            .get_or_create_key_identifier(
-                                organisation.as_ref(),
-                                public_key_jwk,
-                                role,
+                            (
+                                identifier,
+                                RemoteIdentifierRelation::Certificate(certificate),
                             )
-                            .await?;
-                        (identifier, RemoteIdentifierRelation::Key(key))
-                    }
-                })
+                        }
+                        IdentifierDetails::Key(public_key_jwk) => {
+                            let (key, identifier) = self
+                                .get_or_create_key_identifier(
+                                    organisation.as_ref(),
+                                    public_key_jwk,
+                                    role,
+                                )
+                                .await?;
+                            (identifier, RemoteIdentifierRelation::Key(key))
+                        }
+                    })
+                }
+                .boxed(),
+                Some(IsolationLevel::ReadCommitted),
+                None,
+            )
+            .await?;
+
+        match result {
+            Err(ServiceError::Repository(DataLayerError::AlreadyExists)) => {
+                tracing::debug!("Identifier already exists, fetching again");
+                self.get_identifier(organisation, details).await
             }
-            .boxed())
-            .await??)
+            result => result,
+        }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn create_local_identifier(
         &self,
         name: String,
