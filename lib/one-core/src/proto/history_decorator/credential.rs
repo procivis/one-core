@@ -169,7 +169,10 @@ impl CredentialRepository for CredentialHistoryDecorator {
             }
 
             if let Some(additional_event) = match (stored.state, new_state) {
-                (CredentialStateEnum::Created, CredentialStateEnum::Pending) => {
+                (
+                    CredentialStateEnum::Created | CredentialStateEnum::InteractionExpired,
+                    CredentialStateEnum::Pending,
+                ) => {
                     if stored.role == CredentialRole::Issuer {
                         Some(HistoryAction::Shared)
                     } else {
