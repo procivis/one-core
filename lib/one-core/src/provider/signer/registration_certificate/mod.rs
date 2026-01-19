@@ -11,6 +11,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
 
+use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::{CertificateRelations, CertificateState};
@@ -139,6 +140,13 @@ impl Signer for RegistrationCertificate {
             ],
             sign_required_permissions: vec!["REGISTRATION_CERTIFICATE_CREATE"],
             revoke_required_permissions: vec!["REGISTRATION_CERTIFICATE_REVOKE"],
+            signing_key_algorithms: vec![
+                KeyAlgorithmType::Ecdsa,
+                KeyAlgorithmType::Eddsa,
+                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::BbsPlus,
+            ],
+            revocation_methods: vec![RevocationType::TokenStatusList],
         }
     }
 

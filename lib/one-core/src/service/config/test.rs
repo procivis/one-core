@@ -59,7 +59,8 @@ fn convert_internal_structure_to_dto() {
           "task": {},
           "walletProvider": {},
           "credentialIssuer": {},
-          "verificationEngagement": {}
+          "verificationEngagement": {},
+          "signer": {},
         }),
         output
     );
@@ -116,7 +117,8 @@ fn do_not_serialize_private_parameters() {
           "task": {},
           "walletProvider": {},
           "credentialIssuer": {},
-          "verificationEngagement": {}
+          "verificationEngagement": {},
+          "signer": {},
         }),
         output
     );

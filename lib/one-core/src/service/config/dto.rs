@@ -24,4 +24,5 @@ pub struct ConfigDTO {
     pub wallet_provider: HashMap<String, Value>,
     pub credential_issuer: HashMap<String, Value>,
     pub verification_engagement: HashMap<String, Value>,
+    pub signer: HashMap<String, Value>,
 }
