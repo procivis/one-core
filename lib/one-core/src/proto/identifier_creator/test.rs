@@ -2,6 +2,7 @@ use std::ops::Add;
 use std::sync::Arc;
 
 use assert2::let_assert;
+use mockall::Sequence;
 use similar_asserts::assert_eq;
 use standardized_types::jwk::{PublicJwk, PublicJwkEc};
 use time::{Duration, OffsetDateTime};
@@ -240,6 +241,98 @@ async fn test_get_or_create_remote_identifier_key_existing() {
             })
         }
     });
+
+    let identifier = dummy_identifier();
+    let identifier_id = identifier.id;
+    let mut identifier_repository = MockIdentifierRepository::new();
+    identifier_repository
+        .expect_get_identifier_list()
+        .once()
+        .return_once({
+            move |_| {
+                Ok(GetIdentifierList {
+                    values: vec![identifier],
+                    total_pages: 1,
+                    total_items: 1,
+                })
+            }
+        });
+
+    let creator = setup_creator(Mocks {
+        key_algorithm_provider,
+        identifier_repository,
+        key_repository,
+        ..Default::default()
+    });
+
+    let (identifier, relation) = creator
+        .get_or_create_remote_identifier(
+            &Some(dummy_organisation(None)),
+            &IdentifierDetails::Key(PublicJwk::Okp(PublicJwkEc {
+                alg: None,
+                r#use: None,
+                kid: None,
+                crv: "Ed25519".to_string(),
+                x: "test".to_string(),
+                y: None,
+            })),
+            IdentifierRole::Issuer,
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(identifier.id, identifier_id);
+    let_assert!(RemoteIdentifierRelation::Key(key) = relation);
+    assert_eq!(key.id, key_id);
+}
+
+#[tokio::test]
+async fn test_get_or_create_remote_identifier_key_created_in_parallel() {
+    let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
+    key_algorithm_provider.expect_parse_jwk().returning(|_| {
+        let mut public_key = MockSignaturePublicKeyHandle::new();
+        public_key.expect_as_raw().returning(|| vec![0x0, 0x1]);
+
+        Ok(ParsedKey {
+            algorithm_type: KeyAlgorithmType::Eddsa,
+            key: KeyHandle::SignatureOnly(SignatureKeyHandle::PublicKeyOnly(Arc::new(public_key))),
+        })
+    });
+
+    let mut key_repository = MockKeyRepository::new();
+    let mut seq = Sequence::new();
+    key_repository
+        .expect_get_key_list()
+        .in_sequence(&mut seq)
+        .once()
+        .return_once({
+            move |_| {
+                Ok(GetKeyList {
+                    values: vec![],
+                    total_pages: 0,
+                    total_items: 0,
+                })
+            }
+        });
+    let key = dummy_key();
+    let key_id = key.id;
+    key_repository
+        .expect_get_key_list()
+        .in_sequence(&mut seq)
+        .once()
+        .return_once({
+            move |_| {
+                Ok(GetKeyList {
+                    values: vec![key],
+                    total_pages: 1,
+                    total_items: 1,
+                })
+            }
+        });
+    key_repository
+        .expect_create_key()
+        .once()
+        .return_once(|_| Err(DataLayerError::AlreadyExists));
 
     let identifier = dummy_identifier();
     let identifier_id = identifier.id;
