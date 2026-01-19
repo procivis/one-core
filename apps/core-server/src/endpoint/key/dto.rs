@@ -179,6 +179,7 @@ pub(crate) struct KeyGenerateCSRRequestRestDTO {
 pub(crate) enum KeyGenerateCSRRequestProfileRest {
     Generic,
     Mdl,
+    Ca,
 }
 
 #[options_not_nullable]

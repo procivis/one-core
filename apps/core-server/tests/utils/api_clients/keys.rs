@@ -158,4 +158,18 @@ impl KeysApi {
             .post(&format!("/api/key/v1/{key_id}/generate-csr"), body)
             .await
     }
+
+    pub async fn generate_ca_csr(&self, key_id: &str) -> Response {
+        let body = json!({
+            "profile": "CA",
+            "subject": {
+                "commonName": "test",
+                "countryName": "CH",
+            }
+        });
+
+        self.client
+            .post(&format!("/api/key/v1/{key_id}/generate-csr"), body)
+            .await
+    }
 }

@@ -1,5 +1,5 @@
 use one_dto_mapper::convert_inner;
-use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType};
+use rcgen::{CertificateParams, CustomExtension, DistinguishedName, DnType, KeyUsagePurpose};
 use shared_types::KeyId;
 use time::OffsetDateTime;
 use yasna::models::ObjectIdentifier;
@@ -95,11 +95,18 @@ pub(super) fn request_to_certificate_params(
 
     params.distinguished_name = dn;
 
-    if matches!(request.profile, KeyGenerateCSRRequestProfile::Mdl) {
-        params.custom_extensions.push(prepare_key_usage_extension());
-        params
-            .custom_extensions
-            .push(prepare_extended_key_usage_extension());
+    match request.profile {
+        KeyGenerateCSRRequestProfile::Generic => {} // nothing to add
+        KeyGenerateCSRRequestProfile::Mdl => {
+            params.custom_extensions.push(prepare_key_usage_extension());
+            params
+                .custom_extensions
+                .push(prepare_extended_key_usage_extension());
+        }
+        KeyGenerateCSRRequestProfile::Ca => {
+            // Basic constraints cannot be set in CSR, so only key usages are specified here.
+            params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+        }
     }
 
     params

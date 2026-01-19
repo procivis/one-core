@@ -86,3 +86,29 @@ SI5aYyAmSqLvuy8x7fsCmJ7AdsUI7lrDFUJ0Ivi3/GsH
 
     assert_eq!(expected, value["content"].as_str().unwrap())
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_generate_ca_csr_for_eddsa_success() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let key = context
+        .db
+        .keys
+        .create(&organisation, eddsa_testing_params())
+        .await;
+
+    let resp = context.api.keys.generate_ca_csr(&key.id.to_string()).await;
+    assert_eq!(201, resp.status());
+
+    let value = resp.json_value().await;
+
+    let expected = r#"-----BEGIN CERTIFICATE REQUEST-----
+MIG8MHACAQAwHDENMAsGA1UEAwwEdGVzdDELMAkGA1UEBgwCQ0gwKjAFBgMrZXAD
+IQBKBEnJk+6LyU8tcMSYIw8mvo06E2W4JVTSZRP1JavvX6AhMB8GCSqGSIb3DQEJ
+DjESMBAwDgYDVR0PAQH/BAQDAgEGMAUGAytlcANBAAnM4QZv1Z+JTxGOgJpl7SAF
+1rXxKIQLD9QROssAr+Sm/Nn69GwZVOPsmVPyqm2uBYyPUK9mzjuDYsGGPOsmWgU=
+-----END CERTIFICATE REQUEST-----
+"#;
+
+    assert_eq!(expected, value["content"].as_str().unwrap())
+}

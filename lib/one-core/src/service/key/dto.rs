@@ -58,6 +58,7 @@ pub struct KeyGenerateCSRRequestDTO {
 pub enum KeyGenerateCSRRequestProfile {
     Generic,
     Mdl,
+    Ca,
 }
 
 #[derive(Debug)]
