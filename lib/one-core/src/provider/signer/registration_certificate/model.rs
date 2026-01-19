@@ -122,9 +122,9 @@ pub enum EntitlementRole {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DataProtectionAuthority {
-    pub email: String,
-    pub phone: String,
-    pub uri: String,
+    pub email: Option<String>,
+    pub phone: Option<String>,
+    pub uri: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
