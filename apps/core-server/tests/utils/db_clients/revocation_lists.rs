@@ -24,18 +24,19 @@ impl RevocationListsDB {
         &self,
         issuer_identifier: Identifier,
         purpose: RevocationListPurpose,
-        credentials: Option<&[u8]>,
+        formatted_list: Option<&[u8]>,
         status_list_type: Option<StatusListType>,
     ) -> RevocationList {
         let revocation_list = RevocationList {
             id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            credentials: credentials.unwrap_or_default().to_owned(),
+            formatted_list: formatted_list.unwrap_or_default().to_owned(),
             purpose,
             issuer_identifier: Some(issuer_identifier),
             format: StatusListCredentialFormat::Jwt,
             r#type: status_list_type.unwrap_or(StatusListType::BitstringStatusList),
+            issuer_certificate: None,
         };
 
         self.repository
@@ -56,6 +57,7 @@ impl RevocationListsDB {
         self.repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier_id,
+                None,
                 purpose,
                 status_list_type,
                 relations,
@@ -73,7 +75,7 @@ impl RevocationListsDB {
         self.create_entry(
             list_id,
             RevocationListEntityId::Credential(credential_id),
-            index_on_status_list,
+            Some(index_on_status_list),
         )
         .await;
     }
@@ -82,7 +84,7 @@ impl RevocationListsDB {
         &self,
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
-        index_on_status_list: usize,
+        index_on_status_list: Option<usize>,
     ) -> RevocationListEntryId {
         self.repository
             .create_entry(list_id, entity_id, index_on_status_list)

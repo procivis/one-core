@@ -161,6 +161,11 @@ impl CredentialFormatter for JWTFormatter {
                 )
                 .await
             }
+            _ => {
+                return Err(FormatterError::CouldNotFormat(format!(
+                    "Unsupported status list: {status_list_type}"
+                )));
+            }
         }
     }
 

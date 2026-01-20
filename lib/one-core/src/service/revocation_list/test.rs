@@ -61,11 +61,12 @@ async fn test_get_revocation_list() {
             id: revocation_id,
             created_date: OffsetDateTime::now_utc(),
             last_modified: OffsetDateTime::now_utc(),
-            credentials: b"revocation-list-credential".to_vec(),
+            formatted_list: b"revocation-list-credential".to_vec(),
             purpose: RevocationListPurpose::Revocation,
             issuer_identifier: None,
             format: StatusListCredentialFormat::Jwt,
             r#type: StatusListType::BitstringStatusList,
+            issuer_certificate: None,
         };
 
         revocation_list_repository

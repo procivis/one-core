@@ -96,7 +96,7 @@ async fn test_revoke_wallet_unit_success() {
         .create_entry(
             revocation_list.id,
             RevocationListEntityId::WalletUnitAttestedKey(wallet_unit_attested_key_id),
-            0,
+            Some(0),
         )
         .await;
 

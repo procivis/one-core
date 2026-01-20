@@ -57,7 +57,7 @@ impl SignatureService {
             .error_while("getting revocation list entries")?;
         let mut result = HashMap::new();
         for entry in entries {
-            let RevocationListEntityInfo::Signature(r#type) = entry.entity_info else {
+            let RevocationListEntityInfo::Signature(r#type, _) = entry.entity_info else {
                 return Err(SignatureServiceError::InvalidSignatureId(entry.id.into()));
             };
             result.insert(

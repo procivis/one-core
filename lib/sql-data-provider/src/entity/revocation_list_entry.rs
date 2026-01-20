@@ -11,11 +11,13 @@ pub struct Model {
     pub id: RevocationListEntryId,
     pub created_date: OffsetDateTime,
     pub revocation_list_id: RevocationListId,
-    pub index: u32,
+    pub index: Option<u32>,
     pub credential_id: Option<CredentialId>,
     pub r#type: RevocationListEntryType,
     pub signature_type: Option<String>,
     pub status: RevocationListEntryStatus,
+    #[sea_orm(column_type = "VarBinary(StringLen::N(20))")]
+    pub serial: Option<Vec<u8>>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum)]

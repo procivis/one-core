@@ -214,6 +214,11 @@ impl From<super::ColumnType> for ColumnType {
             super::ColumnType::Blob => Self::Blob,
             super::ColumnType::Json => Self::Json,
             super::ColumnType::Text => Self::Text,
+            super::ColumnType::VarBinary(size) => Self::VarBinary(if let Some(size) = size {
+                StringLen::N(size)
+            } else {
+                StringLen::None
+            }),
         }
     }
 }

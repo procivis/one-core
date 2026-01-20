@@ -139,6 +139,14 @@ impl WalletUnitAttestedKeyProvider {
                     id: revocation_list_entry_id.to_string(),
                 })?;
 
+        let revocation_list_index =
+            revocation_list_entry
+                .index
+                .ok_or(DataLayerError::MissingRequiredRelation {
+                    relation: "wallet_unit_attested_key-revocation_list_entry-index",
+                    id: revocation_list_entry_id.to_string(),
+                })? as _;
+
         let revocation_list = self
             .revocation_list_repository
             .get_revocation_list(&revocation_list_entry.revocation_list_id, relations)
@@ -150,7 +158,7 @@ impl WalletUnitAttestedKeyProvider {
 
         Ok(Some(WalletUnitAttestedKeyRevocationInfo {
             revocation_list,
-            revocation_list_index: revocation_list_entry.index as _,
+            revocation_list_index,
         }))
     }
 }

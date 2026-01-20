@@ -4,9 +4,11 @@ use std::vec;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    CertificateSerial, RevocationList, RevocationListEntityId, RevocationListEntityInfo,
+    RevocationListEntry, RevocationListEntryStatus, RevocationListPurpose,
+    StatusListCredentialFormat, StatusListType,
 };
+use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
 use one_core::repository::identifier_repository::MockIdentifierRepository;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
@@ -62,6 +64,7 @@ async fn setup() -> TestSetup {
         provider: RevocationListProvider {
             db: TransactionManagerImpl::new(db.clone()),
             identifier_repository: Arc::new(MockIdentifierRepository::default()),
+            certificate_repository: Arc::new(MockCertificateRepository::default()),
         },
         db,
         identifier,
@@ -88,6 +91,7 @@ async fn setup_with_list() -> TestSetupWithList {
         RevocationListFormat::Jwt,
         identifier.id,
         StatusListType::BitstringStatusList.to_string(),
+        None,
     )
     .await
     .unwrap();
@@ -111,11 +115,12 @@ async fn test_create_revocation_list() {
             id,
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
-            credentials: vec![],
+            formatted_list: vec![],
             format: StatusListCredentialFormat::Jwt,
             r#type: StatusListType::BitstringStatusList,
             purpose: RevocationListPurpose::Revocation,
             issuer_identifier: Some(setup.identifier),
+            issuer_certificate: None,
         })
         .await
         .unwrap();
@@ -143,6 +148,7 @@ async fn test_get_revocation_by_issuer_identifier_id() {
         .provider
         .get_revocation_by_issuer_identifier_id(
             setup.identifier.id,
+            None,
             RevocationListPurpose::Revocation,
             StatusListType::BitstringStatusList,
             &Default::default(),
@@ -211,7 +217,7 @@ async fn test_next_free_index_wrong_list_id() {
 }
 
 #[tokio::test]
-async fn test_create_credential_entry() {
+async fn test_create_credential_entry_success() {
     let setup = setup_with_list().await;
 
     let credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
@@ -221,10 +227,80 @@ async fn test_create_credential_entry() {
         .create_entry(
             setup.list_id,
             RevocationListEntityId::Credential(credential_id),
-            0,
+            Some(0),
         )
         .await
         .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_credential_entry_fail_without_index() {
+    let setup = setup_with_list().await;
+
+    let credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
+
+    let result = setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Credential(credential_id),
+            None,
+        )
+        .await;
+
+    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
+}
+
+#[tokio::test]
+async fn test_create_signature_entry_with_serial() {
+    let setup = setup_with_list().await;
+
+    setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Signature(
+                "type".to_string(),
+                Some(CertificateSerial(vec![0x00, 0x01])),
+            ),
+            None,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_signature_entry_with_index() {
+    let setup = setup_with_list().await;
+
+    setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Signature("type".to_string(), None),
+            Some(0),
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn test_create_certificate_entry_fail_with_both_serial_and_index() {
+    let setup = setup_with_list().await;
+
+    let result = setup
+        .provider
+        .create_entry(
+            setup.list_id,
+            RevocationListEntityId::Signature(
+                "type".to_string(),
+                Some(CertificateSerial(vec![0x00, 0x01])),
+            ),
+            Some(0),
+        )
+        .await;
+
+    assert!(matches!(result, Err(DataLayerError::IncorrectParameters)));
 }
 
 #[tokio::test]
@@ -255,7 +331,7 @@ async fn test_get_entries_non_empty() {
         RevocationListEntry {
             id: results[0].id, // id can be arbitrarily chosen
             entity_info: RevocationListEntityInfo::WalletUnitAttestedKey,
-            index: 1,
+            index: Some(1),
             status: RevocationListEntryStatus::Active,
         }
     );
@@ -264,7 +340,7 @@ async fn test_get_entries_non_empty() {
         RevocationListEntry {
             id: results[1].id, // id can be arbitrarily chosen
             entity_info: RevocationListEntityInfo::Credential(credential_id),
-            index: 2,
+            index: Some(2),
             status: RevocationListEntryStatus::Active,
         }
     );

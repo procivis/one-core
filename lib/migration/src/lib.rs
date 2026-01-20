@@ -201,6 +201,7 @@ mod m20260108_070117_remote_entity_cache_table;
 mod m20260108_072951_blob_storage_table;
 mod m20260113_112557_trust_entity_table;
 mod m20260113_114843_trust_anchor_table;
+mod m20260119_100418_crl_revocation;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -404,6 +405,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260108_072951_blob_storage_table::Migration),
             Box::new(m20260113_112557_trust_entity_table::Migration),
             Box::new(m20260113_114843_trust_anchor_table::Migration),
+            Box::new(m20260119_100418_crl_revocation::Migration),
         ]
     }
 }

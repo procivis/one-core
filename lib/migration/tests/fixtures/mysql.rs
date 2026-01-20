@@ -235,6 +235,10 @@ impl From<ColumnType> for Type {
             ColumnType::Blob => Self::LongBlob,
             ColumnType::Json => Self::LongText(Default::default()),
             ColumnType::Text => Self::Text(Default::default()),
+            ColumnType::VarBinary(length) => Self::Varbinary(StringAttr {
+                length: Some(length.unwrap_or(255)),
+                ..Default::default()
+            }),
         }
     }
 }

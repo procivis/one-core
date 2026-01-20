@@ -42,7 +42,7 @@ impl SignerProvider for SignerProviderImpl {
             ))?;
 
         match entry.entity_info {
-            RevocationListEntityInfo::Signature(sig_type) => self
+            RevocationListEntityInfo::Signature(sig_type, _) => self
                 .get_from_type(sig_type.as_str())
                 .ok_or(ServiceError::MissingProvider(MissingProviderError::Signer(
                     sig_type,

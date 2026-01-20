@@ -56,6 +56,7 @@ pub(super) enum ColumnType {
     Blob,
     Json,
     Text,
+    VarBinary(Option<u32>),
 }
 
 #[derive(Debug)]

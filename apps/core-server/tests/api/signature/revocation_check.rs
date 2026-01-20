@@ -19,8 +19,8 @@ async fn test_sign_wrprc_success() {
         .revocation_lists
         .create_entry(
             revocation_list.id,
-            RevocationListEntityId::Signature("SIGNATURE_TYPE".to_string()),
-            0,
+            RevocationListEntityId::Signature("SIGNATURE_TYPE".to_string(), None),
+            Some(0),
         )
         .await;
     let entry_id2 = context
@@ -28,8 +28,8 @@ async fn test_sign_wrprc_success() {
         .revocation_lists
         .create_entry(
             revocation_list.id,
-            RevocationListEntityId::Signature("OTHER_SIGNATURE_TYPE".to_string()),
-            1,
+            RevocationListEntityId::Signature("OTHER_SIGNATURE_TYPE".to_string(), None),
+            Some(1),
         )
         .await;
     context

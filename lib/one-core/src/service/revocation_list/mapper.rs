@@ -4,7 +4,7 @@ use crate::service::error::ServiceError;
 
 impl RevocationList {
     pub fn get_status_credential(&self) -> Result<String, ServiceError> {
-        Ok(String::from_utf8(self.credentials.clone())
+        Ok(String::from_utf8(self.formatted_list.clone())
             .map_err(|e| FormatterError::CouldNotExtractCredentials(e.to_string()))?)
     }
 }

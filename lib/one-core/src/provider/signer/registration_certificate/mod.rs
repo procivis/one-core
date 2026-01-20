@@ -180,10 +180,38 @@ impl Signer for RegistrationCertificate {
             .error_while("Loading issuer identifier")?
             .ok_or(SignerError::IdentifierNotFound(request.issuer))?;
 
+        let issuer_certificate = if let Some(requested_certificate_id) = &request.issuer_certificate
+        {
+            Some(
+                issuer
+                    .certificates
+                    .as_ref()
+                    .ok_or(SignerError::NoActiveCertificates(request.issuer))?
+                    .iter()
+                    .find(|c| &c.id == requested_certificate_id)
+                    .ok_or(SignerError::CertificateNotFound(*requested_certificate_id))?
+                    .to_owned(),
+            )
+        } else if let Some(certificates) = &issuer.certificates {
+            Some(
+                certificates
+                    .iter()
+                    .find(|c| c.state == CertificateState::Active)
+                    .ok_or(SignerError::NoActiveCertificates(request.issuer))?
+                    .to_owned(),
+            )
+        } else {
+            None
+        };
+
         let (jwt_id, status) = match self.revocation.as_deref() {
             Some(list) => {
                 let (list_entry_id, revocation_info) = list
-                    .add_signature("REGISTRATION_CERTIFICATE".to_owned(), &issuer)
+                    .add_signature(
+                        "REGISTRATION_CERTIFICATE".to_owned(),
+                        &issuer,
+                        &issuer_certificate,
+                    )
                     .await
                     .error_while("Adding signature to revocation list")?;
                 (
@@ -242,7 +270,7 @@ impl Signer for RegistrationCertificate {
     async fn revoke(&self, id: Uuid) -> Result<(), SignerError> {
         match self.revocation.as_deref() {
             Some(list) => list
-                .revoke_signature("REGISTRATION_CERTIFICATE".to_owned(), id.into())
+                .revoke_signature(id.into())
                 .await
                 .error_while("revoking registration certificate")
                 .map_err(SignerError::from),

@@ -25,8 +25,8 @@ async fn test_revoke_wrprc_success() {
         .revocation_lists
         .create_entry(
             revocation_list_id,
-            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".to_string()),
-            0,
+            RevocationListEntityId::Signature("REGISTRATION_CERTIFICATE".to_string(), None),
+            Some(0),
         )
         .await;
 
@@ -58,7 +58,7 @@ async fn test_revoke_wrprc_success() {
     assert_eq!(entries_before[0].status, RevocationListEntryStatus::Active);
     assert_eq!(entries_after[0].status, RevocationListEntryStatus::Revoked);
 
-    assert_ne!(list_before.credentials, list_after.credentials);
+    assert_ne!(list_before.formatted_list, list_after.formatted_list);
     assert!(list_after.last_modified > list_before.last_modified);
 }
 
@@ -89,8 +89,8 @@ async fn test_revoke_fail_on_missing_signer() {
         .revocation_lists
         .create_entry(
             revocation_list_id,
-            RevocationListEntityId::Signature("NO_SUCH_THING".to_string()),
-            0,
+            RevocationListEntityId::Signature("NO_SUCH_THING".to_string(), None),
+            Some(0),
         )
         .await;
 

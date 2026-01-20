@@ -14,7 +14,7 @@ use uuid::Uuid;
 use self::model::StatusPurpose;
 use self::resolver::StatusListCachingLoader;
 use crate::config::core_config::KeyAlgorithmType;
-use crate::mapper::params::convert_params;
+use crate::model::certificate::Certificate;
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::{KeyFilter, KeyRole};
@@ -191,6 +191,7 @@ impl RevocationMethod for BitstringStatusList {
             .revocation_list_repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier.id,
+                credential.issuer_certificate.as_ref().map(|c| c.id),
                 purpose,
                 StatusListType::BitstringStatusList,
                 &Default::default(),
@@ -354,6 +355,7 @@ impl RevocationMethod for BitstringStatusList {
         &self,
         _signature_type: String,
         _issuer: &Identifier,
+        _certificate: &Option<Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
@@ -362,7 +364,6 @@ impl RevocationMethod for BitstringStatusList {
 
     async fn revoke_signature(
         &self,
-        _signature_type: String,
         _signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -374,10 +375,6 @@ impl RevocationMethod for BitstringStatusList {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],
         }
-    }
-
-    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
-        convert_params(self.params.clone()).map_err(RevocationError::from)
     }
 
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
@@ -414,6 +411,9 @@ impl BitstringStatusList {
                 } else {
                     self.params.format.to_string()
                 }
+            }
+            format => {
+                return Err(RevocationError::FormatterNotFound(format.to_string()));
             }
         }
         .into();
@@ -499,6 +499,7 @@ impl BitstringStatusList {
                         .revocation_list_repository
                         .get_revocation_by_issuer_identifier_id(
                             issuer_identifier.id,
+                            None,
                             purpose,
                             StatusListType::BitstringStatusList,
                             &Default::default(),
@@ -539,6 +540,7 @@ impl BitstringStatusList {
             self.revocation_list_repository
                 .get_revocation_by_issuer_identifier_id(
                     issuer_identifier.id,
+                    None,
                     purpose,
                     StatusListType::BitstringStatusList,
                     &Default::default(),
@@ -581,7 +583,7 @@ impl BitstringStatusList {
                         .create_entry(
                             list_id,
                             RevocationListEntityId::Credential(credential_id),
-                            index,
+                            Some(index),
                         )
                         .await
                     {
@@ -635,11 +637,12 @@ impl BitstringStatusList {
                 id: revocation_list_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                credentials: list_credential.into_bytes(),
+                formatted_list: list_credential.into_bytes(),
                 format: self.params.format,
                 r#type: StatusListType::BitstringStatusList,
                 purpose,
                 issuer_identifier: Some(issuer_identifier.to_owned()),
+                issuer_certificate: None,
             })
             .await?;
 
@@ -647,7 +650,7 @@ impl BitstringStatusList {
             .create_entry(
                 revocation_list_id,
                 RevocationListEntityId::Credential(credential_id),
-                0,
+                Some(0),
             )
             .await?;
 
@@ -726,12 +729,14 @@ async fn generate_bitstring_from_entries(
     let states = entries
         .into_iter()
         .map(|entry| {
-            (
-                entry.index,
+            Ok((
+                entry.index.ok_or(RevocationError::MappingError(
+                    "revocation list entry index missing".to_string(),
+                ))?,
                 get_revocation_entry_state(entry.status, purpose),
-            )
+            ))
         })
-        .collect::<Vec<_>>();
+        .collect::<Result<Vec<_>, RevocationError>>()?;
 
     util::generate_bitstring(states).map_err(RevocationError::from)
 }

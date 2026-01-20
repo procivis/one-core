@@ -4,6 +4,7 @@
 use shared_types::RevocationListEntryId;
 
 use super::model::{CredentialRevocationInfo, Operation};
+use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::wallet_unit_attested_key::{
@@ -89,6 +90,7 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
         &self,
         _signature_type: String,
         _issuer: &Identifier,
+        _certificate: &Option<Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
@@ -97,7 +99,6 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
 
     async fn revoke_signature(
         &self,
-        _signature_type: String,
         _signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -113,9 +114,5 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
 
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
         Ok(JsonLdContext::default())
-    }
-
-    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
-        Ok(serde_json::json!({}))
     }
 }

@@ -1,4 +1,4 @@
-use shared_types::{IdentifierId, RevocationListEntryId, RevocationListId};
+use shared_types::{CertificateId, IdentifierId, RevocationListEntryId, RevocationListId};
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
@@ -31,6 +31,7 @@ pub trait RevocationListRepository: Send + Sync {
     async fn get_revocation_by_issuer_identifier_id(
         &self,
         issuer_identifier_id: IdentifierId,
+        issuer_certificate_id: Option<CertificateId>,
         purpose: RevocationListPurpose,
         status_list_type: StatusListType,
         relations: &RevocationListRelations,
@@ -52,7 +53,8 @@ pub trait RevocationListRepository: Send + Sync {
         &self,
         list_id: RevocationListId,
         entity_id: RevocationListEntityId,
-        index_on_status_list: usize,
+        // must be set for non-CRL
+        index_on_status_list: Option<usize>,
     ) -> Result<RevocationListEntryId, DataLayerError>;
 
     async fn update_entry(

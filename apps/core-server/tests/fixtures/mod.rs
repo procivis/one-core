@@ -719,7 +719,7 @@ pub async fn create_interaction(
 pub async fn create_revocation_list(
     db_conn: &DbConn,
     issuer_identifier: Identifier,
-    credentials: Option<&[u8]>,
+    formatted_list: Option<&[u8]>,
 ) -> RevocationList {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
 
@@ -727,11 +727,12 @@ pub async fn create_revocation_list(
         id: Uuid::new_v4().into(),
         created_date: get_dummy_date(),
         last_modified: get_dummy_date(),
-        credentials: credentials.unwrap_or_default().to_owned(),
+        formatted_list: formatted_list.unwrap_or_default().to_owned(),
         purpose: RevocationListPurpose::Revocation,
         issuer_identifier: Some(issuer_identifier),
         format: StatusListCredentialFormat::JsonLdClassic,
         r#type: StatusListType::BitstringStatusList,
+        issuer_certificate: None,
     };
 
     data_layer

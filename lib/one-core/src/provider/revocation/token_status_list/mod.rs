@@ -16,8 +16,7 @@ use uuid::Uuid;
 use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
 use crate::config::core_config::FormatType;
-use crate::mapper::params::convert_params;
-use crate::model::certificate::CertificateRelations;
+use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::{DidRelations, KeyFilter, KeyRole};
@@ -163,6 +162,7 @@ impl RevocationMethod for TokenStatusList {
             .create_entry(
                 RevocationListEntityId::Credential(credential.id),
                 issuer_identifier,
+                credential.issuer_certificate.as_ref(),
             )
             .await?;
 
@@ -186,6 +186,7 @@ impl RevocationMethod for TokenStatusList {
             .revocation_list_repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier.id,
+                credential.issuer_certificate.as_ref().map(|c| c.id),
                 RevocationListPurpose::RevocationAndSuspension,
                 StatusListType::TokenStatusList,
                 &Default::default(),
@@ -345,10 +346,19 @@ impl RevocationMethod for TokenStatusList {
                 "Missing issuer_identifier".to_string(),
             ))?;
 
+        let issuer_certificate = if let Some(certificates) = &issuer_identifier.certificates {
+            certificates
+                .iter()
+                .find(|c| c.state == CertificateState::Active)
+        } else {
+            None
+        };
+
         let result = self
             .create_entry(
                 RevocationListEntityId::WalletUnitAttestedKey(attestation.id),
                 &issuer_identifier,
+                issuer_certificate,
             )
             .await?;
         Ok(result.1)
@@ -441,9 +451,14 @@ impl RevocationMethod for TokenStatusList {
         &self,
         signature_type: String,
         issuer: &Identifier,
+        certificate: &Option<Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let result = self
-            .create_entry(RevocationListEntityId::Signature(signature_type), issuer)
+            .create_entry(
+                RevocationListEntityId::Signature(signature_type, None),
+                issuer,
+                certificate.as_ref(),
+            )
             .await?;
 
         Ok(result)
@@ -451,14 +466,13 @@ impl RevocationMethod for TokenStatusList {
 
     async fn revoke_signature(
         &self,
-        signature_type: String,
         signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError> {
         self.transaction_manager
             .tx(async move {
                 self.revocation_list_repository
                     .update_entry(
-                        UpdateRevocationListEntryId::Signature(signature_type, signature_id),
+                        UpdateRevocationListEntryId::Id(signature_id),
                         UpdateRevocationListEntryRequest {
                             status: Some(RevocationListEntryStatus::Revoked),
                         },
@@ -482,6 +496,7 @@ impl RevocationMethod for TokenStatusList {
                                 key: Some(Default::default()),
                                 ..Default::default()
                             }),
+                            ..Default::default()
                         },
                     )
                     .await?
@@ -529,10 +544,6 @@ impl RevocationMethod for TokenStatusList {
         }
     }
 
-    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
-        convert_params(self.params.clone()).map_err(RevocationError::from)
-    }
-
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
         Ok(JsonLdContext::default())
     }
@@ -543,6 +554,9 @@ impl TokenStatusList {
         let format_type = match self.params.format {
             StatusListCredentialFormat::Jwt => FormatType::Jwt,
             StatusListCredentialFormat::JsonLdClassic => FormatType::JsonLdClassic,
+            format => {
+                return Err(RevocationError::FormatterNotFound(format.to_string()));
+            }
         };
         self.formatter_provider
             .get_formatter_by_type(format_type)
@@ -554,6 +568,7 @@ impl TokenStatusList {
         &self,
         entity_id: RevocationListEntityId,
         issuer_identifier: &Identifier,
+        issuer_certificate: Option<&Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let mut list_id = None;
         let mut entry: Option<(RevocationListEntryId, usize)> = None;
@@ -565,6 +580,7 @@ impl TokenStatusList {
                         .revocation_list_repository
                         .get_revocation_by_issuer_identifier_id(
                             issuer_identifier.id,
+                            issuer_certificate.map(|c| c.id),
                             RevocationListPurpose::RevocationAndSuspension,
                             StatusListType::TokenStatusList,
                             &Default::default(),
@@ -575,7 +591,11 @@ impl TokenStatusList {
                         Some(list) => list_id = Some(list.id),
                         None => {
                             let (new_list_id, new_entry_id) = self
-                                .start_new_list_for_entity(entity_id.clone(), issuer_identifier)
+                                .start_new_list_for_entity(
+                                    entity_id.clone(),
+                                    issuer_identifier,
+                                    issuer_certificate,
+                                )
                                 .await?;
                             list_id = Some(new_list_id);
                             entry = Some((new_entry_id, 0));
@@ -602,6 +622,7 @@ impl TokenStatusList {
             self.revocation_list_repository
                 .get_revocation_by_issuer_identifier_id(
                     issuer_identifier.id,
+                    issuer_certificate.map(|c| c.id),
                     RevocationListPurpose::RevocationAndSuspension,
                     StatusListType::TokenStatusList,
                     &Default::default(),
@@ -641,7 +662,7 @@ impl TokenStatusList {
 
                     match self
                         .revocation_list_repository
-                        .create_entry(list_id, entity_id.to_owned(), index)
+                        .create_entry(list_id, entity_id.to_owned(), Some(index))
                         .await
                     {
                         Ok(entry_id) => Ok(Some((entry_id, index))),
@@ -676,6 +697,7 @@ impl TokenStatusList {
         &self,
         entity_id: RevocationListEntityId,
         issuer_identifier: &Identifier,
+        issuer_certificate: Option<&Certificate>,
     ) -> Result<(RevocationListId, RevocationListEntryId), RevocationError> {
         let revocation_list_id = Uuid::new_v4().into();
         let list_credential = format_status_list_credential(
@@ -694,17 +716,18 @@ impl TokenStatusList {
                 id: revocation_list_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                credentials: list_credential.into_bytes(),
+                formatted_list: list_credential.into_bytes(),
                 format: self.params.format,
                 r#type: StatusListType::TokenStatusList,
                 purpose: RevocationListPurpose::RevocationAndSuspension,
                 issuer_identifier: Some(issuer_identifier.to_owned()),
+                issuer_certificate: issuer_certificate.cloned(),
             })
             .await?;
 
         let entry_id = self
             .revocation_list_repository
-            .create_entry(revocation_list_id, entity_id, 0)
+            .create_entry(revocation_list_id, entity_id, Some(0))
             .await?;
 
         Ok((revocation_list_id, entry_id))
@@ -832,8 +855,15 @@ async fn generate_token_from_entries(
 ) -> Result<String, RevocationError> {
     let index_states = entries
         .into_iter()
-        .map(|entry| (entry.index, entry.status))
-        .collect::<Vec<_>>();
+        .map(|entry| {
+            Ok((
+                entry.index.ok_or(RevocationError::MappingError(
+                    "revocation list entry index missing".to_string(),
+                ))?,
+                entry.status,
+            ))
+        })
+        .collect::<Result<Vec<_>, RevocationError>>()?;
 
     let preferred_token_size =
         calculate_preferred_token_size(index_states.len(), PREFERRED_ENTRY_SIZE);

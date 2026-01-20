@@ -1,5 +1,6 @@
 use shared_types::RevocationListEntryId;
 
+use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::wallet_unit_attested_key::{
@@ -13,6 +14,7 @@ use crate::provider::revocation::model::{
 };
 
 pub mod bitstring_status_list;
+pub mod crl;
 pub mod error;
 pub mod lvvc;
 mod mapper;
@@ -86,12 +88,12 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         signature_type: String,
         issuer: &Identifier,
+        certificate: &Option<Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError>;
 
     /// Issuer: mark previously-issued signature as revoked
     async fn revoke_signature(
         &self,
-        signature_type: String,
         signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError>;
 
@@ -102,6 +104,4 @@ pub trait RevocationMethod: Send + Sync {
     /// For credentials with LVVC revocation method, this method creates the URL
     /// where the JSON-LD @context is hosted.
     fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError>;
-
-    fn get_params(&self) -> Result<serde_json::Value, RevocationError>;
 }

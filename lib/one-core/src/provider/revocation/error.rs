@@ -28,7 +28,7 @@ pub enum RevocationError {
     KeyWithRoleNotFound(KeyRole),
     #[error("Mapping error: `{0}`")]
     MappingError(String),
-    #[error("Missing credential index `{0}` on revocation list for identifier id `{1}`")]
+    #[error("Missing credential `{0}` index on revocation list for identifier id `{1}`")]
     MissingCredentialIndexOnRevocationList(CredentialId, IdentifierId),
     #[error("Operation not supported: `{0}`")]
     OperationNotSupported(String),

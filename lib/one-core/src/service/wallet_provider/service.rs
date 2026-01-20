@@ -1088,6 +1088,7 @@ impl WalletProviderService {
                                 }),
                                 ..Default::default()
                             }),
+                            ..Default::default()
                         }),
                     }),
                 },

@@ -26,6 +26,7 @@ use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use crate::provider::revocation::RevocationMethod;
+use crate::provider::revocation::crl::CRLRevocation;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
@@ -154,6 +155,10 @@ pub(crate) fn revocation_method_provider_from_config(
                     )
                     .map_err(|e| ConfigValidationError::EntryNotFound(e.to_string()))?,
                 )
+            }
+            RevocationType::CRL => {
+                let params = config.revocation.get(key)?;
+                Arc::new(CRLRevocation::new(params))
             }
         };
 

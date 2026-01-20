@@ -60,16 +60,17 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
     let mut revocation_list_repository = MockRevocationListRepository::new();
     revocation_list_repository
         .expect_get_revocation_by_issuer_identifier_id()
-        .returning(|_, purpose, r#type, _| {
+        .returning(|_, _, purpose, r#type, _| {
             Ok(Some(RevocationList {
                 id: Uuid::new_v4().into(),
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                credentials: vec![],
+                formatted_list: vec![],
                 format: StatusListCredentialFormat::Jwt,
                 r#type,
                 purpose,
                 issuer_identifier: None,
+                issuer_certificate: None,
             }))
         });
     revocation_list_repository

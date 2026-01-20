@@ -348,6 +348,13 @@ revocation:
     params:
       public:
         format: "JWT"
+  CRL:
+    display: "revocation.crl"
+    order: 6
+    type: "CRL"
+    params:
+      public:
+        refreshInterval: 86400
 did:
   KEY:
     display: "did.key"

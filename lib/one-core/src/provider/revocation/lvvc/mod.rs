@@ -17,7 +17,7 @@ use uuid::fmt::Urn;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
-use crate::mapper::params::convert_params;
+use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::did::{KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
@@ -375,6 +375,7 @@ impl RevocationMethod for LvvcProvider {
         &self,
         _signature_type: String,
         _issuer: &Identifier,
+        _certificate: &Option<Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
@@ -383,7 +384,6 @@ impl RevocationMethod for LvvcProvider {
 
     async fn revoke_signature(
         &self,
-        _signature_type: String,
         _signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
@@ -403,10 +403,6 @@ impl RevocationMethod for LvvcProvider {
             revokable_credential_subject: "Lvvc".to_string(),
             url: self.get_json_ld_context_url()?,
         })
-    }
-
-    fn get_params(&self) -> Result<serde_json::Value, RevocationError> {
-        convert_params(self.params.clone()).map_err(RevocationError::from)
     }
 }
 

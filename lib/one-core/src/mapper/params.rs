@@ -1,18 +1,6 @@
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
-use serde::de::DeserializeOwned;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Deserializer};
 use time::Duration;
-
-use crate::provider::credential_formatter::error::FormatterError;
-
-pub(crate) fn convert_params<T, R>(input: T) -> Result<R, FormatterError>
-where
-    T: Serialize,
-    R: DeserializeOwned,
-{
-    let result = serde_json::to_value(input).map_err(|e| FormatterError::Failed(e.to_string()))?;
-    serde_json::from_value(result).map_err(|e| FormatterError::Failed(e.to_string()))
-}
 
 pub(crate) fn deserialize_encryption_key<'de, D>(
     deserializer: D,

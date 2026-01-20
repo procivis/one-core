@@ -188,6 +188,7 @@ impl DataLayer {
         let revocation_list_repository = Arc::new(RevocationListProvider {
             db: transaction_manager.clone(),
             identifier_repository: identifier_repository.clone(),
+            certificate_repository: certificate_repository.clone(),
         });
 
         let trust_anchor_repository = Arc::new(TrustAnchorProvider {

@@ -404,6 +404,9 @@ pub enum RevocationType {
     #[serde(rename = "TOKENSTATUSLIST")]
     #[strum(serialize = "TOKENSTATUSLIST")]
     TokenStatusList,
+    #[serde(rename = "CRL")]
+    #[strum(serialize = "CRL")]
+    CRL,
 }
 
 pub type DidConfig = ConfigBlock<String, DidType>;

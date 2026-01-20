@@ -12,9 +12,9 @@ use one_core::provider::key_algorithm::ecdsa::Ecdsa;
 use sea_orm::ActiveValue::NotSet;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
-    BlobId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, EntityId,
-    HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId, ProofId, ProofSchemaId,
-    RevocationListId, WalletUnitAttestedKeyId, WalletUnitId,
+    BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId,
+    DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId,
+    ProofId, ProofSchemaId, RevocationListId, WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -585,6 +585,7 @@ pub async fn insert_revocation_list(
     format: RevocationListFormat,
     issuer_identifier_id: IdentifierId,
     r#type: String,
+    issuer_certificate_id: Option<CertificateId>,
 ) -> Result<RevocationListId, DbErr> {
     let id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
@@ -593,11 +594,12 @@ pub async fn insert_revocation_list(
         id: Set(id),
         created_date: Set(now),
         last_modified: Set(now),
-        credentials: Set(vec![]),
+        formatted_list: Set(vec![]),
         purpose: Set(purpose),
         format: Set(format),
         r#type: Set(r#type),
         issuer_identifier_id: Set(issuer_identifier_id),
+        issuer_certificate_id: Set(issuer_certificate_id),
     }
     .insert(database)
     .await?;
@@ -618,13 +620,14 @@ pub async fn insert_revocation_list_entry(
         id: Set(id.into()),
         created_date: Set(now),
         revocation_list_id: Set(list_id),
-        index: Set(index as _),
+        index: Set(Some(index as _)),
         credential_id: Set(credential_id),
         r#type: Set(credential_id
             .map(|_| RevocationListEntryType::Credential)
             .unwrap_or(RevocationListEntryType::WalletUnitAttestedKey)),
         signature_type: Set(None),
         status: Set(RevocationListEntryStatus::Active),
+        serial: Set(None),
     }
     .insert(database)
     .await?;

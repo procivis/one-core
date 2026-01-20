@@ -5,6 +5,7 @@ use shared_types::{
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
+use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -12,18 +13,20 @@ pub struct RevocationList {
     pub id: RevocationListId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
-    pub credentials: Vec<u8>,
+    pub formatted_list: Vec<u8>,
     pub format: StatusListCredentialFormat,
     pub r#type: StatusListType,
     pub purpose: RevocationListPurpose,
 
     // Relations:
     pub issuer_identifier: Option<Identifier>,
+    pub issuer_certificate: Option<Certificate>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Default)]
 pub struct RevocationListRelations {
     pub issuer_identifier: Option<IdentifierRelations>,
+    pub issuer_certificate: Option<CertificateRelations>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Display, Serialize)]
@@ -39,6 +42,7 @@ pub enum RevocationListPurpose {
 pub enum StatusListCredentialFormat {
     Jwt,
     JsonLdClassic,
+    X509Crl,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Display, EnumString, Serialize, Deserialize)]
@@ -47,13 +51,14 @@ pub enum StatusListCredentialFormat {
 pub enum StatusListType {
     BitstringStatusList,
     TokenStatusList,
+    Crl,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationListEntry {
     pub id: RevocationListEntryId,
     pub entity_info: RevocationListEntityInfo,
-    pub index: usize,
+    pub index: Option<usize>,
     pub status: RevocationListEntryStatus,
 }
 
@@ -64,17 +69,21 @@ pub enum RevocationListEntryStatus {
     Suspended,
 }
 
+// TODO (ONE-8418): move to a proper file
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CertificateSerial(pub Vec<u8>);
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityId {
     Credential(CredentialId),
-    Signature(String),
+    Signature(String, Option<CertificateSerial>),
     WalletUnitAttestedKey(WalletUnitAttestedKeyId),
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityInfo {
     Credential(CredentialId),
-    Signature(String),
+    Signature(String, Option<CertificateSerial>),
     WalletUnitAttestedKey,
 }
 
@@ -83,7 +92,6 @@ pub enum UpdateRevocationListEntryId {
     Credential(CredentialId),
     Id(RevocationListEntryId),
     Index(RevocationListId, usize),
-    Signature(String, RevocationListEntryId),
 }
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
