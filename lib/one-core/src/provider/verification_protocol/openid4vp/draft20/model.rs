@@ -1,13 +1,12 @@
 use std::ops::Add;
 
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::DidValue;
 use standardized_types::openid4vp::ResponseMode;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
-use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTHeader, JWTPayload};
 use crate::provider::key_algorithm::error::KeyAlgorithmError;
@@ -43,11 +42,13 @@ pub(crate) struct OpenID4Vp20Params {
     pub predefined_client_metadata: Option<OpenID4VPDraftClientMetadata>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VC20PresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
-    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub interaction_expires_in: Option<Duration>,
 }
 

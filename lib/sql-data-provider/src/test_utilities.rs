@@ -29,7 +29,9 @@ use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::interaction::InteractionType;
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
-use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
+use crate::entity::revocation_list::{
+    RevocationListFormat, RevocationListPurpose, RevocationListType,
+};
 use crate::entity::revocation_list_entry::{RevocationListEntryStatus, RevocationListEntryType};
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
@@ -584,7 +586,7 @@ pub async fn insert_revocation_list(
     purpose: RevocationListPurpose,
     format: RevocationListFormat,
     issuer_identifier_id: IdentifierId,
-    r#type: String,
+    r#type: RevocationListType,
     issuer_certificate_id: Option<CertificateId>,
 ) -> Result<RevocationListId, DbErr> {
     let id = Uuid::new_v4().into();

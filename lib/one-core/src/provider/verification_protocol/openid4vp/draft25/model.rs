@@ -1,11 +1,10 @@
 use dcql::DcqlQuery;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use standardized_types::openid4vp::ResponseMode;
 use time::Duration;
 use url::Url;
 
-use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::provider::verification_protocol::openid4vp::mapper::deserialize_with_serde_json;
 use crate::provider::verification_protocol::openid4vp::model::{
     ClientIdScheme, OpenID4VCPresentationHolderParams, OpenID4VCRedirectUriParams,
@@ -28,13 +27,15 @@ pub(crate) struct OpenID4Vp25Params {
     pub redirect_uri: OpenID4VCRedirectUriParams,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VC25PresentationVerifierParams {
     pub supported_client_id_schemes: Vec<ClientIdScheme>,
     #[serde(default = "default_use_dcql")]
     pub use_dcql: bool,
-    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub interaction_expires_in: Option<Duration>,
 }
 

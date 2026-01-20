@@ -14,7 +14,7 @@ pub struct Model {
     pub formatted_list: Vec<u8>,
     pub purpose: RevocationListPurpose,
     pub format: RevocationListFormat,
-    pub r#type: String,
+    pub r#type: RevocationListType,
 
     pub issuer_identifier_id: IdentifierId,
     pub issuer_certificate_id: Option<CertificateId>,
@@ -86,4 +86,17 @@ pub enum RevocationListFormat {
     JsonLdClassic,
     #[sea_orm(string_value = "X509_CRL")]
     X509Crl,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq, EnumIter, DeriveActiveEnum, Into, From)]
+#[from(one_core::model::revocation_list::StatusListType)]
+#[into(one_core::model::revocation_list::StatusListType)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+pub enum RevocationListType {
+    #[sea_orm(string_value = "BITSTRINGSTATUSLIST")]
+    BitstringStatusList,
+    #[sea_orm(string_value = "TOKENSTATUSLIST")]
+    TokenStatusList,
+    #[sea_orm(string_value = "CRL")]
+    Crl,
 }

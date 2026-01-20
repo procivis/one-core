@@ -1,6 +1,5 @@
 use secrecy::{ExposeSecret, SecretSlice, SecretString};
 use serde::{Deserialize, Deserializer};
-use time::Duration;
 
 pub(crate) fn deserialize_encryption_key<'de, D>(
     deserializer: D,
@@ -17,22 +16,4 @@ where
     Ok(SecretSlice::from(
         hex::decode(secret).map_err(|_| serde::de::Error::custom(ERROR_MSG))?,
     ))
-}
-
-pub(crate) fn deserialize_duration_seconds<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let seconds = i64::deserialize(deserializer)?;
-    Ok(Duration::seconds(seconds))
-}
-
-pub(crate) fn deserialize_duration_seconds_option<'de, D>(
-    deserializer: D,
-) -> Result<Option<Duration>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let seconds = Option::<i64>::deserialize(deserializer)?;
-    Ok(seconds.map(Duration::seconds))
 }

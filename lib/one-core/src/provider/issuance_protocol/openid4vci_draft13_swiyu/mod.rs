@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use secrecy::SecretSlice;
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::{CredentialId, HolderWalletUnitId};
 use time::Duration;
 use url::Url;
 
 use crate::config::core_config::DidType::WebVh;
 use crate::config::core_config::{CoreConfig, IssuanceProtocolType};
-use crate::mapper::params::{deserialize_duration_seconds, deserialize_encryption_key};
+use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
@@ -41,14 +42,15 @@ use crate::service::storage_proxy::StorageAccess;
 
 pub(crate) const OID4VCI_DRAFT13_SWIYU_VERSION: &str = "draft-13-swiyu";
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCISwiyuParams {
-    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    #[serde_as(as = "DurationSeconds<i64>")]
     pub pre_authorized_code_expires_in: Duration,
-    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    #[serde_as(as = "DurationSeconds<i64>")]
     pub token_expires_in: Duration,
-    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    #[serde_as(as = "DurationSeconds<i64>")]
     pub refresh_expires_in: Duration,
     #[serde(deserialize_with = "deserialize_encryption_key")]
     pub encryption: SecretSlice<u8>,

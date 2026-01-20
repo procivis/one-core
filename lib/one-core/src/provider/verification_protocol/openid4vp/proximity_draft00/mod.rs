@@ -9,6 +9,7 @@ use key_agreement_key::KeyAgreementKey;
 use mqtt::oidc_mqtt_verifier::MqttVerifier;
 use serde::Deserialize;
 use serde_json::Value;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::{InteractionId, KeyId, ProofId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
@@ -32,7 +33,6 @@ use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
-use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::model::did::{Did, KeyFilter, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
@@ -85,10 +85,12 @@ pub(crate) struct OpenID4VPProximityDraft00Params {
     pub verifier: Option<OpenID4VPProximityDraft00PresentationVerifierParams>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VPProximityDraft00PresentationVerifierParams {
-    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub interaction_expires_in: Option<Duration>,
 }
 

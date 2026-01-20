@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 use autometrics::autometrics;
 use one_core::model::common::LockType;
 use one_core::model::revocation_list::{
@@ -66,12 +65,7 @@ impl RevocationListProvider {
             issuer_identifier,
             issuer_certificate,
             format: revocation_list.format.into(),
-            r#type: match revocation_list.r#type.as_str() {
-                "BITSTRINGSTATUSLIST" => StatusListType::BitstringStatusList,
-                "TOKENSTATUSLIST" => StatusListType::TokenStatusList,
-                "CRL" => StatusListType::Crl,
-                _ => return Err(DataLayerError::Db(anyhow!("Invalid revocation list type"))),
-            },
+            r#type: revocation_list.r#type.into(),
         })
     }
 }
@@ -95,7 +89,7 @@ impl RevocationListRepository for RevocationListProvider {
             purpose: Set(request.purpose.into()),
             issuer_identifier_id: Set(issuer_identifier.id),
             format: Set(request.format.into()),
-            r#type: Set(request.r#type.to_string()),
+            r#type: Set(request.r#type.into()),
             issuer_certificate_id: Set(request.issuer_certificate.map(|c| c.id)),
         }
         .insert(&self.db)

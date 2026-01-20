@@ -18,7 +18,7 @@ use uuid::Uuid;
 
 use super::RevocationListProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
-use crate::entity::revocation_list::RevocationListFormat;
+use crate::entity::revocation_list::{RevocationListFormat, RevocationListType};
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
     insert_identifier, insert_organisation_to_database, insert_revocation_list,
@@ -90,7 +90,7 @@ async fn setup_with_list() -> TestSetupWithList {
         RevocationListPurpose::Revocation.into(),
         RevocationListFormat::Jwt,
         identifier.id,
-        StatusListType::BitstringStatusList.to_string(),
+        RevocationListType::BitstringStatusList,
         None,
     )
     .await

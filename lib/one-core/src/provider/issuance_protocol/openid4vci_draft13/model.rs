@@ -5,7 +5,7 @@ use one_dto_mapper::{Into, convert_inner};
 use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_with::skip_serializing_none;
+use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
 use shared_types::{CredentialFormat, CredentialSchemaId, DidValue, OrganisationId};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use strum::{Display, EnumString};
@@ -13,7 +13,7 @@ use time::{Duration, OffsetDateTime};
 use url::Url;
 
 use crate::mapper::opt_secret_string;
-use crate::mapper::params::{deserialize_duration_seconds, deserialize_encryption_key};
+use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{
     KeyStorageSecurity, LayoutProperties, LayoutType, RevocationMethod,
 };
@@ -25,14 +25,15 @@ use crate::provider::issuance_protocol::model::{
 };
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4VCIDraft13Params {
-    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    #[serde_as(as = "DurationSeconds<i64>")]
     pub pre_authorized_code_expires_in: Duration,
-    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    #[serde_as(as = "DurationSeconds<i64>")]
     pub token_expires_in: Duration,
-    #[serde(deserialize_with = "deserialize_duration_seconds")]
+    #[serde_as(as = "DurationSeconds<i64>")]
     pub refresh_expires_in: Duration,
     #[serde(default)]
     pub credential_offer_by_value: bool,

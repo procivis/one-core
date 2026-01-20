@@ -4,12 +4,12 @@ use futures::future::BoxFuture;
 use maplit::hashmap;
 use serde::Deserialize;
 use serde_json::Value;
+use serde_with::{DurationSeconds, serde_as};
 use standardized_types::openid4vp::{PresentationFormat, SdJwtVcAlgs};
 use time::Duration;
 use url::Url;
 
 use crate::config::core_config::{DidType, IdentifierType, TransportType};
-use crate::mapper::params::deserialize_duration_seconds_option;
 use crate::model::organisation::Organisation;
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
@@ -54,10 +54,12 @@ pub(crate) struct OpenID4Vp20SwiyuParams {
     pub verifier: Option<OpenID4Vp20SwiyuPresentationVerifierParams>,
 }
 
+#[serde_as]
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct OpenID4Vp20SwiyuPresentationVerifierParams {
-    #[serde(default, deserialize_with = "deserialize_duration_seconds_option")]
+    #[serde(default)]
+    #[serde_as(as = "Option<DurationSeconds<i64>>")]
     pub interaction_expires_in: Option<Duration>,
 }
 
