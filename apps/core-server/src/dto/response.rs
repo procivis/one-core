@@ -28,14 +28,17 @@ pub(crate) enum ErrorResponse {
 }
 
 impl ErrorResponse {
-    pub fn for_panic(panic_msg: String) -> Self {
-        Self::ServerError(ErrorResponseRestDTO {
-            code: ErrorCode::BR_0000.into(),
-            message: panic_msg,
-            cause: Some(Cause {
+    pub fn for_panic(panic_cause: String, hide_cause: bool) -> Self {
+        Self::ServerError(
+            ErrorResponseRestDTO {
+                code: ErrorCode::BR_0000.into(),
                 message: "Panic".to_string(),
-            }),
-        })
+                cause: Some(Cause {
+                    message: panic_cause,
+                }),
+            }
+            .hide_cause(hide_cause),
+        )
     }
 
     fn from_error(error: &impl ErrorCodeMixin, hide_cause: bool) -> Self {
