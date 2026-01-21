@@ -7,7 +7,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::{ecdsa_testing_params, eddsa_testing_params};
 
 #[tokio::test]
-async fn test_identifier_success() {
+async fn test_key_identifier_success() {
     let (context, organisation, _, _, _) = TestContext::new_with_did(None).await;
 
     let key = context
@@ -54,6 +54,53 @@ async fn test_identifier_success() {
 }
 
 #[tokio::test]
+async fn test_deprecated_key_identifier_success() {
+    let (context, organisation, _, _, _) = TestContext::new_with_did(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(
+            &organisation,
+            TestingKeyParams {
+                key_reference: Some(b"test_key".to_vec()),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let result = context
+        .api
+        .identifiers
+        .create_deprecated_key_identifier("test-identifier", key.id, organisation.id)
+        .await;
+
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let identifier_id = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let result = context.api.identifiers.get(&identifier_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+
+    assert_eq!(resp["name"].as_str().unwrap(), "test-identifier");
+    assert_eq!(resp["type"].as_str().unwrap(), "KEY");
+    assert_eq!(resp["state"].as_str().unwrap(), "ACTIVE");
+    assert!(!resp["isRemote"].as_bool().unwrap());
+    assert_eq!(
+        resp["organisationId"].as_str().unwrap(),
+        organisation.id.to_string()
+    );
+    assert_eq!(resp["key"]["id"].as_str().unwrap(), key.id.to_string());
+
+    let delete_resp = context.api.identifiers.delete(&identifier_id).await;
+    assert_eq!(delete_resp.status(), 204);
+
+    let already_deleted = context.api.identifiers.delete(&identifier_id).await;
+    assert_eq!(already_deleted.status(), 404);
+}
+
+#[tokio::test]
 async fn test_identifier_did_disabled() {
     let config_changes = indoc::indoc! {"
     identifier:
@@ -72,7 +119,7 @@ async fn test_identifier_did_disabled() {
     let result = context
         .api
         .identifiers
-        .create_key_identifier("test-identifier", key.id, organisation.id)
+        .create_deprecated_key_identifier("test-identifier", key.id, organisation.id)
         .await;
 
     assert_eq!(result.status(), 400);
@@ -164,7 +211,7 @@ async fn test_create_certificate_identifier_fails_deactivated_organisation() {
     let result = context
         .api
         .identifiers
-        .create_key_identifier("test-identifier", key.id, organisation.id)
+        .create_deprecated_key_identifier("test-identifier", key.id, organisation.id)
         .await;
 
     // Then
@@ -254,7 +301,7 @@ async fn test_identifier_filter_key_success() {
     let result = context
         .api
         .identifiers
-        .create_key_identifier(key_identifier_name, key.id, organisation.id)
+        .create_deprecated_key_identifier(key_identifier_name, key.id, organisation.id)
         .await;
     assert_eq!(result.status(), 201);
     let resp = result.json_value().await;
@@ -317,7 +364,7 @@ async fn test_identifier_with_remote_key_fails() {
     let result = context
         .api
         .identifiers
-        .create_key_identifier(key_identifier_name, key.id, organisation.id)
+        .create_deprecated_key_identifier(key_identifier_name, key.id, organisation.id)
         .await;
     assert_eq!(result.status(), 400);
     let resp = result.json_value().await;

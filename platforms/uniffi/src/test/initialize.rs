@@ -40,6 +40,7 @@ async fn test_uninitialize_core_dont_delete_data() {
             organisation_id,
             name: "test-identifier".to_string(),
             key_id: None,
+            key: None,
             did: Some(CreateIdentifierDidRequestBindingDTO {
                 name: Some("test-did".to_string()),
                 method: "KEY".to_string(),

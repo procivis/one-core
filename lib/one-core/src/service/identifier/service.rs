@@ -1,8 +1,10 @@
 use shared_types::{IdentifierId, OrganisationId};
+use tracing::warn;
 
 use super::IdentifierService;
 use super::dto::{
-    CreateIdentifierRequestDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
+    CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListResponseDTO,
+    GetIdentifierResponseDTO,
 };
 use crate::config::core_config;
 use crate::model::certificate::CertificateRelations;
@@ -101,9 +103,14 @@ impl IdentifierService {
             );
         }
 
-        let identifier = match (request.did, request.key_id, request.certificates) {
+        let identifier = match (
+            request.did,
+            request.key_id,
+            request.key,
+            request.certificates,
+        ) {
             // IdentifierType::Did
-            (Some(did), None, None) => {
+            (Some(did), None, None, None) => {
                 validate_identifier_type(
                     &core_config::IdentifierType::Did,
                     &self.config.identifier,
@@ -120,7 +127,33 @@ impl IdentifierService {
                     .await?
             }
             // IdentifierType::Key
-            (None, Some(key_id), None) => {
+            // Deprecated. Use the `key` field instead.
+            (None, Some(key_id), None, None) => {
+                warn!("Creating identifier with key_id is deprecated. Use key instead.");
+                validate_identifier_type(
+                    &core_config::IdentifierType::Key,
+                    &self.config.identifier,
+                )?;
+                let key = self
+                    .key_repository
+                    .get_key(
+                        &key_id,
+                        &KeyRelations {
+                            organisation: Some(Default::default()),
+                        },
+                    )
+                    .await?
+                    .ok_or(EntityNotFoundError::Key(key_id))?;
+
+                self.identifier_creator
+                    .create_local_identifier(
+                        request.name,
+                        CreateLocalIdentifierRequest::Key(key),
+                        organisation,
+                    )
+                    .await?
+            }
+            (None, None, Some(CreateIdentifierKeyRequestDTO { key_id }), None) => {
                 validate_identifier_type(
                     &core_config::IdentifierType::Key,
                     &self.config.identifier,
@@ -145,7 +178,7 @@ impl IdentifierService {
                     .await?
             }
             // IdentifierType::Certificate
-            (None, None, Some(certificate_requests)) => {
+            (None, None, None, Some(certificate_requests)) => {
                 validate_identifier_type(
                     &core_config::IdentifierType::Certificate,
                     &self.config.identifier,

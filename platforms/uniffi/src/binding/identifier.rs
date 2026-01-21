@@ -15,8 +15,8 @@ use one_core::service::certificate::dto::{
 };
 use one_core::service::did::dto::{DidResponseDTO, DidResponseKeysDTO};
 use one_core::service::identifier::dto::{
-    CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO,
-    GetIdentifierResponseDTO,
+    CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO,
+    GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
 use one_core::service::key::dto::{KeyListItemResponseDTO, KeyResponseDTO};
 use one_dto_mapper::{
@@ -412,15 +412,18 @@ pub enum IdentifierStateBindingEnum {
 #[derive(Clone, Debug, TryInto, uniffi::Record)]
 #[try_into(T = CreateIdentifierRequestDTO, Error = ErrorResponseBindingDTO)]
 pub struct CreateIdentifierRequestBindingDTO {
-    #[try_into(with_fn_ref = "into_id")]
+    #[try_into(with_fn_ref = into_id)]
     pub organisation_id: String,
     #[try_into(infallible)]
     pub name: String,
-    #[try_into(with_fn = "into_id_opt")]
+    /// Deprecated. Use the `key` field instead.
+    #[try_into(with_fn = into_id_opt)]
     pub key_id: Option<String>,
-    #[try_into(with_fn = "try_convert_inner")]
+    #[try_into(with_fn = try_convert_inner)]
+    pub key: Option<CreateIdentifierKeyRequestBindingDTO>,
+    #[try_into(with_fn = try_convert_inner)]
     pub did: Option<CreateIdentifierDidRequestBindingDTO>,
-    #[try_into(with_fn = "try_convert_inner_of_inner")]
+    #[try_into(with_fn = try_convert_inner_of_inner)]
     pub certificates: Option<Vec<CreateCertificateRequestBindingDTO>>,
 }
 
@@ -430,6 +433,13 @@ pub struct CreateIdentifierDidRequestBindingDTO {
     pub method: String,
     pub keys: super::did::DidRequestKeysBindingDTO,
     pub params: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = CreateIdentifierKeyRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct CreateIdentifierKeyRequestBindingDTO {
+    #[try_into(with_fn = into_id)]
+    pub key_id: String,
 }
 
 #[derive(Clone, Debug, TryInto, uniffi::Record)]

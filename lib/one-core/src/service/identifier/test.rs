@@ -43,6 +43,7 @@ async fn test_create_identifier_session_org_mismatch() {
         .create_identifier(CreateIdentifierRequestDTO {
             name: "".to_string(),
             did: None,
+            key: None,
             key_id: None,
             certificates: None,
             organisation_id: Uuid::new_v4().into(),

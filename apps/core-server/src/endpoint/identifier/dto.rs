@@ -4,8 +4,8 @@ use one_core::model::identifier::{IdentifierState, IdentifierType, SortableIdent
 use one_core::service::certificate::dto::CreateCertificateRequestDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
-    CreateIdentifierDidRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO,
-    GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
+    CreateIdentifierDidRequestDTO, CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
+    GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
 use one_core::service::trust_entity::dto::{
     ResolveTrustEntitiesRequestDTO, ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
@@ -42,7 +42,11 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
     #[try_into(infallible)]
+    /// Deprecated. Use the `key` field instead.
+    #[schema(deprecated = true)]
     pub key_id: Option<KeyId>,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub key: Option<CreateIdentifierKeyRequestRestDTO>,
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub certificates: Option<Vec<CreateCertificateRequestRestDTO>>,
     #[try_into(with_fn = fallback_organisation_id_from_session)]
@@ -70,6 +74,14 @@ pub(crate) struct CreateIdentifierDidRequestRestDTO {
 pub(crate) struct CreateCertificateRequestRestDTO {
     pub name: Option<String>,
     pub chain: String,
+    pub key_id: KeyId,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CreateIdentifierKeyRequestDTO)]
+pub(crate) struct CreateIdentifierKeyRequestRestDTO {
     pub key_id: KeyId,
 }
 

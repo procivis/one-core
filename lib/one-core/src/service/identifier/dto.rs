@@ -44,7 +44,9 @@ pub type GetIdentifierListResponseDTO = GetListResponse<GetIdentifierListItemRes
 pub struct CreateIdentifierRequestDTO {
     pub name: String,
     pub did: Option<CreateIdentifierDidRequestDTO>,
+    pub key: Option<CreateIdentifierKeyRequestDTO>,
     pub key_id: Option<KeyId>,
+    /// Deprecated. Use the `key` field instead.
     pub certificates: Option<Vec<CreateCertificateRequestDTO>>,
     pub organisation_id: OrganisationId,
 }
@@ -55,4 +57,9 @@ pub struct CreateIdentifierDidRequestDTO {
     pub method: String,
     pub keys: CreateDidRequestKeysDTO,
     pub params: Option<serde_json::Value>,
+}
+
+#[derive(Clone, Debug)]
+pub struct CreateIdentifierKeyRequestDTO {
+    pub key_id: KeyId,
 }

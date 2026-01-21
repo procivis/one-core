@@ -52,7 +52,7 @@ impl IdentifiersApi {
             .await
     }
 
-    pub async fn create_key_identifier(
+    pub async fn create_deprecated_key_identifier(
         &self,
         name: &str,
         key_id: KeyId,
@@ -64,6 +64,26 @@ impl IdentifiersApi {
                 json!( {
                     "name": name,
                     "keyId": key_id,
+                    "organisationId": organisation_id
+                }),
+            )
+            .await
+    }
+
+    pub async fn create_key_identifier(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+    ) -> Response {
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!( {
+                    "name": name,
+                    "key": {
+                        "keyId": key_id,
+                    },
                     "organisationId": organisation_id
                 }),
             )
