@@ -227,7 +227,7 @@ impl RevocationMethod for TokenStatusList {
         .await?;
 
         self.revocation_list_repository
-            .update_credentials(&current_list.id, list_credential.into_bytes())
+            .update_formatted_list(&current_list.id, list_credential.into_bytes())
             .await?;
 
         Ok(())
@@ -439,7 +439,7 @@ impl RevocationMethod for TokenStatusList {
                     .await?;
 
                     self.revocation_list_repository
-                        .update_credentials(&list.id, list_credential.into_bytes())
+                        .update_formatted_list(&list.id, list_credential.into_bytes())
                         .await?;
                 }
                 Ok::<_, RevocationError>(())
@@ -532,7 +532,7 @@ impl RevocationMethod for TokenStatusList {
                 .await?;
 
                 self.revocation_list_repository
-                    .update_credentials(&current_list.id, list_credential.into_bytes())
+                    .update_formatted_list(&current_list.id, list_credential.into_bytes())
                     .await?;
 
                 Ok::<_, RevocationError>(())

@@ -58,6 +58,8 @@ pub enum StatusListType {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationListEntry {
     pub id: RevocationListEntryId,
+    pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
     pub entity_info: RevocationListEntityInfo,
     pub index: Option<usize>,
     pub status: RevocationListEntryStatus,

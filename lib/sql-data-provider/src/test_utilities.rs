@@ -14,7 +14,8 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId,
     DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId,
-    ProofId, ProofSchemaId, RevocationListId, WalletUnitAttestedKeyId, WalletUnitId,
+    ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, WalletUnitAttestedKeyId,
+    WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -614,13 +615,14 @@ pub async fn insert_revocation_list_entry(
     list_id: RevocationListId,
     index: usize,
     credential_id: Option<CredentialId>,
-) -> Result<Uuid, DbErr> {
-    let id = Uuid::new_v4();
+) -> Result<RevocationListEntryId, DbErr> {
+    let id = Uuid::new_v4().into();
     let now = OffsetDateTime::now_utc();
 
     let _model = revocation_list_entry::ActiveModel {
-        id: Set(id.into()),
+        id: Set(id),
         created_date: Set(now),
+        last_modified: Set(now),
         revocation_list_id: Set(list_id),
         index: Set(Some(index as _)),
         credential_id: Set(credential_id),

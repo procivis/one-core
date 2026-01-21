@@ -232,7 +232,7 @@ impl RevocationMethod for BitstringStatusList {
         .await?;
 
         self.revocation_list_repository
-            .update_credentials(&current_list.id, list_credential.into_bytes())
+            .update_formatted_list(&current_list.id, list_credential.into_bytes())
             .await?;
 
         Ok(())

@@ -4,6 +4,7 @@
 use std::sync::Arc;
 
 use futures::FutureExt;
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
 use shared_types::{RevocationListEntryId, RevocationListId};
@@ -13,12 +14,13 @@ use uuid::Uuid;
 
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::mapper::x509::SigningKeyAdapter;
-use crate::model::certificate::Certificate;
+use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
-    RevocationList, RevocationListEntityId, RevocationListPurpose, StatusListCredentialFormat,
-    StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntryStatus,
+    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
@@ -233,9 +235,82 @@ impl RevocationMethod for CRLRevocation {
 
     async fn revoke_signature(
         &self,
-        _signature_id: RevocationListEntryId,
+        signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError> {
-        todo!()
+        self.revocation_list_repository
+            .update_entry(
+                UpdateRevocationListEntryId::Id(signature_id),
+                UpdateRevocationListEntryRequest {
+                    status: Some(RevocationListEntryStatus::Revoked),
+                },
+            )
+            .await?;
+
+        let list = self
+            .revocation_list_repository
+            .get_revocation_list_by_entry_id(
+                signature_id,
+                &RevocationListRelations {
+                    issuer_certificate: Some(CertificateRelations {
+                        key: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(RevocationError::MappingError(
+                "Missing revocation list".to_string(),
+            ))?;
+
+        let issuer_certificate = list
+            .issuer_certificate
+            .ok_or(RevocationError::MappingError(
+                "Missing issuer_certificate".to_string(),
+            ))?;
+
+        let revoked_certificates = self
+            .revocation_list_repository
+            .get_entries(list.id)
+            .await?
+            .into_iter()
+            .filter_map(|entry| {
+                if entry.status == RevocationListEntryStatus::Revoked
+                    && let RevocationListEntityInfo::Signature(_, Some(serial)) = entry.entity_info
+                {
+                    Some((serial, entry.last_modified))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let next_crl_number = match x509_parser::parse_x509_crl(&list.formatted_list) {
+            Ok((_, previous_crl)) => {
+                if let Some(previous_crl_number) =
+                    previous_crl.crl_number().and_then(|n| n.to_u64())
+                {
+                    previous_crl_number + 1
+                } else {
+                    tracing::warn!("Previous CRL does not contain a valid CRL number");
+                    0
+                }
+            }
+            Err(e) => {
+                tracing::warn!(%e, "Failed to parse previous CRL");
+                0
+            }
+        };
+
+        let formatted_list = self
+            .format_list(next_crl_number, &issuer_certificate, revoked_certificates)
+            .await?;
+
+        self.revocation_list_repository
+            .update_formatted_list(&list.id, formatted_list)
+            .await?;
+
+        Ok(())
     }
 
     fn get_capabilities(&self) -> RevocationMethodCapabilities {

@@ -159,12 +159,12 @@ async fn test_get_revocation_by_issuer_identifier_id() {
 }
 
 #[tokio::test]
-async fn test_update_credentials() {
+async fn test_update_formatted_list() {
     let setup = setup_with_list().await;
 
     setup
         .provider
-        .update_credentials(&setup.list_id, vec![])
+        .update_formatted_list(&setup.list_id, vec![])
         .await
         .unwrap();
 }
@@ -314,12 +314,12 @@ async fn test_get_entries_empty_list() {
 async fn test_get_entries_non_empty() {
     let setup = setup_with_list().await;
 
-    insert_revocation_list_entry(&setup.db, setup.list_id, 1, None)
+    let entry_1_id = insert_revocation_list_entry(&setup.db, setup.list_id, 1, None)
         .await
         .unwrap();
 
     let credential_id = create_dummy_credential(&setup.db, setup.identifier).await;
-    insert_revocation_list_entry(&setup.db, setup.list_id, 2, Some(credential_id))
+    let entry_2_id = insert_revocation_list_entry(&setup.db, setup.list_id, 2, Some(credential_id))
         .await
         .unwrap();
 
@@ -328,7 +328,9 @@ async fn test_get_entries_non_empty() {
     assert_eq!(
         results[0],
         RevocationListEntry {
-            id: results[0].id, // id can be arbitrarily chosen
+            id: entry_1_id,
+            created_date: results[0].created_date,
+            last_modified: results[0].last_modified,
             entity_info: RevocationListEntityInfo::WalletUnitAttestedKey,
             index: Some(1),
             status: RevocationListEntryStatus::Active,
@@ -337,7 +339,9 @@ async fn test_get_entries_non_empty() {
     assert_eq!(
         results[1],
         RevocationListEntry {
-            id: results[1].id, // id can be arbitrarily chosen
+            id: entry_2_id,
+            created_date: results[1].created_date,
+            last_modified: results[1].last_modified,
             entity_info: RevocationListEntityInfo::Credential(credential_id),
             index: Some(2),
             status: RevocationListEntryStatus::Active,

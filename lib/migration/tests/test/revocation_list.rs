@@ -101,6 +101,7 @@ async fn test_db_schema_revocation_list_entry() {
         .columns(&[
             "id",
             "created_date",
+            "last_modified",
             "revocation_list_id",
             "index",
             "credential_id",
@@ -127,6 +128,11 @@ async fn test_db_schema_revocation_list_entry() {
         .primary_key();
     revocation_list_entry
         .column("created_date")
+        .r#type(ColumnType::TimestampMilliseconds)
+        .nullable(false)
+        .default(None);
+    revocation_list_entry
+        .column("last_modified")
         .r#type(ColumnType::TimestampMilliseconds)
         .nullable(false)
         .default(None);

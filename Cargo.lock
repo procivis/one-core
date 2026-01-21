@@ -3746,6 +3746,7 @@ dependencies = [
  "mrtd",
  "multihash",
  "ndef-rs",
+ "num-traits",
  "one-crypto",
  "one-dto-mapper",
  "ouroboros",

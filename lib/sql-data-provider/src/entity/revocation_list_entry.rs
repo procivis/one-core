@@ -10,6 +10,7 @@ pub struct Model {
     #[sea_orm(primary_key, auto_increment = false)]
     pub id: RevocationListEntryId,
     pub created_date: OffsetDateTime,
+    pub last_modified: OffsetDateTime,
     pub revocation_list_id: RevocationListId,
     pub index: Option<u32>,
     pub credential_id: Option<CredentialId>,

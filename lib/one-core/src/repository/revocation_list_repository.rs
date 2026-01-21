@@ -37,10 +37,10 @@ pub trait RevocationListRepository: Send + Sync {
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
 
-    async fn update_credentials(
+    async fn update_formatted_list(
         &self,
         revocation_list_id: &RevocationListId,
-        credentials: Vec<u8>,
+        formatted_list: Vec<u8>,
     ) -> Result<(), DataLayerError>;
 
     async fn next_free_index(

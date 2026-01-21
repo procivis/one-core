@@ -177,7 +177,7 @@ impl RevocationListRepository for RevocationListProvider {
         }
     }
 
-    async fn update_credentials(
+    async fn update_formatted_list(
         &self,
         revocation_list_id: &RevocationListId,
         formatted_list: Vec<u8>,
@@ -283,6 +283,7 @@ impl RevocationListRepository for RevocationListProvider {
         revocation_list_entry::ActiveModel {
             id: Set(entry_id),
             created_date: Set(now),
+            last_modified: Set(now),
             revocation_list_id: Set(list_id),
             index: Set(index_on_status_list.map(|index| index as _)),
             credential_id: Set(credential_id),
@@ -322,6 +323,7 @@ impl RevocationListRepository for RevocationListProvider {
 
         let model = revocation_list_entry::ActiveModel {
             id: NotSet,
+            last_modified: Set(OffsetDateTime::now_utc()),
             status,
             ..Default::default()
         };
@@ -431,6 +433,8 @@ impl RevocationListProvider {
                 }?;
                 Ok(RevocationListEntry {
                     id: entry.id,
+                    created_date: entry.created_date,
+                    last_modified: entry.last_modified,
                     entity_info,
                     index: entry.index.map(|index| index as _),
                     status: entry.status.into(),
