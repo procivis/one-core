@@ -196,6 +196,7 @@ async fn check_ca_certs(
                     integrity_check: true,
                     require_root_termination: true,
                     required_leaf_cert_key_usage: Default::default(),
+                    leaf_validations: Default::default(),
                 },
                 CertSelection::Leaf,
             )

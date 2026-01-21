@@ -287,7 +287,7 @@ impl Identifier {
 
                 Ok(SelectedKey::Did { did, key })
             }
-            IdentifierType::Certificate => {
+            IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
                 self.throw_on_did_id(&selection)?;
                 let certs = self
                     .certificates

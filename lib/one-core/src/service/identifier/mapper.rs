@@ -15,6 +15,7 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
         let organisation_id = value.organisation.map(|org| org.id);
 
         let mut certificates = None;
+        let mut certificate_authorities = None;
         match value.r#type {
             IdentifierType::Did => {
                 if value.did.is_none() {
@@ -32,12 +33,29 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
             }
             IdentifierType::Certificate => {
                 let mut certs = vec![];
-                for certificate in value.certificates.ok_or(ServiceError::MappingError(
-                    "Certificates required for identifier type Certificate".to_string(),
-                ))? {
+                for certificate in value
+                    .certificates
+                    .ok_or(ServiceError::MappingError(format!(
+                        "Certificates required for identifier type {}",
+                        value.r#type
+                    )))?
+                {
                     certs.push(certificate.try_into()?);
                 }
                 certificates = Some(certs);
+            }
+            IdentifierType::CertificateAuthority => {
+                let mut certs = vec![];
+                for certificate in value
+                    .certificates
+                    .ok_or(ServiceError::MappingError(format!(
+                        "Certificates required for identifier type {}",
+                        value.r#type
+                    )))?
+                {
+                    certs.push(certificate.try_into()?);
+                }
+                certificate_authorities = Some(certs);
             }
         }
 
@@ -59,6 +77,7 @@ impl TryFrom<Identifier> for GetIdentifierResponseDTO {
                     ServiceError::MappingError(format!("Failed to convert key: {err}"))
                 })?,
             certificates,
+            certificate_authorities,
         })
     }
 }

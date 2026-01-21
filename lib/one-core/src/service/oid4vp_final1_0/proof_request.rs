@@ -128,6 +128,12 @@ pub(crate) fn select_key_agreement_key_from_proof(
                     .map(|key| &key.key),
             }
         }
+        IdentifierType::CertificateAuthority => {
+            return Err(VerificationProtocolError::Failed(format!(
+                "Invalid verifier identifier type {}",
+                verifier_identifier.r#type
+            )));
+        }
     };
 
     // If no key is found, we return None, the verifier will only support the direct_post response_mode

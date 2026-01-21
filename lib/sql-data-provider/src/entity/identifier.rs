@@ -83,6 +83,8 @@ pub enum IdentifierType {
     Key,
     #[sea_orm(string_value = "CERTIFICATE")]
     Certificate,
+    #[sea_orm(string_value = "CA")]
+    CertificateAuthority,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into)]

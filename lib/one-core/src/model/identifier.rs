@@ -42,7 +42,9 @@ impl Identifier {
                 .map(|did| did.did.as_str())
                 .map(Url::parse)
                 .and_then(Result::ok),
-            IdentifierType::Key | IdentifierType::Certificate => None,
+            IdentifierType::Key
+            | IdentifierType::Certificate
+            | IdentifierType::CertificateAuthority => None,
         }
     }
 }
@@ -62,6 +64,7 @@ pub enum IdentifierType {
     Key,
     Did,
     Certificate,
+    CertificateAuthority,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]

@@ -737,6 +737,11 @@ pub enum ErrorCode {
 
     #[strum(message = "Incompatible referenced provider")]
     BR_0328,
+
+    #[strum(
+        message = "Chain or self-signed must be specified when creating Certificate Authority identifier"
+    )]
+    BR_0331,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

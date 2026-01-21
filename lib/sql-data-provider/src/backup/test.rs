@@ -468,6 +468,25 @@ async fn add_identifier_with_type(
             .await;
             exportable_identifier
         }
+        IdentifierType::CertificateAuthority => {
+            let exportable_identifier = insert_identifier_to_database(
+                db,
+                organisation_id,
+                deleted,
+                None,
+                None,
+                IdentifierType::CertificateAuthority,
+            )
+            .await;
+            insert_certificate_to_database(
+                db,
+                exportable_identifier,
+                Some(organisation_id),
+                Some(key_id.into()),
+            )
+            .await;
+            exportable_identifier
+        }
         IdentifierType::Key => {
             insert_identifier_to_database(
                 db,

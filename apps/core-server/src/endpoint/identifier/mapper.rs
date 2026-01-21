@@ -4,9 +4,13 @@ use one_core::model::list_filter::{
     ValueComparison,
 };
 use one_core::service::error::ServiceError;
+use one_core::service::key::dto::{KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile};
 use one_dto_mapper::convert_inner;
 
-use super::dto::{ExactIdentifierFilterColumnRestEnum, IdentifierFilterQueryParamsRestDTO};
+use super::dto::{
+    CreateCaCSRRequestRestDTO, ExactIdentifierFilterColumnRestEnum,
+    IdentifierFilterQueryParamsRestDTO,
+};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 
 impl TryFrom<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<IdentifierFilterValue> {
@@ -93,5 +97,14 @@ impl TryFrom<IdentifierFilterQueryParamsRestDTO> for ListFilterCondition<Identif
             & created_date_before
             & last_modified_after
             & last_modified_before)
+    }
+}
+
+impl From<CreateCaCSRRequestRestDTO> for KeyGenerateCSRRequestDTO {
+    fn from(value: CreateCaCSRRequestRestDTO) -> Self {
+        Self {
+            profile: KeyGenerateCSRRequestProfile::Ca,
+            subject: value.subject.into(),
+        }
     }
 }

@@ -156,6 +156,16 @@ impl IdentifierCreator for IdentifierCreatorProto {
                             self.create_local_key_identifier(name, key, organisation)
                                 .await?
                         }
+                        CreateLocalIdentifierRequest::CertificateAuthority(
+                            certificate_authorities,
+                        ) => {
+                            self.create_local_certificate_authority_identifier(
+                                name,
+                                certificate_authorities,
+                                organisation,
+                            )
+                            .await?
+                        }
                     })
                 }
                 .boxed(),

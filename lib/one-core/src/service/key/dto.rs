@@ -48,20 +48,20 @@ pub struct KeyListItemResponseDTO {
 pub type GetKeyListResponseDTO = GetListResponse<KeyListItemResponseDTO>;
 pub type GetKeyQueryDTO = GetListQueryParams<SortableKeyColumn>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct KeyGenerateCSRRequestDTO {
     pub profile: KeyGenerateCSRRequestProfile,
     pub subject: KeyGenerateCSRRequestSubjectDTO,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum KeyGenerateCSRRequestProfile {
     Generic,
     Mdl,
     Ca,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct KeyGenerateCSRRequestSubjectDTO {
     pub country_name: Option<String>,
     pub common_name: Option<String>,

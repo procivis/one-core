@@ -157,6 +157,12 @@ impl JWTFormatter {
 
                 (None, Some(JwtPublicKeyInfo::Jwk(key)))
             }
+            IdentifierType::CertificateAuthority => {
+                return Err(FormatterError::Failed(format!(
+                    "Invalid issuer identifier type {}",
+                    issuer_identifier.r#type
+                )));
+            }
         };
 
         let content = TokenStatusListContent {

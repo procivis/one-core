@@ -108,9 +108,10 @@ impl IdentifierService {
             request.key_id,
             request.key,
             request.certificates,
+            request.certificate_authorities,
         ) {
             // IdentifierType::Did
-            (Some(did), None, None, None) => {
+            (Some(did), None, None, None, None) => {
                 validate_identifier_type(
                     &core_config::IdentifierType::Did,
                     &self.config.identifier,
@@ -128,7 +129,7 @@ impl IdentifierService {
             }
             // IdentifierType::Key
             // Deprecated. Use the `key` field instead.
-            (None, Some(key_id), None, None) => {
+            (None, Some(key_id), None, None, None) => {
                 warn!("Creating identifier with key_id is deprecated. Use key instead.");
                 validate_identifier_type(
                     &core_config::IdentifierType::Key,
@@ -153,7 +154,7 @@ impl IdentifierService {
                     )
                     .await?
             }
-            (None, None, Some(CreateIdentifierKeyRequestDTO { key_id }), None) => {
+            (None, None, Some(CreateIdentifierKeyRequestDTO { key_id }), None, None) => {
                 validate_identifier_type(
                     &core_config::IdentifierType::Key,
                     &self.config.identifier,
@@ -178,7 +179,7 @@ impl IdentifierService {
                     .await?
             }
             // IdentifierType::Certificate
-            (None, None, None, Some(certificate_requests)) => {
+            (None, None, None, Some(certificate_requests), None) => {
                 validate_identifier_type(
                     &core_config::IdentifierType::Certificate,
                     &self.config.identifier,
@@ -188,6 +189,21 @@ impl IdentifierService {
                     .create_local_identifier(
                         request.name,
                         CreateLocalIdentifierRequest::Certificate(certificate_requests),
+                        organisation,
+                    )
+                    .await?
+            }
+            // IdentifierType::Certificate authority
+            (None, None, None, None, Some(ca_requests)) => {
+                validate_identifier_type(
+                    &core_config::IdentifierType::CertificateAuthority,
+                    &self.config.identifier,
+                )?;
+
+                self.identifier_creator
+                    .create_local_identifier(
+                        request.name,
+                        CreateLocalIdentifierRequest::CertificateAuthority(ca_requests),
                         organisation,
                     )
                     .await?

@@ -382,6 +382,7 @@ impl TrustEntityService {
                             validity_check: Some(CrlMode::X509),
                             required_leaf_cert_key_usage: Default::default(),
                             leaf_only_extensions: Default::default(),
+                            leaf_validations: Default::default(),
                         },
                     )
                     .await
@@ -877,7 +878,7 @@ impl TrustEntityService {
                 trust_anchor.clone(),
                 None,
             )),
-            IdentifierType::Certificate => {
+            IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
                 if let Some(certificate) = &certificate {
                     self.validate_ca(&trust_entity, certificate)
                         .await
@@ -965,7 +966,7 @@ fn prepare_batch(
                 None,
             ))
         }
-        IdentifierType::Certificate => {
+        IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
             let Some(certificate_id) = identifier_request.certificate_id else {
                 return Err(BusinessLogicError::CertificateIdNotSpecified)?;
             };
@@ -973,8 +974,8 @@ fn prepare_batch(
                 .certificates
                 .as_ref()
                 .ok_or(MappingError(format!(
-                    "missing certificates on certificate identifier {}",
-                    identifier.id
+                    "missing certificates on {} identifier {}",
+                    identifier.r#type, identifier.id
                 )))?;
             let certificate = certificates
                 .iter()

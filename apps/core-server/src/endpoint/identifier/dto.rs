@@ -4,8 +4,10 @@ use one_core::model::identifier::{IdentifierState, IdentifierType, SortableIdent
 use one_core::service::certificate::dto::CreateCertificateRequestDTO;
 use one_core::service::error::ServiceError;
 use one_core::service::identifier::dto::{
-    CreateIdentifierDidRequestDTO, CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
-    GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
+    CreateCertificateAuthorityRequestDTO, CreateIdentifierDidRequestDTO,
+    CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO,
+    CreateSelfSignedCertificateAuthorityRequestDTO, GetIdentifierListItemResponseDTO,
+    GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
 use one_core::service::trust_entity::dto::{
     ResolveTrustEntitiesRequestDTO, ResolveTrustEntitiesResponseDTO, ResolveTrustEntityRequestDTO,
@@ -27,7 +29,7 @@ use crate::dto::common::{Boolean, ListQueryParamsRest};
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::endpoint::certificate::dto::CertificateResponseRestDTO;
 use crate::endpoint::did::dto::{CreateDidRequestKeysRestDTO, DidResponseRestDTO, KeyRoleRestEnum};
-use crate::endpoint::key::dto::KeyResponseRestDTO;
+use crate::endpoint::key::dto::{KeyGenerateCSRRequestSubjectRestDTO, KeyResponseRestDTO};
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::mapper::MapperError;
 use crate::serialize::front_time;
@@ -42,6 +44,7 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     #[try_into(with_fn = convert_inner, infallible)]
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
     #[try_into(infallible)]
+    #[schema(deprecated = true)]
     /// Deprecated. Use the `key` field instead.
     #[schema(deprecated = true)]
     pub key_id: Option<KeyId>,
@@ -51,6 +54,8 @@ pub(crate) struct CreateIdentifierRequestRestDTO {
     pub certificates: Option<Vec<CreateCertificateRequestRestDTO>>,
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
+    #[try_into(with_fn = convert_inner_of_inner, infallible)]
+    pub certificate_authorities: Option<Vec<CreateCertificateAuthorityRequestRestDTO>>,
 }
 
 #[options_not_nullable]
@@ -83,6 +88,36 @@ pub(crate) struct CreateCertificateRequestRestDTO {
 #[into(CreateIdentifierKeyRequestDTO)]
 pub(crate) struct CreateIdentifierKeyRequestRestDTO {
     pub key_id: KeyId,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, Into)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CreateCertificateAuthorityRequestDTO)]
+pub(crate) struct CreateCertificateAuthorityRequestRestDTO {
+    pub key_id: KeyId,
+    pub name: Option<String>,
+    pub chain: Option<String>,
+    #[into(with_fn = convert_inner)]
+    pub self_signed: Option<CreateSelfSignedCertificateAuthorityRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Debug, Deserialize, ToSchema, Into, ModifySchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+#[into(CreateSelfSignedCertificateAuthorityRequestDTO)]
+pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
+    pub content: CreateCaCSRRequestRestDTO,
+    #[modify_schema(field = signer)]
+    pub signer: String,
+    pub validity_start: Option<OffsetDateTime>,
+    pub validity_end: Option<OffsetDateTime>,
+}
+
+#[derive(Clone, Debug, Deserialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct CreateCaCSRRequestRestDTO {
+    pub subject: KeyGenerateCSRRequestSubjectRestDTO,
 }
 
 #[options_not_nullable]
@@ -129,6 +164,8 @@ pub(crate) struct GetIdentifierResponseRestDTO {
     pub key: Option<KeyResponseRestDTO>,
     #[try_from(with_fn = "try_convert_inner_of_inner")]
     pub certificates: Option<Vec<CertificateResponseRestDTO>>,
+    #[try_from(with_fn = "try_convert_inner_of_inner")]
+    pub certificate_authorities: Option<Vec<CertificateResponseRestDTO>>,
     #[try_from(infallible, with_fn = "convert_inner")]
     pub organisation_id: Option<OrganisationId>,
     #[try_from(infallible)]
@@ -156,6 +193,8 @@ pub(crate) enum IdentifierTypeRest {
     Did,
     Key,
     Certificate,
+    #[serde(rename = "CA")]
+    CertificateAuthority,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, ToSchema, From, Into)]

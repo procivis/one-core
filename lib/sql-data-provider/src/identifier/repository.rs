@@ -70,7 +70,8 @@ impl IdentifierProvider {
             );
         }
 
-        if model.r#type == identifier::IdentifierType::Certificate
+        if (model.r#type == identifier::IdentifierType::Certificate
+            || model.r#type == identifier::IdentifierType::CertificateAuthority)
             && let Some(certificate_relations) = &relations.certificates
         {
             let certificate_ids: Vec<CertificateId> = certificate::Entity::find()

@@ -12,8 +12,9 @@ use crate::model::did::Did;
 use crate::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
+use crate::proto::certificate_validator::x509_extension::validate_ca;
 use crate::proto::certificate_validator::{
-    CertificateValidationOptions, EnforceKeyUsage, ParsedCertificate,
+    CertificateValidationOptions, CrlMode, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::provider::key_algorithm::key::KeyHandle;
 use crate::repository::error::DataLayerError;
@@ -25,6 +26,7 @@ use crate::service::did::validator::validate_request_amount_of_keys;
 use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 
 impl IdentifierCreatorProto {
     pub(super) async fn create_local_did_identifier(
@@ -131,6 +133,57 @@ impl IdentifierCreatorProto {
             name,
             organisation: Some(organisation),
             r#type: IdentifierType::Certificate,
+            is_remote: false,
+            state: IdentifierState::Active,
+            deleted_at: None,
+            did: None,
+            key: None,
+            certificates: None,
+        };
+        self.identifier_repository
+            .create(identifier.to_owned())
+            .await
+            .map_err(map_already_exists_error)?;
+
+        for certificate in certificates {
+            self.certificate_repository
+                .create(certificate)
+                .await
+                .map_err(|err| match err {
+                    DataLayerError::AlreadyExists => {
+                        ServiceError::BusinessLogic(BusinessLogicError::CertificateAlreadyExists)
+                    }
+                    e => e.into(),
+                })?;
+        }
+
+        Ok(identifier)
+    }
+
+    pub(super) async fn create_local_certificate_authority_identifier(
+        &self,
+        name: String,
+        requests: Vec<CreateCertificateAuthorityRequestDTO>,
+        organisation: Organisation,
+    ) -> Result<Identifier, ServiceError> {
+        let id = Uuid::new_v4().into();
+
+        let mut certificates = vec![];
+        for request in requests {
+            certificates.push(
+                self.validate_and_prepare_certificate_authority(id, organisation.id, request)
+                    .await?,
+            );
+        }
+
+        let now = OffsetDateTime::now_utc();
+        let identifier = Identifier {
+            id,
+            created_date: now,
+            last_modified: now,
+            name,
+            organisation: Some(organisation),
+            r#type: IdentifierType::CertificateAuthority,
             is_remote: false,
             state: IdentifierState::Active,
             deleted_at: None,
@@ -325,6 +378,70 @@ impl IdentifierCreatorProto {
             expiry_date: attributes.not_after,
             name,
             chain: request.chain,
+            fingerprint: attributes.fingerprint,
+            state: CertificateState::Active,
+            key: Some(key),
+        })
+    }
+
+    async fn validate_and_prepare_certificate_authority(
+        &self,
+        identifier_id: IdentifierId,
+        organisation_id: OrganisationId,
+        request: CreateCertificateAuthorityRequestDTO,
+    ) -> Result<Certificate, ServiceError> {
+        let key = self
+            .key_repository
+            .get_key(&request.key_id, &Default::default())
+            .await?
+            .ok_or(EntityNotFoundError::Key(request.key_id))?;
+
+        let chain = match (request.chain, request.self_signed) {
+            (Some(chain), None) => chain,
+            (None, Some(_self_signed)) => {
+                todo!("generate self-signed certificate chain");
+            }
+            _ => return Err(ValidationError::InvalidCertificateAuthorityIdentifierInput.into()),
+        };
+
+        let ParsedCertificate {
+            attributes,
+            subject_common_name,
+            public_key,
+            ..
+        } = self
+            .certificate_validator
+            .parse_pem_chain(
+                &chain,
+                CertificateValidationOptions {
+                    require_root_termination: true,
+                    integrity_check: true,
+                    validity_check: Some(CrlMode::X509),
+                    required_leaf_cert_key_usage: Default::default(),
+                    leaf_only_extensions: Default::default(),
+                    leaf_validations: vec![validate_ca],
+                },
+            )
+            .await?;
+
+        validate_subject_public_key(&public_key, &key)?;
+
+        let name = match request.name {
+            Some(name) => name,
+            None => subject_common_name.ok_or_else(|| {
+                ValidationError::CertificateParsingFailed("missing common-name".to_string())
+            })?,
+        };
+
+        Ok(Certificate {
+            id: Uuid::new_v4().into(),
+            identifier_id,
+            organisation_id: Some(organisation_id),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            expiry_date: attributes.not_after,
+            name,
+            chain,
             fingerprint: attributes.fingerprint,
             state: CertificateState::Active,
             key: Some(key),

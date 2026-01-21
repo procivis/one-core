@@ -49,10 +49,11 @@ pub(crate) async fn prepare_bearer_token(
                 Some(did.did.to_string()),
             )
         }
-        IdentifierType::Certificate => {
-            return Err(ServiceError::MappingError(
-                "Invalid holder identifier".to_string(),
-            ));
+        IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
+            return Err(ServiceError::MappingError(format!(
+                "Invalid holder identifier type {}",
+                identifier.r#type
+            )));
         }
     };
 

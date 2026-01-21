@@ -141,10 +141,11 @@ impl RevocationListService {
                     ));
                 }
             }
-            IdentifierType::Certificate => {
-                return Err(ServiceError::MappingError(
-                    "Invalid holder identifier".to_string(),
-                ));
+            IdentifierType::Certificate | IdentifierType::CertificateAuthority => {
+                return Err(ServiceError::MappingError(format!(
+                    "Invalid holder identifier type {}",
+                    holder_identifier.r#type
+                )));
             }
         };
 

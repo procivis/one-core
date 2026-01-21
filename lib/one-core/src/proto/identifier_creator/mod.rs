@@ -9,6 +9,7 @@ use crate::provider::credential_formatter::model::IdentifierDetails;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::error::ServiceError;
+use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 
 pub(crate) mod creator;
 mod local;
@@ -39,6 +40,7 @@ pub(crate) enum CreateLocalIdentifierRequest {
     Did(CreateDidRequestDTO),
     Key(Key),
     Certificate(Vec<CreateCertificateRequestDTO>),
+    CertificateAuthority(Vec<CreateCertificateAuthorityRequestDTO>),
 }
 
 #[cfg_attr(test, mockall::automock)]

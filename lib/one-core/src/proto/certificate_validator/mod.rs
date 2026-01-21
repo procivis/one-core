@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use time::Duration;
+use x509_parser::certificate::X509Certificate;
 
 use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
 use crate::proto::clock::{Clock, DefaultClock};
@@ -17,11 +18,11 @@ use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
-use crate::service::error::ServiceError;
+use crate::service::error::{ServiceError, ValidationError};
 
 pub mod parse;
 mod revocation;
-mod x509_extension;
+pub(crate) mod x509_extension;
 
 #[cfg(test)]
 mod test;
@@ -74,7 +75,11 @@ pub enum CrlMode {
 
 pub enum EnforceKeyUsage {
     DigitalSignature,
+    KeyCertSign,
+    CRLSign,
 }
+
+pub type LeafValidation = fn(&X509Certificate) -> Result<(), ValidationError>;
 
 pub struct CertificateValidationOptions {
     /// will fail if the chain is not complete
@@ -88,6 +93,7 @@ pub struct CertificateValidationOptions {
     /// OID of extensions that cannot be present outside of the leaf certificate.
     /// This is specifically used in the Android App integrity check.
     pub leaf_only_extensions: Vec<String>,
+    pub leaf_validations: Vec<LeafValidation>,
 }
 
 impl CertificateValidationOptions {
@@ -99,6 +105,7 @@ impl CertificateValidationOptions {
             validity_check: None,
             required_leaf_cert_key_usage: Default::default(),
             leaf_only_extensions: Default::default(),
+            leaf_validations: Default::default(),
         }
     }
 
@@ -116,6 +123,7 @@ impl CertificateValidationOptions {
             validity_check: Some(CrlMode::X509),
             required_leaf_cert_key_usage: required_leaf_cert_key_usage.unwrap_or_default(),
             leaf_only_extensions: Default::default(),
+            leaf_validations: Default::default(),
         }
     }
 
@@ -129,6 +137,7 @@ impl CertificateValidationOptions {
             validity_check: Some(CrlMode::X509),
             required_leaf_cert_key_usage: required_leaf_cert_key_usage.unwrap_or_default(),
             leaf_only_extensions: Default::default(),
+            leaf_validations: Default::default(),
         }
     }
 }

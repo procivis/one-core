@@ -666,10 +666,11 @@ pub(crate) async fn format_authorization_request_client_id_scheme_x509<T: Serial
                 pem_chain_into_x5c(&verifier_certificate.chain)
                     .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
             }
-            IdentifierType::Did | IdentifierType::Key => {
-                return Err(VerificationProtocolError::Failed(
-                    "invalid verifier identifier type".to_string(),
-                ));
+            IdentifierType::Did | IdentifierType::Key | IdentifierType::CertificateAuthority => {
+                return Err(VerificationProtocolError::Failed(format!(
+                    "Invalid verifier identifier type {}",
+                    verifier_identifier.r#type
+                )));
             }
         };
 

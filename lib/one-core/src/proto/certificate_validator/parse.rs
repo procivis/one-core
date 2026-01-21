@@ -128,6 +128,7 @@ impl CertificateValidatorImpl {
                 if validation.validity_check.is_none()
                     && !validation.integrity_check
                     && validation.leaf_only_extensions.is_empty()
+                    && validation.leaf_validations.is_empty()
                 {
                     // no more checks needed, return the parsed certificate
                     return Ok(current);
@@ -163,6 +164,13 @@ impl CertificateValidatorImpl {
                     "Found leaf only extension in CA cert".to_string(),
                 )
                 .into());
+            }
+
+            if !validation.leaf_validations.is_empty() {
+                validation
+                    .leaf_validations
+                    .iter()
+                    .try_for_each(|v| v(current))?;
             }
         }
 

@@ -15,8 +15,9 @@ use one_core::service::certificate::dto::{
 };
 use one_core::service::did::dto::{DidResponseDTO, DidResponseKeysDTO};
 use one_core::service::identifier::dto::{
-    CreateIdentifierKeyRequestDTO, CreateIdentifierRequestDTO, GetIdentifierListItemResponseDTO,
-    GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
+    CreateCertificateAuthorityRequestDTO, CreateIdentifierKeyRequestDTO,
+    CreateIdentifierRequestDTO, CreateSelfSignedCertificateAuthorityRequestDTO,
+    GetIdentifierListItemResponseDTO, GetIdentifierListResponseDTO, GetIdentifierResponseDTO,
 };
 use one_core::service::key::dto::{KeyListItemResponseDTO, KeyResponseDTO};
 use one_dto_mapper::{
@@ -27,9 +28,10 @@ use one_dto_mapper::{
 use super::common::SortDirection;
 use super::did::{DidTypeBindingEnum, KeyRoleBindingEnum};
 use crate::OneCoreBinding;
+use crate::binding::key::KeyGenerateCSRRequestSubjectBindingDTO;
 use crate::binding::mapper::deserialize_timestamp;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt};
+use crate::utils::{TimestampFormat, from_id_opt, into_id, into_id_opt, into_timestamp_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -399,6 +401,7 @@ pub enum IdentifierTypeBindingEnum {
     Key,
     Did,
     Certificate,
+    CertificateAuthority,
 }
 
 #[derive(Clone, Debug, Into, From, uniffi::Enum)]
@@ -425,6 +428,8 @@ pub struct CreateIdentifierRequestBindingDTO {
     pub did: Option<CreateIdentifierDidRequestBindingDTO>,
     #[try_into(with_fn = try_convert_inner_of_inner)]
     pub certificates: Option<Vec<CreateCertificateRequestBindingDTO>>,
+    #[try_into(with_fn = try_convert_inner_of_inner)]
+    pub certificate_authorities: Option<Vec<CreateCertificateAuthorityRequestBindingDTO>>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -451,4 +456,35 @@ pub struct CreateCertificateRequestBindingDTO {
     pub chain: String,
     #[try_into(with_fn_ref = "into_id")]
     pub key_id: String,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = CreateCertificateAuthorityRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct CreateCertificateAuthorityRequestBindingDTO {
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub name: Option<String>,
+    #[try_into(with_fn_ref = "into_id")]
+    pub key_id: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub chain: Option<String>,
+    #[try_into(with_fn = try_convert_inner)]
+    pub self_signed: Option<CreateSelfSignedCertificateAuthorityRequestBindingDTO>,
+}
+
+#[derive(Clone, Debug, TryInto, uniffi::Record)]
+#[try_into(T = CreateSelfSignedCertificateAuthorityRequestDTO, Error = ErrorResponseBindingDTO)]
+pub struct CreateSelfSignedCertificateAuthorityRequestBindingDTO {
+    #[try_into(infallible)]
+    pub content: CreateCaCSRRequestBindingDTO,
+    #[try_into(infallible)]
+    pub signer: String,
+    #[try_into(with_fn = "into_timestamp_opt")]
+    pub validity_start: Option<String>,
+    #[try_into(with_fn = "into_timestamp_opt")]
+    pub validity_end: Option<String>,
+}
+
+#[derive(Clone, Debug, uniffi::Record)]
+pub struct CreateCaCSRRequestBindingDTO {
+    pub subject: KeyGenerateCSRRequestSubjectBindingDTO,
 }

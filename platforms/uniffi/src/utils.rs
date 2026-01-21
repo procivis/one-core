@@ -41,3 +41,12 @@ pub(crate) fn into_id_opt<T: From<Uuid>>(input: Option<String>) -> Result<Option
 pub(crate) fn into_timestamp(input: &str) -> Result<OffsetDateTime, ServiceError> {
     OffsetDateTime::parse(input, &Rfc3339).map_err(|e| ServiceError::MappingError(e.to_string()))
 }
+
+pub(crate) fn into_timestamp_opt(
+    input: Option<impl AsRef<str>>,
+) -> Result<Option<OffsetDateTime>, ServiceError> {
+    let Some(input) = input else {
+        return Ok(None);
+    };
+    into_timestamp(input.as_ref()).map(Some)
+}

@@ -81,6 +81,10 @@ identifier:
     display: "identifier.key"
     enabled: true
     order: 2
+  CA:
+    display: "identifier.certificate_authority"
+    enabled: true
+    order: 3
 issuanceProtocol:
   OPENID4VCI_DRAFT13:
     display: "exchange.openid4vciDraft13"

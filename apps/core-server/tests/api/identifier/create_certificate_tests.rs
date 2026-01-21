@@ -1,7 +1,8 @@
 use rcgen::{
-    CertificateParams, CertificateRevocationListParams, CrlDistributionPoint, CustomExtension,
-    KeyUsagePurpose, RevokedCertParams, SerialNumber,
+    BasicConstraints, CertificateParams, CertificateRevocationListParams, CrlDistributionPoint,
+    CustomExtension, IsCa, KeyUsagePurpose, RevokedCertParams, SerialNumber,
 };
+use serde_json::json;
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use validator::ValidateLength;
@@ -10,6 +11,178 @@ use crate::fixtures::certificate::{create_ca_cert, create_cert, create_crl, ecds
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::ecdsa_testing_params;
 use crate::utils::field_match::FieldHelpers;
+
+#[tokio::test]
+async fn test_create_certificate_authority_identifier_no_crl() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+
+    let mut cert_params = CertificateParams::default();
+    cert_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+    cert_params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+
+    let cert = create_cert(&mut cert_params, ecdsa::Key, &ca_issuer, &ca_params);
+
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_authority_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    // then
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let identifier_id = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let result = context.api.identifiers.get(&identifier_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+
+    assert_eq!(resp["name"].as_str().unwrap(), "test-identifier");
+    assert_eq!(resp["type"].as_str().unwrap(), "CA");
+    assert_eq!(resp["state"].as_str().unwrap(), "ACTIVE");
+    assert!(!resp["isRemote"].as_bool().unwrap());
+    assert_eq!(
+        resp["organisationId"].as_str().unwrap(),
+        organisation.id.to_string()
+    );
+    assert_eq!(
+        resp["certificateAuthorities"].as_array().length().unwrap(),
+        1
+    );
+
+    let certificate = &resp["certificateAuthorities"][0];
+    assert_eq!(certificate["name"].as_str().unwrap(), "test cert");
+    assert_eq!(certificate["state"].as_str().unwrap(), "ACTIVE");
+    assert_eq!(
+        certificate["x509Attributes"]["issuer"].as_str().unwrap(),
+        "CN=CA cert"
+    );
+    assert_eq!(
+        certificate["x509Attributes"]["subject"].as_str().unwrap(),
+        "CN=test cert"
+    );
+    assert!(
+        certificate["x509Attributes"]["extensions"]
+            .as_array()
+            .unwrap()
+            .contains(&json!({
+                "critical": true,
+                "oid": "2.5.29.19",
+                "value": "Certificate Authority: true",
+            }))
+    );
+
+    let certificate_id = certificate["id"].as_str().unwrap().parse().unwrap();
+    let result = context.api.certificates.get(&certificate_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+    resp["id"].assert_eq(&certificate_id);
+    resp["organisationId"].assert_eq(&organisation.id);
+}
+
+#[tokio::test]
+async fn test_create_certificate_authority_incorrect_key_usage() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+
+    let mut cert_params = CertificateParams::default();
+    cert_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+    cert_params.key_usages = vec![KeyUsagePurpose::DigitalSignature];
+
+    let cert = create_cert(&mut cert_params, ecdsa::Key, &ca_issuer, &ca_params);
+
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_authority_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    // then
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0249");
+}
+
+#[tokio::test]
+async fn test_create_certificate_authority_missing_ca_extension() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    let mut ca_params = CertificateParams::default();
+    let (ca_cert, ca_issuer) = create_ca_cert(&mut ca_params, &eddsa::Key);
+
+    let mut cert_params = CertificateParams::default();
+    cert_params.is_ca = IsCa::NoCa;
+    cert_params.key_usages = vec![KeyUsagePurpose::KeyCertSign, KeyUsagePurpose::CrlSign];
+
+    let cert = create_cert(&mut cert_params, ecdsa::Key, &ca_issuer, &ca_params);
+
+    let chain = format!("{}{}", cert.pem(), ca_cert.pem());
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_authority_identifier("test-identifier", key.id, organisation.id, &chain)
+        .await;
+
+    // then
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0244");
+}
+
+#[tokio::test]
+async fn test_create_certificate_authority_missing_chain_and_self_signed_fields() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .try_create_certificate_authority_identifier("test-identifier", key.id, organisation.id)
+        .await;
+
+    // then
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0331");
+}
 
 #[tokio::test]
 async fn test_create_certificate_identifier_no_crl() {

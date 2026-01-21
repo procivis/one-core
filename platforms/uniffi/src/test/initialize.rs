@@ -54,6 +54,7 @@ async fn test_uninitialize_core_dont_delete_data() {
                 params: Default::default(),
             }),
             certificates: None,
+            certificate_authorities: None,
         })
         .await
         .unwrap();

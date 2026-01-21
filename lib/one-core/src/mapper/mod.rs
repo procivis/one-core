@@ -255,6 +255,11 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
 
             &encryption_key.key
         }
+        IdentifierType::CertificateAuthority => {
+            return Err(ServiceError::MappingError(
+                "Invalid verifier identifier type CertificateAuthority".to_string(),
+            ));
+        }
     }
     .to_owned();
 

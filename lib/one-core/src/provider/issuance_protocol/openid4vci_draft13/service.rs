@@ -275,6 +275,12 @@ pub(crate) fn create_credential_offer(
                 .as_ref()
                 .map(|issuer_certificate| issuer_certificate.chain.clone()),
         ),
+        IdentifierType::CertificateAuthority => {
+            return Err(OpenIDIssuanceError::ValidationError(format!(
+                "Invalid issuer identifier type {}",
+                issuer_identifier.r#type
+            )));
+        }
     };
     Ok(OpenID4VCICredentialOfferDTO {
         credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),

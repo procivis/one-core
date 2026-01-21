@@ -82,17 +82,21 @@ pub(crate) fn validate_ca_signature(
     certificate: &X509Certificate,
     parent_ca_certificate: &X509Certificate,
 ) -> Result<(), ValidationError> {
-    if !parent_ca_certificate.is_ca() {
+    validate_ca(parent_ca_certificate)?;
+    certificate
+        .verify_signature(Some(parent_ca_certificate.public_key()))
+        .map_err(|_| ValidationError::CertificateSignatureInvalid)
+}
+
+/// Validates certificate has BasicConstraints extension with `ca` set to true and KeyUsage extension with `keyCertSign` set.
+pub(crate) fn validate_ca(ca_certificate: &X509Certificate) -> Result<(), ValidationError> {
+    if !ca_certificate.is_ca() {
         return Err(ValidationError::InvalidCaCertificateChain(
             "Certificate chain containing non-CA parents".to_string(),
         ));
     };
 
-    validate_ca_key_cert_sign_key_usage(parent_ca_certificate)?;
-
-    certificate
-        .verify_signature(Some(parent_ca_certificate.public_key()))
-        .map_err(|_| ValidationError::CertificateSignatureInvalid)
+    validate_ca_key_cert_sign_key_usage(ca_certificate)
 }
 
 pub(crate) fn validate_required_cert_key_usage(
@@ -113,6 +117,20 @@ pub(crate) fn validate_required_cert_key_usage(
                     return Err(ValidationError::KeyUsageViolation(
                         "End-entity certificate_validator missing DigitalSignature usage"
                             .to_string(),
+                    ));
+                }
+            }
+            EnforceKeyUsage::KeyCertSign => {
+                if !key_usage.value.key_cert_sign() {
+                    return Err(ValidationError::KeyUsageViolation(
+                        "End-entity certificate_validator missing KeyCertSign usage".to_string(),
+                    ));
+                }
+            }
+            EnforceKeyUsage::CRLSign => {
+                if !key_usage.value.crl_sign() {
+                    return Err(ValidationError::KeyUsageViolation(
+                        "End-entity certificate_validator missing CRLSign usage".to_string(),
                     ));
                 }
             }

@@ -46,6 +46,7 @@ async fn test_create_identifier_session_org_mismatch() {
             key: None,
             key_id: None,
             certificates: None,
+            certificate_authorities: None,
             organisation_id: Uuid::new_v4().into(),
         })
         .await;

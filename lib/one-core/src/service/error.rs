@@ -641,8 +641,15 @@ pub enum ValidationError {
     #[error("Missing key with role `{0}`")]
     NoKeyWithRole(KeyRole),
 
-    #[error("DID, Key or Certificate must be specified when creating identifier")]
+    #[error(
+        "DID, Key, Certificate or Certificate Authority must be specified when creating identifier"
+    )]
     InvalidIdentifierInput,
+
+    #[error(
+        "Chain or self-signed must be specified when creating Certificate Authority identifier"
+    )]
+    InvalidCertificateAuthorityIdentifierInput,
 
     #[error("Certificate signature invalid")]
     CertificateSignatureInvalid,
@@ -1006,6 +1013,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
             Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
             Self::InvalidIdentifierInput => ErrorCode::BR_0206,
+            Self::InvalidCertificateAuthorityIdentifierInput => ErrorCode::BR_0331,
             Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
             Self::CertificateRevoked => ErrorCode::BR_0212,
             Self::CertificateExpired | Self::CertificateNotYetValid => ErrorCode::BR_0213,

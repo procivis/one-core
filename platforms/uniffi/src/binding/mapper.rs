@@ -23,7 +23,9 @@ use one_core::service::history::dto::{HistoryMetadataResponse, HistoryResponseDT
 use one_core::service::identifier::dto::{
     CreateIdentifierDidRequestDTO, GetIdentifierListItemResponseDTO,
 };
-use one_core::service::key::dto::KeyRequestDTO;
+use one_core::service::key::dto::{
+    KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyRequestDTO,
+};
 use one_core::service::organisation::dto::{
     CreateOrganisationRequestDTO, UpsertOrganisationRequestDTO,
 };
@@ -55,7 +57,9 @@ use crate::binding::did::{DidRequestBindingDTO, DidRequestKeysBindingDTO};
 use crate::binding::history::{
     HistoryErrorMetadataBindingDTO, HistoryListItemBindingDTO, HistoryMetadataBinding,
 };
-use crate::binding::identifier::CreateIdentifierDidRequestBindingDTO;
+use crate::binding::identifier::{
+    CreateCaCSRRequestBindingDTO, CreateIdentifierDidRequestBindingDTO,
+};
 use crate::binding::interaction::{
     HandleInvitationResponseBindingEnum, InitiateIssuanceRequestBindingDTO,
 };
@@ -1051,6 +1055,15 @@ impl From<ApplicableCredentialOrFailureHintEnum> for ApplicableCredentialOrFailu
                     failure_hint: (*failure_hint).into(),
                 }
             }
+        }
+    }
+}
+
+impl From<CreateCaCSRRequestBindingDTO> for KeyGenerateCSRRequestDTO {
+    fn from(value: CreateCaCSRRequestBindingDTO) -> Self {
+        Self {
+            profile: KeyGenerateCSRRequestProfile::Ca,
+            subject: value.subject.into(),
         }
     }
 }

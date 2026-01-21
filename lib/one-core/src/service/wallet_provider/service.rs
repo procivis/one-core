@@ -990,6 +990,12 @@ impl WalletProviderService {
                 })?;
                 JwtPublicKeyInfo::X5c(x5c)
             }
+            IdentifierType::CertificateAuthority => {
+                return Err(ServiceError::MappingError(format!(
+                    "Invalid issuer identifier type {}",
+                    issuer_identifier.r#type
+                )));
+            }
         };
         Ok((public_key_info, auth_fn))
     }

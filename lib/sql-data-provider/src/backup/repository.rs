@@ -98,7 +98,10 @@ impl BackupProvider {
             )
             .and_where(
                 identifier::Column::Type
-                    .eq(identifier::IdentifierType::Certificate)
+                    .is_in([
+                        identifier::IdentifierType::Certificate,
+                        identifier::IdentifierType::CertificateAuthority,
+                    ])
                     .and(self.non_exportable_keys_filter()),
             )
             .to_owned()

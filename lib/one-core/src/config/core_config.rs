@@ -643,6 +643,9 @@ pub enum IdentifierType {
     #[serde(rename = "KEY")]
     #[strum(serialize = "KEY")]
     Key,
+    #[serde(rename = "CA")]
+    #[strum(serialize = "CA")]
+    CertificateAuthority,
 }
 
 #[skip_serializing_none]
