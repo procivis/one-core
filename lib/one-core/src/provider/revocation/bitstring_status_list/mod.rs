@@ -17,7 +17,7 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::certificate::Certificate;
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
-use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
@@ -48,6 +48,7 @@ use crate::provider::revocation::model::{
 use crate::provider::revocation::utils::status_purpose_to_revocation_state;
 use crate::repository::error::DataLayerError;
 use crate::repository::revocation_list_repository::RevocationListRepository;
+use crate::util::key_selection::KeyFilter;
 
 pub mod model;
 pub mod resolver;

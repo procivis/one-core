@@ -19,7 +19,7 @@ use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
-use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::Identifier;
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRevocationInfo,
@@ -43,6 +43,7 @@ use crate::provider::revocation::model::{
     RevocationMethodCapabilities, RevocationState, VerifierCredentialData,
 };
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
+use crate::util::key_selection::KeyFilter;
 
 pub mod dto;
 pub(crate) mod holder_fetch;
@@ -441,10 +442,7 @@ pub(crate) async fn create_lvvc_with_status(
 
     let related_did_key = issuer_did
         .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
-        .map_err(|e| RevocationError::MappingError(e.to_string()))?
-        .ok_or_else(|| {
-            RevocationError::MappingError("LVVC issuance is missing related key".to_string())
-        })?;
+        .map_err(|e| RevocationError::MappingError(e.to_string()))?;
 
     let issuer_jwk_key_id = issuer_did.verification_method_id(related_did_key);
 

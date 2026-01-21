@@ -4,6 +4,7 @@ pub mod openid4vp;
 pub mod rdf_canonization;
 pub mod vcdm_jsonld_contexts;
 
+pub mod key_selection;
 pub mod logging;
 #[cfg(any(test, feature = "mock"))]
 pub mod test_mdoc;

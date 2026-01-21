@@ -98,6 +98,7 @@ use crate::service::error::{
 use crate::service::test_utilities::{
     dummy_identifier, dummy_organisation, generic_config, get_dummy_date,
 };
+use crate::util::key_selection::KeySelectionError;
 
 #[derive(Default)]
 struct Repositories {
@@ -3173,7 +3174,7 @@ async fn test_create_proof_failed_no_key_with_authentication_method_role() {
     let result = service.create_proof(request).await;
     assert!(matches!(
         result.unwrap_err(),
-        ServiceError::Validation(ValidationError::InvalidKey(_))
+        ServiceError::KeySelection(KeySelectionError::NoKeyMatchingFilter { .. })
     ));
 }
 
@@ -3343,8 +3344,8 @@ async fn test_create_proof_did_deactivated_error() {
     let result = service.create_proof(request).await;
     assert2::assert!(
         let Err(
-            ServiceError::BusinessLogic(
-                BusinessLogicError::DidIsDeactivated(_)
+            ServiceError::KeySelection(
+                KeySelectionError::DidDeactivated {..}
             )
         ) = result
     );

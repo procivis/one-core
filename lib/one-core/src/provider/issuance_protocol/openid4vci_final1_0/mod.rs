@@ -55,7 +55,7 @@ use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaRelations, KeyStorageSecurity, LayoutType,
     UpdateCredentialSchemaRequest,
 };
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::interaction::{Interaction, UpdateInteractionRequest};
 use crate::model::key::{Key, KeyRelations};
@@ -99,6 +99,7 @@ use crate::service::oid4vci_final1_0::dto::{
     OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
 };
 use crate::service::ssi_holder::dto::InitiateIssuanceAuthorizationDetailDTO;
+use crate::util::key_selection::KeyFilter;
 use crate::util::vcdm_jsonld_contexts::vcdm_v2_base_context;
 use crate::validator::key_security::match_key_security_level;
 use crate::validator::validate_issuance_time;
@@ -250,9 +251,7 @@ impl OpenID4VCIFinal1_0 {
 
         let related_did_key = did
             .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
-            .ok_or_else(|| IssuanceProtocolError::Failed("Missing related key".to_string()))?;
-
+            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
         let issuer_jwk_key_id = did.verification_method_id(related_did_key);
 
         Ok(Some(issuer_jwk_key_id))
@@ -1173,10 +1172,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 )
                 .map_err(|err| {
                     IssuanceProtocolError::Failed(format!("failed to encrypt refresh token: {err}"))
-                })?
-                .ok_or(IssuanceProtocolError::Failed(
-                    "Missing did related key".to_string(),
-                ))?;
+                })?;
 
             Some(did.verification_method_id(related_key))
         } else {

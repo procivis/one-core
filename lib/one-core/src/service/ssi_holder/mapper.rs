@@ -4,12 +4,13 @@ use shared_types::KeyId;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
-use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::key::Key;
 use crate::service::credential::dto::DetailCredentialSchemaResponseDTO;
 use crate::service::credential_schema::dto::CredentialClaimSchemaDTO;
 use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use crate::util::key_selection::KeyFilter;
 
 impl From<DetailCredentialSchemaResponseDTO> for CredentialSchema {
     fn from(value: DetailCredentialSchemaResponseDTO) -> Self {
@@ -77,12 +78,7 @@ pub(super) fn holder_did_key_jwk_from_credential(
             .to_owned();
 
         // There should probably be a nicer error if a key is rotated out from a did
-        let related_key = holder_did.find_key(&key.id, &KeyFilter::default())?.ok_or(
-            ServiceError::MappingError(format!(
-                "Failed to find key `{}` in keys of did `{}`",
-                key.id, holder_did.id
-            )),
-        )?;
+        let related_key = holder_did.find_key(&key.id, &KeyFilter::default())?;
         let holder_jwk_key_id = holder_did.verification_method_id(related_key);
 
         (Some(holder_did), Some(holder_jwk_key_id))
@@ -120,9 +116,7 @@ pub(super) fn select_holder_key(
 
             let key_filter = KeyFilter::role_filter(KeyRole::Authentication);
             let selected_key = match key_id {
-                Some(key_id) => did
-                    .find_key(&key_id, &key_filter)?
-                    .ok_or(ValidationError::KeyNotFound)?,
+                Some(key_id) => did.find_key(&key_id, &key_filter)?,
                 None => {
                     did.find_first_matching_key(&key_filter)?
                         .ok_or(ValidationError::InvalidKey(

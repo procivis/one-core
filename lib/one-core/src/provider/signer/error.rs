@@ -1,9 +1,8 @@
-use shared_types::{CertificateId, DidValue, IdentifierId, KeyId};
+use shared_types::IdentifierId;
 use thiserror::Error;
 use time::{Duration, OffsetDateTime};
 
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
-use crate::model::did::KeyFilter;
 
 #[derive(Debug, Error)]
 pub enum SignerError {
@@ -11,21 +10,8 @@ pub enum SignerError {
     InvalidPayload(#[from] serde_json::Error),
     #[error("Identifier {0} not found")]
     IdentifierNotFound(IdentifierId),
-    #[error("Key {0} not found")]
-    KeyNotFound(KeyId),
-    #[error("Did `{did}` does not contain a key matching filter `{filter:?}`")]
-    NoMatchingKeyOnDid {
-        filter: KeyFilter,
-        did: Box<DidValue>,
-    },
     #[error("Cannot find key algorithm `{0}`")]
     MissingKeyAlgorithmProvider(String),
-    #[error("Certificate {0} not found")]
-    CertificateNotFound(CertificateId),
-    #[error("Certificate {0} is not active")]
-    CertificateNotActive(CertificateId),
-    #[error("No active certificate available for identifier {0}")]
-    NoActiveCertificates(IdentifierId),
     #[error("Revocation not supported")]
     RevocationNotSupported,
     #[error("Mapping error: {0}")]
@@ -54,11 +40,8 @@ impl ErrorCodeMixin for SignerError {
         match self {
             Self::InvalidPayload(_) => ErrorCode::BR_0189,
             Self::IdentifierNotFound(_) => ErrorCode::BR_0207,
-            Self::KeyNotFound(_) | Self::NoMatchingKeyOnDid { .. } => ErrorCode::BR_0037,
-            Self::CertificateNotFound(_) => ErrorCode::BR_0223,
             Self::MappingError(_) => ErrorCode::BR_0047,
             Self::MissingKeyAlgorithmProvider(_) => ErrorCode::BR_0042,
-            Self::CertificateNotActive(_) | Self::NoActiveCertificates(_) => ErrorCode::BR_0000,
             Self::RevocationNotSupported => ErrorCode::BR_0101,
             Self::ValidityBoundaryInThePast { .. }
             | Self::ValidityStartAfterEnd { .. }

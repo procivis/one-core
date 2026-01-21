@@ -2,13 +2,14 @@ use shared_types::{IdentifierId, OrganisationId};
 
 use crate::config::core_config::{ConfigExt, CoreConfig, KeyAlgorithmType};
 use crate::model::certificate::CertificateRelations;
-use crate::model::did::{DidRelations, KeyFilter};
+use crate::model::did::DidRelations;
 use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::organisation_repository::OrganisationRepository;
 use crate::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use crate::service::wallet_provider::error::WalletProviderError;
+use crate::util::key_selection::KeyFilter;
 
 pub(super) async fn validate_wallet_provider_issuer(
     id: Option<&OrganisationId>,
@@ -45,14 +46,13 @@ pub(super) async fn validate_wallet_provider_issuer(
     {
         return Err(BusinessLogicError::IdentifierOrganisationMismatch)?;
     };
-    identifier
-        .find_matching_key(&KeyFilter {
+    identifier.select_key(
+        KeyFilter {
             role: None,
             algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-        })?
-        .ok_or(WalletProviderError::IssuerKeyWithAlgorithmNotFound(
-            KeyAlgorithmType::Ecdsa,
-        ))?;
+        }
+        .into(),
+    )?;
     Ok(())
 }
 

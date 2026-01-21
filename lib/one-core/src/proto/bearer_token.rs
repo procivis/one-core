@@ -8,13 +8,14 @@ use super::jwt::Jwt;
 use super::jwt::model::{JWTHeader, JWTPayload};
 use super::key_verification::KeyVerification;
 use crate::KeyProvider;
-use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::error::KeyAlgorithmProviderError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::{MissingProviderError, ServiceError, ValidationError};
+use crate::util::key_selection::KeyFilter;
 use crate::validator::validate_expiration_time;
 
 /// JWT authorization token for use of authenticated holder/verifier access (LVVC fetching, remote trust-entity)

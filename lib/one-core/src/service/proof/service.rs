@@ -29,7 +29,6 @@ use crate::config::validator::protocol::{
 use crate::config::validator::transport::{
     SelectedTransportType, validate_and_select_transport_type,
 };
-use crate::mapper::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -37,7 +36,7 @@ use crate::model::claim_schema::ClaimSchemaRelations;
 use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::{CredentialFilterValue, CredentialRelations, GetCredentialQuery};
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{HistoryAction, HistoryFilterValue, HistoryListQuery};
 use crate::model::identifier::IdentifierRelations;
 use crate::model::interaction::{InteractionRelations, InteractionType};
@@ -79,6 +78,7 @@ use crate::service::proof::validator::{
 };
 use crate::service::storage_proxy::StorageProxyImpl;
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
+use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -456,23 +456,20 @@ impl ProofService {
             }
         };
 
-        let selected_entities = entities_for_local_active_identifier(
-            &verifier_identifier,
-            &KeyFilter::role_filter(KeyRole::Authentication),
-            request.verifier_key,
-            request.verifier_did_id,
-            request.verifier_certificate,
-        )?;
-        let (verifier_key, verifier_certificate) = match selected_entities {
-            IdentifierEntitySelection::Key(_) => {
+        let selection = verifier_identifier.select_key(KeySelection {
+            key: request.verifier_key,
+            did: request.verifier_did_id,
+            certificate: request.verifier_certificate,
+            key_filter: Some(KeyFilter::role_filter(KeyRole::Authentication)),
+        })?;
+        let (verifier_key, verifier_certificate) = match selection {
+            SelectedKey::Key(_) => {
                 return Err(ServiceError::ValidationError(
                     "Key identifiers not supported".to_string(),
                 ));
             }
-            IdentifierEntitySelection::Certificate { certificate, key } => {
-                (key, Some(certificate.to_owned()))
-            }
-            IdentifierEntitySelection::Did { did, key } => {
+            SelectedKey::Certificate { certificate, key } => (key, Some(certificate.to_owned())),
+            SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_protocol_capabilities.did_methods,
                     &did.did_method,
@@ -483,7 +480,7 @@ impl ProofService {
                     did,
                     &*self.credential_formatter_provider,
                 )?;
-                (key, None)
+                (&key.key, None)
             }
         };
 

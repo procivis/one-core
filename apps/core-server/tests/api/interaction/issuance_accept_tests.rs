@@ -1515,8 +1515,8 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
         .await;
 
     // THEN
-    assert_eq!(resp.status(), 404);
-    assert_eq!("BR_0037", resp.error_code().await);
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0330");
 }
 
 #[tokio::test]
@@ -1630,7 +1630,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
 
     // THEN
     assert_eq!(resp.status(), 400);
-    assert_eq!("BR_0096", resp.error_code().await);
+    assert_eq!(resp.error_code().await, "BR_0330");
 }
 
 #[tokio::test]

@@ -8,7 +8,7 @@ use crate::config::core_config::{
     CoreConfig, IdentifierType, VerificationEngagement, VerificationEngagementConfig,
     VerificationProtocolConfig, VerificationProtocolType,
 };
-use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::did::{Did, KeyRole};
 use crate::model::key::Key;
 use crate::model::proof::ProofStateEnum::Requested;
 use crate::model::proof::{Proof, ProofRole};
@@ -23,6 +23,7 @@ use crate::provider::verification_protocol::openid4vp::draft25::model::OpenID4Vp
 use crate::service::error::{
     BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
 };
+use crate::util::key_selection::KeyFilter;
 use crate::validator::{
     throw_if_endpoint_version_incompatible, throw_if_org_relation_not_matching_session,
     throw_if_proof_state_not_eq,

@@ -19,7 +19,7 @@ use crate::model::credential_schema::{
     Arrayed, CredentialSchema, CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView,
 };
-use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::proof::Proof;
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
@@ -29,11 +29,11 @@ use crate::provider::key_algorithm::error::KeyAlgorithmError;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::service::error::{BusinessLogicError, ServiceError};
+use crate::util::key_selection::KeyFilter;
 
 pub(crate) mod credential_schema_claim;
 pub(crate) mod exchange;
 mod holder_wallet_unit;
-pub(crate) mod identifier;
 mod key_security;
 pub(crate) mod oidc;
 pub(crate) mod openid4vp;
@@ -246,11 +246,8 @@ pub(crate) fn get_encryption_key_jwk_from_proof(
             let encryption_key = verifier_did.find_key(&verifier_key.id, &key_filter);
 
             let Some(encryption_key) = match encryption_key {
-                Ok(Some(key)) => Some(key),
-                Err(ServiceError::Validation(_)) | Ok(None) => {
-                    verifier_did.find_first_matching_key(&key_filter)?
-                }
-                Err(error) => Err(error)?,
+                Ok(key) => Some(key),
+                Err(_) => verifier_did.find_first_matching_key(&key_filter)?,
             }
             .to_owned() else {
                 return Ok(None);

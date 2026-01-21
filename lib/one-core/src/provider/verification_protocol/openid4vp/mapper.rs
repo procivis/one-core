@@ -750,10 +750,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier key not found".to_string(),
-        ))?;
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     let key_id = verifier_did.verification_method_id(key);
 
@@ -849,10 +846,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_did<T: Seriali
 
     let key = verifier_did
         .find_key(&verifier_key.id, &Default::default())
-        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-        .ok_or(VerificationProtocolError::Failed(
-            "verifier key not found".to_string(),
-        ))?;
+        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
     let key_id = verifier_did.verification_method_id(key);
 

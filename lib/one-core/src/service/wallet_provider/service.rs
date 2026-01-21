@@ -34,7 +34,7 @@ use crate::error::ErrorCodeMixin;
 use crate::mapper::list_response_into;
 use crate::mapper::x509::pem_chain_into_x5c;
 use crate::model::certificate::CertificateRelations;
-use crate::model::did::{DidRelations, KeyFilter};
+use crate::model::did::DidRelations;
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryErrorMetadata, HistoryMetadata, HistorySource,
 };
@@ -62,6 +62,7 @@ use crate::provider::key_algorithm::key::KeyHandle;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, RevocationState};
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
+use crate::util::key_selection::KeyFilter;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -922,14 +923,14 @@ impl WalletProviderService {
             return Err(EntityNotFoundError::Identifier(issuer_identifier_id).into());
         };
 
-        let issuer_key = issuer_identifier
-            .find_matching_key(&KeyFilter {
+        let selection = issuer_identifier.select_key(
+            KeyFilter {
                 role: None,
                 algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-            })?
-            .ok_or(WalletProviderError::IssuerKeyWithAlgorithmNotFound(
-                KeyAlgorithmType::Ecdsa,
-            ))?;
+            }
+            .into(),
+        )?;
+        let issuer_key = selection.key();
 
         let key_id = if issuer_identifier.r#type == IdentifierType::Did {
             let issuer_did = issuer_identifier
@@ -937,17 +938,13 @@ impl WalletProviderService {
                 .as_ref()
                 .ok_or(ServiceError::MappingError("issuer did is None".to_string()))?;
 
-            let key = issuer_did
-                .find_key(
-                    &issuer_key.id,
-                    &KeyFilter {
-                        algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
-                        ..Default::default()
-                    },
-                )?
-                .ok_or(WalletProviderError::IssuerKeyWithAlgorithmNotFound(
-                    KeyAlgorithmType::Ecdsa,
-                ))?;
+            let key = issuer_did.find_key(
+                &issuer_key.id,
+                &KeyFilter {
+                    algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
+                    ..Default::default()
+                },
+            )?;
 
             Some(issuer_did.verification_method_id(key))
         } else {

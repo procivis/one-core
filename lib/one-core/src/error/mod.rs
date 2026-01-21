@@ -731,6 +731,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid signature id")]
     BR_0327,
+
+    #[strum(message = "Invalid key selection")]
+    BR_0330,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

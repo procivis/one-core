@@ -35,6 +35,7 @@ use crate::provider::verification_protocol::openid4vp::error::OpenID4VCError;
 use crate::repository::error::DataLayerError;
 use crate::service::wallet_provider::error::WalletProviderError;
 use crate::service::wallet_unit::error::HolderWalletUnitError;
+use crate::util::key_selection::KeySelectionError;
 
 #[derive(Debug, Error)]
 pub enum ServiceError {
@@ -139,6 +140,9 @@ pub enum ServiceError {
 
     #[error("Signer error: `{0}`")]
     SignerError(#[from] SignerError),
+
+    #[error("Key selection error: `{0}`")]
+    KeySelection(#[from] KeySelectionError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -812,6 +816,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::WalletUnitAttestationError(error) => error.error_code(),
             Self::NfcError(error) => error.error_code(),
             Self::SignerError(error) => error.error_code(),
+            Self::KeySelection(error) => error.error_code(),
         }
     }
 }

@@ -14,12 +14,12 @@ use uuid::Uuid;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::model::certificate::{CertificateRelations, CertificateState};
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::certificate::CertificateRelations;
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::history::{
     History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
 };
-use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
+use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::key::{Key, KeyRelations};
 use crate::proto::clock::Clock;
 use crate::proto::jwt::JwtPublicKeyInfo;
@@ -35,6 +35,7 @@ use crate::provider::signer::registration_certificate::model::{
 };
 use crate::repository::history_repository::HistoryRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
+use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -180,29 +181,13 @@ impl Signer for RegistrationCertificate {
             .error_while("Loading issuer identifier")?
             .ok_or(SignerError::IdentifierNotFound(request.issuer))?;
 
-        let issuer_certificate = if let Some(requested_certificate_id) = &request.issuer_certificate
-        {
-            Some(
-                issuer
-                    .certificates
-                    .as_ref()
-                    .ok_or(SignerError::NoActiveCertificates(request.issuer))?
-                    .iter()
-                    .find(|c| &c.id == requested_certificate_id)
-                    .ok_or(SignerError::CertificateNotFound(*requested_certificate_id))?
-                    .to_owned(),
-            )
-        } else if let Some(certificates) = &issuer.certificates {
-            Some(
-                certificates
-                    .iter()
-                    .find(|c| c.state == CertificateState::Active)
-                    .ok_or(SignerError::NoActiveCertificates(request.issuer))?
-                    .to_owned(),
-            )
-        } else {
-            None
-        };
+        let selection = issuer
+            .select_key(KeySelection {
+                key: request.issuer_key,
+                certificate: request.issuer_certificate,
+                ..Default::default()
+            })
+            .error_while("Selecting signing key")?;
 
         let (jwt_id, status) = match self.revocation.as_deref() {
             Some(list) => {
@@ -210,7 +195,7 @@ impl Signer for RegistrationCertificate {
                     .add_signature(
                         "REGISTRATION_CERTIFICATE".to_owned(),
                         &issuer,
-                        &issuer_certificate,
+                        &selection.certificate().cloned(),
                     )
                     .await
                     .error_while("Adding signature to revocation list")?;
@@ -341,40 +326,16 @@ impl RegistrationCertificate {
         ident: Identifier,
         request: &CreateSignatureRequestDTO,
     ) -> Result<(Key, Option<String>, Option<JwtPublicKeyInfo>), SignerError> {
-        Ok(match ident.r#type {
-            IdentifierType::Did => {
-                let did = ident.did.ok_or(SignerError::MappingError(
-                    "Missing identifier did".to_owned(),
-                ))?;
-
-                let key_filter = KeyFilter::role_filter(KeyRole::AssertionMethod);
-                let assertion_key = match &request.issuer_key {
-                    Some(requested_key) => did.find_key(requested_key, &key_filter),
-                    None => did.find_first_matching_key(&key_filter),
-                }
-                .error_while("Retrieving assertion method key from DID")?
-                .ok_or(SignerError::NoMatchingKeyOnDid {
-                    did: Box::new(did.did.clone()),
-                    filter: key_filter,
-                })?;
-
-                (
-                    assertion_key.key.clone(),
-                    Some(did.verification_method_id(assertion_key)),
-                    None,
-                )
-            }
-            IdentifierType::Key => {
-                let key = ident.key.ok_or(SignerError::MappingError(
-                    "Missing identifier key".to_owned(),
-                ))?;
-
-                if let Some(requested_key) = &request.issuer_key
-                    && *requested_key != key.id
-                {
-                    return Err(SignerError::KeyNotFound(*requested_key));
-                }
-
+        let selected_key = ident
+            .select_key(KeySelection {
+                key: request.issuer_key,
+                key_filter: Some(KeyFilter::role_filter(KeyRole::AssertionMethod)),
+                certificate: request.issuer_certificate,
+                did: None,
+            })
+            .error_while("Selecting signing key")?;
+        let result = match selected_key {
+            SelectedKey::Key(key) => {
                 let pubkey = key
                     .key_algorithm_type()
                     .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
@@ -386,40 +347,21 @@ impl RegistrationCertificate {
                     .public_key_as_jwk()
                     .error_while("Converting signing key to JWK")?;
 
-                (key, None, Some(JwtPublicKeyInfo::Jwk(pubkey)))
+                (key.clone(), None, Some(JwtPublicKeyInfo::Jwk(pubkey)))
             }
-            IdentifierType::Certificate => {
-                let certs = ident.certificates.ok_or(SignerError::MappingError(
-                    "Missing identifier certificates".to_owned(),
-                ))?;
-
-                let selected_cert = match &request.issuer_certificate {
-                    Some(requested_id) => {
-                        let requested_cert = certs
-                            .into_iter()
-                            .find(|cert| cert.id == *requested_id)
-                            .ok_or(SignerError::CertificateNotFound(*requested_id))?;
-                        if requested_cert.state != CertificateState::Active {
-                            return Err(SignerError::CertificateNotActive(requested_cert.id));
-                        }
-                        requested_cert
-                    }
-                    None => certs
-                        .into_iter()
-                        .find(|cert| cert.state == CertificateState::Active)
-                        .ok_or(SignerError::NoActiveCertificates(ident.id))?,
-                };
-
-                let key = selected_cert.key.ok_or(SignerError::MappingError(
-                    "Missing key for certificate".to_owned(),
-                ))?;
+            SelectedKey::Certificate { certificate, key } => {
                 let pubkey_info = Some(JwtPublicKeyInfo::X5c(
-                    pem_chain_into_x5c(&selected_cert.chain)
+                    pem_chain_into_x5c(&certificate.chain)
                         .map_err(|e| SignerError::MappingError(e.to_string()))?,
                 ));
-                (key, None, pubkey_info)
+                (key.clone(), None, pubkey_info)
             }
-        })
+            SelectedKey::Did { did, key } => {
+                let key_id = did.verification_method_id(key);
+                (key.key.clone(), Some(key_id), None)
+            }
+        };
+        Ok(result)
     }
 }
 

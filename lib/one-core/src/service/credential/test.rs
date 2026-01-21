@@ -68,6 +68,7 @@ use crate::service::test_utilities::{
     dummy_did, dummy_did_document, dummy_identifier, dummy_key, dummy_organisation, generic_config,
     generic_formatter_capabilities, get_dummy_date,
 };
+use crate::util::key_selection::KeySelectionError;
 
 #[derive(Default)]
 struct Repositories {
@@ -1302,7 +1303,7 @@ async fn test_create_credential_fails_if_did_is_deactivated() {
         .await;
 
     assert2::assert!(
-        let ServiceError::BusinessLogic(BusinessLogicError::DidIsDeactivated(_)) = result.err().unwrap()
+        let ServiceError::KeySelection(KeySelectionError::DidDeactivated {..}) = result.err().unwrap()
     );
 }
 
@@ -2414,7 +2415,9 @@ async fn test_fail_to_create_credential_no_assertion_key() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(ValidationError::InvalidKey(_)))
+        Err(ServiceError::KeySelection(
+            KeySelectionError::NoKeyMatchingFilter { .. }
+        ))
     ));
 }
 
@@ -2531,7 +2534,9 @@ async fn test_fail_to_create_credential_unknown_key_id() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(ValidationError::KeyNotFound))
+        Err(ServiceError::KeySelection(
+            KeySelectionError::KeyDidMismatch { .. }
+        ))
     ));
 }
 
@@ -2659,7 +2664,9 @@ async fn test_fail_to_create_credential_key_id_points_to_wrong_key_role() {
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(ValidationError::InvalidKey(_)))
+        Err(ServiceError::KeySelection(
+            KeySelectionError::KeyNotMatchingFilter { .. }
+        ))
     ));
 }
 
@@ -2787,7 +2794,9 @@ async fn test_fail_to_create_credential_key_id_points_to_unsupported_key_algorit
 
     assert!(matches!(
         result,
-        Err(ServiceError::Validation(ValidationError::InvalidKey(_)))
+        Err(ServiceError::KeySelection(
+            KeySelectionError::KeyNotMatchingFilter { .. }
+        ))
     ));
 }
 

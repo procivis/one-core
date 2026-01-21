@@ -19,8 +19,8 @@ use crate::config::core_config::FormatType;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
-use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
+use crate::model::did::{DidRelations, KeyRole};
+use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
     RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
@@ -57,6 +57,8 @@ use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
+use crate::util::key_selection::{KeyFilter, SelectedKey};
+
 pub mod resolver;
 pub mod util;
 
@@ -800,29 +802,13 @@ async fn format_status_list_credential(
 ) -> Result<String, RevocationError> {
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
-    let key = issuer_identifier
-        .find_matching_key(&KeyFilter::role_filter(KeyRole::AssertionMethod))
-        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
-        .ok_or(RevocationError::KeyWithRoleNotFound(
-            KeyRole::AssertionMethod,
-        ))?;
+    let selection = issuer_identifier
+        .select_key(KeyFilter::role_filter(KeyRole::AssertionMethod).into())
+        .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?;
+    let key = selection.key();
 
-    let key_id = if issuer_identifier.r#type == IdentifierType::Did {
-        let issuer_did = issuer_identifier
-            .did
-            .as_ref()
-            .ok_or(RevocationError::MappingError(
-                "issuer did is None".to_string(),
-            ))?;
-
-        let key = issuer_did
-            .find_key(&key.id, &KeyFilter::role_filter(KeyRole::AssertionMethod))
-            .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?
-            .ok_or(RevocationError::KeyWithRoleNotFound(
-                KeyRole::AssertionMethod,
-            ))?;
-
-        Some(issuer_did.verification_method_id(key))
+    let key_id = if let SelectedKey::Did { did, key } = selection {
+        Some(did.verification_method_id(key))
     } else {
         None
     };

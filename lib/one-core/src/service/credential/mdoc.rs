@@ -13,7 +13,6 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::model::DetailCredential;
-use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
 use crate::provider::issuance_protocol::openid4vci_draft13::model::{
@@ -134,13 +133,7 @@ impl CredentialService {
             .ok_or(ServiceError::Other("Missing holder did".to_owned()))?
             .clone();
 
-        let key = holder_did.find_key(&key.id, &Default::default())?.ok_or(
-            DidMethodProviderError::VerificationMethodIdNotFound {
-                key_id: key.id,
-                did_id: holder_did.id,
-            },
-        )?;
-
+        let key = holder_did.find_key(&key.id, &Default::default())?;
         let key_id = holder_did.verification_method_id(key);
 
         let auth_fn = self

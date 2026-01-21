@@ -33,7 +33,7 @@ use super::proximity_draft00::mqtt::MqttHolderTransport;
 use crate::config::core_config::{
     CoreConfig, DidType, FormatType, IdentifierType, TransportType, VerificationProtocolType,
 };
-use crate::model::did::{Did, KeyFilter, KeyRole};
+use crate::model::did::{Did, KeyRole};
 use crate::model::identifier::Identifier;
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::organisation::Organisation;
@@ -68,6 +68,7 @@ use crate::repository::interaction_repository::InteractionRepository;
 use crate::repository::proof_repository::ProofRepository;
 use crate::service::proof::dto::{CreateProofInteractionData, ShareProofRequestParamsDTO};
 use crate::service::storage_proxy::StorageAccess;
+use crate::util::key_selection::KeyFilter;
 
 mod async_verifier_flow;
 pub mod ble;
@@ -856,7 +857,7 @@ pub(super) async fn prepare_proof_share(
         )));
     };
 
-    let Ok(Some(verifier_key)) = verifier_did.find_key(
+    let Ok(verifier_key) = verifier_did.find_key(
         &params.key_id,
         &KeyFilter::role_filter(KeyRole::Authentication),
     ) else {

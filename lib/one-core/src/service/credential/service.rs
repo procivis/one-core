@@ -17,7 +17,6 @@ use super::validator::{
 };
 use crate::config::core_config::{FormatType, RevocationType};
 use crate::config::validator::protocol::validate_protocol_did_compatibility;
-use crate::mapper::identifier::{IdentifierEntitySelection, entities_for_local_active_identifier};
 use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
@@ -28,7 +27,7 @@ use crate::model::credential::{
     UpdateCredentialRequest,
 };
 use crate::model::credential_schema::CredentialSchemaRelations;
-use crate::model::did::{DidRelations, KeyFilter, KeyRole};
+use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{IdentifierRelations, IdentifierState};
 use crate::model::interaction::{InteractionRelations, InteractionType};
 use crate::model::key::KeyRelations;
@@ -45,6 +44,7 @@ use crate::service::error::{
     BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError,
 };
 use crate::util::interactions::{add_new_interaction, clear_previous_interaction};
+use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 use crate::validator::{
     throw_if_credential_state_eq, throw_if_org_not_matching_session,
     throw_if_org_relation_not_matching_session, throw_if_state_not_in,
@@ -147,24 +147,21 @@ impl CredentialService {
             role: Some(KeyRole::AssertionMethod),
             algorithms: Some(formatter_capabilities.signing_key_algorithms.clone()),
         };
-        let selected_entities = entities_for_local_active_identifier(
-            &issuer_identifier,
-            &key_filter,
-            request.issuer_key,
-            request.issuer_did,
-            request.issuer_certificate,
-        )?;
+        let selection = issuer_identifier.select_key(KeySelection {
+            key: request.issuer_key,
+            did: request.issuer_did,
+            certificate: request.issuer_certificate,
+            key_filter: Some(key_filter),
+        })?;
 
-        let (issuer_key, issuer_certificate) = match selected_entities {
-            IdentifierEntitySelection::Key(_) => {
+        let (issuer_key, issuer_certificate) = match selection {
+            SelectedKey::Key(_) => {
                 return Err(ServiceError::ValidationError(
                     "Key identifiers not supported".to_string(),
                 ));
             }
-            IdentifierEntitySelection::Certificate { certificate, key } => {
-                (key, Some(certificate.to_owned()))
-            }
-            IdentifierEntitySelection::Did { did, key } => {
+            SelectedKey::Certificate { certificate, key } => (key, Some(certificate.to_owned())),
+            SelectedKey::Did { did, key } => {
                 validate_protocol_did_compatibility(
                     &exchange_capabilities.did_methods,
                     &did.did_method,
@@ -175,7 +172,7 @@ impl CredentialService {
                     &formatter_capabilities,
                     &self.config,
                 )?;
-                (key, None)
+                (&key.key, None)
             }
         };
 

@@ -9,13 +9,13 @@ use standardized_types::openid4vp::{
 use url::Url;
 
 use crate::config::core_config::{CoreConfig, KeyStorageType};
-use crate::model::did::{KeyFilter, KeyRole};
+use crate::model::did::KeyRole;
 use crate::model::identifier::IdentifierType;
 use crate::model::proof::Proof;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
 use crate::provider::verification_protocol::openid4vp::final1_0::model::AuthorizationRequest;
-use crate::service::error::{ServiceError, ValidationError};
+use crate::util::key_selection::KeyFilter;
 
 pub(crate) fn generate_authorization_request_params_final1_0(
     nonce: String,
@@ -120,17 +120,12 @@ pub(crate) fn select_key_agreement_key_from_proof(
             // We ensure the specified key is a key agreement key
             let encryption_key = verifier_did.find_key(&verifier_key.id, &key_agreement_key_filter);
             match encryption_key {
-                Ok(Some(key)) => Some(&key.key),
+                Ok(key) => Some(&key.key),
                 // If the key is not a key agreement key or not found, we try to find a matching key
-                Err(ServiceError::Validation(ValidationError::InvalidKey(_))) | Ok(None) => {
-                    verifier_did
-                        .find_first_matching_key(&key_agreement_key_filter)
-                        .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
-                        .map(|key| &key.key)
-                }
-                Err(error) => {
-                    return Err(VerificationProtocolError::Failed(error.to_string()));
-                }
+                Err(_) => verifier_did
+                    .find_first_matching_key(&key_agreement_key_filter)
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
+                    .map(|key| &key.key),
             }
         }
     };
