@@ -14,7 +14,7 @@ use one_core::repository::error::DataLayerError;
 use one_core::repository::organisation_repository::MockOrganisationRepository;
 use one_core::service::credential_schema::dto::CredentialSchemaFilterValue;
 use sea_orm::{ActiveModelTrait, DatabaseConnection, EntityTrait, Set, Unchanged};
-use shared_types::CredentialSchemaId;
+use shared_types::{CredentialSchemaId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -119,7 +119,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(
                 new_claim_schemas
                     .into_iter()
@@ -197,7 +197,7 @@ async fn test_create_credential_schema_success() {
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
@@ -485,7 +485,7 @@ async fn test_delete_credential_schema_not_found() {
             last_modified: OffsetDateTime::now_utc(),
             name: "Test".to_string(),
             format: "MDOC".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             key_storage_security: None,
             layout_type: LayoutType::Document,
             layout_properties: None,
@@ -509,12 +509,12 @@ async fn test_update_credential_schema_success() {
         ..
     } = setup_with_schema(Repositories::default()).await;
 
-    let new_revocation_method = "new-method";
+    let new_revocation_method: RevocationMethodId = "new-method".into();
     let new_format = "new-format";
     let result = repository
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
-            revocation_method: Some(new_revocation_method.to_string()),
+            revocation_method: Some(new_revocation_method.to_owned()),
             format: Some(new_format.into()),
             claim_schemas: None,
             layout_properties: Some(LayoutProperties {

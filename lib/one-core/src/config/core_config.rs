@@ -17,7 +17,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, RevocationMethodId};
 use strum::{AsRefStr, Display, EnumString};
 
 use super::{ConfigParsingError, ConfigValidationError};
@@ -383,7 +383,7 @@ pub enum VerificationProtocolType {
     OpenId4VpProximityDraft00,
 }
 
-pub type RevocationConfig = ConfigBlock<String, RevocationType>;
+pub type RevocationConfig = ConfigBlock<RevocationMethodId, RevocationType>;
 
 #[derive(
     Debug, Copy, Clone, Display, EnumString, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,

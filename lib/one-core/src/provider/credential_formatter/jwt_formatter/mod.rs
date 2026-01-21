@@ -27,7 +27,6 @@ use crate::config::core_config::{
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
-use crate::model::revocation_list::StatusListType;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
 use crate::provider::data_type::provider::DataTypeProvider;
@@ -127,7 +126,7 @@ impl CredentialFormatter for JWTFormatter {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
-        status_list_type: StatusListType,
+        status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
         let key_algorithm = self
             .key_algorithm_provider
@@ -139,7 +138,7 @@ impl CredentialFormatter for JWTFormatter {
             .ok_or(FormatterError::Failed("Invalid key algorithm".to_string()))?;
 
         match status_list_type {
-            StatusListType::BitstringStatusList => {
+            RevocationType::BitstringStatusList => {
                 self.format_bitstring_status_list(
                     revocation_list_url,
                     issuer_identifier,
@@ -150,7 +149,7 @@ impl CredentialFormatter for JWTFormatter {
                 )
                 .await
             }
-            StatusListType::TokenStatusList => {
+            RevocationType::TokenStatusList => {
                 self.format_token_status_list(
                     revocation_list_url,
                     issuer_identifier,
@@ -349,7 +348,7 @@ impl CredentialFormatter for JWTFormatter {
             last_modified: now,
             name: schema_name,
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: revocation_method.to_string(),
+            revocation_method: revocation_method.to_string().into(),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

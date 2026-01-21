@@ -72,7 +72,7 @@ async fn test_create_credential_with_array_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_array_claims("test", &organisation, "JWT", Default::default())
+        .create_with_array_claims("test", &organisation, "NONE", Default::default())
         .await;
 
     let claim_id_root_field = credential_schema

@@ -10,7 +10,7 @@ use proc_macros::{ModifySchema, options_not_nullable};
 use serde::{Deserialize, Serialize};
 use shared_types::{
     CertificateId, CredentialFormat, CredentialId, CredentialSchemaId, DidId, IdentifierId, KeyId,
-    OrganisationId,
+    OrganisationId, RevocationMethodId,
 };
 use time::OffsetDateTime;
 use utoipa::{IntoParams, ToSchema};
@@ -197,7 +197,7 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: String,
+    pub revocation_method: RevocationMethodId,
     pub organisation_id: OrganisationId,
     /// Storage security requirements the key storage of the wallet must meet.
     #[from(with_fn = convert_inner)]

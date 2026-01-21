@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::json;
+use shared_types::RevocationMethodId;
 use time::Duration;
 
 use super::bitstring_status_list::BitstringStatusList;
@@ -37,23 +38,23 @@ use crate::repository::wallet_unit_repository::WalletUnitRepository;
 pub trait RevocationMethodProvider: Send + Sync {
     fn get_revocation_method(
         &self,
-        revocation_method_id: &str,
+        revocation_method_id: &RevocationMethodId,
     ) -> Option<Arc<dyn RevocationMethod>>;
 
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,
-    ) -> Option<(Arc<dyn RevocationMethod>, String)>;
+    ) -> Option<(Arc<dyn RevocationMethod>, RevocationMethodId)>;
 }
 
 struct RevocationMethodProviderImpl {
-    revocation_methods: HashMap<String, Arc<dyn RevocationMethod>>,
+    revocation_methods: HashMap<RevocationMethodId, Arc<dyn RevocationMethod>>,
 }
 
 impl RevocationMethodProvider for RevocationMethodProviderImpl {
     fn get_revocation_method(
         &self,
-        revocation_method_id: &str,
+        revocation_method_id: &RevocationMethodId,
     ) -> Option<Arc<dyn RevocationMethod>> {
         self.revocation_methods.get(revocation_method_id).cloned()
     }
@@ -61,7 +62,7 @@ impl RevocationMethodProvider for RevocationMethodProviderImpl {
     fn get_revocation_method_by_status_type(
         &self,
         credential_status_type: &str,
-    ) -> Option<(Arc<dyn RevocationMethod>, String)> {
+    ) -> Option<(Arc<dyn RevocationMethod>, RevocationMethodId)> {
         let result = self
             .revocation_methods
             .iter()
@@ -88,7 +89,8 @@ pub(crate) fn revocation_method_provider_from_config(
     identifier_repository: Arc<dyn IdentifierRepository>,
     client: Arc<dyn HttpClient>,
 ) -> Result<Arc<dyn RevocationMethodProvider>, ConfigValidationError> {
-    let mut revocation_methods: HashMap<String, Arc<dyn RevocationMethod>> = HashMap::new();
+    let mut revocation_methods: HashMap<RevocationMethodId, Arc<dyn RevocationMethod>> =
+        HashMap::new();
 
     for (key, fields) in config.revocation.iter() {
         if !fields.enabled {
@@ -104,6 +106,7 @@ pub(crate) fn revocation_method_provider_from_config(
                 let params = config.revocation.get(key)?;
 
                 Arc::new(BitstringStatusList::new(
+                    key.to_owned(),
                     core_base_url.clone(),
                     key_algorithm_provider.clone(),
                     did_method_provider.clone(),
@@ -136,6 +139,7 @@ pub(crate) fn revocation_method_provider_from_config(
                 let params = config.revocation.get(key)?;
                 Arc::new(
                     TokenStatusList::new(
+                        key.to_owned(),
                         core_base_url.clone(),
                         key_algorithm_provider.clone(),
                         did_method_provider.clone(),
@@ -159,6 +163,7 @@ pub(crate) fn revocation_method_provider_from_config(
             RevocationType::CRL => {
                 let params = config.revocation.get(key)?;
                 Arc::new(CRLRevocation::new(
+                    key.to_owned(),
                     core_base_url.clone(),
                     revocation_list_repository.clone(),
                     transaction_manager.clone(),
@@ -168,7 +173,7 @@ pub(crate) fn revocation_method_provider_from_config(
             }
         };
 
-        revocation_methods.insert(key.to_string(), revocation_method);
+        revocation_methods.insert(key.to_owned(), revocation_method);
     }
 
     for (key, value) in config.revocation.iter_mut() {
@@ -179,7 +184,7 @@ pub(crate) fn revocation_method_provider_from_config(
 
     // we keep `STATUSLIST2021` only for validation
     revocation_methods.insert(
-        "STATUSLIST2021".to_string(),
+        "STATUSLIST2021".into(),
         Arc::new(StatusList2021 {
             key_algorithm_provider: key_algorithm_provider.clone(),
             did_method_provider: did_method_provider.clone(),

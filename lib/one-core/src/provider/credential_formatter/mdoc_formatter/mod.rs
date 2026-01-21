@@ -43,7 +43,6 @@ use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::CredentialSchemaClaim;
 use crate::model::identifier::Identifier;
-use crate::model::revocation_list::StatusListType;
 use crate::proto::certificate_validator::CertificateValidator;
 use crate::proto::cose::{CoseSign1, CoseSign1Builder};
 use crate::provider::credential_formatter::error::FormatterError;
@@ -257,7 +256,7 @@ impl CredentialFormatter for MdocFormatter {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
-        _status_list_type: StatusListType,
+        _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
             "Cannot format StatusList with MDOC formatter".to_string(),
@@ -489,7 +488,7 @@ impl CredentialFormatter for MdocFormatter {
             last_modified: now,
             name: doctype.to_owned(),
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             key_storage_security: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,

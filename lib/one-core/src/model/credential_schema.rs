@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{CredentialFormat, CredentialSchemaId};
+use shared_types::{CredentialFormat, CredentialSchemaId, RevocationMethodId};
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -15,7 +15,6 @@ use crate::service::credential_schema::dto::{
 };
 
 pub type CredentialSchemaName = String;
-pub type RevocationMethod = String;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct CredentialSchema {
@@ -25,7 +24,7 @@ pub struct CredentialSchema {
     pub last_modified: OffsetDateTime,
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub revocation_method: RevocationMethodId,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
@@ -152,7 +151,7 @@ pub type GetCredentialSchemaQuery = ListQuery<
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
-    pub revocation_method: Option<RevocationMethod>,
+    pub revocation_method: Option<RevocationMethodId>,
     pub format: Option<CredentialFormat>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub layout_type: Option<LayoutType>,

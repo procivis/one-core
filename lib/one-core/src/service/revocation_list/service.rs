@@ -70,9 +70,9 @@ impl RevocationListService {
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
-        let revocation_method = schema.revocation_method.to_string();
+        let revocation_method = &schema.revocation_method;
         let revocation_params: crate::provider::revocation::lvvc::Params =
-            self.config.revocation.get(&revocation_method)?;
+            self.config.revocation.get(revocation_method)?;
 
         let jwt = validate_bearer_token(
             bearer_token,
@@ -180,8 +180,10 @@ impl RevocationListService {
         if OffsetDateTime::now_utc() > issuance_date + revocation_params.minimum_refresh_time {
             let revocation = self
                 .revocation_method_provider
-                .get_revocation_method(&revocation_method)
-                .ok_or(MissingProviderError::RevocationMethod(revocation_method))?;
+                .get_revocation_method(revocation_method)
+                .ok_or(MissingProviderError::RevocationMethod(
+                    revocation_method.to_owned(),
+                ))?;
 
             let lvvc: Lvvc = create_lvvc_with_status(
                 &credential,
@@ -226,10 +228,12 @@ impl RevocationListService {
             return Err(EntityNotFoundError::RevocationList(*id).into());
         };
 
+        let r#type = self.config.revocation.get_type(&list.r#type)?;
+
         Ok(RevocationListResponseDTO {
             revocation_list: list.get_status_credential()?,
             format: list.format,
-            r#type: list.r#type,
+            r#type,
         })
     }
 }

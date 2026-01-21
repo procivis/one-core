@@ -41,7 +41,7 @@ fn generate_credential_detail_response(
             deleted_at: None,
             name: "".to_string(),
             format: "".into(),
-            revocation_method: "".to_string(),
+            revocation_method: "".into(),
             organisation_id: Uuid::new_v4().into(),
             key_storage_security: None,
             layout_type: None,

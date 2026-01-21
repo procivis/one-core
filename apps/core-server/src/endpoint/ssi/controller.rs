@@ -131,12 +131,18 @@ pub(crate) async fn get_revocation_list_by_id(
         .await;
 
     match result {
-        Ok(result) => (
-            StatusCode::OK,
-            [(header::CONTENT_TYPE, result.get_content_type())],
-            result.revocation_list,
-        )
-            .into_response(),
+        Ok(result) => match result.get_content_type() {
+            Some(content_type) => (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, content_type)],
+                result.revocation_list,
+            )
+                .into_response(),
+            None => {
+                tracing::warn!("No content type for revocation-list: {id}");
+                (StatusCode::OK, result.revocation_list).into_response()
+            }
+        },
         Err(ServiceError::ConfigValidationError(error)) => {
             tracing::error!("Config validation error: {}", error);
             StatusCode::BAD_REQUEST.into_response()

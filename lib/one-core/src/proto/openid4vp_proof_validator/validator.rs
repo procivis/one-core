@@ -8,7 +8,9 @@ use dcql::{CredentialFormat, CredentialQuery, TrustedAuthority};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
 
-use crate::config::core_config::{DidType, FormatType, VerificationProtocolType};
+use crate::config::core_config::{
+    CoreConfig, DidType, FormatType, RevocationType, VerificationProtocolType,
+};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::did::KeyRole;
@@ -51,6 +53,7 @@ use crate::util::authority_key_identifier::{AuthorityKeyIdentifier, get_akis_for
 use crate::validator::throw_if_proof_state_not_in;
 
 pub(crate) struct OpenId4VpProofValidatorProto {
+    config: Arc<CoreConfig>,
     did_method_provider: Arc<dyn DidMethodProvider>,
     credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
     presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -114,6 +117,7 @@ impl OpenId4VpProofValidator for OpenId4VpProofValidatorProto {
 
 impl OpenId4VpProofValidatorProto {
     pub(crate) fn new(
+        config: Arc<CoreConfig>,
         did_method_provider: Arc<dyn DidMethodProvider>,
         credential_formatter_provider: Arc<dyn CredentialFormatterProvider>,
         presentation_formatter_provider: Arc<dyn PresentationFormatterProvider>,
@@ -122,6 +126,7 @@ impl OpenId4VpProofValidatorProto {
         certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
+            config,
             did_method_provider,
             credential_formatter_provider,
             presentation_formatter_provider,
@@ -343,7 +348,13 @@ impl OpenId4VpProofValidatorProto {
                     "Missing credential schema".to_owned(),
                 ))?;
 
-        let lvvc_credential_expected = requested_credential_schema.revocation_method == "LVVC";
+        let revocation_type = self
+            .config
+            .revocation
+            .get_type(&requested_credential_schema.revocation_method)
+            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+
+        let lvvc_credential_expected = revocation_type == RevocationType::Lvvc;
 
         if !multiple_presentations_allowed {
             if lvvc_credential_expected {

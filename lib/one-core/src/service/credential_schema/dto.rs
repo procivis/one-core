@@ -1,7 +1,9 @@
 use one_dto_mapper::{From, Into, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::{ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId};
+use shared_types::{
+    ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId,
+};
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -9,8 +11,7 @@ use uuid::Uuid;
 use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
-    CredentialSchema, KeyStorageSecurity, LayoutType, RevocationMethod,
-    SortableCredentialSchemaColumn,
+    CredentialSchema, KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
@@ -33,7 +34,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub revocation_method: RevocationMethodId,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
@@ -54,7 +55,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub revocation_method: RevocationMethodId,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -112,7 +113,7 @@ pub type GetCredentialSchemaQueryDTO = ListQuery<
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: String,
+    pub revocation_method: RevocationMethodId,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,

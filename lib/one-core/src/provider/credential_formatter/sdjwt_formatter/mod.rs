@@ -27,7 +27,7 @@ use super::sdjwt::mapper::vc_from_credential;
 use super::sdjwt::model::*;
 use super::sdjwt::{SdJwtHolderBindingParams, format_credential, model, prepare_sd_presentation};
 use super::vcdm::{VcdmCredential, vcdm_metadata_claims};
-use super::{CredentialFormatter, MetadataClaimSchema, StatusListType};
+use super::{CredentialFormatter, MetadataClaimSchema};
 use crate::config::core_config::{
     DidType, IdentifierType, IssuanceProtocolType, KeyAlgorithmType, KeyStorageType,
     RevocationType, VerificationProtocolType,
@@ -117,7 +117,7 @@ impl CredentialFormatter for SDJWTFormatter {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
-        _status_list_type: StatusListType,
+        _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
             "Cannot format StatusList with SD-JWT formatter".to_string(),
@@ -344,7 +344,7 @@ impl CredentialFormatter for SDJWTFormatter {
             last_modified: now,
             name: schema_name,
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: revocation_method.to_string(),
+            revocation_method: revocation_method.to_string().into(),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

@@ -211,6 +211,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub name: String,
     #[from(with_fn_ref = "ToString::to_string")]
     pub format: String,
+    #[from(with_fn_ref = "ToString::to_string")]
     pub revocation_method: String,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,

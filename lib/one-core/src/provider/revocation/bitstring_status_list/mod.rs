@@ -7,13 +7,13 @@ use std::sync::Arc;
 use futures::FutureExt;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{CredentialId, RevocationListEntryId, RevocationListId};
+use shared_types::{CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use self::model::StatusPurpose;
 use self::resolver::StatusListCachingLoader;
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::certificate::Certificate;
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -21,7 +21,7 @@ use crate::model::did::KeyRole;
 use crate::model::identifier::{Identifier, IdentifierType};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
-    RevocationListPurpose, StatusListCredentialFormat, StatusListType, UpdateRevocationListEntryId,
+    RevocationListPurpose, StatusListCredentialFormat, UpdateRevocationListEntryId,
     UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_unit_attested_key::{
@@ -74,6 +74,7 @@ impl Default for Params {
 }
 
 pub struct BitstringStatusList {
+    config_id: RevocationMethodId,
     core_base_url: Option<String>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -90,6 +91,7 @@ pub struct BitstringStatusList {
 impl BitstringStatusList {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
+        config_id: RevocationMethodId,
         core_base_url: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -103,6 +105,7 @@ impl BitstringStatusList {
         params: Option<Params>,
     ) -> Self {
         Self {
+            config_id,
             core_base_url,
             key_algorithm_provider,
             did_method_provider,
@@ -194,7 +197,7 @@ impl RevocationMethod for BitstringStatusList {
                 issuer_identifier.id,
                 credential.issuer_certificate.as_ref().map(|c| c.id),
                 purpose,
-                StatusListType::BitstringStatusList,
+                &self.config_id,
                 &Default::default(),
             )
             .await?
@@ -502,7 +505,7 @@ impl BitstringStatusList {
                             issuer_identifier.id,
                             None,
                             purpose,
-                            StatusListType::BitstringStatusList,
+                            &self.config_id,
                             &Default::default(),
                         )
                         .await?;
@@ -543,7 +546,7 @@ impl BitstringStatusList {
                     issuer_identifier.id,
                     None,
                     purpose,
-                    StatusListType::BitstringStatusList,
+                    &self.config_id,
                     &Default::default(),
                 )
                 .await?
@@ -641,7 +644,7 @@ impl BitstringStatusList {
                 last_modified: OffsetDateTime::now_utc(),
                 formatted_list: list_credential.into_bytes(),
                 format: self.params.format,
-                r#type: StatusListType::BitstringStatusList,
+                r#type: self.config_id.to_owned(),
                 purpose,
                 issuer_identifier: Some(issuer_identifier.to_owned()),
                 issuer_certificate: None,
@@ -717,7 +720,7 @@ pub(crate) async fn format_status_list_credential(
             algorithm_type,
             auth_fn,
             purpose.into(),
-            StatusListType::BitstringStatusList,
+            RevocationType::BitstringStatusList,
         )
         .await?;
 

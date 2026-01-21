@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialFormat, CredentialId, CredentialSchemaId, DidId,
-    IdentifierId, KeyId, OrganisationId,
+    IdentifierId, KeyId, OrganisationId, RevocationMethodId,
 };
 use strum::AsRefStr;
 use time::OffsetDateTime;
@@ -13,7 +13,7 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{
     CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
 };
-use crate::model::credential_schema::{KeyStorageSecurity, LayoutType, RevocationMethod};
+use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::model::list_query::ListQuery;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
@@ -109,7 +109,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub revocation_method: RevocationMethodId,
     pub organisation_id: OrganisationId,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,

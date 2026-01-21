@@ -140,7 +140,7 @@ impl ProofService {
                 .revocation_method_provider
                 .get_revocation_method_by_status_type(&status.r#type)
                 .ok_or(ServiceError::MissingProvider(
-                    MissingProviderError::RevocationMethod(status.r#type.to_owned()),
+                    MissingProviderError::RevocationMethod(status.r#type.as_str().into()),
                 ))?;
 
             let state = revocation_method

@@ -1,22 +1,24 @@
-use crate::model::revocation_list::{StatusListCredentialFormat, StatusListType};
+use crate::config::core_config::RevocationType;
+use crate::model::revocation_list::StatusListCredentialFormat;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct RevocationListResponseDTO {
     pub revocation_list: String,
     pub format: StatusListCredentialFormat,
-    pub r#type: StatusListType,
+    pub r#type: RevocationType,
 }
 
 impl RevocationListResponseDTO {
-    pub fn get_content_type(&self) -> String {
+    pub fn get_content_type(&self) -> Option<String> {
         match self.r#type {
-            StatusListType::BitstringStatusList => match self.format {
-                StatusListCredentialFormat::Jwt => "application/jwt".to_owned(),
-                StatusListCredentialFormat::JsonLdClassic => "application/ld+json".to_owned(),
-                StatusListCredentialFormat::X509Crl => "application/pkix-crl".to_owned(),
+            RevocationType::BitstringStatusList => match self.format {
+                StatusListCredentialFormat::Jwt => Some("application/jwt".to_owned()),
+                StatusListCredentialFormat::JsonLdClassic => Some("application/ld+json".to_owned()),
+                _ => None,
             },
-            StatusListType::TokenStatusList => "application/statuslist+jwt".to_owned(),
-            StatusListType::Crl => "application/pkix-crl".to_owned(),
+            RevocationType::TokenStatusList => Some("application/statuslist+jwt".to_owned()),
+            RevocationType::CRL => Some("application/pkix-crl".to_owned()),
+            _ => None,
         }
     }
 }

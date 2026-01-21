@@ -30,7 +30,6 @@ use crate::config::core_config::{
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
-use crate::model::revocation_list::StatusListType;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
 use crate::provider::data_type::provider::DataTypeProvider;
@@ -106,9 +105,9 @@ impl CredentialFormatter for JsonLdClassic {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
-        status_list_type: StatusListType,
+        status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
-        if status_list_type != StatusListType::BitstringStatusList {
+        if status_list_type != RevocationType::BitstringStatusList {
             return Err(FormatterError::Failed(
                 "Only BitstringStatusList can be formatted with JSON_LD_CLASSIC formatter"
                     .to_string(),
@@ -313,7 +312,7 @@ impl CredentialFormatter for JsonLdClassic {
             last_modified: now,
             name: schema_name,
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: revocation_method.to_string(),
+            revocation_method: revocation_method.to_string().into(),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

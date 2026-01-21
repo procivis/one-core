@@ -3,9 +3,7 @@ use std::str::FromStr;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::identifier::IdentifierType;
-use one_core::model::revocation_list::{
-    RevocationListEntryStatus, RevocationListPurpose, StatusListType,
-};
+use one_core::model::revocation_list::{RevocationListEntryStatus, RevocationListPurpose};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 
@@ -46,7 +44,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
             identifier,
             RevocationListPurpose::Suspension,
             None,
-            Some(StatusListType::BitstringStatusList),
+            Some("BITSTRINGSTATUSLIST".into()),
         )
         .await;
 

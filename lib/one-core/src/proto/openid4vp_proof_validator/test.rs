@@ -48,7 +48,7 @@ use crate::provider::verification_protocol::openid4vp::model::{
 };
 use crate::service::test_utilities::{
     dummy_claim_schema, dummy_credential_schema, dummy_did, dummy_identifier, dummy_organisation,
-    dummy_proof_schema, dummy_proof_with_protocol, generic_formatter_capabilities,
+    dummy_proof_schema, dummy_proof_with_protocol, generic_config, generic_formatter_capabilities,
 };
 
 #[derive(Default)]
@@ -79,6 +79,7 @@ struct MockData {
 
 fn setup_proto(mocks: Mocks) -> OpenId4VpProofValidatorProto {
     OpenId4VpProofValidatorProto::new(
+        Arc::new(generic_config().core),
         Arc::new(mocks.did_method_provider),
         Arc::new(mocks.credential_formatter_provider),
         Arc::new(mocks.presentation_formatter_provider),
@@ -356,7 +357,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
         .revocation_method_provider
         .expect_get_revocation_method_by_status_type()
         .once()
-        .return_once(|_| Some((Arc::new(revocation_method), "".to_string())));
+        .return_once(|_| Some((Arc::new(revocation_method), "".into())));
     mocks
 }
 

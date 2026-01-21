@@ -716,7 +716,7 @@ fn test_schema_id() {
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".into(),
-        revocation_method: "".to_string(),
+        revocation_method: "".into(),
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         external_schema: false,
         claims: vec![],
@@ -781,7 +781,7 @@ async fn test_parse_credential() {
     );
 
     let schema = credential.schema.as_ref().unwrap();
-    assert_eq!(schema.revocation_method, "BITSTRINGSTATUSLIST");
+    assert_eq!(schema.revocation_method.as_ref(), "BITSTRINGSTATUSLIST");
     assert_eq!(schema.name, "7543Nested");
     assert_eq!(
         schema.schema_id,

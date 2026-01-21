@@ -187,7 +187,7 @@ impl ProofSchemaService {
 
         throw_if_invalid_credential_combination(&credential_schemas, &*self.formatter_provider)?;
 
-        throw_if_validity_constraint_missing_for_lvvc(&credential_schemas, &request)?;
+        throw_if_validity_constraint_missing_for_lvvc(&credential_schemas, &request, &self.config)?;
 
         let claim_schemas = extract_claims_from_credential_schema(
             &request.proof_input_schemas,

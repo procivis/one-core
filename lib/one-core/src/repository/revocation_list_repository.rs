@@ -1,11 +1,12 @@
-use shared_types::{CertificateId, IdentifierId, RevocationListEntryId, RevocationListId};
+use shared_types::{
+    CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+};
 
 use super::error::DataLayerError;
 use crate::model::common::LockType;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListPurpose,
-    RevocationListRelations, StatusListType, UpdateRevocationListEntryId,
-    UpdateRevocationListEntryRequest,
+    RevocationListRelations, UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
@@ -33,7 +34,7 @@ pub trait RevocationListRepository: Send + Sync {
         issuer_identifier_id: IdentifierId,
         issuer_certificate_id: Option<CertificateId>,
         purpose: RevocationListPurpose,
-        status_list_type: StatusListType,
+        status_list_type: &RevocationMethodId,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError>;
 

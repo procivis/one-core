@@ -4,9 +4,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::DidType;
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::revocation_list::{
-    RevocationListEntryStatus, RevocationListPurpose, StatusListType,
-};
+use one_core::model::revocation_list::{RevocationListEntryStatus, RevocationListPurpose};
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -51,7 +49,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
             identifier,
             RevocationListPurpose::Suspension,
             None,
-            Some(StatusListType::BitstringStatusList),
+            Some("BITSTRINGSTATUSLIST".into()),
         )
         .await;
 

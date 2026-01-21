@@ -1643,7 +1643,7 @@ fn dummy_credential(organisation_id: Option<OrganisationId>) -> Credential {
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: Uuid::new_v4().into(),

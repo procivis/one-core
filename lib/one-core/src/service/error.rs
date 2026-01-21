@@ -2,8 +2,8 @@ use one_crypto::CryptoProviderError;
 use shared_types::{
     CertificateId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId, DidValue, HistoryId,
     HolderWalletUnitId, IdentifierId, InteractionId, KeyId, OrganisationId, ProofId, ProofSchemaId,
-    RevocationListEntryId, RevocationListId, TrustAnchorId, TrustEntityId, TrustEntityKey,
-    WalletUnitId,
+    RevocationListEntryId, RevocationListId, RevocationMethodId, TrustAnchorId, TrustEntityId,
+    TrustEntityKey, WalletUnitId,
 };
 use thiserror::Error;
 
@@ -759,7 +759,7 @@ pub enum MissingProviderError {
     KeyAlgorithmProvider(#[from] KeyAlgorithmProviderError),
 
     #[error("Cannot find `{0}` in revocation method provider")]
-    RevocationMethod(String),
+    RevocationMethod(RevocationMethodId),
 
     #[error("Cannot find revocation method provider for credential status type `{0}`")]
     RevocationMethodByCredentialStatusType(String),

@@ -1,8 +1,9 @@
-use one_core::model::credential_schema::{CredentialSchemaName, RevocationMethod};
+use one_core::model::credential_schema::CredentialSchemaName;
 use sea_orm::FromQueryResult;
 use serde::Deserialize;
 use shared_types::{
     BlobId, CredentialFormat, CredentialId, CredentialSchemaId, IdentifierId, OrganisationId,
+    RevocationMethodId,
 };
 use time::OffsetDateTime;
 
@@ -30,7 +31,7 @@ pub struct UnexportableCredentialModel {
     pub credential_schema_last_modified: OffsetDateTime,
     pub credential_schema_name: CredentialSchemaName,
     pub credential_schema_format: CredentialFormat,
-    pub credential_schema_revocation_method: RevocationMethod,
+    pub credential_schema_revocation_method: RevocationMethodId,
     pub credential_schema_key_storage_security: Option<KeyStorageSecurity>,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,

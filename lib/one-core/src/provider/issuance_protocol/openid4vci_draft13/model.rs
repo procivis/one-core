@@ -6,7 +6,9 @@ use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::{DurationSeconds, serde_as, skip_serializing_none};
-use shared_types::{CredentialFormat, CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{
+    CredentialFormat, CredentialSchemaId, DidValue, OrganisationId, RevocationMethodId,
+};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use strum::{Display, EnumString};
 use time::{Duration, OffsetDateTime};
@@ -14,9 +16,7 @@ use url::Url;
 
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
-use crate::model::credential_schema::{
-    KeyStorageSecurity, LayoutProperties, LayoutType, RevocationMethod,
-};
+use crate::model::credential_schema::{KeyStorageSecurity, LayoutProperties, LayoutType};
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
@@ -617,7 +617,7 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub revocation_method: RevocationMethodId,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -630,7 +630,7 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
 pub(crate) struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: String,
+    pub revocation_method: RevocationMethodId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,

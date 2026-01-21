@@ -5,7 +5,7 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat,
 };
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 use super::RevocationListProvider;
 use crate::entity::credential_schema::KeyStorageSecurity;
-use crate::entity::revocation_list::{RevocationListFormat, RevocationListType};
+use crate::entity::revocation_list::RevocationListFormat;
 use crate::test_utilities::{
     dummy_organisation, get_dummy_date, insert_credential, insert_credential_schema_to_database,
     insert_identifier, insert_organisation_to_database, insert_revocation_list,
@@ -89,7 +89,7 @@ async fn setup_with_list() -> TestSetupWithList {
         RevocationListPurpose::Revocation.into(),
         RevocationListFormat::Jwt,
         identifier.id,
-        RevocationListType::BitstringStatusList,
+        "BITSTRINGSTATUSLIST".into(),
         None,
     )
     .await
@@ -116,7 +116,7 @@ async fn test_create_revocation_list() {
             last_modified: get_dummy_date(),
             formatted_list: vec![],
             format: StatusListCredentialFormat::Jwt,
-            r#type: StatusListType::BitstringStatusList,
+            r#type: "BITSTRINGSTATUSLIST".into(),
             purpose: RevocationListPurpose::Revocation,
             issuer_identifier: Some(setup.identifier),
             issuer_certificate: None,
@@ -149,7 +149,7 @@ async fn test_get_revocation_by_issuer_identifier_id() {
             setup.identifier.id,
             None,
             RevocationListPurpose::Revocation,
-            StatusListType::BitstringStatusList,
+            &"BITSTRINGSTATUSLIST".into(),
             &Default::default(),
         )
         .await

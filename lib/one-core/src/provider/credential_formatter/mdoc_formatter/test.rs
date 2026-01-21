@@ -896,7 +896,7 @@ fn test_credential_schema_id() {
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".into(),
-        revocation_method: "".to_string(),
+        revocation_method: "".into(),
         external_schema: false,
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],

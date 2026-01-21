@@ -9,13 +9,13 @@ use futures::FutureExt;
 use itertools::Itertools;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
-use shared_types::{RevocationListEntryId, RevocationListId};
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
-use crate::config::core_config::FormatType;
+use crate::config::core_config::{FormatType, RevocationType};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -23,7 +23,7 @@ use crate::model::did::{DidRelations, KeyRole};
 use crate::model::identifier::{Identifier, IdentifierRelations};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
-    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_unit::WalletUnitRelations;
@@ -84,6 +84,7 @@ impl Default for Params {
 }
 
 pub struct TokenStatusList {
+    config_id: RevocationMethodId,
     core_base_url: Option<String>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     did_method_provider: Arc<dyn DidMethodProvider>,
@@ -102,6 +103,7 @@ pub struct TokenStatusList {
 impl TokenStatusList {
     #[expect(clippy::too_many_arguments)]
     pub fn new(
+        config_id: RevocationMethodId,
         core_base_url: Option<String>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
         did_method_provider: Arc<dyn DidMethodProvider>,
@@ -125,6 +127,7 @@ impl TokenStatusList {
         }
 
         Ok(Self {
+            config_id,
             core_base_url,
             key_algorithm_provider,
             did_method_provider,
@@ -190,7 +193,7 @@ impl RevocationMethod for TokenStatusList {
                 issuer_identifier.id,
                 credential.issuer_certificate.as_ref().map(|c| c.id),
                 RevocationListPurpose::RevocationAndSuspension,
-                StatusListType::TokenStatusList,
+                &self.config_id,
                 &Default::default(),
             )
             .await?
@@ -585,7 +588,7 @@ impl TokenStatusList {
                             issuer_identifier.id,
                             issuer_certificate.map(|c| c.id),
                             RevocationListPurpose::RevocationAndSuspension,
-                            StatusListType::TokenStatusList,
+                            &self.config_id,
                             &Default::default(),
                         )
                         .await?;
@@ -627,7 +630,7 @@ impl TokenStatusList {
                     issuer_identifier.id,
                     issuer_certificate.map(|c| c.id),
                     RevocationListPurpose::RevocationAndSuspension,
-                    StatusListType::TokenStatusList,
+                    &self.config_id,
                     &Default::default(),
                 )
                 .await?
@@ -722,7 +725,7 @@ impl TokenStatusList {
                 last_modified: OffsetDateTime::now_utc(),
                 formatted_list: list_credential.into_bytes(),
                 format: self.params.format,
-                r#type: StatusListType::TokenStatusList,
+                r#type: self.config_id.to_owned(),
                 purpose: RevocationListPurpose::RevocationAndSuspension,
                 issuer_identifier: Some(issuer_identifier.to_owned()),
                 issuer_certificate: issuer_certificate.cloned(),
@@ -831,7 +834,7 @@ async fn format_status_list_credential(
             algorithm,
             auth_fn,
             StatusPurpose::Revocation,
-            StatusListType::TokenStatusList,
+            RevocationType::TokenStatusList,
         )
         .await?;
 

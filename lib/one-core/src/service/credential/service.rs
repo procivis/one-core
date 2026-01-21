@@ -349,7 +349,12 @@ impl CredentialService {
             attestation_blobs,
         )?;
 
-        if response.schema.revocation_method == "LVVC" {
+        let revocation_type = self
+            .config
+            .revocation
+            .get_type(&response.schema.revocation_method)?;
+
+        if revocation_type == RevocationType::Lvvc {
             let latest_lvvc = self
                 .validity_credential_repository
                 .get_latest_by_credential_id(credential_id.to_owned(), ValidityCredentialType::Lvvc)

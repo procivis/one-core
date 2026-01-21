@@ -3,11 +3,10 @@ use error::FormatterError;
 use model::{AuthenticationFn, CredentialPresentation, DetailCredential, TokenVerifier};
 use shared_types::CredentialSchemaId;
 
-use crate::config::core_config::KeyAlgorithmType;
+use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::Identifier;
-use crate::model::revocation_list::StatusListType;
 use crate::provider::credential_formatter::model::HolderBindingCtx;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
@@ -63,7 +62,7 @@ pub trait CredentialFormatter: Send + Sync {
         algorithm: KeyAlgorithmType,
         auth_fn: AuthenticationFn,
         status_purpose: StatusPurpose,
-        status_list_type: StatusListType,
+        status_list_type: RevocationType,
     ) -> Result<String, FormatterError>;
 
     /// Parses a received credential and verifies the signature.

@@ -9,7 +9,7 @@ use super::dto::{
     CreateProofSchemaRequestDTO, ImportProofSchemaClaimSchemaDTO, ImportProofSchemaDTO,
     ProofInputSchemaRequestDTO,
 };
-use crate::config::core_config::{ConfigExt, CoreConfig};
+use crate::config::core_config::{ConfigExt, CoreConfig, RevocationType};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{CredentialSchema, CredentialSchemaClaim};
@@ -39,6 +39,7 @@ pub async fn proof_schema_name_already_exists(
 pub fn throw_if_validity_constraint_missing_for_lvvc(
     credential_schemas: &Vec<CredentialSchema>,
     request: &CreateProofSchemaRequestDTO,
+    config: &CoreConfig,
 ) -> Result<(), ValidationError> {
     for credential_schema in credential_schemas {
         let input_schema = request
@@ -46,9 +47,15 @@ pub fn throw_if_validity_constraint_missing_for_lvvc(
             .iter()
             .find(|input| input.credential_schema_id == credential_schema.id)
             .ok_or(ValidationError::ProofSchemaMissingProofInputSchemas)?;
-        if credential_schema.revocation_method == "LVVC"
-            && input_schema.validity_constraint.is_none()
-        {
+
+        let revocation_type = config
+            .revocation
+            .get_type(&credential_schema.revocation_method)
+            .map_err(|e| {
+                ValidationError::InvalidFormatter(format!("Invalid revocation id: {e}"))
+            })?;
+
+        if revocation_type == RevocationType::Lvvc && input_schema.validity_constraint.is_none() {
             return Err(ValidationError::ValidityConstraintMissingForLvvc);
         }
     }

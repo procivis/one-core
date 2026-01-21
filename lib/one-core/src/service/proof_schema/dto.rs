@@ -2,11 +2,12 @@ use one_dto_mapper::From;
 use serde::Deserialize;
 use shared_types::{
     ClaimSchemaId, CredentialFormat, CredentialSchemaId, OrganisationId, ProofSchemaId,
+    RevocationMethodId,
 };
 use time::OffsetDateTime;
 
 use crate::model::common::GetListResponse;
-use crate::model::credential_schema::{KeyStorageSecurity, LayoutType, RevocationMethod};
+use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
 use crate::model::proof_schema::{ProofSchema, SortableProofSchemaColumn};
@@ -142,7 +143,7 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethod,
+    pub revocation_method: RevocationMethodId,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,

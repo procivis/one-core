@@ -2,7 +2,7 @@ use autometrics::autometrics;
 use one_core::model::common::LockType;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListPurpose, RevocationListRelations, StatusListType, UpdateRevocationListEntryId,
+    RevocationListPurpose, RevocationListRelations, UpdateRevocationListEntryId,
     UpdateRevocationListEntryRequest,
 };
 use one_core::repository::error::DataLayerError;
@@ -12,7 +12,9 @@ use sea_orm::{
     ActiveEnum, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, NotSet, QueryFilter,
     QueryOrder, QuerySelect, Set, Unchanged,
 };
-use shared_types::{CertificateId, IdentifierId, RevocationListEntryId, RevocationListId};
+use shared_types::{
+    CertificateId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -65,7 +67,7 @@ impl RevocationListProvider {
             issuer_identifier,
             issuer_certificate,
             format: revocation_list.format.into(),
-            r#type: revocation_list.r#type.into(),
+            r#type: revocation_list.r#type,
         })
     }
 }
@@ -89,7 +91,7 @@ impl RevocationListRepository for RevocationListProvider {
             purpose: Set(request.purpose.into()),
             issuer_identifier_id: Set(issuer_identifier.id),
             format: Set(request.format.into()),
-            r#type: Set(request.r#type.into()),
+            r#type: Set(request.r#type),
             issuer_certificate_id: Set(request.issuer_certificate.map(|c| c.id)),
         }
         .insert(&self.db)
@@ -144,7 +146,7 @@ impl RevocationListRepository for RevocationListProvider {
         issuer_identifier_id: IdentifierId,
         issuer_certificate_id: Option<CertificateId>,
         purpose: RevocationListPurpose,
-        status_list_type: StatusListType,
+        status_list_type: &RevocationMethodId,
         relations: &RevocationListRelations,
     ) -> Result<Option<RevocationList>, DataLayerError> {
         let purpose_as_db_type = revocation_list::RevocationListPurpose::from(purpose);
@@ -154,7 +156,7 @@ impl RevocationListRepository for RevocationListProvider {
                 revocation_list::Column::IssuerIdentifierId
                     .eq(issuer_identifier_id)
                     .and(revocation_list::Column::Purpose.eq(purpose_as_db_type.into_value()))
-                    .and(revocation_list::Column::Type.eq(status_list_type.to_string()))
+                    .and(revocation_list::Column::Type.eq(status_list_type))
                     .and(if let Some(issuer_certificate_id) = issuer_certificate_id {
                         revocation_list::Column::IssuerCertificateId.eq(issuer_certificate_id)
                     } else {

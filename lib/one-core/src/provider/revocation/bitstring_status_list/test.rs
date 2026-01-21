@@ -67,7 +67,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
                 last_modified: OffsetDateTime::now_utc(),
                 formatted_list: vec![],
                 format: StatusListCredentialFormat::Jwt,
-                r#type,
+                r#type: r#type.to_owned(),
                 purpose,
                 issuer_identifier: None,
                 issuer_certificate: None,
@@ -81,6 +81,7 @@ async fn revocation_status(suspension: bool) -> Vec<CredentialRevocationInfo> {
         .returning(|_, _, _| Ok(Uuid::new_v4().into()));
 
     let revocation_list = BitstringStatusList::new(
+        "BITSTRINGSTATUSLIST".into(),
         Some("".into()),
         Arc::new(key_algorithm_provider),
         Arc::new(did_method_provider),

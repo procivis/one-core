@@ -1,9 +1,10 @@
 use serde::{Deserialize, Serialize};
 use shared_types::{
-    CredentialId, RevocationListEntryId, RevocationListId, WalletUnitAttestedKeyId,
+    CredentialId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+    WalletUnitAttestedKeyId,
 };
 use standardized_types::x509::CertificateSerial;
-use strum::{Display, EnumString};
+use strum::Display;
 use time::OffsetDateTime;
 
 use crate::model::certificate::{Certificate, CertificateRelations};
@@ -16,7 +17,7 @@ pub struct RevocationList {
     pub last_modified: OffsetDateTime,
     pub formatted_list: Vec<u8>,
     pub format: StatusListCredentialFormat,
-    pub r#type: StatusListType,
+    pub r#type: RevocationMethodId,
     pub purpose: RevocationListPurpose,
 
     // Relations:
@@ -44,15 +45,6 @@ pub enum StatusListCredentialFormat {
     Jwt,
     JsonLdClassic,
     X509Crl,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq, Display, EnumString, Serialize, Deserialize)]
-#[strum(serialize_all = "UPPERCASE")]
-#[serde(rename_all = "UPPERCASE")]
-pub enum StatusListType {
-    BitstringStatusList,
-    TokenStatusList,
-    Crl,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

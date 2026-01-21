@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use assert2::{assert, let_assert};
 use mockall::predicate::*;
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -75,7 +75,7 @@ fn test_parse_import_credential_schema_success() {
 
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq("NONE"))
+        .with(eq::<RevocationMethodId>("NONE".into()))
         .once()
         .return_once(|_| Some(Arc::new(revocation_method)));
 
@@ -88,13 +88,13 @@ fn test_parse_import_credential_schema_success() {
     let request = ImportCredentialSchemaRequestDTO {
         organisation: dummy_organisation(None),
         schema: ImportCredentialSchemaRequestSchemaDTO {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            revocation_method: "NONE".into(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
                 created_date: get_dummy_date(),
@@ -165,13 +165,13 @@ fn test_parse_import_with_nested_claims_success() {
     let request = ImportCredentialSchemaRequestDTO {
         organisation: dummy_organisation(None),
         schema: ImportCredentialSchemaRequestSchemaDTO {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: get_dummy_date(),
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
-            organisation_id: Uuid::new_v4(),
+            revocation_method: "NONE".into(),
+            organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
                 created_date: OffsetDateTime::now_utc(),
@@ -221,7 +221,7 @@ async fn test_importer_import_credential_schema_success() {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Test Schema".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".to_string(),
+        revocation_method: "NONE".into(),
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -290,7 +290,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".to_string(),
+        revocation_method: "NONE".into(),
         claim_schemas: Some(vec![]),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
@@ -355,7 +355,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".to_string(),
+        revocation_method: "NONE".into(),
         claim_schemas: Some(vec![]),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,

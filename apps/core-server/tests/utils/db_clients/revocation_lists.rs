@@ -3,11 +3,13 @@ use std::sync::Arc;
 use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
-    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use one_core::repository::revocation_list_repository::RevocationListRepository;
-use shared_types::{CredentialId, IdentifierId, RevocationListEntryId, RevocationListId};
+use shared_types::{
+    CredentialId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+};
 use sql_data_provider::test_utilities::get_dummy_date;
 use uuid::Uuid;
 
@@ -25,7 +27,7 @@ impl RevocationListsDB {
         issuer_identifier: Identifier,
         purpose: RevocationListPurpose,
         formatted_list: Option<&[u8]>,
-        status_list_type: Option<StatusListType>,
+        status_list_type: Option<RevocationMethodId>,
     ) -> RevocationList {
         let revocation_list = RevocationList {
             id: Uuid::new_v4().into(),
@@ -35,7 +37,7 @@ impl RevocationListsDB {
             purpose,
             issuer_identifier: Some(issuer_identifier),
             format: StatusListCredentialFormat::Jwt,
-            r#type: status_list_type.unwrap_or(StatusListType::BitstringStatusList),
+            r#type: status_list_type.unwrap_or("BITSTRINGSTATUSLIST".into()),
             issuer_certificate: None,
         };
 
@@ -51,7 +53,7 @@ impl RevocationListsDB {
         &self,
         issuer_identifier_id: IdentifierId,
         purpose: RevocationListPurpose,
-        status_list_type: StatusListType,
+        status_list_type: &RevocationMethodId,
         relations: &RevocationListRelations,
     ) -> Option<RevocationList> {
         self.repository

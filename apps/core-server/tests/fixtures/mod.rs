@@ -39,7 +39,7 @@ use one_core::model::proof_schema::{
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
 use one_core::model::revocation_list::{
-    RevocationList, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListPurpose, StatusListCredentialFormat,
 };
 use one_core::repository::DataRepository;
 use one_crypto::encryption::encrypt_string;
@@ -49,7 +49,7 @@ use sea_orm::{ConnectionTrait, DatabaseConnection, DbBackend, Statement};
 use secrecy::{SecretSlice, SecretString};
 use shared_types::{
     BlobId, ClaimSchemaId, CredentialFormat, CredentialSchemaId, DidId, DidValue, EntityId,
-    IdentifierId, InteractionId, KeyId, ProofId,
+    IdentifierId, InteractionId, KeyId, ProofId, RevocationMethodId,
 };
 use similar_asserts::assert_eq;
 use sql_data_provider::test_utilities::*;
@@ -497,7 +497,7 @@ pub struct TestingCredentialSchemaParams {
     pub name: Option<String>,
     pub format: Option<CredentialFormat>,
     pub key_storage_security: Option<Option<KeyStorageSecurity>>,
-    pub revocation_method: Option<String>,
+    pub revocation_method: Option<RevocationMethodId>,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<LayoutProperties>,
     pub schema_id: Option<String>,
@@ -539,7 +539,7 @@ pub async fn create_credential_schema(
         organisation: Some(organisation.to_owned()),
         deleted_at: params.deleted_at,
         format: params.format.unwrap_or("JWT".into()),
-        revocation_method: params.revocation_method.unwrap_or("NONE".to_string()),
+        revocation_method: params.revocation_method.unwrap_or("NONE".into()),
         claim_schemas: Some(claim_schemas),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
@@ -561,7 +561,7 @@ pub async fn create_credential_schema_with_claims(
     db_conn: &DbConn,
     name: &str,
     organisation: &Organisation,
-    revocation_method: &str,
+    revocation_method: impl Into<RevocationMethodId>,
     claims: &[(Uuid, &str, bool, &str, bool)],
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
@@ -594,7 +594,7 @@ pub async fn create_credential_schema_with_claims(
         organisation: Some(organisation.to_owned()),
         deleted_at: None,
         format: "JWT".into(),
-        revocation_method: revocation_method.to_owned(),
+        revocation_method: revocation_method.into(),
         claim_schemas: Some(claim_schemas),
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -731,7 +731,7 @@ pub async fn create_revocation_list(
         purpose: RevocationListPurpose::Revocation,
         issuer_identifier: Some(issuer_identifier),
         format: StatusListCredentialFormat::JsonLdClassic,
-        r#type: StatusListType::BitstringStatusList,
+        r#type: "BITSTRINGSTATUSLIST".into(),
         issuer_certificate: None,
     };
 

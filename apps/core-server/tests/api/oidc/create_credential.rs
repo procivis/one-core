@@ -9,9 +9,7 @@ use one_core::model::identifier::{Identifier, IdentifierType};
 use one_core::model::interaction::InteractionType;
 use one_core::model::key::Key;
 use one_core::model::organisation::Organisation;
-use one_core::model::revocation_list::{
-    RevocationListPurpose, RevocationListRelations, StatusListType,
-};
+use one_core::model::revocation_list::{RevocationListPurpose, RevocationListRelations};
 use one_core::model::validity_credential::ValidityCredentialType;
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::eddsa::Eddsa;
@@ -328,7 +326,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         .get_revocation_by_issuer_identifier_id(
             issuer_identifier.id,
             RevocationListPurpose::Revocation,
-            StatusListType::BitstringStatusList,
+            &"BITSTRINGSTATUSLIST".into(),
             &Default::default(),
         )
         .await
@@ -437,7 +435,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         .get_revocation_by_issuer_identifier_id(
             issuer_identifier.id,
             RevocationListPurpose::RevocationAndSuspension,
-            StatusListType::TokenStatusList,
+            &"TOKENSTATUSLIST".into(),
             &Default::default(),
         )
         .await
@@ -459,7 +457,7 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
             issuer_setup.issuer_identifier.clone(),
             RevocationListPurpose::Revocation,
             None,
-            Some(StatusListType::TokenStatusList),
+            Some("TOKENSTATUSLIST".into()),
         )
         .await;
 
@@ -478,13 +476,14 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier_id,
                 RevocationListPurpose::Revocation,
-                StatusListType::BitstringStatusList,
+                &"BITSTRINGSTATUSLIST".into(),
                 &RevocationListRelations::default()
             )
             .await
             .unwrap()
-            .r#type,
-        StatusListType::BitstringStatusList
+            .r#type
+            .as_ref(),
+        "BITSTRINGSTATUSLIST"
     );
     assert_eq!(
         context
@@ -493,13 +492,14 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier_id,
                 RevocationListPurpose::Suspension,
-                StatusListType::BitstringStatusList,
+                &"BITSTRINGSTATUSLIST".into(),
                 &RevocationListRelations::default()
             )
             .await
             .unwrap()
-            .r#type,
-        StatusListType::BitstringStatusList
+            .r#type
+            .as_ref(),
+        "BITSTRINGSTATUSLIST"
     );
     assert_eq!(
         context
@@ -508,13 +508,14 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier_id,
                 RevocationListPurpose::Revocation,
-                StatusListType::TokenStatusList,
+                &"TOKENSTATUSLIST".into(),
                 &RevocationListRelations::default()
             )
             .await
             .unwrap()
-            .r#type,
-        StatusListType::TokenStatusList
+            .r#type
+            .as_ref(),
+        "TOKENSTATUSLIST"
     );
 }
 
@@ -537,7 +538,7 @@ async fn test_post_issuer_credential_with_disabled_issuer_key_storage() {
             issuer_setup.issuer_identifier.clone(),
             RevocationListPurpose::Revocation,
             None,
-            Some(StatusListType::TokenStatusList),
+            Some("TOKENSTATUSLIST".into()),
         )
         .await;
     test_post_issuer_credential_with(PostCredentialTestParams::default(), Some(issuer_setup)).await;

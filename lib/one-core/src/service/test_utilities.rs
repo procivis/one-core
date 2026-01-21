@@ -358,7 +358,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "format".into(),
             imported_source_url: "CORE_URL".to_string(),
-            revocation_method: "revocation method".to_string(),
+            revocation_method: "revocation method".into(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,
@@ -527,7 +527,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
         format: "format".into(),
-        revocation_method: "format".to_string(),
+        revocation_method: "NONE".into(),
         claim_schemas: None,
         organisation: None,
         layout_type: LayoutType::Card,

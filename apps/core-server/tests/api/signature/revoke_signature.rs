@@ -1,5 +1,5 @@
 use one_core::model::revocation_list::{
-    RevocationListEntityId, RevocationListEntryStatus, RevocationListPurpose, StatusListType,
+    RevocationListEntityId, RevocationListEntryStatus, RevocationListPurpose,
 };
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -16,7 +16,7 @@ async fn test_revoke_wrprc_success() {
             identifier.clone(),
             RevocationListPurpose::Revocation,
             None,
-            Some(StatusListType::TokenStatusList),
+            Some("TOKENSTATUSLIST".into()),
         )
         .await
         .id;
@@ -37,7 +37,7 @@ async fn test_revoke_wrprc_success() {
             .get_revocation_by_issuer_identifier_id(
                 identifier.id,
                 RevocationListPurpose::Revocation,
-                StatusListType::TokenStatusList,
+                &"TOKENSTATUSLIST".into(),
                 &Default::default(),
             )
             .await

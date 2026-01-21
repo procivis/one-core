@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
-use shared_types::CredentialFormat;
+use shared_types::{CredentialFormat, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -102,11 +102,11 @@ impl CredentialSchemaImportParserImpl {
         }
     }
 
-    pub(super) fn parse_revocation_method(
+    fn parse_revocation_method(
         &self,
-        revocation_method_type: String,
+        revocation_method_type: RevocationMethodId,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<RevocationMethodId, ServiceError> {
         let revocation_method_config = self
             .config
             .revocation
@@ -603,7 +603,7 @@ mod test {
 
         let mut config = generic_config().core;
         config.revocation.insert(
-            "LVVC".to_string(),
+            "LVVC".into(),
             Fields {
                 r#type: RevocationType::Lvvc,
                 display: ConfigEntryDisplay::TranslationId("test".to_string()),
@@ -622,11 +622,11 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method("LVVC".to_string(), &formatter);
+        let result = parser.parse_revocation_method("LVVC".into(), &formatter);
 
         // then
         let_assert!(Ok(revocation_method) = result);
-        assert!("LVVC" == revocation_method);
+        assert_eq!(revocation_method.as_ref(), "LVVC");
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method("INVALID".to_string(), &formatter);
+        let result = parser.parse_revocation_method("INVALID".into(), &formatter);
 
         // then
         let_assert!(
@@ -663,7 +663,7 @@ mod test {
 
         let mut config = generic_config().core;
         config.revocation.insert(
-            "BITSTRINGSTATUSLIST".to_string(),
+            "BITSTRINGSTATUSLIST".into(),
             Fields {
                 r#type: RevocationType::BitstringStatusList,
                 display: ConfigEntryDisplay::TranslationId("test".to_string()),
@@ -682,7 +682,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method("BITSTRINGSTATUSLIST".to_string(), &formatter);
+        let result = parser.parse_revocation_method("BITSTRINGSTATUSLIST".into(), &formatter);
 
         // then
         let_assert!(

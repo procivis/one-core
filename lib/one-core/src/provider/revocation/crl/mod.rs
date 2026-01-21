@@ -7,7 +7,7 @@ use futures::FutureExt;
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
-use shared_types::{RevocationListEntryId, RevocationListId};
+use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId};
 use standardized_types::x509::CertificateSerial;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -19,7 +19,7 @@ use crate::model::credential::Credential;
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntryStatus,
-    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat, StatusListType,
+    RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::model::wallet_unit_attested_key::{
@@ -51,6 +51,7 @@ pub struct Params {
 }
 
 pub struct CRLRevocation {
+    config_id: RevocationMethodId,
     core_base_url: Option<String>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
     transaction_manager: Arc<dyn TransactionManager>,
@@ -60,6 +61,7 @@ pub struct CRLRevocation {
 
 impl CRLRevocation {
     pub fn new(
+        config_id: RevocationMethodId,
         core_base_url: Option<String>,
         revocation_list_repository: Arc<dyn RevocationListRepository>,
         transaction_manager: Arc<dyn TransactionManager>,
@@ -67,6 +69,7 @@ impl CRLRevocation {
         params: Params,
     ) -> Self {
         Self {
+            config_id,
             core_base_url,
             revocation_list_repository,
             transaction_manager,
@@ -167,7 +170,7 @@ impl RevocationMethod for CRLRevocation {
                         issuer.id,
                         Some(certificate.id),
                         RevocationListPurpose::Revocation,
-                        StatusListType::Crl,
+                        &self.config_id,
                         &Default::default(),
                     )
                     .await?;
@@ -195,7 +198,7 @@ impl RevocationMethod for CRLRevocation {
                     issuer.id,
                     Some(certificate.id),
                     RevocationListPurpose::Revocation,
-                    StatusListType::Crl,
+                    &self.config_id,
                     &Default::default(),
                 )
                 .await?
@@ -344,7 +347,7 @@ impl CRLRevocation {
                 last_modified: now,
                 formatted_list,
                 format: StatusListCredentialFormat::X509Crl,
-                r#type: StatusListType::Crl,
+                r#type: self.config_id.to_owned(),
                 purpose: RevocationListPurpose::Revocation,
                 issuer_identifier: Some(issuer.to_owned()),
                 issuer_certificate: Some(certificate.to_owned()),

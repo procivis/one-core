@@ -201,7 +201,7 @@ fn generic_credential() -> Credential {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
                 required: true,
@@ -274,7 +274,7 @@ fn generic_credential_list_entity() -> Credential {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: None,
             organisation: None,
             layout_type: LayoutType::Card,
@@ -347,7 +347,7 @@ async fn test_delete_credential_incorrect_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential();
-    credential.schema.as_mut().unwrap().revocation_method = "BITSTRINGSTATUSLIST".to_string();
+    credential.schema.as_mut().unwrap().revocation_method = "BITSTRINGSTATUSLIST".into();
     credential.state = CredentialStateEnum::Accepted;
     credential.role = CredentialRole::Issuer;
 
@@ -3330,7 +3330,7 @@ fn generate_credential_schema_with_claim_schemas(
         last_modified: now,
         name: "nested".to_string(),
         format: "".into(),
-        revocation_method: "".to_string(),
+        revocation_method: "".into(),
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -3913,7 +3913,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -4481,7 +4481,7 @@ async fn test_get_credential_success_array_index_sorting() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -4798,7 +4798,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "MDOC".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -5018,7 +5018,7 @@ async fn test_get_credential_success_array_single_element() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -5142,7 +5142,7 @@ async fn test_create_credential_array(
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".to_string(),
+        revocation_method: "NONE".into(),
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,

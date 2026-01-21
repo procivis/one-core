@@ -391,6 +391,7 @@ impl OneCore {
         )?;
 
         let openid4vp_proof_validator = Arc::new(OpenId4VpProofValidatorProto::new(
+            config.clone(),
             did_method_provider.clone(),
             credential_formatter_provider.clone(),
             presentation_formatter_provider.clone(),

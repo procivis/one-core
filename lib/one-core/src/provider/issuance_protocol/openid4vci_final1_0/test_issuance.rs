@@ -630,7 +630,7 @@ fn dummy_config() -> CoreConfig {
     );
 
     config.revocation.insert(
-        "NONE".to_string(),
+        "NONE".into(),
         Fields {
             r#type: RevocationType::None,
             display: "display".into(),
@@ -710,7 +710,7 @@ fn dummy_credential() -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".to_string(),
+            revocation_method: "NONE".into(),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,

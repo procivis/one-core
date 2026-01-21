@@ -7,6 +7,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::de::Error;
+use shared_types::RevocationMethodId;
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use uuid::Uuid;
@@ -38,7 +39,7 @@ use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub payload: PayloadParams,
-    pub revocation_method: Option<String>,
+    pub revocation_method: Option<RevocationMethodId>,
 }
 
 #[derive(Clone, Deserialize)]

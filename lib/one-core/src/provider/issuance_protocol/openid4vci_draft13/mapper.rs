@@ -1132,13 +1132,13 @@ pub(crate) fn map_to_import_credential_schema_request(
     Ok(ImportCredentialSchemaRequestDTO {
         organisation,
         schema: ImportCredentialSchemaRequestSchemaDTO {
-            id: Uuid::new_v4(),
+            id: Uuid::new_v4().into(),
             created_date: now,
             last_modified: now,
             name: credential_schema.name,
             format: credential_schema.format,
             revocation_method: credential_schema.revocation_method,
-            organisation_id: Uuid::from(credential_schema.organisation_id),
+            organisation_id: credential_schema.organisation_id,
             claims: credential_schema
                 .claims
                 .into_iter()

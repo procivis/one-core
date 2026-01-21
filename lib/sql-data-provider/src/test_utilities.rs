@@ -14,8 +14,8 @@ use sea_orm::{ActiveModelTrait, DatabaseConnection, DbErr, EntityTrait, Set};
 use shared_types::{
     BlobId, CertificateId, ClaimId, ClaimSchemaId, CredentialId, CredentialSchemaId, DidId,
     DidValue, EntityId, HistoryId, IdentifierId, InteractionId, KeyId, NonceId, OrganisationId,
-    ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, WalletUnitAttestedKeyId,
-    WalletUnitId,
+    ProofId, ProofSchemaId, RevocationListEntryId, RevocationListId, RevocationMethodId,
+    WalletUnitAttestedKeyId, WalletUnitId,
 };
 use similar_asserts::assert_eq;
 use standardized_types::jwk::PublicJwk;
@@ -30,9 +30,7 @@ use crate::entity::history::{self, HistoryAction, HistoryEntityType};
 use crate::entity::interaction::InteractionType;
 use crate::entity::key_did::KeyRole;
 use crate::entity::proof::{ProofRequestState, ProofRole};
-use crate::entity::revocation_list::{
-    RevocationListFormat, RevocationListPurpose, RevocationListType,
-};
+use crate::entity::revocation_list::{RevocationListFormat, RevocationListPurpose};
 use crate::entity::revocation_list_entry::{RevocationListEntryStatus, RevocationListEntryType};
 use crate::entity::{
     blob, claim, claim_schema, credential, credential_schema, did, identifier, interaction, key,
@@ -122,7 +120,7 @@ pub async fn insert_credential_schema_to_database(
     organisation_id: OrganisationId,
     name: &str,
     format: &str,
-    revocation_method: &str,
+    revocation_method: impl Into<RevocationMethodId>,
     key_storage_security: Option<KeyStorageSecurity>,
 ) -> Result<CredentialSchemaId, DbErr> {
     let new_id: CredentialSchemaId = Uuid::new_v4().into();
@@ -133,7 +131,7 @@ pub async fn insert_credential_schema_to_database(
         last_modified: Set(get_dummy_date()),
         format: Set(format.into()),
         name: Set(name.to_owned()),
-        revocation_method: Set(revocation_method.to_owned()),
+        revocation_method: Set(revocation_method.into()),
         organisation_id: Set(organisation_id),
         key_storage_security: Set(key_storage_security),
         deleted_at: Set(deleted_at),
@@ -587,7 +585,7 @@ pub async fn insert_revocation_list(
     purpose: RevocationListPurpose,
     format: RevocationListFormat,
     issuer_identifier_id: IdentifierId,
-    r#type: RevocationListType,
+    r#type: RevocationMethodId,
     issuer_certificate_id: Option<CertificateId>,
 ) -> Result<RevocationListId, DbErr> {
     let id = Uuid::new_v4().into();

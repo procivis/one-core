@@ -5,9 +5,9 @@ use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::config::core_config::RevocationType;
 use crate::model::revocation_list::{
     RevocationList, RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
-    StatusListType,
 };
 use crate::proto::certificate_validator::MockCertificateValidator;
 use crate::provider::credential_formatter::provider::MockCredentialFormatterProvider;
@@ -65,7 +65,7 @@ async fn test_get_revocation_list() {
             purpose: RevocationListPurpose::Revocation,
             issuer_identifier: None,
             format: StatusListCredentialFormat::Jwt,
-            r#type: StatusListType::BitstringStatusList,
+            r#type: "BITSTRINGSTATUSLIST".into(),
             issuer_certificate: None,
         };
 
@@ -96,7 +96,7 @@ async fn test_get_revocation_list() {
         RevocationListResponseDTO {
             revocation_list: "revocation-list-credential".to_owned(),
             format: StatusListCredentialFormat::Jwt,
-            r#type: StatusListType::BitstringStatusList
+            r#type: RevocationType::BitstringStatusList
         }
     );
 }

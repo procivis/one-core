@@ -2,7 +2,7 @@ use std::ops::Add;
 use std::sync::{Arc, Mutex};
 
 use mockall::predicate::{always, eq};
-use shared_types::RevocationListId;
+use shared_types::{RevocationListId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use standardized_types::x509::CertificateSerial;
 use time::{Duration, OffsetDateTime};
@@ -13,7 +13,7 @@ use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::identifier::Identifier;
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
-    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
+    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat,
     UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
 };
 use crate::proto::transaction_manager::NoTransactionManager;
@@ -39,7 +39,7 @@ async fn test_add_signature_new_list() {
             eq(issuer.id),
             eq(Some(certificate.id)),
             eq(RevocationListPurpose::Revocation),
-            eq(StatusListType::Crl),
+            eq::<RevocationMethodId>("CRL".into()),
             always(),
         )
         .return_once(|_, _, _, _, _| Ok(None));
@@ -98,6 +98,7 @@ async fn test_add_signature_new_list() {
 
     let refresh_interval = Duration::seconds(10);
     let revocation_method = CRLRevocation::new(
+        "CRL".into(),
         Some("http://base.url".to_string()),
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),
@@ -168,7 +169,7 @@ async fn test_revoke_signature() {
                 last_modified: OffsetDateTime::now_utc(),
                 formatted_list: empty_crl.into(),
                 format: StatusListCredentialFormat::X509Crl,
-                r#type: StatusListType::Crl,
+                r#type: "CRL".into(),
                 purpose: RevocationListPurpose::Revocation,
                 issuer_identifier: None,
                 issuer_certificate: Some(certificate),
@@ -230,6 +231,7 @@ async fn test_revoke_signature() {
 
     let refresh_interval = Duration::seconds(10);
     let revocation_method = CRLRevocation::new(
+        "CRL".into(),
         Some("http://base.url".to_string()),
         Arc::new(revocation_list_repository),
         Arc::new(NoTransactionManager),

@@ -22,9 +22,7 @@ use crate::provider::credential_formatter::model::{
     AuthenticationFn, CredentialPresentation, DetailCredential, Features, FormatterCapabilities,
     VerificationFn,
 };
-use crate::provider::credential_formatter::{
-    CredentialFormatter, MetadataClaimSchema, StatusListType,
-};
+use crate::provider::credential_formatter::{CredentialFormatter, MetadataClaimSchema};
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::service::credential_schema::dto::CreateCredentialSchemaRequestDTO;
 
@@ -57,7 +55,7 @@ impl CredentialFormatter for PhysicalCardFormatter {
         _algorithm: KeyAlgorithmType,
         _auth_fn: AuthenticationFn,
         _status_purpose: StatusPurpose,
-        _status_list_type: StatusListType,
+        _status_list_type: RevocationType,
     ) -> Result<String, FormatterError> {
         Err(FormatterError::Failed(
             "Cannot format StatusList with PhysicalCard formatter".to_string(),

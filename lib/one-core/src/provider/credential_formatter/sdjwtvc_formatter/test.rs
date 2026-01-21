@@ -631,7 +631,7 @@ async fn test_extract_credentials_swiyu() {
         last_modified: now,
         name: "".to_string(),
         format: "".into(),
-        revocation_method: "".to_string(),
+        revocation_method: "".into(),
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -864,7 +864,7 @@ fn test_schema_id_internal() {
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".into(),
-        revocation_method: "".to_string(),
+        revocation_method: "".into(),
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         external_schema: false,
@@ -910,7 +910,7 @@ fn test_schema_id_external() {
     let request_dto = CreateCredentialSchemaRequestDTO {
         name: "".to_string(),
         format: "".into(),
-        revocation_method: "".to_string(),
+        revocation_method: "".into(),
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         external_schema: true,

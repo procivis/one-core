@@ -1,7 +1,7 @@
 use one_dto_mapper::From;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_with::skip_serializing_none;
-use shared_types::WalletUnitId;
+use shared_types::{RevocationMethodId, WalletUnitId};
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 
@@ -101,7 +101,7 @@ pub(super) struct WalletAppAttestationParams {
 #[serde(rename_all = "camelCase")]
 pub(super) struct WalletUnitAttestationParams {
     pub expiration_time: u64,
-    pub revocation_method: Option<String>,
+    pub revocation_method: Option<RevocationMethodId>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
