@@ -351,8 +351,6 @@ impl OneCore {
             key_provider.clone(),
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
-            data_provider.get_identifier_repository(),
-            data_provider.get_history_repository(),
             data_provider.get_revocation_list_repository(),
         )?;
 
@@ -691,11 +689,14 @@ impl OneCore {
                 Arc::new(DefaultClock),
                 core_base_url,
                 config,
-                session_provider,
+                session_provider.clone(),
             ),
             signature_service: SignatureService::new(
                 signer_provider,
                 data_provider.get_revocation_list_repository(),
+                data_provider.get_identifier_repository(),
+                data_provider.get_history_repository(),
+                session_provider,
             ),
         })
     }

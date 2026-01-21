@@ -734,6 +734,9 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid key selection")]
     BR_0330,
+
+    #[strum(message = "Incompatible referenced provider")]
+    BR_0328,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

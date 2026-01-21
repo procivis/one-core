@@ -1,6 +1,10 @@
-use async_trait::async_trait;
-use uuid::Uuid;
+use std::sync::Arc;
 
+use async_trait::async_trait;
+
+use crate::model::identifier::Identifier;
+use crate::provider::revocation::RevocationMethod;
+use crate::provider::signer::dto::RevocationInfo;
 use crate::provider::signer::error::SignerError;
 
 pub mod dto;
@@ -16,8 +20,10 @@ pub trait Signer: Send + Sync {
 
     async fn sign(
         &self,
+        issuer: Identifier,
         request: dto::CreateSignatureRequestDTO,
+        revocation_info: Option<RevocationInfo>,
     ) -> Result<dto::CreateSignatureResponseDTO, SignerError>;
 
-    async fn revoke(&self, id: Uuid) -> Result<(), SignerError>;
+    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>>;
 }

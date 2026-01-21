@@ -243,7 +243,8 @@ pub(crate) fn error_code_to_http_status(code: ErrorCode) -> StatusCode {
         | ErrorCode::BR_0132
         | ErrorCode::BR_0201
         | ErrorCode::BR_0251
-        | ErrorCode::BR_0252 => StatusCode::INTERNAL_SERVER_ERROR,
+        | ErrorCode::BR_0252
+        | ErrorCode::BR_0328 => StatusCode::INTERNAL_SERVER_ERROR,
         ErrorCode::BR_0178 => StatusCode::FORBIDDEN,
     }
 }

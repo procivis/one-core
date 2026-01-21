@@ -1,6 +1,8 @@
-use shared_types::{CertificateId, IdentifierId, KeyId};
+use shared_types::{CertificateId, IdentifierId, KeyId, RevocationListEntryId};
 use time::OffsetDateTime;
 use uuid::Uuid;
+
+use crate::provider::credential_formatter::model::CredentialStatus;
 
 #[derive(Clone, Debug)]
 pub struct CreateSignatureRequestDTO {
@@ -12,6 +14,12 @@ pub struct CreateSignatureRequestDTO {
     pub data: serde_json::Value,
     pub validity_start: Option<OffsetDateTime>,
     pub validity_end: Option<OffsetDateTime>,
+}
+
+#[derive(Clone)]
+pub struct RevocationInfo {
+    pub id: RevocationListEntryId,
+    pub status: CredentialStatus,
 }
 
 #[derive(Clone, Debug)]

@@ -1,3 +1,4 @@
+use shared_types::IdentifierId;
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -9,6 +10,10 @@ pub enum SignatureServiceError {
     MissingSignerProvider(String),
     #[error("Invalid signature id {0}")]
     InvalidSignatureId(Uuid),
+    #[error("Identifier {0} not found")]
+    IdentifierNotFound(IdentifierId),
+    #[error("Revocation not supported")]
+    RevocationNotSupported,
     #[error("Mapping error: {0}")]
     MappingError(String),
     #[error(transparent)]
@@ -20,6 +25,8 @@ impl ErrorCodeMixin for SignatureServiceError {
         match self {
             Self::MissingSignerProvider { .. } => ErrorCode::BR_0326,
             Self::InvalidSignatureId(_) => ErrorCode::BR_0327,
+            Self::IdentifierNotFound(_) => ErrorCode::BR_0207,
+            Self::RevocationNotSupported => ErrorCode::BR_0101,
             Self::MappingError(_) => ErrorCode::BR_0000,
             Self::Nested(nested) => nested.error_code(),
         }

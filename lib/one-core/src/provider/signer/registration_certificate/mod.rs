@@ -14,27 +14,24 @@ use uuid::Uuid;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
 use crate::error::ContextWithErrorCode;
 use crate::mapper::x509::pem_chain_into_x5c;
-use crate::model::certificate::CertificateRelations;
-use crate::model::did::{DidRelations, KeyRole};
-use crate::model::history::{
-    History, HistoryAction, HistoryEntityType, HistoryMetadata, HistorySource,
-};
-use crate::model::identifier::{Identifier, IdentifierRelations};
-use crate::model::key::{Key, KeyRelations};
+use crate::model::did::KeyRole;
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::proto::clock::Clock;
 use crate::proto::jwt::JwtPublicKeyInfo;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
+use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::signer::Signer;
-use crate::provider::signer::dto::{CreateSignatureRequestDTO, CreateSignatureResponseDTO};
+use crate::provider::signer::dto::{
+    CreateSignatureRequestDTO, CreateSignatureResponseDTO, RevocationInfo,
+};
 use crate::provider::signer::error::SignerError;
 use crate::provider::signer::model::SignerCapabilities;
 use crate::provider::signer::registration_certificate::model::{
     WRPRegistrationCertificate, WRPRegistrationCertificatePayload,
 };
-use crate::repository::history_repository::HistoryRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 
 #[derive(Clone, Deserialize)]
@@ -55,31 +52,25 @@ pub struct PayloadParams {
 pub struct RegistrationCertificate {
     params: Params,
     clock: Arc<dyn Clock>,
-    revocation: Option<Arc<dyn RevocationMethod>>,
+    revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
-    history: Arc<dyn HistoryRepository>,
 }
 
 impl RegistrationCertificate {
     pub fn new(
         params: Params,
         clock: Arc<dyn Clock>,
-        revocation: Option<Arc<dyn RevocationMethod>>,
+        revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
-        identifier_repository: Arc<dyn IdentifierRepository>,
-        history: Arc<dyn HistoryRepository>,
     ) -> Self {
         Self {
             params,
             clock,
-            revocation,
+            revocation_method_provider,
             key_provider,
             key_algorithm_provider,
-            identifier_repository,
-            history,
         }
     }
 
@@ -153,59 +144,21 @@ impl Signer for RegistrationCertificate {
 
     async fn sign(
         &self,
+        issuer: Identifier,
         request: CreateSignatureRequestDTO,
+        revocation_info: Option<RevocationInfo>,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
         let now = self.clock.now_utc();
         let (nbf, exp) = self.nbf_and_exp(&request)?;
         let payload: model::RequestData = serde_json::from_value(request.data.clone())?;
-        let payload_name = payload.name.clone();
 
-        let issuer = self
-            .identifier_repository
-            .get(
-                request.issuer,
-                &IdentifierRelations {
-                    organisation: None,
-                    did: Some(DidRelations {
-                        keys: Some(KeyRelations { organisation: None }),
-                        organisation: None,
-                    }),
-                    key: Some(KeyRelations { organisation: None }),
-                    certificates: Some(CertificateRelations {
-                        key: Some(KeyRelations { organisation: None }),
-                        organisation: None,
-                    }),
-                },
-            )
-            .await
-            .error_while("Loading issuer identifier")?
-            .ok_or(SignerError::IdentifierNotFound(request.issuer))?;
-
-        let selection = issuer
-            .select_key(KeySelection {
-                key: request.issuer_key,
-                certificate: request.issuer_certificate,
-                ..Default::default()
-            })
-            .error_while("Selecting signing key")?;
-
-        let (jwt_id, status) = match self.revocation.as_deref() {
-            Some(list) => {
-                let (list_entry_id, revocation_info) = list
-                    .add_signature(
-                        "REGISTRATION_CERTIFICATE".to_owned(),
-                        &issuer,
-                        &selection.certificate().cloned(),
-                    )
-                    .await
-                    .error_while("Adding signature to revocation list")?;
-                (
-                    Uuid::from(list_entry_id),
-                    Some(model::Status {
-                        status_list: revocation_info.credential_status.additional_fields,
-                    }),
-                )
-            }
+        let (jwt_id, status) = match revocation_info {
+            Some(RevocationInfo { id, status }) => (
+                Uuid::from(id),
+                Some(model::Status {
+                    status_list: status.additional_fields,
+                }),
+            ),
             None => (Uuid::new_v4(), None),
         };
         let jwt_payload = WRPRegistrationCertificatePayload {
@@ -226,63 +179,15 @@ impl Signer for RegistrationCertificate {
             .create_and_sign_jwt(&request, issuer, jwt_payload)
             .await?;
 
-        if let Err(error) = self
-            .history
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                source: HistorySource::Core,
-                action: HistoryAction::Created,
-                entity_id: Some(jwt_id.into()),
-                entity_type: HistoryEntityType::Signature,
-                metadata: Some(HistoryMetadata::External(request.data)),
-                name: payload_name,
-                target: None,
-                organisation_id: None,
-                user: None,
-            })
-            .await
-        {
-            tracing::warn!("Failed to write history entry: {}", error);
-        }
-
         Ok(CreateSignatureResponseDTO {
             id: jwt_id,
             result: signed_jwt,
         })
     }
 
-    async fn revoke(&self, id: Uuid) -> Result<(), SignerError> {
-        match self.revocation.as_deref() {
-            Some(list) => list
-                .revoke_signature(id.into())
-                .await
-                .error_while("revoking registration certificate")
-                .map_err(SignerError::from),
-            None => Err(SignerError::RevocationNotSupported),
-        }?;
-
-        if let Err(error) = self
-            .history
-            .create_history(History {
-                id: Uuid::new_v4().into(),
-                created_date: OffsetDateTime::now_utc(),
-                source: HistorySource::Core,
-                action: HistoryAction::Revoked,
-                entity_id: Some(id.into()),
-                entity_type: HistoryEntityType::Signature,
-                metadata: None,
-                name: "".to_owned(),
-                target: None,
-                organisation_id: None,
-                user: None,
-            })
-            .await
-        {
-            tracing::warn!("Failed to write history entry: {}", error);
-        }
-
-        Ok(())
+    fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>> {
+        self.revocation_method_provider
+            .get_revocation_method(self.params.revocation_method.as_ref()?)
     }
 }
 
@@ -381,14 +286,6 @@ impl TryFrom<Option<&crate::config::core_config::Params>> for Params {
                 "expiry cannot occur later than 12 months after issuance (GEN-5.2.4-08)",
             ));
         }
-
-        // Currently, we support only Token Status List
-        if let Some(rev) = &result.revocation_method
-            && rev.as_str() != "TOKENSTATUSLIST"
-        {
-            return Err(Error::unknown_variant(rev, &["TOKENSTATUSLIST"]));
-        };
-
         Ok(result)
     }
 }

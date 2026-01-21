@@ -34,7 +34,7 @@ use crate::repository::validity_credential_repository::ValidityCredentialReposit
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-pub(crate) trait RevocationMethodProvider: Send + Sync {
+pub trait RevocationMethodProvider: Send + Sync {
     fn get_revocation_method(
         &self,
         revocation_method_id: &str,

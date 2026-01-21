@@ -833,6 +833,7 @@ impl ErrorCodeMixin for ConfigValidationError {
             | Self::DuplicateUrlScheme { .. }
             | Self::MultipleFallbackProviders { .. }
             | Self::MissingX509CaCertificate => ErrorCode::BR_0051,
+            Self::IncompatibleReferencedProvider { .. } => ErrorCode::BR_0328,
         }
     }
 }

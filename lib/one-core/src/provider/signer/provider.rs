@@ -6,23 +6,24 @@ use serde_json::json;
 use uuid::Uuid;
 
 use super::{Signer, registration_certificate};
-use crate::config::ConfigValidationError;
-use crate::config::core_config::{CoreConfig, SignerType};
+use crate::config::core_config::{ConfigExt, CoreConfig, SignerType};
+use crate::config::{ConfigValidationError, ProviderReference};
 use crate::model::revocation_list::RevocationListEntityInfo;
 use crate::proto::clock::Clock;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::repository::history_repository::HistoryRepository;
-use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 
 #[async_trait]
 pub(crate) trait SignerProvider: Send + Sync {
-    async fn get_for_signature_id(&self, id: Uuid) -> Result<Arc<dyn Signer>, ServiceError>;
+    async fn get_for_signature_id(
+        &self,
+        id: Uuid,
+    ) -> Result<(String, Arc<dyn Signer>), ServiceError>;
 
-    fn get_from_type(&self, r#type: &str) -> Option<Arc<dyn Signer>>;
+    fn get(&self, name: &str) -> Option<Arc<dyn Signer>>;
 }
 
 struct SignerProviderImpl {
@@ -32,7 +33,10 @@ struct SignerProviderImpl {
 
 #[async_trait]
 impl SignerProvider for SignerProviderImpl {
-    async fn get_for_signature_id(&self, id: Uuid) -> Result<Arc<dyn Signer>, ServiceError> {
+    async fn get_for_signature_id(
+        &self,
+        id: Uuid,
+    ) -> Result<(String, Arc<dyn Signer>), ServiceError> {
         let entry = self
             .revocation_list_repository
             .get_entry_by_id(id.into())
@@ -42,31 +46,29 @@ impl SignerProvider for SignerProviderImpl {
             ))?;
 
         match entry.entity_info {
-            RevocationListEntityInfo::Signature(sig_type, _) => self
-                .get_from_type(sig_type.as_str())
-                .ok_or(ServiceError::MissingProvider(MissingProviderError::Signer(
-                    sig_type,
-                ))),
+            RevocationListEntityInfo::Signature(name, _) => {
+                let signer = self.get(&name).ok_or(ServiceError::MissingProvider(
+                    MissingProviderError::Signer(name.clone()),
+                ))?;
+                Ok((name, signer))
+            }
             _ => Err(ServiceError::MappingError(
                 "Invalid revocation list entry type".to_string(),
             )),
         }
     }
 
-    fn get_from_type(&self, r#type: &str) -> Option<Arc<dyn Signer>> {
-        self.signers.get(r#type).cloned()
+    fn get(&self, name: &str) -> Option<Arc<dyn Signer>> {
+        self.signers.get(name).cloned()
     }
 }
 
-#[expect(clippy::too_many_arguments)]
 pub(crate) fn signer_provider_from_config(
     config: &mut CoreConfig,
     clock: Arc<dyn Clock>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
-    identifier_repository: Arc<dyn IdentifierRepository>,
-    history_repository: Arc<dyn HistoryRepository>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
 ) -> Result<Arc<dyn SignerProvider>, ConfigValidationError> {
     let mut signers: HashMap<String, Arc<dyn Signer>> = HashMap::new();
@@ -83,32 +85,31 @@ pub(crate) fn signer_provider_from_config(
                         key: name.to_owned(),
                         source: e,
                     })?;
-                let revocation = match params.revocation_method.as_deref() {
-                    Some(method) => {
-                        match revocation_method_provider.get_revocation_method(method) {
-                            Some(value) => Ok(Some(value)),
-                            None => Err(ConfigValidationError::EntryNotFound(format!(
-                                "No revocation method of type {}",
-                                method
-                            ))),
-                        }
-                    }
-                    None => Ok(None),
-                }?;
-
-                Arc::new(registration_certificate::RegistrationCertificate::new(
-                    params,
+                let signer = registration_certificate::RegistrationCertificate::new(
+                    params.clone(),
                     clock.clone(),
-                    revocation,
+                    revocation_method_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
-                    identifier_repository.clone(),
-                    history_repository.clone(),
-                ))
+                );
+
+                if let Some(revocation_method) = &params.revocation_method {
+                    let revocation_type =
+                        config.revocation.get_if_enabled(revocation_method)?.r#type;
+                    let compatible_revocation_types = signer.get_capabilities().revocation_methods;
+                    if !compatible_revocation_types.contains(&revocation_type) {
+                        return Err(ConfigValidationError::incompatible_provider_ref(
+                            name.to_owned(),
+                            ProviderReference::RevocationMethod(revocation_method.to_owned()),
+                            &compatible_revocation_types,
+                        ));
+                    }
+                }
+                Arc::new(signer)
             }
         };
-        fields.capabilities = Some(json!(signer.get_capabilities()));
 
+        fields.capabilities = Some(json!(signer.get_capabilities()));
         signers.insert(name.to_owned(), signer);
     }
 
