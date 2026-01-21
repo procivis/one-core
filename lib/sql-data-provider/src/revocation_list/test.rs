@@ -4,9 +4,8 @@ use std::vec;
 use one_core::model::credential::CredentialStateEnum;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::revocation_list::{
-    CertificateSerial, RevocationList, RevocationListEntityId, RevocationListEntityInfo,
-    RevocationListEntry, RevocationListEntryStatus, RevocationListPurpose,
-    StatusListCredentialFormat, StatusListType,
+    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
+    RevocationListEntryStatus, RevocationListPurpose, StatusListCredentialFormat, StatusListType,
 };
 use one_core::repository::certificate_repository::MockCertificateRepository;
 use one_core::repository::error::DataLayerError;
@@ -261,7 +260,7 @@ async fn test_create_signature_entry_with_serial() {
             setup.list_id,
             RevocationListEntityId::Signature(
                 "type".to_string(),
-                Some(CertificateSerial(vec![0x00, 0x01])),
+                Some(vec![0x00, 0x01].try_into().unwrap()),
             ),
             None,
         )
@@ -294,7 +293,7 @@ async fn test_create_certificate_entry_fail_with_both_serial_and_index() {
             setup.list_id,
             RevocationListEntityId::Signature(
                 "type".to_string(),
-                Some(CertificateSerial(vec![0x00, 0x01])),
+                Some(vec![0x00, 0x01].try_into().unwrap()),
             ),
             Some(0),
         )

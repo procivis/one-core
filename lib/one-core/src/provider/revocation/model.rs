@@ -1,6 +1,7 @@
 //! `struct`s and `enum`s for revocation method provider.
 
 use serde::Serialize;
+use standardized_types::x509::CertificateSerial;
 use strum::Display;
 use time::OffsetDateTime;
 
@@ -25,6 +26,7 @@ pub struct VerifierCredentialData {
 
 pub struct CredentialRevocationInfo {
     pub credential_status: CredentialStatus,
+    pub serial: Option<CertificateSerial>,
 }
 
 #[derive(Clone, Debug, Display, PartialEq)]

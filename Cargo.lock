@@ -6185,6 +6185,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 name = "standardized-types"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "proc-macros",
  "secrecy",
  "serde",
@@ -6192,6 +6193,7 @@ dependencies = [
  "serde_with",
  "strum 0.27.2",
  "utoipa",
+ "uuid",
 ]
 
 [[package]]

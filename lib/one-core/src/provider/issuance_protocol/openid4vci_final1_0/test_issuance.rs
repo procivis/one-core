@@ -129,6 +129,7 @@ async fn test_issuer_submit_succeeds() {
                     status_purpose: Some("type".to_string()),
                     additional_fields: HashMap::new(),
                 },
+                serial: None,
             }])
         });
 

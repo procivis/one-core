@@ -373,6 +373,7 @@ impl RevocationMethod for TokenStatusList {
                 &key_info.revocation_list.id,
                 key_info.revocation_list_index,
             )?,
+            serial: None,
         })
     }
 
@@ -641,6 +642,7 @@ impl TokenStatusList {
 
         let revocation_info = CredentialRevocationInfo {
             credential_status: self.create_credential_status(&list_id, entry_index)?,
+            serial: None,
         };
         Ok((entry_id, revocation_info))
     }

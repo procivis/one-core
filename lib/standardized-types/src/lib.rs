@@ -19,6 +19,7 @@ pub mod jwa;
 pub mod jwk;
 pub mod oauth2;
 pub mod openid4vp;
+pub mod x509;
 
 // Crate utility for `secrecy` string values
 mod secret_string {

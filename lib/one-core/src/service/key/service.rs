@@ -1,9 +1,6 @@
 use std::str::FromStr;
-use std::sync::Arc;
 
-use anyhow::{Context, bail};
-use one_crypto::signer::ecdsa::ECDSASigner;
-use rcgen::{PKCS_ECDSA_P256_SHA256, PKCS_ED25519, SignatureAlgorithm};
+use anyhow::Context;
 use shared_types::{KeyId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
 use time::OffsetDateTime;
@@ -14,11 +11,11 @@ use super::dto::{GetKeyListResponseDTO, KeyRequestDTO};
 use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
+use crate::mapper::x509::SigningKeyAdapter;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
-use crate::model::key::{Key, KeyListQuery, KeyRelations};
+use crate::model::key::{KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
 use crate::proto::session_provider::SessionExt;
-use crate::provider::key_storage::KeyStorage;
 use crate::repository::error::DataLayerError;
 use crate::service::error::ServiceError;
 use crate::service::key::dto::{
@@ -235,117 +232,6 @@ impl KeyService {
         }
 
         Ok(KeyGenerateCSRResponseDTO { content })
-    }
-}
-
-struct SigningKeyAdapter {
-    key: Key,
-    decompressed_public_key: Option<Vec<u8>>,
-    key_storage: Arc<dyn KeyStorage>,
-    algorithm: &'static rcgen::SignatureAlgorithm,
-    handle: tokio::runtime::Handle,
-}
-
-impl SigningKeyAdapter {
-    fn new(
-        key: Key,
-        key_storage: Arc<dyn KeyStorage>,
-        handle: tokio::runtime::Handle,
-    ) -> anyhow::Result<SigningKeyAdapter> {
-        let mut decompressed_public_key = None;
-
-        let algorithm = match key.key_type.as_str() {
-            "ECDSA" => &PKCS_ECDSA_P256_SHA256,
-            "EDDSA" => &PKCS_ED25519,
-            other => bail!("Unsupported key type `{other}` for CSR"),
-        };
-        if algorithm == &PKCS_ECDSA_P256_SHA256 {
-            decompressed_public_key = Some(
-                ECDSASigner::parse_public_key(&key.public_key, false)
-                    .context("Key decompression failed")?,
-            );
-        }
-
-        Ok(Self {
-            key,
-            key_storage,
-            algorithm,
-            handle,
-            decompressed_public_key,
-        })
-    }
-}
-
-impl rcgen::PublicKeyData for SigningKeyAdapter {
-    fn der_bytes(&self) -> &[u8] {
-        self.decompressed_public_key
-            .as_ref()
-            .unwrap_or(&self.key.public_key)
-    }
-
-    fn algorithm(&self) -> &'static SignatureAlgorithm {
-        self.algorithm
-    }
-}
-
-impl rcgen::SigningKey for SigningKeyAdapter {
-    fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
-        let handle = self.handle.clone();
-        let key_storage = self.key_storage.clone();
-        let key = self.key.clone();
-        let msg = msg.to_vec();
-        let algorithm = self.algorithm;
-
-        std::thread::spawn(move || {
-            let _guard = handle.enter();
-            let handle = tokio::spawn(async move {
-                let mut signature = key_storage
-                    .key_handle(&key)
-                    .map_err(|error| {
-                        tracing::error!(%error, "Failed to sign CSR - key handle failure");
-                        rcgen::Error::RemoteKeyError
-                    })?
-                    .sign(&msg)
-                    .await
-                    .map_err(|error| {
-                        tracing::error!(%error, "Failed to sign CSR");
-                        rcgen::Error::RemoteKeyError
-                    })?;
-
-                // P256 signature must be ASN.1 encoded
-                if algorithm == &PKCS_ECDSA_P256_SHA256 {
-                    use asn1_rs::{Integer, SequenceOf, ToDer};
-
-                    let s: [u8; 32] = signature.split_off(32).try_into().map_err(|_| {
-                        tracing::error!("Failed to convert generated signature");
-                        rcgen::Error::RemoteKeyError
-                    })?;
-                    let r: [u8; 32] = signature.try_into().map_err(|_| {
-                        tracing::error!("Failed to convert generated signature");
-                        rcgen::Error::RemoteKeyError
-                    })?;
-
-                    let r = Integer::from_const_array(r);
-                    let s = Integer::from_const_array(s);
-                    let seq = SequenceOf::from_iter([r, s]);
-                    signature = seq.to_der_vec().map_err(|error| {
-                        tracing::error!(%error, "Failed to serialize P256 signature");
-                        rcgen::Error::RemoteKeyError
-                    })?;
-                }
-
-                Ok(signature)
-            });
-            futures::executor::block_on(handle).map_err(|_| {
-                tracing::error!("Failed to join CSR task");
-                rcgen::Error::RemoteKeyError
-            })?
-        })
-        .join()
-        .map_err(|_| {
-            tracing::error!("Failed to join CSR thread");
-            rcgen::Error::RemoteKeyError
-        })?
     }
 }
 

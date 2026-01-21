@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use anyhow::Context;
 use ct_codecs::{Base64, Decoder, Encoder};
+use one_crypto::signer::ecdsa::ECDSASigner;
 use x509_parser::certificate::X509Certificate;
 use x509_parser::extensions::ParsedExtension;
 use x509_parser::oid_registry::{
@@ -7,6 +10,9 @@ use x509_parser::oid_registry::{
 };
 use x509_parser::pem::Pem;
 
+use crate::config::core_config::KeyAlgorithmType;
+use crate::model::key::Key;
+use crate::provider::key_storage::KeyStorage;
 use crate::service::error::ValidationError;
 
 pub(crate) fn pem_chain_into_x5c(pem_chain: &str) -> anyhow::Result<Vec<String>> {
@@ -111,6 +117,115 @@ pub(crate) fn authority_key_identifier(
         })
         .transpose()?
         .map(|key_id| format!("{key_id:x}")))
+}
+
+/// adapter for use with the `rcgen` crate
+pub(crate) struct SigningKeyAdapter {
+    key: Key,
+    public_key: Vec<u8>,
+    key_storage: Arc<dyn KeyStorage>,
+    algorithm: &'static rcgen::SignatureAlgorithm,
+    handle: tokio::runtime::Handle,
+}
+
+impl SigningKeyAdapter {
+    pub(crate) fn new(
+        key: Key,
+        key_storage: Arc<dyn KeyStorage>,
+        handle: tokio::runtime::Handle,
+    ) -> anyhow::Result<SigningKeyAdapter> {
+        let algorithm = match key.key_algorithm_type() {
+            Some(KeyAlgorithmType::Ecdsa) => &rcgen::PKCS_ECDSA_P256_SHA256,
+            Some(KeyAlgorithmType::Eddsa) => &rcgen::PKCS_ED25519,
+            other => anyhow::bail!("Unsupported key type `{other:?}` for X509"),
+        };
+
+        let public_key = if algorithm == &rcgen::PKCS_ECDSA_P256_SHA256 {
+            ECDSASigner::parse_public_key(&key.public_key, false)
+                .context("Key decompression failed")?
+        } else {
+            key.public_key.to_owned()
+        };
+
+        Ok(Self {
+            key,
+            key_storage,
+            algorithm,
+            handle,
+            public_key,
+        })
+    }
+}
+
+impl rcgen::PublicKeyData for SigningKeyAdapter {
+    fn der_bytes(&self) -> &[u8] {
+        self.public_key.as_ref()
+    }
+
+    fn algorithm(&self) -> &'static rcgen::SignatureAlgorithm {
+        self.algorithm
+    }
+}
+
+impl rcgen::SigningKey for SigningKeyAdapter {
+    fn sign(&self, msg: &[u8]) -> Result<Vec<u8>, rcgen::Error> {
+        let handle = self.handle.clone();
+        let key_storage = self.key_storage.clone();
+        let key = self.key.clone();
+        let msg = msg.to_vec();
+        let algorithm = self.algorithm;
+
+        std::thread::spawn(move || {
+            let _guard = handle.enter();
+            let handle = tokio::spawn(async move {
+                let mut signature = key_storage
+                    .key_handle(&key)
+                    .map_err(|error| {
+                        tracing::warn!(%error, "Failed to sign X509 - key handle failure");
+                        rcgen::Error::RemoteKeyError
+                    })?
+                    .sign(&msg)
+                    .await
+                    .map_err(|error| {
+                        tracing::warn!(%error, "Failed to sign X509");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+
+                // P256 signature must be ASN.1 encoded
+                if algorithm == &rcgen::PKCS_ECDSA_P256_SHA256 {
+                    use asn1_rs::{Integer, SequenceOf, ToDer};
+
+                    let s: [u8; 32] = signature.split_off(32).try_into().map_err(|_| {
+                        tracing::warn!("Failed to convert generated signature");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+                    let r: [u8; 32] = signature.try_into().map_err(|_| {
+                        tracing::warn!("Failed to convert generated signature");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+
+                    let r = Integer::from_const_array(r);
+                    let s = Integer::from_const_array(s);
+                    let seq = SequenceOf::from_iter([r, s]);
+                    signature = seq.to_der_vec().map_err(|error| {
+                        tracing::warn!(%error, "Failed to serialize P256 signature");
+                        rcgen::Error::RemoteKeyError
+                    })?;
+                }
+
+                Ok(signature)
+            });
+            futures::executor::block_on(handle).map_err(|_| {
+                tracing::warn!("Failed to join X509 task");
+                rcgen::Error::RemoteKeyError
+            })?
+        })
+        .join()
+        .map_err(|_| {
+            tracing::warn!("Failed to join X509 thread");
+            rcgen::Error::RemoteKeyError
+        })?
+    }
 }
 
 #[cfg(test)]

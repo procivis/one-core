@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use shared_types::{
     CredentialId, RevocationListEntryId, RevocationListId, WalletUnitAttestedKeyId,
 };
+use standardized_types::x509::CertificateSerial;
 use strum::{Display, EnumString};
 use time::OffsetDateTime;
 
@@ -68,10 +69,6 @@ pub enum RevocationListEntryStatus {
     Revoked,
     Suspended,
 }
-
-// TODO (ONE-8418): move to a proper file
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct CertificateSerial(pub Vec<u8>);
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum RevocationListEntityId {

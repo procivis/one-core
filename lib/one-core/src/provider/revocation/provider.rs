@@ -158,7 +158,13 @@ pub(crate) fn revocation_method_provider_from_config(
             }
             RevocationType::CRL => {
                 let params = config.revocation.get(key)?;
-                Arc::new(CRLRevocation::new(params))
+                Arc::new(CRLRevocation::new(
+                    core_base_url.clone(),
+                    revocation_list_repository.clone(),
+                    transaction_manager.clone(),
+                    key_provider.clone(),
+                    params,
+                ))
             }
         };
 

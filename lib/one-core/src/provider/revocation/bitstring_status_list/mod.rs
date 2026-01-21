@@ -560,6 +560,7 @@ impl BitstringStatusList {
 
         Ok(CredentialRevocationInfo {
             credential_status: self.create_credential_status(&list_id, index, purpose.into())?,
+            serial: None,
         })
     }
 

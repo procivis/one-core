@@ -281,6 +281,7 @@ impl RevocationMethod for LvvcProvider {
                 status_purpose: None,
                 additional_fields: HashMap::new(),
             },
+            serial: None,
         }])
     }
 

@@ -1,9 +1,9 @@
 use autometrics::autometrics;
 use one_core::model::common::LockType;
 use one_core::model::revocation_list::{
-    CertificateSerial, RevocationList, RevocationListEntityId, RevocationListEntityInfo,
-    RevocationListEntry, RevocationListPurpose, RevocationListRelations, StatusListType,
-    UpdateRevocationListEntryId, UpdateRevocationListEntryRequest,
+    RevocationList, RevocationListEntityId, RevocationListEntityInfo, RevocationListEntry,
+    RevocationListPurpose, RevocationListRelations, StatusListType, UpdateRevocationListEntryId,
+    UpdateRevocationListEntryRequest,
 };
 use one_core::repository::error::DataLayerError;
 use one_core::repository::revocation_list_repository::RevocationListRepository;
@@ -261,7 +261,7 @@ impl RevocationListRepository for RevocationListProvider {
                 return Err(DataLayerError::IncorrectParameters);
             }
 
-            Some(serial.0.to_owned())
+            Some(serial.to_owned().into())
         } else {
             if index_on_status_list.is_none() {
                 return Err(DataLayerError::IncorrectParameters);
@@ -418,10 +418,14 @@ impl RevocationListProvider {
                         Ok(RevocationListEntityInfo::WalletUnitAttestedKey)
                     }
                     RevocationListEntryType::Signature => match entry.signature_type {
-                        Some(value) => Ok(RevocationListEntityInfo::Signature(
-                            value,
-                            entry.serial.map(CertificateSerial),
-                        )),
+                        Some(value) => {
+                            let serial = if let Some(serial) = entry.serial {
+                                Some(serial.try_into()?)
+                            } else {
+                                None
+                            };
+                            Ok(RevocationListEntityInfo::Signature(value, serial))
+                        }
                         None => Err(DataLayerError::MappingError),
                     },
                 }?;
