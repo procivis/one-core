@@ -70,6 +70,17 @@ credentialIssuer:
         issuer: https://eudiw-issuer.eudi.dev.procivis-one.com
       private:
         clientId: procivis-wallet-dev
+  WEBUILD_INTEROP:
+    display:
+      en: WE BUILD Interop Issuer
+      de: WE BUILD Interop Issuer
+    order: 2
+    enabled: true
+    params:
+      public:
+        issuer: https://dev-i4mlab.aegean.gr/rfc-issuer
+      private:
+        clientId: procivis-wallet-dev
 walletProvider:
   PROCIVIS_ONE:
     type: PROCIVIS_ONE
