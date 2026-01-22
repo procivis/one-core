@@ -11,6 +11,7 @@ use x509_parser::oid_registry::{
 use x509_parser::pem::Pem;
 
 use crate::config::core_config::KeyAlgorithmType;
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::key::Key;
 use crate::provider::key_storage::KeyStorage;
 use crate::service::error::ValidationError;
@@ -119,6 +120,22 @@ pub(crate) fn authority_key_identifier(
         .map(|key_id| format!("{key_id:x}")))
 }
 
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum RcgenSigningError {
+    #[error("Unsupported key type `{0}`")]
+    UnsupportedKeyType(String),
+    #[error("Mapping error: {0}")]
+    MappingError(String),
+    #[error(transparent)]
+    CryptoError(#[from] one_crypto::SignerError),
+}
+
+impl ErrorCodeMixin for RcgenSigningError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0329
+    }
+}
+
 /// adapter for use with the `rcgen` crate
 pub(crate) struct SigningKeyAdapter {
     key: Key,
@@ -133,16 +150,21 @@ impl SigningKeyAdapter {
         key: Key,
         key_storage: Arc<dyn KeyStorage>,
         handle: tokio::runtime::Handle,
-    ) -> anyhow::Result<SigningKeyAdapter> {
+    ) -> Result<SigningKeyAdapter, RcgenSigningError> {
         let algorithm = match key.key_algorithm_type() {
             Some(KeyAlgorithmType::Ecdsa) => &rcgen::PKCS_ECDSA_P256_SHA256,
             Some(KeyAlgorithmType::Eddsa) => &rcgen::PKCS_ED25519,
-            other => anyhow::bail!("Unsupported key type `{other:?}` for X509"),
+            Some(other) => return Err(RcgenSigningError::UnsupportedKeyType(other.to_string())),
+            None => {
+                return Err(RcgenSigningError::MappingError(format!(
+                    "missing key type on key {}",
+                    key.id
+                )));
+            }
         };
 
         let public_key = if algorithm == &rcgen::PKCS_ECDSA_P256_SHA256 {
-            ECDSASigner::parse_public_key(&key.public_key, false)
-                .context("Key decompression failed")?
+            ECDSASigner::parse_public_key(&key.public_key, false)?
         } else {
             key.public_key.to_owned()
         };

@@ -12,6 +12,8 @@ pub mod error;
 pub mod model;
 pub mod provider;
 pub mod registration_certificate;
+mod validity;
+pub mod x509_certificate;
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]

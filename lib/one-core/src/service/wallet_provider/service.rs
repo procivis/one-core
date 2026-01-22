@@ -925,8 +925,8 @@ impl WalletProviderService {
 
         let selection = issuer_identifier.select_key(
             KeyFilter {
-                role: None,
                 algorithms: Some(vec![KeyAlgorithmType::Ecdsa]),
+                ..Default::default()
             }
             .into(),
         )?;

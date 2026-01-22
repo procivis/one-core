@@ -8,7 +8,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use serde::de::Error;
 use shared_types::RevocationMethodId;
-use time::{Duration, OffsetDateTime};
+use time::Duration;
 use url::Url;
 use uuid::Uuid;
 
@@ -33,6 +33,7 @@ use crate::provider::signer::model::SignerCapabilities;
 use crate::provider::signer::registration_certificate::model::{
     WRPRegistrationCertificate, WRPRegistrationCertificatePayload,
 };
+use crate::provider::signer::validity::{SignatureValidity, calculate_signature_validity};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 
 #[derive(Clone, Deserialize)]
@@ -74,50 +75,6 @@ impl RegistrationCertificate {
             key_algorithm_provider,
         }
     }
-
-    fn nbf_and_exp(
-        &self,
-        request: &CreateSignatureRequestDTO,
-    ) -> Result<(OffsetDateTime, OffsetDateTime), SignerError> {
-        let now = self.clock.now_utc();
-        let max_validity_duration = Duration::seconds(self.params.payload.max_validity_duration);
-        let nbf = match request.validity_start {
-            None => now,
-            Some(nbf) => {
-                if nbf < now {
-                    return Err(SignerError::ValidityBoundaryInThePast {
-                        validity_boundary: nbf,
-                    });
-                }
-                nbf
-            }
-        };
-        let exp = match request.validity_end {
-            None => nbf + max_validity_duration,
-            Some(exp) => {
-                if exp < now {
-                    return Err(SignerError::ValidityBoundaryInThePast {
-                        validity_boundary: exp,
-                    });
-                }
-                if exp < nbf {
-                    return Err(SignerError::ValidityStartAfterEnd {
-                        validity_start: nbf,
-                        validity_end: exp,
-                    });
-                }
-                if exp - nbf > max_validity_duration {
-                    return Err(SignerError::ValidityPeriodTooLong {
-                        validity_start: nbf,
-                        validity_end: exp,
-                        max_duration: max_validity_duration,
-                    });
-                }
-                exp
-            }
-        };
-        Ok((nbf, exp))
-    }
 }
 
 #[async_trait]
@@ -150,11 +107,14 @@ impl Signer for RegistrationCertificate {
         revocation_info: Option<RevocationInfo>,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
         let now = self.clock.now_utc();
-        let (nbf, exp) = self.nbf_and_exp(&request)?;
+        let SignatureValidity { start, end } = calculate_signature_validity(
+            Duration::seconds(self.params.payload.max_validity_duration),
+            &request,
+        )?;
         let payload: model::RequestData = serde_json::from_value(request.data.clone())?;
 
         let (jwt_id, status) = match revocation_info {
-            Some(RevocationInfo { id, status }) => (
+            Some(RevocationInfo { id, status, .. }) => (
                 Uuid::from(id),
                 Some(model::Status {
                     status_list: status.additional_fields,
@@ -164,8 +124,8 @@ impl Signer for RegistrationCertificate {
         };
         let jwt_payload = WRPRegistrationCertificatePayload {
             issued_at: Some(now),
-            expires_at: Some(exp),
-            invalid_before: Some(nbf),
+            invalid_before: Some(start),
+            expires_at: Some(end),
             issuer: None,
             subject: payload.subject.clone(),
             audience: self.params.payload.audience.clone(),

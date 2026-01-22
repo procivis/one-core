@@ -31,7 +31,10 @@ use crate::router::AppState;
     configured in your system.
 "},
 )]
-#[require_permissions(Permission::RegistrationCertificateCreate)]
+#[require_permissions(
+    Permission::RegistrationCertificateCreate,
+    Permission::X509CertificateCreate
+)]
 pub(crate) async fn create_signature(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<
@@ -59,7 +62,10 @@ pub(crate) async fn create_signature(
     Revokes a previously-created signature.
 "},
 )]
-#[require_permissions(Permission::RegistrationCertificateRevoke)]
+#[require_permissions(
+    Permission::RegistrationCertificateRevoke,
+    Permission::X509CertificateRevoke
+)]
 pub(crate) async fn revoke_signature(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<Uuid>, ErrorResponseRestDTO>,
@@ -82,7 +88,7 @@ pub(crate) async fn revoke_signature(
     Returns revocation information about the specified signatures.
 "},
 )]
-#[require_permissions(Permission::RegistrationCertificateRevocationCheck)]
+#[require_permissions(Permission::TaskCreate)]
 pub(crate) async fn signature_revocation_check(
     state: State<AppState>,
     WithRejection(Json(request), _): WithRejection<

@@ -1,4 +1,5 @@
 use shared_types::{CertificateId, IdentifierId, KeyId, RevocationListEntryId};
+use standardized_types::x509::CertificateSerial;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -20,6 +21,7 @@ pub struct CreateSignatureRequestDTO {
 pub struct RevocationInfo {
     pub id: RevocationListEntryId,
     pub status: CredentialStatus,
+    pub serial: Option<CertificateSerial>,
 }
 
 #[derive(Clone, Debug)]

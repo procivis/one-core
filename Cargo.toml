@@ -45,7 +45,7 @@ mockall            = { version = "0.14" }
 multihash          = { version = "0.19" }
 one-dto-mapper     = { version = "0.1.10" }
 rand               = { version = "0.8" }
-rcgen              = { version = "0.14" }
+rcgen              = { version = "0.14", features = ["pem", "x509-parser"] }
 regex              = { version = "1.10" }
 reqwest            = { version = "0.13", default-features = false, features = ["native-tls-vendored", "json", "http2"] }
 sea-orm            = { version = "1.1", default-features = false }
@@ -76,6 +76,7 @@ utoipa             = { version = "5.3", default-features = false, features = ["m
 uuid               = { version = "1.11", features = ["v4", "serde"] }
 validator          = { version = "0.20", features = ["derive"] }
 wiremock           = { version = "0.6" }
+x509-parser        = { version = "0.18", features = ["verify"] }
 
 [workspace.lints.rust]
 let_underscore_drop = "warn"

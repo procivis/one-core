@@ -56,7 +56,6 @@ pub enum Permission {
     ProofShare,
     RegistrationCertificateCreate,
     RegistrationCertificateRevoke,
-    RegistrationCertificateRevocationCheck,
     StsOrganisationCreate,
     StsOrganisationDelete,
     StsOrganisationDetail,
@@ -80,6 +79,8 @@ pub enum Permission {
     WalletUnitList,
     WalletUnitRevoke,
     WalletUnitDelete,
+    X509CertificateCreate,
+    X509CertificateRevoke,
     #[serde(untagged)]
     Unknown(String),
 }

@@ -732,16 +732,22 @@ pub enum ErrorCode {
     #[strum(message = "Invalid signature id")]
     BR_0327,
 
-    #[strum(message = "Invalid key selection")]
-    BR_0330,
-
     #[strum(message = "Incompatible referenced provider")]
     BR_0328,
+
+    #[strum(message = "Signing error")]
+    BR_0329,
+
+    #[strum(message = "Invalid key selection")]
+    BR_0330,
 
     #[strum(
         message = "Chain or self-signed must be specified when creating Certificate Authority identifier"
     )]
     BR_0331,
+
+    #[strum(message = "Invalid signature payload")]
+    BR_0332,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

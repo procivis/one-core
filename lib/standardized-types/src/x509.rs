@@ -27,4 +27,8 @@ impl CertificateSerial {
         random_bytes.insert(0, 0x01); // to make sure it is a positive value
         Self(random_bytes)
     }
+
+    pub fn as_slice(&self) -> &[u8] {
+        &self.0
+    }
 }

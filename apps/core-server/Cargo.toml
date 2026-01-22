@@ -75,6 +75,7 @@ serde_json.workspace = true
 shadow-rs.workspace  = true
 
 [dev-dependencies]
+assert2 = { version = "0.3" }
 asn1-rs.workspace = true
 async-trait.workspace = true
 dcql = { version = "0.1.0", path = "../../lib/dcql" }
@@ -98,6 +99,7 @@ similar-asserts.workspace = true
 sql-data-provider = { version = "0.1.0", path = "../../lib/sql-data-provider", features = ["test_utils"] }
 ulid.workspace = true
 wiremock.workspace = true
+x509-parser.workspace = true
 
 [lints]
 workspace = true

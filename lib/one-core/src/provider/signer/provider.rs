@@ -3,10 +3,11 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use serde_json::json;
+use shared_types::RevocationMethodId;
 use uuid::Uuid;
 
-use super::{Signer, registration_certificate};
-use crate::config::core_config::{ConfigExt, CoreConfig, SignerType};
+use super::{Signer, registration_certificate, x509_certificate};
+use crate::config::core_config::{ConfigExt, CoreConfig, RevocationConfig, SignerType};
 use crate::config::{ConfigValidationError, ProviderReference};
 use crate::model::revocation_list::RevocationListEntityInfo;
 use crate::proto::clock::Clock;
@@ -72,6 +73,7 @@ pub(crate) fn signer_provider_from_config(
     revocation_list_repository: Arc<dyn RevocationListRepository>,
 ) -> Result<Arc<dyn SignerProvider>, ConfigValidationError> {
     let mut signers: HashMap<String, Arc<dyn Signer>> = HashMap::new();
+    let revocation_config = &config.revocation;
 
     for (name, fields) in config.signer.iter_mut() {
         if !fields.enabled {
@@ -94,16 +96,35 @@ pub(crate) fn signer_provider_from_config(
                 );
 
                 if let Some(revocation_method) = &params.revocation_method {
-                    let revocation_type =
-                        config.revocation.get_if_enabled(revocation_method)?.r#type;
-                    let compatible_revocation_types = signer.get_capabilities().revocation_methods;
-                    if !compatible_revocation_types.contains(&revocation_type) {
-                        return Err(ConfigValidationError::incompatible_provider_ref(
-                            name.to_owned(),
-                            ProviderReference::RevocationMethod(revocation_method.to_owned()),
-                            &compatible_revocation_types,
-                        ));
+                    validate_revocation_method_compatibility(
+                        name,
+                        &signer,
+                        revocation_config,
+                        revocation_method,
+                    )?;
+                }
+                Arc::new(signer)
+            }
+            SignerType::X509Certificate => {
+                let params: x509_certificate::Params = fields.deserialize().map_err(|e| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source: e,
                     }
+                })?;
+                let signer = x509_certificate::X509CertificateSigner::new(
+                    params.clone(),
+                    key_provider.clone(),
+                    revocation_method_provider.clone(),
+                );
+
+                if let Some(revocation_method) = &params.revocation_method {
+                    validate_revocation_method_compatibility(
+                        name,
+                        &signer,
+                        revocation_config,
+                        revocation_method,
+                    )?;
                 }
                 Arc::new(signer)
             }
@@ -117,4 +138,22 @@ pub(crate) fn signer_provider_from_config(
         signers,
         revocation_list_repository,
     }))
+}
+
+fn validate_revocation_method_compatibility(
+    name: &String,
+    signer: &dyn Signer,
+    revocation_config: &RevocationConfig,
+    revocation_method: &RevocationMethodId,
+) -> Result<(), ConfigValidationError> {
+    let revocation_type = revocation_config.get_if_enabled(revocation_method)?.r#type;
+    let compatible_revocation_types = signer.get_capabilities().revocation_methods;
+    if !compatible_revocation_types.contains(&revocation_type) {
+        return Err(ConfigValidationError::incompatible_provider_ref(
+            name.to_owned(),
+            ProviderReference::RevocationMethod(revocation_method.to_owned()),
+            &compatible_revocation_types,
+        ));
+    }
+    Ok(())
 }

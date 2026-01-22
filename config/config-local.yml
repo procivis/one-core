@@ -257,3 +257,15 @@ signer:
           audience: ["bli", "bla"]
           maxValidityDuration: 2592000 # 30 days
         revocationMethod: TOKENSTATUSLIST
+  X509_CERTIFICATE:
+    display:
+      en: "X.509 Certificate Issuer"
+      de: "X.509 Certificate Issuer"
+    order: 1
+    type: X509_CERTIFICATE
+    params:
+      private:
+        payload:
+          maxValidityDuration: 157680000 # 5 years
+          allowCaSigning: true
+        revocationMethod: CRL

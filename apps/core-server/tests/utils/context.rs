@@ -215,4 +215,53 @@ impl TestContext {
             .await;
         (context, organisation, identifier, certificate, key)
     }
+
+    pub async fn new_with_ca_identifier(
+        additional_config: Option<String>,
+    ) -> (Self, Organisation, Identifier, Certificate, Key) {
+        let (context, organisation) = Self::new_with_organisation(additional_config).await;
+        let key = context
+            .db
+            .keys
+            .create(&organisation, ecdsa_testing_params())
+            .await;
+        let mut ca_params = CertificateParams::default();
+        let (ca_cert, _) = create_ca_cert(&mut ca_params, ecdsa::Key);
+
+        let identifier_id = Uuid::new_v4().into();
+        let now = OffsetDateTime::now_utc();
+        let certificate = Certificate {
+            id: Uuid::new_v4().into(),
+            identifier_id,
+            organisation_id: Some(organisation.id),
+            created_date: now,
+            last_modified: now,
+            expiry_date: now.add(Duration::minutes(10)),
+            name: "test ca cert".to_string(),
+            chain: ca_cert.pem(),
+            fingerprint: "ffffaaaa".to_string(),
+            state: CertificateState::Active,
+            key: Some(key.clone()),
+        };
+
+        let identifier = context
+            .db
+            .identifiers
+            .create(
+                &organisation,
+                TestingIdentifierParams {
+                    r#type: Some(IdentifierType::CertificateAuthority),
+                    certificates: Some(vec![certificate.clone()]),
+                    ..Default::default()
+                },
+            )
+            .await;
+
+        let certificate = context
+            .db
+            .certificates
+            .create(identifier.id, TestingCertificateParams::from(certificate))
+            .await;
+        (context, organisation, identifier, certificate, key)
+    }
 }

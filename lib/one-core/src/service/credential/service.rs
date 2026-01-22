@@ -144,8 +144,9 @@ impl CredentialService {
             .get_capabilities();
 
         let key_filter = KeyFilter {
-            role: Some(KeyRole::AssertionMethod),
+            did_role: Some(KeyRole::AssertionMethod),
             algorithms: Some(formatter_capabilities.signing_key_algorithms.clone()),
+            ..Default::default()
         };
         let selection = issuer_identifier.select_key(KeySelection {
             key: request.issuer_key,

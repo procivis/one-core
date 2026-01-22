@@ -831,6 +831,9 @@ pub enum SignerType {
     #[serde(rename = "REGISTRATION_CERTIFICATE")]
     #[strum(serialize = "REGISTRATION_CERTIFICATE")]
     RegistrationCertificate,
+    #[serde(rename = "X509_CERTIFICATE")]
+    #[strum(serialize = "X509_CERTIFICATE")]
+    X509Certificate,
 }
 
 // Alias for the collection of traits we want config keys to implement.

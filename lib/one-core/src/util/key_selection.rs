@@ -1,4 +1,7 @@
+use rcgen::KeyUsagePurpose;
 use shared_types::{CertificateId, DidId, IdentifierId, KeyId};
+use x509_parser::pem::Pem;
+use x509_parser::prelude::KeyUsage;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ErrorCode, ErrorCodeMixin};
@@ -9,21 +12,29 @@ use crate::model::key::Key;
 
 #[derive(Default, Clone, Debug)]
 pub struct KeyFilter {
-    pub role: Option<KeyRole>,
+    pub did_role: Option<KeyRole>,
+    pub certificate_key_usage: Option<Vec<KeyUsagePurpose>>,
     pub algorithms: Option<Vec<KeyAlgorithmType>>,
 }
 
 impl KeyFilter {
     pub fn role_filter(role: KeyRole) -> Self {
         Self {
-            role: Some(role),
+            did_role: Some(role),
+            ..Default::default()
+        }
+    }
+
+    pub fn cert_usage_filter(usage: Vec<KeyUsagePurpose>) -> Self {
+        Self {
+            certificate_key_usage: Some(usage),
             ..Default::default()
         }
     }
 
     pub fn matches_related_key(&self, key: &RelatedKey) -> bool {
         let role_match = self
-            .role
+            .did_role
             .as_ref()
             .map(|role| *role == key.role)
             .unwrap_or(true);
@@ -214,10 +225,44 @@ impl Did {
 
 impl Certificate {
     pub fn has_matching_key(&self, filter: &KeyFilter) -> bool {
+        if let Some(certificate_key_usage) = &filter.certificate_key_usage
+            && !self.matches_key_usage(certificate_key_usage)
+        {
+            return false;
+        }
         self.key
             .as_ref()
             .map(|k| filter.matches_key(k))
             .unwrap_or(false)
+    }
+
+    fn matches_key_usage(&self, certificate_key_usage: &[KeyUsagePurpose]) -> bool {
+        let Some(Ok(pem)) = Pem::iter_from_buffer(self.chain.as_bytes()).next() else {
+            return false;
+        };
+        let Ok(cert) = pem.parse_x509() else {
+            return false;
+        };
+        let Ok(Some(key_usage)) = cert.key_usage() else {
+            return false;
+        };
+        certificate_key_usage
+            .iter()
+            .all(|key_usage_purpose| key_usage_matches(key_usage.value, key_usage_purpose))
+    }
+}
+
+fn key_usage_matches(key_usage: &KeyUsage, key_usage_purpose: &KeyUsagePurpose) -> bool {
+    match key_usage_purpose {
+        KeyUsagePurpose::DigitalSignature => key_usage.digital_signature(),
+        KeyUsagePurpose::ContentCommitment => key_usage.non_repudiation(),
+        KeyUsagePurpose::KeyEncipherment => key_usage.key_encipherment(),
+        KeyUsagePurpose::DataEncipherment => key_usage.data_encipherment(),
+        KeyUsagePurpose::KeyAgreement => key_usage.key_agreement(),
+        KeyUsagePurpose::KeyCertSign => key_usage.key_cert_sign(),
+        KeyUsagePurpose::CrlSign => key_usage.crl_sign(),
+        KeyUsagePurpose::EncipherOnly => key_usage.encipher_only(),
+        KeyUsagePurpose::DecipherOnly => key_usage.decipher_only(),
     }
 }
 

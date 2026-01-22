@@ -61,6 +61,7 @@ impl SignatureService {
                 "organisation is None".to_string(),
             ))?
             .id;
+        // TODO ONE-8416: Permission check
         throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let issuer_id = issuer.id;
@@ -85,6 +86,7 @@ impl SignatureService {
             Some(RevocationInfo {
                 id,
                 status: revocation_info.credential_status,
+                serial: revocation_info.serial,
             })
         } else {
             None
@@ -155,6 +157,7 @@ impl SignatureService {
             .ok_or(SignatureServiceError::MappingError(
                 "Missing revocation list issuer".to_string(),
             ))?;
+        // TODO ONE-8416: Permission check
         throw_if_org_relation_not_matching_session(
             issuer.organisation.as_ref(),
             &*self.session_provider,
