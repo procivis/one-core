@@ -144,10 +144,6 @@ async fn test_revoke_signature() {
     let signature_id = Uuid::new_v4().into();
     let list_id = Uuid::new_v4().into();
 
-    let empty_crl = hex_literal::hex!(
-        "3082011f3081f2020101300506032b6570308196311c301a06035504030c1363612e6465762e6d646c2d706c75732e636f6d310b3009060355040613024348310f300d06035504070c065a757269636831143012060355040a0c0b50726f6369766973204147311e301c060355040b0c15436572746966696361746520417574686f726974793122302006092a864886f70d0109011613737570706f72744070726f63697669732e6368170d3236303132313130343835355a170d3236303132313130343930355aa02f302d301f0603551d23041830168014e52f49b64bc82990f94b7f13ec40cf6ac2a2f870300a0603551d140403020100300506032b6570032100abababababababababababababababababababababababababababababababab"
-    );
-
     let mut revocation_list_repository = MockRevocationListRepository::new();
     revocation_list_repository
         .expect_update_entry()
@@ -167,7 +163,7 @@ async fn test_revoke_signature() {
                 id: list_id,
                 created_date: OffsetDateTime::now_utc(),
                 last_modified: OffsetDateTime::now_utc(),
-                formatted_list: empty_crl.into(),
+                formatted_list: empty_crl(),
                 format: StatusListCredentialFormat::X509Crl,
                 r#type: "CRL".into(),
                 purpose: RevocationListPurpose::Revocation,
@@ -269,6 +265,122 @@ async fn test_revoke_signature() {
     assert_eq!(crl.crl_number(), Some(&1u32.into()));
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_get_updated_list_no_update() {
+    let certificate = dummy_ca_certificate(&dummy_identifier());
+
+    let list_id = Uuid::new_v4().into();
+
+    let formatted_list = empty_crl();
+    let mut revocation_list_repository = MockRevocationListRepository::new();
+    revocation_list_repository
+        .expect_get_revocation_list()
+        .with(eq(list_id), always())
+        .return_once({
+            let formatted_list = formatted_list.clone();
+            move |_, _| {
+                Ok(Some(RevocationList {
+                    id: list_id,
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    formatted_list,
+                    format: StatusListCredentialFormat::X509Crl,
+                    r#type: "CRL".into(),
+                    purpose: RevocationListPurpose::Revocation,
+                    issuer_identifier: None,
+                    issuer_certificate: Some(certificate),
+                }))
+            }
+        });
+
+    let refresh_interval = Duration::seconds(10);
+    let revocation_method = CRLRevocation::new(
+        "CRL".into(),
+        Some("http://base.url".to_string()),
+        Arc::new(revocation_list_repository),
+        Arc::new(NoTransactionManager),
+        Arc::new(MockKeyProvider::new()),
+        Params { refresh_interval },
+    );
+
+    let list = revocation_method.get_updated_list(list_id).await.unwrap();
+
+    assert_eq!(list, formatted_list);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_get_updated_list_with_update() {
+    let certificate = dummy_ca_certificate(&dummy_identifier());
+
+    let list_id = Uuid::new_v4().into();
+
+    let old_list = empty_crl();
+    let mut revocation_list_repository = MockRevocationListRepository::new();
+    revocation_list_repository
+        .expect_get_revocation_list()
+        .with(eq(list_id), always())
+        .return_once({
+            let formatted_list = old_list.clone();
+            move |_, _| {
+                let one_hour_ago = OffsetDateTime::now_utc() - Duration::hours(1);
+                Ok(Some(RevocationList {
+                    id: list_id,
+                    created_date: one_hour_ago,
+                    last_modified: one_hour_ago,
+                    formatted_list,
+                    format: StatusListCredentialFormat::X509Crl,
+                    r#type: "CRL".into(),
+                    purpose: RevocationListPurpose::Revocation,
+                    issuer_identifier: None,
+                    issuer_certificate: Some(certificate),
+                }))
+            }
+        });
+
+    revocation_list_repository
+        .expect_get_entries()
+        .with(eq(list_id))
+        .return_once(|_| Ok(vec![]));
+
+    revocation_list_repository
+        .expect_update_formatted_list()
+        .once()
+        .with(eq(list_id), always())
+        .return_once(|_, _| Ok(()));
+
+    let mut key_provider = MockKeyProvider::new();
+    key_provider.expect_get_key_storage().returning(|_| {
+        let mut key_storage = MockKeyStorage::new();
+        key_storage.expect_key_handle().returning(|_| {
+            let mut private = MockSignaturePrivateKeyHandle::new();
+            private.expect_sign().return_once(|_| Ok(vec![0xab; 32]));
+
+            Ok(KeyHandle::SignatureOnly(
+                SignatureKeyHandle::WithPrivateKey {
+                    private: Arc::new(private),
+                    public: Arc::new(MockSignaturePublicKeyHandle::new()),
+                },
+            ))
+        });
+
+        Some(Arc::new(key_storage))
+    });
+
+    let refresh_interval = Duration::seconds(10);
+    let revocation_method = CRLRevocation::new(
+        "CRL".into(),
+        Some("http://base.url".to_string()),
+        Arc::new(revocation_list_repository),
+        Arc::new(NoTransactionManager),
+        Arc::new(key_provider),
+        Params { refresh_interval },
+    );
+
+    let list = revocation_method.get_updated_list(list_id).await.unwrap();
+
+    assert_ne!(list, old_list);
+}
+
 fn dummy_ca_certificate(issuer: &Identifier) -> Certificate {
     Certificate {
         id: Uuid::new_v4().into(),
@@ -302,4 +414,10 @@ qzmSNPsC3TZzs4uCBIsS3LKDZHCktmj3La1PCGSS
         state: CertificateState::Active,
         key: Some(dummy_key()),
     }
+}
+
+fn empty_crl() -> Vec<u8> {
+    hex_literal::hex!(
+        "3082011f3081f2020101300506032b6570308196311c301a06035504030c1363612e6465762e6d646c2d706c75732e636f6d310b3009060355040613024348310f300d06035504070c065a757269636831143012060355040a0c0b50726f6369766973204147311e301c060355040b0c15436572746966696361746520417574686f726974793122302006092a864886f70d0109011613737570706f72744070726f63697669732e6368170d3236303132313130343835355a170d3236303132313130343930355aa02f302d301f0603551d23041830168014e52f49b64bc82990f94b7f13ec40cf6ac2a2f870300a0603551d140403020100300506032b6570032100abababababababababababababababababababababababababababababababab"
+    ).to_vec()
 }

@@ -1,4 +1,4 @@
-use shared_types::RevocationListEntryId;
+use shared_types::{RevocationListEntryId, RevocationListId};
 
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -96,6 +96,10 @@ pub trait RevocationMethod: Send + Sync {
         &self,
         signature_id: RevocationListEntryId,
     ) -> Result<(), RevocationError>;
+
+    /// Issuer: get an up-to-date revocation list
+    async fn get_updated_list(&self, list_id: RevocationListId)
+    -> Result<Vec<u8>, RevocationError>;
 
     /// Revocation method capabilities include the operations possible for each revocation
     /// method.

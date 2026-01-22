@@ -256,4 +256,14 @@ impl SSIApi {
         let url = format!("/ssi/wallet-provider/v1/{}", wallet_provider);
         self.client.get(&url).await
     }
+
+    pub async fn get_revocation_list(&self, revocation_list_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/revocation/v1/list/{}", revocation_list_id.into());
+        self.client.get(&url).await
+    }
+
+    pub async fn get_crl(&self, revocation_list_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/revocation/v1/crl/{}", revocation_list_id.into());
+        self.client.get(&url).await
+    }
 }

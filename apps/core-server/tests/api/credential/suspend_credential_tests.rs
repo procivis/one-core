@@ -15,6 +15,7 @@ use crate::fixtures::{
 };
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_suspend_credential_with_bitstring_status_list_success() {
@@ -47,9 +48,11 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
         .revocation_lists
         .create(
             identifier,
-            RevocationListPurpose::Suspension,
-            None,
-            Some("BITSTRINGSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                purpose: Some(RevocationListPurpose::Suspension),
+                ..Default::default()
+            }),
         )
         .await;
 
@@ -195,11 +198,7 @@ async fn test_suspend_credential_with_lvvc_success() {
             },
         )
         .await;
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
     let suspend_end_date = OffsetDateTime::parse(suspend_end_date_str, &Rfc3339).unwrap();
     // WHEN
@@ -248,11 +247,7 @@ async fn test_suspend_credential_with_none_fails() {
             TestingCredentialParams::default(),
         )
         .await;
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
     // WHEN
     let resp = context.api.credentials.suspend(&credential.id, None).await;
 
@@ -290,11 +285,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
             },
         )
         .await;
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
     let suspend_end_date_str = "2023-06-09T14:19:57.000Z";
     // WHEN
     let resp = context

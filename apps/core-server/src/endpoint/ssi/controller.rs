@@ -109,7 +109,8 @@ pub(crate) async fn get_did_webvh_log(
                   "statusPurpose": "revocation",
                   "encodedList": "uH4sIAAAAAAAAA-3BMQEAAADCoPVPbQwfoAAAAAAAAAAAAAAAAAAAAIC3AYbSVKsAQAAA"
                 }
-              }))
+              })),
+            (String = "application/statuslist+jwt")
         )),
         (status = 404, description = "Revocation list not found"),
         (status = 500, description = "Server error"),
@@ -204,6 +205,47 @@ pub(crate) async fn get_lvvc_by_credential_id(
         Err(ServiceError::EntityNotFound(EntityNotFoundError::Credential(_))) => {
             tracing::error!("Missing credential");
             (StatusCode::NOT_FOUND, "Missing credential").into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/revocation/v1/crl/{id}",
+    params(
+        ("id" = RevocationListId, Path, description = "Revocation list id")
+    ),
+    responses(
+        (status = 200, description = "OK", content_type = "application/pkix-crl"),
+        (status = 404, description = "Revocation list not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Revocation - retrieve CRL",
+    description = indoc::formatdoc! {"
+        Retrieve a CRL by its UUID.
+    "},
+)]
+pub(crate) async fn get_crl_by_id(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<RevocationListId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state.core.revocation_list_service.get_crl_by_id(&id).await;
+
+    match result {
+        Ok(result) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/pkix-crl")],
+            result,
+        )
+            .into_response(),
+        Err(ServiceError::EntityNotFound(EntityNotFoundError::RevocationList(_))) => {
+            tracing::error!("Missing CRL");
+            (StatusCode::NOT_FOUND, "Missing CRL").into_response()
         }
         Err(e) => {
             tracing::error!("Error: {:?}", e);

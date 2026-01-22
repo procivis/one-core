@@ -4,7 +4,6 @@ use one_core::model::credential::CredentialStateEnum;
 use one_core::model::did::{DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::IdentifierType;
-use one_core::model::revocation_list::RevocationListPurpose;
 use shared_types::DidValue;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
@@ -79,11 +78,7 @@ async fn test_revoke_credential_with_bitstring_status_list_success() {
             TestingCredentialParams::default(),
         )
         .await;
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
 
     // WHEN
     let resp = context.api.credentials.revoke(&credential.id).await;

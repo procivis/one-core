@@ -1,4 +1,4 @@
-use shared_types::RevocationListEntryId;
+use shared_types::{RevocationListEntryId, RevocationListId};
 
 use super::model::CredentialRevocationInfo;
 use crate::model::certificate::Certificate;
@@ -96,6 +96,15 @@ impl RevocationMethod for NoneRevocation {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn get_updated_list(
+        &self,
+        _list_id: RevocationListId,
+    ) -> Result<Vec<u8>, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "List not supported".to_string(),
         ))
     }
 

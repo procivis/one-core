@@ -3,6 +3,7 @@ use shared_types::{CredentialId, RevocationListId};
 use time::OffsetDateTime;
 
 use super::dto::RevocationListResponseDTO;
+use crate::config::core_config::RevocationType;
 use crate::model::credential::CredentialRelations;
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::DidRelations;
@@ -235,5 +236,30 @@ impl RevocationListService {
             format: list.format,
             r#type,
         })
+    }
+
+    pub async fn get_crl_by_id(&self, id: &RevocationListId) -> Result<Vec<u8>, ServiceError> {
+        let result = self
+            .revocation_list_repository
+            .get_revocation_list(id, &RevocationListRelations::default())
+            .await?;
+
+        let Some(list) = result else {
+            return Err(EntityNotFoundError::RevocationList(*id).into());
+        };
+
+        let r#type = self.config.revocation.get_type(&list.r#type)?;
+        if r#type != RevocationType::CRL {
+            tracing::warn!("Invalid CRL request, list_id: {id}");
+            return Err(EntityNotFoundError::RevocationList(*id).into());
+        }
+
+        let revocation_method = self
+            .revocation_method_provider
+            .get_revocation_method(&list.r#type)
+            .ok_or(MissingProviderError::RevocationMethod(list.r#type))?;
+
+        let updated_list = revocation_method.get_updated_list(list.id).await?;
+        Ok(updated_list)
     }
 }

@@ -1,47 +1,71 @@
-use one_core::model::identifier::IdentifierType;
+use one_core::model::revocation_list::StatusListCredentialFormat;
 use similar_asserts::assert_eq;
+use time::OffsetDateTime;
 
-use crate::fixtures::TestingIdentifierParams;
-use crate::utils::server::run_server;
-use crate::{fixtures, utils};
+use crate::utils::context::TestContext;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_get_revocation_list_success() {
     // GIVEN
-    let status_list_credential_jwt = "test-jwt";
-    let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-    let base_url = format!("http://{}", listener.local_addr().unwrap());
+    let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
 
-    let config = fixtures::create_config(&base_url, None);
-    let db_conn = fixtures::create_db(&config).await;
-    let organisation = fixtures::create_organisation(&db_conn).await;
-    let did = fixtures::create_did(&db_conn, &organisation, None).await;
-    let identifier = fixtures::create_identifier(
-        &db_conn,
-        &organisation,
-        Some(TestingIdentifierParams {
-            r#type: Some(IdentifierType::Did),
-            did: Some(did),
-            ..Default::default()
-        }),
-    )
-    .await;
-    let revocation_list = fixtures::create_revocation_list(
-        &db_conn,
-        identifier,
-        Some(status_list_credential_jwt.as_bytes()),
-    )
-    .await;
+    let status_list_credential_jwt = "test-jwt";
+    let revocation_list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                formatted_list: Some(status_list_credential_jwt.as_bytes().to_vec()),
+                ..Default::default()
+            }),
+        )
+        .await;
 
     // WHEN
-    let url = format!("{base_url}/ssi/revocation/v1/list/{}", revocation_list.id);
-
-    let _handle = run_server(listener, config, &db_conn).await;
-
-    let resp = utils::client().get(url).send().await.unwrap();
+    let resp = context
+        .api
+        .ssi
+        .get_revocation_list(revocation_list.id)
+        .await;
 
     // THEN
     assert_eq!(resp.status(), 200);
-    let resp = resp.text().await.unwrap();
+    let resp = resp.text().await;
     assert_eq!(resp, status_list_credential_jwt);
+}
+
+#[tokio::test]
+async fn test_get_crl_success() {
+    let (context, _, identifier, certificate, _) =
+        TestContext::new_with_certificate_identifier(None).await;
+
+    let crl_content = b"test-CRL-content";
+    let list = context
+        .db
+        .revocation_lists
+        .create(
+            identifier,
+            Some(TestingRevocationListParams {
+                formatted_list: Some(crl_content.to_vec()),
+                format: Some(StatusListCredentialFormat::X509Crl),
+                r#type: Some("CRL".into()),
+                last_modified: Some(OffsetDateTime::now_utc()),
+                issuer_certificate: Some(certificate),
+                ..Default::default()
+            }),
+        )
+        .await;
+
+    // WHEN
+    let resp = context.api.ssi.get_crl(list.id).await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    assert_eq!(
+        resp.headers()[reqwest::header::CONTENT_TYPE],
+        "application/pkix-crl"
+    );
+    assert_eq!(resp.bytes().await, crl_content);
 }

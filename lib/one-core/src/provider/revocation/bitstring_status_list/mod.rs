@@ -375,6 +375,15 @@ impl RevocationMethod for BitstringStatusList {
         ))
     }
 
+    async fn get_updated_list(
+        &self,
+        _list_id: RevocationListId,
+    ) -> Result<Vec<u8>, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "Updated list not supported".to_string(),
+        ))
+    }
+
     fn get_capabilities(&self) -> RevocationMethodCapabilities {
         RevocationMethodCapabilities {
             operations: vec![Operation::Revoke, Operation::Suspend],

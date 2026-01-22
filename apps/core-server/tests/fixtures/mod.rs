@@ -38,9 +38,6 @@ use one_core::model::proof_schema::{
     ProofInputClaimSchema, ProofInputSchema, ProofInputSchemaRelations, ProofSchema,
     ProofSchemaClaimRelations, ProofSchemaRelations,
 };
-use one_core::model::revocation_list::{
-    RevocationList, RevocationListPurpose, StatusListCredentialFormat,
-};
 use one_core::repository::DataRepository;
 use one_crypto::encryption::encrypt_string;
 use one_crypto::utilities::generate_alphanumeric;
@@ -714,34 +711,6 @@ pub async fn create_interaction(
         interaction_type,
     )
     .await
-}
-
-pub async fn create_revocation_list(
-    db_conn: &DbConn,
-    issuer_identifier: Identifier,
-    formatted_list: Option<&[u8]>,
-) -> RevocationList {
-    let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
-
-    let revocation_list = RevocationList {
-        id: Uuid::new_v4().into(),
-        created_date: get_dummy_date(),
-        last_modified: get_dummy_date(),
-        formatted_list: formatted_list.unwrap_or_default().to_owned(),
-        purpose: RevocationListPurpose::Revocation,
-        issuer_identifier: Some(issuer_identifier),
-        format: StatusListCredentialFormat::JsonLdClassic,
-        r#type: "BITSTRINGSTATUSLIST".into(),
-        issuer_certificate: None,
-    };
-
-    data_layer
-        .get_revocation_list_repository()
-        .create_revocation_list(revocation_list.to_owned())
-        .await
-        .unwrap();
-
-    revocation_list
 }
 
 #[derive(Debug)]

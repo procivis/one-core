@@ -31,6 +31,7 @@ use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::histories::TestingHistoryParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
 use crate::utils::db_clients::proof_schemas::{CreateProofClaim, CreateProofInputSchema};
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_run_task_suspend_check_no_update() {
@@ -85,9 +86,11 @@ async fn test_run_task_suspend_check_with_update() {
         .revocation_lists
         .create(
             identifier,
-            RevocationListPurpose::Suspension,
-            None,
-            Some("BITSTRINGSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                purpose: Some(RevocationListPurpose::Suspension),
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                ..Default::default()
+            }),
         )
         .await;
 
@@ -689,12 +692,7 @@ async fn test_run_task_holder_check_credential_status_with_no_params() {
     context
         .db
         .revocation_lists
-        .create(
-            issuer_identifier,
-            RevocationListPurpose::Revocation,
-            None,
-            None,
-        )
+        .create(issuer_identifier, None)
         .await;
 
     Mock::given(method(Method::GET))
@@ -921,12 +919,7 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
     context
         .db
         .revocation_lists
-        .create(
-            issuer_identifier,
-            RevocationListPurpose::Revocation,
-            None,
-            None,
-        )
+        .create(issuer_identifier, None)
         .await;
 
     let history_previous = context

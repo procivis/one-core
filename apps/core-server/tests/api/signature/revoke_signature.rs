@@ -5,6 +5,7 @@ use similar_asserts::assert_eq;
 use uuid::Uuid;
 
 use crate::utils::context::TestContext;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_revoke_wrprc_success() {
@@ -14,9 +15,10 @@ async fn test_revoke_wrprc_success() {
         .revocation_lists
         .create(
             identifier.clone(),
-            RevocationListPurpose::Revocation,
-            None,
-            Some("TOKENSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                r#type: Some("TOKENSTATUSLIST".into()),
+                ..Default::default()
+            }),
         )
         .await
         .id;
@@ -81,7 +83,7 @@ async fn test_revoke_fail_on_missing_signer() {
     let revocation_list_id = context
         .db
         .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
+        .create(identifier, None)
         .await
         .id;
     let entry_id = context

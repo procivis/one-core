@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use shared_types::RevocationListEntryId;
+use shared_types::{RevocationListEntryId, RevocationListId};
 
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
@@ -166,6 +166,15 @@ impl RevocationMethod for StatusList2021 {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn get_updated_list(
+        &self,
+        _list_id: RevocationListId,
+    ) -> Result<Vec<u8>, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "List not supported".to_string(),
         ))
     }
 

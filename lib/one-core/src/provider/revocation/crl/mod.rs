@@ -266,6 +266,80 @@ impl RevocationMethod for CRLRevocation {
                 "Missing revocation list".to_string(),
             ))?;
 
+        self.update_list(list).await?;
+
+        Ok(())
+    }
+
+    async fn get_updated_list(
+        &self,
+        list_id: RevocationListId,
+    ) -> Result<Vec<u8>, RevocationError> {
+        let list = self
+            .revocation_list_repository
+            .get_revocation_list(
+                &list_id,
+                &RevocationListRelations {
+                    issuer_certificate: Some(CertificateRelations {
+                        key: Some(Default::default()),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                },
+            )
+            .await?
+            .ok_or(RevocationError::MappingError(
+                "Missing revocation list".to_string(),
+            ))?;
+
+        if list.last_modified + self.params.refresh_interval > OffsetDateTime::now_utc() {
+            return Ok(list.formatted_list);
+        }
+
+        self.update_list(list).await
+    }
+
+    fn get_capabilities(&self) -> RevocationMethodCapabilities {
+        RevocationMethodCapabilities {
+            operations: vec![Operation::Revoke],
+        }
+    }
+
+    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "CRL: json_ld not supported".to_string(),
+        ))
+    }
+}
+
+impl CRLRevocation {
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    async fn start_new_list(
+        &self,
+        issuer: &Identifier,
+        certificate: &Certificate,
+    ) -> Result<RevocationListId, RevocationError> {
+        let formatted_list = self.format_list(0, certificate, vec![]).await?;
+
+        let now = OffsetDateTime::now_utc();
+        Ok(self
+            .revocation_list_repository
+            .create_revocation_list(RevocationList {
+                id: Uuid::new_v4().into(),
+                created_date: now,
+                last_modified: now,
+                formatted_list,
+                format: StatusListCredentialFormat::X509Crl,
+                r#type: self.config_id.to_owned(),
+                purpose: RevocationListPurpose::Revocation,
+                issuer_identifier: Some(issuer.to_owned()),
+                issuer_certificate: Some(certificate.to_owned()),
+            })
+            .await?)
+    }
+
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
+    async fn update_list(&self, list: RevocationList) -> Result<Vec<u8>, RevocationError> {
         let issuer_certificate = list
             .issuer_certificate
             .ok_or(RevocationError::MappingError(
@@ -310,49 +384,10 @@ impl RevocationMethod for CRLRevocation {
             .await?;
 
         self.revocation_list_repository
-            .update_formatted_list(&list.id, formatted_list)
+            .update_formatted_list(&list.id, formatted_list.to_owned())
             .await?;
 
-        Ok(())
-    }
-
-    fn get_capabilities(&self) -> RevocationMethodCapabilities {
-        RevocationMethodCapabilities {
-            operations: vec![Operation::Revoke],
-        }
-    }
-
-    fn get_json_ld_context(&self) -> Result<JsonLdContext, RevocationError> {
-        Err(RevocationError::OperationNotSupported(
-            "CRL: json_ld not supported".to_string(),
-        ))
-    }
-}
-
-impl CRLRevocation {
-    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
-    async fn start_new_list(
-        &self,
-        issuer: &Identifier,
-        certificate: &Certificate,
-    ) -> Result<RevocationListId, RevocationError> {
-        let formatted_list = self.format_list(0, certificate, vec![]).await?;
-
-        let now = OffsetDateTime::now_utc();
-        Ok(self
-            .revocation_list_repository
-            .create_revocation_list(RevocationList {
-                id: Uuid::new_v4().into(),
-                created_date: now,
-                last_modified: now,
-                formatted_list,
-                format: StatusListCredentialFormat::X509Crl,
-                r#type: self.config_id.to_owned(),
-                purpose: RevocationListPurpose::Revocation,
-                issuer_identifier: Some(issuer.to_owned()),
-                issuer_certificate: Some(certificate.to_owned()),
-            })
-            .await?)
+        Ok(formatted_list)
     }
 
     async fn format_list(

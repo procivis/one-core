@@ -1,7 +1,7 @@
 //! Implementation of ISO mDL (ISO/IEC 18013-5:2021).
 //! https://www.iso.org/standard/69084.html
 
-use shared_types::RevocationListEntryId;
+use shared_types::{RevocationListEntryId, RevocationListId};
 
 use super::model::{CredentialRevocationInfo, Operation};
 use crate::model::certificate::Certificate;
@@ -103,6 +103,15 @@ impl RevocationMethod for MdocMsoUpdateSuspensionRevocation {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn get_updated_list(
+        &self,
+        _list_id: RevocationListId,
+    ) -> Result<Vec<u8>, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "List not supported".to_string(),
         ))
     }
 

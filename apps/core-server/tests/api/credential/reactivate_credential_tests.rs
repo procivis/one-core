@@ -10,6 +10,7 @@ use similar_asserts::assert_eq;
 use crate::fixtures::{TestingCredentialParams, TestingDidParams, TestingIdentifierParams};
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_reactivate_credential_with_bitstring_status_list_success() {
@@ -42,9 +43,11 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
         .revocation_lists
         .create(
             identifier,
-            RevocationListPurpose::Suspension,
-            None,
-            Some("BITSTRINGSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                r#type: Some("BITSTRINGSTATUSLIST".into()),
+                purpose: Some(RevocationListPurpose::Suspension),
+                ..Default::default()
+            }),
         )
         .await;
 

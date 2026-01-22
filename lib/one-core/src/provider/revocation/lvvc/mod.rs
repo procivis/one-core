@@ -8,7 +8,7 @@ use std::sync::Arc;
 use holder_fetch::holder_get_lvvc;
 use serde::{Deserialize, Serialize};
 use serde_with::DurationSeconds;
-use shared_types::{DidValue, RevocationListEntryId};
+use shared_types::{DidValue, RevocationListEntryId, RevocationListId};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 use util::get_lvvc_credential_subject;
@@ -390,6 +390,15 @@ impl RevocationMethod for LvvcProvider {
     ) -> Result<(), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),
+        ))
+    }
+
+    async fn get_updated_list(
+        &self,
+        _list_id: RevocationListId,
+    ) -> Result<Vec<u8>, RevocationError> {
+        Err(RevocationError::OperationNotSupported(
+            "List not supported".to_string(),
         ))
     }
 

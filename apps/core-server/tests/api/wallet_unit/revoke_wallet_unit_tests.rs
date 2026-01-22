@@ -18,6 +18,7 @@ use uuid::Uuid;
 use crate::fixtures::TestingIdentifierParams;
 use crate::utils::context::TestContext;
 use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 use crate::utils::db_clients::wallet_units::TestWalletUnit;
 
 #[tokio::test]
@@ -59,9 +60,11 @@ async fn test_revoke_wallet_unit_success() {
         .revocation_lists
         .create(
             identifier,
-            RevocationListPurpose::RevocationAndSuspension,
-            None,
-            Some("TOKENSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                purpose: Some(RevocationListPurpose::RevocationAndSuspension),
+                r#type: Some("TOKENSTATUSLIST".into()),
+                ..Default::default()
+            }),
         )
         .await;
 

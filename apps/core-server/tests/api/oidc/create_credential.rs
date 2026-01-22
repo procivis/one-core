@@ -31,6 +31,7 @@ use crate::utils::context::TestContext;
 use crate::utils::db_clients::certificates::TestingCertificateParams;
 use crate::utils::db_clients::credential_schemas::TestingCreateSchemaParams;
 use crate::utils::db_clients::keys::eddsa_testing_params;
+use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_post_issuer_credential() {
@@ -455,9 +456,10 @@ async fn test_post_issuer_credential_with_bitstring_revocation_method_and_existi
         .revocation_lists
         .create(
             issuer_setup.issuer_identifier.clone(),
-            RevocationListPurpose::Revocation,
-            None,
-            Some("TOKENSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                r#type: Some("TOKENSTATUSLIST".into()),
+                ..Default::default()
+            }),
         )
         .await;
 
@@ -536,9 +538,10 @@ async fn test_post_issuer_credential_with_disabled_issuer_key_storage() {
         .revocation_lists
         .create(
             issuer_setup.issuer_identifier.clone(),
-            RevocationListPurpose::Revocation,
-            None,
-            Some("TOKENSTATUSLIST".into()),
+            Some(TestingRevocationListParams {
+                r#type: Some("TOKENSTATUSLIST".into()),
+                ..Default::default()
+            }),
         )
         .await;
     test_post_issuer_credential_with(PostCredentialTestParams::default(), Some(issuer_setup)).await;

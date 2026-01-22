@@ -3,7 +3,6 @@ use one_core::model::did::{Did, DidType, KeyRole, RelatedKey};
 use one_core::model::history::HistoryAction;
 use one_core::model::identifier::{Identifier, IdentifierState, IdentifierType};
 use one_core::model::interaction::InteractionType;
-use one_core::model::revocation_list::RevocationListPurpose;
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use one_core::provider::credential_formatter::mdoc_formatter::Params;
 use one_core::provider::credential_formatter::model::{CredentialData, CredentialSchema, Issuer};
@@ -320,11 +319,7 @@ async fn test_revoke_check_success_statuslist2021() {
         )
         .await;
 
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
 
     // WHEN
     let resp = context
@@ -580,11 +575,7 @@ async fn setup_bitstring_status_list_success(
         )
         .await;
 
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
 
     Mock::given(method(Method::GET))
         .and(path(
@@ -871,12 +862,7 @@ async fn setup_lvvc_revoke_check_valid(
     context
         .db
         .revocation_lists
-        .create(
-            issuer_identifier,
-            RevocationListPurpose::Revocation,
-            None,
-            None,
-        )
+        .create(issuer_identifier, None)
         .await;
 
     Mock::given(method(Method::GET))
@@ -2266,11 +2252,7 @@ async fn test_revoke_check_failed_deleted_credential() {
         )
         .await;
 
-    context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    context.db.revocation_lists.create(identifier, None).await;
 
     // WHEN
     let resp = context

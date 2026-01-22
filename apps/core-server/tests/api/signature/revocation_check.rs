@@ -1,6 +1,4 @@
-use one_core::model::revocation_list::{
-    RevocationListEntityId, RevocationListEntryStatus, RevocationListPurpose,
-};
+use one_core::model::revocation_list::{RevocationListEntityId, RevocationListEntryStatus};
 use serde_json::json;
 use similar_asserts::assert_eq;
 
@@ -9,11 +7,7 @@ use crate::utils::context::TestContext;
 #[tokio::test]
 async fn test_sign_wrprc_success() {
     let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
-    let revocation_list = context
-        .db
-        .revocation_lists
-        .create(identifier, RevocationListPurpose::Revocation, None, None)
-        .await;
+    let revocation_list = context.db.revocation_lists.create(identifier, None).await;
     let entry_id1 = context
         .db
         .revocation_lists

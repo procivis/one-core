@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use one_core::model::certificate::Certificate;
 use one_core::model::identifier::Identifier;
 use one_core::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
@@ -11,10 +12,23 @@ use shared_types::{
     CredentialId, IdentifierId, RevocationListEntryId, RevocationListId, RevocationMethodId,
 };
 use sql_data_provider::test_utilities::get_dummy_date;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub struct RevocationListsDB {
     repository: Arc<dyn RevocationListRepository>,
+}
+
+#[derive(Debug, Default)]
+pub struct TestingRevocationListParams {
+    pub id: Option<RevocationListId>,
+    pub created_date: Option<OffsetDateTime>,
+    pub last_modified: Option<OffsetDateTime>,
+    pub formatted_list: Option<Vec<u8>>,
+    pub issuer_certificate: Option<Certificate>,
+    pub purpose: Option<RevocationListPurpose>,
+    pub format: Option<StatusListCredentialFormat>,
+    pub r#type: Option<RevocationMethodId>,
 }
 
 impl RevocationListsDB {
@@ -25,20 +39,20 @@ impl RevocationListsDB {
     pub async fn create(
         &self,
         issuer_identifier: Identifier,
-        purpose: RevocationListPurpose,
-        formatted_list: Option<&[u8]>,
-        status_list_type: Option<RevocationMethodId>,
+        params: Option<TestingRevocationListParams>,
     ) -> RevocationList {
+        let params = params.unwrap_or_default();
+
         let revocation_list = RevocationList {
-            id: Uuid::new_v4().into(),
-            created_date: get_dummy_date(),
-            last_modified: get_dummy_date(),
-            formatted_list: formatted_list.unwrap_or_default().to_owned(),
-            purpose,
+            id: params.id.unwrap_or(Uuid::new_v4().into()),
+            created_date: params.created_date.unwrap_or(get_dummy_date()),
+            last_modified: params.last_modified.unwrap_or(get_dummy_date()),
+            formatted_list: params.formatted_list.unwrap_or_default(),
+            purpose: params.purpose.unwrap_or(RevocationListPurpose::Revocation),
             issuer_identifier: Some(issuer_identifier),
-            format: StatusListCredentialFormat::Jwt,
-            r#type: status_list_type.unwrap_or("BITSTRINGSTATUSLIST".into()),
-            issuer_certificate: None,
+            format: params.format.unwrap_or(StatusListCredentialFormat::Jwt),
+            r#type: params.r#type.unwrap_or("BITSTRINGSTATUSLIST".into()),
+            issuer_certificate: params.issuer_certificate,
         };
 
         self.repository

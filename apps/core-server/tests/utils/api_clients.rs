@@ -179,6 +179,10 @@ impl Response {
         self.json().await
     }
 
+    pub async fn bytes(self) -> Vec<u8> {
+        self.resp.bytes().await.unwrap().to_vec()
+    }
+
     pub async fn error_code(self) -> String {
         self.json_value().await["code"].parse()
     }
