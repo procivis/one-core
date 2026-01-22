@@ -2,6 +2,7 @@ use axum::Json;
 use axum::extract::State;
 use axum_extra::extract::WithRejection;
 use proc_macros::require_permissions;
+use shared_types::Permission;
 
 use super::dto::{
     ContinueIssuanceRequestRestDTO, ContinueIssuanceResponseRestDTO,
@@ -17,7 +18,6 @@ use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErr
 use crate::endpoint::interaction::dto::{
     InitiateIssuanceRequestRestDTO, InitiateIssuanceResponseRestDTO, ProposeProofResponseRestDTO,
 };
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

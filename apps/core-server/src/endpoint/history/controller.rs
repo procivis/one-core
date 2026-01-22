@@ -4,7 +4,7 @@ use axum_extra::extract::WithRejection;
 use one_core::proto::session_provider::SessionProvider;
 use one_core::service::error::{ServiceError, ValidationError};
 use proc_macros::require_permissions;
-use shared_types::HistoryId;
+use shared_types::{HistoryId, Permission};
 
 use super::dto::{GetHistoryQuery, HistoryResponseDetailRestDTO};
 use crate::dto::common::{Boolean, EntityResponseRestDTO, GetHistoryListResponseRestDTO};
@@ -14,7 +14,7 @@ use crate::dto::response::{CreatedOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::history::dto::CreateHistoryRequestRestDTO;
 use crate::extractor::Qs;
 use crate::middleware::Authorized;
-use crate::permissions::{Permission, permission_check};
+use crate::permissions::permission_check;
 use crate::router::AppState;
 use crate::session::CoreServerSessionProvider;
 

@@ -3,12 +3,12 @@ use axum::response::IntoResponse;
 use axum_extra::extract::WithRejection;
 use one_dto_mapper::convert_inner;
 use proc_macros::require_permissions;
+use shared_types::Permission;
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::EmptyOrErrorResponse;
 use crate::endpoint::cache::dto::DeleteCacheQuery;
 use crate::extractor::QsOpt;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

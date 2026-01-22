@@ -3,6 +3,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_dto_mapper::convert_inner;
 use proc_macros::require_permissions;
+use shared_types::Permission;
 use uuid::Uuid;
 
 use crate::dto::error::ErrorResponseRestDTO;
@@ -11,7 +12,6 @@ use crate::endpoint::signature::dto::{
     CreateSignatureRequestRestDTO, CreateSignatureResponseRestDTO,
     SignatureRevocationCheckRequestRestDTO, SignatureRevocationCheckResponseRestDTO,
 };
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

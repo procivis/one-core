@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use proc_macros::require_permissions;
-use shared_types::ProofSchemaId;
+use shared_types::{Permission, ProofSchemaId};
 
 use super::dto::{
     CreateProofSchemaRequestRestDTO, GetProofSchemaQuery, GetProofSchemaResponseRestDTO,
@@ -13,7 +13,6 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

@@ -3,7 +3,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_dto_mapper::convert_inner;
 use proc_macros::require_permissions;
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, Permission};
 
 use super::dto::{
     CreateOrganisationRequestRestDTO, CreateOrganisationResponseRestDTO,
@@ -14,7 +14,6 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::endpoint::organisation::mapper::upsert_request_from_request;
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

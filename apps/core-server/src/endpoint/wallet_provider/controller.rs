@@ -1,7 +1,7 @@
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use proc_macros::require_permissions;
-use shared_types::WalletUnitId;
+use shared_types::{Permission, WalletUnitId};
 
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
@@ -10,7 +10,6 @@ use crate::endpoint::wallet_provider::dto::{
     GetWalletUnitsResponseRestDTO, ListWalletUnitsQuery, WalletUnitResponseRestDTO,
 };
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

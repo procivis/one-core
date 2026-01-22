@@ -10,6 +10,7 @@ use x509_parser::pem::Pem;
 use x509_parser::time::ASN1Time;
 
 use crate::fixtures::signature::{dummy_registration_certificate_payload, test_csr_payload};
+use crate::fixtures::sts::{StsSetup, setup_sts};
 use crate::utils::api_clients::signatures::TestCreateSignatureRequest;
 use crate::utils::context::TestContext;
 
@@ -19,15 +20,18 @@ async fn test_sign_wrprc_success() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: Some(key.id),
-            issuer_certificate: None,
-            signer: "REGISTRATION_CERTIFICATE".to_string(),
-            data: dummy_registration_certificate_payload(),
-            validity_start: None,
-            validity_end: None,
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "REGISTRATION_CERTIFICATE".to_string(),
+                data: dummy_registration_certificate_payload(),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 201);
 }
@@ -39,15 +43,18 @@ async fn test_fail_on_unknown_signer() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: Some(key.id),
-            issuer_certificate: None,
-            signer: "DOES_NOT_EXIST".to_string(),
-            data: Default::default(),
-            validity_start: None,
-            validity_end: None,
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "DOES_NOT_EXIST".to_string(),
+                data: Default::default(),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0326");
@@ -63,15 +70,18 @@ async fn test_sign_wrprc_custom_validty_success() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: Some(key.id),
-            issuer_certificate: None,
-            signer: "REGISTRATION_CERTIFICATE".to_string(),
-            data: dummy_registration_certificate_payload(),
-            validity_start: Some(nbf),
-            validity_end: Some(exp),
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "REGISTRATION_CERTIFICATE".to_string(),
+                data: dummy_registration_certificate_payload(),
+                validity_start: Some(nbf),
+                validity_end: Some(exp),
+            },
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 201);
     let resp = resp.json_value().await;
@@ -87,15 +97,18 @@ async fn test_sign_wrprc_validity_too_long() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: Some(key.id),
-            issuer_certificate: None,
-            signer: "REGISTRATION_CERTIFICATE".to_string(),
-            data: dummy_registration_certificate_payload(),
-            validity_start: None,
-            validity_end: Some(OffsetDateTime::now_utc() + time::Duration::days(365 * 100)),
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "REGISTRATION_CERTIFICATE".to_string(),
+                data: dummy_registration_certificate_payload(),
+                validity_start: None,
+                validity_end: Some(OffsetDateTime::now_utc() + time::Duration::days(365 * 100)),
+            },
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0324")
@@ -107,15 +120,18 @@ async fn test_sign_wrprc_validity_start_after_end() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: Some(key.id),
-            issuer_certificate: None,
-            signer: "REGISTRATION_CERTIFICATE".to_string(),
-            data: dummy_registration_certificate_payload(),
-            validity_start: Some(OffsetDateTime::now_utc() + time::Duration::days(2)),
-            validity_end: Some(OffsetDateTime::now_utc() + time::Duration::days(1)),
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "REGISTRATION_CERTIFICATE".to_string(),
+                data: dummy_registration_certificate_payload(),
+                validity_start: Some(OffsetDateTime::now_utc() + time::Duration::days(2)),
+                validity_end: Some(OffsetDateTime::now_utc() + time::Duration::days(1)),
+            },
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0324")
@@ -127,15 +143,18 @@ async fn test_sign_wrprc_validity_start_end_in_past() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: Some(key.id),
-            issuer_certificate: None,
-            signer: "REGISTRATION_CERTIFICATE".to_string(),
-            data: dummy_registration_certificate_payload(),
-            validity_start: Some(OffsetDateTime::now_utc() - time::Duration::days(2)),
-            validity_end: Some(OffsetDateTime::now_utc() - time::Duration::days(1)),
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "REGISTRATION_CERTIFICATE".to_string(),
+                data: dummy_registration_certificate_payload(),
+                validity_start: Some(OffsetDateTime::now_utc() - time::Duration::days(2)),
+                validity_end: Some(OffsetDateTime::now_utc() - time::Duration::days(1)),
+            },
+            None,
+        )
         .await;
     assert_eq!(resp.status(), 400);
     assert_eq!(resp.error_code().await, "BR_0324")
@@ -148,15 +167,18 @@ async fn test_create_signature_x509_success() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: None,
-            issuer_certificate: None,
-            signer: "X509_CERTIFICATE".to_string(),
-            data: test_csr_payload(None),
-            validity_start: None,
-            validity_end: None,
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "X509_CERTIFICATE".to_string(),
+                data: test_csr_payload(None),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
         .await;
 
     assert_eq!(resp.status(), 201);
@@ -208,15 +230,18 @@ async fn test_create_signature_x509_intermediary_ca_success() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: None,
-            issuer_certificate: None,
-            signer: "X509_CERTIFICATE".to_string(),
-            data: test_csr_payload(Some(params)),
-            validity_start: Some(start),
-            validity_end: Some(end),
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "X509_CERTIFICATE".to_string(),
+                data: test_csr_payload(Some(params)),
+                validity_start: Some(start),
+                validity_end: Some(end),
+            },
+            None,
+        )
         .await;
 
     assert_eq!(resp.status(), 201);
@@ -279,15 +304,18 @@ async fn test_create_signature_x509_intermediary_ca_disabled() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: None,
-            issuer_certificate: None,
-            signer: "X509_CERTIFICATE".to_string(),
-            data: test_csr_payload(Some(params)),
-            validity_start: Some(start),
-            validity_end: Some(end),
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "X509_CERTIFICATE".to_string(),
+                data: test_csr_payload(Some(params)),
+                validity_start: Some(start),
+                validity_end: Some(end),
+            },
+            None,
+        )
         .await;
 
     assert_eq!(resp.status(), 400);
@@ -315,15 +343,18 @@ async fn test_create_signature_x509_success_no_crl() {
     let resp = context
         .api
         .signatures
-        .create(TestCreateSignatureRequest {
-            issuer: identifier.id,
-            issuer_key: None,
-            issuer_certificate: None,
-            signer: "X509_CERTIFICATE_2".to_string(),
-            data: test_csr_payload(None),
-            validity_start: None,
-            validity_end: None,
-        })
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "X509_CERTIFICATE_2".to_string(),
+                data: test_csr_payload(None),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
         .await;
 
     assert_eq!(resp.status(), 201);
@@ -346,4 +377,33 @@ async fn test_create_signature_x509_success_no_crl() {
         .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
         .unwrap();
     assert!(crl_ext.is_none());
+}
+
+#[tokio::test]
+async fn test_fail_on_missing_signer_specific_permission() {
+    let StsSetup {
+        config,
+        token,
+        mock_server: _mock_server,
+    } = setup_sts(vec!["X509_CERTIFICATE_CREATE"]).await;
+    let (context, _org, _did, identifier, key) = TestContext::new_with_did(Some(config)).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: Some(key.id),
+                issuer_certificate: None,
+                signer: "REGISTRATION_CERTIFICATE".to_string(),
+                data: dummy_registration_certificate_payload(),
+                validity_start: None,
+                validity_end: None,
+            },
+            Some(token),
+        )
+        .await;
+
+    assert_eq!(resp.status(), 403);
 }

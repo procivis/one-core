@@ -9,7 +9,7 @@ use rustls_pki_types::CertificateDer;
 use rustls_pki_types::pem::PemObject;
 use serde::Deserialize;
 use serde_with::{DurationSeconds, serde_as};
-use shared_types::RevocationMethodId;
+use shared_types::{Permission, RevocationMethodId};
 use time::Duration;
 use uuid::Uuid;
 
@@ -77,8 +77,8 @@ impl Signer for X509CertificateSigner {
     fn get_capabilities(&self) -> SignerCapabilities {
         SignerCapabilities {
             supported_identifiers: vec![IdentifierType::CertificateAuthority],
-            sign_required_permissions: vec!["X509_CERTIFICATE_CREATE"],
-            revoke_required_permissions: vec!["X509_CERTIFICATE_REVOKE"],
+            sign_required_permissions: vec![Permission::X509CertificateCreate],
+            revoke_required_permissions: vec![Permission::X509CertificateRevoke],
             signing_key_algorithms: vec![KeyAlgorithmType::Ecdsa, KeyAlgorithmType::Eddsa],
             revocation_methods: vec![RevocationType::CRL],
         }

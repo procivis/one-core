@@ -3,7 +3,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
-use shared_types::{DidId, TrustEntityId};
+use shared_types::{DidId, Permission, TrustEntityId};
 
 use super::dto::{
     CreateRemoteTrustEntityRequestRestDTO, CreateTrustEntityRequestRestDTO,
@@ -15,7 +15,6 @@ use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErr
 use crate::endpoint::ssi::dto::PatchTrustEntityRequestRestDTO;
 use crate::endpoint::trust_entity::dto::GetTrustEntityResponseRestDTO;
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

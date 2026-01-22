@@ -13,12 +13,11 @@ use http_body_util::BodyExt;
 use one_core::proto::session_provider::Session;
 use sentry::{Hub, SentryFutureExt};
 use serde::Deserialize;
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, Permission};
 use uuid::Uuid;
 
 use crate::ServerConfig;
 use crate::authentication::Authentication;
-use crate::permissions::Permission;
 use crate::session::SESSION;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -122,11 +121,12 @@ pub async fn authorization_check(
                 })
                 .map_err(|_| StatusCode::UNAUTHORIZED)?;
             request.extensions_mut().insert(Authorized {
-                permissions: decomposed_token.payload.custom.permissions,
+                permissions: decomposed_token.payload.custom.permissions.clone(),
             });
             // Initialize session scoped to this request
             let session = Session {
                 organisation_id: decomposed_token.payload.custom.organisation_id,
+                permissions: decomposed_token.payload.custom.permissions,
                 user_id: decomposed_token
                     .payload
                     .subject

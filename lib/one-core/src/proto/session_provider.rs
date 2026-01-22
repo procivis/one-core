@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, Permission};
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 pub trait SessionProvider: Send + Sync {
@@ -18,6 +18,7 @@ impl SessionProvider for NoSessionProvider {
 #[derive(Debug, Clone)]
 pub struct Session {
     pub organisation_id: Option<OrganisationId>,
+    pub permissions: Vec<Permission>,
     pub user_id: String,
 }
 
@@ -57,6 +58,7 @@ pub mod test {
         pub fn new_random() -> Self {
             Self(Session {
                 organisation_id: Some(Uuid::new_v4().into()),
+                permissions: vec![],
                 user_id: format!("test-user-{}", Uuid::new_v4()),
             })
         }

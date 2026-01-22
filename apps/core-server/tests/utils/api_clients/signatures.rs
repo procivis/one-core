@@ -30,13 +30,30 @@ impl SignaturesApi {
         Self { client }
     }
 
-    pub async fn create(&self, request: TestCreateSignatureRequest) -> Response {
+    pub async fn create(
+        &self,
+        request: TestCreateSignatureRequest,
+        bearer_token: Option<String>,
+    ) -> Response {
+        const URL: &str = "/api/signature/v1";
         let request = serde_json::to_value(request).unwrap();
-        self.client.post("/api/signature/v1", request).await
+        if let Some(bearer_token) = bearer_token {
+            return self
+                .client
+                .post_custom_bearer_auth(URL, &bearer_token, request)
+                .await;
+        }
+        self.client.post(URL, request).await
     }
 
-    pub async fn revoke(&self, entry_id: Uuid) -> Response {
+    pub async fn revoke(&self, entry_id: Uuid, bearer_token: Option<String>) -> Response {
         let url = format!("/api/signature/v1/{}/revoke", entry_id);
+        if let Some(bearer_token) = bearer_token {
+            return self
+                .client
+                .post_custom_bearer_auth(url.as_str(), &bearer_token, None)
+                .await;
+        }
         self.client.post(url.as_str(), None).await
     }
 

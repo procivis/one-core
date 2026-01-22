@@ -2,12 +2,11 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
-use shared_types::CertificateId;
+use shared_types::{CertificateId, Permission};
 
 use super::dto::CertificateResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::response::OkOrErrorResponse;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

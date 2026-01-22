@@ -7,7 +7,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::Deserialize;
 use serde::de::Error;
-use shared_types::RevocationMethodId;
+use shared_types::{Permission, RevocationMethodId};
 use time::Duration;
 use url::Url;
 use uuid::Uuid;
@@ -88,8 +88,8 @@ impl Signer for RegistrationCertificate {
                 IdentifierType::Did,
                 IdentifierType::Key,
             ],
-            sign_required_permissions: vec!["REGISTRATION_CERTIFICATE_CREATE"],
-            revoke_required_permissions: vec!["REGISTRATION_CERTIFICATE_REVOKE"],
+            sign_required_permissions: vec![Permission::RegistrationCertificateCreate],
+            revoke_required_permissions: vec![Permission::RegistrationCertificateRevoke],
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,

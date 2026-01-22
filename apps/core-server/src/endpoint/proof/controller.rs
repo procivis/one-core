@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::{ServiceError, ValidationError};
 use proc_macros::require_permissions;
-use shared_types::ProofId;
+use shared_types::{Permission, ProofId};
 
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
@@ -17,7 +17,6 @@ use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use proc_macros::require_permissions;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, Permission};
 
 use super::dto::{
     CredentialDetailClaimResponseRestDTO, CredentialRevocationCheckRequestRestDTO,
@@ -21,7 +21,6 @@ use crate::endpoint::credential::dto::{
     SuspendCredentialRequestRestDTO,
 };
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

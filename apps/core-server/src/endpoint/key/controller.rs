@@ -5,7 +5,7 @@ use one_core::error::ContextWithErrorCode;
 use one_core::service::error::ServiceError;
 use one_core::service::key::dto::KeyListItemResponseDTO;
 use proc_macros::require_permissions;
-use shared_types::KeyId;
+use shared_types::{KeyId, Permission};
 
 use super::dto::GetKeyQuery;
 use crate::dto::common::{EntityResponseRestDTO, GetKeyListResponseRestDTO};
@@ -18,7 +18,6 @@ use crate::endpoint::key::dto::{
 };
 use crate::extractor::Qs;
 use crate::mapper::list_try_from;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

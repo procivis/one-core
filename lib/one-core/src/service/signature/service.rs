@@ -23,6 +23,7 @@ use crate::service::signature::error::SignatureServiceError;
 use crate::util::key_selection::KeySelection;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
+    throw_on_missing_all_required_permissions,
 };
 
 impl SignatureService {
@@ -33,6 +34,11 @@ impl SignatureService {
         let Some(signer) = self.signer_provider.get(request.signer.as_str()) else {
             return Err(SignatureServiceError::MissingSignerProvider(request.signer));
         };
+        throw_on_missing_all_required_permissions(
+            &signer.get_capabilities().sign_required_permissions,
+            &*self.session_provider,
+        )
+        .error_while("validating provider required permissions")?;
         let signature_type = request.signer.to_owned();
         let issuer = self
             .identifier_repository
@@ -61,7 +67,6 @@ impl SignatureService {
                 "organisation is None".to_string(),
             ))?
             .id;
-        // TODO ONE-8416: Permission check
         throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let issuer_id = issuer.id;
@@ -133,6 +138,12 @@ impl SignatureService {
             .get_for_signature_id(id)
             .await
             .error_while("getting signer provider")?;
+        throw_on_missing_all_required_permissions(
+            &signer.get_capabilities().revoke_required_permissions,
+            &*self.session_provider,
+        )
+        .error_while("validating provider required permissions")?;
+
         let Some(revocation_method) = signer.revocation_method() else {
             return Err(SignatureServiceError::RevocationNotSupported);
         };

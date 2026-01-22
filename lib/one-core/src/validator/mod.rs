@@ -1,7 +1,7 @@
 use std::ops::{Add, Sub};
 use std::time::Duration;
 
-use shared_types::OrganisationId;
+use shared_types::{OrganisationId, Permission};
 use time::OffsetDateTime;
 
 use crate::config::ConfigValidationError;
@@ -56,6 +56,19 @@ pub(crate) fn throw_if_org_relation_not_matching_session(
             .id,
         session_provider,
     )
+}
+
+pub(crate) fn throw_on_missing_all_required_permissions(
+    permissions: &[Permission],
+    session_provider: &dyn SessionProvider,
+) -> Result<(), ServiceError> {
+    let Some(session) = session_provider.session() else {
+        return Ok(());
+    };
+    if !session.permissions.iter().any(|p| permissions.contains(p)) {
+        return Err(ValidationError::Forbidden.into());
+    }
+    Ok(())
 }
 
 pub(crate) fn throw_if_credential_state_not_eq(

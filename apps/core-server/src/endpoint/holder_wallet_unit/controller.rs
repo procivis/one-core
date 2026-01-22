@@ -2,7 +2,7 @@ use axum::Json;
 use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use proc_macros::require_permissions;
-use shared_types::HolderWalletUnitId;
+use shared_types::{HolderWalletUnitId, Permission};
 
 use crate::dto::common::EntityResponseRestDTO;
 use crate::dto::error::ErrorResponseRestDTO;
@@ -10,7 +10,6 @@ use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErr
 use crate::endpoint::holder_wallet_unit::dto::{
     HolderRegisterWalletUnitRequestRestDTO, HolderWalletUnitDetailRestDTO,
 };
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(

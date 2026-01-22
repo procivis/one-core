@@ -3,7 +3,7 @@ use axum::extract::{Path, State};
 use axum_extra::extract::WithRejection;
 use one_core::service::error::ServiceError;
 use proc_macros::require_permissions;
-use shared_types::TrustAnchorId;
+use shared_types::{Permission, TrustAnchorId};
 
 use crate::dto::common::{EntityResponseRestDTO, GetTrustAnchorListResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
@@ -12,7 +12,6 @@ use crate::endpoint::trust_anchor::dto::{
     CreateTrustAnchorRequestRestDTO, GetTrustAnchorResponseRestDTO, ListTrustAnchorsQuery,
 };
 use crate::extractor::Qs;
-use crate::permissions::Permission;
 use crate::router::AppState;
 
 #[utoipa::path(
