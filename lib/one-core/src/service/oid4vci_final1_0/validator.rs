@@ -115,6 +115,7 @@ pub(crate) fn verify_pop_signature(
             OpenID4VCIError::InvalidRequest,
         ))?
         .jwk
+        .jwk()
         .to_owned();
 
     let pop_signer_key_handle = alg

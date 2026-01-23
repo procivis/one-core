@@ -49,7 +49,9 @@ use crate::model::wallet_unit::{
 use crate::model::wallet_unit_attested_key::{
     WalletUnitAttestedKey, WalletUnitAttestedKeyRelations, WalletUnitAttestedKeyRevocationInfo,
 };
-use crate::proto::jwt::model::{DecomposedJwt, JWTPayload, ProofOfPossessionKey};
+use crate::proto::jwt::model::{
+    DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use crate::proto::session_provider::SessionExt;
 use crate::provider::credential_formatter::model::AuthenticationFn;
@@ -817,7 +819,9 @@ impl WalletProviderService {
                 jwt_id: None,
                 proof_of_possession_key: Some(ProofOfPossessionKey {
                     key_id: None,
-                    jwk: holder_binding_jwk,
+                    jwk: ProofOfPossessionJwk::Jwk {
+                        jwk: holder_binding_jwk,
+                    },
                 }),
                 custom: WalletAppAttestationClaims {
                     wallet_name: Some(config_params.wallet_name.clone()),

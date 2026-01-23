@@ -217,6 +217,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             holder_key_id: credential_data.holder_key_id,
             leeway: self.params.leeway,
             token_type,
+            swiyu_proof_of_possession: self.params.swiyu_mode,
             issuer_certificate: credential_data.issuer_certificate,
         };
 

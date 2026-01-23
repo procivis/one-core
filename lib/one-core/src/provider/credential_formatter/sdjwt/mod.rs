@@ -21,7 +21,9 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CertificateValidator, ParsedCertificate,
 };
 use crate::proto::http_client::HttpClient;
-use crate::proto::jwt::model::{DecomposedJwt, JWTPayload, ProofOfPossessionKey};
+use crate::proto::jwt::model::{
+    DecomposedJwt, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey,
+};
 use crate::proto::jwt::{AnyPayload, Jwt, JwtPublicKeyInfo};
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::CredentialPresentation;
@@ -82,7 +84,13 @@ pub(crate) async fn format_credential<T: Serialize>(
                             Some(KeyRole::AssertionMethod),
                         )
                         .map(|verification_method| verification_method.public_key_jwk.clone())
-                        .map(|jwk| ProofOfPossessionKey { key_id: None, jwk })
+                        .map(|jwk| {
+                            let jwk = match additional_inputs.swiyu_proof_of_possession {
+                                false => ProofOfPossessionJwk::Jwk { jwk },
+                                true => ProofOfPossessionJwk::Swiyu(jwk),
+                            };
+                            ProofOfPossessionKey { key_id: None, jwk }
+                        })
                 } else {
                     None
                 }
@@ -110,6 +118,11 @@ pub(crate) async fn format_credential<T: Serialize>(
                     let jwk = jwk.public_key_as_jwk().map_err(|e| {
                         FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
                     })?;
+
+                    let jwk = match additional_inputs.swiyu_proof_of_possession {
+                        false => ProofOfPossessionJwk::Jwk { jwk },
+                        true => ProofOfPossessionJwk::Swiyu(jwk),
+                    };
 
                     Some(ProofOfPossessionKey { key_id: None, jwk })
                 } else {
@@ -443,7 +456,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
         ) {
             (Some(subject), _) => Some(subject.to_string()),
             (None, Some(cnf)) => Some(
-                encode_to_did(&cnf.jwk)
+                encode_to_did(cnf.jwk.jwk())
                     .map(|did| did.to_string())
                     .map_err(|e| FormatterError::Failed(e.to_string()))?,
             ),
@@ -498,7 +511,7 @@ impl<Payload: DeserializeOwned + SettableClaims> Jwt<Payload> {
                 ))?;
 
         if let Some(verification) = verification {
-            let kb_issuer = encode_to_did(&cnf.jwk).map_err(|err| {
+            let kb_issuer = encode_to_did(cnf.jwk.jwk()).map_err(|err| {
                 FormatterError::CouldNotExtractCredentials(format!(
                     "Failed to encode cnf JWK to did: {err}"
                 ))
