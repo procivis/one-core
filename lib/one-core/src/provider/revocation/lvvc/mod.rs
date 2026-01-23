@@ -373,11 +373,11 @@ impl RevocationMethod for LvvcProvider {
         ))
     }
 
-    async fn add_signature(
+    async fn add_signature<'a>(
         &self,
         _signature_type: String,
-        _issuer: &Identifier,
-        _certificate: &Option<Certificate>,
+        _issuer: &'a Identifier,
+        _certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         Err(RevocationError::OperationNotSupported(
             "Signatures not supported".to_string(),

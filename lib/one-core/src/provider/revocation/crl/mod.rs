@@ -144,11 +144,11 @@ impl RevocationMethod for CRLRevocation {
         ))
     }
 
-    async fn add_signature(
+    async fn add_signature<'a>(
         &self,
         signature_type: String,
-        issuer: &Identifier,
-        certificate: &Option<Certificate>,
+        issuer: &'a Identifier,
+        certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let base_url = self
             .core_base_url

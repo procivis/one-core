@@ -84,11 +84,11 @@ pub trait RevocationMethod: Send + Sync {
     // Signature functionality
 
     /// Issuer: create a status list entry before generating signature
-    async fn add_signature(
+    async fn add_signature<'a>(
         &self,
         signature_type: String,
-        issuer: &Identifier,
-        certificate: &Option<Certificate>,
+        issuer: &'a Identifier,
+        certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError>;
 
     /// Issuer: mark previously-issued signature as revoked

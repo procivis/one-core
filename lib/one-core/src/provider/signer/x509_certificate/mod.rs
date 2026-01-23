@@ -172,11 +172,7 @@ impl Signer for X509CertificateSigner {
                     None => Uuid::new_v4(),
                     Some(revocation_method) => {
                         let (id, revocation_info) = revocation_method
-                            .add_signature(
-                                self.config_name.clone(),
-                                &identifier,
-                                &Some(certificate.clone()),
-                            )
+                            .add_signature(self.config_name.clone(), &identifier, Some(certificate))
                             .await
                             .error_while("Adding signature to revocation list")?;
                         let distribution_point = revocation_info.credential_status.id.ok_or(

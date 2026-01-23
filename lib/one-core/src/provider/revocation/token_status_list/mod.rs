@@ -453,17 +453,17 @@ impl RevocationMethod for TokenStatusList {
         Ok(())
     }
 
-    async fn add_signature(
+    async fn add_signature<'a>(
         &self,
         signature_type: String,
-        issuer: &Identifier,
-        certificate: &Option<Certificate>,
+        issuer: &'a Identifier,
+        certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let result = self
             .create_entry(
                 RevocationListEntityId::Signature(signature_type, None),
                 issuer,
-                certificate.as_ref(),
+                certificate,
             )
             .await?;
 
@@ -579,11 +579,11 @@ impl TokenStatusList {
             .map(|(_, formatter)| formatter)
     }
 
-    async fn create_entry(
+    async fn create_entry<'a>(
         &self,
         entity_id: RevocationListEntityId,
-        issuer_identifier: &Identifier,
-        issuer_certificate: Option<&Certificate>,
+        issuer_identifier: &'a Identifier,
+        issuer_certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
         let mut list_id = None;
         let mut entry: Option<(RevocationListEntryId, usize)> = None;

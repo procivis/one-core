@@ -92,7 +92,7 @@ impl RegistrationCertificate {
                 .add_signature(
                     self.config_key.clone(),
                     identifier,
-                    &selected_key.certificate().cloned(),
+                    selected_key.certificate(),
                 )
                 .await
                 .error_while("Adding signature to revocation list")?;

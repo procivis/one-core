@@ -109,7 +109,7 @@ async fn test_add_signature_new_list() {
     let before_adding = OffsetDateTime::now_utc().replace_millisecond(0).unwrap();
 
     let (_, info) = revocation_method
-        .add_signature("signature_type".to_string(), &issuer, &Some(certificate))
+        .add_signature("signature_type".to_string(), &issuer, Some(&certificate))
         .await
         .unwrap();
 
