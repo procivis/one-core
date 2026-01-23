@@ -84,12 +84,9 @@ pub(crate) async fn format_credential<T: Serialize>(
                             Some(KeyRole::AssertionMethod),
                         )
                         .map(|verification_method| verification_method.public_key_jwk.clone())
-                        .map(|jwk| {
-                            let jwk = match additional_inputs.swiyu_proof_of_possession {
-                                false => ProofOfPossessionJwk::Jwk { jwk },
-                                true => ProofOfPossessionJwk::Swiyu(jwk),
-                            };
-                            ProofOfPossessionKey { key_id: None, jwk }
+                        .map(|jwk| ProofOfPossessionKey {
+                            key_id: None,
+                            jwk: ProofOfPossessionJwk::Jwk { jwk },
                         })
                 } else {
                     None
@@ -118,13 +115,10 @@ pub(crate) async fn format_credential<T: Serialize>(
                     let jwk = jwk.public_key_as_jwk().map_err(|e| {
                         FormatterError::CouldNotFormat(format!("failed to parse key: {e}"))
                     })?;
-
-                    let jwk = match additional_inputs.swiyu_proof_of_possession {
-                        false => ProofOfPossessionJwk::Jwk { jwk },
-                        true => ProofOfPossessionJwk::Swiyu(jwk),
-                    };
-
-                    Some(ProofOfPossessionKey { key_id: None, jwk })
+                    Some(ProofOfPossessionKey {
+                        key_id: None,
+                        jwk: ProofOfPossessionJwk::Jwk { jwk },
+                    })
                 } else {
                     None
                 }

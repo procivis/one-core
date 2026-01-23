@@ -389,7 +389,7 @@ async fn test_format_credential_swiyu() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Swiyu(dummy_jwk()),
+            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
         })
     );
 

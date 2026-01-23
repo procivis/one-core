@@ -113,7 +113,9 @@ pub enum ProofOfPossessionJwk {
     Jwk {
         jwk: PublicJwk,
     },
-    /// Swiyu SD-JWT is incorrectly formatting the `cnf` claim
+    /// Swiyu SD-JWT used to incorrectly format the `cnf` claim.
+    /// Swiyu no longer does this, but we have to maintain compatibility with the old credentials
+    /// -> this variant still exists in order to verify the old, malformed credentials.
     Swiyu(PublicJwk),
 }
 
