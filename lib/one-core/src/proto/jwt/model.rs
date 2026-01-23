@@ -103,27 +103,7 @@ pub struct ProofOfPossessionKey {
     #[serde(rename = "kid", default)]
     pub key_id: Option<String>,
 
-    #[serde(flatten)]
-    pub jwk: ProofOfPossessionJwk,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-#[serde(untagged)]
-pub enum ProofOfPossessionJwk {
-    Jwk {
-        jwk: PublicJwk,
-    },
-    /// Swiyu SD-JWT is incorrectly formatting the `cnf` claim
-    Swiyu(PublicJwk),
-}
-
-impl ProofOfPossessionJwk {
-    pub fn jwk(&self) -> &PublicJwk {
-        match self {
-            ProofOfPossessionJwk::Jwk { jwk } => jwk,
-            ProofOfPossessionJwk::Swiyu(jwk) => jwk,
-        }
-    }
+    pub jwk: PublicJwk,
 }
 
 pub(crate) fn jwt_metadata_claims() -> Vec<MetadataClaimSchema> {

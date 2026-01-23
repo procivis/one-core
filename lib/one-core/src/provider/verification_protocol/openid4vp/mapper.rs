@@ -37,7 +37,7 @@ use crate::model::identifier::IdentifierType;
 use crate::model::proof::Proof;
 use crate::model::proof_schema::{ProofInputClaimSchema, ProofSchema};
 use crate::proto::jwt::Jwt;
-use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use crate::proto::jwt::model::{JWTHeader, JWTPayload, ProofOfPossessionKey};
 use crate::provider::credential_formatter::mdoc_formatter::util::MobileSecurityObject;
 use crate::provider::credential_formatter::model::{CredentialClaim, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
@@ -732,10 +732,7 @@ pub(crate) async fn format_authorization_request_client_id_scheme_verifier_attes
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?
         .public_key_as_jwk()
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-    let proof_of_possession_key = Some(ProofOfPossessionKey {
-        key_id: None,
-        jwk: ProofOfPossessionJwk::Jwk { jwk },
-    });
+    let proof_of_possession_key = Some(ProofOfPossessionKey { key_id: None, jwk });
 
     let verifier_did = proof
         .verifier_identifier

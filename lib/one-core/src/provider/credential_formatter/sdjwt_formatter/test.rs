@@ -19,7 +19,7 @@ use crate::config::core_config::KeyAlgorithmType;
 use crate::model::did::Did;
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::MockHttpClient;
-use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use crate::proto::jwt::model::{JWTPayload, ProofOfPossessionKey};
 #[cfg(test)]
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
@@ -178,7 +178,7 @@ async fn test_format_credential_a() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
+            jwk: dummy_jwk(),
         })
     );
 
@@ -353,7 +353,7 @@ async fn test_format_credential_with_array() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
+            jwk: dummy_jwk(),
         })
     );
 
@@ -489,7 +489,7 @@ async fn test_format_credential_with_array_sd() {
         payload.proof_of_possession_key,
         Some(ProofOfPossessionKey {
             key_id: None,
-            jwk: ProofOfPossessionJwk::Jwk { jwk: dummy_jwk() },
+            jwk: dummy_jwk(),
         })
     );
 

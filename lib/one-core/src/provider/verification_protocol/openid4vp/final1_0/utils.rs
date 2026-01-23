@@ -260,9 +260,7 @@ async fn parse_referenced_data_from_verifier_attestation_token(
         .ok_or(VerificationProtocolError::Failed(
             "missing `cnf` in attestation JWT token".to_string(),
         ))?
-        .jwk
-        .jwk()
-        .to_owned();
+        .jwk;
 
     alg.parse_jwk(&public_key_cnf)
         .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?

@@ -1,7 +1,7 @@
 use std::ops::Add;
 
 use one_core::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
-use one_core::proto::jwt::model::{JWTPayload, ProofOfPossessionJwk, ProofOfPossessionKey};
+use one_core::proto::jwt::model::{JWTPayload, ProofOfPossessionKey};
 use one_core::proto::jwt::{Jwt, JwtPublicKeyInfo};
 use one_core::provider::key_algorithm::KeyAlgorithm;
 use one_core::provider::key_algorithm::ecdsa::Ecdsa;
@@ -33,7 +33,7 @@ async fn create_wallet_unit_attestation(wallet_key: PublicJwk, base_url: String)
             subject: Some(format!("{base_url}/PROCIVIS_ONE")),
             proof_of_possession_key: Some(ProofOfPossessionKey {
                 key_id: None,
-                jwk: ProofOfPossessionJwk::Jwk { jwk: wallet_key },
+                jwk: wallet_key,
             }),
             ..Default::default()
         },
