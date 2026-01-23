@@ -20,21 +20,21 @@ use crate::model::identifier::Identifier;
 use crate::model::key::Key;
 use crate::proto::clock::Clock;
 use crate::proto::jwt::JwtPublicKeyInfo;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::provider::signer::Signer;
-use crate::provider::signer::dto::{
-    CreateSignatureRequestDTO, CreateSignatureResponseDTO, RevocationInfo,
-};
+use crate::provider::signer::dto::{CreateSignatureRequest, CreateSignatureResponseDTO, Issuer};
 use crate::provider::signer::error::SignerError;
 use crate::provider::signer::model::SignerCapabilities;
 use crate::provider::signer::registration_certificate::model::{
-    WRPRegistrationCertificate, WRPRegistrationCertificatePayload,
+    Status, WRPRegistrationCertificate, WRPRegistrationCertificatePayload,
 };
 use crate::provider::signer::validity::{SignatureValidity, calculate_signature_validity};
 use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
+use crate::validator::permissions::RequiredPermssions;
 
 #[derive(Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,28 +52,59 @@ pub struct PayloadParams {
 }
 
 pub struct RegistrationCertificate {
+    config_key: String,
     params: Params,
     clock: Arc<dyn Clock>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     key_provider: Arc<dyn KeyProvider>,
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+    session_provider: Arc<dyn SessionProvider>,
 }
 
 impl RegistrationCertificate {
     pub fn new(
+        config_name: String,
         params: Params,
         clock: Arc<dyn Clock>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         key_provider: Arc<dyn KeyProvider>,
         key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
+        session_provider: Arc<dyn SessionProvider>,
     ) -> Self {
         Self {
+            config_key: config_name,
             params,
             clock,
             revocation_method_provider,
             key_provider,
             key_algorithm_provider,
+            session_provider,
         }
+    }
+
+    async fn handle_revocation(
+        &self,
+        identifier: &Identifier,
+        selected_key: &SelectedKey<'_>,
+    ) -> Result<Option<(Uuid, Option<Status>)>, SignerError> {
+        Ok(if let Some(revocation_method) = self.revocation_method() {
+            let (id, revocation_info) = revocation_method
+                .add_signature(
+                    self.config_key.clone(),
+                    identifier,
+                    &selected_key.certificate().cloned(),
+                )
+                .await
+                .error_while("Adding signature to revocation list")?;
+            Some((
+                Uuid::from(id),
+                Some(Status {
+                    status_list: revocation_info.credential_status.additional_fields,
+                }),
+            ))
+        } else {
+            None
+        })
     }
 }
 
@@ -81,8 +112,8 @@ impl RegistrationCertificate {
 impl Signer for RegistrationCertificate {
     fn get_capabilities(&self) -> SignerCapabilities {
         use crate::config::core_config::IdentifierType;
-
         SignerCapabilities {
+            features: vec![],
             supported_identifiers: vec![
                 IdentifierType::Certificate,
                 IdentifierType::Did,
@@ -102,10 +133,14 @@ impl Signer for RegistrationCertificate {
 
     async fn sign(
         &self,
-        issuer: Identifier,
-        request: CreateSignatureRequestDTO,
-        revocation_info: Option<RevocationInfo>,
+        issuer: Issuer,
+        request: CreateSignatureRequest,
     ) -> Result<CreateSignatureResponseDTO, SignerError> {
+        // Check permissions in provider because internal calls for `Issuer::Key` do _not_ go through the service
+        RequiredPermssions::at_least_one(self.get_capabilities().sign_required_permissions)
+            .check(&*self.session_provider)
+            .error_while("validating provider required permissions")?;
+
         let now = self.clock.now_utc();
         let SignatureValidity { start, end } = calculate_signature_validity(
             Duration::seconds(self.params.payload.max_validity_duration),
@@ -113,15 +148,36 @@ impl Signer for RegistrationCertificate {
         )?;
         let payload: model::RequestData = serde_json::from_value(request.data.clone())?;
 
-        let (jwt_id, status) = match revocation_info {
-            Some(RevocationInfo { id, status, .. }) => (
-                Uuid::from(id),
-                Some(model::Status {
-                    status_list: status.additional_fields,
-                }),
+        let (key, key_id, pubkey_info, revocation_info) = match issuer {
+            Issuer::Identifier {
+                identifier,
+                certificate,
+                key,
+            } => {
+                let selected_key = identifier
+                    .select_key(KeySelection {
+                        key,
+                        key_filter: Some(KeyFilter::role_filter(KeyRole::AssertionMethod)),
+                        certificate,
+                        did: None,
+                    })
+                    .error_while("Selecting signing key")?;
+
+                let revocation_info = self.handle_revocation(&identifier, &selected_key).await?;
+                let (key, key_id, pubkey_info) =
+                    self.signing_key_from_key_selection(selected_key)?;
+                (key, key_id, pubkey_info, revocation_info)
+            }
+            // Revocation is not supported for key type issuers
+            Issuer::Key(key) => (
+                *key.clone(),
+                None,
+                Some(self.key_to_pubkey_info(&key)?),
+                None,
             ),
-            None => (Uuid::new_v4(), None),
         };
+
+        let (jwt_id, status) = revocation_info.unwrap_or((Uuid::new_v4(), None));
         let jwt_payload = WRPRegistrationCertificatePayload {
             issued_at: Some(now),
             invalid_before: Some(start),
@@ -137,7 +193,7 @@ impl Signer for RegistrationCertificate {
             },
         };
         let signed_jwt = self
-            .create_and_sign_jwt(&request, issuer, jwt_payload)
+            .create_and_sign_jwt(key, key_id, pubkey_info, jwt_payload)
             .await?;
 
         Ok(CreateSignatureResponseDTO {
@@ -155,12 +211,11 @@ impl Signer for RegistrationCertificate {
 impl RegistrationCertificate {
     async fn create_and_sign_jwt(
         &self,
-        request: &CreateSignatureRequestDTO,
-        issuer: Identifier,
+        key: Key,
+        key_id: Option<String>,
+        pubkey_info: Option<JwtPublicKeyInfo>,
         payload: WRPRegistrationCertificatePayload,
     ) -> Result<String, SignerError> {
-        let (key, key_id, pubkey_info) = self.get_signing_key_for_identifier(issuer, request)?;
-
         let key_algorithm = key
             .key_algorithm_type()
             .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
@@ -187,34 +242,12 @@ impl RegistrationCertificate {
             .error_while("signing registration certificate")?)
     }
 
-    fn get_signing_key_for_identifier(
+    fn signing_key_from_key_selection(
         &self,
-        ident: Identifier,
-        request: &CreateSignatureRequestDTO,
+        selected_key: SelectedKey<'_>,
     ) -> Result<(Key, Option<String>, Option<JwtPublicKeyInfo>), SignerError> {
-        let selected_key = ident
-            .select_key(KeySelection {
-                key: request.issuer_key,
-                key_filter: Some(KeyFilter::role_filter(KeyRole::AssertionMethod)),
-                certificate: request.issuer_certificate,
-                did: None,
-            })
-            .error_while("Selecting signing key")?;
         let result = match selected_key {
-            SelectedKey::Key(key) => {
-                let pubkey = key
-                    .key_algorithm_type()
-                    .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
-                    .ok_or_else(|| {
-                        SignerError::MissingKeyAlgorithmProvider(key.key_type.to_owned())
-                    })?
-                    .reconstruct_key(&key.public_key, None, None)
-                    .error_while("Reconstructing signing key")?
-                    .public_key_as_jwk()
-                    .error_while("Converting signing key to JWK")?;
-
-                (key.clone(), None, Some(JwtPublicKeyInfo::Jwk(pubkey)))
-            }
+            SelectedKey::Key(key) => (key.clone(), None, Some(self.key_to_pubkey_info(key)?)),
             SelectedKey::Certificate { certificate, key } => {
                 let pubkey_info = Some(JwtPublicKeyInfo::X5c(
                     pem_chain_into_x5c(&certificate.chain)
@@ -228,6 +261,19 @@ impl RegistrationCertificate {
             }
         };
         Ok(result)
+    }
+
+    fn key_to_pubkey_info(&self, key: &Key) -> Result<JwtPublicKeyInfo, SignerError> {
+        let pubkey = key
+            .key_algorithm_type()
+            .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
+            .ok_or_else(|| SignerError::MissingKeyAlgorithmProvider(key.key_type.to_owned()))?
+            .reconstruct_key(&key.public_key, None, None)
+            .error_while("Reconstructing signing key")?
+            .public_key_as_jwk()
+            .error_while("Converting signing key to JWK")?;
+        let public_key_info = JwtPublicKeyInfo::Jwk(pubkey);
+        Ok(public_key_info)
     }
 }
 

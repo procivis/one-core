@@ -15,15 +15,12 @@ use crate::model::identifier::IdentifierRelations;
 use crate::model::key::KeyRelations;
 use crate::model::organisation::OrganisationRelations;
 use crate::model::revocation_list::{RevocationListEntityInfo, RevocationListRelations};
-use crate::provider::signer::dto::{
-    CreateSignatureRequestDTO, CreateSignatureResponseDTO, RevocationInfo,
-};
-use crate::service::signature::dto::SignatureStatusInfo;
+use crate::provider::signer::dto::{CreateSignatureResponseDTO, Issuer};
+use crate::service::signature::dto::{CreateSignatureRequestDTO, SignatureStatusInfo};
 use crate::service::signature::error::SignatureServiceError;
-use crate::util::key_selection::KeySelection;
+use crate::validator::permissions::RequiredPermssions;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
-    throw_on_missing_all_required_permissions,
 };
 
 impl SignatureService {
@@ -34,11 +31,6 @@ impl SignatureService {
         let Some(signer) = self.signer_provider.get(request.signer.as_str()) else {
             return Err(SignatureServiceError::MissingSignerProvider(request.signer));
         };
-        throw_on_missing_all_required_permissions(
-            &signer.get_capabilities().sign_required_permissions,
-            &*self.session_provider,
-        )
-        .error_while("validating provider required permissions")?;
         let signature_type = request.signer.to_owned();
         let issuer = self
             .identifier_repository
@@ -70,36 +62,18 @@ impl SignatureService {
         throw_if_org_not_matching_session(&organisation_id, &*self.session_provider)
             .error_while("validating organisation")?;
         let issuer_id = issuer.id;
-
-        let selection = issuer
-            .select_key(KeySelection {
-                key: request.issuer_key,
-                certificate: request.issuer_certificate,
-                ..Default::default()
-            })
-            .error_while("Selecting signing key")?;
-
-        let revocation_info = if let Some(revocation_method) = signer.revocation_method() {
-            let (id, revocation_info) = revocation_method
-                .add_signature(
-                    request.signer.clone(),
-                    &issuer,
-                    &selection.certificate().cloned(),
-                )
-                .await
-                .error_while("Adding signature to revocation list")?;
-            Some(RevocationInfo {
-                id,
-                status: revocation_info.credential_status,
-                serial: revocation_info.serial,
-            })
-        } else {
-            None
-        };
-
         let request_data = request.data.clone();
+
+        // Note: signer providers must check the permissions internally for signing
         let result = signer
-            .sign(issuer, request, revocation_info)
+            .sign(
+                Issuer::Identifier {
+                    identifier: Box::new(issuer),
+                    certificate: request.issuer_certificate,
+                    key: request.issuer_key,
+                },
+                request.into(),
+            )
             .await
             .error_while("signing signature request")?;
 
@@ -138,11 +112,9 @@ impl SignatureService {
             .get_for_signature_id(id)
             .await
             .error_while("getting signer provider")?;
-        throw_on_missing_all_required_permissions(
-            &signer.get_capabilities().revoke_required_permissions,
-            &*self.session_provider,
-        )
-        .error_while("validating provider required permissions")?;
+        RequiredPermssions::at_least_one(signer.get_capabilities().revoke_required_permissions)
+            .check(&*self.session_provider)
+            .error_while("validating provider required permissions")?;
 
         let Some(revocation_method) = signer.revocation_method() else {
             return Err(SignatureServiceError::RevocationNotSupported);
@@ -168,7 +140,6 @@ impl SignatureService {
             .ok_or(SignatureServiceError::MappingError(
                 "Missing revocation list issuer".to_string(),
             ))?;
-        // TODO ONE-8416: Permission check
         throw_if_org_relation_not_matching_session(
             issuer.organisation.as_ref(),
             &*self.session_provider,

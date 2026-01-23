@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::model::identifier::Identifier;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::signer::dto::RevocationInfo;
+use crate::provider::signer::dto::Issuer;
 use crate::provider::signer::error::SignerError;
 
 pub mod dto;
@@ -22,9 +21,8 @@ pub trait Signer: Send + Sync {
 
     async fn sign(
         &self,
-        issuer: Identifier,
-        request: dto::CreateSignatureRequestDTO,
-        revocation_info: Option<RevocationInfo>,
+        issuer: Issuer,
+        request: dto::CreateSignatureRequest,
     ) -> Result<dto::CreateSignatureResponseDTO, SignerError>;
 
     fn revocation_method(&self) -> Option<Arc<dyn RevocationMethod>>;

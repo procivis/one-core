@@ -11,6 +11,7 @@ use crate::config::core_config::{ConfigExt, CoreConfig, RevocationConfig, Signer
 use crate::config::{ConfigValidationError, ProviderReference};
 use crate::model::revocation_list::RevocationListEntityInfo;
 use crate::proto::clock::Clock;
+use crate::proto::session_provider::SessionProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -71,6 +72,7 @@ pub(crate) fn signer_provider_from_config(
     key_algorithm_provider: Arc<dyn KeyAlgorithmProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     revocation_list_repository: Arc<dyn RevocationListRepository>,
+    session_provider: Arc<dyn SessionProvider>,
 ) -> Result<Arc<dyn SignerProvider>, ConfigValidationError> {
     let mut signers: HashMap<String, Arc<dyn Signer>> = HashMap::new();
     let revocation_config = &config.revocation;
@@ -88,11 +90,13 @@ pub(crate) fn signer_provider_from_config(
                         source: e,
                     })?;
                 let signer = registration_certificate::RegistrationCertificate::new(
+                    name.to_owned(),
                     params.clone(),
                     clock.clone(),
                     revocation_method_provider.clone(),
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
+                    session_provider.clone(),
                 );
 
                 if let Some(revocation_method) = &params.revocation_method {
@@ -113,9 +117,11 @@ pub(crate) fn signer_provider_from_config(
                     }
                 })?;
                 let signer = x509_certificate::X509CertificateSigner::new(
+                    name.to_owned(),
                     params.clone(),
                     key_provider.clone(),
                     revocation_method_provider.clone(),
+                    session_provider.clone(),
                 );
 
                 if let Some(revocation_method) = &params.revocation_method {

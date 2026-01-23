@@ -352,6 +352,7 @@ impl OneCore {
             key_algorithm_provider.clone(),
             revocation_method_provider.clone(),
             data_provider.get_revocation_list_repository(),
+            session_provider.clone(),
         )?;
 
         let config = Arc::new(config);

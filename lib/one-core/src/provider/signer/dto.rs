@@ -1,16 +1,23 @@
-use shared_types::{CertificateId, IdentifierId, KeyId, RevocationListEntryId};
+use shared_types::{CertificateId, KeyId, RevocationListEntryId};
 use standardized_types::x509::CertificateSerial;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use crate::model::identifier::Identifier;
+use crate::model::key::Key;
 use crate::provider::credential_formatter::model::CredentialStatus;
 
+pub enum Issuer {
+    Identifier {
+        identifier: Box<Identifier>, // boxed because of large size difference between variants
+        certificate: Option<CertificateId>,
+        key: Option<KeyId>,
+    },
+    Key(Box<Key>), // boxed because of large size difference between variants
+}
+
 #[derive(Clone, Debug)]
-pub struct CreateSignatureRequestDTO {
-    pub issuer: IdentifierId,
-    pub issuer_key: Option<KeyId>,
-    pub issuer_certificate: Option<CertificateId>,
-    pub signer: String,
+pub struct CreateSignatureRequest {
     /// Signer-specific payload, each signer handles parsing individually
     pub data: serde_json::Value,
     pub validity_start: Option<OffsetDateTime>,

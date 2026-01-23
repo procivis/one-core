@@ -1,6 +1,6 @@
 use time::{Duration, OffsetDateTime};
 
-use crate::provider::signer::dto::CreateSignatureRequestDTO;
+use crate::provider::signer::dto::CreateSignatureRequest;
 use crate::provider::signer::error::SignerError;
 
 pub(super) struct SignatureValidity {
@@ -9,7 +9,7 @@ pub(super) struct SignatureValidity {
 }
 pub(super) fn calculate_signature_validity(
     max_validity: Duration,
-    request: &CreateSignatureRequestDTO,
+    request: &CreateSignatureRequest,
 ) -> Result<SignatureValidity, SignerError> {
     let now = OffsetDateTime::now_utc();
     let start = match request.validity_start {
