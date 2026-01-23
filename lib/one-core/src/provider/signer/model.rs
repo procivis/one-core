@@ -4,6 +4,7 @@ use shared_types::Permission;
 use crate::config::core_config::{IdentifierType, KeyAlgorithmType, RevocationType};
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SignerCapabilities {
     pub features: Vec<Feature>,
     pub supported_identifiers: Vec<IdentifierType>,
