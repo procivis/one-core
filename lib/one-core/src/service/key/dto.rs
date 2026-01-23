@@ -1,4 +1,4 @@
-use one_dto_mapper::From;
+use one_dto_mapper::{From, Into};
 use serde::{Deserialize, Serialize};
 use shared_types::OrganisationId;
 use time::OffsetDateTime;
@@ -48,20 +48,22 @@ pub struct KeyListItemResponseDTO {
 pub type GetKeyListResponseDTO = GetListResponse<KeyListItemResponseDTO>;
 pub type GetKeyQueryDTO = GetListQueryParams<SortableKeyColumn>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Into)]
+#[into(crate::proto::csr_creator::GenerateCsrRequest)]
 pub struct KeyGenerateCSRRequestDTO {
     pub profile: KeyGenerateCSRRequestProfile,
     pub subject: KeyGenerateCSRRequestSubjectDTO,
 }
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Into)]
+#[into(crate::proto::csr_creator::CsrRequestProfile)]
 pub enum KeyGenerateCSRRequestProfile {
     Generic,
     Mdl,
     Ca,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Into)]
+#[into(crate::proto::csr_creator::CsrRequestSubject)]
 pub struct KeyGenerateCSRRequestSubjectDTO {
     pub country_name: Option<String>,
     pub common_name: Option<String>,

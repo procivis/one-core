@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use assert2::let_assert;
 use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -10,11 +11,9 @@ use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::key::{GetKeyList, Key, KeyFilterValue, KeyListQuery};
 use crate::model::list_filter::{ListFilterValue, StringMatch};
 use crate::model::list_query::ListPagination;
+use crate::proto::csr_creator::{CsrCreationError, MockCsrCreator};
 use crate::proto::session_provider::NoSessionProvider;
 use crate::proto::session_provider::test::StaticSessionProvider;
-use crate::provider::key_algorithm::MockKeyAlgorithm;
-use crate::provider::key_algorithm::model::KeyAlgorithmCapabilities;
-use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::MockKeyStorage;
 use crate::provider::key_storage::model::{KeyStorageCapabilities, StorageGeneratedKey};
 use crate::provider::key_storage::provider::MockKeyProvider;
@@ -25,7 +24,6 @@ use crate::service::key::dto::{
     KeyGenerateCSRRequestDTO, KeyGenerateCSRRequestProfile, KeyGenerateCSRRequestSubjectDTO,
     KeyRequestDTO,
 };
-use crate::service::key::error::KeyServiceError;
 use crate::service::test_utilities::{dummy_organisation, generic_config};
 
 fn setup_service(
@@ -33,8 +31,8 @@ fn setup_service(
     organisation_repository: MockOrganisationRepository,
     key_storage: MockKeyStorage,
     config: crate::config::core_config::CoreConfig,
-    key_algorithm_provider: MockKeyAlgorithmProvider,
     history_repository: MockHistoryRepository,
+    mock_csr_creator: MockCsrCreator,
 ) -> KeyService {
     let key_storage = Arc::new(key_storage);
     let mut provider = MockKeyProvider::new();
@@ -47,9 +45,9 @@ fn setup_service(
         Arc::new(organisation_repository),
         Arc::new(provider),
         Arc::new(config),
-        Arc::new(key_algorithm_provider),
         Arc::new(history_repository),
         Arc::new(NoSessionProvider),
+        Arc::new(mock_csr_creator),
     )
 }
 
@@ -73,8 +71,8 @@ async fn test_create_key_success() {
     let mut repository = MockKeyRepository::default();
     let mut organisation_repository = MockOrganisationRepository::default();
     let mut key_storage = MockKeyStorage::default();
-    let key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let history_repository = MockHistoryRepository::default();
+    let csr_creator = MockCsrCreator::default();
 
     let org_id = Uuid::new_v4();
 
@@ -113,8 +111,8 @@ async fn test_create_key_success() {
         organisation_repository,
         key_storage,
         generic_config().core,
-        key_algorithm_provider,
         history_repository,
+        csr_creator,
     );
 
     let result = service
@@ -137,8 +135,8 @@ async fn test_get_key_success() {
     let mut repository = MockKeyRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let key_storage = MockKeyStorage::default();
-    let key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let history_repository = MockHistoryRepository::default();
+    let csr_creator = MockCsrCreator::default();
 
     let org_id: Uuid = Uuid::new_v4();
     let key = generic_key("NAME", org_id);
@@ -155,8 +153,8 @@ async fn test_get_key_success() {
         organisation_repository,
         key_storage,
         generic_config().core,
-        key_algorithm_provider,
         history_repository,
+        csr_creator,
     );
 
     let result = service.get_key(&key.id).await;
@@ -172,8 +170,8 @@ async fn test_get_key_list() {
     let key_storage = MockKeyStorage::default();
     let org_id: Uuid = Uuid::new_v4();
     let keys = vec![generic_key("NAME1", org_id), generic_key("NAME2", org_id)];
-    let key_algorithm_provider = MockKeyAlgorithmProvider::default();
     let history_repository = MockHistoryRepository::default();
+    let csr_creator = MockCsrCreator::default();
 
     let moved_keys = keys.clone();
     repository.expect_get_key_list().once().returning(move |_| {
@@ -189,8 +187,8 @@ async fn test_get_key_list() {
         organisation_repository,
         key_storage,
         generic_config().core,
-        key_algorithm_provider,
         history_repository,
+        csr_creator,
     );
 
     let query = KeyListQuery {
@@ -235,55 +233,39 @@ fn generic_csr_request() -> KeyGenerateCSRRequestDTO {
 }
 
 #[tokio::test]
-async fn test_generate_csr_failed_unsupported_key_type_for_csr() {
+async fn test_generate_csr_failed() {
     let mut repository = MockKeyRepository::default();
     let organisation_repository = MockOrganisationRepository::default();
     let key_storage = MockKeyStorage::default();
-    let mut key_algorithm_provider = MockKeyAlgorithmProvider::default();
-    let mut key_alg = MockKeyAlgorithm::default();
     let history_repository = MockHistoryRepository::default();
-
-    key_alg
-        .expect_get_capabilities()
-        .once()
-        .returning(|| KeyAlgorithmCapabilities { features: vec![] });
-
-    let key_alg = Arc::new(key_alg);
+    let mut csr_creator = MockCsrCreator::default();
+    csr_creator.expect_create_csr().returning(|_, _| {
+        Err(CsrCreationError::UnsupportedKeyAlgorithm {
+            key_algorithm: "BBS_PLUS".to_string(),
+        })
+    });
 
     let org_id: Uuid = Uuid::new_v4();
     let mut key = generic_key("NAME", org_id);
     key.key_type = "BBS_PLUS".to_string();
-    {
-        let key = key.clone();
-        repository
-            .expect_get_key()
-            .once()
-            .returning(move |_, _| Ok(Some(key.clone())));
-
-        key_algorithm_provider
-            .expect_key_algorithm_from_type()
-            .once()
-            .withf(move |alg| {
-                assert_eq!(*alg, KeyAlgorithmType::BbsPlus);
-                true
-            })
-            .returning(move |_| Some(key_alg.clone()));
-    }
+    let key_clone = key.clone();
+    repository
+        .expect_get_key()
+        .once()
+        .returning(move |_, _| Ok(Some(key_clone.clone())));
 
     let service = setup_service(
         repository,
         organisation_repository,
         key_storage,
         generic_config().core,
-        key_algorithm_provider,
         history_repository,
+        csr_creator,
     );
 
     let result = service.generate_csr(&key.id, generic_csr_request()).await;
-    assert!(matches!(
-        result,
-        Err(KeyServiceError::UnsupportedKeyTypeForCSR)
-    ));
+    let_assert!(Err(err) = result);
+    assert_eq!(err.error_code(), ErrorCode::BR_0128);
 }
 
 #[tokio::test]
@@ -293,9 +275,9 @@ async fn test_create_key_session_org_mismatch() {
         Arc::new(MockOrganisationRepository::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(generic_config().core),
-        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(StaticSessionProvider::new_random()),
+        Arc::new(MockCsrCreator::default()),
     );
 
     let result = service
@@ -320,9 +302,9 @@ async fn test_list_key_session_org_mismatch() {
         Arc::new(MockOrganisationRepository::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(generic_config().core),
-        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(StaticSessionProvider::new_random()),
+        Arc::new(MockCsrCreator::default()),
     );
 
     let result = service
@@ -354,9 +336,9 @@ async fn test_key_ops_session_org_mismatch() {
         Arc::new(MockOrganisationRepository::new()),
         Arc::new(MockKeyProvider::new()),
         Arc::new(generic_config().core),
-        Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockHistoryRepository::new()),
         Arc::new(StaticSessionProvider::new_random()),
+        Arc::new(MockCsrCreator::default()),
     );
 
     let err = service.get_key(&key_id.into()).await.err().unwrap();

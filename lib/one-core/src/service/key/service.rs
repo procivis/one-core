@@ -1,6 +1,5 @@
 use std::str::FromStr;
 
-use anyhow::Context;
 use shared_types::{KeyId, OrganisationId};
 use standardized_types::jwk::PrivateJwk;
 use time::OffsetDateTime;
@@ -8,10 +7,8 @@ use uuid::Uuid;
 
 use super::KeyService;
 use super::dto::{GetKeyListResponseDTO, KeyRequestDTO};
-use super::mapper::request_to_certificate_params;
 use crate::config::core_config::KeyAlgorithmType;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
-use crate::mapper::x509::SigningKeyAdapter;
 use crate::model::history::{History, HistoryAction, HistoryEntityType, HistorySource};
 use crate::model::key::{KeyListQuery, KeyRelations};
 use crate::model::organisation::OrganisationRelations;
@@ -23,7 +20,7 @@ use crate::service::key::dto::{
 };
 use crate::service::key::error::KeyServiceError;
 use crate::service::key::mapper::from_create_request;
-use crate::service::key::validator::{validate_generate_request, validate_key_algorithm_for_csr};
+use crate::service::key::validator::validate_generate_request;
 use crate::validator::{
     throw_if_org_not_matching_session, throw_if_org_relation_not_matching_session,
 };
@@ -185,22 +182,12 @@ impl KeyService {
             &*self.session_provider,
         )
         .error_while("validating organisation")?;
-        validate_key_algorithm_for_csr(&key, &*self.key_algorithm_provider)?;
 
-        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
-            KeyServiceError::MissingKeyStorageProvider {
-                key_storage: key.storage_type.clone(),
-            },
-        )?;
-        let signing_key =
-            SigningKeyAdapter::new(key.clone(), key_storage, tokio::runtime::Handle::current())
-                .context("Failed creating remote key")?;
-
-        let content = request_to_certificate_params(request)
-            .serialize_request(&signing_key)
-            .context("Failed creating CSR")?
-            .pem()
-            .context("CSR PEM conversion failed")?;
+        let content = self
+            .csr_creator
+            .create_csr(key.clone(), request.into())
+            .await
+            .error_while("creating csr")?;
 
         tracing::info!("Created CSR for key `{}` ({})", key.name, key.id);
 

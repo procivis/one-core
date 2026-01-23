@@ -13,6 +13,7 @@ use crate::proto::certificate_validator::{
 use crate::proto::clock::DefaultClock;
 use crate::proto::credential_schema::importer::CredentialSchemaImporterProto;
 use crate::proto::credential_schema::parser::CredentialSchemaImportParserImpl;
+use crate::proto::csr_creator::CsrCreatorImpl;
 use crate::proto::history_decorator::decorated_data_provider::decorate_data_provider;
 use crate::proto::http_client::HttpClient;
 use crate::proto::identifier_creator::creator::IdentifierCreatorProto;
@@ -260,6 +261,11 @@ impl OneCore {
             Arc::new(HTTPWalletProviderClient::new(client.clone())),
             revocation_method_provider.clone(),
             data_provider.get_holder_wallet_unit_repository(),
+        ));
+
+        let csr_creator = Arc::new(CsrCreatorImpl::new(
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
         ));
 
         let identifier_creator = Arc::new(IdentifierCreatorProto::new(
@@ -567,9 +573,9 @@ impl OneCore {
                 data_provider.get_organisation_repository(),
                 key_provider.clone(),
                 config.clone(),
-                key_algorithm_provider.clone(),
                 data_provider.get_history_repository(),
                 session_provider.clone(),
+                csr_creator,
             ),
             proof_schema_service: ProofSchemaService::new(
                 data_provider.get_proof_schema_repository(),
