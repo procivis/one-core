@@ -134,6 +134,36 @@ impl IdentifiersApi {
             .await
     }
 
+    pub async fn create_certificate_authority_identifier_self_signed(
+        &self,
+        name: &str,
+        key_id: KeyId,
+        organisation_id: OrganisationId,
+        common_name: &str,
+        signer: &str,
+    ) -> Response {
+        self.client
+            .post(
+                "/api/identifier/v1",
+                json!( {
+                    "name": name,
+                    "organisationId": organisation_id,
+                    "certificateAuthorities": [{
+                        "keyId": key_id,
+                        "selfSigned": {
+                            "content": {
+                                "subject": {
+                                    "commonName": common_name,
+                                }
+                            },
+                            "signer": signer
+                        },
+                    }]
+                }),
+            )
+            .await
+    }
+
     pub async fn try_create_certificate_authority_identifier(
         &self,
         name: &str,

@@ -93,6 +93,111 @@ async fn test_create_certificate_authority_identifier_no_crl() {
     resp["organisationId"].assert_eq(&organisation.id);
 }
 
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_certificate_authority_self_signed() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_authority_identifier_self_signed(
+            "test-identifier",
+            key.id,
+            organisation.id,
+            "test cert",
+            "X509_CERTIFICATE",
+        )
+        .await;
+
+    // then
+    assert_eq!(result.status(), 201);
+    let resp = result.json_value().await;
+    let identifier_id = resp["id"].as_str().unwrap().parse().unwrap();
+
+    let result = context.api.identifiers.get(&identifier_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+
+    assert_eq!(resp["name"].as_str().unwrap(), "test-identifier");
+    assert_eq!(resp["type"].as_str().unwrap(), "CA");
+    assert_eq!(resp["state"].as_str().unwrap(), "ACTIVE");
+    assert!(!resp["isRemote"].as_bool().unwrap());
+    assert_eq!(
+        resp["organisationId"].as_str().unwrap(),
+        organisation.id.to_string()
+    );
+    assert_eq!(
+        resp["certificateAuthorities"].as_array().length().unwrap(),
+        1
+    );
+
+    let certificate = &resp["certificateAuthorities"][0];
+    assert_eq!(certificate["name"].as_str().unwrap(), "test cert");
+    assert_eq!(certificate["state"].as_str().unwrap(), "ACTIVE");
+    assert_eq!(
+        certificate["x509Attributes"]["issuer"].as_str().unwrap(),
+        "CN=test cert"
+    );
+    assert_eq!(
+        certificate["x509Attributes"]["subject"].as_str().unwrap(),
+        "CN=test cert"
+    );
+    assert!(
+        certificate["x509Attributes"]["extensions"]
+            .as_array()
+            .unwrap()
+            .contains(&json!({
+                "critical": true,
+                "oid": "2.5.29.19",
+                "value": "Certificate Authority: true",
+            }))
+    );
+
+    let certificate_id = certificate["id"].as_str().unwrap().parse().unwrap();
+    let result = context.api.certificates.get(&certificate_id).await;
+    assert_eq!(result.status(), 200);
+    let resp = result.json_value().await;
+    resp["id"].assert_eq(&certificate_id);
+    resp["organisationId"].assert_eq(&organisation.id);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_certificate_authority_self_signed_invalid_signer() {
+    // given
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let key = context
+        .db
+        .keys
+        .create(&organisation, ecdsa_testing_params())
+        .await;
+
+    // when
+    let result = context
+        .api
+        .identifiers
+        .create_certificate_authority_identifier_self_signed(
+            "test-identifier",
+            key.id,
+            organisation.id,
+            "test cert",
+            "INVALID_SIGNER",
+        )
+        .await;
+
+    // then
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0326");
+}
+
 #[tokio::test]
 async fn test_create_certificate_authority_incorrect_key_usage() {
     // given

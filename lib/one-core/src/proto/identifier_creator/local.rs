@@ -17,6 +17,7 @@ use crate::proto::certificate_validator::{
     CertificateValidationOptions, CrlMode, EnforceKeyUsage, ParsedCertificate,
 };
 use crate::provider::key_algorithm::key::KeyHandle;
+use crate::provider::signer::dto::{CreateSignatureRequest, Issuer};
 use crate::repository::error::DataLayerError;
 use crate::service::certificate::dto::CreateCertificateRequestDTO;
 use crate::service::did::dto::CreateDidRequestDTO;
@@ -398,8 +399,26 @@ impl IdentifierCreatorProto {
 
         let chain = match (request.chain, request.self_signed) {
             (Some(chain), None) => chain,
-            (None, Some(_self_signed)) => {
-                todo!("generate self-signed certificate chain");
+            (None, Some(self_signed)) => {
+                let csr = self
+                    .csr_creator
+                    .create_csr(key.clone(), self_signed.content.clone().into())
+                    .await?;
+                let signer = self
+                    .signer_provider
+                    .get(&self_signed.signer)
+                    .ok_or(MissingProviderError::Signer(self_signed.signer.clone()))?;
+                signer
+                    .sign(
+                        Issuer::Key(Box::new(key.clone())),
+                        CreateSignatureRequest {
+                            data: serde_json::json!({"csr": csr}),
+                            validity_start: self_signed.validity_start,
+                            validity_end: self_signed.validity_end,
+                        },
+                    )
+                    .await?
+                    .result
             }
             _ => return Err(ValidationError::InvalidCertificateAuthorityIdentifierInput.into()),
         };

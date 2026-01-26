@@ -18,6 +18,7 @@ use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::service::error::{EntityNotFoundError, MissingProviderError, ServiceError};
 
+#[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait]
 pub(crate) trait SignerProvider: Send + Sync {
     async fn get_for_signature_id(

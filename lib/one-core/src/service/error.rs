@@ -16,6 +16,7 @@ use crate::model::credential::{CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::model::did::KeyRole;
 use crate::model::proof::{ProofRole, ProofStateEnum};
+use crate::proto::csr_creator::CsrCreationError;
 use crate::proto::nfc::NfcError;
 use crate::provider::blob_storage_provider::error::BlobStorageError;
 use crate::provider::credential_formatter::error::FormatterError;
@@ -143,6 +144,9 @@ pub enum ServiceError {
 
     #[error("Key selection error: `{0}`")]
     KeySelection(#[from] KeySelectionError),
+
+    #[error("Failed to create CSR: `{0}`")]
+    CsrCreation(#[from] CsrCreationError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -824,6 +828,7 @@ impl ErrorCodeMixin for ServiceError {
             Self::NfcError(error) => error.error_code(),
             Self::SignerError(error) => error.error_code(),
             Self::KeySelection(error) => error.error_code(),
+            Self::CsrCreation(error) => error.error_code(),
         }
     }
 }

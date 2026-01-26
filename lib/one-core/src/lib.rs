@@ -268,6 +268,16 @@ impl OneCore {
             key_algorithm_provider.clone(),
         ));
 
+        let signer_provider = signer_provider_from_config(
+            &mut config,
+            clock.clone(),
+            key_provider.clone(),
+            key_algorithm_provider.clone(),
+            revocation_method_provider.clone(),
+            data_provider.get_revocation_list_repository(),
+            session_provider.clone(),
+        )?;
+
         let identifier_creator = Arc::new(IdentifierCreatorProto::new(
             did_method_provider.clone(),
             data_provider.get_did_repository(),
@@ -277,6 +287,8 @@ impl OneCore {
             key_provider.clone(),
             key_algorithm_provider.clone(),
             data_provider.get_identifier_repository(),
+            csr_creator.clone(),
+            signer_provider.clone(),
             Arc::new(config.clone()),
             data_provider.get_tx_manager(),
         ));
@@ -349,16 +361,6 @@ impl OneCore {
             openid_metadata_cache,
             Some(mqtt_client),
             nfc_hce.clone(),
-        )?;
-
-        let signer_provider = signer_provider_from_config(
-            &mut config,
-            clock.clone(),
-            key_provider.clone(),
-            key_algorithm_provider.clone(),
-            revocation_method_provider.clone(),
-            data_provider.get_revocation_list_repository(),
-            session_provider.clone(),
         )?;
 
         let config = Arc::new(config);
