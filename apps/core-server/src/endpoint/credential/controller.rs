@@ -42,8 +42,8 @@ use crate::router::AppState;
         This has no impact on the holder's ability to keep and use the credential.
 
         Deletion cannot be completed if the credential state is `ACCEPTED` while
-        the corresponding credential schema includes a revocation method. If revocation
-        method is `NONE`, the credential can be deleted in any state.
+        the corresponding credential schema includes a revocation method. Credentials
+        with no revocation method can be deleted in any state.
     "},
 )]
 #[require_permissions(Permission::CredentialDelete)]
