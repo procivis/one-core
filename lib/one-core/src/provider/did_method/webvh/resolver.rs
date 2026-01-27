@@ -372,6 +372,7 @@ mod test {
                 keys: Keys::default(),
                 max_did_log_entry_check: Some(2),
                 resolve_to_insecure_http: false,
+                leeway: Default::default(),
             },
         )
         .await;

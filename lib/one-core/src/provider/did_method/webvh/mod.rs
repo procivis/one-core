@@ -6,7 +6,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use create::{DidDocKeys, UpdateKeys};
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::{DidId, DidValue};
+use time::Duration;
 use url::Url;
 
 use super::keys::Keys;
@@ -35,6 +37,7 @@ mod mapper;
 #[cfg(test)]
 mod test;
 
+#[serde_as]
 #[derive(Debug, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
@@ -44,6 +47,9 @@ pub struct Params {
     pub max_did_log_entry_check: Option<u32>,
     #[serde(default)]
     pub resolve_to_insecure_http: bool,
+    #[serde(default)]
+    #[serde_as(as = "DurationSeconds<i64>")]
+    pub leeway: Duration,
 }
 
 #[derive(Deserialize)]

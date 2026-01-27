@@ -17,6 +17,7 @@ fn test_use_domain_with_external_host(#[case] external_hosting_url: &str, #[case
             keys: Keys::default(),
             max_did_log_entry_check: None,
             resolve_to_insecure_http: false,
+            leeway: Default::default(),
         },
         core_base_url: None,
         client: Arc::new(MockHttpClient::new()),

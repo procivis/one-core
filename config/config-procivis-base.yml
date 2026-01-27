@@ -428,6 +428,7 @@ did:
           capabilityDelegation:
             min: 0
             max: 1
+        leeway: 60
       private:
         maxDidLogEntryCheck: 10
 datatype:
