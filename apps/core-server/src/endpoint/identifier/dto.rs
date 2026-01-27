@@ -109,7 +109,9 @@ pub(crate) struct CreateSelfSignedCertificateAuthorityRequestRestDTO {
     pub content: CreateCaCSRRequestRestDTO,
     #[modify_schema(field = signer)]
     pub signer: String,
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_start: Option<OffsetDateTime>,
+    #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_end: Option<OffsetDateTime>,
 }
 

@@ -64,6 +64,7 @@ pub enum IdentifierType {
     Key,
     Did,
     Certificate,
+    #[serde(rename = "CA")]
     CertificateAuthority,
 }
 
