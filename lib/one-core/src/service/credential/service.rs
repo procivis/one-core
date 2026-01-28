@@ -643,6 +643,7 @@ impl CredentialService {
                         }),
                         ..Default::default()
                     }),
+                    issuer_certificate: Some(Default::default()),
                     holder_identifier: Some(IdentifierRelations {
                         did: Some(DidRelations {
                             keys: Some(KeyRelations::default()),

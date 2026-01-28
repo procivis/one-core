@@ -1091,7 +1091,7 @@ impl WalletProviderService {
                                 }),
                                 ..Default::default()
                             }),
-                            ..Default::default()
+                            issuer_certificate: Some(Default::default()),
                         }),
                     }),
                 },

@@ -53,7 +53,7 @@ pub trait CredentialFormatter: Send + Sync {
         auth_fn: model::AuthenticationFn,
     ) -> Result<String, error::FormatterError>;
 
-    /// Formats BitStringStatusList credential
+    /// Formats Status List credential
     async fn format_status_list(
         &self,
         revocation_list_url: String,

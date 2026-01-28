@@ -736,6 +736,7 @@ impl OID4VCIFinal1_0Service {
                         }),
                         ..Default::default()
                     }),
+                    issuer_certificate: Some(Default::default()),
                     interaction: Some(InteractionRelations::default()),
                     schema: Some(CredentialSchemaRelations::default()),
                     key: Some(Default::default()),

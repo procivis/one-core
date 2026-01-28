@@ -7,6 +7,7 @@ use std::sync::Arc;
 
 use futures::FutureExt;
 use itertools::Itertools;
+use rcgen::KeyUsagePurpose;
 use resolver::{StatusListCacheEntry, StatusListResolver};
 use serde::{Deserialize, Serialize};
 use shared_types::{RevocationListEntryId, RevocationListId, RevocationMethodId};
@@ -20,7 +21,7 @@ use crate::model::certificate::{Certificate, CertificateRelations, CertificateSt
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
 use crate::model::did::{DidRelations, KeyRole};
-use crate::model::identifier::{Identifier, IdentifierRelations};
+use crate::model::identifier::{Identifier, IdentifierRelations, IdentifierType};
 use crate::model::revocation_list::{
     RevocationList, RevocationListEntityId, RevocationListEntry, RevocationListEntryStatus,
     RevocationListPurpose, RevocationListRelations, StatusListCredentialFormat,
@@ -57,7 +58,7 @@ use crate::repository::error::DataLayerError;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 use crate::repository::wallet_unit_repository::WalletUnitRepository;
-use crate::util::key_selection::{KeyFilter, SelectedKey};
+use crate::util::key_selection::{KeyFilter, KeySelection, SelectedKey};
 
 pub mod resolver;
 pub mod util;
@@ -163,11 +164,20 @@ impl RevocationMethod for TokenStatusList {
                     "issuer identifier is None".to_string(),
                 ))?;
 
+        let issuer_certificate =
+            if issuer_identifier.r#type == IdentifierType::Certificate {
+                Some(credential.issuer_certificate.as_ref().ok_or(
+                    RevocationError::MappingError("issuer certificate is None".to_string()),
+                )?)
+            } else {
+                None
+            };
+
         let entry = self
             .create_entry(
                 RevocationListEntityId::Credential(credential.id),
                 issuer_identifier,
-                credential.issuer_certificate.as_ref(),
+                issuer_certificate,
             )
             .await?;
 
@@ -187,11 +197,20 @@ impl RevocationMethod for TokenStatusList {
                     "issuer identifier is None".to_string(),
                 ))?;
 
+        let issuer_certificate =
+            if issuer_identifier.r#type == IdentifierType::Certificate {
+                Some(credential.issuer_certificate.as_ref().ok_or(
+                    RevocationError::MappingError("issuer certificate is None".to_string()),
+                )?)
+            } else {
+                None
+            };
+
         let current_list = self
             .revocation_list_repository
             .get_revocation_by_issuer_identifier_id(
                 issuer_identifier.id,
-                credential.issuer_certificate.as_ref().map(|c| c.id),
+                issuer_certificate.map(|c| c.id),
                 RevocationListPurpose::RevocationAndSuspension,
                 &self.config_id,
                 &Default::default(),
@@ -221,6 +240,7 @@ impl RevocationMethod for TokenStatusList {
         let list_credential = format_status_list_credential(
             &current_list.id,
             issuer_identifier,
+            issuer_certificate,
             encoded_list,
             &*self.key_provider,
             &self.key_algorithm_provider,
@@ -433,6 +453,7 @@ impl RevocationMethod for TokenStatusList {
                         &list.issuer_identifier.ok_or(RevocationError::MappingError(
                             "Missing issuer_identifier".to_string(),
                         ))?,
+                        list.issuer_certificate.as_ref(),
                         encoded_list,
                         &*self.key_provider,
                         &self.key_algorithm_provider,
@@ -502,7 +523,7 @@ impl RevocationMethod for TokenStatusList {
                                 key: Some(Default::default()),
                                 ..Default::default()
                             }),
-                            ..Default::default()
+                            issuer_certificate: Some(Default::default()),
                         },
                     )
                     .await?
@@ -526,6 +547,7 @@ impl RevocationMethod for TokenStatusList {
                 let list_credential = format_status_list_credential(
                     &current_list.id,
                     &issuer,
+                    current_list.issuer_certificate.as_ref(),
                     encoded_list,
                     &*self.key_provider,
                     &self.key_algorithm_provider,
@@ -719,6 +741,7 @@ impl TokenStatusList {
         let list_credential = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,
+            issuer_certificate,
             generate_token_from_entries(vec![]).await?,
             &*self.key_provider,
             &self.key_algorithm_provider,
@@ -803,9 +826,11 @@ pub(crate) fn credential_status_from_sdjwt_status(
     }
 }
 
+#[expect(clippy::too_many_arguments)]
 async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
     issuer_identifier: &Identifier,
+    issuer_certificate: Option<&Certificate>,
     encoded_list: String,
     key_provider: &dyn KeyProvider,
     key_algorithm_provider: &Arc<dyn KeyAlgorithmProvider>,
@@ -815,7 +840,15 @@ async fn format_status_list_credential(
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
     let selection = issuer_identifier
-        .select_key(KeyFilter::role_filter(KeyRole::AssertionMethod).into())
+        .select_key(KeySelection {
+            certificate: issuer_certificate.map(|c| c.id),
+            key_filter: Some(KeyFilter {
+                did_role: Some(KeyRole::AssertionMethod),
+                certificate_key_usage: Some(vec![KeyUsagePurpose::DigitalSignature]),
+                ..Default::default()
+            }),
+            ..Default::default()
+        })
         .map_err(|_| RevocationError::KeyWithRoleNotFound(KeyRole::AssertionMethod))?;
     let key = selection.key();
 
