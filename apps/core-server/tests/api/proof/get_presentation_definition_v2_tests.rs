@@ -932,7 +932,7 @@ async fn complex_sd_jwt_vc_credential_schema(
             &Uuid::new_v4(),
             "Complex SD-JWT VC schema",
             organisation,
-            "NONE",
+            None,
             &[
                 (Uuid::new_v4(), "root obj", false, "OBJECT", false),
                 (Uuid::new_v4(), "root obj/string", false, "STRING", false),

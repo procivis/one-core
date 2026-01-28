@@ -12,7 +12,7 @@ async fn test_delete_credential_schema_success() {
         .create(
             "test schema",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;

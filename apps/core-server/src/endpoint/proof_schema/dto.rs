@@ -159,8 +159,8 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     pub name: String,
     #[try_into(infallible)]
     pub format: String,
-    #[try_into(infallible)]
-    pub revocation_method: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub revocation_method: Option<String>,
     #[try_into(infallible)]
     pub imported_source_url: String,
     #[try_into(with_fn = convert_inner, infallible)]

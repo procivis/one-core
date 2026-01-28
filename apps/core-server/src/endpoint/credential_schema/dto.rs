@@ -38,7 +38,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     /// Indication of what type of key storage the wallet should use.
     #[from(with_fn = convert_inner)]
     pub key_storage_security: Option<KeyStorageSecurityRestEnum>,
@@ -71,7 +71,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaResponseRestDTO>,
@@ -213,8 +213,8 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     /// credential schema. Check the `revocation` object of the configuration
     /// for supported options and reference the configuration instance.
     #[modify_schema(field = revocation)]
-    #[try_into(infallible)]
-    pub revocation_method: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub revocation_method: Option<String>,
     /// Specify the organization.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
@@ -408,8 +408,8 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub name: String,
     #[try_into(infallible)]
     pub format: String,
-    #[try_into(infallible)]
-    pub revocation_method: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub revocation_method: Option<String>,
     #[try_into(infallible)]
     pub organisation_id: OrganisationId,
     #[try_into(with_fn = convert_inner, infallible)]

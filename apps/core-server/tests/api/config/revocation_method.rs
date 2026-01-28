@@ -20,10 +20,6 @@ async fn test_capabilities_are_present_in_config() {
         json!({ "operations": ["REVOKE", "SUSPEND"] })
     );
     assert_eq!(
-        resp["revocation"]["NONE"]["capabilities"],
-        json!({ "operations": [] })
-    );
-    assert_eq!(
         resp["revocation"]["BITSTRINGSTATUSLIST"]["capabilities"],
         json!({ "operations": ["REVOKE", "SUSPEND"] })
     );

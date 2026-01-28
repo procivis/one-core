@@ -22,7 +22,7 @@ async fn test_reactivate_credential_with_bitstring_status_list_success() {
         .create(
             "test",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;
@@ -141,7 +141,12 @@ async fn test_reactivate_credential_with_lvvc_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "LVVC", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("LVVC".into()),
+            Default::default(),
+        )
         .await;
     let credential = context
         .db

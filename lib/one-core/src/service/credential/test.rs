@@ -5,7 +5,7 @@ use std::vec;
 
 use mockall::predicate::*;
 use serde_json::json;
-use shared_types::CredentialId;
+use shared_types::{CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -201,7 +201,7 @@ fn generic_credential() -> Credential {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
                 required: true,
@@ -274,7 +274,7 @@ fn generic_credential_list_entity() -> Credential {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: None,
             organisation: None,
             layout_type: LayoutType::Card,
@@ -347,7 +347,7 @@ async fn test_delete_credential_incorrect_state() {
     let mut credential_repository = MockCredentialRepository::default();
 
     let mut credential = generic_credential();
-    credential.schema.as_mut().unwrap().revocation_method = "BITSTRINGSTATUSLIST".into();
+    credential.schema.as_mut().unwrap().revocation_method = Some("BITSTRINGSTATUSLIST".into());
     credential.state = CredentialStateEnum::Accepted;
     credential.role = CredentialRole::Issuer;
 
@@ -1966,12 +1966,17 @@ async fn test_check_revocation_being_revoked() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .returning(move |_| Some(revocation_method.clone()));
 
-    let credential = Credential {
-        state: CredentialStateEnum::Accepted,
-        suspend_end_date: None,
-        ..generic_credential()
+    let credential = {
+        let mut cred = Credential {
+            state: CredentialStateEnum::Accepted,
+            suspend_end_date: None,
+            ..generic_credential()
+        };
+        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+        cred
     };
 
     {
@@ -3007,6 +3012,7 @@ async fn test_create_credential_fail_invalid_redirect_uri() {
 async fn test_revoke_credential_success_with_accepted_credential() {
     let mut credential = generic_credential();
     credential.state = CredentialStateEnum::Accepted;
+    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
     let clone = credential.clone();
@@ -3030,7 +3036,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
-        .return_once(|| "NONE".to_string());
+        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -3044,6 +3050,7 @@ async fn test_revoke_credential_success_with_accepted_credential() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
@@ -3062,6 +3069,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     let mut credential = generic_credential();
 
     credential.state = CredentialStateEnum::Suspended;
+    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
 
@@ -3079,7 +3087,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
-        .return_once(|| "NONE".to_string());
+        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -3100,6 +3108,7 @@ async fn test_revoke_credential_success_with_suspended_credential() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
@@ -3120,6 +3129,7 @@ async fn test_suspend_credential_success() {
     let mut credential = generic_credential();
 
     credential.state = CredentialStateEnum::Accepted;
+    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let suspend_end_date = now.add(Duration::days(1));
 
@@ -3152,7 +3162,7 @@ async fn test_suspend_credential_success() {
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
-        .return_once(|| "NONE".to_string());
+        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -3166,6 +3176,7 @@ async fn test_suspend_credential_success() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
@@ -3229,6 +3240,7 @@ async fn test_reactivate_credential_success() {
     let mut credential = generic_credential();
 
     credential.state = CredentialStateEnum::Suspended;
+    credential.schema.as_mut().unwrap().revocation_method = Some("mock".into());
 
     let mut credential_repository = MockCredentialRepository::default();
     let mut did_method_provider = MockDidMethodProvider::default();
@@ -3259,7 +3271,7 @@ async fn test_reactivate_credential_success() {
         .return_once(|_, _| Ok(()));
     revocation_method
         .expect_get_status_type()
-        .return_once(|| "NONE".to_string());
+        .return_once(|| "mock".to_string());
 
     credential_repository
         .expect_update_credential()
@@ -3273,6 +3285,7 @@ async fn test_reactivate_credential_success() {
     let revocation_method = Arc::new(revocation_method);
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .times(1)
         .returning(move |_| Some(revocation_method.clone()));
 
@@ -3330,7 +3343,7 @@ fn generate_credential_schema_with_claim_schemas(
         last_modified: now,
         name: "nested".to_string(),
         format: "".into(),
-        revocation_method: "".into(),
+        revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -3913,7 +3926,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -4481,7 +4494,7 @@ async fn test_get_credential_success_array_index_sorting() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -4798,7 +4811,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "MDOC".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -5018,7 +5031,7 @@ async fn test_get_credential_success_array_single_element() {
             name: "schema".to_string(),
             key_storage_security: None,
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(
                 claim_schemas
                     .into_iter()
@@ -5142,7 +5155,7 @@ async fn test_create_credential_array(
         imported_source_url: "CORE_URL".to_string(),
         name: "str array".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".into(),
+        revocation_method: None,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,

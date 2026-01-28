@@ -211,8 +211,8 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub name: String,
     #[from(with_fn_ref = "ToString::to_string")]
     pub format: String,
-    #[from(with_fn_ref = "ToString::to_string")]
-    pub revocation_method: String,
+    #[from(with_fn = inner_to_string)]
+    pub revocation_method: Option<String>,
     #[from(with_fn = convert_inner)]
     pub claims: Vec<CredentialClaimSchemaBindingDTO>,
     #[from(with_fn = convert_inner)]
@@ -232,7 +232,7 @@ pub struct CredentialSchemaBindingDTO {
     pub last_modified: String,
     pub name: String,
     pub format: String,
-    pub revocation_method: String,
+    pub revocation_method: Option<String>,
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     pub schema_id: String,
     pub layout_type: Option<LayoutTypeBindingEnum>,
@@ -459,4 +459,8 @@ pub enum KeyStorageSecurityBindingEnum {
     Moderate,
     EnhancedBasic,
     Basic,
+}
+
+fn inner_to_string(value: Option<impl ToString>) -> Option<String> {
+    value.map(|inner| inner.to_string())
 }

@@ -25,7 +25,7 @@ async fn test_import_proof_schema_ok() {
         .create(
             "test-credential-schema",
             &source_organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 id: Some(original_credential_schema_id),
                 imported_source_url: Some(format!(
@@ -153,7 +153,7 @@ async fn test_import_proof_schema_fails_deactivated_organisation() {
         .create(
             "test-credential-schema",
             &organisation,
-            "NONE",
+            None,
             Default::default(),
         )
         .await;
@@ -221,7 +221,7 @@ async fn test_import_proof_schema_for_existing_credential_schema() {
         .create(
             "test-credential-schema",
             &organisation,
-            "NONE",
+            None,
             Default::default(),
         )
         .await;
@@ -334,7 +334,7 @@ async fn test_import_proof_schema_nested_array() {
         .create(
             "test-credential-schema",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     root_object_array_claim.clone(),

@@ -30,7 +30,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,

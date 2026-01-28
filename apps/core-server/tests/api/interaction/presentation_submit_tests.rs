@@ -190,7 +190,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_array_claim() {
         &context.db.db_conn,
         "Schema1",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -892,7 +892,7 @@ async fn test_presentation_submit_endpoint_for_openid4vc_similar_names() {
             &Uuid::new_v4(),
             "Schema1",
             &organisation,
-            "NONE",
+            None,
             &new_claim_schemas,
             "JWT",
             "Schema1",

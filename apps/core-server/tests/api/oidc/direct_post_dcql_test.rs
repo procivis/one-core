@@ -30,7 +30,7 @@ async fn test_direct_post_draft25_with_dcql_query() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -188,7 +188,7 @@ async fn test_direct_post_dcql_one_credential_missing_required_claim() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;

@@ -60,7 +60,7 @@ async fn test_get_client_request() {
             &schema_id,
             "NewCredentialSchema",
             &organisation,
-            "NONE",
+            None,
             &new_claim_schemas,
             "JWT",
             &schema_id.to_string(),

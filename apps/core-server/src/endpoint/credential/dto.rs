@@ -197,7 +197,7 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     /// Storage security requirements the key storage of the wallet must meet.
     #[from(with_fn = convert_inner)]

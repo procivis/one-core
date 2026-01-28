@@ -78,8 +78,7 @@ async fn test_db_schema_credential_schema() {
     credential_schema
         .column("revocation_method")
         .r#type(ColumnType::String(None))
-        .nullable(false)
-        .default(None);
+        .nullable(true);
     credential_schema
         .column("organisation_id")
         .r#type(ColumnType::Uuid)

@@ -82,7 +82,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
         organisation.id,
         "credential schema",
         "JWT",
-        "NONE",
+        None,
         None,
     )
     .await
@@ -119,7 +119,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             last_modified: get_dummy_date(),
             name: "credential schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(
                 new_claim_schemas
                     .into_iter()
@@ -197,7 +197,7 @@ async fn test_create_credential_schema_success() {
             imported_source_url: "CORE_URL".to_string(),
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(claim_schemas),
             organisation: Some(organisation),
             layout_type: LayoutType::Card,
@@ -485,7 +485,7 @@ async fn test_delete_credential_schema_not_found() {
             last_modified: OffsetDateTime::now_utc(),
             name: "Test".to_string(),
             format: "MDOC".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             key_storage_security: None,
             layout_type: LayoutType::Document,
             layout_properties: None,
@@ -514,7 +514,7 @@ async fn test_update_credential_schema_success() {
     let result = repository
         .update_credential_schema(UpdateCredentialSchemaRequest {
             id: credential_schema.id,
-            revocation_method: Some(new_revocation_method.to_owned()),
+            revocation_method: Some(Some(new_revocation_method.clone())),
             format: Some(new_format.into()),
             claim_schemas: None,
             layout_properties: Some(LayoutProperties {
@@ -534,7 +534,7 @@ async fn test_update_credential_schema_success() {
         .await
         .unwrap();
     assert_eq!(db_schemas.len(), 1);
-    assert_eq!(db_schemas[0].revocation_method, new_revocation_method);
+    assert_eq!(db_schemas[0].revocation_method, Some(new_revocation_method));
     assert_eq!(db_schemas[0].format.as_ref(), new_format);
     assert_eq!(db_schemas[0].layout_type, LayoutType::Document.into());
     assert_eq!(

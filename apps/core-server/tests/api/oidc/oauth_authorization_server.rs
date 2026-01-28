@@ -10,7 +10,7 @@ async fn test_oauth_authorization_server_metadata() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, "NONE", Default::default())
+        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
         .await;
 
     // WHEN
@@ -88,7 +88,7 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
         .create_with_nested_hell(
             "test_schema",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 requires_app_attestation: true,
                 ..Default::default()

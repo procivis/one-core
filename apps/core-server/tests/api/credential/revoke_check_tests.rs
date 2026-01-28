@@ -41,7 +41,7 @@ async fn test_revoke_check_failed_if_not_holder_role() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("JWT".into()),
                 ..Default::default()
@@ -137,7 +137,7 @@ async fn test_revoke_check_failed_if_only_offered() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("JWT".into()),
                 ..Default::default()
@@ -293,7 +293,12 @@ async fn test_revoke_check_success_statuslist2021() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "STATUSLIST2021", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("STATUSLIST2021".into()),
+            Default::default(),
+        )
         .await;
     let blob = context
         .db
@@ -545,7 +550,7 @@ async fn setup_bitstring_status_list_success(
         .create(
             "test",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;
@@ -830,7 +835,12 @@ async fn setup_lvvc_revoke_check_valid(
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "LVVC", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("LVVC".into()),
+            Default::default(),
+        )
         .await;
 
     let blob = context
@@ -930,7 +940,7 @@ async fn test_revoke_check_mdoc_update() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1094,7 +1104,7 @@ async fn test_revoke_check_mdoc_update_invalid() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1258,7 +1268,7 @@ async fn test_revoke_check_mdoc_update_force_refresh() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1422,7 +1432,7 @@ async fn test_revoke_check_token_update() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1575,7 +1585,7 @@ async fn test_revoke_check_mdoc_tokens_expired() {
         .create(
             "test",
             &organisation,
-            "MDOC_MSO_UPDATE_SUSPENSION",
+            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1726,7 +1736,7 @@ async fn test_revoke_check_mdoc_fail_to_update_token_valid_mso() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -1872,7 +1882,7 @@ async fn test_suspended_to_valid_mdoc() {
         .create(
             "test",
             &organisation,
-            "MDOC_MSO_UPDATE_SUSPENSION",
+            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -2068,7 +2078,7 @@ async fn test_suspended_to_suspended_update_failed() {
         .create(
             "test",
             &organisation,
-            "MDOC_MSO_UPDATE_SUSPENSION",
+            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -2224,7 +2234,7 @@ async fn test_revoke_check_failed_deleted_credential() {
         .create(
             "test",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;

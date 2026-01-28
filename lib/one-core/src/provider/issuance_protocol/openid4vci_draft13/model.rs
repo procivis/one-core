@@ -617,7 +617,7 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -630,7 +630,7 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
 pub(crate) struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,

@@ -35,6 +35,7 @@ use crate::provider::blob_storage_provider::BlobStorageType;
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::CredentialPresentation;
 use crate::provider::issuance_protocol::deserialize_interaction_data;
+use crate::provider::revocation::lvvc::Params as LvvcParams;
 use crate::provider::revocation::lvvc::holder_fetch::holder_get_lvvc;
 use crate::provider::verification_protocol::VerificationProtocol;
 use crate::provider::verification_protocol::dto::{
@@ -401,54 +402,54 @@ impl SSIHolderService {
             .prepare_selective_disclosure(credential_presentation)
             .await?;
 
-        let revocation_method: Fields<RevocationType> = self
-            .config
-            .revocation
-            .get(&credential_schema.revocation_method)?;
-        let lvvc_presentation = if revocation_method.r#type == RevocationType::Lvvc {
-            let extracted = formatter
-                .extract_credentials_unverified(&presentation, Some(credential_schema))
-                .await?;
-            let credential_status = extracted
-                .status
-                .first()
-                .ok_or(ServiceError::MappingError(
-                    "credential_status is None".to_string(),
-                ))?
-                .to_owned();
+        let lvvc_presentation = match &credential_schema.revocation_method {
+            Some(method_id) => {
+                let revocation_method: Fields<RevocationType> =
+                    self.config.revocation.get(method_id)?;
 
-            let revocation_params = self
-                .config
-                .revocation
-                .get(&credential_schema.revocation_method)?;
+                if revocation_method.r#type == RevocationType::Lvvc {
+                    let extracted = formatter
+                        .extract_credentials_unverified(&presentation, Some(credential_schema))
+                        .await?;
+                    let credential_status = extracted
+                        .status
+                        .first()
+                        .ok_or(ServiceError::MappingError(
+                            "credential_status is None".to_string(),
+                        ))?
+                        .to_owned();
 
-            let lvvc = holder_get_lvvc(
-                credential,
-                &credential_status,
-                &*self.validity_credential_repository,
-                &*self.key_provider,
-                &self.key_algorithm_provider,
-                &*self.client,
-                &revocation_params,
-                false,
-            )
-            .await?;
+                    let revocation_params: LvvcParams = self.config.revocation.get(method_id)?;
+                    let lvvc = holder_get_lvvc(
+                        credential,
+                        &credential_status,
+                        &*self.validity_credential_repository,
+                        &*self.key_provider,
+                        &self.key_algorithm_provider,
+                        &*self.client,
+                        &revocation_params,
+                        false,
+                    )
+                    .await?;
 
-            let token = std::str::from_utf8(&lvvc.credential)
-                .map_err(|e| ServiceError::MappingError(e.to_string()))?
-                .to_string();
+                    let token = std::str::from_utf8(&lvvc.credential)
+                        .map_err(|e| ServiceError::MappingError(e.to_string()))?
+                        .to_string();
 
-            let lvvc_presentation = CredentialPresentation {
-                token,
-                disclosed_keys: vec!["id".to_string(), "status".to_string()],
-            };
+                    let lvvc_presentation = CredentialPresentation {
+                        token,
+                        disclosed_keys: vec!["id".to_string(), "status".to_string()],
+                    };
 
-            let formatted_lvvc_presentation = formatter
-                .prepare_selective_disclosure(lvvc_presentation)
-                .await?;
-            Some(formatted_lvvc_presentation)
-        } else {
-            None
+                    let formatted_lvvc_presentation = formatter
+                        .prepare_selective_disclosure(lvvc_presentation)
+                        .await?;
+                    Some(formatted_lvvc_presentation)
+                } else {
+                    None
+                }
+            }
+            None => None,
         };
         Ok((presentation, lvvc_presentation))
     }

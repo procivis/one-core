@@ -14,7 +14,7 @@ async fn test_issuance_reject_openid4vci_draft13_notification_not_supported_by_i
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({
@@ -73,7 +73,7 @@ async fn test_issuance_reject_openid4vci_draft13_with_notification() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({

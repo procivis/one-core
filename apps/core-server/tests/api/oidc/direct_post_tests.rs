@@ -42,7 +42,7 @@ async fn test_direct_post_one_credential_correct() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -197,7 +197,7 @@ async fn test_direct_post_one_credential_lvvc_success() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "LVVC",
+        Some("LVVC".into()),
         &new_claim_schemas,
     )
     .await;
@@ -371,7 +371,7 @@ async fn test_direct_post_multiple_credentials_lvvc_repeated_input_descriptors()
         &context.db.db_conn,
         "NameSchema",
         &organisation,
-        "NONE",
+        None,
         &credential1_claims,
     )
     .await;
@@ -380,7 +380,7 @@ async fn test_direct_post_multiple_credentials_lvvc_repeated_input_descriptors()
         &context.db.db_conn,
         "PetSchema",
         &organisation,
-        "NONE",
+        None,
         &credential2_claims,
     )
     .await;
@@ -389,7 +389,7 @@ async fn test_direct_post_multiple_credentials_lvvc_repeated_input_descriptors()
         &context.db.db_conn,
         "CatSchema",
         &organisation,
-        "LVVC",
+        Some("LVVC".into()),
         &credential3_claims,
     )
     .await;
@@ -654,7 +654,7 @@ async fn test_direct_post_dcql_multiple_flag_true_success() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -783,7 +783,7 @@ async fn test_direct_post_dcql_parallel_success() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -903,7 +903,7 @@ async fn test_direct_post_one_credential_missing_required_claim() {
         &db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -1072,7 +1072,7 @@ async fn test_direct_post_multiple_presentations() {
         &context.db.db_conn,
         "NameSchema",
         &organisation,
-        "NONE",
+        None,
         &credential1_claims,
     )
     .await;
@@ -1081,7 +1081,7 @@ async fn test_direct_post_multiple_presentations() {
         &context.db.db_conn,
         "PetSchema",
         &organisation,
-        "NONE",
+        None,
         &credential2_claims,
     )
     .await;
@@ -1090,7 +1090,7 @@ async fn test_direct_post_multiple_presentations() {
         &context.db.db_conn,
         "CatSchema",
         &organisation,
-        "NONE",
+        None,
         &credential3_claims,
     )
     .await;
@@ -1348,7 +1348,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         &db_conn,
         "NameSchema",
         &organisation,
-        "NONE",
+        None,
         &credential1_claims,
     )
     .await;
@@ -1357,7 +1357,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         &db_conn,
         "PetSchema",
         &organisation,
-        "NONE",
+        None,
         &credential2_claims,
     )
     .await;
@@ -1366,7 +1366,7 @@ async fn test_direct_post_multiple_presentations_missing_inputs() {
         &db_conn,
         "CatSchema",
         &organisation,
-        "NONE",
+        None,
         &credential3_claims,
     )
     .await;
@@ -1615,7 +1615,7 @@ async fn test_direct_post_wrong_claim_format() {
         &db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -1781,7 +1781,7 @@ async fn test_direct_post_draft25() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;
@@ -1933,7 +1933,7 @@ async fn test_direct_post_with_profile_verification() {
         &context.db.db_conn,
         "NewCredentialSchema",
         &organisation,
-        "NONE",
+        None,
         &new_claim_schemas,
     )
     .await;

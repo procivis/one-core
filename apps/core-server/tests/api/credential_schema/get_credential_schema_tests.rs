@@ -14,7 +14,7 @@ async fn test_get_credential_schema_success() {
         .create(
             "test schema",
             &organisation,
-            "STATUSLIST2021",
+            Some("STATUSLIST2021".into()),
             Default::default(),
         )
         .await;
@@ -60,7 +60,7 @@ async fn test_get_credential_scheme_with_3rd_party_type() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("foo".into()),
                 ..Default::default()

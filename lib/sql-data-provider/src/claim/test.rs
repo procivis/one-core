@@ -43,7 +43,7 @@ async fn setup(claim_schema_repository: Arc<dyn ClaimSchemaRepository>) -> TestS
         organisation_id,
         "credential schema",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await

@@ -15,7 +15,7 @@ async fn test_get_list_credential_schema_success() {
             .create(
                 &format!("test-{i}"),
                 &organisation,
-                "NONE",
+                None,
                 Default::default(),
             )
             .await;
@@ -44,7 +44,7 @@ async fn test_get_list_credential_schema_include_layout_properties_success() {
     context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     // WHEN

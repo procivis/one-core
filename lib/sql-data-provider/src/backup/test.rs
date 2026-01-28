@@ -303,7 +303,7 @@ async fn add_unexportable_credentials(
         organisation_id,
         "credential schema 1",
         "JWT",
-        "NONE",
+        None,
         None,
     )
     .await
@@ -315,7 +315,7 @@ async fn add_unexportable_credentials(
         organisation_id,
         "credential schema 2",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await

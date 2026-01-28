@@ -136,7 +136,7 @@ async fn create_and_store_credential(db_conn: &DatabaseConnection) -> Credential
         organisation_id,
         "credential-schema",
         "jwt",
-        "LVVC",
+        Some("LVVC".into()),
         Some(KeyStorageSecurity::Basic),
     )
     .await

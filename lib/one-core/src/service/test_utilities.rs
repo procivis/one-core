@@ -186,8 +186,8 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 display: 'exchange.isoMdl'
                 order: 4
         revocation:
-            NONE:
-                display: 'revocation.none'
+            mock:
+                display: 'revocation.mock'
                 order: 0
                 type: 'NONE'
                 params: null
@@ -358,7 +358,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "format".into(),
             imported_source_url: "CORE_URL".to_string(),
-            revocation_method: "revocation method".into(),
+            revocation_method: Some("revocation method".into()),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,
@@ -527,7 +527,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         key_storage_security: None,
         imported_source_url: "CORE_URL".to_string(),
         format: "format".into(),
-        revocation_method: "NONE".into(),
+        revocation_method: Some("mock".into()),
         claim_schemas: None,
         organisation: None,
         layout_type: LayoutType::Card,

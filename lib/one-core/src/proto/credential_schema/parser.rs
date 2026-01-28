@@ -54,12 +54,14 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 dto.schema.format.to_string(),
             ))?;
         let format = self.config.format.get_fields(&dto.schema.format)?.r#type();
-        let revocation_method = self
-            .revocation_method_provider
-            .get_revocation_method(&dto.schema.revocation_method)
-            .ok_or(MissingProviderError::RevocationMethod(
-                dto.schema.revocation_method.to_owned(),
-            ))?;
+        let revocation_method = match &dto.schema.revocation_method {
+            Some(method_id) => Some(
+                self.revocation_method_provider
+                    .get_revocation_method(method_id)
+                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))?,
+            ),
+            None => None,
+        };
         let claim_schemas =
             self.parse_all_claim_schemas(now, format, dto.schema.claims, formatter.as_ref())?;
         Ok(CredentialSchema {
@@ -80,8 +82,10 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             )?,
             schema_id: self.parse_schema_id(dto.schema.schema_id, formatter.as_ref())?,
             imported_source_url: dto.schema.imported_source_url,
-            allow_suspension: self
-                .parse_allow_suspension(dto.schema.allow_suspension, revocation_method.as_ref())?,
+            allow_suspension: self.parse_allow_suspension(
+                dto.schema.allow_suspension,
+                revocation_method.as_deref(),
+            )?,
             requires_app_attestation: false,
             claim_schemas: Some(claim_schemas),
             organisation: Some(dto.organisation),
@@ -104,36 +108,42 @@ impl CredentialSchemaImportParserImpl {
 
     fn parse_revocation_method(
         &self,
-        revocation_method_type: RevocationMethodId,
+        revocation_method_type: Option<RevocationMethodId>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<RevocationMethodId, ServiceError> {
+    ) -> Result<Option<RevocationMethodId>, ServiceError> {
+        let Some(revocation_method_type) = revocation_method_type else {
+            return Ok(None);
+        };
+
         let revocation_method_config = self
             .config
             .revocation
             .get_if_enabled(&revocation_method_type)?;
 
-        if !formatter
+        if formatter
             .get_capabilities()
             .revocation_methods
             .contains(revocation_method_config.r#type())
         {
-            return Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into());
+            Ok(Some(revocation_method_type.clone()))
+        } else {
+            Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into())
         }
-        Ok(revocation_method_type)
     }
 
     pub(super) fn parse_allow_suspension(
         &self,
         allow_suspension: Option<bool>,
-        revocation_method: &dyn RevocationMethod,
+        revocation_method: Option<&dyn RevocationMethod>,
     ) -> Result<bool, ServiceError> {
+        let operations = match revocation_method {
+            Some(method) => method.get_capabilities().operations,
+            None => vec![],
+        };
+
         match allow_suspension {
             Some(true) => {
-                if !revocation_method
-                    .get_capabilities()
-                    .operations
-                    .contains(&Operation::Suspend)
-                {
+                if !operations.contains(&Operation::Suspend) {
                     return Err(
                         BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod
                             .into(),
@@ -141,7 +151,7 @@ impl CredentialSchemaImportParserImpl {
                 }
             }
             _ => {
-                if revocation_method.get_capabilities().operations == vec![Operation::Suspend] {
+                if operations == vec![Operation::Suspend] {
                     return Err(
                         BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod
                             .into(),
@@ -622,11 +632,11 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method("LVVC".into(), &formatter);
+        let result = parser.parse_revocation_method(Some("LVVC".to_owned().into()), &formatter);
 
         // then
         let_assert!(Ok(revocation_method) = result);
-        assert_eq!(revocation_method.as_ref(), "LVVC");
+        assert_eq!(revocation_method, Some("LVVC".to_owned().into()));
     }
 
     #[test]
@@ -640,7 +650,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method("INVALID".into(), &formatter);
+        let result = parser.parse_revocation_method(Some("INVALID".to_owned().into()), &formatter);
 
         // then
         let_assert!(
@@ -682,7 +692,8 @@ mod test {
         );
 
         // when
-        let result = parser.parse_revocation_method("BITSTRINGSTATUSLIST".into(), &formatter);
+        let result = parser
+            .parse_revocation_method(Some("BITSTRINGSTATUSLIST".to_owned().into()), &formatter);
 
         // then
         let_assert!(
@@ -709,7 +720,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_allow_suspension(Some(true), &revocation_method);
+        let result = parser.parse_allow_suspension(Some(true), Some(&revocation_method));
 
         // then
         let_assert!(Ok(true) = result);
@@ -732,7 +743,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_allow_suspension(Some(false), &revocation_method);
+        let result = parser.parse_allow_suspension(Some(false), Some(&revocation_method));
 
         // then
         let_assert!(Ok(false) = result);
@@ -753,7 +764,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_allow_suspension(Some(true), &revocation_method);
+        let result = parser.parse_allow_suspension(Some(true), Some(&revocation_method));
 
         // then
         let_assert!(
@@ -780,7 +791,7 @@ mod test {
         );
 
         // when
-        let result = parser.parse_allow_suspension(Some(false), &revocation_method);
+        let result = parser.parse_allow_suspension(Some(false), Some(&revocation_method));
 
         // then
         let_assert!(

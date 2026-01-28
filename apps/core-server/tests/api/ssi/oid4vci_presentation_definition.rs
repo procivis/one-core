@@ -69,7 +69,7 @@ async fn new_test_data() -> TestContextWithOID4VCIData {
             &schema_id,
             "NewCredentialSchema",
             &organisation,
-            "NONE",
+            None,
             &new_claim_schemas,
             "JWT",
             &schema_id.to_string(),

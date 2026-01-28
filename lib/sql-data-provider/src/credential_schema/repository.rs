@@ -294,7 +294,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         let id = &request.id;
 
         let revocation_method = match request.revocation_method {
-            None => Unchanged("".into()),
+            None => Unchanged(None),
             Some(revocation_method) => Set(revocation_method),
         };
 

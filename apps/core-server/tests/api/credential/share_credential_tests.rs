@@ -13,7 +13,7 @@ async fn test_share_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
     let credential = context
         .db
@@ -51,7 +51,7 @@ async fn test_share_credential_failed_deleted_credential() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
     let credential = context
         .db

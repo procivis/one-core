@@ -262,7 +262,7 @@ fn generic_credential(issuer_identifier: Identifier) -> Credential {
             last_modified: now,
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
                 required: true,

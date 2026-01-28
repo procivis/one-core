@@ -16,7 +16,7 @@ async fn test_get_credential_offer_success_jwt() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction = context
@@ -109,7 +109,7 @@ async fn test_get_credential_offer_when_enable_credential_preview_false() {
         .create_with_array_claims(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -288,7 +288,7 @@ async fn test_get_credential_offer_success_certificate_identifier() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction = context
@@ -359,7 +359,7 @@ async fn test_get_credential_offer_success_mdoc() {
         .create_with_nested_claims(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -436,7 +436,7 @@ async fn test_get_credential_offer_with_array_success_mdoc() {
         .create_with_array_claims(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()

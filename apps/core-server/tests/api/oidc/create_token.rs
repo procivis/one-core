@@ -27,7 +27,7 @@ async fn test_oidc_issuer_create_token() {
         .create(
             "test-schema",
             &org,
-            "NONE",
+            None,
             TestingCreateSchemaParams::default(),
         )
         .await;
@@ -98,7 +98,7 @@ async fn test_oidc_issuer_create_token_parallel_collision() {
         .create(
             "test-schema",
             &org,
-            "NONE",
+            None,
             TestingCreateSchemaParams::default(),
         )
         .await;
@@ -164,7 +164,7 @@ async fn test_oidc_issuer_create_token_for_mdoc_creates_refresh_token() {
         .create(
             "test-schema",
             &org,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()
@@ -244,7 +244,7 @@ async fn test_oidc_issuer_create_token_for_refresh_token_grant_updates_both_acce
         .create(
             "test-schema",
             &org,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("MDOC".into()),
                 ..Default::default()

@@ -357,7 +357,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     last_modified: OffsetDateTime::now_utc(),
                     name: "test-credential-schema".to_string(),
                     format: credential_format,
-                    revocation_method: "NONE".into(),
+                    revocation_method: None,
                     key_storage_security: None,
                     layout_type: LayoutType::Card,
                     layout_properties: None,

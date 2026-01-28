@@ -82,7 +82,7 @@ async fn setup_with_credential_schema_and_proof() -> TestSetupWithCredentialsSch
         organisation.id,
         credential_schema_name,
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -402,7 +402,7 @@ async fn test_get_history_list_schema_joins_credentials() {
         organisation.id,
         "schema",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await

@@ -41,7 +41,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> Result<CredentialSchema, DataLayerError> {
         let claim_schemas = params.claim_schemas.unwrap_or_else(|| {
@@ -124,7 +124,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         self.create_with_result(name, organisation, revocation_method, params)
@@ -136,7 +136,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let id = Uuid::new_v4();
@@ -186,7 +186,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_root_namespace: ClaimSchema = ClaimSchema {
@@ -290,7 +290,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_address = ClaimSchema {
@@ -394,7 +394,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_name = ClaimSchema {
@@ -511,7 +511,7 @@ impl CredentialSchemasDB {
         &self,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         params: TestingCreateSchemaParams,
     ) -> CredentialSchema {
         let claim_schema_name = ClaimSchema {
@@ -758,7 +758,7 @@ impl CredentialSchemasDB {
             organisation: Some(organisation.clone()),
             deleted_at: None,
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(claim_schemas),
             layout_type: LayoutType::Card,
             layout_properties: None,
@@ -782,7 +782,7 @@ impl CredentialSchemasDB {
         id: &Uuid,
         name: &str,
         organisation: &Organisation,
-        revocation_method: impl Into<RevocationMethodId>,
+        revocation_method: impl Into<Option<RevocationMethodId>>,
         new_claim_schemas: &[(Uuid, &str, bool, &str, bool)],
         format: &str,
         schema_id: &str,

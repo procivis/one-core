@@ -109,7 +109,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,

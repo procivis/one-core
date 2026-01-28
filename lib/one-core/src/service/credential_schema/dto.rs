@@ -34,7 +34,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub schema_id: String,
     pub imported_source_url: String,
@@ -55,7 +55,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -113,7 +113,7 @@ pub type GetCredentialSchemaQueryDTO = ListQuery<
 pub struct CreateCredentialSchemaRequestDTO {
     pub name: String,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -254,7 +254,8 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: String,
-    pub revocation_method: String,
+    #[into(with_fn = convert_inner)]
+    pub revocation_method: Option<String>,
     pub organisation_id: Uuid,
     #[into(with_fn = convert_inner)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,

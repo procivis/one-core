@@ -48,14 +48,18 @@ pub fn throw_if_validity_constraint_missing_for_lvvc(
             .find(|input| input.credential_schema_id == credential_schema.id)
             .ok_or(ValidationError::ProofSchemaMissingProofInputSchemas)?;
 
-        let revocation_type = config
-            .revocation
-            .get_type(&credential_schema.revocation_method)
-            .map_err(|e| {
-                ValidationError::InvalidFormatter(format!("Invalid revocation id: {e}"))
-            })?;
+        let uses_lvvc_revocation = match &credential_schema.revocation_method {
+            Some(method_id) => {
+                let revocation_type = config.revocation.get_type(method_id).map_err(|e| {
+                    ValidationError::InvalidFormatter(format!("Invalid revocation id: {e}"))
+                })?;
 
-        if revocation_type == RevocationType::Lvvc && input_schema.validity_constraint.is_none() {
+                revocation_type == RevocationType::Lvvc
+            }
+            None => false,
+        };
+
+        if uses_lvvc_revocation && input_schema.validity_constraint.is_none() {
             return Err(ValidationError::ValidityConstraintMissingForLvvc);
         }
     }

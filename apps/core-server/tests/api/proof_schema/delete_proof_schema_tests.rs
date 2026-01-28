@@ -11,7 +11,7 @@ async fn test_delete_proof_schema_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;

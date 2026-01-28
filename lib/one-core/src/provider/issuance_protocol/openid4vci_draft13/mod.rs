@@ -100,6 +100,7 @@ use crate::provider::issuance_protocol::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::provider::KeyProvider;
+use crate::provider::revocation::model::JsonLdContext;
 use crate::provider::revocation::provider::RevocationMethodProvider;
 use crate::repository::credential_repository::CredentialRepository;
 use crate::repository::key_repository::KeyRepository;
@@ -620,7 +621,7 @@ impl OpenID4VCI13 {
             result: issuer_response,
             update_credential_schema: Some(UpdateCredentialSchemaRequest {
                 id: schema.id,
-                revocation_method,
+                revocation_method: Some(revocation_method),
                 format: Some(real_format),
                 claim_schemas: None,
                 layout_type,
@@ -1261,23 +1262,30 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let format = credential_schema.format;
 
-        let revocation_method = self
-            .revocation_provider
-            .get_revocation_method(&credential_schema.revocation_method)
-            .ok_or(IssuanceProtocolError::Failed(format!(
-                "revocation method not found: {}",
-                credential_schema.revocation_method
-            )))?;
+        let revocation_method = match &credential_schema.revocation_method {
+            Some(method_id) => {
+                let method = self
+                    .revocation_provider
+                    .get_revocation_method(method_id)
+                    .ok_or(IssuanceProtocolError::Failed(format!(
+                        "revocation method not found: {}",
+                        method_id
+                    )))?;
+                Some(method)
+            }
+            None => None,
+        };
 
-        let status = revocation_method
-            .add_issued_credential(&credential)
-            .await
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
-
-        let credential_status = status
-            .into_iter()
-            .map(|revocation_info| revocation_info.credential_status)
-            .collect();
+        let credential_status = match revocation_method.as_deref() {
+            Some(method) => method
+                .add_issued_credential(&credential)
+                .await
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+                .into_iter()
+                .map(|revocation_info| revocation_info.credential_status)
+                .collect(),
+            None => vec![],
+        };
 
         let key = credential
             .key
@@ -1316,9 +1324,13 @@ impl IssuanceProtocol for OpenID4VCI13 {
         )
         .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?;
 
-        let additional_contexts = revocation_method
-            .get_json_ld_context()
-            .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?
+        let json_ld_context = match revocation_method.as_deref() {
+            Some(method) => method
+                .get_json_ld_context()
+                .map_err(|e| IssuanceProtocolError::Failed(e.to_string()))?,
+            None => JsonLdContext::default(),
+        };
+        let additional_contexts = json_ld_context
             .url
             .map(|ctx| ctx.parse().map(|ctx| vec![ContextType::Url(ctx)]))
             .transpose()

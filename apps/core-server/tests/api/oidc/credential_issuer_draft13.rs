@@ -15,7 +15,7 @@ async fn test_get_credential_issuer_metadata_jwt() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test", &organisation, "NONE", Default::default())
+        .create_with_nested_hell("test", &organisation, None, Default::default())
         .await;
 
     // WHEN
@@ -63,7 +63,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt() {
         .create_with_nested_hell(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("SD_JWT".into()),
                 ..Default::default()
@@ -116,7 +116,7 @@ async fn test_get_credential_issuer_metadata_sd_jwt_vc() {
         .create_with_nested_hell(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("SD_JWT_VC".into()),
                 ..Default::default()
@@ -173,7 +173,7 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            "NONE",
+            None,
             &new_claim_schemas,
             "MDOC",
             "schema-id",

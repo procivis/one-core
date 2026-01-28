@@ -203,6 +203,7 @@ mod m20260113_112557_trust_entity_table;
 mod m20260113_114843_trust_anchor_table;
 mod m20260119_100418_crl_revocation;
 mod m20260121_065052_revocation_list_entry_last_modified;
+mod m20260127_144700_nullable_credential_schema_revocation_method;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -408,6 +409,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260113_114843_trust_anchor_table::Migration),
             Box::new(m20260119_100418_crl_revocation::Migration),
             Box::new(m20260121_065052_revocation_list_entry_last_modified::Migration),
+            Box::new(m20260127_144700_nullable_credential_schema_revocation_method::Migration)
         ]
     }
 }

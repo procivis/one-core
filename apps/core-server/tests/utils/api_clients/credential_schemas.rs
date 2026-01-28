@@ -86,7 +86,7 @@ impl CredentialSchemasApi {
           "format": params.format,
           "name": params.name,
           "organisationId": params.organisation_id,
-          "revocationMethod": params.revocation_method.unwrap_or("NONE".into()),
+          "revocationMethod": params.revocation_method,
           "layoutType": "CARD",
           "layoutProperties": {
             "background": {

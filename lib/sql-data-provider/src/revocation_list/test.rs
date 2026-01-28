@@ -362,7 +362,7 @@ async fn create_dummy_credential(
         organisation.id,
         credential_schema_name,
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await

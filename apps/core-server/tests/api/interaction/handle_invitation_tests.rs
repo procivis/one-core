@@ -170,7 +170,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value()
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [
               {
@@ -439,7 +439,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [address_claim_schema],
             "walletStorageType": "SOFTWARE",
@@ -618,7 +618,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [address_claim_schema],
             "walletStorageType": "SOFTWARE",
@@ -796,7 +796,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_w
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [address_claim_schema],
             "walletStorageType": "SOFTWARE",
@@ -852,7 +852,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_m
             &schema_id,
             "MatchedSchema",
             &organisation,
-            "NONE",
+            None,
             &new_claim_schemas,
             "SD_JWT_VC",
             &format!("{}/ssi/schema/v1/{}", &mock_server.uri(), schema_id),
@@ -1067,7 +1067,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_referen
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [
               {
@@ -1510,7 +1510,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_t
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SD_JWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [
               {
@@ -1695,7 +1695,7 @@ async fn test_handle_invitation_endpoint_for_openid4vc_issuance_offer_by_value_n
             "lastModified": "2024-05-16T10:47:48.093Z",
             "name": "test",
             "format": "SDJWT",
-            "revocationMethod": "NONE",
+            "revocationMethod": null,
             "organisationId": organisation.id,
             "claims": [
               {
@@ -2564,7 +2564,7 @@ async fn test_handle_invitation_fails_duplicate_with_different_format() {
         .create(
             "other-doctype",
             &organistion,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 schema_id: Some("custom-doctype".to_string()),
                 format: Some("SD_JWT_VC".into()),

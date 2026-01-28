@@ -308,7 +308,7 @@ fn generic_credential() -> Credential {
             name: "schema".to_string(),
             key_storage_security: Some(KeyStorageSecurity::Basic),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: claim_schema,
                 required: true,

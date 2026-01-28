@@ -197,7 +197,7 @@ async fn test_create_proof_schema_already_exists() {
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
                     format: "JWT".into(),
-                    revocation_method: "NONE".into(),
+                    revocation_method: None,
                     claim_schemas: None,
                     organisation: None,
                     layout_type: LayoutType::Card,
@@ -233,7 +233,7 @@ async fn test_create_proof_schema_success() {
         organisation_id,
         "cred-schema",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -295,7 +295,7 @@ async fn test_create_proof_schema_success() {
                     last_modified: get_dummy_date(),
                     name: "schema".to_string(),
                     format: "JWT".into(),
-                    revocation_method: "NONE".into(),
+                    revocation_method: None,
                     claim_schemas: None,
                     organisation: None,
                     layout_type: LayoutType::Card,
@@ -503,7 +503,7 @@ async fn test_get_proof_schema_with_relations() {
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),
                 format: "JWT".into(),
-                revocation_method: "NONE".into(),
+                revocation_method: None,
                 claim_schemas: None,
                 organisation: None,
                 layout_type: LayoutType::Card,
@@ -532,7 +532,7 @@ async fn test_get_proof_schema_with_relations() {
         organisation_id,
         "credential schema",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -639,7 +639,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 last_modified: get_dummy_date(),
                 name: "schema".to_string(),
                 format: "JWT".into(),
-                revocation_method: "NONE".into(),
+                revocation_method: None,
                 claim_schemas: None,
                 organisation: None,
                 layout_type: LayoutType::Card,
@@ -668,7 +668,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         organisation_id,
         "credential schema",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -680,7 +680,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
         organisation_id,
         "credential schema2",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic.into()),
     )
     .await
@@ -1095,7 +1095,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         format: Set("JWT".into()),
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
-        revocation_method: Set("NONE".into()),
+        revocation_method: Set(None),
         key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),
@@ -1117,7 +1117,7 @@ async fn test_get_proof_schema_list_filter_formats() {
         format: Set("MDOC".into()),
         organisation_id: Set(organisation_id),
         deleted_at: Set(None),
-        revocation_method: Set("NONE".into()),
+        revocation_method: Set(None),
         key_storage_security: Set(None),
         layout_type: Set(LayoutType::Card.into()),
         layout_properties: Set(None),

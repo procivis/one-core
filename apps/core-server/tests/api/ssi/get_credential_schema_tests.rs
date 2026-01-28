@@ -13,7 +13,7 @@ async fn test_get_credential_schema_success() {
         .create(
             "credential-schema",
             &organisation,
-            "LVVC",
+            Some("LVVC".into()),
             Default::default(),
         )
         .await;

@@ -173,7 +173,7 @@ async fn test_presentation_definition_success() {
                                 last_modified: get_dummy_date(),
                                 name: "Credential1".to_owned(),
                                 format: "JWT".into(),
-                                revocation_method: "NONE".into(),
+                                revocation_method: None,
                                 key_storage_security: None,
                                 claim_schemas: None,
                                 organisation: None,

@@ -203,8 +203,8 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub name: String,
     #[try_into(infallible)]
     pub format: String,
-    #[try_into(infallible)]
-    pub revocation_method: String,
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub revocation_method: Option<String>,
     #[try_into(with_fn = convert_inner, infallible)]
     pub key_storage_security: Option<KeyStorageSecurityBindingEnum>,
     #[try_into(infallible)]

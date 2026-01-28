@@ -10,7 +10,7 @@ async fn test_get_credential_issuer_metadata_jwt() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create_with_nested_hell("test_schema", &organisation, "NONE", Default::default())
+        .create_with_nested_hell("test_schema", &organisation, None, Default::default())
         .await;
 
     // WHEN

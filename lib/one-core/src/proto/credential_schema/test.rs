@@ -75,7 +75,7 @@ fn test_parse_import_credential_schema_success() {
 
     revocation_method_provider
         .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("NONE".into()))
+        .with(eq::<RevocationMethodId>("mock".into()))
         .once()
         .return_once(|_| Some(Arc::new(revocation_method)));
 
@@ -93,7 +93,7 @@ fn test_parse_import_credential_schema_success() {
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: Some("mock".into()),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -153,6 +153,7 @@ fn test_parse_import_with_nested_claims_success() {
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .once()
         .return_once(|_| Some(Arc::new(revocation_method)));
 
@@ -170,7 +171,7 @@ fn test_parse_import_with_nested_claims_success() {
             last_modified: get_dummy_date(),
             name: "Imported Schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: Some("mock".into()),
             organisation_id: Uuid::new_v4().into(),
             claims: vec![ImportCredentialSchemaClaimSchemaDTO {
                 id: Uuid::new_v4(),
@@ -221,7 +222,7 @@ async fn test_importer_import_credential_schema_success() {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Test Schema".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".into(),
+        revocation_method: None,
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -290,7 +291,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".into(),
+        revocation_method: None,
         claim_schemas: Some(vec![]),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,
@@ -355,7 +356,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         key_storage_security: Some(KeyStorageSecurity::Basic),
         name: "Existing Schema".to_string(),
         format: "JWT".into(),
-        revocation_method: "NONE".into(),
+        revocation_method: None,
         claim_schemas: Some(vec![]),
         organisation: Some(dummy_organisation(None)),
         layout_type: LayoutType::Card,

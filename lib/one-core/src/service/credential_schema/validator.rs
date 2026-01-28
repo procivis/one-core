@@ -70,18 +70,26 @@ pub(crate) fn validate_create_request(
 
     validate_key_lengths(&request.claims, 0)?;
     validate_format(&request.format, &config.format)?;
-    validate_revocation(&request.revocation_method, &config.revocation)?;
+
+    let revocation_method = match &request.revocation_method {
+        Some(method_id) => {
+            validate_revocation(method_id, &config.revocation)?;
+
+            let revocation_method = revocation_method_provider
+                .get_revocation_method(method_id)
+                .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))?;
+            Some(revocation_method)
+        }
+        None => None,
+    };
+
     validate_nested_claim_schemas(&request.claims, config, formatter)?;
-
-    let revocation_method = revocation_method_provider
-        .get_revocation_method(&request.revocation_method)
-        .ok_or(MissingProviderError::RevocationMethod(
-            request.revocation_method.to_owned(),
-        ))?;
-
     validate_claim_names(request, formatter)?;
     validate_revocation_method_is_compatible_with_format(request, config, formatter)?;
-    validate_revocation_method_is_compatible_with_suspension(request, &*revocation_method)?;
+    validate_revocation_method_is_compatible_with_suspension(
+        request,
+        revocation_method.as_deref(),
+    )?;
     validate_credential_design(request, formatter)?;
     validate_mdoc_claim_types(request, config)?;
     validate_schema_id(request, formatter, during_import)?;
@@ -367,21 +375,28 @@ fn gather_claim_schemas<'a>(
 
 fn validate_revocation_method_is_compatible_with_suspension(
     request: &CreateCredentialSchemaRequestDTO,
-    revocation_method: &dyn RevocationMethod,
+    revocation_method: Option<&dyn RevocationMethod>,
 ) -> Result<(), ServiceError> {
-    if request.allow_suspension == Some(true)
-        && !revocation_method
-            .get_capabilities()
-            .operations
-            .contains(&Operation::Suspend)
-    {
-        return Err(BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into());
-    }
+    let operations = match revocation_method {
+        Some(method) => method.get_capabilities().operations,
+        None => vec![],
+    };
 
-    if revocation_method.get_capabilities().operations == vec![Operation::Suspend]
-        && request.allow_suspension != Some(true)
-    {
-        return Err(BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod.into());
+    match request.allow_suspension {
+        Some(true) => {
+            if !operations.contains(&Operation::Suspend) {
+                return Err(
+                    BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod.into(),
+                );
+            }
+        }
+        _ => {
+            if operations == vec![Operation::Suspend] {
+                return Err(
+                    BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod.into(),
+                );
+            }
+        }
     }
 
     Ok(())
@@ -392,17 +407,21 @@ fn validate_revocation_method_is_compatible_with_format(
     config: &CoreConfig,
     formatter: &dyn CredentialFormatter,
 ) -> Result<(), ServiceError> {
-    let revocation_method = config.revocation.get_fields(&request.revocation_method)?;
+    let Some(method_id) = &request.revocation_method else {
+        return Ok(());
+    };
 
-    if !formatter
+    let revocation_method = config.revocation.get_fields(method_id)?;
+
+    if formatter
         .get_capabilities()
         .revocation_methods
         .contains(&revocation_method.r#type)
     {
-        return Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into());
+        Ok(())
+    } else {
+        Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into())
     }
-
-    Ok(())
 }
 
 fn validate_credential_design(

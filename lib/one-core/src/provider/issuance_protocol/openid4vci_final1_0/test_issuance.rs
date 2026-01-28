@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use secrecy::SecretSlice;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialId};
+use shared_types::{CredentialFormat, CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -68,26 +68,30 @@ async fn test_issuer_submit_succeeds() {
         organisation: Some(dummy_organisation(None)),
     };
 
-    let credential = Credential {
-        state: CredentialStateEnum::Offered,
-        suspend_end_date: None,
-        holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
-            ..dummy_identifier()
-        }),
-        issuer_identifier: Some(Identifier {
-            did: Some(Did {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..dummy_did()
+    let credential = {
+        let mut cred = Credential {
+            state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
+            holder_identifier: Some(Identifier {
+                did: Some(dummy_did()),
+                ..dummy_identifier()
             }),
-            ..dummy_identifier()
-        }),
-        key: Some(key),
-        ..dummy_credential()
+            issuer_identifier: Some(Identifier {
+                did: Some(Did {
+                    keys: Some(vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: key.to_owned(),
+                        reference: "1".to_string(),
+                    }]),
+                    ..dummy_did()
+                }),
+                ..dummy_identifier()
+            }),
+            key: Some(key),
+            ..dummy_credential()
+        };
+        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+        cred
     };
 
     let credential_copy = credential.clone();
@@ -136,6 +140,7 @@ async fn test_issuer_submit_succeeds() {
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .once()
         .return_once(move |_| Some(Arc::new(revocation_method)));
 
@@ -215,7 +220,10 @@ async fn test_issuer_submit_succeeds() {
     assert!(result.unwrap().notification_id.is_some());
 }
 
-fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
+fn generic_mdoc_credential(
+    state: CredentialStateEnum,
+    revocation_method: Option<&'static str>,
+) -> Credential {
     let key = dummy_key();
 
     Credential {
@@ -239,6 +247,7 @@ fn generic_mdoc_credential(state: CredentialStateEnum) -> Credential {
         key: Some(key),
         schema: Some(CredentialSchema {
             format: CredentialFormat::from("MDOC"),
+            revocation_method: revocation_method.map(|v| v.into()),
             ..dummy_credential().schema.unwrap()
         }),
         ..dummy_credential()
@@ -251,7 +260,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
 
     let mut credential_repository = MockCredentialRepository::new();
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Offered);
+    let credential = generic_mdoc_credential(CredentialStateEnum::Offered, Some("mock"));
     let credential_copy = credential.clone();
     credential_repository
         .expect_get_credential()
@@ -277,6 +286,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .once()
         .return_once(move |_| Some(Arc::new(NoneRevocation {})));
 
@@ -372,7 +382,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
     let credential_id: CredentialId = Uuid::new_v4().into();
     let format = CredentialFormat::from("MDOC");
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted);
+    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted, None);
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
     credential_repository
@@ -390,12 +400,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             });
             Ok(Some(credential))
         });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(NoneRevocation {})));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -474,7 +478,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockCredentialSchemaImporter::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
-        Arc::new(revocation_method_provider),
+        Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(key_provider),
@@ -515,7 +519,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
 async fn test_issue_credential_for_existing_mdoc_with_expected_update_in_the_future_fails() {
     let credential_id: CredentialId = Uuid::new_v4().into();
 
-    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted);
+    let credential = generic_mdoc_credential(CredentialStateEnum::Accepted, None);
 
     let credential_copy = credential.clone();
     let mut credential_repository = MockCredentialRepository::new();
@@ -710,7 +714,7 @@ fn dummy_credential() -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,

@@ -234,7 +234,7 @@ async fn test_get_presentation_definition_open_id_vp_with_match() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let holder_did = context
@@ -341,7 +341,7 @@ async fn test_get_presentation_definition_open_id_vp_with_delete_credential() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     context
@@ -560,7 +560,7 @@ async fn test_get_presentation_definition_open_id_vp_no_match_vp_formats_empty()
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let _credential = context
@@ -644,7 +644,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &db_conn,
         "test1",
         &organisation,
-        "NONE",
+        None,
         &claim_schemas_1,
     )
     .await;
@@ -669,7 +669,7 @@ async fn test_get_presentation_definition_open_id_vp_multiple_credentials() {
         &db_conn,
         "test2",
         &organisation,
-        "NONE",
+        None,
         &claim_schemas_2,
     )
     .await;
@@ -909,7 +909,7 @@ async fn test_get_presentation_definition_open_id_vp_matched_only_complete_crede
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let first_claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0];

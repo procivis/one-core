@@ -4,7 +4,7 @@ use std::sync::Arc;
 use mockall::predicate::eq;
 use secrecy::SecretSlice;
 use serde_json::json;
-use shared_types::{CredentialFormat, CredentialId};
+use shared_types::{CredentialFormat, CredentialId, RevocationMethodId};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -43,7 +43,6 @@ use crate::provider::key_security_level::provider::MockKeySecurityLevelProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{CredentialRevocationInfo, JsonLdContext};
-use crate::provider::revocation::none::NoneRevocation;
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_repository::MockCredentialRepository;
 use crate::repository::key_repository::MockKeyRepository;
@@ -68,26 +67,30 @@ async fn test_issuer_submit_succeeds() {
         organisation: Some(dummy_organisation(None)),
     };
 
-    let credential = Credential {
-        state: CredentialStateEnum::Offered,
-        suspend_end_date: None,
-        holder_identifier: Some(Identifier {
-            did: Some(dummy_did()),
-            ..dummy_identifier()
-        }),
-        issuer_identifier: Some(Identifier {
-            did: Some(Did {
-                keys: Some(vec![RelatedKey {
-                    role: KeyRole::AssertionMethod,
-                    key: key.to_owned(),
-                    reference: "1".to_string(),
-                }]),
-                ..dummy_did()
+    let credential = {
+        let mut cred = Credential {
+            state: CredentialStateEnum::Offered,
+            suspend_end_date: None,
+            holder_identifier: Some(Identifier {
+                did: Some(dummy_did()),
+                ..dummy_identifier()
             }),
-            ..dummy_identifier()
-        }),
-        key: Some(key),
-        ..dummy_credential()
+            issuer_identifier: Some(Identifier {
+                did: Some(Did {
+                    keys: Some(vec![RelatedKey {
+                        role: KeyRole::AssertionMethod,
+                        key: key.to_owned(),
+                        reference: "1".to_string(),
+                    }]),
+                    ..dummy_did()
+                }),
+                ..dummy_identifier()
+            }),
+            key: Some(key),
+            ..dummy_credential()
+        };
+        cred.schema.as_mut().unwrap().revocation_method = Some("mock".into());
+        cred
     };
 
     let credential_copy = credential.clone();
@@ -136,6 +139,7 @@ async fn test_issuer_submit_succeeds() {
     let mut revocation_method_provider = MockRevocationMethodProvider::new();
     revocation_method_provider
         .expect_get_revocation_method()
+        .with(eq::<RevocationMethodId>("mock".into()))
         .once()
         .return_once(move |_| Some(Arc::new(revocation_method)));
 
@@ -272,12 +276,6 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         .once()
         .return_once(|_, _| Ok(()));
 
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(NoneRevocation {})));
-
     let mut formatter = MockCredentialFormatter::new();
     formatter
         .expect_format_credential()
@@ -326,7 +324,7 @@ async fn test_issue_credential_for_mdoc_creates_validity_credential() {
         Arc::new(MockKeyRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
-        Arc::new(revocation_method_provider),
+        Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeySecurityLevelProvider::new()),
@@ -385,12 +383,6 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
             });
             Ok(Some(credential))
         });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .once()
-        .return_once(move |_| Some(Arc::new(NoneRevocation {})));
 
     let mut formatter = MockCredentialFormatter::new();
     formatter
@@ -467,7 +459,7 @@ async fn test_issue_credential_for_existing_mdoc_creates_new_validity_credential
         Arc::new(MockKeyRepository::new()),
         Arc::new(validity_credential_repository),
         Arc::new(formatter_provider),
-        Arc::new(revocation_method_provider),
+        Arc::new(MockRevocationMethodProvider::new()),
         Arc::new(MockDidMethodProvider::new()),
         Arc::new(MockKeyAlgorithmProvider::new()),
         Arc::new(MockKeySecurityLevelProvider::new()),
@@ -692,7 +684,7 @@ fn dummy_credential() -> Credential {
             key_storage_security: Some(KeyStorageSecurity::Basic),
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,

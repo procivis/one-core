@@ -476,7 +476,7 @@ fn dummy_credential() -> Credential {
             key_storage_security: None,
             name: "schema".to_string(),
             format: "JWT".into(),
-            revocation_method: "revocation method".into(),
+            revocation_method: Some("revocation method".into()),
             claim_schemas: Some(vec![CredentialSchemaClaim {
                 schema: ClaimSchema {
                     id: claim_schema_id,

@@ -1228,7 +1228,7 @@ async fn test_parse_credential() {
     assert_eq!(ch_schema_id, ut_schema_id); // Both array elements share same schema ID
 
     // Verify revocation method
-    assert_eq!(schema.revocation_method.as_ref(), "BITSTRINGSTATUSLIST");
+    assert_eq!(schema.revocation_method, Some("BITSTRINGSTATUSLIST".into()));
 }
 
 #[tokio::test]
@@ -1271,5 +1271,5 @@ async fn test_parse_credential_with_lvvc() {
 
     // Verify revocation method is LVVC
     let schema = credential.schema.as_ref().unwrap();
-    assert_eq!(schema.revocation_method.as_ref(), "LVVC");
+    assert_eq!(schema.revocation_method, Some("LVVC".into()));
 }

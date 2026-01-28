@@ -678,12 +678,14 @@ impl OID4VCIDraft13Service {
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
-        let revocation_method = self
-            .revocation_method_provider
-            .get_revocation_method(&schema.revocation_method)
-            .ok_or(MissingProviderError::RevocationMethod(
-                schema.revocation_method.to_owned(),
-            ))?;
+        let revocation_method = match &schema.revocation_method {
+            Some(method_id) => Some(
+                self.revocation_method_provider
+                    .get_revocation_method(method_id)
+                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))?,
+            ),
+            None => None,
+        };
 
         self.credential_repository
             .update_credential(
@@ -699,10 +701,11 @@ impl OID4VCIDraft13Service {
         if matches!(
             credential.state,
             CredentialStateEnum::Accepted | CredentialStateEnum::Suspended
-        ) && revocation_method
-            .get_capabilities()
-            .operations
-            .contains(&Operation::Revoke)
+        ) && let Some(revocation_method) = revocation_method
+            && revocation_method
+                .get_capabilities()
+                .operations
+                .contains(&Operation::Revoke)
         {
             revocation_method
                 .mark_credential_as(credential, RevocationState::Revoked)

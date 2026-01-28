@@ -264,20 +264,18 @@ impl CredentialService {
             &*self.session_provider,
         )?;
 
-        let revocation_type = self
-            .config
-            .revocation
-            .get_fields(&schema.revocation_method)
-            .map_err(|err| {
-                ServiceError::MappingError(format!(
-                    "Unknown revocation method: {}: {err}",
-                    schema.revocation_method
-                ))
-            })?
-            .r#type();
-
         let is_issuer = credential.role == CredentialRole::Issuer;
-        if is_issuer && *revocation_type != RevocationType::None {
+        if is_issuer && let Some(method_id) = &schema.revocation_method {
+            let _revocation_fields =
+                self.config
+                    .revocation
+                    .get_fields(method_id)
+                    .map_err(|err| {
+                        ServiceError::MappingError(format!(
+                            "Unknown revocation method: {}: {err}",
+                            method_id
+                        ))
+                    })?;
             throw_if_credential_state_eq(&credential, CredentialStateEnum::Accepted)?;
         }
 
@@ -350,12 +348,16 @@ impl CredentialService {
             attestation_blobs,
         )?;
 
-        let revocation_type = self
-            .config
-            .revocation
-            .get_type(&response.schema.revocation_method)?;
+        let uses_lvvc_revocation = match &response.schema.revocation_method {
+            Some(method_id) => {
+                let revocation_type = self.config.revocation.get_type(method_id)?;
 
-        if revocation_type == RevocationType::Lvvc {
+                revocation_type == RevocationType::Lvvc
+            }
+            None => false,
+        };
+
+        if uses_lvvc_revocation {
             let latest_lvvc = self
                 .validity_credential_repository
                 .get_latest_by_credential_id(credential_id.to_owned(), ValidityCredentialType::Lvvc)
@@ -696,7 +698,17 @@ impl CredentialService {
         };
         throw_if_state_not_in(current_state, valid_states)?;
 
-        let revocation_method_key = &credential_schema.revocation_method;
+        let revocation_method_key = match &credential_schema.revocation_method {
+            Some(value) => value,
+            None => {
+                return Err(
+                    BusinessLogicError::OperationNotSupportedByRevocationMethod {
+                        operation: revocation_state.to_string(),
+                    }
+                    .into(),
+                );
+            }
+        };
 
         let revocation_method = self
             .revocation_method_provider
@@ -892,12 +904,20 @@ impl CredentialService {
             });
         };
 
-        let revocation_method = self
-            .revocation_method_provider
-            .get_revocation_method(&credential_schema.revocation_method)
-            .ok_or(MissingProviderError::RevocationMethod(
-                credential_schema.revocation_method.clone(),
-            ))?;
+        let revocation_method = match &credential_schema.revocation_method {
+            Some(method_id) => self
+                .revocation_method_provider
+                .get_revocation_method(method_id)
+                .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))?,
+            None => {
+                return Ok(CredentialRevocationCheckResponseDTO {
+                    credential_id,
+                    status: current_state.into(),
+                    success: false,
+                    reason: Some("No revocation method specified for credential".to_owned()),
+                });
+            }
+        };
 
         let issuer_identifier =
             credential

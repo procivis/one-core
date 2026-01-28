@@ -20,7 +20,7 @@ async fn test_get_credential_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let waa_blob_value = serde_json::to_vec(&WalletAppAttestationDTO {
@@ -90,7 +90,7 @@ async fn test_get_credential_certificate_identifier_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
     let credential = context
         .db
@@ -132,7 +132,12 @@ async fn test_get_credential_with_lvvc_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "LVVC", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("LVVC".into()),
+            Default::default(),
+        )
         .await;
     let credential = context
         .db
@@ -181,7 +186,7 @@ async fn test_get_credential_success_metadata() {
         .create(
             "Simple test schema",
             &org,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 schema_id: Some("https://example.org/foo".to_owned()),
                 format: Some("SD_JWT_VC".into()),

@@ -35,7 +35,7 @@ async fn test_create_credential_schema_success() {
     let credential_schema = context.db.credential_schemas.get(&id).await;
 
     assert_eq!(credential_schema.name, "some credential schema");
-    assert_eq!(credential_schema.revocation_method.as_ref(), "NONE");
+    assert_eq!(credential_schema.revocation_method, None);
     assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
     assert_eq!(credential_schema.format.as_ref(), "JWT");
     let claim_schemas = credential_schema.claim_schemas.as_ref().unwrap();
@@ -190,7 +190,7 @@ async fn test_create_credential_schema_with_the_same_name_and_organisation_as_de
     let credential_schema = context
         .db
         .credential_schemas
-        .create(schema_name, &organisation, "NONE", Default::default())
+        .create(schema_name, &organisation, None, Default::default())
         .await;
 
     context
@@ -354,7 +354,7 @@ async fn test_create_credential_schema_revocation_no_suspension_fails() {
                 organisation_id: organisation.id.into(),
                 format: "JWT".into(),
                 suspension_allowed: Some(true),
-                revocation_method: Some("NONE".into()),
+                revocation_method: None,
                 ..Default::default()
             }
             .with_default_claims("firstName".into()),
@@ -377,7 +377,7 @@ async fn test_duplicate_schema() {
         .create_with_result(
             "some credential schema1",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 schema_id: Some("foo".to_string()),
                 ..Default::default()
@@ -392,7 +392,7 @@ async fn test_duplicate_schema() {
         .create_with_result(
             "some credential schema1",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 schema_id: Some("foo".to_string()),
                 ..Default::default()

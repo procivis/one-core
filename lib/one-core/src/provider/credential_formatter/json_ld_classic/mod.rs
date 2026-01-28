@@ -247,8 +247,8 @@ impl CredentialFormatter for JsonLdClassic {
 
         let revocation_method = if let Some(status) = vcdm.credential_status.first() {
             match status.r#type.as_str() {
-                "LVVC" => RevocationType::Lvvc,
-                "BitstringStatusListEntry" => RevocationType::BitstringStatusList,
+                "LVVC" => Some(RevocationType::Lvvc),
+                "BitstringStatusListEntry" => Some(RevocationType::BitstringStatusList),
                 _ => {
                     return Err(FormatterError::Failed(format!(
                         "Unknown revocation method: {}",
@@ -257,7 +257,7 @@ impl CredentialFormatter for JsonLdClassic {
                 }
             }
         } else {
-            RevocationType::None
+            None
         };
 
         let credential_id = Uuid::new_v4().into();
@@ -312,7 +312,7 @@ impl CredentialFormatter for JsonLdClassic {
             last_modified: now,
             name: schema_name,
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: revocation_method.to_string().into(),
+            revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

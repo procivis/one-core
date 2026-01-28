@@ -155,7 +155,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                     CreateCredentialSchemaRequestDTO {
                         name,
                         format,
-                        revocation_method: "NONE".into(),
+                        revocation_method: None,
                         claims: if let Some(schemas) = claim_schemas {
                             parse_mdoc_schema_claims(schemas, element_order)
                         } else {
@@ -318,7 +318,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         key_storage_security: convert_inner(
                             credential_config.wallet_storage_type.to_owned(),
                         ),
-                        revocation_method: "NONE".into(),
+                        revocation_method: None,
                         claim_schemas: Some(claim_schemas),
                         layout_type: LayoutType::Card,
                         layout_properties,

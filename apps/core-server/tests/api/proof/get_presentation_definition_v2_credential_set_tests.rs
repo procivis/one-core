@@ -289,7 +289,7 @@ async fn simple_schema(
         .create(
             schema_id,
             org,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.to_string()),
                 format: Some("SD_JWT_VC".into()),

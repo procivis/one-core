@@ -120,7 +120,7 @@ pub async fn insert_credential_schema_to_database(
     organisation_id: OrganisationId,
     name: &str,
     format: &str,
-    revocation_method: impl Into<RevocationMethodId>,
+    revocation_method: impl Into<Option<RevocationMethodId>>,
     key_storage_security: Option<KeyStorageSecurity>,
 ) -> Result<CredentialSchemaId, DbErr> {
     let new_id: CredentialSchemaId = Uuid::new_v4().into();

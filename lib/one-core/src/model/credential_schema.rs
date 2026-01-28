@@ -24,7 +24,7 @@ pub struct CredentialSchema {
     pub last_modified: OffsetDateTime,
     pub name: CredentialSchemaName,
     pub format: CredentialFormat,
-    pub revocation_method: RevocationMethodId,
+    pub revocation_method: Option<RevocationMethodId>,
     pub key_storage_security: Option<KeyStorageSecurity>,
     pub layout_type: LayoutType,
     pub layout_properties: Option<LayoutProperties>,
@@ -151,7 +151,7 @@ pub type GetCredentialSchemaQuery = ListQuery<
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct UpdateCredentialSchemaRequest {
     pub id: CredentialSchemaId,
-    pub revocation_method: Option<RevocationMethodId>,
+    pub revocation_method: Option<Option<RevocationMethodId>>,
     pub format: Option<CredentialFormat>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub layout_type: Option<LayoutType>,

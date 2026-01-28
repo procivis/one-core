@@ -357,7 +357,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
         .revocation_method_provider
         .expect_get_revocation_method_by_status_type()
         .once()
-        .return_once(|_| Some((Arc::new(revocation_method), "".into())));
+        .return_once(|_| Some((Arc::new(revocation_method), "mock".into())));
     mocks
 }
 

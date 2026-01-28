@@ -488,7 +488,7 @@ impl CredentialFormatter for MdocFormatter {
             last_modified: now,
             name: doctype.to_owned(),
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: "NONE".into(),
+            revocation_method: None,
             key_storage_security: None,
             layout_type: crate::model::credential_schema::LayoutType::Card,
             layout_properties: None,

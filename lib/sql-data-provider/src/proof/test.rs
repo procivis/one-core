@@ -82,7 +82,7 @@ async fn setup(
         organisation_id,
         "credential schema",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -637,7 +637,7 @@ async fn test_get_proof_with_relations() {
         organisation_id,
         "credential schema 1",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await
@@ -866,7 +866,7 @@ async fn test_set_proof_claims_success() {
         organisation_id,
         "credential schema 1",
         "JWT",
-        "NONE",
+        None,
         Some(KeyStorageSecurity::Basic),
     )
     .await

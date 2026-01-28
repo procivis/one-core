@@ -348,13 +348,18 @@ impl OpenId4VpProofValidatorProto {
                     "Missing credential schema".to_owned(),
                 ))?;
 
-        let revocation_type = self
-            .config
-            .revocation
-            .get_type(&requested_credential_schema.revocation_method)
-            .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
+        let lvvc_credential_expected = match &requested_credential_schema.revocation_method {
+            Some(method_id) => {
+                let revocation_type = self
+                    .config
+                    .revocation
+                    .get_type(method_id)
+                    .map_err(|e| OpenID4VCError::MappingError(e.to_string()))?;
 
-        let lvvc_credential_expected = revocation_type == RevocationType::Lvvc;
+                revocation_type == RevocationType::Lvvc
+            }
+            None => false,
+        };
 
         if !multiple_presentations_allowed {
             if lvvc_credential_expected {

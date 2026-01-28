@@ -59,7 +59,7 @@ async fn test_run_task_suspend_check_with_update() {
         .create(
             "test",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;
@@ -140,7 +140,7 @@ async fn test_run_retain_proof_check_with_update() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;
@@ -660,7 +660,12 @@ async fn test_run_task_holder_check_credential_status_with_no_params() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "LVVC", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("LVVC".into()),
+            Default::default(),
+        )
         .await;
 
     let blob = context
@@ -887,7 +892,12 @@ async fn test_run_task_holder_check_credential_status_with_params_none_existing_
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "LVVC", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("LVVC".into()),
+            Default::default(),
+        )
         .await;
 
     let blob = context
@@ -989,7 +999,7 @@ async fn test_run_interaction_expiration_check_with_update() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let claim_schema = &credential_schema.claim_schemas.as_ref().unwrap()[0].schema;

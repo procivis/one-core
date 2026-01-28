@@ -31,7 +31,7 @@ async fn setup() -> TestSetup {
         organisation_id,
         "credential schema",
         "JWT",
-        "NONE",
+        None,
         None,
     )
     .await

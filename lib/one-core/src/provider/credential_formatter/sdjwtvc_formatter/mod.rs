@@ -104,10 +104,12 @@ impl CredentialFormatter for SDJWTVCFormatter {
             )
             .await?;
 
-        let revocation_method = match parsed_credential.payload.custom.status {
-            None => RevocationType::None,
-            Some(_) => RevocationType::TokenStatusList,
-        };
+        let revocation_method = parsed_credential
+            .payload
+            .custom
+            .status
+            .as_ref()
+            .map(|_| RevocationType::TokenStatusList);
 
         let credential_id = Uuid::new_v4().into();
         let vct = parsed_credential.payload.custom.vc_type.clone();
@@ -139,7 +141,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             // Will be overridden based on issuer metadata
             name: vct.clone(),
             format: "".into(), // Will be overridden based on config priority
-            revocation_method: revocation_method.to_string().into(),
+            revocation_method: revocation_method.map(|v| v.to_string().into()),
             key_storage_security: None,
             layout_type: LayoutType::Card,
             layout_properties: None,

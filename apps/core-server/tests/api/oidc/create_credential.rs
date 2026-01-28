@@ -112,7 +112,7 @@ async fn test_post_issuer_credential_in_parallel() {
         .create(
             "schema-1",
             &organisation,
-            revocation_method.unwrap_or("NONE"),
+            revocation_method.map(|v| v.into()),
             TestingCreateSchemaParams {
                 format: credential_format,
                 schema_id: schema_id.clone(),
@@ -246,7 +246,7 @@ async fn test_post_issuer_credential_with_bitstring_in_parallel() {
         .create(
             "schema-1",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             TestingCreateSchemaParams {
                 schema_id: Some(schema_id.clone()),
                 ..Default::default()
@@ -354,7 +354,7 @@ async fn test_post_issuer_credential_with_tokenstatuslist_in_parallel() {
         .create(
             "schema-1",
             &organisation,
-            "TOKENSTATUSLIST",
+            Some("TOKENSTATUSLIST".into()),
             TestingCreateSchemaParams {
                 format: Some("SD_JWT_VC".into()),
                 schema_id: Some(schema_id.clone()),
@@ -676,7 +676,7 @@ async fn test_post_issuer_credential_with(
         .create(
             "schema-1",
             &organisation,
-            revocation_method.unwrap_or("NONE"),
+            revocation_method.map(|v| v.into()),
             TestingCreateSchemaParams {
                 format: credential_format,
                 schema_id: schema_id.clone(),
@@ -859,7 +859,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
             &Uuid::new_v4(),
             "schema-1",
             &organisation,
-            "NONE",
+            None,
             &new_claim_schemas,
             "MDOC",
             "schema-id",

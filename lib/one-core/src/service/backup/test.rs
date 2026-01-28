@@ -86,7 +86,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 key_storage_security: Some(KeyStorageSecurity::Basic),
                 name: "name".into(),
                 format: "format".into(),
-                revocation_method: "revocation_method".into(),
+                revocation_method: Some("revocation_method".into()),
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
                         id: claim_schema_id,

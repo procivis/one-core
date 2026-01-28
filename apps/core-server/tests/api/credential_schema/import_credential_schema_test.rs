@@ -15,7 +15,7 @@ async fn test_import_credential_schema_fails_deactivated_organisation() {
         .create(
             "some credential schema",
             &organisation1,
-            "NONE",
+            None,
             Default::default(),
         )
         .await;
@@ -60,7 +60,7 @@ async fn test_import_credential_schema_success_with_same_name() {
         .create(
             "some credential schema",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 allow_suspension: Some(false),
                 ..Default::default()

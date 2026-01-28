@@ -104,7 +104,7 @@ async fn test_get_history_list_schema_joins_credentials() {
     let schema = context
         .db
         .credential_schemas
-        .create("schema", &organisation, "NONE", Default::default())
+        .create("schema", &organisation, None, Default::default())
         .await;
     context
         .db

@@ -28,7 +28,7 @@ async fn test_suspend_credential_with_bitstring_status_list_success() {
         .create(
             "test",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;
@@ -103,7 +103,7 @@ async fn test_suspend_credential_with_mdoc_mso_suspend_update_success() {
         .create(
             "test",
             &organisation,
-            "MDOC_MSO_UPDATE_SUSPENSION",
+            Some("MDOC_MSO_UPDATE_SUSPENSION".into()),
             Default::default(),
         )
         .await;
@@ -181,7 +181,12 @@ async fn test_suspend_credential_with_lvvc_success() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "LVVC", Default::default())
+        .create(
+            "test",
+            &organisation,
+            Some("LVVC".into()),
+            Default::default(),
+        )
         .await;
     let credential = context
         .db
@@ -229,7 +234,7 @@ async fn test_suspend_credential_with_none_fails() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 allow_suspension: Some(false),
                 ..Default::default()
@@ -267,7 +272,7 @@ async fn test_suspend_credential_fails_credential_deleted() {
         .create(
             "test",
             &organisation,
-            "BITSTRINGSTATUSLIST",
+            Some("BITSTRINGSTATUSLIST".into()),
             Default::default(),
         )
         .await;

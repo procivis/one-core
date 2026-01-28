@@ -113,7 +113,7 @@ impl CredentialSchemaService {
             .extend(metadata_claims);
 
         let success_log = format!(
-            "Created credential schema `{}` ({id}): format `{}`, revocation method `{}`, key storage security {}",
+            "Created credential schema `{}` ({id}): format `{}`, revocation method {:?}, key storage security {}",
             credential_schema.name,
             credential_schema.format,
             credential_schema.revocation_method,
@@ -259,7 +259,7 @@ impl CredentialSchemaService {
         )?;
 
         let success_log = format!(
-            "Imported credential schema `{}` ({}): format `{}`, revocation method `{}`, key storage security {}",
+            "Imported credential schema `{}` ({}): format `{}`, revocation method {:?}, key storage security {}",
             credential_schema.name,
             credential_schema.id,
             credential_schema.format,

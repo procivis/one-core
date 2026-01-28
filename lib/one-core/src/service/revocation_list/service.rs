@@ -71,7 +71,13 @@ impl RevocationListService {
             .as_ref()
             .ok_or(ServiceError::MappingError("schema is None".to_string()))?;
 
-        let revocation_method = &schema.revocation_method;
+        let revocation_method =
+            schema
+                .revocation_method
+                .as_ref()
+                .ok_or(ServiceError::MappingError(
+                    "revocation method is None".to_owned(),
+                ))?;
         let revocation_params: crate::provider::revocation::lvvc::Params =
             self.config.revocation.get(revocation_method)?;
 

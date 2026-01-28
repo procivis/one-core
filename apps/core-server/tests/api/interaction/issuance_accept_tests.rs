@@ -127,7 +127,7 @@ async fn test_issuance_accept_openid4vc() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
@@ -353,7 +353,7 @@ async fn test_issuance_accept_schema_name_already_exists() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![
                     CredentialSchemaClaim {
@@ -553,7 +553,7 @@ async fn test_issuance_accept_openid4vc_issuer_did_mismatch() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -728,7 +728,7 @@ async fn test_issuance_accept_openid4vc_issuer_certificate_mismatch() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -897,7 +897,7 @@ async fn test_issuance_accept_openid4vc_issuer_invalid_signature() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -1068,7 +1068,7 @@ async fn test_issuance_accept_openid4vc_with_key_id() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -1206,7 +1206,7 @@ async fn test_issuance_accept_autogenerate_holder_binding() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -1331,7 +1331,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_did() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({
@@ -1458,7 +1458,7 @@ async fn test_fail_issuance_accept_openid4vc_unknown_key() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({
@@ -1584,7 +1584,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({
@@ -1716,7 +1716,7 @@ async fn test_fail_issuance_accept_openid4vc_wrong_key_security() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 key_storage_security: Some(KeyStorageSecurity::EnhancedBasic),
                 ..Default::default()
@@ -1836,7 +1836,7 @@ async fn test_fail_issuance_accept_openid4vc_no_key_with_auth_role() {
     let credential_schema = context
         .db
         .credential_schemas
-        .create("test", &organisation, "NONE", Default::default())
+        .create("test", &organisation, None, Default::default())
         .await;
 
     let interaction_data = serde_json::to_vec(&json!({
@@ -1958,7 +1958,7 @@ async fn test_fail_issuance_accept_openid4vc_wallet_storage_type_not_met() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 key_storage_security: Some(KeyStorageSecurity::High),
                 ..Default::default()
@@ -2090,7 +2090,7 @@ async fn test_issuance_accept_openid4vc_with_tx_code() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -2271,7 +2271,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {
@@ -2455,7 +2455,7 @@ async fn test_issuance_accept_openid4vc_update_from_vc_complex() {
         .create(
             "test",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 format: Some("JSON_LD_CLASSIC".into()),
                 claim_schemas: Some(vec![
@@ -2851,7 +2851,7 @@ async fn test_waa_pop_iss_equals_waa_sub() {
         .create(
             "test_waa_pop",
             &organisation,
-            "NONE",
+            None,
             TestingCreateSchemaParams {
                 claim_schemas: Some(vec![CredentialSchemaClaim {
                     schema: ClaimSchema {

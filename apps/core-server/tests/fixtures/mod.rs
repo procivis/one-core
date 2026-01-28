@@ -537,7 +537,7 @@ pub async fn create_credential_schema(
         organisation: Some(organisation.to_owned()),
         deleted_at: params.deleted_at,
         format: params.format.unwrap_or("JWT".into()),
-        revocation_method: params.revocation_method.unwrap_or("NONE".into()),
+        revocation_method: params.revocation_method,
         claim_schemas: Some(claim_schemas),
         layout_type: params.layout_type.unwrap_or(LayoutType::Card),
         layout_properties: params.layout_properties,
@@ -559,7 +559,7 @@ pub async fn create_credential_schema_with_claims(
     db_conn: &DbConn,
     name: &str,
     organisation: &Organisation,
-    revocation_method: impl Into<RevocationMethodId>,
+    revocation_method: impl Into<Option<RevocationMethodId>>,
     claims: &[(Uuid, &str, bool, &str, bool)],
 ) -> CredentialSchema {
     let data_layer = DataLayer::build(db_conn.to_owned(), vec![]);
