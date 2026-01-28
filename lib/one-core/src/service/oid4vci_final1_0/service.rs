@@ -218,7 +218,16 @@ impl OID4VCIFinal1_0Service {
             issuer: credential_issuer
                 .parse()
                 .map_err(|e| ServiceError::MappingError(format!("Invalid issuer URL: {e}")))?,
-            authorization_endpoint: None,
+            authorization_endpoint: Some(
+                // ONE-8318: required in iOS EUDI wallet
+                format!("{protocol_base_url}/{credential_schema_id}/authorize")
+                    .parse()
+                    .map_err(|e| {
+                        ServiceError::MappingError(format!(
+                            "Invalid authorization endpoint URL: {e}"
+                        ))
+                    })?,
+            ),
             token_endpoint: Some(
                 format!("{protocol_base_url}/{credential_schema_id}/token")
                     .parse()
