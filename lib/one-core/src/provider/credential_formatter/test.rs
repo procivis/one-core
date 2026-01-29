@@ -48,6 +48,7 @@ fn generate_credential_detail_response(
             schema_id: "".to_string(),
             layout_properties: None,
             allow_suspension: true,
+            requires_app_attestation: false,
         },
         issuer: None,
         issuer_certificate: None,

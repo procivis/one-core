@@ -267,6 +267,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
+    pub requires_app_attestation: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]

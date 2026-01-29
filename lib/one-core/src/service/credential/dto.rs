@@ -117,6 +117,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

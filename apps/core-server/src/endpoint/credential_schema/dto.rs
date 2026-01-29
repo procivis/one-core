@@ -430,6 +430,9 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
+    #[serde(default)]
+    #[try_into(infallible)]
+    pub requires_app_attestation: Option<bool>,
 }
 
 #[options_not_nullable]

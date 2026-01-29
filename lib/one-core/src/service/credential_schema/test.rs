@@ -2945,6 +2945,7 @@ async fn test_import_credential_schema_success() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: Some(true),
+                requires_app_attestation: Some(true),
             },
         })
         .await
@@ -3157,6 +3158,7 @@ async fn test_credential_schema_ops_session_org_mismatch() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
+                requires_app_attestation: None,
             },
         })
         .await;

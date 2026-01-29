@@ -299,6 +299,10 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential_schema::Column::AllowSuspension,
             "credential_schema_allow_suspension",
         )
+        .column_as(
+            credential_schema::Column::RequiresAppAttestation,
+            "credential_schema_requires_app_attestation",
+        )
         .join(
             JoinType::LeftJoin,
             credential::Relation::IssuerIdentifier.def(),

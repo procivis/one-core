@@ -1153,6 +1153,7 @@ pub(crate) fn map_to_import_credential_schema_request(
             schema_id,
             imported_source_url,
             allow_suspension: Some(false),
+            requires_app_attestation: None,
         },
     })
 }

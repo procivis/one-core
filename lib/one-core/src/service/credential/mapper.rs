@@ -552,6 +552,7 @@ impl TryFrom<CredentialSchema> for DetailCredentialSchemaResponseDTO {
             layout_type: value.layout_type.into(),
             layout_properties: value.layout_properties.map(Into::into),
             allow_suspension: value.allow_suspension,
+            requires_app_attestation: value.requires_app_attestation,
         })
     }
 }

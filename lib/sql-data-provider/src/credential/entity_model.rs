@@ -36,6 +36,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_schema_id: String,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,
+    pub credential_schema_requires_app_attestation: bool,
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
 
     pub issuer_identifier_id: Option<IdentifierId>,

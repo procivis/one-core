@@ -111,6 +111,7 @@ fn test_parse_import_credential_schema_success() {
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: Some(true),
+            requires_app_attestation: Some(true),
         },
     };
 
@@ -198,6 +199,7 @@ fn test_parse_import_with_nested_claims_success() {
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: Some(true),
+            requires_app_attestation: Some(true),
         },
     };
 

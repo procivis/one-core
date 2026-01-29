@@ -209,7 +209,7 @@ pub(super) fn credential_list_model_to_repository_model(
             .credential_schema_schema_layout_properties
             .map(|layout_properties| layout_properties.into()),
         allow_suspension: credential.credential_schema_allow_suspension,
-        requires_app_attestation: false,
+        requires_app_attestation: credential.credential_schema_requires_app_attestation,
     };
 
     let issuer_identifier = match credential.issuer_identifier_id {
