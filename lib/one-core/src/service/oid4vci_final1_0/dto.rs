@@ -31,6 +31,8 @@ pub struct OAuthAuthorizationServerMetadataResponseDTO {
     #[serde(default)]
     pub code_challenge_methods_supported: Vec<String>,
     #[serde(default)]
+    pub scopes_supported: Vec<String>,
+    #[serde(default)]
     pub response_types_supported: Vec<String>,
     #[serde(default)]
     pub grant_types_supported: Vec<String>,
@@ -59,6 +61,7 @@ impl From<OAuthAuthorizationServerMetadata> for OAuthAuthorizationServerMetadata
                 })
                 .collect(),
             jwks_uri: value.jwks_uri,
+            scopes_supported: value.scopes_supported,
             response_types_supported: value.response_types_supported,
             grant_types_supported: value.grant_types_supported,
             token_endpoint_auth_methods_supported: value.token_endpoint_auth_methods_supported,

@@ -238,6 +238,7 @@ impl OID4VCIFinal1_0Service {
             jwks_uri: None,
             pushed_authorization_request_endpoint: None,
             code_challenge_methods_supported: vec![],
+            scopes_supported: vec!["openid".to_string()],
             response_types_supported: vec!["code".to_string(), "token".to_string()],
             grant_types_supported: vec![
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code".to_string(),

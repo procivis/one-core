@@ -72,6 +72,8 @@ pub(crate) struct OAuthAuthorizationServerMetadata {
     #[serde(default)]
     pub code_challenge_methods_supported: Vec<OAuthCodeChallengeMethod>,
     #[serde(default)]
+    pub scopes_supported: Vec<String>,
+    #[serde(default)]
     pub response_types_supported: Vec<String>,
     #[serde(default)]
     pub grant_types_supported: Vec<String>,

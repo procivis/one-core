@@ -53,6 +53,11 @@ async fn test_oauth_authorization_server_metadata() {
         resp["token_endpoint"]
     );
 
+    // Check scopes supported (must include "openid" per RFC 8414)
+    let scopes = resp["scopes_supported"].as_array().unwrap();
+    assert_eq!(scopes.len(), 1);
+    assert_eq!(scopes[0], "openid");
+
     // Check response types supported
     let response_types = resp["response_types_supported"].as_array().unwrap();
     assert_eq!(response_types.len(), 2);
@@ -133,6 +138,11 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
         format!("{issuer}/{}/token", credential_schema.id),
         resp["token_endpoint"]
     );
+
+    // Check scopes supported (must include "openid" per RFC 8414)
+    let scopes = resp["scopes_supported"].as_array().unwrap();
+    assert_eq!(scopes.len(), 1);
+    assert_eq!(scopes[0], "openid");
 
     // Check response types supported
     let response_types = resp["response_types_supported"].as_array().unwrap();

@@ -175,6 +175,8 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub code_challenge_methods_supported: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub scopes_supported: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub response_types_supported: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub grant_types_supported: Vec<String>,
