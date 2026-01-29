@@ -223,6 +223,8 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub layout_type: Option<LayoutTypeBindingEnum>,
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    pub allow_suspension: bool,
+    pub requires_app_attestation: bool,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -238,6 +240,7 @@ pub struct CredentialSchemaBindingDTO {
     pub layout_type: Option<LayoutTypeBindingEnum>,
     pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
+    pub allow_suspension: bool,
     pub requires_app_attestation: bool,
 }
 

@@ -186,6 +186,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             imported_source_url: value.imported_source_url,
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
+            allow_suspension: value.allow_suspension,
             requires_app_attestation: value.requires_app_attestation,
         }
     }
@@ -350,6 +351,7 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             schema_id: value.schema_id,
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
+            allow_suspension: value.allow_suspension,
             requires_app_attestation: value.requires_app_attestation,
         }
     }
