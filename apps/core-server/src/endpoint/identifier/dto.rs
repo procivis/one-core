@@ -41,18 +41,22 @@ use crate::serialize::front_time;
 pub(crate) struct CreateIdentifierRequestRestDTO {
     #[try_into(infallible)]
     pub name: String,
+    /// Create a DID identifier.
     #[try_into(with_fn = convert_inner, infallible)]
     pub did: Option<CreateIdentifierDidRequestRestDTO>,
     #[try_into(infallible)]
-    /// Deprecated. Use the `key` field instead.
+    /// Deprecated. Use `key` instead.
     #[schema(deprecated = true, nullable = false)]
     pub key_id: Option<KeyId>,
+    /// Create a key identifier.
     #[try_into(with_fn = convert_inner, infallible)]
     pub key: Option<CreateIdentifierKeyRequestRestDTO>,
+    /// Create a certificate identifier.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub certificates: Option<Vec<CreateCertificateRequestRestDTO>>,
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
+    /// Create a CA identifier.
     #[try_into(with_fn = convert_inner_of_inner, infallible)]
     pub certificate_authorities: Option<Vec<CreateCertificateAuthorityRequestRestDTO>>,
 }
@@ -77,6 +81,9 @@ pub(crate) struct CreateIdentifierDidRequestRestDTO {
 #[into(CreateCertificateRequestDTO)]
 pub(crate) struct CreateCertificateRequestRestDTO {
     pub name: Option<String>,
+    /// Full certificate chain in PEM format, where the leaf certificate is
+    /// signed by the key specified in keyId. The chain should include all
+    /// certificates from the leaf up to the root.
     pub chain: String,
     pub key_id: KeyId,
 }
@@ -96,8 +103,14 @@ pub(crate) struct CreateIdentifierKeyRequestRestDTO {
 pub(crate) struct CreateCertificateAuthorityRequestRestDTO {
     pub key_id: KeyId,
     pub name: Option<String>,
+    /// Full certificate chain in PEM format, where the leaf certificate
+    /// is a CA certificate signed by the key specified in keyId. The
+    /// chain should include all certificates from the leaf CA up to the root.
     pub chain: Option<String>,
     #[into(with_fn = convert_inner)]
+    /// Configuration to generate a self-signed root CA. Provide certificate
+    /// subject details and validity period. The system creates and signs the
+    /// certificate using the specified keyId.
     pub self_signed: Option<CreateSelfSignedCertificateAuthorityRequestRestDTO>,
 }
 

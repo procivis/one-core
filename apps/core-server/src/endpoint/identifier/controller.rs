@@ -28,31 +28,38 @@ use crate::router::AppState;
     ),
     summary = "Create an identifier",
     description = indoc::formatdoc! {"
-    Creates a new identifier to use for issuing, holding, or verifying. All
-    identifiers have an identifier ID for credential operations and a separate
-    ID for managing the underlying resource.
+    Creates a new identifier to use for issuing or verifying.
 
-    Use the identifier ID with the `issuer` field when issuing credentials,
-    the `verifier` field when verifying credentials, and the `identifierId`
-    field when interacting as a holder. Use the resource ID
-    (DID ID, key ID, or certificate ID) with their respective APIs for
-    resource-specific management operations.
+    All identifiers have an identifier ID used in credential operations
+    (like the `issuer` field). The underlying resource (key, certificate,
+    DID, or CA) has its own separate ID used with resource-specific APIs
+    for management operations.
 
-    For a DID identifier: Specify a name, the method, and the keys
-    to use for the verification methods. The system assigns an ID to both
-    the identifier and the DID. Use the DID ID with the DID API for operations
-    like deactivation.
+    For a key identifier: First, create the key using the key API. Then,
+    use this API, passing the key ID and a name for the identifier. The
+    identifier ID is used for credential operations. The key ID is used
+    with the key API for key-specific management operations.
 
-    For a key identifier: Create the key first using the key API. Pass
-    the key ID and a name for the identifier. The system assigns an ID
-    to the identifier. Use the key ID with the key API for key-specific
-    management operations.
-
-    For a certificate identifier: Use the key API to generate a key and a
-    Certificate Signing Request (CSR). When you have a signed certificate,
-    pass the certificate in PEM format, also specifying the original key ID
-    and a name for the identifier. Use the certificate ID with the certificate
-    API for certificate operations.
+    For a certificate identifier: Use the key API to generate a key and
+    a Certificate Signing Request (CSR). When you have a signed certificate,
+    pass the certificate in PEM format, also specifying the original key
+    ID and a name for the identifier. The identifier ID is used for
+    credential operations. The certificate ID is used with the certificate
+    API for certificate-specific operations like viewing certificate details
+    or checking expiration.
+    
+    For a Certificate Authority identifier: Import an existing certificate
+    chain by passing the full chain in PEM format (where the leaf certificate
+    is a CA certificate signed by the key specified in `keyId`). Alternatively,
+    generate a self-signed root CA by specifying a key and passing the
+    certificate subject information in `selfSigned`. The identifier ID is used
+    for credential operations. The CA certificate ID is used with the
+    certificate API for CA-specific operations.
+    
+    For a DID identifier: Specify a name, the DID method, and the key(s) to
+    use for the verification methods. The system assigns an identifier ID and
+    a DID. The identifier ID is used for credential operations. The DID ID is
+    used with the DID API for operations like deactivation or resolution.
     "},
 )]
 #[require_permissions(Permission::IdentifierCreate)]

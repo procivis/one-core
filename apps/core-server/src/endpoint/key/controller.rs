@@ -152,7 +152,7 @@ pub(crate) async fn get_key_list(
     request_body = KeyGenerateCSRRequestRestDTO,
     responses(CreatedOrErrorResponse<KeyGenerateCSRResponseRestDTO>),
     params(
-        ("id" = KeyId, Path, description = "Key id. Must be either `ECDSA` or `EDDSA`.")
+        ("id" = KeyId, Path, description = "Key ID. Must be either `ECDSA` or `EDDSA`.")
     ),
     tag = "key",
     security(
@@ -160,8 +160,11 @@ pub(crate) async fn get_key_list(
     ),
     summary = "Generate a CSR",
     description = indoc::formatdoc! {"
-        Generates a Certificate Signing Request (CSR). These are used to create mDL DS certificates, enabling mdoc issuance.
-        Related guide: [ISO mdoc configuration](/configure/iso-mdoc)
+        Generates a Certificate Signing Request (CSR). Supports mDL document
+        signing certificates (for mdoc issuance) and Certificate Authority
+        (CA) certificates.
+        
+        Use the POST /identifier endpoint to import signed certificates and CAs.
     "},
 )]
 #[require_permissions(Permission::KeyGenerateCsr)]
