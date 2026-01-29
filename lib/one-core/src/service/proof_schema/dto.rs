@@ -149,6 +149,8 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub imported_source_url: String,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub allow_suspension: Option<bool>,
+    pub requires_app_attestation: Option<bool>,
 }
 
 #[derive(Clone, Debug)]

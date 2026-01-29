@@ -171,6 +171,10 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     pub layout_type: Option<CredentialSchemaLayoutType>,
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
+    #[try_into(infallible)]
+    pub allow_suspension: Option<bool>,
+    #[try_into(infallible)]
+    pub requires_app_attestation: Option<bool>,
 }
 
 // list endpoint
