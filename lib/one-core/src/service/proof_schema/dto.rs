@@ -141,6 +141,7 @@ pub struct ImportProofSchemaCredentialSchemaDTO {
     pub id: CredentialSchemaId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
+    pub deleted_at: Option<OffsetDateTime>,
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: Option<RevocationMethodId>,

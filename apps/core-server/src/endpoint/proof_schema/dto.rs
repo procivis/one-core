@@ -155,6 +155,12 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[serde(deserialize_with = "time::serde::rfc3339::deserialize")]
     #[try_into(infallible)]
     pub last_modified: OffsetDateTime,
+    #[serde(
+        default,
+        deserialize_with = "time::serde::rfc3339::option::deserialize"
+    )]
+    #[try_into(infallible)]
+    pub deleted_at: Option<OffsetDateTime>,
     #[try_into(infallible)]
     pub name: String,
     #[try_into(infallible)]
@@ -312,4 +318,75 @@ pub(crate) struct ProofInputSchemaResponseRestDTO {
 #[from(ProofSchemaShareResponseDTO)]
 pub(crate) struct ProofSchemaShareResponseRestDTO {
     pub url: String,
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::endpoint::credential_schema::dto::{
+        CredentialSchemaBackgroundPropertiesRestDTO, CredentialSchemaCodePropertiesRestDTO,
+        CredentialSchemaCodeTypeRestEnum, CredentialSchemaLogoPropertiesRestDTO,
+    };
+
+    #[test]
+    fn test_shared_schema_deserializes_into_import_schema() {
+        let shared = GetProofSchemaResponseRestDTO {
+            id: Uuid::new_v4(),
+            created_date: OffsetDateTime::now_utc(),
+            last_modified: OffsetDateTime::now_utc(),
+            name: "name".to_string(),
+            expire_duration: 42,
+            imported_source_url: Some("imported_source_url".to_string()),
+            organisation_id: Uuid::new_v4().into(),
+            proof_input_schemas: vec![ProofInputSchemaResponseRestDTO {
+                claim_schemas: vec![ProofClaimSchemaResponseRestDTO {
+                    id: Uuid::new_v4(),
+                    requested: true,
+                    required: true,
+                    key: "key".to_string(),
+                    data_type: "data_type".to_string(),
+                    claims: vec![],
+                    array: true,
+                }],
+                credential_schema: CredentialSchemaListItemResponseRestDTO {
+                    id: Uuid::new_v4(),
+                    created_date: OffsetDateTime::now_utc(),
+                    last_modified: OffsetDateTime::now_utc(),
+                    deleted_at: Some(OffsetDateTime::now_utc()),
+                    name: "name".to_string(),
+                    format: "format".into(),
+                    revocation_method: Some("method".into()),
+                    key_storage_security: Some(KeyStorageSecurityRestEnum::Basic),
+                    schema_id: "schema_id".to_string(),
+                    imported_source_url: "imported_source_url".to_string(),
+                    layout_type: Some(CredentialSchemaLayoutType::Card),
+                    layout_properties: Some(CredentialSchemaLayoutPropertiesRestDTO {
+                        background: Some(CredentialSchemaBackgroundPropertiesRestDTO {
+                            color: Some("color".to_string()),
+                            image: None,
+                        }),
+                        logo: Some(CredentialSchemaLogoPropertiesRestDTO {
+                            font_color: Some("font_color".to_string()),
+                            background_color: Some("background_color".to_string()),
+                            image: None,
+                        }),
+                        primary_attribute: Some("primary_attribute".to_string()),
+                        secondary_attribute: Some("secondary_attribute".to_string()),
+                        picture_attribute: Some("picture_attribute".to_string()),
+                        code: Some(CredentialSchemaCodePropertiesRestDTO {
+                            attribute: "attribute".to_string(),
+                            r#type: CredentialSchemaCodeTypeRestEnum::Barcode,
+                        }),
+                    }),
+                    allow_suspension: true,
+                    requires_app_attestation: true,
+                },
+                validity_constraint: Some(42),
+            }],
+        };
+
+        let serialized = serde_json::to_value(shared).unwrap();
+
+        serde_json::from_value::<ImportProofSchemaRestDTO>(serialized).unwrap();
+    }
 }

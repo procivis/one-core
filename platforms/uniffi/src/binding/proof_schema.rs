@@ -19,7 +19,7 @@ use super::credential_schema::{
 };
 use super::mapper::optional_time;
 use crate::error::{BindingError, ErrorResponseBindingDTO};
-use crate::utils::{TimestampFormat, into_id, into_timestamp};
+use crate::utils::{TimestampFormat, into_id, into_timestamp, into_timestamp_opt};
 
 #[uniffi::export(async_runtime = "tokio")]
 impl OneCoreBinding {
@@ -199,6 +199,8 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     pub created_date: String,
     #[try_into(with_fn_ref = into_timestamp)]
     pub last_modified: String,
+    #[try_into(with_fn = into_timestamp_opt)]
+    pub deleted_at: Option<String>,
     #[try_into(infallible)]
     pub name: String,
     #[try_into(infallible)]
