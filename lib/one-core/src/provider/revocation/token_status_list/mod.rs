@@ -731,6 +731,7 @@ impl TokenStatusList {
         }
     }
 
+    #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
     async fn start_new_list_for_entity(
         &self,
         entity_id: RevocationListEntityId,
@@ -827,6 +828,7 @@ pub(crate) fn credential_status_from_sdjwt_status(
 }
 
 #[expect(clippy::too_many_arguments)]
+#[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
 async fn format_status_list_credential(
     revocation_list_id: &RevocationListId,
     issuer_identifier: &Identifier,
