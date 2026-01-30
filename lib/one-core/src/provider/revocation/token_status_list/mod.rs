@@ -607,14 +607,46 @@ impl TokenStatusList {
         issuer_identifier: &'a Identifier,
         issuer_certificate: Option<&'a Certificate>,
     ) -> Result<(RevocationListEntryId, CredentialRevocationInfo), RevocationError> {
-        let mut list_id = None;
-        let mut entry: Option<(RevocationListEntryId, usize)> = None;
-        let tx_ok = self
+        let maybe_list_and_entry_id = self
             .transaction_manager
-            .transaction(
-                async {
-                    let current_list = self
-                        .revocation_list_repository
+            .tx(async {
+                let current_list = self
+                    .revocation_list_repository
+                    .get_revocation_by_issuer_identifier_id(
+                        issuer_identifier.id,
+                        issuer_certificate.map(|c| c.id),
+                        RevocationListPurpose::RevocationAndSuspension,
+                        &self.config_id,
+                        &Default::default(),
+                    )
+                    .await?;
+
+                Ok(match current_list {
+                    Some(list) => (list.id, None),
+                    None => {
+                        let (new_list_id, new_entry_id) = self
+                            .start_new_list_for_entity(
+                                entity_id.clone(),
+                                issuer_identifier,
+                                issuer_certificate,
+                            )
+                            .await?;
+                        (new_list_id, Some(new_entry_id))
+                    }
+                })
+            }
+            .boxed())
+            .await
+            .map_err(|e| e.into())
+            .flatten();
+
+        let (list_id, maybe_entry_id) = match maybe_list_and_entry_id {
+            Ok((list_id, maybe_entry_id)) => (list_id, maybe_entry_id),
+            Err(RevocationError::DataLayerError(DataLayerError::AlreadyExists)) => {
+                // this means the transaction failed, and a new list was created in parallel
+                // fetch the newly created list instead
+                (
+                    self.revocation_list_repository
                         .get_revocation_by_issuer_identifier_id(
                             issuer_identifier.id,
                             issuer_certificate.map(|c| c.id),
@@ -622,57 +654,21 @@ impl TokenStatusList {
                             &self.config_id,
                             &Default::default(),
                         )
-                        .await?;
-
-                    match current_list {
-                        Some(list) => list_id = Some(list.id),
-                        None => {
-                            let (new_list_id, new_entry_id) = self
-                                .start_new_list_for_entity(
-                                    entity_id.clone(),
-                                    issuer_identifier,
-                                    issuer_certificate,
-                                )
-                                .await?;
-                            list_id = Some(new_list_id);
-                            entry = Some((new_entry_id, 0));
-                        }
-                    }
-
-                    Ok(())
-                }
-                .boxed(),
-            )
-            .await
-            .is_ok_and(|res| res.is_ok());
-
-        if !tx_ok {
-            list_id = None;
-            entry = None;
-        }
-
-        let list_id = if let Some(list_id) = list_id {
-            list_id
-        } else {
-            // this means the transaction failed, and a new list was created in parallel
-            // fetch the newly created list instead
-            self.revocation_list_repository
-                .get_revocation_by_issuer_identifier_id(
-                    issuer_identifier.id,
-                    issuer_certificate.map(|c| c.id),
-                    RevocationListPurpose::RevocationAndSuspension,
-                    &self.config_id,
-                    &Default::default(),
+                        .await?
+                        .ok_or(RevocationError::MappingError(
+                            "No revocation list found".to_string(),
+                        ))?
+                        .id,
+                    None,
                 )
-                .await?
-                .ok_or(RevocationError::MappingError(
-                    "No revocation list found".to_string(),
-                ))?
-                .id
+            }
+            Err(e) => {
+                return Err(e);
+            }
         };
 
-        let (entry_id, entry_index) = match entry {
-            Some((id, index)) => (id, index),
+        let (entry_id, entry_index) = match maybe_entry_id {
+            Some(entry_id) => (entry_id, 0),
             None => self.add_entity_to_list(list_id, entity_id).await?,
         };
 
