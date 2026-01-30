@@ -177,35 +177,36 @@ impl RevocationMethod for CRLRevocation {
 
                 Ok(match current_list {
                     Some(list) => list.id,
-                    None => self
-                        .start_new_list(issuer, certificate)
-                        .await
-                        .map_err(|e| DataLayerError::TransactionError(e.to_string()))?,
+                    None => self.start_new_list(issuer, certificate).await?,
                 })
             }
             .boxed())
             .await
-            .flatten()
-            .ok();
+            .map_err(|e| e.into())
+            .flatten();
 
-        let list_id = if let Some(list_id) = list_id {
-            list_id
-        } else {
-            // this means the transaction failed, and a new list was created in parallel
-            // fetch the newly created list instead
-            self.revocation_list_repository
-                .get_revocation_by_issuer_identifier_id(
-                    issuer.id,
-                    Some(certificate.id),
-                    RevocationListPurpose::Revocation,
-                    &self.config_id,
-                    &Default::default(),
-                )
-                .await?
-                .ok_or(RevocationError::MappingError(
-                    "No revocation list found".to_string(),
-                ))?
-                .id
+        let list_id = match list_id {
+            Ok(list_id) => list_id,
+            Err(RevocationError::DataLayerError(DataLayerError::AlreadyExists)) => {
+                // this means the transaction failed, and a new list was created in parallel
+                // fetch the newly created list instead
+                self.revocation_list_repository
+                    .get_revocation_by_issuer_identifier_id(
+                        issuer.id,
+                        Some(certificate.id),
+                        RevocationListPurpose::Revocation,
+                        &self.config_id,
+                        &Default::default(),
+                    )
+                    .await?
+                    .ok_or(RevocationError::MappingError(
+                        "No revocation list found".to_string(),
+                    ))?
+                    .id
+            }
+            Err(e) => {
+                return Err(e);
+            }
         };
 
         let serial = CertificateSerial::new_random();
