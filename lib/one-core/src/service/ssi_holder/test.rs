@@ -1370,6 +1370,7 @@ async fn test_initiate_issuance() {
                 challenge_endpoint: None,
                 client_attestation_signing_alg_values_supported: None,
                 client_attestation_pop_signing_alg_values_supported: None,
+                dpop_signing_alg_values_supported: None,
             }),
         )
         .expect(1)
@@ -1545,6 +1546,7 @@ async fn test_initiate_issuance_pkce() {
                 challenge_endpoint: None,
                 client_attestation_signing_alg_values_supported: None,
                 client_attestation_pop_signing_alg_values_supported: None,
+                dpop_signing_alg_values_supported: None,
             }),
         )
         .expect(1)

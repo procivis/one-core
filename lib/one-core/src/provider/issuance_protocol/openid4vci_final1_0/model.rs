@@ -93,6 +93,9 @@ pub(crate) struct OAuthAuthorizationServerMetadata {
     /// <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1>
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dpop_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 /// [IANA registry](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#pkce-code-challenge-method)

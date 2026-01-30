@@ -41,6 +41,7 @@ pub struct OAuthAuthorizationServerMetadataResponseDTO {
     pub challenge_endpoint: Option<String>,
     pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+    pub dpop_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 impl From<OAuthAuthorizationServerMetadata> for OAuthAuthorizationServerMetadataResponseDTO {
@@ -70,6 +71,7 @@ impl From<OAuthAuthorizationServerMetadata> for OAuthAuthorizationServerMetadata
                 .client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported: value
                 .client_attestation_pop_signing_alg_values_supported,
+            dpop_signing_alg_values_supported: value.dpop_signing_alg_values_supported,
         }
     }
 }

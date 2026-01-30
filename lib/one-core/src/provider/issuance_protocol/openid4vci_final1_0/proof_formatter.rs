@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 use shared_types::DidValue;
 use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
-use tokio_util::either::Either;
 
 use crate::proto::jwt::model::{DecomposedJwt, JWTPayload};
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
@@ -12,36 +11,38 @@ use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{
     AuthenticationFn, PublicKeySource, TokenVerifier,
 };
+use crate::service::wallet_provider::dto::WalletUnitAttestationClaims;
 
 const JWT_PROOF_TYPE: &str = "openid4vci-proof+jwt";
 
-pub struct OpenID4VCIProofJWTFormatter {}
+pub(crate) struct OpenID4VCIProofJWTFormatter;
 
 #[derive(Debug, Default, Deserialize)]
-pub struct ProofOfPossession {
+struct ProofOfPossession {
     pub nonce: Option<String>,
 }
 
-impl OpenID4VCIProofJWTFormatter {
-    pub async fn verify_proof(
-        jwt: &str,
-        verifier: Box<dyn TokenVerifier>,
-    ) -> Result<
-        (
-            Either<(DidValue, String), PublicJwk>,
-            Option<String>,
-            Option<String>,
-        ),
-        FormatterError,
-    > {
-        let DecomposedJwt::<ProofOfPossession> {
-            header,
-            payload,
-            signature,
-            unverified_jwt,
-        } = Jwt::decompose_token(jwt)?;
+#[derive(Debug)]
+pub(crate) enum OpenID4VCIProofHolderBinding {
+    Did { did: DidValue, key_id: String },
+    Jwk(PublicJwk),
+}
 
-        match header.r#type.as_deref() {
+#[derive(Debug)]
+pub(crate) struct OpenID4VCIVerifiedProof {
+    pub holder_binding: OpenID4VCIProofHolderBinding,
+    pub nonce: Option<String>,
+    pub key_attestation: Option<String>,
+}
+
+impl OpenID4VCIProofJWTFormatter {
+    pub(crate) async fn verify_proof(
+        jwt: &str,
+        verifier: &dyn TokenVerifier,
+    ) -> Result<OpenID4VCIVerifiedProof, FormatterError> {
+        let proof_jwt: DecomposedJwt<ProofOfPossession> = Jwt::decompose_token(jwt)?;
+
+        match proof_jwt.header.r#type.as_deref() {
             Some(JWT_PROOF_TYPE) => {}
             Some(other) => {
                 return Err(FormatterError::CouldNotVerify(format!(
@@ -55,7 +56,10 @@ impl OpenID4VCIProofJWTFormatter {
             }
         }
 
-        let result = match (header.key_id.as_ref(), header.jwk.clone()) {
+        let (holder_binding, public_key_source) = match (
+            proof_jwt.header.key_id.as_ref(),
+            proof_jwt.header.jwk.as_ref(),
+        ) {
             (Some(_), Some(_)) => {
                 return Err(FormatterError::CouldNotVerify(
                     "Only kid or embedded jwk allowed in proof.jwt but not both".to_string(),
@@ -66,64 +70,78 @@ impl OpenID4VCIProofJWTFormatter {
                     "Missing kid or jwk".to_string(),
                 ));
             }
+            (None, Some(jwk)) => (
+                OpenID4VCIProofHolderBinding::Jwk(jwk.to_owned()),
+                jwk.into(),
+            ),
             (Some(key_id), None) => {
-                let (did, fragment) = match key_id.find('#') {
-                    // key_id is verificationMethod id
-                    Some(idx) => (&key_id[..idx], Some(key_id.as_str())),
-                    None => (key_id.as_str(), None),
-                };
+                if key_id.starts_with("did:") {
+                    let (did, fragment) = match key_id.find('#') {
+                        // key_id is verificationMethod id
+                        Some(idx) => (&key_id[..idx], Some(key_id.as_str())),
+                        None => (key_id.as_str(), None),
+                    };
 
-                let did: DidValue = did
-                    .parse()
-                    .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid did: {e}")))?;
+                    let did: DidValue = did
+                        .parse()
+                        .map_err(|e| FormatterError::CouldNotVerify(format!("Invalid did: {e}")))?;
 
-                let (_, key_algorithm) = verifier
-                    .key_algorithm_provider()
-                    .key_algorithm_from_jose_alg(&header.algorithm)
-                    .ok_or(FormatterError::CouldNotVerify(
-                        "Invalid key algorithm".to_string(),
-                    ))?;
-
-                let params = PublicKeySource::Did {
-                    did: Cow::Borrowed(&did),
-                    key_id: fragment,
-                };
-                verifier
-                    .verify(
-                        params,
-                        key_algorithm.algorithm_type(),
-                        unverified_jwt.as_bytes(),
-                        &signature,
+                    (
+                        OpenID4VCIProofHolderBinding::Did {
+                            did: did.clone(),
+                            key_id: key_id.clone(),
+                        },
+                        PublicKeySource::Did {
+                            did: Cow::Owned(did),
+                            key_id: fragment,
+                        },
                     )
-                    .await
-                    .map_err(|e| {
-                        FormatterError::CouldNotVerify(format!("Failed to verify proof.jwt: {e}"))
+                } else if let Some(key_attestation_jwt) = &proof_jwt.header.key_attestation {
+                    // https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0.html#appendix-F.1-10
+                    // public key is contained inside the key attestation
+                    let attested_key_index: usize = key_id.parse().map_err(|e| {
+                        FormatterError::CouldNotVerify(format!("Invalid proof JWT kid: {e}"))
                     })?;
-                Either::Left((did, key_id.clone()))
-            }
-            (None, Some(jwk)) => {
-                let key_handle =
-                    verifier
-                        .key_algorithm_provider()
-                        .parse_jwk(&jwk)
-                        .map_err(|e| {
-                            FormatterError::CouldNotVerify(format!(
-                                "Could not parse jwk from proof.jwt: {e}"
-                            ))
-                        })?;
 
-                key_handle
-                    .key
-                    .verify(unverified_jwt.as_bytes(), &signature)
-                    .map_err(|_| FormatterError::CouldNotVerify("Invalid signature".to_string()))?;
+                    let wua =
+                        Jwt::<WalletUnitAttestationClaims>::decompose_token(key_attestation_jwt)?;
 
-                Either::Right(jwk)
+                    let attested_key = wua
+                        .payload
+                        .custom
+                        .attested_keys
+                        .get(attested_key_index)
+                        .ok_or(FormatterError::CouldNotVerify(
+                          format!("Invalid key attestation: missing attested key, index: {attested_key_index}")
+                        ))?
+                        .to_owned();
+
+                    (
+                        OpenID4VCIProofHolderBinding::Jwk(attested_key.to_owned()),
+                        PublicKeySource::Jwk {
+                            jwk: Cow::Owned(attested_key),
+                        },
+                    )
+                } else {
+                    return Err(FormatterError::CouldNotVerify(format!(
+                        "Invalid proof JWT kid: `{key_id}`"
+                    )));
+                }
             }
         };
-        Ok((result, payload.custom.nonce, header.key_attestation))
+
+        proof_jwt
+            .verify_signature(public_key_source, verifier)
+            .await?;
+
+        Ok(OpenID4VCIVerifiedProof {
+            holder_binding,
+            nonce: proof_jwt.payload.custom.nonce,
+            key_attestation: proof_jwt.header.key_attestation,
+        })
     }
 
-    pub async fn format_proof(
+    pub(crate) async fn format_proof(
         issuer_url: String,
         jwk: Option<PublicJwk>,
         nonce: Option<String>,
@@ -203,7 +221,9 @@ mod test {
         .await
         .unwrap();
 
-        let (_, _, key_attestation) = OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
+        let OpenID4VCIVerifiedProof {
+            key_attestation, ..
+        } = OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier().as_ref())
             .await
             .unwrap();
         assert_eq!(key_attestation, None);
@@ -225,10 +245,13 @@ mod test {
         .await
         .unwrap();
 
-        let (_, nonce, key_attestation) =
-            OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier())
-                .await
-                .unwrap();
+        let OpenID4VCIVerifiedProof {
+            nonce,
+            key_attestation,
+            ..
+        } = OpenID4VCIProofJWTFormatter::verify_proof(&proof, verifier().as_ref())
+            .await
+            .unwrap();
         assert_eq!(nonce, Some("nonce".to_string()));
         assert_eq!(key_attestation, None);
     }

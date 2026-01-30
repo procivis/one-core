@@ -8,7 +8,6 @@ use secrecy::SecretString;
 use shared_types::{CredentialId, CredentialSchemaId, InteractionId};
 use standardized_types::oauth2::dynamic_client_registration::TokenEndpointAuthMethod;
 use time::OffsetDateTime;
-use tokio_util::either::Either;
 use uuid::Uuid;
 
 use super::OID4VCIFinal1_0Service;
@@ -58,7 +57,9 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCINonceResponseDTO, OpenID4VCINotificationEvent, OpenID4VCINotificationRequestDTO,
     OpenID4VCITokenRequestDTO, OpenID4VCITokenResponseDTO, Timestamp,
 };
-use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::OpenID4VCIProofJWTFormatter;
+use crate::provider::issuance_protocol::openid4vci_final1_0::proof_formatter::{
+    OpenID4VCIProofHolderBinding, OpenID4VCIProofJWTFormatter, OpenID4VCIVerifiedProof,
+};
 use crate::provider::issuance_protocol::openid4vci_final1_0::service::{
     create_credential_offer, create_issuer_metadata_response, oidc_issuer_create_token,
     parse_access_token, parse_refresh_token,
@@ -248,6 +249,7 @@ impl OID4VCIFinal1_0Service {
             challenge_endpoint: None,
             client_attestation_signing_alg_values_supported,
             client_attestation_pop_signing_alg_values_supported,
+            dpop_signing_alg_values_supported: Some(vec!["ES256".to_string()]), // necessary for the EUDI wallet to work
         }
         .into())
     }
@@ -404,20 +406,23 @@ impl OID4VCIFinal1_0Service {
             return Err(OpenID4VCIError::InvalidOrMissingProof.into());
         };
 
-        let (verified_proof, nonce, key_attestation) = OpenID4VCIProofJWTFormatter::verify_proof(
-            jwt,
-            Box::new(KeyVerification {
-                key_algorithm_provider: self.key_algorithm_provider.clone(),
-                did_method_provider: self.did_method_provider.clone(),
-                key_role: KeyRole::Authentication,
-                certificate_validator: self.certificate_validator.clone(),
-            }),
-        )
-        .await
-        .map_err(|err| {
-            tracing::debug!("holder proof validation failed: {err}");
-            ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
-        })?;
+        let token_verifier = KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::Authentication,
+            certificate_validator: self.certificate_validator.clone(),
+        };
+
+        let OpenID4VCIVerifiedProof {
+            holder_binding,
+            nonce,
+            key_attestation,
+        } = OpenID4VCIProofJWTFormatter::verify_proof(jwt, &token_verifier)
+            .await
+            .map_err(|err| {
+                tracing::debug!("holder proof validation failed: {err}");
+                ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
+            })?;
 
         let nonce = nonce.ok_or(OpenID4VCIError::InvalidNonce)?;
         let params: OpenID4VCIFinal1Params =
@@ -454,10 +459,11 @@ impl OID4VCIFinal1_0Service {
 
             let attested_keys = validator::validate_key_attestation(
                 key_attestation_jwt,
-                self.key_algorithm_provider.as_ref(),
+                &token_verifier,
                 key_storage_security.into(),
                 params.key_attestation_leeway,
-            )?;
+            )
+            .await?;
 
             let wallet_unit_attestation_status = self
                 .holder_wallet_unit_proto
@@ -508,13 +514,10 @@ impl OID4VCIFinal1_0Service {
                 verify_wua_waa_issuers_match(key_attestation_jwt, &waa)?;
             }
 
-            let proof_signing_key = match &verified_proof {
-                Either::Left((holder_did_value, key_id)) => {
-                    let did_document = self
-                        .did_method_provider
-                        .resolve(holder_did_value)
-                        .await
-                        .map_err(|e| {
+            let proof_signing_key = match &holder_binding {
+                OpenID4VCIProofHolderBinding::Did { did, key_id } => {
+                    let did_document =
+                        self.did_method_provider.resolve(did).await.map_err(|e| {
                             tracing::debug!("failed to resolve DID for key attestation check: {e}");
                             ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
                         })?;
@@ -529,7 +532,7 @@ impl OID4VCIFinal1_0Service {
                             ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidOrMissingProof)
                         })?
                 }
-                Either::Right(jwk) => jwk.clone(),
+                OpenID4VCIProofHolderBinding::Jwk(jwk) => jwk.clone(),
             };
 
             if !attested_keys.contains(&proof_signing_key) {
@@ -546,19 +549,19 @@ impl OID4VCIFinal1_0Service {
             ));
         }
 
-        let (holder_identifier, holder_key_id) = match verified_proof {
-            Either::Left((holder_did_value, holder_key_id)) => {
+        let (holder_identifier, holder_key_id) = match holder_binding {
+            OpenID4VCIProofHolderBinding::Did { did, key_id } => {
                 let (identifier, _) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
                         &schema.organisation,
-                        &IdentifierDetails::Did(holder_did_value),
+                        &IdentifierDetails::Did(did),
                         IdentifierRole::Holder,
                     )
                     .await?;
-                (identifier, holder_key_id)
+                (identifier, key_id)
             }
-            Either::Right(jwk) => {
+            OpenID4VCIProofHolderBinding::Jwk(jwk) => {
                 let (identifier, RemoteIdentifierRelation::Key(key)) = self
                     .identifier_creator
                     .get_or_create_remote_identifier(
@@ -1082,10 +1085,15 @@ impl OID4VCIFinal1_0Service {
             &wallet_app_attestation,
             self.key_algorithm_provider.as_ref(),
         )?;
-        verify_waa_signature(
-            &wallet_app_attestation,
-            self.key_algorithm_provider.as_ref(),
-        )?;
+
+        let verifier = KeyVerification {
+            key_algorithm_provider: self.key_algorithm_provider.clone(),
+            did_method_provider: self.did_method_provider.clone(),
+            key_role: KeyRole::AssertionMethod,
+            certificate_validator: self.certificate_validator.clone(),
+        };
+
+        verify_waa_signature(&wallet_app_attestation, &verifier).await?;
 
         // Extract wallet metadata
         let (name, link) = extract_wallet_metadata(&wallet_app_attestation)?;

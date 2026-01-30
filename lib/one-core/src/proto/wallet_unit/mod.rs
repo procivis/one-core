@@ -5,12 +5,18 @@ use async_trait::async_trait;
 use shared_types::HolderWalletUnitId;
 use time::{Duration, OffsetDateTime};
 
+use crate::mapper::x509::x5c_into_pem_chain;
 use crate::model::holder_wallet_unit::{HolderWalletUnit, HolderWalletUnitRelations};
 use crate::model::key::{Key, KeyRelations};
+use crate::proto::certificate_validator::{
+    CertificateValidationOptions, CertificateValidator, ParsedCertificate,
+};
 use crate::proto::jwt::mapper::{bin_to_b64url_string, string_to_b64url_string};
 use crate::proto::jwt::model::JWTPayload;
 use crate::proto::jwt::{Jwt, JwtPublicKeyInfo};
-use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
+use crate::provider::credential_formatter::model::{
+    CertificateDetails, CredentialStatus, IdentifierDetails,
+};
 use crate::provider::issuance_protocol::model::KeyStorageSecurityLevel;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::error::KeyStorageError;
@@ -69,6 +75,7 @@ pub struct HolderWalletUnitProtoImpl {
     wallet_provider_client: Arc<dyn WalletProviderClient>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
     holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+    certificate_validator: Arc<dyn CertificateValidator>,
 }
 
 impl HolderWalletUnitProtoImpl {
@@ -78,6 +85,7 @@ impl HolderWalletUnitProtoImpl {
         wallet_provider_client: Arc<dyn WalletProviderClient>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
         holder_wallet_unit_repository: Arc<dyn HolderWalletUnitRepository>,
+        certificate_validator: Arc<dyn CertificateValidator>,
     ) -> Self {
         Self {
             key_provider,
@@ -85,6 +93,7 @@ impl HolderWalletUnitProtoImpl {
             wallet_provider_client,
             revocation_method_provider,
             holder_wallet_unit_repository,
+            certificate_validator,
         }
     }
 
@@ -189,11 +198,41 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
             return Ok(WalletUnitStatusCheckResponse::Active);
         };
 
-        let issuer_key = parsed_wallet_unit_attestation.header.jwk.as_ref().ok_or(
-            ServiceError::MappingError("Wallet unit attestation issuer key not found".to_string()),
-        )?;
+        let issuer_identifier = match (
+            parsed_wallet_unit_attestation.header.jwk,
+            parsed_wallet_unit_attestation.header.x5c.as_ref(),
+        ) {
+            (Some(jwk), None) => IdentifierDetails::Key(jwk),
+            (None, Some(x5c)) => {
+                let chain = x5c_into_pem_chain(x5c).map_err(|err| {
+                    ServiceError::MappingError(format!("failed to parse x5c header param: {err}"))
+                })?;
 
-        let issuer_identifier = IdentifierDetails::Key(issuer_key.clone());
+                let ParsedCertificate {
+                    attributes,
+                    subject_common_name,
+                    ..
+                } = self
+                    .certificate_validator
+                    .parse_pem_chain(
+                        &chain,
+                        CertificateValidationOptions::signature_and_revocation(None),
+                    )
+                    .await?;
+
+                IdentifierDetails::Certificate(CertificateDetails {
+                    chain,
+                    fingerprint: attributes.fingerprint,
+                    expiry: attributes.not_after,
+                    subject_common_name,
+                })
+            }
+            _ => {
+                return Err(ServiceError::MappingError(
+                    "Wallet unit attestation issuer not found".to_string(),
+                ));
+            }
+        };
 
         let (revocation_provider, _) = self
             .revocation_method_provider

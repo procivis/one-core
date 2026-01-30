@@ -77,9 +77,9 @@ impl From<EudiWalletInfoConfig> for EudiWalletInfo {
                 wallet_solution_id: value.solution_id,
                 wallet_solution_version: value.solution_version,
             },
-            wscd_info: WscdInfo {
+            wscd_info: Some(WscdInfo {
                 wscd_type: value.wscd_type,
-            },
+            }),
         }
     }
 }

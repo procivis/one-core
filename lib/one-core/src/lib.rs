@@ -261,6 +261,7 @@ impl OneCore {
             Arc::new(HTTPWalletProviderClient::new(client.clone())),
             revocation_method_provider.clone(),
             data_provider.get_holder_wallet_unit_repository(),
+            certificate_validator.clone(),
         ));
 
         let csr_creator = Arc::new(CsrCreatorImpl::new(

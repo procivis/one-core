@@ -184,10 +184,9 @@ pub(crate) struct OAuthAuthorizationServerMetadataRestDTO {
     pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     #[from(with_fn = convert_inner)]
     pub challenge_endpoint: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_attestation_signing_alg_values_supported: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_attestation_pop_signing_alg_values_supported: Option<Vec<String>>,
+    pub dpop_signing_alg_values_supported: Option<Vec<String>>,
 }
 
 #[options_not_nullable]

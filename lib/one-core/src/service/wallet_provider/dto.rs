@@ -256,7 +256,7 @@ pub struct WalletUnitAttestationClaims {
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
 pub struct EudiWalletInfo {
     pub general_info: EudiWalletGeneralInfo,
-    pub wscd_info: WscdInfo,
+    pub wscd_info: Option<WscdInfo>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
