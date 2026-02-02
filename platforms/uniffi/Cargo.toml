@@ -21,6 +21,7 @@ one-core                 = { version = "0.1.0", path = "../../lib/one-core", fea
 one-crypto               = { version = "0.1.0", path = "../../lib/one-crypto" }
 one-dto-mapper.workspace = true
 reqwest.workspace        = true
+rustls-platform-verifier = { workspace = true }
 secrecy.workspace        = true
 serde.workspace          = true
 serde_json.workspace     = true
@@ -41,6 +42,7 @@ mockall.workspace         = true
 similar-asserts.workspace = true
 
 [target.'cfg(target_os = "android")'.dependencies]
+jni             = { version = "0.21" }
 tracing-android = { version = "0.2" }
 
 [target.'cfg(target_os = "ios")'.dependencies]

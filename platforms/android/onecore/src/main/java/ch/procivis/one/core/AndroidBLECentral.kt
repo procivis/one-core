@@ -19,6 +19,9 @@ import java.lang.ref.WeakReference
 import java.util.UUID
 import kotlin.math.min
 
+/**
+ * Default implementation of BLE central-client
+ */
 class AndroidBLECentral(context: Context) : BleCentral, AndroidBLEBase(context, "BLE_CENTRAL") {
     override suspend fun isAdapterEnabled(): Boolean {
         return getAdapterEnabled()

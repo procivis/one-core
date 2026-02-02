@@ -23,6 +23,9 @@ import android.util.Log
 import java.lang.ref.WeakReference
 import java.util.UUID
 
+/**
+ * Default implementation of BLE peripheral-server
+ */
 class AndroidBLEPeripheral(context: Context) : BlePeripheral,
     AndroidBLEBase(context, "BLE_PERIPHERAL") {
     override suspend fun isAdapterEnabled(): Boolean {

@@ -15,9 +15,12 @@ import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 import kotlin.time.Duration.Companion.seconds
 
-class Scanner(val context: Context, val activityAccessor: ActivityAccessor) : NfcScanner,
+/**
+ * Provided implementation of NFC Scanner
+ */
+class Scanner(private val context: Context, private val activityAccessor: ActivityAccessor) : NfcScanner,
     NfcAdapter.ReaderCallback {
-    companion object {
+    internal companion object {
         private const val TAG = "NFCScanner"
     }
 

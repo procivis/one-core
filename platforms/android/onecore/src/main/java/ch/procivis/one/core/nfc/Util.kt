@@ -5,7 +5,7 @@ import android.util.Log
 import ch.procivis.one.core.NfcException
 import java.io.IOException
 
-object Util {
+internal object Util {
     inline fun <R> exceptionWrapper(function: () -> R): R {
         try {
             return function()

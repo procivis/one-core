@@ -7,6 +7,8 @@ use anyhow::Context;
 use rumqttc::{
     AsyncClient, Event, MqttOptions, Outgoing, Packet, QoS, TlsConfiguration, Transport,
 };
+use rustls::ClientConfig;
+use rustls_platform_verifier::ConfigVerifierExt;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{RwLock, broadcast};
 use tracing::warn;
@@ -57,7 +59,7 @@ pub struct RumqttcClient {
 }
 
 impl RumqttcClient {
-    fn subscribe_to_broker(&self, broker_addr: &BrokerAddr) -> Broker {
+    fn subscribe_to_broker(&self, broker_addr: &BrokerAddr) -> anyhow::Result<Broker> {
         const PACKET_SIZE_LIMIT: usize = 30 * 1024 * 1024; // 30MB
         let id = Uuid::new_v4();
 
@@ -67,7 +69,9 @@ impl RumqttcClient {
             broker_addr.port,
         );
         mqttoptions
-            .set_transport(Transport::Tls(TlsConfiguration::Native))
+            .set_transport(Transport::Tls(TlsConfiguration::Rustls(Arc::new(
+                ClientConfig::with_platform_verifier().context("failed to get TLS config")?,
+            ))))
             .set_max_packet_size(PACKET_SIZE_LIMIT, PACKET_SIZE_LIMIT);
 
         let (client, mut eventloop) = AsyncClient::new(mqttoptions, 10);
@@ -117,7 +121,7 @@ impl RumqttcClient {
             }
         });
 
-        Broker { id, client, topics }
+        Ok(Broker { id, client, topics })
     }
 }
 
@@ -136,7 +140,7 @@ impl MqttClient for RumqttcClient {
         let broker = match brokers.entry(broker_addr.clone()) {
             Entry::Occupied(broker_entry) => broker_entry.get().clone(),
             Entry::Vacant(vacant_entry) => vacant_entry
-                .insert(self.subscribe_to_broker(&broker_addr))
+                .insert(self.subscribe_to_broker(&broker_addr)?)
                 .clone(),
         };
 

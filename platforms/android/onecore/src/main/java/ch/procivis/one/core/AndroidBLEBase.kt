@@ -12,8 +12,8 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.coroutines.suspendCoroutine
 
-abstract class AndroidBLEBase(val context: Context, logTag: String) {
-    companion object {
+abstract class AndroidBLEBase(internal val context: Context, logTag: String) {
+    internal companion object {
         const val MAX_MTU = 512
         val CLIENT_CONFIG_DESCRIPTOR = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
 

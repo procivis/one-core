@@ -30,6 +30,7 @@ ignore = [
     { id = "RUSTSEC-2024-0370", reason = "proc-macro-error crate unmaintained, indirect dependency of a few libs" },
     { id = "RUSTSEC-2022-0040", reason = "`owning_ref` doesn't seem to be used anywhere inside json-ld" },
     { id = "RUSTSEC-2025-0141", reason = "`bincode` crate discontinued" },
+    { id = "RUSTSEC-2025-0134", reason = "`rumqttc` crate awaiting an update of unmaintained dependency: https://github.com/bytebeamio/rumqtt/pull/1011" },
 ]
 
 # This section is considered when running `cargo deny check licenses`
@@ -66,16 +67,13 @@ exceptions = [
     { allow = ["MPL-2.0"], name = "bitmaps", version = "*" },
     { allow = ["MPL-2.0"], name = "im", version = "*" },
     { allow = ["MPL-2.0"], name = "sized-chunks", version = "*" },
+
+    # OpenSSL license
+    { allow = ["OpenSSL"], name = "aws-lc-sys", version = "*" },
 ]
 
 [licenses.private]
 ignore = true
-
-# Clarify ring crate license (LICENSE file not properly detected)
-[[licenses.clarify]]
-expression    = "MIT AND ISC AND OpenSSL"
-license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
-name          = "ring"
 
 # This section is considered when running `cargo deny check bans`.
 # More documentation about the 'bans' section can be found here:

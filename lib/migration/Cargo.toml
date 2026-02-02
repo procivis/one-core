@@ -14,7 +14,7 @@ time.workspace         = true
 tokio                  = { workspace = true, features = ["macros", "rt-multi-thread"] }
 tracing.workspace      = true
 urlencoding.workspace  = true
-uuid                   = { version = "1.11.0", features = ["v4"] }
+uuid                   = { workspace = true, features = ["v4"] }
 
 [features]
 default = ["mysql"]

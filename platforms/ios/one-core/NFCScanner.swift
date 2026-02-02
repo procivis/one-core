@@ -3,6 +3,7 @@ import CoreNFC
 
 typealias ThrowingResultCallback<T> = (Result<T, Error>) -> Void
 
+/// Default implementation of NFC Scanner
 public class NFCScanner: NSObject {
     private let lock = NSLock()
     private var activeSession: NFCTagReaderSession?

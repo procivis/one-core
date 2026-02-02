@@ -48,8 +48,9 @@ pub struct InitParamsDTO {
     pub nfc_scanner: Option<Arc<dyn NfcScanner>>,
 }
 
+/// internal core initialization, to be called from the wrapping `initializeCore` function
 #[uniffi::export]
-fn initialize_core(
+fn uniffi_initialize_core(
     data_dir_path: String,
     params: InitParamsDTO,
 ) -> Result<Arc<OneCoreBinding>, BindingError> {
@@ -68,6 +69,27 @@ fn initialize_core(
         .map_err(|err| BindingError::from(SDKError::InitializationFailure(err.to_string())))?;
 
     rt.block_on(initialize(data_dir_path, params))
+}
+
+/// to be called before core initialization
+#[cfg(target_os = "android")]
+#[unsafe(export_name = "Java_ch_procivis_one_core_Init_rustlsInit")]
+pub extern "system" fn android_rustls_init(
+    mut env: jni::JNIEnv,
+    _class: jni::objects::JClass,
+    context: jni::objects::JObject,
+) -> jni::sys::jstring {
+    let result =
+        if let Err(err) = rustls_platform_verifier::android::init_with_env(&mut env, context) {
+            format!("rustls_platform_verifier init failure: {err}")
+        } else {
+            "".to_string()
+        };
+
+    let output = env
+        .new_string(result)
+        .expect("Couldn't create java string!");
+    output.into_raw()
 }
 
 async fn initialize(

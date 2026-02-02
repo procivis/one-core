@@ -15,8 +15,13 @@ import kotlin.coroutines.EmptyCoroutineContext
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 
-class HCE(val context: Context) : NfcHce {
-    companion object {
+/**
+ * Provided implementation of NFC HCE
+ *
+ * Must be used together with the [EngagementService]
+ */
+class HCE(private val context: Context) : NfcHce {
+    internal companion object {
         private const val TAG = "NFC_HCE"
 
         private val RESPONSE_STATUS_ERROR_NO_PRECISE_DIAGNOSIS = byteArrayOf(0x6f.toByte(), 0x00.toByte())

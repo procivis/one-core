@@ -51,8 +51,10 @@ rand.workspace               = true
 rcgen                        = { workspace = true, features = ["x509-parser"] }
 regex.workspace              = true
 reqwest.workspace            = true
-rumqttc                      = { version = "0.25", default-features = false, features = ["use-native-tls"] }
-rustls-pki-types             = { version = "1.14"}
+rumqttc                      = { version = "0.25", default-features = false, features = ["use-rustls"] }
+rustls                       = { version = "0.23", default-features = false, features = ["ring"] }
+rustls-pki-types             = { version = "1.14" }
+rustls-platform-verifier     = { workspace = true }
 secrecy                      = { workspace = true }
 serde.workspace              = true
 serde_json.workspace         = true

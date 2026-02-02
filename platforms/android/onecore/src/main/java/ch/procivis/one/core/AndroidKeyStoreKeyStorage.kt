@@ -15,6 +15,9 @@ import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.ECGenParameterSpec
 
+/**
+ * Default implementation of native secure element
+ */
 class AndroidKeyStoreKeyStorage(private val context: Context) : NativeKeyStorage {
     override suspend fun generateKey(keyAlias: String): GeneratedKeyBindingDto {
         return generateKeyInner(keyAlias, null)

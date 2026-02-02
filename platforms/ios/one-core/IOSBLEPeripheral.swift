@@ -1,5 +1,6 @@
 import CoreBluetooth
 
+/// Default implementation of BLE peripheral-server
 public class IOSBLEPeripheral: NSObject {
     
     private var _peripheralManager: CBPeripheralManager?

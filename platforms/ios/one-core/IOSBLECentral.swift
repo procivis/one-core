@@ -1,5 +1,6 @@
 import CoreBluetooth
 
+/// Default implementation of BLE central-client
 public class IOSBLECentral: NSObject {
     
     private var _centralManager: CBCentralManager?

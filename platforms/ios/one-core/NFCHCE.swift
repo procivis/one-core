@@ -2,6 +2,7 @@ import Foundation
 import CoreNFC
 import OSLog
 
+/// Provided implementation of NFC HCE
 @available(iOS 17.4, *)
 public class NFCHCE: NSObject {
   private let logger = Logger(subsystem: "ch.procivis.one.core", category: "NFC")

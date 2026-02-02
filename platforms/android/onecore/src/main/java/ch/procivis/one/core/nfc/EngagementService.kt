@@ -7,8 +7,13 @@ import android.util.Log
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 
+/**
+ * Provided implementation of NFC HCE
+ *
+ * Must be used together with the [HCE]
+ */
 class EngagementService : HostApduService() {
-    companion object {
+    internal companion object {
         private const val TAG = "NFCEngagementService"
 
         private val RESPONSE_ERROR_FILE_OR_APPLICATION_NOT_FOUND = byteArrayOf(0x6a.toByte(), 0x82.toByte())

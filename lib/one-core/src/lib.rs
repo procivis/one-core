@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Once};
 
 use one_crypto::initialize_crypto_provider;
 
@@ -154,6 +154,8 @@ impl OneCore {
         native_secure_element: Option<Arc<dyn NativeKeyStorage>>,
         remote_secure_element: Option<Arc<dyn NativeKeyStorage>>,
     ) -> Result<OneCore, OneCoreInitializationError> {
+        initialize_rustls()?;
+
         let ble_waiter = match (ble_peripheral, ble_central) {
             (Some(ble_peripheral), Some(ble_central)) => {
                 Some(BleWaiter::new(ble_central, ble_peripheral))
@@ -738,4 +740,22 @@ pub struct Version {
     pub commit: String,
     pub rust_version: String,
     pub pipeline_id: String,
+}
+
+/// call rustls initialization only once
+static RUSTLS_INITIALIZATION: Once = Once::new();
+fn initialize_rustls() -> Result<(), OneCoreInitializationError> {
+    let mut result: Option<anyhow::Error> = None;
+
+    RUSTLS_INITIALIZATION.call_once(|| {
+        if rustls::crypto::ring::default_provider()
+            .install_default()
+            .is_err()
+        {
+            tracing::error!("Rustls initialization failure");
+            result = Some(anyhow::anyhow!("Failed to install rustls crypto provider"));
+        }
+    });
+
+    result.map_or(Ok(()), |e| Err(e.into()))
 }

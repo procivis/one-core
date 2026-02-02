@@ -3,6 +3,7 @@ import CryptoKit
 import LocalAuthentication
 import DeviceCheck
 
+/// Default implementation of native secure element
 public class SecureEnclaveKeyStorage: NativeKeyStorage {
     public init() {}
     

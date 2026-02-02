@@ -306,9 +306,6 @@ cp -r ../../ProcivisOneCoreFFI.xcframework ../../bindings/ios
 [tasks.generate_ios_docs]
 script = '''
 export TARGET_DIR=`pwd`/${CARGO_TARGET_DIR}
-echo ${CARGO_TARGET_DIR}
-echo ${TARGET_DIR}
-echo `pwd`
 pushd platforms/ios >/dev/null
 xcodebuild docbuild -project ProcivisOneCore.xcodeproj -scheme ProcivisOneCore -derivedDataPath ${TARGET_DIR}/platforms/ios/docs CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO
 cp -R ${TARGET_DIR}/platforms/ios/docs/Build/Products/Debug-iphoneos/ProcivisOneCore.doccarchive ${TARGET_DIR}/bindings/ios
