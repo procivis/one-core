@@ -266,4 +266,9 @@ impl SSIApi {
         let url = format!("/ssi/revocation/v1/crl/{}", revocation_list_id.into());
         self.client.get(&url).await
     }
+
+    pub async fn get_ca(&self, ca_id: impl Into<Uuid>) -> Response {
+        let url = format!("/ssi/ca/{}", ca_id.into());
+        self.client.get(&url).await
+    }
 }

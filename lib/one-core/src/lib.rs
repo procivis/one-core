@@ -455,6 +455,7 @@ impl OneCore {
             ),
             certificate_service: CertificateService::new(
                 data_provider.get_certificate_repository(),
+                data_provider.get_identifier_repository(),
                 session_provider.clone(),
             ),
             revocation_list_service: RevocationListService::new(

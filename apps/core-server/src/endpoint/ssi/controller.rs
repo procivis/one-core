@@ -8,8 +8,8 @@ use headers::Authorization;
 use headers::authorization::Bearer;
 use one_core::service::error::{BusinessLogicError, EntityNotFoundError, ServiceError};
 use shared_types::{
-    CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId, ProofSchemaId,
-    RevocationListId, TrustAnchorId,
+    CertificateId, CredentialId, CredentialSchemaId, DidId, DidValue, OrganisationId,
+    ProofSchemaId, RevocationListId, TrustAnchorId,
 };
 
 use super::dto::{
@@ -531,4 +531,49 @@ pub(crate) async fn ssi_get_sd_jwt_vc_type_metadata(
         .get_vct_metadata(organisation_id, vct_type)
         .await;
     OkOrErrorResponse::from_result(result, state, "getting SD-JWT VC type metadata")
+}
+
+#[utoipa::path(
+    get,
+    path = "/ssi/ca/{id}",
+    params(
+        ("id" = CertificateId, Path, description = "Certificate Authority id")
+    ),
+    responses(
+        (status = 200, description = "OK", content_type = "application/pkix-cert"),
+        (status = 404, description = "Certificate Authority not found"),
+        (status = 500, description = "Server error"),
+    ),
+    tag = "ssi",
+    summary = "Certificate Authority - retrieve certificate",
+    description = indoc::formatdoc! {"
+        Retrieve a Certificate Authority certificate by its UUID.
+    "},
+)]
+pub(crate) async fn ssi_get_certificate_authority(
+    state: State<AppState>,
+    WithRejection(Path(id), _): WithRejection<Path<CertificateId>, ErrorResponseRestDTO>,
+) -> Response {
+    let result = state
+        .core
+        .certificate_service
+        .get_certificate_authority(id)
+        .await;
+
+    match result {
+        Ok(result) => (
+            StatusCode::OK,
+            [(header::CONTENT_TYPE, "application/pkix-cert")],
+            result,
+        )
+            .into_response(),
+        Err(ServiceError::EntityNotFound(_)) => {
+            tracing::warn!("Missing CA");
+            StatusCode::NOT_FOUND.into_response()
+        }
+        Err(e) => {
+            tracing::error!("Error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        }
+    }
 }

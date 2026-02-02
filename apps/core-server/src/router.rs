@@ -701,6 +701,10 @@ fn get_external_endpoints(
                 get(ssi::controller::ssi_get_sd_jwt_vc_type_metadata),
             )
             .route(
+                "/ssi/ca/{id}",
+                get(ssi::controller::ssi_get_certificate_authority),
+            )
+            .route(
                 "/ssi/wallet-unit/v1",
                 post(ssi::wallet_provider::controller::register_wallet_unit)
             )
