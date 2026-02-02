@@ -6,7 +6,7 @@ use serde_json::json;
 use shared_types::RevocationMethodId;
 use uuid::Uuid;
 
-use super::{Signer, registration_certificate, x509_certificate};
+use super::{Signer, access_certificate, registration_certificate, x509_certificate};
 use crate::config::core_config::{ConfigExt, CoreConfig, RevocationConfig, SignerType};
 use crate::config::{ConfigValidationError, ProviderReference};
 use crate::model::revocation_list::RevocationListEntityInfo;
@@ -66,7 +66,9 @@ impl SignerProvider for SignerProviderImpl {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn signer_provider_from_config(
+    core_base_url: Option<String>,
     config: &mut CoreConfig,
     clock: Arc<dyn Clock>,
     key_provider: Arc<dyn KeyProvider>,
@@ -98,6 +100,34 @@ pub(crate) fn signer_provider_from_config(
                     key_provider.clone(),
                     key_algorithm_provider.clone(),
                     session_provider.clone(),
+                );
+
+                if let Some(revocation_method) = &params.revocation_method {
+                    validate_revocation_method_compatibility(
+                        name,
+                        &signer,
+                        revocation_config,
+                        revocation_method,
+                    )?;
+                }
+                Arc::new(signer)
+            }
+            SignerType::AccessCertificate => {
+                let params: access_certificate::Params = fields.deserialize().map_err(|e| {
+                    ConfigValidationError::FieldsDeserialization {
+                        key: name.to_owned(),
+                        source: e,
+                    }
+                })?;
+                let signer = access_certificate::AccessCertificateSigner::new(
+                    name.to_owned(),
+                    params.clone(),
+                    key_provider.clone(),
+                    revocation_method_provider.clone(),
+                    session_provider.clone(),
+                    core_base_url
+                        .clone()
+                        .ok_or(ConfigValidationError::MissingBaseUrl)?,
                 );
 
                 if let Some(revocation_method) = &params.revocation_method {

@@ -10,6 +10,8 @@ use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 pub enum SignerError {
     #[error("Invalid issuer identifier {0}")]
     InvalidIssuerIdentifier(IdentifierId),
+    #[error("Key issuer not supported, use identifier instead")]
+    KeyIssuerNotSupported,
     #[error("Invalid signature payload: {0}")]
     InvalidPayload(Box<dyn Error + Send + Sync + 'static>),
     #[error("Cannot find key algorithm `{0}`")]
@@ -63,6 +65,7 @@ impl ErrorCodeMixin for SignerError {
             | Self::ValidityPeriodTooLong { .. } => ErrorCode::BR_0324,
             Self::SigningError(_) => ErrorCode::BR_0329,
             Self::InvalidIssuerIdentifier(_) => ErrorCode::BR_0330,
+            Self::KeyIssuerNotSupported => ErrorCode::BR_0336,
             Self::Nested(nested) => nested.error_code(),
         }
     }

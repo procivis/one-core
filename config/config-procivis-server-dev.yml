@@ -73,11 +73,22 @@ signer:
           audience: ["wrpr"]
           maxValidityDuration: 2592000 # 30 days
         revocationMethod: TOKENSTATUSLIST
+  ACCESS_CERTIFICATE:
+    display:
+      en: "Wallet Relying Party Access Certificate"
+      de: "Wallet Relying Party Access Certificate"
+    order: 1
+    type: ACCESS_CERTIFICATE
+    params:
+      private:
+        payload:
+          maxValidityDuration: 157680000 # 5 years
+        revocationMethod: CRL
   X509_CERTIFICATE:
     display:
       en: "X.509 Certificate Issuer"
       de: "X.509 Certificate Issuer"
-    order: 1
+    order: 2
     type: X509_CERTIFICATE
     params:
       private:

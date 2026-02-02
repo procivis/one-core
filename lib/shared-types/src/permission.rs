@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum Permission {
+    AccessCertificateCreate,
+    AccessCertificateRevoke,
     CacheDelete,
     CredentialDelete,
     CredentialDetail,

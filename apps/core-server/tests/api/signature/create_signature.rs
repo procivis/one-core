@@ -9,7 +9,10 @@ use x509_parser::oid_registry::OID_X509_EXT_CRL_DISTRIBUTION_POINTS;
 use x509_parser::pem::Pem;
 use x509_parser::time::ASN1Time;
 
-use crate::fixtures::signature::{dummy_registration_certificate_payload, test_csr_payload};
+use crate::fixtures::signature::{
+    dummy_registration_certificate_payload, test_access_certificate_payload, test_csr,
+    test_csr_payload,
+};
 use crate::fixtures::sts::{StsSetup, setup_sts};
 use crate::utils::api_clients::signatures::TestCreateSignatureRequest;
 use crate::utils::context::TestContext;
@@ -406,4 +409,157 @@ async fn test_fail_on_missing_signer_specific_permission() {
         .await;
 
     assert_eq!(resp.status(), 403);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_signature_access_certificate_natural_person_success() {
+    let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "ACCESS_CERTIFICATE".to_string(),
+                data: test_access_certificate_payload(None),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let pem = resp["result"].as_str().unwrap();
+
+    let items = Pem::iter_from_buffer(pem.as_bytes())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    assert_eq!(items.len(), 2); // leaf + CA cert
+    let certs = items
+        .iter()
+        .map(|pem| pem.parse_x509())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    let leaf_cert = certs.first().unwrap();
+    let crl_ext = leaf_cert
+        .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
+        .unwrap()
+        .unwrap()
+        .parsed_extension();
+    let_assert!(ParsedExtension::CRLDistributionPoints(_) = crl_ext);
+    assert_eq!(
+        leaf_cert.subject.to_string(),
+        "C=CH, OID(2.5.4.97)=orgId, CN=common name, givenName=Max, surname=Muster"
+    );
+    assert!(leaf_cert.validity.not_before < ASN1Time::now());
+    // expires in ~ 5 years
+    assert_eq!(
+        leaf_cert
+            .validity
+            .time_to_expiration()
+            .unwrap()
+            .whole_days(),
+        365 * 5 - 1 // -1 to account for the fractional day since issuance
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_signature_access_certificate_legal_person_success() {
+    let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "ACCESS_CERTIFICATE".to_string(),
+                data: test_access_certificate_payload(Some("LEGAL_PERSON".to_string())),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+    let pem = resp["result"].as_str().unwrap();
+
+    let items = Pem::iter_from_buffer(pem.as_bytes())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    assert_eq!(items.len(), 2); // leaf + CA cert
+    let certs = items
+        .iter()
+        .map(|pem| pem.parse_x509())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+
+    let leaf_cert = certs.first().unwrap();
+    let crl_ext = leaf_cert
+        .get_extension_unique(&OID_X509_EXT_CRL_DISTRIBUTION_POINTS)
+        .unwrap()
+        .unwrap()
+        .parsed_extension();
+    let_assert!(ParsedExtension::CRLDistributionPoints(_) = crl_ext);
+    assert_eq!(
+        leaf_cert.subject.to_string(),
+        "C=CH, OID(2.5.4.97)=orgId, CN=common name, O=Org name"
+    );
+    assert!(leaf_cert.validity.not_before < ASN1Time::now());
+    // expires in ~ 5 years
+    assert_eq!(
+        leaf_cert
+            .validity
+            .time_to_expiration()
+            .unwrap()
+            .whole_days(),
+        365 * 5 - 1 // -1 to account for the fractional day since issuance
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn test_create_signature_access_certificate_invalid_policy_attribute_combination() {
+    let (context, _org, identifier, ..) = TestContext::new_with_ca_identifier(None).await;
+
+    let resp = context
+        .api
+        .signatures
+        .create(
+            TestCreateSignatureRequest {
+                issuer: identifier.id,
+                issuer_key: None,
+                issuer_certificate: None,
+                signer: "ACCESS_CERTIFICATE".to_string(),
+                data: serde_json::json!({
+                    "csr": test_csr(None),
+                    "organizationIdentifier": "orgId",
+                    "countryName": "CH",
+                    "rfc822Name": "tester@test.com",
+                    "otherNamePhoneNr": "+4123456789",
+                    "sanUri": "https://some-uri.com",
+                    "commonName": "common name",
+                    "policy": "NATURAL_PERSON",
+                    "organizationName": "test"
+                }),
+                validity_start: None,
+                validity_end: None,
+            },
+            None,
+        )
+        .await;
+
+    assert_eq!(resp.status(), 400);
+    assert_eq!(resp.error_code().await, "BR_0332")
 }

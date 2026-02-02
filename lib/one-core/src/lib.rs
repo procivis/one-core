@@ -272,6 +272,7 @@ impl OneCore {
         ));
 
         let signer_provider = signer_provider_from_config(
+            core_base_url.clone(),
             &mut config,
             clock.clone(),
             key_provider.clone(),

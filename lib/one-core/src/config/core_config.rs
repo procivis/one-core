@@ -831,6 +831,9 @@ pub enum SignerType {
     #[serde(rename = "REGISTRATION_CERTIFICATE")]
     #[strum(serialize = "REGISTRATION_CERTIFICATE")]
     RegistrationCertificate,
+    #[serde(rename = "ACCESS_CERTIFICATE")]
+    #[strum(serialize = "ACCESS_CERTIFICATE")]
+    AccessCertificate,
     #[serde(rename = "X509_CERTIFICATE")]
     #[strum(serialize = "X509_CERTIFICATE")]
     X509Certificate,

@@ -70,6 +70,8 @@ pub enum ConfigValidationError {
     MissingX509CaCertificate,
     #[error("Multiple fallback data types configured for value type: `{value_type}`")]
     MultipleFallbackProviders { value_type: ValueType },
+    #[error("Missing base url")]
+    MissingBaseUrl,
 }
 
 impl ConfigValidationError {
