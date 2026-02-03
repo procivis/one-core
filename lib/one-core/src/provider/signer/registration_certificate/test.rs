@@ -1,4 +1,5 @@
 // ETSI TS 119 475 v1.1.1, Annex C
+// (with fixed typos and adjusted privacy policy)
 const PAYLOAD: &str = r#"
 {
   "name": "Example GmbH",
@@ -18,7 +19,12 @@ const PAYLOAD: &str = r#"
     "legal_name": "Example GmbH",
     "id": "LEIXG-529900T8BM49AURSDO55"
   },
-  "privacy_policy": "https://example-company.com/en/privacy-policy",
+  "privacy_policy": [
+    {
+      "lang":"en",
+      "value": "https://example-company.com/en/privacy-policy"
+    }
+  ],
   "policy_id": [
     "0.4.0.19475.3.1"
   ],
@@ -65,7 +71,7 @@ const PAYLOAD: &str = r#"
     }
   ],
   "public_body": false,
-  "service": [[
+  "service": [
     {
       "lang": "en-US",
       "value": "Bundesagentur für Sprunginnovationen"
@@ -74,7 +80,7 @@ const PAYLOAD: &str = r#"
       "lang": "de-DE",
       "value": "Federal Agency for Breakthrough Innovations"
     }
-  ]],
+  ],
   "act": {
     "sub": "DE:EX-987654381"
   }
