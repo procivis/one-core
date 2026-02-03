@@ -17,11 +17,16 @@ pub(super) fn request_to_distinguished_name(
     const OID_SURNAME: [u64; 4] = [2, 5, 4, 4];
     const OID_GIVEN_NAME: [u64; 4] = [2, 5, 4, 42];
     const OID_ORG_ID: [u64; 4] = [2, 5, 4, 97];
+    const OID_CONTENT_URL: [u64; 4] = [2, 5, 4, 81];
 
     dn.push(DnType::CountryName, request.country_name);
     dn.push(
         DnType::CustomDnType(OID_ORG_ID.to_vec()),
         request.organization_identifier,
+    );
+    dn.push(
+        DnType::CustomDnType(OID_CONTENT_URL.to_vec()),
+        request.national_registry_url,
     );
     if let Some(cn) = request.common_name {
         dn.push(DnType::CommonName, cn)

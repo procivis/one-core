@@ -58,6 +58,7 @@ struct RequestData {
     given_name: Option<String>,
     family_name: Option<String>,
     policy: AccessCertificatePolicy,
+    national_registry_url: String,
 }
 
 #[derive(Debug, Deserialize)]

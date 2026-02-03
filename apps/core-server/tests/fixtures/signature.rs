@@ -40,6 +40,7 @@ pub fn test_access_certificate_payload(policy: Option<String>) -> serde_json::Va
         "otherNamePhoneNr": "+4123456789",
         "sanUri": "https://some-uri.com",
         "commonName": "common name",
+        "nationalRegistryUrl": "https://some-url.com"
     });
     let policy = policy.unwrap_or_else(|| "NATURAL_PERSON".to_owned());
     match policy.as_str() {

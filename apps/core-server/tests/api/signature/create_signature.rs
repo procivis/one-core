@@ -456,7 +456,7 @@ async fn test_create_signature_access_certificate_natural_person_success() {
     let_assert!(ParsedExtension::CRLDistributionPoints(_) = crl_ext);
     assert_eq!(
         leaf_cert.subject.to_string(),
-        "C=CH, OID(2.5.4.97)=orgId, CN=common name, givenName=Max, surname=Muster"
+        "C=CH, OID(2.5.4.97)=orgId, OID(2.5.4.81)=https://some-url.com, CN=common name, givenName=Max, surname=Muster"
     );
     assert!(leaf_cert.validity.not_before < ASN1Time::now());
     // expires in ~ 5 years
@@ -515,7 +515,7 @@ async fn test_create_signature_access_certificate_legal_person_success() {
     let_assert!(ParsedExtension::CRLDistributionPoints(_) = crl_ext);
     assert_eq!(
         leaf_cert.subject.to_string(),
-        "C=CH, OID(2.5.4.97)=orgId, CN=common name, O=Org name"
+        "C=CH, OID(2.5.4.97)=orgId, OID(2.5.4.81)=https://some-url.com, CN=common name, O=Org name"
     );
     assert!(leaf_cert.validity.not_before < ASN1Time::now());
     // expires in ~ 5 years
@@ -551,7 +551,8 @@ async fn test_create_signature_access_certificate_invalid_policy_attribute_combi
                     "sanUri": "https://some-uri.com",
                     "commonName": "common name",
                     "policy": "NATURAL_PERSON",
-                    "organizationName": "test"
+                    "organizationName": "test",
+                    "nationalRegistryUrl": "https://some-url.com"
                 }),
                 validity_start: None,
                 validity_end: None,
