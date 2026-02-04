@@ -652,6 +652,7 @@ async fn test_extract_credentials_swiyu() {
             required: false,
         }]),
         organisation: None,
+        transaction_code: None,
     };
 
     let credentials = sd_formatter
@@ -874,6 +875,7 @@ fn test_schema_id_internal() {
         schema_id: None,
         allow_suspension: None,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let id = Uuid::new_v4();
@@ -920,6 +922,7 @@ fn test_schema_id_external() {
         schema_id: Some(vct.to_string()),
         allow_suspension: None,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let result = formatter.credential_schema_id(

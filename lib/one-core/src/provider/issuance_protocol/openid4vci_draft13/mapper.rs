@@ -30,7 +30,7 @@ use crate::model::credential_schema::{
     Arrayed, BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema,
     CredentialSchemaClaim, CredentialSchemaClaimsNestedObjectView,
     CredentialSchemaClaimsNestedTypeView, CredentialSchemaClaimsNestedView, KeyStorageSecurity,
-    LayoutProperties, LogoProperties,
+    LayoutProperties, LogoProperties, TransactionCode,
 };
 use crate::model::identifier::Identifier;
 use crate::model::interaction::Interaction;
@@ -499,6 +499,7 @@ fn from_create_request_with_id(
         organisation: Some(organisation),
         allow_suspension: false,
         requires_app_attestation: false,
+        transaction_code: None,
     })
 }
 
@@ -1154,6 +1155,11 @@ pub(crate) fn map_to_import_credential_schema_request(
             imported_source_url,
             allow_suspension: Some(false),
             requires_app_attestation: None,
+            transaction_code: convert_inner(
+                credential_schema
+                    .transaction_code
+                    .map(Into::<TransactionCode>::into),
+            ),
         },
     })
 }

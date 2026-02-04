@@ -93,6 +93,7 @@ pub(crate) fn validate_create_request(
     validate_credential_design(request, formatter)?;
     validate_mdoc_claim_types(request, config)?;
     validate_schema_id(request, formatter, during_import)?;
+    validate_transaction_code(request, formatter)?;
 
     Ok(())
 }
@@ -479,6 +480,27 @@ fn validate_schema_id(
         }
     } else if !during_import && request.schema_id.is_some() {
         return Err(BusinessLogicError::SchemaIdNotAllowed.into());
+    }
+
+    Ok(())
+}
+
+fn validate_transaction_code(
+    request: &CreateCredentialSchemaRequestDTO,
+    formatter: &dyn CredentialFormatter,
+) -> Result<(), ValidationError> {
+    if let Some(code) = &request.transaction_code {
+        if !formatter
+            .get_capabilities()
+            .features
+            .contains(&Features::SupportsTxCode)
+        {
+            return Err(ValidationError::TransactionCodeNotSupported);
+        }
+
+        if code.length < 4 || code.length > 10 {
+            return Err(ValidationError::InvalidTransactionCodeLength);
+        }
     }
 
     Ok(())

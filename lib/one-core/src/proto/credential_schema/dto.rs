@@ -6,7 +6,9 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::model;
-use crate::model::credential_schema::{CodeTypeEnum, KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{
+    CodeTypeEnum, KeyStorageSecurity, LayoutType, TransactionCodeType,
+};
 use crate::model::organisation::Organisation;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
 
@@ -40,6 +42,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_app_attestation: Option<bool>,
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -56,6 +59,16 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub array: Option<bool>,
     #[serde(default)]
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, From, Into)]
+#[serde(rename_all = "camelCase")]
+#[from(model::credential_schema::TransactionCode)]
+#[into(model::credential_schema::TransactionCode)]
+pub struct ImportCredentialSchemaTransactionCodeDTO {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

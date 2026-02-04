@@ -982,7 +982,8 @@ fn test_get_capabilities() {
         vec![
             Features::SelectiveDisclosure,
             Features::SupportsCredentialDesign,
-            Features::SupportsCombinedPresentation
+            Features::SupportsCombinedPresentation,
+            Features::SupportsTxCode
         ],
         sd_formatter.get_capabilities().features
     );

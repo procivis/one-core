@@ -162,7 +162,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         };
 
         let credential_schema =
-            credential_schema_from_models(credential_schema, claim_schemas, organisation, false);
+            credential_schema_from_models(credential_schema, claim_schemas, organisation, false)?;
 
         Ok(Some(credential_schema))
     }
@@ -281,7 +281,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
                         }),
                     )
                 })
-                .collect(),
+                .collect::<Result<_, _>>()?,
             total_pages: calculate_pages_count(items_count, limit.unwrap_or(0)),
             total_items: items_count,
         })
@@ -399,7 +399,7 @@ impl CredentialSchemaRepository for CredentialSchemaProvider {
         }
 
         Ok(
-            credential_schema_from_models(credential_schema, claim_schemas, organisation, true)
+            credential_schema_from_models(credential_schema, claim_schemas, organisation, true)?
                 .into(),
         )
     }

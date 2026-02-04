@@ -906,6 +906,7 @@ fn test_credential_schema_id() {
         schema_id: Some(schema_id.clone()),
         allow_suspension: None,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let result = formatter.credential_schema_id(

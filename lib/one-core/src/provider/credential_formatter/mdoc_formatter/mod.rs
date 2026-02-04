@@ -358,6 +358,7 @@ impl CredentialFormatter for MdocFormatter {
                 Features::SupportsCredentialDesign,
                 Features::RequiresPresentationEncryption,
                 Features::SupportsCombinedPresentation,
+                Features::SupportsTxCode,
             ],
             allowed_schema_ids: vec![],
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
@@ -498,6 +499,7 @@ impl CredentialFormatter for MdocFormatter {
             requires_app_attestation: false,
             organisation: None,
             claim_schemas: Some(claim_schemas),
+            transaction_code: None,
         };
 
         let issuer_identifier = prepare_identifier(

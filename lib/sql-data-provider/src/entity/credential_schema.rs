@@ -32,6 +32,9 @@ pub struct Model {
     pub allow_suspension: bool,
     #[serde(deserialize_with = "bool_from_int")]
     pub requires_app_attestation: bool,
+    pub transaction_code_type: Option<TransactionCodeType>,
+    pub transaction_code_length: Option<u32>,
+    pub transaction_code_description: Option<String>,
 }
 
 #[derive(
@@ -63,6 +66,17 @@ pub enum LayoutType {
     Document,
     #[sea_orm(string_value = "SINGLE_ATTRIBUTE")]
     SingleAttribute,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, EnumIter, DeriveActiveEnum, From, Into, Deserialize)]
+#[sea_orm(rs_type = "String", db_type = "String(StringLen::None)")]
+#[from(model::credential_schema::TransactionCodeType)]
+#[into(model::credential_schema::TransactionCodeType)]
+pub enum TransactionCodeType {
+    #[sea_orm(string_value = "NUMERIC")]
+    Numeric,
+    #[sea_orm(string_value = "ALPHANUMERIC")]
+    Alphanumeric,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, FromJsonQueryResult, From, Into)]

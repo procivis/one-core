@@ -3,6 +3,7 @@ use std::sync::Arc;
 use assert2::{assert, let_assert};
 use mockall::predicate::*;
 use shared_types::{CredentialFormat, RevocationMethodId};
+use similar_asserts::assert_eq;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -10,11 +11,11 @@ use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList, KeyStorageSecurity,
-    LayoutType,
+    LayoutType, TransactionCodeType,
 };
 use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaRequestSchemaDTO,
+    ImportCredentialSchemaRequestSchemaDTO, ImportCredentialSchemaTransactionCodeDTO,
 };
 use crate::proto::credential_schema::importer::{
     CredentialSchemaImporter, CredentialSchemaImporterProto,
@@ -112,6 +113,11 @@ fn test_parse_import_credential_schema_success() {
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: Some(true),
             requires_app_attestation: Some(true),
+            transaction_code: Some(ImportCredentialSchemaTransactionCodeDTO {
+                r#type: TransactionCodeType::Numeric,
+                length: 6,
+                description: None,
+            }),
         },
     };
 
@@ -120,8 +126,12 @@ fn test_parse_import_credential_schema_success() {
 
     // then
     let_assert!(Ok(schema) = result);
-    assert!("Imported Schema" == schema.name);
-    assert!("JWT" == schema.format.as_ref());
+    assert_eq!(schema.name, "Imported Schema");
+    assert_eq!(schema.format.as_ref(), "JWT");
+    assert_eq!(
+        schema.transaction_code.unwrap().r#type,
+        TransactionCodeType::Numeric
+    );
 }
 
 #[test]
@@ -200,6 +210,7 @@ fn test_parse_import_with_nested_claims_success() {
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: Some(true),
             requires_app_attestation: Some(true),
+            transaction_code: None,
         },
     };
 
@@ -243,6 +254,7 @@ async fn test_importer_import_credential_schema_success() {
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
     let credential_schema_id = credential_schema.id;
 
@@ -301,6 +313,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let existing_schema_clone = existing_schema.clone();
@@ -366,6 +379,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let existing_schema_clone = existing_schema.clone();

@@ -1,5 +1,5 @@
 use one_core::model::credential_schema::{
-    CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn,
+    CredentialSchema, CredentialSchemaClaim, SortableCredentialSchemaColumn, TransactionCode,
 };
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::model::organisation::Organisation;
@@ -63,6 +63,16 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
     fn try_from(value: CredentialSchema) -> Result<Self, Self::Error> {
         let organisation_id = value.organisation.ok_or(DataLayerError::MappingError)?.id;
 
+        let (transaction_code_type, transaction_code_length, transaction_code_description) =
+            match value.transaction_code {
+                Some(code) => (
+                    Some(code.r#type.into()),
+                    Some(code.length),
+                    code.description,
+                ),
+                None => (None, None, None),
+            };
+
         Ok(Self {
             id: Set(value.id),
             deleted_at: Set(value.deleted_at),
@@ -79,6 +89,9 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             schema_id: Set(value.schema_id),
             allow_suspension: Set(value.allow_suspension),
             requires_app_attestation: Set(value.requires_app_attestation),
+            transaction_code_type: Set(transaction_code_type),
+            transaction_code_length: Set(transaction_code_length),
+            transaction_code_description: Set(transaction_code_description),
         })
     }
 }
@@ -110,8 +123,21 @@ pub(super) fn credential_schema_from_models(
     claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     organisation: Option<Organisation>,
     skip_layout_properties: bool,
-) -> CredentialSchema {
-    CredentialSchema {
+) -> Result<CredentialSchema, DataLayerError> {
+    let transaction_code = match (
+        credential_schema.transaction_code_type,
+        credential_schema.transaction_code_length,
+    ) {
+        (Some(r#type), Some(length)) => Some(TransactionCode {
+            r#type: r#type.into(),
+            length,
+            description: credential_schema.transaction_code_description,
+        }),
+        (None, None) => None,
+        _ => return Err(DataLayerError::MappingError),
+    };
+
+    Ok(CredentialSchema {
         id: credential_schema.id,
         deleted_at: credential_schema.deleted_at,
         created_date: credential_schema.created_date,
@@ -132,5 +158,6 @@ pub(super) fn credential_schema_from_models(
         schema_id: credential_schema.schema_id,
         allow_suspension: credential_schema.allow_suspension,
         requires_app_attestation: credential_schema.requires_app_attestation,
-    }
+        transaction_code,
+    })
 }

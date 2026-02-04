@@ -27,7 +27,7 @@ use crate::model::key::Key;
 use crate::model::organisation::Organisation;
 use crate::model::proof::{Proof, ProofRole, ProofStateEnum};
 use crate::model::proof_schema::ProofSchema;
-use crate::provider::credential_formatter::model::FormatterCapabilities;
+use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::did_method::model::{DidDocument, DidVerificationMethod};
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
@@ -377,6 +377,7 @@ pub fn dummy_credential_with_exchange(exchange: &str) -> Credential {
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),
@@ -535,6 +536,7 @@ pub fn dummy_credential_schema() -> CredentialSchema {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     }
 }
 
@@ -553,7 +555,7 @@ pub fn dummy_claim_schema() -> ClaimSchema {
 pub fn generic_formatter_capabilities() -> FormatterCapabilities {
     FormatterCapabilities {
         signing_key_algorithms: vec![KeyAlgorithmType::Eddsa],
-        features: vec![],
+        features: vec![Features::SupportsTxCode],
         allowed_schema_ids: vec![],
         selective_disclosure: vec![],
         issuance_did_methods: vec![

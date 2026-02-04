@@ -748,8 +748,15 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid signature payload")]
     BR_0332,
+
     #[strum(message = "Key signature issuer not supported")]
     BR_0336,
+
+    #[strum(message = "Transaction code not supported")]
+    BR_0337,
+
+    #[strum(message = "Invalid transaction code length")]
+    BR_0338,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

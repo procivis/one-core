@@ -13,7 +13,9 @@ use crate::model::common::GetListResponse;
 use crate::model::credential::{
     CredentialFilterValue, CredentialListIncludeEntityTypeEnum, SortableCredentialColumn,
 };
-use crate::model::credential_schema::{KeyStorageSecurity, LayoutType};
+use crate::model::credential_schema::{
+    KeyStorageSecurity, LayoutType, TransactionCode, TransactionCodeType,
+};
 use crate::model::list_query::ListQuery;
 use crate::service::certificate::dto::CertificateResponseDTO;
 use crate::service::credential_schema::dto::{
@@ -118,6 +120,18 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_app_attestation: bool,
+    pub transaction_code: Option<DetailCredentialSchemaTransactionCodeDTO>,
+}
+
+#[skip_serializing_none]
+#[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize, From, Into)]
+#[from(TransactionCode)]
+#[into(TransactionCode)]
+#[serde(rename_all = "camelCase")]
+pub struct DetailCredentialSchemaTransactionCodeDTO {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

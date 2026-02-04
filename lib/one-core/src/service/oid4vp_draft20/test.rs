@@ -182,6 +182,7 @@ async fn test_presentation_definition_success() {
                                 schema_id: "CredentialSchemaId".to_owned(),
                                 allow_suspension: true,
                                 requires_app_attestation: false,
+                                transaction_code: None,
                             }),
                         }]),
                     }),

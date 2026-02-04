@@ -184,6 +184,7 @@ impl CredentialFormatter for JsonLdClassic {
             features: vec![
                 Features::SupportsCredentialDesign,
                 Features::SupportsCombinedPresentation,
+                Features::SupportsTxCode,
             ],
             selective_disclosure: vec![],
             issuance_did_methods: vec![DidType::Key, DidType::Web, DidType::Jwk, DidType::WebVh],
@@ -322,6 +323,7 @@ impl CredentialFormatter for JsonLdClassic {
             requires_app_attestation: false,
             claim_schemas: Some(claim_schemas),
             organisation: None,
+            transaction_code: None,
         };
 
         let issuer_identifier = prepare_identifier(

@@ -1,6 +1,8 @@
 use one_core::model::claim::Claim;
 use one_core::model::credential::Credential;
-use one_core::model::credential_schema::{CredentialSchema, CredentialSchemaClaim, LayoutType};
+use one_core::model::credential_schema::{
+    CredentialSchema, CredentialSchemaClaim, LayoutType, TransactionCode,
+};
 use one_core::model::organisation::Organisation;
 use one_core::repository::error::DataLayerError;
 use one_dto_mapper::convert_inner;
@@ -39,6 +41,19 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 (item.into(), claim_schema)
             })
             .unzip();
+
+        let transaction_code = match (
+            value.credential_schema_transaction_code_type,
+            value.credential_schema_transaction_code_length,
+        ) {
+            (Some(r#type), Some(length)) => Some(TransactionCode {
+                r#type: r#type.into(),
+                length,
+                description: value.credential_schema_transaction_code_description,
+            }),
+            (None, None) => None,
+            _ => return Err(Self::Error::MappingError),
+        };
 
         Ok(Self {
             id: value.id,
@@ -82,6 +97,7 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: value.credential_schema_allow_suspension,
                 requires_app_attestation: value.credential_schema_requires_app_attestation,
+                transaction_code,
             }),
             interaction: None,
             key: None,

@@ -160,6 +160,7 @@ async fn test_presentation_reject_ok() {
                     organisation: None,
                     allow_suspension: true,
                     requires_app_attestation: false,
+                    transaction_code: None,
                 }),
             }]),
             organisation: None,
@@ -358,6 +359,7 @@ async fn test_get_presentation_definition_ok() {
         deleted_at: None,
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let claims = vec![

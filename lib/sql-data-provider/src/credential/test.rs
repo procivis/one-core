@@ -126,6 +126,7 @@ async fn setup_empty() -> TestSetup {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let did_id = insert_did_key(

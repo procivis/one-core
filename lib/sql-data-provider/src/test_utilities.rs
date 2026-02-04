@@ -140,6 +140,9 @@ pub async fn insert_credential_schema_to_database(
         schema_id: Set(new_id.to_string()),
         allow_suspension: Set(true),
         requires_app_attestation: Set(key_storage_security.is_some()),
+        transaction_code_type: Set(None),
+        transaction_code_length: Set(None),
+        transaction_code_description: Set(None),
     }
     .insert(database)
     .await?;

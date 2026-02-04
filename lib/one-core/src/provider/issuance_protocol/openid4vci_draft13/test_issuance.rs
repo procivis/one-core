@@ -703,6 +703,7 @@ fn dummy_credential() -> Credential {
             organisation: Some(dummy_organisation(None)),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         }),
         interaction: Some(Interaction {
             id: Uuid::new_v4().into(),

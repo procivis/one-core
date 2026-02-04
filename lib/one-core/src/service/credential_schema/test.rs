@@ -17,7 +17,7 @@ use crate::config::core_config::{CoreConfig, RevocationType};
 use crate::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, CredentialSchemaRelations, GetCredentialSchemaList,
-    KeyStorageSecurity, LayoutType,
+    KeyStorageSecurity, LayoutType, TransactionCodeType,
 };
 use crate::model::list_filter::ListFilterValue;
 use crate::model::list_query::ListPagination;
@@ -43,9 +43,9 @@ use crate::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
     CredentialSchemaCodeTypeEnum, CredentialSchemaFilterValue,
-    CredentialSchemaLogoPropertiesRequestDTO, GetCredentialSchemaQueryDTO,
-    ImportCredentialSchemaClaimSchemaDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaRequestSchemaDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, CredentialSchemaTransactionCodeRequestDTO,
+    GetCredentialSchemaQueryDTO, ImportCredentialSchemaClaimSchemaDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
 };
 use crate::service::credential_schema::mapper::{renest_claim_schemas, unnest_claim_schemas};
 use crate::service::error::{
@@ -119,6 +119,7 @@ fn generic_credential_schema() -> CredentialSchema {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     }
 }
 
@@ -406,6 +407,7 @@ async fn test_create_credential_schema_success() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(result.is_ok());
@@ -522,6 +524,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
             schema_id: Some(custom_schema_id.to_string()),
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap();
@@ -632,6 +635,7 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
             schema_id: Some(VCT.to_string()),
             allow_suspension: Some(false),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap();
@@ -751,6 +755,7 @@ async fn test_create_credential_schema_success_nested_claims() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap();
@@ -792,6 +797,7 @@ async fn test_create_credential_schema_failed_slash_in_claim_name() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -853,6 +859,7 @@ async fn test_create_credential_schema_failed_nested_claims_not_in_object_type()
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -899,6 +906,7 @@ async fn test_create_credential_schema_failed_nested_claims_object_type_has_empt
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -958,6 +966,7 @@ async fn test_create_credential_schema_failed_nested_claim_fails_validation() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1046,6 +1055,7 @@ async fn test_create_credential_schema_unique_name_error() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(result.is_err_and(|e| matches!(
@@ -1098,6 +1108,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1141,6 +1152,7 @@ async fn test_create_credential_schema_failed_unique_claims_error() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1188,6 +1200,7 @@ async fn test_create_credential_schema_fail_validation() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(
@@ -1214,6 +1227,7 @@ async fn test_create_credential_schema_fail_validation() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(
@@ -1241,6 +1255,7 @@ async fn test_create_credential_schema_fail_validation() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(wrong_datatype.is_err_and(|e| matches!(e, ServiceError::ConfigValidationError(_))));
@@ -1259,6 +1274,7 @@ async fn test_create_credential_schema_fail_validation() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(no_claims.is_err_and(|e| matches!(
@@ -1352,6 +1368,7 @@ async fn test_create_credential_schema_fail_unsupported_wallet_storage_type() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
 
@@ -1444,6 +1461,7 @@ async fn test_create_credential_schema_fail_missing_organisation() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
 
@@ -1506,6 +1524,7 @@ async fn test_create_credential_schema_fail_incompatible_revocation_and_format()
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1587,6 +1606,7 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
             schema_id: Some("schema.id".to_string()),
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1666,6 +1686,7 @@ async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
             schema_id: Some("".to_string()),
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1738,6 +1759,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
             schema_id: Some("test".to_string()),
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -1802,12 +1824,75 @@ async fn test_create_credential_schema_failed_schema_id_not_allowed() {
             schema_id: Some("schema.id".to_string()),
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
     assert!(matches!(
         result,
         ServiceError::BusinessLogic(BusinessLogicError::SchemaIdNotAllowed)
+    ));
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_failed_tx_code_too_long() {
+    let mut formatter = MockCredentialFormatter::default();
+    let mut formatter_provider = MockCredentialFormatterProvider::default();
+
+    formatter
+        .expect_get_capabilities()
+        .returning(generic_formatter_capabilities);
+    formatter_provider
+        .expect_get_credential_formatter()
+        .once()
+        .return_once(|_| Some(Arc::new(formatter)));
+
+    let mut revocation_method = MockRevocationMethod::default();
+    revocation_method
+        .expect_get_capabilities()
+        .returning(|| RevocationMethodCapabilities {
+            operations: vec![Operation::Suspend],
+        });
+
+    let service = setup_service(
+        MockCredentialSchemaRepository::default(),
+        MockOrganisationRepository::default(),
+        formatter_provider,
+        MockRevocationMethodProvider::new(),
+        generic_config().core,
+    );
+
+    let result = service
+        .create_credential_schema(CreateCredentialSchemaRequestDTO {
+            name: "cred".to_string(),
+            format: "JWT".into(),
+            key_storage_security: None,
+            external_schema: false,
+            revocation_method: None,
+            organisation_id: Uuid::new_v4().into(),
+            claims: vec![CredentialClaimSchemaRequestDTO {
+                key: "test".to_string(),
+                datatype: "STRING".to_string(),
+                array: Some(false),
+                required: true,
+                claims: vec![],
+            }],
+            layout_type: LayoutType::Card,
+            layout_properties: None,
+            schema_id: None,
+            allow_suspension: None,
+            requires_app_attestation: false,
+            transaction_code: Some(CredentialSchemaTransactionCodeRequestDTO {
+                r#type: TransactionCodeType::Numeric,
+                length: 11,
+                description: None,
+            }),
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        result,
+        ServiceError::Validation(ValidationError::InvalidTransactionCodeLength)
     ));
 }
 
@@ -1850,6 +1935,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(matches!(
@@ -1885,6 +1971,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(matches!(
@@ -1914,6 +2001,7 @@ async fn test_create_credential_schema_failed_claim_schema_key_too_long() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(matches!(
@@ -2820,6 +2908,7 @@ fn dummy_request() -> CreateCredentialSchemaRequestDTO {
         schema_id: None,
         allow_suspension: Some(true),
         requires_app_attestation: false,
+        transaction_code: None,
     }
 }
 
@@ -2946,6 +3035,7 @@ async fn test_import_credential_schema_success() {
                 layout_properties: None,
                 allow_suspension: Some(true),
                 requires_app_attestation: Some(true),
+                transaction_code: None,
             },
         })
         .await
@@ -3019,6 +3109,7 @@ async fn test_create_credential_schema_fail_unsupported_datatype() {
             schema_id: None,
             allow_suspension: Some(true),
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await
         .unwrap_err();
@@ -3064,6 +3155,7 @@ async fn test_create_credential_schema_fail_session_org_mismatch() {
             schema_id: None,
             allow_suspension: None,
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
     assert!(matches!(
@@ -3159,6 +3251,7 @@ async fn test_credential_schema_ops_session_org_mismatch() {
                 layout_properties: None,
                 allow_suspension: None,
                 requires_app_attestation: None,
+                transaction_code: None,
             },
         })
         .await;

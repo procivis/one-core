@@ -22,6 +22,9 @@ async fn test_db_schema_credential_schema() {
         "allow_suspension",
         "requires_app_attestation",
         "key_storage_security",
+        "transaction_code_type",
+        "transaction_code_length",
+        "transaction_code_description",
     ];
     if schema.backend() == DbBackend::MySql {
         columns.push("deleted_at_materialized");
@@ -117,6 +120,18 @@ async fn test_db_schema_credential_schema() {
     credential_schema
         .column("key_storage_security")
         .r#type(ColumnType::String(None))
+        .nullable(true);
+    credential_schema
+        .column("transaction_code_type")
+        .r#type(ColumnType::String(None))
+        .nullable(true);
+    credential_schema
+        .column("transaction_code_length")
+        .r#type(ColumnType::Unsigned)
+        .nullable(true);
+    credential_schema
+        .column("transaction_code_description")
+        .r#type(ColumnType::String(Some(300)))
         .nullable(true);
 }
 

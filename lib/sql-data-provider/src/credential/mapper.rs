@@ -1,7 +1,7 @@
 use one_core::model::credential::{
     Clearable, Credential, CredentialFilterValue, SortableCredentialColumn,
 };
-use one_core::model::credential_schema::{CredentialSchema, LayoutType};
+use one_core::model::credential_schema::{CredentialSchema, LayoutType, TransactionCode};
 use one_core::model::identifier::Identifier;
 use one_core::model::list_filter::ListFilterCondition;
 use one_core::repository::error::DataLayerError;
@@ -190,6 +190,19 @@ pub(super) fn request_to_active_model(
 pub(super) fn credential_list_model_to_repository_model(
     credential: CredentialListEntityModel,
 ) -> Result<Credential, DataLayerError> {
+    let transaction_code = match (
+        credential.credential_schema_transaction_code_type,
+        credential.credential_schema_transaction_code_length,
+    ) {
+        (Some(r#type), Some(length)) => Some(TransactionCode {
+            r#type: r#type.into(),
+            length,
+            description: credential.credential_schema_transaction_code_description,
+        }),
+        (None, None) => None,
+        _ => return Err(DataLayerError::MappingError),
+    };
+
     let schema = CredentialSchema {
         id: credential.credential_schema_id,
         deleted_at: credential.credential_schema_deleted_at,
@@ -210,6 +223,7 @@ pub(super) fn credential_list_model_to_repository_model(
             .map(|layout_properties| layout_properties.into()),
         allow_suspension: credential.credential_schema_allow_suspension,
         requires_app_attestation: credential.credential_schema_requires_app_attestation,
+        transaction_code,
     };
 
     let issuer_identifier = match credential.issuer_identifier_id {

@@ -12,6 +12,7 @@ use crate::model;
 use crate::model::common::GetListResponse;
 use crate::model::credential_schema::{
     CredentialSchema, KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn,
+    TransactionCode, TransactionCodeType,
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
@@ -65,6 +66,17 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
     pub requires_app_attestation: bool,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Into, From)]
+#[into(TransactionCode)]
+#[from(TransactionCode)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialSchemaTransactionCodeDTO {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -123,6 +135,15 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub schema_id: Option<String>,
     pub allow_suspension: Option<bool>,
     pub requires_app_attestation: bool,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
+}
+
+#[derive(Clone, Debug, Into)]
+#[into(TransactionCode)]
+pub struct CredentialSchemaTransactionCodeRequestDTO {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, From)]
@@ -268,6 +289,17 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
     pub requires_app_attestation: Option<bool>,
+    #[into(with_fn = convert_inner)]
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, Into)]
+#[into(crate::proto::credential_schema::dto::ImportCredentialSchemaTransactionCodeDTO)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportCredentialSchemaTransactionCodeDTO {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Into)]

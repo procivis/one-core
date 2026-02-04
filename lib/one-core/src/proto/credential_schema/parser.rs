@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools;
+use one_dto_mapper::convert_inner;
 use shared_types::{CredentialFormat, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -89,6 +90,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
             requires_app_attestation: dto.schema.requires_app_attestation.unwrap_or(false),
             claim_schemas: Some(claim_schemas),
             organisation: Some(dto.organisation),
+            transaction_code: convert_inner(dto.schema.transaction_code),
         })
     }
 }

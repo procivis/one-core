@@ -401,6 +401,7 @@ pub enum Features {
     RequiresSchemaIdForExternal,
     RequiresPresentationEncryption,
     SupportsCombinedPresentation,
+    SupportsTxCode,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

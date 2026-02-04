@@ -1,7 +1,9 @@
+use one_core::model::credential_schema::TransactionCodeType;
 use one_core::service::credential_schema::dto::{
     CreateCredentialSchemaRequestDTO, CredentialClaimSchemaDTO, CredentialClaimSchemaRequestDTO,
     CredentialSchemaDetailResponseDTO, CredentialSchemaListIncludeEntityTypeEnum,
-    CredentialSchemaListItemResponseDTO,
+    CredentialSchemaListItemResponseDTO, CredentialSchemaTransactionCodeDTO,
+    CredentialSchemaTransactionCodeRequestDTO,
 };
 use one_core::service::error::ServiceError;
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
@@ -88,6 +90,18 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
     pub requires_app_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(CredentialSchemaTransactionCodeDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CredentialSchemaTransactionCodeRestDTO {
+    pub r#type: TransactionCodeTypeRestEnum,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[options_not_nullable]
@@ -260,6 +274,28 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub requires_app_attestation: bool,
+    #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
+#[into(CredentialSchemaTransactionCodeRequestDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct CredentialSchemaTransactionCodeRequestRestDTO {
+    pub r#type: TransactionCodeTypeRestEnum,
+    pub length: u32,
+    pub description: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[into(TransactionCodeType)]
+#[from(TransactionCodeType)]
+pub(crate) enum TransactionCodeTypeRestEnum {
+    Numeric,
+    Alphanumeric,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From, Default)]
@@ -433,6 +469,19 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub requires_app_attestation: Option<bool>,
+    #[serde(default)]
+    #[try_into(with_fn = convert_inner, infallible)]
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeRequestRestDTO>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
+#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaTransactionCodeDTO)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub(crate) struct ImportCredentialSchemaTransactionCodeRequestRestDTO {
+    pub r#type: TransactionCodeTypeRestEnum,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[options_not_nullable]
@@ -531,6 +580,11 @@ mod test {
             }),
             allow_suspension: true,
             requires_app_attestation: true,
+            transaction_code: Some(CredentialSchemaTransactionCodeRestDTO {
+                r#type: TransactionCodeTypeRestEnum::Numeric,
+                length: 6,
+                description: Some("description".to_string()),
+            }),
         };
 
         let serialized = serde_json::to_value(shared).unwrap();

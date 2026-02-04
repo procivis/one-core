@@ -326,6 +326,7 @@ impl HandleInvitationOperations for HandleInvitationOperationsImpl {
                         organisation: Some(organisation.clone()),
                         allow_suspension: false,
                         requires_app_attestation: false,
+                        transaction_code: None,
                     };
 
                     let schema = self

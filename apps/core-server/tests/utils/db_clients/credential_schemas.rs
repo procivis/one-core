@@ -110,6 +110,7 @@ impl CredentialSchemasDB {
             schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self
@@ -171,6 +172,7 @@ impl CredentialSchemasDB {
             schema_id: id.to_string(),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self
@@ -275,6 +277,7 @@ impl CredentialSchemasDB {
             schema_id: params.schema_id.unwrap_or("doctype".to_string()),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self
@@ -379,6 +382,7 @@ impl CredentialSchemasDB {
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self
@@ -496,6 +500,7 @@ impl CredentialSchemasDB {
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self
@@ -717,6 +722,7 @@ impl CredentialSchemasDB {
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
             requires_app_attestation: params.requires_app_attestation,
+            transaction_code: None,
         };
 
         let id = self
@@ -765,6 +771,7 @@ impl CredentialSchemasDB {
             schema_id: new_id.to_string(),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self
@@ -832,6 +839,7 @@ impl CredentialSchemasDB {
             schema_id: schema_id.to_owned(),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         };
 
         let id = self

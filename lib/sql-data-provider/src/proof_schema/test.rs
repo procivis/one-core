@@ -205,6 +205,7 @@ async fn test_create_proof_schema_already_exists() {
                     schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
                     requires_app_attestation: false,
+                    transaction_code: None,
                 }),
             }]),
         })
@@ -303,6 +304,7 @@ async fn test_create_proof_schema_success() {
                     schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
                     requires_app_attestation: false,
+                    transaction_code: None,
                 }),
             }]),
         })
@@ -511,6 +513,7 @@ async fn test_get_proof_schema_with_relations() {
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
                 requires_app_attestation: false,
+                transaction_code: None,
             }))
         });
 
@@ -647,6 +650,7 @@ async fn test_get_proof_schema_with_input_proof_relations() {
                 schema_id: id.to_string(),
                 allow_suspension: true,
                 requires_app_attestation: false,
+                transaction_code: None,
             }))
         });
 
@@ -1103,6 +1107,9 @@ async fn test_get_proof_schema_list_filter_formats() {
         imported_source_url: Set("URL".to_string()),
         allow_suspension: Set(false),
         requires_app_attestation: Set(false),
+        transaction_code_type: Set(None),
+        transaction_code_length: Set(None),
+        transaction_code_description: Set(None),
     }
     .insert(&db)
     .await
@@ -1125,6 +1132,9 @@ async fn test_get_proof_schema_list_filter_formats() {
         imported_source_url: Set("URL".to_string()),
         allow_suspension: Set(false),
         requires_app_attestation: Set(false),
+        transaction_code_type: Set(None),
+        transaction_code_length: Set(None),
+        transaction_code_description: Set(None),
     }
     .insert(&db)
     .await

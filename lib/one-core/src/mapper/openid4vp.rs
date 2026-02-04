@@ -84,5 +84,6 @@ fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) ->
         organisation: organisation.into(),
         allow_suspension: schema.allow_suspension,
         requires_app_attestation: schema.requires_app_attestation,
+        transaction_code: schema.transaction_code,
     }
 }

@@ -32,6 +32,7 @@ pub struct CredentialSchema {
     pub imported_source_url: String,
     pub allow_suspension: bool,
     pub requires_app_attestation: bool,
+    pub transaction_code: Option<TransactionCode>,
 
     // Relations
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
@@ -97,6 +98,22 @@ pub enum KeyStorageSecurity {
     Moderate,
     EnhancedBasic,
     Basic,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TransactionCode {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
+}
+
+#[derive(
+    Clone, Copy, Debug, Eq, Serialize, Deserialize, PartialEq, Display, Hash, PartialOrd, Ord,
+)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransactionCodeType {
+    Numeric,
+    Alphanumeric,
 }
 
 #[skip_serializing_none]

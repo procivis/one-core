@@ -54,6 +54,7 @@ impl TryFrom<CredentialSchema> for CredentialSchemaDetailResponseDTO {
             layout_properties: value.layout_properties.map(|item| item.into()),
             allow_suspension: value.allow_suspension,
             requires_app_attestation: value.requires_app_attestation,
+            transaction_code: convert_inner(value.transaction_code),
         })
     }
 }
@@ -134,6 +135,7 @@ pub(super) fn from_create_request_with_id(
         schema_id,
         allow_suspension: request.allow_suspension.unwrap_or_default(),
         requires_app_attestation: request.requires_app_attestation,
+        transaction_code: convert_inner(request.transaction_code),
     })
 }
 

@@ -5,7 +5,7 @@ use shared_types::{
 use time::OffsetDateTime;
 
 use crate::entity::credential;
-use crate::entity::credential_schema::{KeyStorageSecurity, LayoutProperties};
+use crate::entity::credential_schema::{KeyStorageSecurity, LayoutProperties, TransactionCodeType};
 use crate::entity::identifier::{IdentifierState, IdentifierType};
 
 #[derive(FromQueryResult)]
@@ -38,6 +38,9 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_allow_suspension: bool,
     pub credential_schema_requires_app_attestation: bool,
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
+    pub credential_schema_transaction_code_type: Option<TransactionCodeType>,
+    pub credential_schema_transaction_code_length: Option<u32>,
+    pub credential_schema_transaction_code_description: Option<String>,
 
     pub issuer_identifier_id: Option<IdentifierId>,
     pub issuer_identifier_created_date: Option<OffsetDateTime>,

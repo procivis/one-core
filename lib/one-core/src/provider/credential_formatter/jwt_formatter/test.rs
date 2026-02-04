@@ -22,7 +22,7 @@ use crate::proto::jwt::model::JWTPayload;
 use crate::provider::credential_formatter::common::MockAuth;
 use crate::provider::credential_formatter::model::{
     CredentialData, CredentialPresentation, CredentialSchema, CredentialSchemaMetadata,
-    CredentialStatus, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource,
+    CredentialStatus, Features, IdentifierDetails, Issuer, MockTokenVerifier, PublicKeySource,
     PublishedClaim,
 };
 use crate::provider::credential_formatter::vcdm::{
@@ -700,7 +700,14 @@ fn test_get_capabilities() {
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
     };
 
-    assert_eq!(2, jwt_formatter.get_capabilities().features.len());
+    assert_eq!(
+        jwt_formatter.get_capabilities().features,
+        vec![
+            Features::SupportsCredentialDesign,
+            Features::SupportsCombinedPresentation,
+            Features::SupportsTxCode,
+        ]
+    );
 }
 
 #[test]
@@ -726,6 +733,7 @@ fn test_schema_id() {
         schema_id: None,
         allow_suspension: None,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let id = CredentialSchemaId::from(Uuid::new_v4());

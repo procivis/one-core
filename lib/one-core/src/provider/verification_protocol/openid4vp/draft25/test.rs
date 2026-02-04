@@ -252,6 +252,7 @@ fn test_proof(proof_id: Uuid, credential_format: CredentialFormat) -> Proof {
                     requires_app_attestation: false,
                     claim_schemas: None,
                     organisation: None,
+                    transaction_code: None,
                 }),
             }]),
         }),

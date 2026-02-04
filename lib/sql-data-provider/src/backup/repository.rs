@@ -228,6 +228,18 @@ impl BackupRepository for BackupProvider {
                 credential_schema::Column::RequiresAppAttestation,
                 "credential_schema_requires_app_attestation",
             )
+            .column_as(
+                credential_schema::Column::TransactionCodeType,
+                "credential_schema_transaction_code_type",
+            )
+            .column_as(
+                credential_schema::Column::TransactionCodeLength,
+                "credential_schema_transaction_code_length",
+            )
+            .column_as(
+                credential_schema::Column::TransactionCodeDescription,
+                "credential_schema_transaction_code_description",
+            )
             .column_as(organisation::Column::Id, "organisation_id")
             .column_as(organisation::Column::Name, "organisation_name")
             .column_as(

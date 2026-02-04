@@ -143,6 +143,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             schema_id: credential_schema_id.to_string(),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         },
         organisation,
         repository,
@@ -205,6 +206,7 @@ async fn test_create_credential_schema_success() {
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         })
         .await;
 
@@ -495,6 +497,7 @@ async fn test_delete_credential_schema_not_found() {
             requires_app_attestation: false,
             claim_schemas: None,
             organisation: None,
+            transaction_code: None,
         })
         .await;
     assert!(matches!(result, Err(DataLayerError::RecordNotUpdated)));

@@ -595,6 +595,7 @@ mod tests {
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,
                 requires_app_attestation: false,
+                transaction_code: None,
             },
             vec![(
                 CredentialClaim::try_from(json!({ "element": "Test" })).unwrap(),

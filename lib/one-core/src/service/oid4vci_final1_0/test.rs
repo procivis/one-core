@@ -134,6 +134,7 @@ fn generic_credential_schema() -> CredentialSchema {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     }
 }
 

@@ -740,6 +740,12 @@ pub enum ValidationError {
 
     #[error("Key storage security level `{0}` not supported")]
     KeyStorageSecurityDisabled(KeyStorageSecurity),
+
+    #[error("Transaction code not supported")]
+    TransactionCodeNotSupported,
+
+    #[error("Invalid transaction code length")]
+    InvalidTransactionCodeLength,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1048,6 +1054,8 @@ impl ErrorCodeMixin for ValidationError {
             Self::ProofSchemaInvalidCredentialCombination { .. } => ErrorCode::BR_0305,
             Self::KeyStorageSecurityDisabled(_) => ErrorCode::BR_0309,
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
+            Self::TransactionCodeNotSupported => ErrorCode::BR_0337,
+            Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
         }
     }
 }

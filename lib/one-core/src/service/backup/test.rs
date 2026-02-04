@@ -105,6 +105,7 @@ fn dummy_unexportable_entities() -> UnexportableEntities {
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
                 requires_app_attestation: false,
+                transaction_code: None,
             }),
             interaction: None,
             key: None,

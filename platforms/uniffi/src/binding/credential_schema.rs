@@ -1,5 +1,5 @@
 use one_core::model::credential_schema::{
-    KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn,
+    KeyStorageSecurity, LayoutType, SortableCredentialSchemaColumn, TransactionCodeType,
 };
 use one_core::model::list_filter::{
     ComparisonType, ListFilterCondition, ListFilterValue, StringMatch, StringMatchType,
@@ -13,9 +13,10 @@ use one_core::service::credential_schema::dto::{
     CredentialSchemaLayoutPropertiesRequestDTO, CredentialSchemaLayoutPropertiesResponseDTO,
     CredentialSchemaListIncludeEntityTypeEnum, CredentialSchemaLogoPropertiesRequestDTO,
     CredentialSchemaLogoPropertiesResponseDTO, CredentialSchemaShareResponseDTO,
-    GetCredentialSchemaListResponseDTO, GetCredentialSchemaQueryDTO,
-    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
-    ImportCredentialSchemaRequestSchemaDTO,
+    CredentialSchemaTransactionCodeDTO, GetCredentialSchemaListResponseDTO,
+    GetCredentialSchemaQueryDTO, ImportCredentialSchemaLayoutPropertiesDTO,
+    ImportCredentialSchemaRequestDTO, ImportCredentialSchemaRequestSchemaDTO,
+    ImportCredentialSchemaTransactionCodeDTO,
 };
 use one_dto_mapper::{From, Into, TryInto, convert_inner, try_convert_inner};
 use shared_types::CredentialSchemaId;
@@ -225,6 +226,16 @@ pub struct CredentialSchemaDetailBindingDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
     pub requires_app_attestation: bool,
+    #[from(with_fn = convert_inner)]
+    pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, From)]
+#[from(CredentialSchemaTransactionCodeDTO)]
+pub struct CredentialSchemaTransactionCodeBindingDTO {
+    pub r#type: TransactionCodeTypeBindingEnum,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]
@@ -426,6 +437,24 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub allow_suspension: Option<bool>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub requires_app_attestation: Option<bool>,
+    #[try_into(infallible, with_fn = convert_inner)]
+    pub transaction_code: Option<ImportCredentialSchemaTransactionCodeBindingDTO>,
+}
+
+#[derive(Clone, Debug, uniffi::Record, Into)]
+#[into(ImportCredentialSchemaTransactionCodeDTO)]
+pub struct ImportCredentialSchemaTransactionCodeBindingDTO {
+    pub r#type: TransactionCodeTypeBindingEnum,
+    pub length: u32,
+    pub description: Option<String>,
+}
+
+#[derive(From, Clone, Debug, Into, uniffi::Enum)]
+#[from(TransactionCodeType)]
+#[into(TransactionCodeType)]
+pub enum TransactionCodeTypeBindingEnum {
+    Numeric,
+    Alphanumeric,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

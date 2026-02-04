@@ -303,6 +303,18 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential_schema::Column::RequiresAppAttestation,
             "credential_schema_requires_app_attestation",
         )
+        .column_as(
+            credential_schema::Column::TransactionCodeType,
+            "credential_schema_transaction_code_type",
+        )
+        .column_as(
+            credential_schema::Column::TransactionCodeLength,
+            "credential_schema_transaction_code_length",
+        )
+        .column_as(
+            credential_schema::Column::TransactionCodeDescription,
+            "credential_schema_transaction_code_description",
+        )
         .join(
             JoinType::LeftJoin,
             credential::Relation::IssuerIdentifier.def(),

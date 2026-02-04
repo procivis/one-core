@@ -267,6 +267,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             organisation: None,
             allow_suspension: true,
             requires_app_attestation: false,
+            transaction_code: None,
         }),
     }
 }
@@ -326,6 +327,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
                     requires_app_attestation: false,
+                    transaction_code: None,
                 }),
             }]),
         }),
@@ -453,6 +455,7 @@ async fn test_get_proof_exists() {
                     schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
                     requires_app_attestation: false,
+                    transaction_code: None,
                 }),
             }]),
         }),
@@ -596,6 +599,7 @@ async fn test_get_proof_with_array_holder() {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let credential = Credential {
@@ -852,6 +856,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let credential = Credential {
@@ -1123,6 +1128,7 @@ async fn test_get_proof_with_object_array_holder() {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let credential = Credential {
@@ -1398,6 +1404,7 @@ async fn test_get_proof_with_array() {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let credential = Credential {
@@ -1662,6 +1669,7 @@ async fn test_get_proof_with_array_in_object() {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let credential = Credential {
@@ -1942,6 +1950,7 @@ async fn test_get_proof_with_object_array() {
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
         requires_app_attestation: false,
+        transaction_code: None,
     };
 
     let credential = Credential {

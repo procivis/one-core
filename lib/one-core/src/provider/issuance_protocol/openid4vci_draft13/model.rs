@@ -1,7 +1,7 @@
 use std::fmt;
 
 use indexmap::IndexMap;
-use one_dto_mapper::{Into, convert_inner};
+use one_dto_mapper::{From, Into, convert_inner};
 use secrecy::{SecretSlice, SecretString};
 use serde::de::{MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -16,7 +16,9 @@ use url::Url;
 
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
-use crate::model::credential_schema::{KeyStorageSecurity, LayoutProperties, LayoutType};
+use crate::model::credential_schema::{
+    KeyStorageSecurity, LayoutProperties, LayoutType, TransactionCode, TransactionCodeType,
+};
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::issuance_protocol::dto::ContinueIssuanceDTO;
 use crate::provider::issuance_protocol::model::{
@@ -624,6 +626,17 @@ pub(crate) struct CredentialSchemaDetailResponseDTO {
     pub schema_id: String,
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
+}
+
+#[derive(Clone, Debug, Deserialize, From, Into)]
+#[serde(rename_all = "camelCase")]
+#[from(TransactionCode)]
+#[into(TransactionCode)]
+pub struct CredentialSchemaTransactionCodeDTO {
+    pub r#type: TransactionCodeType,
+    pub length: u32,
+    pub description: Option<String>,
 }
 
 #[derive(Clone, Debug)]

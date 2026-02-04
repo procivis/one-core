@@ -151,6 +151,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             requires_app_attestation: false,
             claim_schemas: Some(claim_schemas),
             organisation: None,
+            transaction_code: None,
         };
 
         let issuer_identifier = prepare_identifier(&issuer, self.key_algorithm_provider.as_ref())?;
@@ -346,6 +347,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
 
         if !self.params.swiyu_mode {
             features.push(Features::SupportsCombinedPresentation);
+            features.push(Features::SupportsTxCode);
         }
 
         if self.params.swiyu_mode {
