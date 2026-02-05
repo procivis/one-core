@@ -523,6 +523,17 @@ deploy:trial:
     CLUSTER_NAME: $DEMO_CLUSTER_NAME
     DEPLOY_ENVIRONMENT: Trial
 
+deploy:lithuania:
+  extends:
+    - .deploy_trigger
+    - .rule:deploy:demo
+  variables:
+    VALUES_PATH: values/lithuania
+    K8S_NAMESPACE: lithuania
+    RESOURCE_GROUP: $DEMO_RESOURCE_GROUP
+    CLUSTER_NAME: $DEMO_CLUSTER_NAME
+    DEPLOY_ENVIRONMENT: Lithuania
+
 generate_docs:test:
   stage: generate_docs
   trigger:
