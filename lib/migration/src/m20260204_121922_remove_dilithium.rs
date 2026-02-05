@@ -80,14 +80,21 @@ impl MigrationTrait for Migration {
                     .column(Proof::Id)
                     .from(Proof::Table)
                     .and_where(
-                        Expr::col(ProofNew::VerifierIdentifierId).is_in(&identifiers_to_delete),
+                        Expr::col(ProofNew::VerifierIdentifierId)
+                            .is_in(&identifiers_to_delete)
+                            .or(Expr::col(ProofNew::VerifierKeyId).is_in(keys_to_delete.iter())),
                     ),
             ),
         )
         .all(db)
         .await?;
-        let credentials_to_delete =
-            find_credentials_to_delete(&identifiers_to_delete, &proofs_to_delete, manager).await?;
+        let credentials_to_delete = find_credentials_to_delete(
+            &keys_to_delete,
+            &identifiers_to_delete,
+            &proofs_to_delete,
+            manager,
+        )
+        .await?;
 
         // Delete entities in the right order
         delete_proofs(&proofs_to_delete, manager).await?;
@@ -134,6 +141,7 @@ async fn find_identifiers_to_delete(
 }
 
 async fn find_credentials_to_delete(
+    keys_to_delete: &[IdResult],
     identifiers_to_delete: &[IdResult],
     proofs_to_delete: &[IdResult],
     manager: &SchemaManager<'_>,
@@ -149,7 +157,8 @@ async fn find_credentials_to_delete(
                     Expr::col(CredentialNew::IssuerIdentifierId)
                         .is_in(identifiers_to_delete.iter())
                         .or(Expr::col(CredentialNew::HolderIdentifierId)
-                            .is_in(identifiers_to_delete.iter())),
+                            .is_in(identifiers_to_delete.iter()))
+                        .or(Expr::col(Credential::KeyId).is_in(keys_to_delete.iter())),
                 ),
         ),
     )
