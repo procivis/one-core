@@ -183,6 +183,7 @@ async fn find_credentials_to_delete(
 
 async fn delete_proofs(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     delete(ProofClaim::Table, ProofClaim::ProofId, ids, manager).await?;
+    delete(Proof::Table, Proof::Id, ids, manager).await?;
     delete_proof_blobs(ids, manager).await?;
     delete(History::Table, History::EntityId, ids, manager).await
 }
