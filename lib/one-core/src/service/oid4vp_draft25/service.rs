@@ -502,7 +502,7 @@ impl OID4VPDraft25Service {
                             "missing state parameter".to_string(),
                         ))?
                         .parse()?,
-                    mdoc_generated_nonce: Some(jwe_header.agreement_partyuinfo),
+                    mdoc_generated_nonce: jwe_header.agreement_partyuinfo,
                     encryption_key: Some(key_id),
                 })
             }
