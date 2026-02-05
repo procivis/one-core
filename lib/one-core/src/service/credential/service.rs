@@ -5,7 +5,8 @@ use super::CredentialService;
 use super::dto::{
     CreateCredentialRequestDTO, CredentialAttestationBlobs, CredentialDetailResponseDTO,
     CredentialRevocationCheckResponseDTO, DetailCredentialClaimResponseDTO,
-    GetCredentialListResponseDTO, GetCredentialQueryDTO, SuspendCredentialRequestDTO,
+    GetCredentialListResponseDTO, GetCredentialQueryDTO, ShareCredentialResponseDTO,
+    SuspendCredentialRequestDTO,
 };
 use super::mapper::{
     claims_from_create_request, credential_detail_response_from_model, from_create_request,
@@ -21,7 +22,6 @@ use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::{
     Clearable, Credential, CredentialRelations, CredentialRole, CredentialStateEnum,
     UpdateCredentialRequest,
@@ -494,7 +494,7 @@ impl CredentialService {
     pub async fn share_credential(
         &self,
         credential_id: &CredentialId,
-    ) -> Result<EntityShareResponseDTO, ServiceError> {
+    ) -> Result<ShareCredentialResponseDTO, ServiceError> {
         let credential = self.get_credential_with_state(credential_id).await?;
 
         if credential.deleted_at.is_some() {
@@ -559,6 +559,7 @@ impl CredentialService {
             interaction_id,
             interaction_data,
             expires_at,
+            transaction_code,
         } = exchange.issuer_share_credential(&credential).await?;
 
         add_new_interaction(
@@ -583,7 +584,11 @@ impl CredentialService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &credential.interaction).await?;
         tracing::info!("Shared credential {credential_id}");
-        Ok(EntityShareResponseDTO { url, expires_at })
+        Ok(ShareCredentialResponseDTO {
+            url,
+            expires_at,
+            transaction_code,
+        })
     }
 
     // ============ Private methods

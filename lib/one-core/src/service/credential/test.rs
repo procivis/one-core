@@ -596,6 +596,7 @@ async fn test_share_credential_success() {
                 interaction_id,
                 interaction_data: None,
                 expires_at: Some(expires_at),
+                transaction_code: None,
             })
         });
 

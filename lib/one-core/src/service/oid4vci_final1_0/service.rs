@@ -323,8 +323,7 @@ impl OID4VCIFinal1_0Service {
             protocol_base_url,
             &credential.protocol,
             &interaction.id.to_string(),
-            &credential_schema_id,
-            &credential_schema.schema_id,
+            credential_schema,
         )?)
     }
 

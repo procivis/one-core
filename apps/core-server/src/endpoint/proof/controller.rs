@@ -9,10 +9,9 @@ use shared_types::{Permission, ProofId};
 use super::dto::{
     CreateProofRequestRestDTO, GetProofQuery, PresentationDefinitionResponseRestDTO,
     PresentationDefinitionV2ResponseRestDTO, ProofDetailResponseRestDTO, ShareProofRequestRestDTO,
+    ShareProofResponseRestDTO,
 };
-use crate::dto::common::{
-    EntityResponseRestDTO, EntityShareResponseRestDTO, GetProofsResponseRestDTO,
-};
+use crate::dto::common::{EntityResponseRestDTO, GetProofsResponseRestDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{CreatedOrErrorResponse, EmptyOrErrorResponse, OkOrErrorResponse};
@@ -211,7 +210,7 @@ pub(crate) async fn post_proof(
         content((Option<ShareProofRequestRestDTO>)),
         example = json!({ "params": { "clientIdScheme": "redirect_uri" } }),
     ),
-    responses(CreatedOrErrorResponse<EntityShareResponseRestDTO>),
+    responses(CreatedOrErrorResponse<ShareProofResponseRestDTO>),
     params(
         ("id" = ProofId, Path, description = "Proof id")
     ),
@@ -233,10 +232,10 @@ pub(crate) async fn share_proof(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<ProofId>, ErrorResponseRestDTO>,
     request: Result<Json<ShareProofRequestRestDTO>, JsonRejection>,
-) -> CreatedOrErrorResponse<EntityShareResponseRestDTO> {
+) -> CreatedOrErrorResponse<ShareProofResponseRestDTO> {
     if let Err(JsonRejection::JsonDataError(error)) = &request {
         return CreatedOrErrorResponse::from_result(
-            Err::<EntityShareResponseRestDTO, ServiceError>(
+            Err::<ShareProofResponseRestDTO, ServiceError>(
                 ValidationError::DeserializationError(error.body_text()).into(),
             ),
             state,

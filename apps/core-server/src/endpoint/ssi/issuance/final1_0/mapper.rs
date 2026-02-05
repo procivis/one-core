@@ -67,24 +67,26 @@ impl TryFrom<OpenID4VCITokenRequestRestDTO> for OpenID4VCITokenRequestDTO {
             value.grant_type.as_str(),
             value.pre_authorized_code,
             value.refresh_token,
+            value.tx_code,
         ) {
             (
                 "urn:ietf:params:oauth:grant-type:pre-authorized_code",
                 Some(pre_authorized_code),
                 None,
+                tx_code,
             ) => Ok(Self::PreAuthorizedCode {
                 pre_authorized_code,
-                tx_code: None,
+                tx_code,
             }),
-            ("refresh_token", None, Some(refresh_token)) => {
+            ("refresh_token", None, Some(refresh_token), None) => {
                 Ok(Self::RefreshToken { refresh_token })
             }
-            ("urn:ietf:params:oauth:grant-type:pre-authorized_code" | "refresh_token", _, _) => {
+            ("urn:ietf:params:oauth:grant-type:pre-authorized_code" | "refresh_token", _, _, _) => {
                 Err(ServiceError::OpenID4VCIError(
                     OpenID4VCIError::InvalidRequest,
                 ))
             }
-            (grant, _, _) if !grant.is_empty() => Err(ServiceError::OpenID4VCIError(
+            (grant, _, _, _) if !grant.is_empty() => Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::UnsupportedGrantType,
             )),
             _ => Err(ServiceError::OpenID4VCIError(

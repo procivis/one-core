@@ -2,7 +2,7 @@ use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use hmac::Mac;
 use p256::ecdsa::Signature;
 use rand::distributions::{Alphanumeric, DistString};
-use rand::{CryptoRng, RngCore, SeedableRng};
+use rand::{CryptoRng, Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use serde::{Deserialize, Deserializer};
 
@@ -13,6 +13,13 @@ pub fn generate_salt_base64_16() -> String {
 
     //This operation should be safe as we control the input.
     Base64UrlSafeNoPadding::encode_to_string(seed).unwrap_or_default()
+}
+
+pub fn generate_numeric(length: usize) -> String {
+    let rng = &mut get_rng();
+    std::iter::repeat_with(|| rng.gen_range('0'..='9'))
+        .take(length)
+        .collect()
 }
 
 pub fn generate_alphanumeric(length: usize) -> String {

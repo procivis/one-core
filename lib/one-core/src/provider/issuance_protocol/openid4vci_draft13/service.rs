@@ -23,11 +23,11 @@ use crate::model::credential_schema::CredentialSchema;
 use crate::model::identifier::IdentifierType;
 use crate::model::interaction::Interaction;
 use crate::provider::issuance_protocol::error::{OpenID4VCIError, OpenIDIssuanceError};
-use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
+use crate::provider::issuance_protocol::model::{OpenID4VCIProofTypeSupported, OpenID4VCITxCode};
 use crate::provider::issuance_protocol::openid4vci_draft13::model::OpenID4VCICredentialConfigurationData;
 use crate::provider::issuance_protocol::openid4vci_draft13::validator::{
     throw_if_interaction_created_date, throw_if_interaction_pre_authorized_code_used,
-    throw_if_token_request_invalid, validate_refresh_token,
+    throw_if_token_request_invalid, throw_if_tx_code_invalid, validate_refresh_token,
 };
 
 pub(crate) fn create_issuer_metadata_response(
@@ -251,8 +251,6 @@ pub(crate) fn create_credential_offer(
     protocol_base_url: &str,
     pre_authorized_code: &str,
     credential: &Credential,
-    credential_schema_uuid: &CredentialSchemaId,
-    credential_schema_id: &str,
     credential_subject: ExtendedSubjectDTO,
 ) -> Result<OpenID4VCICredentialOfferDTO, OpenIDIssuanceError> {
     let issuer_identifier =
@@ -282,14 +280,31 @@ pub(crate) fn create_credential_offer(
             )));
         }
     };
+
+    let credential_schema = credential
+        .schema
+        .as_ref()
+        .ok_or(OpenID4VCIError::RuntimeError(
+            "Missing credential_schema".to_owned(),
+        ))?;
+
+    let tx_code = credential_schema
+        .transaction_code
+        .as_ref()
+        .map(|code| OpenID4VCITxCode {
+            input_mode: code.r#type.into(),
+            length: Some(code.length as _),
+            description: code.description.to_owned(),
+        });
+
     Ok(OpenID4VCICredentialOfferDTO {
-        credential_issuer: format!("{protocol_base_url}/{credential_schema_uuid}"),
+        credential_issuer: format!("{protocol_base_url}/{}", credential_schema.id),
         issuer_did,
         issuer_certificate,
-        credential_configuration_ids: vec![credential_schema_id.to_string()],
+        credential_configuration_ids: vec![credential_schema.schema_id.to_owned()],
         grants: OpenID4VCIGrants::PreAuthorizedCode(OpenID4VCIPreAuthorizedCodeGrant {
             pre_authorized_code: pre_authorized_code.to_owned(),
-            tx_code: None,
+            tx_code,
             authorization_server: None,
         }),
         credential_subject: Some(credential_subject),
@@ -306,6 +321,7 @@ pub(crate) fn oidc_issuer_create_token(
     refresh_token_expires_in: Duration,
 ) -> Result<OpenID4VCITokenResponseDTO, OpenIDIssuanceError> {
     throw_if_token_request_invalid(request)?;
+    throw_if_tx_code_invalid(interaction_data.transaction_code.as_ref(), request)?;
 
     let generate_new_token = || {
         SecretString::from(format!(

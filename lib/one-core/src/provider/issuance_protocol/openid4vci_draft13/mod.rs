@@ -66,7 +66,8 @@ use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::dto::Features;
 use crate::provider::issuance_protocol::error::TxCodeError;
 use crate::provider::issuance_protocol::mapper::{
-    autogenerate_holder_binding, get_issued_credential_update, interaction_from_handle_invitation,
+    autogenerate_holder_binding, generate_transaction_code, get_issued_credential_update,
+    interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::model::{
     ContinueIssuanceResponseDTO, InvitationResponseEnum, ShareResponse, SubmitIssuerResponse,
@@ -1153,8 +1154,6 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 protocol_base_url,
                 &interaction_id.to_string(),
                 credential,
-                &credential_schema.id,
-                &credential_schema.schema_id,
                 credential_subject,
             )
             .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
@@ -1170,6 +1169,11 @@ impl IssuanceProtocol for OpenID4VCI13 {
 
         let url = query.finish().to_string();
 
+        let transaction_code = credential_schema
+            .transaction_code
+            .as_ref()
+            .map(generate_transaction_code);
+
         let interaction_data = Some(serialize_interaction_data(
             &OpenID4VCIIssuerInteractionDataDTO {
                 pre_authorized_code_used: false,
@@ -1179,6 +1183,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
                 refresh_token_expires_at: None,
                 nonce: None,
                 notification_id: None,
+                transaction_code: transaction_code.to_owned(),
             },
         )?);
 
@@ -1190,6 +1195,7 @@ impl IssuanceProtocol for OpenID4VCI13 {
             interaction_id,
             interaction_data,
             expires_at,
+            transaction_code,
         })
     }
 

@@ -369,8 +369,6 @@ async fn test_generate_offer_did() {
         &protocol_base_url,
         &interaction_id.to_string(),
         &credential,
-        &credential.schema.as_ref().unwrap().id,
-        &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,
     )
     .unwrap();
@@ -414,8 +412,6 @@ async fn test_generate_offer_certificate() {
         &protocol_base_url,
         &interaction_id.to_string(),
         &credential,
-        &credential.schema.as_ref().unwrap().id,
-        &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,
     )
     .unwrap();
@@ -459,8 +455,6 @@ async fn test_generate_offer_claims_without_values() {
         &protocol_base_url,
         &interaction_id.to_string(),
         &credential,
-        &credential.schema.as_ref().unwrap().id,
-        &credential.schema.as_ref().unwrap().schema_id,
         credential_subject,
     )
     .unwrap();

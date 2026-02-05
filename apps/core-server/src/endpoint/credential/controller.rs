@@ -6,11 +6,9 @@ use shared_types::{CredentialId, Permission};
 
 use super::dto::{
     CredentialDetailClaimResponseRestDTO, CredentialRevocationCheckRequestRestDTO,
-    CredentialRevocationCheckResponseRestDTO,
+    CredentialRevocationCheckResponseRestDTO, ShareCredentialResponseRestDTO,
 };
-use crate::dto::common::{
-    EntityResponseRestDTO, EntityShareResponseRestDTO, GetCredentialsResponseDTO,
-};
+use crate::dto::common::{EntityResponseRestDTO, GetCredentialsResponseDTO};
 use crate::dto::error::ErrorResponseRestDTO;
 use crate::dto::mapper::fallback_organisation_id_from_session;
 use crate::dto::response::{
@@ -242,7 +240,7 @@ pub(crate) async fn suspend_credential(
 #[utoipa::path(
     post,
     path = "/api/credential/v1/{id}/share",
-    responses(CreatedOrErrorResponse<EntityShareResponseRestDTO>),
+    responses(CreatedOrErrorResponse<ShareCredentialResponseRestDTO>),
     params(
         ("id" = CredentialId, Path, description = "Credential id")
     ),
@@ -260,7 +258,7 @@ pub(crate) async fn suspend_credential(
 pub(crate) async fn share_credential(
     state: State<AppState>,
     WithRejection(Path(id), _): WithRejection<Path<CredentialId>, ErrorResponseRestDTO>,
-) -> CreatedOrErrorResponse<EntityShareResponseRestDTO> {
+) -> CreatedOrErrorResponse<ShareCredentialResponseRestDTO> {
     let result = state.core.credential_service.share_credential(&id).await;
     CreatedOrErrorResponse::from_result(result, state, "sharing credential")
 }

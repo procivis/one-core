@@ -36,6 +36,44 @@ pub(crate) fn throw_if_token_request_invalid(
     }
 }
 
+pub(crate) fn throw_if_tx_code_invalid(
+    expected_code: Option<&String>,
+    request: &OpenID4VCITokenRequestDTO,
+) -> Result<(), OpenID4VCIError> {
+    match (expected_code, request) {
+        (
+            Some(expected_code),
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: _,
+                tx_code: Some(request_code),
+            },
+        ) => {
+            if expected_code != request_code {
+                tracing::info!("wrong tx_code supplied");
+                return Err(OpenID4VCIError::InvalidGrant);
+            }
+            tracing::debug!("correct tx_code supplied");
+        }
+        (Some(_), _) => {
+            tracing::info!("tx_code not supplied");
+            return Err(OpenID4VCIError::InvalidRequest);
+        }
+        (
+            None,
+            OpenID4VCITokenRequestDTO::PreAuthorizedCode {
+                pre_authorized_code: _,
+                tx_code: Some(_),
+            },
+        ) => {
+            tracing::info!("tx_code supplied while not expected");
+            return Err(OpenID4VCIError::InvalidRequest);
+        }
+        (None, _) => {} // OK, correct handling without tx_code
+    };
+
+    Ok(())
+}
+
 pub(crate) fn throw_if_interaction_created_date(
     pre_authorization_expires_in: time::Duration,
     interaction: &Interaction,

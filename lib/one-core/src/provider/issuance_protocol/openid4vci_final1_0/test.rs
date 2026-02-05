@@ -324,8 +324,7 @@ async fn test_generate_offer() {
         &protocol_base_url,
         &credential.protocol,
         &interaction_id.to_string(),
-        &credential.schema.as_ref().unwrap().id,
-        &credential.schema.as_ref().unwrap().schema_id,
+        credential.schema.as_ref().unwrap(),
     )
     .unwrap();
 

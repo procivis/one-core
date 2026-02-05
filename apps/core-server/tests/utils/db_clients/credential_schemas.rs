@@ -4,7 +4,7 @@ use one_core::model::claim_schema::{ClaimSchema, ClaimSchemaRelations};
 use one_core::model::credential_schema::{
     BackgroundProperties, CodeProperties, CodeTypeEnum, CredentialSchema, CredentialSchemaClaim,
     CredentialSchemaRelations, GetCredentialSchemaQuery, KeyStorageSecurity, LayoutProperties,
-    LayoutType, LogoProperties,
+    LayoutType, LogoProperties, TransactionCode,
 };
 use one_core::model::organisation::{Organisation, OrganisationRelations};
 use one_core::repository::credential_schema_repository::CredentialSchemaRepository;
@@ -26,6 +26,7 @@ pub struct TestingCreateSchemaParams {
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
     pub requires_app_attestation: bool,
     pub deleted_at: Option<OffsetDateTime>,
+    pub transaction_code: Option<TransactionCode>,
 }
 
 pub struct CredentialSchemasDB {
@@ -110,7 +111,7 @@ impl CredentialSchemasDB {
             schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
             requires_app_attestation: false,
-            transaction_code: None,
+            transaction_code: params.transaction_code,
         };
 
         let id = self

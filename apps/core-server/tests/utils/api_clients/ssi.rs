@@ -11,6 +11,15 @@ pub struct SSIApi {
     client: HttpClient,
 }
 
+pub enum TokenRequest {
+    PreAuthorizedCode {
+        code: String,
+        tx_code: Option<String>,
+    },
+    #[expect(unused)]
+    RefreshToken(String),
+}
+
 impl SSIApi {
     pub fn new(client: HttpClient) -> Self {
         Self { client }
@@ -205,27 +214,25 @@ impl SSIApi {
         &self,
         id: CredentialSchemaId,
         protocol: &str,
-        pre_authorized_code: Option<&str>,
-        refresh_token: Option<&str>,
+        request: TokenRequest,
     ) -> Response {
-        let form_data = match (pre_authorized_code, refresh_token) {
-            (Some(_), Some(_)) => {
-                panic!("Only one of `pre_authorized_code` or `refresh_token` must be present")
+        let form_data = match &request {
+            TokenRequest::PreAuthorizedCode { code, tx_code } => {
+                let mut data = vec![
+                    (
+                        "grant_type",
+                        "urn:ietf:params:oauth:grant-type:pre-authorized_code",
+                    ),
+                    ("pre-authorized_code", code.as_str()),
+                ];
+                if let Some(tx_code) = tx_code {
+                    data.push(("tx_code", tx_code.as_str()));
+                }
+                data
             }
-            (None, None) => {
-                panic!("One of `pre_authorized_code` or `refresh_token` must be present")
-            }
-
-            (Some(pre_authorized_code), _) => [
-                (
-                    "grant_type",
-                    "urn:ietf:params:oauth:grant-type:pre-authorized_code",
-                ),
-                ("pre-authorized_code", pre_authorized_code),
-            ],
-            (_, Some(refresh_token)) => [
+            TokenRequest::RefreshToken(refresh_token) => vec![
                 ("grant_type", "refresh_token"),
-                ("refresh_token", refresh_token),
+                ("refresh_token", refresh_token.as_str()),
             ],
         };
 

@@ -257,6 +257,7 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     pub nonce: Option<String>,
     pub notification_id: Option<String>,
+    pub transaction_code: Option<String>,
 }
 
 #[skip_serializing_none]

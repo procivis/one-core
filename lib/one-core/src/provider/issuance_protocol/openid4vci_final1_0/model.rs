@@ -354,6 +354,7 @@ pub(crate) struct OpenID4VCIIssuerInteractionDataDTO {
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub refresh_token_expires_at: Option<OffsetDateTime>,
     pub notification_id: Option<String>,
+    pub transaction_code: Option<String>,
 }
 
 #[skip_serializing_none]

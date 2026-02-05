@@ -1,7 +1,9 @@
 use indexmap::IndexMap;
 use one_core::mapper::{opt_secret_string, secret_string};
 use one_core::provider::issuance_protocol::error::OpenID4VCIError;
-use one_core::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
+use one_core::provider::issuance_protocol::model::{
+    OpenID4VCIProofTypeSupported, OpenID4VCITxCode, OpenID4VCITxCodeInputMode,
+};
 use one_core::provider::issuance_protocol::openid4vci_draft13::model::{
     ExtendedSubjectDTO, OpenID4VCIAuthorizationCodeGrant, OpenID4VCICredentialConfigurationData,
     OpenID4VCICredentialDefinitionRequestDTO, OpenID4VCICredentialOfferDTO,
@@ -145,6 +147,7 @@ pub(crate) struct OpenID4VCITokenRequestRestDTO {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: Option<String>,
     pub refresh_token: Option<String>,
+    pub tx_code: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into, From)]
@@ -318,6 +321,8 @@ pub(crate) enum OpenID4VCIGrantsRestDTO {
 pub(crate) struct OpenID4VCIPreAuthorizedGrantRestDTO {
     #[serde(rename = "pre-authorized_code")]
     pub pre_authorized_code: String,
+    #[from(with_fn = convert_inner)]
+    pub tx_code: Option<OpenID4VCITxCodeRestDTO>,
     pub authorization_server: Option<String>,
 }
 
@@ -327,4 +332,24 @@ pub(crate) struct OpenID4VCIPreAuthorizedGrantRestDTO {
 pub(crate) struct OpenID4VCIAuthorizationCodeGrantRestDTO {
     pub issuer_state: Option<String>,
     pub authorization_server: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Serialize, Debug, ToSchema, From)]
+#[from(OpenID4VCITxCode)]
+pub(crate) struct OpenID4VCITxCodeRestDTO {
+    #[serde(default)]
+    pub input_mode: OpenID4VCITxCodeInputModeRestEnum,
+    #[serde(default)]
+    pub length: Option<i64>,
+    #[serde(default)]
+    pub description: Option<String>,
+}
+
+#[derive(Clone, Serialize, Debug, ToSchema, PartialEq, From)]
+#[from(OpenID4VCITxCodeInputMode)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum OpenID4VCITxCodeInputModeRestEnum {
+    Numeric,
+    Text,
 }

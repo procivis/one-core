@@ -1,10 +1,8 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use one_dto_mapper::{From, Into};
-use proc_macros::options_not_nullable;
+use one_dto_mapper::Into;
 use serde::{Deserialize, Deserializer, Serialize};
-use time::OffsetDateTime;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -18,7 +16,6 @@ use crate::endpoint::proof::dto::ProofListItemResponseRestDTO;
 use crate::endpoint::proof_schema::dto::GetProofSchemaListItemResponseRestDTO;
 use crate::endpoint::trust_anchor::dto::ListTrustAnchorsResponseItemRestDTO;
 use crate::endpoint::trust_entity::dto::ListTrustEntitiesResponseItemRestDTO;
-use crate::serialize::front_time_option;
 
 #[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
@@ -108,20 +105,6 @@ where
     fn from(id: T) -> Self {
         EntityResponseRestDTO { id: id.into() }
     }
-}
-
-#[options_not_nullable]
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from("one_core::model::common::EntityShareResponseDTO")]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct EntityShareResponseRestDTO {
-    /// Share URL, typically encoded as a QR code.
-    pub url: String,
-    /// URL becomes unusable by wallet holder at this time. Call the share
-    /// endpoint again to get a new URL.
-    #[serde(serialize_with = "front_time_option")]
-    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
-    pub expires_at: Option<OffsetDateTime>,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, ToSchema)]

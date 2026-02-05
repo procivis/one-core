@@ -13,7 +13,7 @@ use one_core::provider::verification_protocol::openid4vp::model::ClientIdScheme;
 use one_core::service::proof::dto::{
     CreateProofRequestDTO, ProofClaimDTO, ProofClaimValueDTO, ProofDetailResponseDTO,
     ProofInputDTO, ProofListItemResponseDTO, ScanToVerifyBarcodeTypeEnum, ScanToVerifyRequestDTO,
-    ShareProofRequestDTO, ShareProofRequestParamsDTO,
+    ShareProofRequestDTO, ShareProofRequestParamsDTO, ShareProofResponseDTO,
 };
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -591,4 +591,18 @@ pub(crate) struct CredentialDetailClaimExtResponseRestDTO {
 pub(crate) struct CredentialSetResponseRestDTO {
     pub required: bool,
     pub options: Vec<Vec<String>>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(ShareProofResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ShareProofResponseRestDTO {
+    /// Share URL, typically encoded as a QR code.
+    pub url: String,
+    /// URL becomes unusable by wallet holder at this time. Call the share
+    /// endpoint again to get a new URL.
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    pub expires_at: Option<OffsetDateTime>,
 }

@@ -75,6 +75,7 @@ impl TryFrom<&OpenID4VCITokenResponseDTO> for OpenID4VCIIssuerInteractionDataDTO
                 })
                 .transpose()?,
             notification_id: None,
+            transaction_code: None,
         })
     }
 }

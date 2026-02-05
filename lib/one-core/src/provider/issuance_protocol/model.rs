@@ -132,6 +132,7 @@ pub(crate) struct ShareResponse {
     pub interaction_id: InteractionId,
     pub interaction_data: Option<Vec<u8>>,
     pub expires_at: Option<OffsetDateTime>,
+    pub transaction_code: Option<String>,
 }
 
 #[derive(Clone, Debug)]

@@ -2,8 +2,8 @@ use one_core::service::credential::dto::{
     CreateCredentialRequestDTO, CredentialListItemResponseDTO, CredentialRequestClaimDTO,
     CredentialRevocationCheckResponseDTO, CredentialRole, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
-    MdocMsoValidityResponseDTO, SuspendCredentialRequestDTO, WalletAppAttestationDTO,
-    WalletUnitAttestationDTO,
+    MdocMsoValidityResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
+    WalletAppAttestationDTO, WalletUnitAttestationDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -458,4 +458,19 @@ pub(crate) struct CredentialRevocationCheckResponseRestDTO {
     /// Explanation of why the revocation check failed. Only present
     /// when `success: false`.
     pub reason: Option<String>,
+}
+
+#[options_not_nullable]
+#[derive(Clone, Debug, Serialize, ToSchema, From)]
+#[from(ShareCredentialResponseDTO)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ShareCredentialResponseRestDTO {
+    /// Share URL, typically encoded as a QR code.
+    pub url: String,
+    pub transaction_code: Option<String>,
+    /// URL becomes unusable by wallet holder at this time. Call the share
+    /// endpoint again to get a new URL.
+    #[serde(serialize_with = "front_time_option")]
+    #[schema(nullable = false, example = "2023-06-09T14:19:57.000Z")]
+    pub expires_at: Option<OffsetDateTime>,
 }

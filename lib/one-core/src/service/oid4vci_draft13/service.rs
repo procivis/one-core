@@ -351,8 +351,6 @@ impl OID4VCIDraft13Service {
             url,
             &interaction.id.to_string(),
             &credential,
-            &credential_schema_id,
-            &credential_schema.schema_id,
             credential_subject,
         )?)
     }

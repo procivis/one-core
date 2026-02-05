@@ -79,7 +79,9 @@ use crate::provider::credential_formatter::model::{
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::ContextType;
 use crate::provider::did_method::provider::DidMethodProvider;
-use crate::provider::issuance_protocol::mapper::autogenerate_holder_binding;
+use crate::provider::issuance_protocol::mapper::{
+    autogenerate_holder_binding, generate_transaction_code,
+};
 use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
     OpenID4VCICredentialRequestIdentifier, OpenID4VCICredentialRequestProofs,
     OpenID4VCIFinal1CredentialOfferDTO, TokenRequestWalletAttestationRequest,
@@ -1343,8 +1345,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 protocol_base_url,
                 &credential.protocol,
                 &interaction_id.to_string(),
-                &credential_schema.id,
-                &credential_schema.schema_id,
+                credential_schema,
             )
             .map_err(|e| IssuanceProtocolError::Other(e.into()))?;
 
@@ -1358,6 +1359,11 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
         }
         let url = query.finish().to_string();
 
+        let transaction_code = credential_schema
+            .transaction_code
+            .as_ref()
+            .map(generate_transaction_code);
+
         let interaction_data = Some(serialize_interaction_data(
             &OpenID4VCIIssuerInteractionDataDTO {
                 pre_authorized_code_used: false,
@@ -1366,6 +1372,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
                 refresh_token_hash: None,
                 refresh_token_expires_at: None,
                 notification_id: None,
+                transaction_code: transaction_code.to_owned(),
             },
         )?);
 
@@ -1377,6 +1384,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             interaction_id,
             interaction_data,
             expires_at,
+            transaction_code,
         })
     }
 

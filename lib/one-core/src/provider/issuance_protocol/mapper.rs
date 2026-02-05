@@ -1,12 +1,14 @@
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use one_crypto::utilities::{generate_alphanumeric, generate_numeric};
 use shared_types::{BlobId, IdentifierId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::KeyAlgorithmType;
 use crate::model::credential::{Clearable, CredentialStateEnum, UpdateCredentialRequest};
+use crate::model::credential_schema::{TransactionCode, TransactionCodeType};
 use crate::model::interaction::{Interaction, InteractionType};
 use crate::model::key::Key;
 use crate::model::organisation::Organisation;
@@ -14,7 +16,9 @@ use crate::proto::identifier_creator::{CreateLocalIdentifierRequest, IdentifierC
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::issuance_protocol::HolderBindingInput;
 use crate::provider::issuance_protocol::error::IssuanceProtocolError;
-use crate::provider::issuance_protocol::model::OpenID4VCIProofTypeSupported;
+use crate::provider::issuance_protocol::model::{
+    OpenID4VCIProofTypeSupported, OpenID4VCITxCodeInputMode,
+};
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_security_level::provider::KeySecurityLevelProvider;
 use crate::provider::key_storage::KeyStorage;
@@ -254,4 +258,29 @@ fn pick_key_configuration(
             "Could not find a proper key storage, issuer_accepted_key_storage_security_levels:{issuer_accepted_key_storage_security_levels:?}, issuer_accepted_algorithms:{issuer_accepted_algorithms:?}"
         ),
     ))
+}
+
+impl From<OpenID4VCITxCodeInputMode> for TransactionCodeType {
+    fn from(value: OpenID4VCITxCodeInputMode) -> Self {
+        match value {
+            OpenID4VCITxCodeInputMode::Numeric => Self::Numeric,
+            OpenID4VCITxCodeInputMode::Text => Self::Alphanumeric,
+        }
+    }
+}
+
+impl From<TransactionCodeType> for OpenID4VCITxCodeInputMode {
+    fn from(value: TransactionCodeType) -> Self {
+        match value {
+            TransactionCodeType::Numeric => Self::Numeric,
+            TransactionCodeType::Alphanumeric => Self::Text,
+        }
+    }
+}
+
+pub(crate) fn generate_transaction_code(prescription: &TransactionCode) -> String {
+    match prescription.r#type {
+        TransactionCodeType::Numeric => generate_numeric(prescription.length as _),
+        TransactionCodeType::Alphanumeric => generate_alphanumeric(prescription.length as _),
+    }
 }

@@ -221,3 +221,10 @@ pub struct CredentialAttestationBlobs {
     pub wallet_app_attestation_blob: Option<Blob>,
     pub wallet_unit_attestation_blob: Option<Blob>,
 }
+
+#[derive(Clone, Debug)]
+pub struct ShareCredentialResponseDTO {
+    pub url: String,
+    pub transaction_code: Option<String>,
+    pub expires_at: Option<OffsetDateTime>,
+}

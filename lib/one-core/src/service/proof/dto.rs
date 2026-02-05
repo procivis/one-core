@@ -168,3 +168,9 @@ pub struct ProposeProofRequestDTO {
     pub engagement: Vec<String>,
     pub ui_message: Option<String>,
 }
+
+#[derive(Clone, Debug)]
+pub struct ShareProofResponseDTO {
+    pub url: String,
+    pub expires_at: Option<OffsetDateTime>,
+}

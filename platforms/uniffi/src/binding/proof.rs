@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use one_core::model::common::{EntityShareResponseDTO, ExactColumn};
+use one_core::model::common::ExactColumn;
 use one_core::model::proof::{ProofRole, ProofStateEnum, SortableProofColumn};
 use one_core::provider::verification_protocol::dto::{
     CredentialDetailClaimExtResponseDTO, CredentialQueryFailureHintResponseDTO,
@@ -15,6 +15,7 @@ use one_core::service::proof::dto::{
     CreateProofRequestDTO, GetProofListResponseDTO, ProofInputDTO, ProofListItemResponseDTO,
     ProposeProofRequestDTO, ProposeProofResponseDTO, ScanToVerifyBarcodeTypeEnum,
     ScanToVerifyRequestDTO, ShareProofRequestDTO, ShareProofRequestParamsDTO,
+    ShareProofResponseDTO,
 };
 use one_core::service::ssi_holder::dto::{
     PresentationSubmitCredentialRequestDTO, PresentationSubmitRequestDTO,
@@ -435,7 +436,7 @@ pub enum ClientIdSchemeBindingEnum {
 }
 
 #[derive(From, uniffi::Record)]
-#[from(EntityShareResponseDTO)]
+#[from(ShareProofResponseDTO)]
 pub struct ShareProofResponseBindingDTO {
     pub url: String,
     #[from(with_fn = optional_time)]

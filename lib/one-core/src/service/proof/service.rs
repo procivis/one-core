@@ -10,7 +10,7 @@ use uuid::Uuid;
 use super::ProofService;
 use super::dto::{
     CreateProofInteractionData, CreateProofRequestDTO, GetProofListResponseDTO, GetProofQueryDTO,
-    ProofDetailResponseDTO, ProposeProofResponseDTO, ShareProofRequestDTO,
+    ProofDetailResponseDTO, ProposeProofResponseDTO, ShareProofRequestDTO, ShareProofResponseDTO,
 };
 use super::mapper::{
     get_holder_proof_detail, get_verifier_proof_detail, interaction_data_from_proof,
@@ -33,7 +33,6 @@ use crate::mapper::list_response_try_into;
 use crate::model::certificate::CertificateRelations;
 use crate::model::claim::ClaimRelations;
 use crate::model::claim_schema::ClaimSchemaRelations;
-use crate::model::common::EntityShareResponseDTO;
 use crate::model::credential::{CredentialFilterValue, CredentialRelations, GetCredentialQuery};
 use crate::model::credential_schema::CredentialSchemaRelations;
 use crate::model::did::{DidRelations, KeyRole};
@@ -564,7 +563,7 @@ impl ProofService {
         &self,
         id: &ProofId,
         request: ShareProofRequestDTO,
-    ) -> Result<EntityShareResponseDTO, ServiceError> {
+    ) -> Result<ShareProofResponseDTO, ServiceError> {
         let proof = self.load_proof(id).await?;
         throw_if_proof_not_in_session_org(&proof, &*self.session_provider)?;
 
@@ -651,7 +650,7 @@ impl ProofService {
             .await?;
         clear_previous_interaction(&*self.interaction_repository, &proof.interaction).await?;
         tracing::info!("Shared proof request {}", proof.id);
-        Ok(EntityShareResponseDTO { url, expires_at })
+        Ok(ShareProofResponseDTO { url, expires_at })
     }
 
     pub async fn delete_proof_claims(&self, proof_id: ProofId) -> Result<(), ServiceError> {
