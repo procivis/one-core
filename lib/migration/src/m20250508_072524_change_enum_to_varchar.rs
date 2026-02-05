@@ -164,7 +164,7 @@ enum KeyDid {
 }
 
 #[derive(DeriveIden)]
-enum Proof {
+pub(crate) enum Proof {
     Table,
     State,
     Role,

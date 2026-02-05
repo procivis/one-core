@@ -93,6 +93,7 @@ impl MigrationTrait for Migration {
         delete_proofs(&proofs_to_delete, manager).await?;
         delete_revocation_lists(&revocation_lists_to_delete, manager).await?;
         delete_credentials(&credentials_to_delete, manager).await?;
+        delete_empty_accepted_proofs(manager).await?;
         delete_identifiers(&identifiers_to_delete, manager).await?;
         delete_dids(&dids_to_delete, manager).await?;
         delete_keys(&keys_to_delete, manager).await?;
@@ -183,8 +184,7 @@ async fn find_credentials_to_delete(
 async fn delete_proofs(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     delete_proof_blobs(ids, manager).await?;
     delete(ProofClaim::Table, ProofClaim::ProofId, ids, manager).await?;
-    delete(History::Table, History::EntityId, ids, manager).await?;
-    Ok(())
+    delete(History::Table, History::EntityId, ids, manager).await
 }
 
 async fn delete_revocation_lists(
@@ -198,11 +198,23 @@ async fn delete_revocation_lists(
         manager,
     )
     .await?;
-    delete(RevocationList::Table, RevocationList::Id, ids, manager).await?;
-    Ok(())
+    delete(RevocationList::Table, RevocationList::Id, ids, manager).await
 }
 
 async fn delete_credentials(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    // Delete proof claims for affected credentials first.
+    // ACCEPTED proofs without proof claims will be deleted later.
+    let claim_ids = IdResult::find_by_statement(
+        manager.get_database_backend().build(
+            Query::select()
+                .column(Claim::Id)
+                .from(Claim::Table)
+                .and_where(Expr::col(Claim::CredentialId).is_in(ids.iter())),
+        ),
+    )
+    .all(manager.get_connection())
+    .await?;
+    delete(ProofClaim::Table, ProofClaim::ClaimId, &claim_ids, manager).await?;
     delete(Claim::Table, Claim::CredentialId, ids, manager).await?;
     delete(
         ValidityCredential::Table,
@@ -215,27 +227,47 @@ async fn delete_credentials(ids: &[IdResult], manager: &SchemaManager<'_>) -> Re
     delete_credential_blobs(ids, Credential::CredentialBlobId, manager).await?;
     delete_credential_blobs(ids, Credential::WalletUnitAttestationBlobId, manager).await?;
     delete_credential_blobs(ids, Credential::WalletAppAttestationBlobId, manager).await?;
-    delete(Credential::Table, Credential::Id, ids, manager).await?;
-    Ok(())
+    delete(Credential::Table, Credential::Id, ids, manager).await
+}
+
+async fn delete_empty_accepted_proofs(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
+    use crate::m20250508_072524_change_enum_to_varchar::Proof as StateProof;
+    let ids = IdResult::find_by_statement(
+        manager.get_database_backend().build(
+            Query::select()
+                .column(Proof::Id)
+                .from(Proof::Table)
+                .and_where(Expr::col(StateProof::State).eq("ACCEPTED"))
+                .and_where(
+                    Expr::col(Proof::Id).not().in_subquery(
+                        Query::select()
+                            .distinct()
+                            .column(ProofClaim::ProofId)
+                            .from(ProofClaim::Table)
+                            .to_owned(),
+                    ),
+                ),
+        ),
+    )
+    .all(manager.get_connection())
+    .await?;
+    delete_proofs(&ids, manager).await
 }
 
 async fn delete_identifiers(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     delete(History::Table, History::EntityId, ids, manager).await?;
-    delete(Identifier::Table, Identifier::Id, ids, manager).await?;
-    Ok(())
+    delete(Identifier::Table, Identifier::Id, ids, manager).await
 }
 
 async fn delete_dids(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     delete(History::Table, History::EntityId, ids, manager).await?;
     delete(KeyDid::Table, KeyDid::DidId, ids, manager).await?;
-    delete(Did::Table, Did::Id, ids, manager).await?;
-    Ok(())
+    delete(Did::Table, Did::Id, ids, manager).await
 }
 
 async fn delete_keys(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
     delete(History::Table, History::EntityId, ids, manager).await?;
-    delete(Key::Table, Key::Id, ids, manager).await?;
-    Ok(())
+    delete(Key::Table, Key::Id, ids, manager).await
 }
 
 async fn delete_proof_blobs(
