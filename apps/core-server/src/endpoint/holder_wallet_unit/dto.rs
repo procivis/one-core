@@ -18,6 +18,9 @@ use crate::serialize::front_time;
 #[try_into(T = dto::HolderRegisterWalletUnitRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct HolderRegisterWalletUnitRequestRestDTO {
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Reference the `walletProvider` configuration of the Wallet Provider.

@@ -107,7 +107,9 @@ pub(crate) struct CreateDidRequestRestDTO {
     /// The DID name must be unique within the organization.
     #[try_into(infallible)]
     pub name: String,
-    /// Specify the organization.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Choose a DID method to create the DID. Check the `did` object of the
@@ -189,6 +191,9 @@ pub(crate) struct DidFilterQueryParamsRest {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactDidFilterColumnRestEnum>>,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
     /// Filter by active or deactivated DIDs.

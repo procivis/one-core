@@ -34,6 +34,9 @@ pub(crate) struct HandleInvitationRequestRestDTO {
     #[schema(example = "https://example.com/credential-offer")]
     /// Typically encoded as a QR code or deep link by the issuer or verifier.
     pub url: Url,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     pub organisation_id: Option<OrganisationId>,
     #[schema(example = json!(["HTTP"]))]
     /// For configurations with multiple transport protocols enabled you can
@@ -253,6 +256,9 @@ pub(crate) struct PresentationSubmitV2CredentialRequestRestDTO {
 pub(crate) struct ProposeProofRequestRestDTO {
     #[try_into(infallible)]
     pub protocol: String,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     #[try_into(infallible)]
@@ -275,6 +281,9 @@ pub(crate) struct ProposeProofResponseRestDTO {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct InitiateIssuanceRequestRestDTO {
     /// Organization to place the issued credential into.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     pub organisation_id: Option<OrganisationId>,
     /// Selected issuance protocol.
     pub protocol: String,

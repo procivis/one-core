@@ -52,6 +52,9 @@ pub(crate) struct CreateTrustEntityRequestRestDTO {
     /// specify the type of entity. If no type is specified the system expects a
     /// `didId`.
     pub(super) r#type: Option<TrustEntityTypeRest>,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     pub(super) organisation_id: OrganisationId,
 }
 

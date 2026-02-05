@@ -135,6 +135,9 @@ pub(crate) enum CredentialSchemasExactColumn {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialSchemaQuery
 pub(crate) struct CredentialSchemasFilterQueryParamsRest {
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only entities with a name starting with this string. Not case-sensitive.
@@ -229,7 +232,9 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[modify_schema(field = revocation)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub revocation_method: Option<String>,
-    /// Specify the organization.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Defines the set of claims to be asserted when using this credential
@@ -420,6 +425,9 @@ pub(crate) struct CredentialSchemaShareResponseRestDTO {
 #[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportCredentialSchemaRequestRestDTO {
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     pub schema: ImportCredentialSchemaRequestSchemaRestDTO,

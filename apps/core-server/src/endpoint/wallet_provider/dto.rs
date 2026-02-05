@@ -82,7 +82,9 @@ pub(crate) enum WalletProviderTypeRestEnum {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside ListWalletUnitsQuery
 pub(crate) struct WalletUnitFilterQueryParamsRestDTO {
-    /// Specify the organization from which to return wallet units.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only wallet units with a name starting with this string.

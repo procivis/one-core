@@ -260,7 +260,9 @@ pub(crate) enum SearchType {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetCredentialQuery
 pub(crate) struct CredentialsFilterQueryParamsRest {
-    /// Specify the organization from which to return credentials.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only credentials with a name starting with this string.

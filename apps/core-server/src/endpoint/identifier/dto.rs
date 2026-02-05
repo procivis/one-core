@@ -260,6 +260,9 @@ pub(crate) struct IdentifierFilterQueryParamsRestDTO {
     /// Set which filters apply in an exact way.
     #[param(rename = "exact[]", inline, nullable = false)]
     pub exact: Option<Vec<ExactIdentifierFilterColumnRestEnum>>,
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
 

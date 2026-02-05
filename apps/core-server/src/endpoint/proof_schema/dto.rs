@@ -33,7 +33,9 @@ pub(crate) struct CreateProofSchemaRequestRestDTO {
     #[schema(min_length = 1)]
     #[try_into(infallible)]
     pub name: String,
-    /// Specify the organization.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Defines the length of storage of received proofs, in seconds. After
@@ -80,6 +82,9 @@ pub(crate) struct ClaimProofSchemaRequestRestDTO {
 #[try_into(T=ImportProofSchemaRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportProofSchemaRequestRestDTO {
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     pub schema: ImportProofSchemaRestDTO,
@@ -198,7 +203,9 @@ pub(crate) type GetProofSchemaQuery =
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetProofSchemaQuery
 pub(crate) struct ProofSchemasFilterQueryParamsRest {
-    /// Specify the organization from which to return proof schemas.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
     /// Return only proof schemas with a name starting with this string.

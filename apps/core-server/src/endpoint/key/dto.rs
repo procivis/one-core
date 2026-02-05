@@ -22,7 +22,9 @@ use crate::serialize::front_time;
 #[try_into(T = KeyRequestDTO, Error = ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct KeyRequestRestDTO {
-    /// Specify the organization.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[try_into(with_fn = fallback_organisation_id_from_session)]
     pub organisation_id: Option<OrganisationId>,
     /// Choose which key algorithm to use to create the key pair. Check
@@ -118,7 +120,9 @@ pub(crate) enum SortableKeyColumnRestDTO {
 #[derive(Clone, Debug, Eq, PartialEq, Deserialize, IntoParams)]
 #[serde(rename_all = "camelCase")] // No deny_unknown_fields because of flattening inside GetKeyQuery
 pub(crate) struct KeyFilterQueryParamsRest {
-    /// Specify the organization from which to retrieve keys.
+    /// Required when not using STS authentication mode. Specifies the
+    /// organizational context for this operation. When using STS
+    /// authentication, this value is derived from the token.
     #[param(nullable = false)]
     pub organisation_id: Option<OrganisationId>,
     /// Return all keys with a name starting with this string. Not case-sensitive.
