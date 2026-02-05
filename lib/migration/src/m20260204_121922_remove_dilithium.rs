@@ -223,6 +223,13 @@ async fn delete_credentials(ids: &[IdResult], manager: &SchemaManager<'_>) -> Re
         manager,
     )
     .await?;
+    delete(
+        RevocationListEntry::Table,
+        RevocationListEntry::CredentialId,
+        ids,
+        manager,
+    )
+    .await?;
     delete(History::Table, History::EntityId, ids, manager).await?;
     delete(Credential::Table, Credential::Id, ids, manager).await?;
     delete_credential_blobs(ids, Credential::CredentialBlobId, manager).await?;
