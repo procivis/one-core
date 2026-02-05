@@ -182,8 +182,8 @@ async fn find_credentials_to_delete(
 }
 
 async fn delete_proofs(ids: &[IdResult], manager: &SchemaManager<'_>) -> Result<(), DbErr> {
-    delete_proof_blobs(ids, manager).await?;
     delete(ProofClaim::Table, ProofClaim::ProofId, ids, manager).await?;
+    delete_proof_blobs(ids, manager).await?;
     delete(History::Table, History::EntityId, ids, manager).await
 }
 
@@ -224,10 +224,10 @@ async fn delete_credentials(ids: &[IdResult], manager: &SchemaManager<'_>) -> Re
     )
     .await?;
     delete(History::Table, History::EntityId, ids, manager).await?;
+    delete(Credential::Table, Credential::Id, ids, manager).await?;
     delete_credential_blobs(ids, Credential::CredentialBlobId, manager).await?;
     delete_credential_blobs(ids, Credential::WalletUnitAttestationBlobId, manager).await?;
-    delete_credential_blobs(ids, Credential::WalletAppAttestationBlobId, manager).await?;
-    delete(Credential::Table, Credential::Id, ids, manager).await
+    delete_credential_blobs(ids, Credential::WalletAppAttestationBlobId, manager).await
 }
 
 async fn delete_empty_accepted_proofs(manager: &SchemaManager<'_>) -> Result<(), DbErr> {
