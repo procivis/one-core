@@ -17,9 +17,9 @@ use thiserror::Error;
 
 use crate::hasher::sha256::SHA256;
 use crate::signer::bbs::BBSSigner;
-use crate::signer::crydi3::CRYDI3Signer;
 use crate::signer::ecdsa::ECDSASigner;
 use crate::signer::eddsa::EDDSASigner;
+use crate::signer::ml_dsa::MlDsaSigner;
 
 pub mod encryption;
 pub mod hasher;
@@ -85,6 +85,8 @@ pub enum HasherError {
 
 #[derive(Debug, PartialEq, Eq, Error, Clone)]
 pub enum SignerError {
+    #[error("Could not generate key pair: `{0}`")]
+    CouldNotGenerateKeyPair(String),
     #[error("Crypto provider error: `{0}`")]
     CryptoError(#[from] CryptoProviderError),
     #[error("Could not sign: `{0}`")]
@@ -154,7 +156,7 @@ pub fn initialize_crypto_provider() -> Arc<dyn CryptoProvider> {
     let signers: Vec<(String, Arc<dyn Signer>)> = vec![
         ("Ed25519".to_string(), Arc::new(EDDSASigner)),
         ("ECDSA".to_string(), Arc::new(ECDSASigner)),
-        ("CRYDI3".to_string(), Arc::new(CRYDI3Signer)),
+        ("ML_DSA".to_string(), Arc::new(MlDsaSigner)),
         ("BBS".to_string(), Arc::new(BBSSigner)),
     ];
 

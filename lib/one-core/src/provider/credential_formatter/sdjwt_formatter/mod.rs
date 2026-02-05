@@ -183,7 +183,7 @@ impl CredentialFormatter for SDJWTFormatter {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
             ],
             allowed_schema_ids: vec![],
             datatypes: vec![
@@ -225,7 +225,7 @@ impl CredentialFormatter for SDJWTFormatter {
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,
@@ -239,7 +239,7 @@ impl CredentialFormatter for SDJWTFormatter {
             holder_key_algorithms: vec![
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
             ],
             holder_did_methods: vec![DidType::Web, DidType::Key, DidType::Jwk, DidType::WebVh],
         }

@@ -26,7 +26,7 @@ enum ValidityCredentialNew {
 }
 
 #[derive(Clone, Iden)]
-enum ValidityCredential {
+pub(crate) enum ValidityCredential {
     Table,
     Id,
     CreatedDate,

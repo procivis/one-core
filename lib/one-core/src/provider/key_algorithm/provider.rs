@@ -188,7 +188,7 @@ pub(crate) fn key_algorithm_provider_from_config(
             KeyAlgorithmType::Eddsa => Arc::new(Eddsa),
             KeyAlgorithmType::Ecdsa => Arc::new(Ecdsa),
             KeyAlgorithmType::BbsPlus => Arc::new(BBS),
-            KeyAlgorithmType::Dilithium => Arc::new(MlDsa),
+            KeyAlgorithmType::MlDsa => Arc::new(MlDsa),
         };
         algorithms.insert(*name, key_algorithm);
     }

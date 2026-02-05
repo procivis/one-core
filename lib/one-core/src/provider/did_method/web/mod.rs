@@ -120,7 +120,7 @@ impl DidMethod for WebDidMethod {
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::BbsPlus,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
             ],
             method_names: vec!["web".to_string()],
             features: vec![],

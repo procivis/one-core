@@ -24,7 +24,7 @@ async fn test_capabilities_are_present_in_config() {
         json!({ "features": ["GENERATE_CSR"] })
     );
     assert_eq!(
-        resp["keyAlgorithm"]["DILITHIUM"]["capabilities"],
+        resp["keyAlgorithm"]["ML_DSA"]["capabilities"],
         json!({ "features": [] })
     );
     assert_eq!(

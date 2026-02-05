@@ -102,10 +102,10 @@ fn jwk_thumbprint(verifier_key: &PublicJwk) -> Result<Vec<u8>, anyhow::Error> {
             map.serialize_entry("k", &params.k)?;
             map.serialize_entry("kty", "oct")?;
         }
-        PublicJwk::Mlwe(params) => {
+        PublicJwk::Akp(params) => {
             map.serialize_entry("alg", &params.alg)?;
-            map.serialize_entry("kty", "MLWE")?;
-            map.serialize_entry("x", &params.x)?;
+            map.serialize_entry("kty", "AKP")?;
+            map.serialize_entry("pub", &params.r#pub)?;
         }
     };
     map.end()?;

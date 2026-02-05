@@ -124,7 +124,7 @@ impl Signer for RegistrationCertificate {
             signing_key_algorithms: vec![
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
                 KeyAlgorithmType::BbsPlus,
             ],
             revocation_methods: vec![RevocationType::TokenStatusList],

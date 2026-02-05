@@ -51,7 +51,7 @@ async fn test_generate_invalid_key_type() {
         SecureElementKeyProvider::new(Arc::new(MockNativeKeyStorage::default()), get_params());
 
     let result = provider
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Dilithium)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
         .await;
     assert!(matches!(
         result,

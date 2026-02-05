@@ -522,9 +522,9 @@ pub enum KeyAlgorithmType {
     #[serde(rename = "BBS_PLUS")]
     #[strum(serialize = "BBS_PLUS")]
     BbsPlus,
-    #[serde(rename = "DILITHIUM")]
-    #[strum(serialize = "DILITHIUM")]
-    Dilithium,
+    #[serde(rename = "ML_DSA")]
+    #[strum(serialize = "ML_DSA")]
+    MlDsa,
 }
 
 pub type KeyStorageConfig = ConfigBlock<String, KeyStorageType>;

@@ -205,6 +205,7 @@ mod m20260119_100418_crl_revocation;
 mod m20260121_065052_revocation_list_entry_last_modified;
 mod m20260127_144700_nullable_credential_schema_revocation_method;
 mod m20260203_054420_tx_code;
+mod m20260204_121922_remove_dilithium;
 mod migrate_enum;
 
 pub struct Migrator;
@@ -412,6 +413,7 @@ impl MigratorTrait for Migrator {
             Box::new(m20260121_065052_revocation_list_entry_last_modified::Migration),
             Box::new(m20260127_144700_nullable_credential_schema_revocation_method::Migration),
             Box::new(m20260203_054420_tx_code::Migration),
+            Box::new(m20260204_121922_remove_dilithium::Migration),
         ]
     }
 }

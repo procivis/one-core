@@ -49,7 +49,7 @@ impl KeyStorage for InternalKeyProvider {
             algorithms: vec![
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
                 KeyAlgorithmType::BbsPlus,
             ],
             features: vec![Features::Exportable, Features::Importable],

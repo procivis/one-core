@@ -328,7 +328,7 @@ impl CredentialFormatter for JsonLdBbsplus {
             verification_key_algorithms: vec![
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::Ecdsa,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
             ],
             verification_key_storages: vec![
                 KeyStorageType::Internal,

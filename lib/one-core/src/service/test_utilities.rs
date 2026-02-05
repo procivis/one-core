@@ -588,7 +588,7 @@ pub fn generic_formatter_capabilities() -> FormatterCapabilities {
         holder_key_algorithms: vec![
             KeyAlgorithmType::Ecdsa,
             KeyAlgorithmType::Eddsa,
-            KeyAlgorithmType::Dilithium,
+            KeyAlgorithmType::MlDsa,
         ],
         holder_did_methods: vec![
             crate::config::core_config::DidType::Web,

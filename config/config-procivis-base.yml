@@ -584,8 +584,8 @@ keyAlgorithm:
     display: "keyAlgorithm.bbsPlus"
     order: 2
     params: null
-  DILITHIUM:
-    display: "keyAlgorithm.dilithium"
+  ML_DSA:
+    display: "keyAlgorithm.mlDsa"
     order: 3
     params: null
 keyStorage:

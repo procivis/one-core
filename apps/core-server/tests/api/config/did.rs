@@ -28,7 +28,7 @@ async fn test_capabilities_are_present_in_config() {
     assert_eq!(
         resp["did"]["WEB"]["capabilities"],
         json!({
-            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "DILITHIUM"],
+            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "ML_DSA"],
             "operations": ["RESOLVE", "CREATE", "DEACTIVATE"],
             "methodNames": ["web"],
             "features": [],
@@ -38,7 +38,7 @@ async fn test_capabilities_are_present_in_config() {
     assert_eq!(
         resp["did"]["JWK"]["capabilities"],
         json!({
-            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "DILITHIUM"],
+            "keyAlgorithms": ["ECDSA", "EDDSA", "BBS_PLUS", "ML_DSA"],
             "operations": ["RESOLVE", "CREATE"],
             "methodNames": ["jwk"],
             "features": [],

@@ -20,7 +20,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
-enum Proof {
+pub(crate) enum Proof {
     Table,
     ProofBlobId,
 }

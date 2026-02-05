@@ -19,17 +19,17 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
         (
             "JWT",
             "verificationKeyAlgorithms",
-            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+            json!(["EDDSA", "ECDSA", "ML_DSA"]),
         ),
         (
             "SD_JWT",
             "verificationKeyAlgorithms",
-            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+            json!(["EDDSA", "ECDSA", "ML_DSA"]),
         ),
         (
             "SD_JWT_VC",
             "verificationKeyAlgorithms",
-            json!(["ECDSA", "EDDSA", "DILITHIUM"]),
+            json!(["ECDSA", "EDDSA", "ML_DSA"]),
         ),
         (
             "JSON_LD_CLASSIC",
@@ -39,7 +39,7 @@ async fn test_format_capabilities_for_verification_key_algorithms() {
         (
             "JSON_LD_BBSPLUS",
             "verificationKeyAlgorithms",
-            json!(["EDDSA", "ECDSA", "DILITHIUM"]),
+            json!(["EDDSA", "ECDSA", "ML_DSA"]),
         ),
         (
             "MDOC",

@@ -117,7 +117,7 @@ async fn test_continue_issuance_endpoint() {
                                 "EdDSA",
                                 "EDDSA",
                                 "BBS_PLUS",
-                                "DILITHIUM"
+                                "ML-DSA-65"
                               ]
                             }
                           }
@@ -295,7 +295,7 @@ async fn test_continue_issuance_endpoint() {
         "ECDSA".to_string(),
         "EDDSA".to_string(),
         "BBS_PLUS".to_string(),
-        "DILITHIUM".to_string(),
+        "ML_DSA".to_string(),
     ]);
 }
 

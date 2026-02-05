@@ -19,10 +19,9 @@ pub enum PublicJwk {
     Okp(PublicJwkEc),
     #[serde(rename = "oct")]
     Oct(PublicJwkOct),
-    /// Specified in https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-01
-    /// **Outdated, should be updated.**
-    #[serde(rename = "MLWE")]
-    Mlwe(PublicJwkMlwe),
+    /// Specified in https://www.ietf.org/archive/id/draft-ietf-cose-dilithium-11.html
+    #[serde(rename = "AKP")]
+    Akp(PublicJwkAkp),
 }
 
 impl PublicJwk {
@@ -32,7 +31,7 @@ impl PublicJwk {
             Self::Rsa(val) => val.r#use.as_ref(),
             Self::Okp(val) => val.r#use.as_ref(),
             Self::Oct(val) => val.r#use.as_ref(),
-            Self::Mlwe(val) => val.r#use.as_ref(),
+            Self::Akp(val) => val.r#use.as_ref(),
         }
     }
 
@@ -42,7 +41,7 @@ impl PublicJwk {
             Self::Rsa(val) => val.kid.as_deref(),
             Self::Okp(val) => val.kid.as_deref(),
             Self::Oct(val) => val.kid.as_deref(),
-            Self::Mlwe(val) => val.kid.as_deref(),
+            Self::Akp(val) => val.kid.as_deref(),
         }
     }
 
@@ -52,7 +51,7 @@ impl PublicJwk {
             Self::Rsa(val) => val.kid = Some(key_id),
             Self::Okp(val) => val.kid = Some(key_id),
             Self::Oct(val) => val.kid = Some(key_id),
-            Self::Mlwe(val) => val.kid = Some(key_id),
+            Self::Akp(val) => val.kid = Some(key_id),
         }
     }
 }
@@ -90,14 +89,13 @@ pub struct PublicJwkOct {
 #[cfg_attr(feature = "utoipa", proc_macros::options_not_nullable)]
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[cfg_attr(feature = "utoipa", derive(utoipa::ToSchema))]
-pub struct PublicJwkMlwe {
-    #[serde(default)]
-    pub alg: Option<String>,
+pub struct PublicJwkAkp {
+    pub alg: String,
     #[serde(default)]
     pub r#use: Option<JwkUse>,
     #[serde(default)]
     pub kid: Option<String>,
-    pub x: String,
+    pub r#pub: String,
 }
 
 #[skip_serializing_none]
@@ -125,23 +123,22 @@ pub enum PrivateJwk {
     Ec(PrivateJwkEc),
     #[serde(rename = "OKP")]
     Okp(PrivateJwkEc),
-    /// Specified in https://datatracker.ietf.org/doc/html/draft-ietf-cose-dilithium-01
-    /// **Outdated, should be updated.**
-    #[serde(rename = "MLWE")]
-    Mlwe(PrivateJwkMlwe),
+    /// Specified in https://www.ietf.org/archive/id/draft-ietf-cose-dilithium-11.html
+    #[serde(rename = "AKP")]
+    Akp(PrivateJwkAkp),
 }
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct PrivateJwkMlwe {
+pub struct PrivateJwkAkp {
+    pub alg: String,
     #[serde(default)]
     pub r#use: Option<JwkUse>,
     #[serde(default)]
     pub kid: Option<String>,
-    pub alg: String,
-    pub x: String,
+    pub r#pub: String,
     #[serde(with = "secret_string")]
-    pub d: SecretString,
+    pub r#priv: SecretString,
 }
 
 #[skip_serializing_none]

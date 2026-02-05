@@ -53,7 +53,7 @@ impl TryFrom<PrivateJwk> for AzureHsmJWKRequest {
                 y_component: jwk.y,
                 d_component: jwk.d,
             }),
-            PrivateJwk::Okp(_) | PrivateJwk::Mlwe(_) => Err(KeyStorageError::UnsupportedKeyType {
+            PrivateJwk::Okp(_) | PrivateJwk::Akp(_) => Err(KeyStorageError::UnsupportedKeyType {
                 key_type: value.supported_key_type().to_string(),
             }),
         }

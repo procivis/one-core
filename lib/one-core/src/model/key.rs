@@ -85,7 +85,7 @@ impl PrivateJwkExt for PrivateJwk {
         match self {
             PrivateJwk::Ec(_) => KeyAlgorithmType::Ecdsa,
             PrivateJwk::Okp(_) => KeyAlgorithmType::Eddsa,
-            PrivateJwk::Mlwe(_) => KeyAlgorithmType::Dilithium,
+            PrivateJwk::Akp(_) => KeyAlgorithmType::MlDsa,
         }
     }
 }

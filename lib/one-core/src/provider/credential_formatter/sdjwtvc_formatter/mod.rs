@@ -371,7 +371,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
             ]);
             verification_identifier_types.push(IdentifierType::Certificate);
             signing_algorithms
-                .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::Dilithium]);
+                .extend_from_slice(&[KeyAlgorithmType::Eddsa, KeyAlgorithmType::MlDsa]);
         }
 
         FormatterCapabilities {

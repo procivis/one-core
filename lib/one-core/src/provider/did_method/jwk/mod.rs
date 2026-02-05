@@ -83,7 +83,7 @@ impl DidMethod for JWKDidMethod {
                 KeyAlgorithmType::Ecdsa,
                 KeyAlgorithmType::Eddsa,
                 KeyAlgorithmType::BbsPlus,
-                KeyAlgorithmType::Dilithium,
+                KeyAlgorithmType::MlDsa,
             ],
             method_names: vec!["jwk".to_string()],
             features: vec![],

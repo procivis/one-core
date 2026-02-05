@@ -14,6 +14,7 @@ standardized-types.workspace = true
 aes                          = { version = "0.8.4" }
 cbc                          = { version = "0.1.2" }
 aes-gcm                      = { version = "0.10.3", features = ["rand_core", "zeroize"] }
+ml-dsa                       = { version = "0.1.0-rc.3", features = ["rand_core", "zeroize"] }
 async-trait.workspace        = true
 blstrs                       = { version = "0.7" }
 chacha20poly1305             = { version = "0.10" }
@@ -27,9 +28,14 @@ p256                         = { version = "0.13", features = ["jwk", "ecdh"] }
 # pairing_crypto is fixed to this specific commit, so the implementation of BBS+ is still the draft-06 version
 pairing_crypto               = { version = "0.4.3", git = "https://github.com/procivis/pairing_crypto", rev = "0ec3629" }
 pbkdf2                       = { version = "0.12", features = ["simple"] }
-pqc_dilithium                = { version = "0.2.0", git = "https://github.com/procivis/dilithium", rev = "7fdfe6b" }
+
+# should be unified
 rand.workspace               = true
 rand_chacha                  = { version = "0.3" }
+rand_core                    = { version = "=0.10.0-rc-3" }
+rand_new                     = { package = "rand", version = "0.10.0-rc.6"}
+rand_chacha_new              = { package = "rand_chacha", version = "0.10.0-rc.6"}
+
 secrecy                      = { workspace = true }
 serde.workspace              = true
 serde_json.workspace         = true

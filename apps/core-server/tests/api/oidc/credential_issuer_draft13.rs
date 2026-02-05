@@ -207,7 +207,7 @@ async fn test_get_credential_issuer_metadata_for_mdoc() {
     );
 
     let expected_proof_signing_algs =
-        HashSet::from(["BBS_PLUS", "EdDSA", "EDDSA", "CRYDI3", "DILITHIUM", "ES256"]);
+        HashSet::from(["BBS_PLUS", "EdDSA", "EDDSA", "ML-DSA-65", "ES256"]);
     let proof_signing_algs =
         &metadata["proof_types_supported"]["jwt"]["proof_signing_alg_values_supported"]
             .as_array()

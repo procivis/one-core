@@ -208,7 +208,7 @@ async fn test_azure_vault_generate_failed_unsupported_key_type() {
         Arc::new(ReqwestClient::default()),
     );
     let result = vault
-        .generate(Uuid::new_v4().into(), KeyAlgorithmType::Dilithium)
+        .generate(Uuid::new_v4().into(), KeyAlgorithmType::MlDsa)
         .await;
     assert!(matches!(
         result,
