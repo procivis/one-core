@@ -22,15 +22,7 @@ walletProvider:
           providerName: "Procivis One Test"
 signer:
   REGISTRATION_CERTIFICATE:
-    display:
-      en: Wallet Relying Party Registration Certificate
-      de: Wallet Relying Party Registration Certificate
-    order: 0
-    type: REGISTRATION_CERTIFICATE
     params:
       private:
         payload:
           issuer: "https://core.test.procivis-one"
-          audience: ["wrpr"]
-          maxValidityDuration: 2592000 # 30 days
-        revocationMethod: TOKENSTATUSLIST

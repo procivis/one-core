@@ -112,3 +112,40 @@ walletProvider:
           solutionVersion: "1"
           wscdType: HYBRID
         deviceAuthLeeway: 60
+signer:
+  REGISTRATION_CERTIFICATE:
+    display:
+      en: Wallet Relying Party Registration Certificate
+      de: Wallet Relying Party Registration Certificate
+    order: 0
+    type: REGISTRATION_CERTIFICATE
+    params:
+      private:
+        payload:
+          issuer: "https://issuer.example"
+          audience: ["bli", "bla"]
+          maxValidityDuration: 2592000 # 30 days
+        revocationMethod: TOKENSTATUSLIST
+  ACCESS_CERTIFICATE:
+    display:
+      en: "Wallet Relying Party Access Certificate"
+      de: "Wallet Relying Party Access Certificate"
+    order: 1
+    type: ACCESS_CERTIFICATE
+    params:
+      private:
+        payload:
+          maxValidityDuration: 157680000 # 5 years
+        revocationMethod: CRL
+  X509_CERTIFICATE:
+    display:
+      en: "X.509 Certificate Issuer"
+      de: "X.509 Certificate Issuer"
+    order: 2
+    type: X509_CERTIFICATE
+    params:
+      private:
+        payload:
+          maxValidityDuration: 157680000 # 5 years
+          allowCaSigning: true
+        revocationMethod: CRL
