@@ -13,8 +13,8 @@ pub fn dummy_registration_certificate_payload() -> serde_json::Value {
         "info_uri": "https://example.com",
         "country": "DE",
         "privacy_policy": [{
-            "lang": "en",
-            "value": "https://example-company.com/en/privacy-policy"
+            "type": "http://data.europa.eu/eudi/policy/terms-and-conditions",
+            "policyURI": "https://example-company.com/en/privacy-policy"
         }],
         "policy_id": [],
         "certificate_policy": "https://registrar.example.com/certificate-policy",

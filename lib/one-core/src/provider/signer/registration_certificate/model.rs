@@ -22,7 +22,7 @@ pub struct RequestData {
     pub registry_uri: Option<Url>,
     pub service: Vec<MultiLangString>,
     pub entitlements: Vec<Entitlement>,
-    pub privacy_policy: Vec<MultiLangString>,
+    pub privacy_policy: Vec<Policy>,
     pub info_uri: String,
     pub data_protection_authority: Option<DataProtectionAuthority>,
     pub policy_id: Vec<String>,
@@ -45,7 +45,7 @@ pub struct Payload {
     pub registry_uri: Option<Url>,
     pub service: Vec<MultiLangString>,
     pub entitlements: Vec<Entitlement>,
-    pub privacy_policy: Vec<MultiLangString>,
+    pub privacy_policy: Vec<Policy>,
     pub info_uri: String,
     #[serde(rename = "dpa")]
     pub data_protection_authority: Option<DataProtectionAuthority>,
@@ -80,6 +80,29 @@ impl SerdeSkippable for Subject {
     fn skip(&self) -> bool {
         false
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Policy {
+    pub r#type: PolicyType,
+    #[serde(rename = "policyURI")]
+    pub policy_uri: String,
+}
+
+// Values defined here: https://github.com/eu-digital-identity-wallet/eudi-doc-standards-and-technical-specifications/blob/main/docs/technical-specifications/ts2-notification-publication-provider-information.md#286-policy
+#[derive(Debug, Serialize, Deserialize)]
+pub enum PolicyType {
+    #[serde(rename = "http://data.europa.eu/eudi/policy/trust-service-practice-statement")]
+    TrustServicePracticeStatement,
+    #[serde(rename = "http://data.europa.eu/eudi/policy/terms-and-conditions")]
+    TermsAndConditions,
+    #[serde(rename = "http://data.europa.eu/eudi/policy/privacy-statement")]
+    PrivacyStatement,
+    #[serde(rename = "http://data.europa.eu/eudi/policy/privacy-policy")]
+    PrivacyPolicy,
+    #[serde(rename = "http://data.europa.eu/eudi/policy/registration-policy")]
+    RegistrationPolicy,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -177,7 +200,7 @@ impl<'de> Deserialize<'de> for RequestData {
             pub registry_uri: Option<Url>,
             pub service: Vec<MultiLangString>,
             pub entitlements: Vec<Entitlement>,
-            pub privacy_policy: Vec<MultiLangString>,
+            pub privacy_policy: Vec<Policy>,
             pub info_uri: String,
             #[serde(rename = "dpa")]
             pub data_protection_authority: Option<DataProtectionAuthority>,
