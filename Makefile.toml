@@ -88,9 +88,9 @@ command = "docker"
 
 [tasks.dbdrop]
 script = [
-  "docker rm --force docker-mariadb-1",
-  "docker rm --force docker-walletdb-1",
-  "docker volume rm docker_mariadb_data",
+  "docker rm --force core-mariadb-1",
+  "docker rm --force core-walletdb-1",
+  "docker volume rm core_mariadb_data",
 ]
 
 [tasks.seaormcli]
