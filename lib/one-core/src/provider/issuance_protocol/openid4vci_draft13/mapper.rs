@@ -498,7 +498,7 @@ fn from_create_request_with_id(
         schema_id: request.schema_id,
         organisation: Some(organisation),
         allow_suspension: false,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     })
 }
@@ -869,7 +869,7 @@ pub(crate) fn create_credential(
         interaction: Some(interaction),
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     }
 }
 
@@ -1155,7 +1155,7 @@ pub(crate) fn map_to_import_credential_schema_request(
             schema_id,
             imported_source_url,
             allow_suspension: Some(false),
-            requires_app_attestation: None,
+            requires_wallet_instance_attestation: None,
             transaction_code: convert_inner(
                 credential_schema
                     .transaction_code

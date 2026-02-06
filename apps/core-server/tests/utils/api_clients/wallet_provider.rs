@@ -58,14 +58,14 @@ impl WalletProviderApi {
         &self,
         wallet_unit_id: WalletUnitId,
         bearer: &str,
-        waa_proofs: Vec<String>,
+        wia_proofs: Vec<String>,
         wua_proofs: Vec<(String, KeyStorageSecurityLevel)>,
     ) -> Response {
         let mut properties = serde_json::Map::new();
-        if !waa_proofs.is_empty() {
+        if !wia_proofs.is_empty() {
             properties.insert(
-                "waa".to_string(),
-                waa_proofs
+                "wia".to_string(),
+                wia_proofs
                     .into_iter()
                     .map(|proof| json!({"proof": proof}))
                     .collect(),

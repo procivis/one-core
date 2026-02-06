@@ -527,7 +527,7 @@ impl OpenID4VCIFinal1_0 {
         Ok(response.attestation_challenge)
     }
 
-    /// Prepares wallet attestations (WAA/WUA) based on issuer requirements.
+    /// Prepares wallet attestations (WIA/WUA) based on issuer requirements.
     async fn prepare_wallet_attestations(
         &self,
         interaction_data: &HolderInteractionData,
@@ -582,8 +582,8 @@ impl OpenID4VCIFinal1_0 {
 
         let wallet_attestations_issuance_request =
             match (use_wallet_attestation, &key_storage_security_level) {
-                (true, Some(level)) => Some(IssueWalletAttestationRequest::WuaAndWaa(key, *level)),
-                (true, None) => Some(IssueWalletAttestationRequest::Waa),
+                (true, Some(level)) => Some(IssueWalletAttestationRequest::WuaAndWia(key, *level)),
+                (true, None) => Some(IssueWalletAttestationRequest::Wia),
                 (false, Some(level)) => Some(IssueWalletAttestationRequest::Wua(key, *level)),
                 (false, None) => None,
             };
@@ -608,31 +608,31 @@ impl OpenID4VCIFinal1_0 {
             }
         };
 
-        // Create WAA proof-of-possession if using WAA
-        let waa_request = match (
+        // Create WIA proof-of-possession if using WIA
+        let wia_request = match (
             use_wallet_attestation,
             &wallet_attestations_issuance_response,
         ) {
             (true, Some(issuance_response)) => {
-                let waa = issuance_response
-                    .waa
+                let wia = issuance_response
+                    .wia
                     .first()
                     .ok_or(IssuanceProtocolError::Failed(
                         "Wallet attestation is required".to_string(),
                     ))?;
 
                 // Per https://drafts.oauth.net/draft-ietf-oauth-attestation-based-client-auth/draft-ietf-oauth-attestation-based-client-auth.html#section-5
-                // The WAA sub (subject) claim MUST specify client_id value of the OAuth Client.
-                let waa_jwt: Jwt<()> =
-                    Jwt::build_from_token(waa, None, None).await.map_err(|e| {
-                        IssuanceProtocolError::Failed(format!("Failed to parse WAA: {e}"))
+                // The WIA sub (subject) claim MUST specify client_id value of the OAuth Client.
+                let wia_jwt: Jwt<()> =
+                    Jwt::build_from_token(wia, None, None).await.map_err(|e| {
+                        IssuanceProtocolError::Failed(format!("Failed to parse WIA: {e}"))
                     })?;
 
-                let client_id = waa_jwt
+                let client_id = wia_jwt
                     .payload
                     .subject
                     .ok_or(IssuanceProtocolError::Failed(
-                        "WAA missing subject claim".to_string(),
+                        "WIA missing subject claim".to_string(),
                     ))?;
 
                 let challenge =
@@ -647,7 +647,7 @@ impl OpenID4VCIFinal1_0 {
                     .holder_wallet_unit_proto
                     .get_authentication_key(holder_wallet_unit_id.as_ref().ok_or(
                         IssuanceProtocolError::Failed(
-                            "holder wallet unit id is required for WAA PoP".to_string(),
+                            "holder wallet unit id is required for WIA PoP".to_string(),
                         ),
                     )?)
                     .await
@@ -668,7 +668,7 @@ impl OpenID4VCIFinal1_0 {
                 .await?;
 
                 Ok(Some(TokenRequestWalletAttestationRequest {
-                    wallet_attestation: waa.to_owned(),
+                    wallet_attestation: wia.to_owned(),
                     wallet_attestation_pop: signed_proof,
                 }))
             }
@@ -701,7 +701,7 @@ impl OpenID4VCIFinal1_0 {
         }?;
 
         Ok(WalletAttestationResult {
-            waa_request,
+            wia_request,
             wua_proof,
         })
     }
@@ -1130,7 +1130,7 @@ impl IssuanceProtocol for OpenID4VCIFinal1_0 {
             .await?;
 
         let token_response = self
-            .holder_fetch_token(&interaction_data, tx_code, attestation_result.waa_request)
+            .holder_fetch_token(&interaction_data, tx_code, attestation_result.wia_request)
             .await?;
         let nonce = self.holder_fetch_nonce(&interaction_data).await?;
 

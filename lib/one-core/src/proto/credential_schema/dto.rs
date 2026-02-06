@@ -41,7 +41,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
-    pub requires_app_attestation: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
 }
 

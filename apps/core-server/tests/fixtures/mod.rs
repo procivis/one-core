@@ -543,7 +543,7 @@ pub async fn create_credential_schema(
         layout_properties: params.layout_properties,
         schema_id: params.schema_id.unwrap_or(id.to_string()),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -599,7 +599,7 @@ pub async fn create_credential_schema_with_claims(
         layout_properties: None,
         schema_id: id.to_string(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -738,7 +738,7 @@ pub struct TestingCredentialParams {
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
-    pub wallet_app_attestation_blob_id: Option<BlobId>,
+    pub wallet_instance_attestation_blob_id: Option<BlobId>,
 }
 
 pub async fn create_credential(
@@ -791,7 +791,7 @@ pub async fn create_credential(
         profile: None,
         credential_blob_id: params.credential_blob_id,
         wallet_unit_attestation_blob_id: params.wallet_unit_attestation_blob_id,
-        wallet_app_attestation_blob_id: params.wallet_app_attestation_blob_id,
+        wallet_instance_attestation_blob_id: params.wallet_instance_attestation_blob_id,
     };
 
     data_layer

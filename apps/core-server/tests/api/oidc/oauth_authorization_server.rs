@@ -95,7 +95,7 @@ async fn test_oauth_authorization_server_metadata_eudi_compliant() {
             &organisation,
             None,
             TestingCreateSchemaParams {
-                requires_app_attestation: true,
+                requires_wallet_instance_attestation: true,
                 ..Default::default()
             },
         )

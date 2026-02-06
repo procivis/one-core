@@ -159,7 +159,7 @@ async fn test_presentation_reject_ok() {
                     claim_schemas: None,
                     organisation: None,
                     allow_suspension: true,
-                    requires_app_attestation: false,
+                    requires_wallet_instance_attestation: false,
                     transaction_code: None,
                 }),
             }]),
@@ -358,7 +358,7 @@ async fn test_get_presentation_definition_ok() {
         key_storage_security: None,
         deleted_at: None,
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -453,7 +453,7 @@ async fn test_get_presentation_definition_ok() {
                 profile: None,
                 credential_blob_id: None,
                 wallet_unit_attestation_blob_id: None,
-                wallet_app_attestation_blob_id: None,
+                wallet_instance_attestation_blob_id: None,
             }])
         });
 

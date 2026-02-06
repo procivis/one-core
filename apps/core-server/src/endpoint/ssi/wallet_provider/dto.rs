@@ -11,22 +11,24 @@ use utoipa::ToSchema;
 use crate::deserialize::one_or_many;
 use crate::endpoint::wallet_provider::dto::WalletUnitOsRestEnum;
 
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(dto::IssueWalletUnitAttestationRequestDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct IssueWalletUnitAttestationRequestRestDTO {
-    #[into(with_fn = convert_inner)]
     #[serde(default)]
-    pub waa: Vec<IssueWaaRequestRestDTO>,
-    #[into(with_fn = convert_inner)]
+    #[schema(deprecated)]
+    /// deprecated, replaced by `wia`
+    pub waa: Vec<IssueWiaRequestRestDTO>,
+
+    #[serde(default)]
+    pub wia: Vec<IssueWiaRequestRestDTO>,
     #[serde(default)]
     pub wua: Vec<IssueWuaRequestRestDTO>,
 }
 
 #[derive(Clone, Debug, Deserialize, ToSchema, Into)]
 #[serde(deny_unknown_fields)]
-#[into(dto::IssueWaaRequestDTO)]
-pub struct IssueWaaRequestRestDTO {
+#[into(dto::IssueWiaRequestDTO)]
+pub struct IssueWiaRequestRestDTO {
     pub proof: String,
 }
 
@@ -51,12 +53,15 @@ pub enum KeyStorageSecurityLevelRestEnum {
     Basic,
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema, From)]
-#[from(dto::IssueWalletUnitAttestationResponseDTO)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct IssueWalletUnitAttestationResponseRestDTO {
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[schema(deprecated)]
+    /// deprecated, replaced by `wia`
     pub waa: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub wia: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub wua: Vec<String>,
 }

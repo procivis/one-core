@@ -351,7 +351,7 @@ impl CredentialFormatter for SDJWTFormatter {
             schema_id,
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             claim_schemas: Some(claim_schemas),
             organisation: None,
             transaction_code: None,
@@ -382,7 +382,7 @@ impl CredentialFormatter for SDJWTFormatter {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
-            wallet_app_attestation_blob_id: None,
+            wallet_instance_attestation_blob_id: None,
             claims: Some(claims),
             issuer_certificate: issuer_identifier
                 .certificates

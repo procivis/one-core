@@ -187,7 +187,7 @@ impl From<DetailCredentialSchemaResponseDTO> for CredentialSchemaBindingDTO {
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
             allow_suspension: value.allow_suspension,
-            requires_app_attestation: value.requires_app_attestation,
+            requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
         }
     }
 }
@@ -352,7 +352,7 @@ impl From<CredentialSchemaListItemResponseDTO> for CredentialSchemaBindingDTO {
             layout_type: convert_inner(value.layout_type),
             layout_properties: convert_inner(value.layout_properties),
             allow_suspension: value.allow_suspension,
-            requires_app_attestation: value.requires_app_attestation,
+            requires_wallet_instance_attestation: value.requires_wallet_instance_attestation,
         }
     }
 }

@@ -732,7 +732,7 @@ fn test_schema_id() {
         layout_properties: None,
         schema_id: None,
         allow_suspension: None,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 

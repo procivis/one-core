@@ -3,7 +3,7 @@ use one_core::service::credential::dto::{
     CredentialRevocationCheckResponseDTO, CredentialRole, CredentialStateEnum,
     DetailCredentialClaimResponseDTO, DetailCredentialSchemaResponseDTO,
     MdocMsoValidityResponseDTO, ShareCredentialResponseDTO, SuspendCredentialRequestDTO,
-    WalletAppAttestationDTO, WalletUnitAttestationDTO,
+    WalletInstanceAttestationDTO, WalletUnitAttestationDTO,
 };
 use one_dto_mapper::{From, Into, convert_inner};
 use proc_macros::{ModifySchema, options_not_nullable};
@@ -136,13 +136,13 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
     /// Country profile associated with this credential.
     pub profile: Option<String>,
 
-    /// The wallet app attestation that was provided by the holder's wallet
+    /// The wallet instance attestation that was provided by the holder's wallet
     /// during credential issuance. This field is only present if the wallet
     /// provided a valid attestation when the credential was issued. The
     /// attestation serves as proof that the wallet app instance is a
     /// legitimate installation and may be required for the issuance of certain
     /// credentials.
-    pub wallet_app_attestation: Option<WalletAppAttestationRestDTO>,
+    pub wallet_instance_attestation: Option<WalletInstanceAttestationRestDTO>,
 
     /// The wallet unit attestation, or "key attestation", that was provided
     /// by the holder's wallet during credential issuance. This field is
@@ -153,9 +153,9 @@ pub(crate) struct GetCredentialResponseRestDTO<T> {
 }
 
 #[derive(Debug, Serialize, ToSchema, From)]
-#[from(WalletAppAttestationDTO)]
+#[from(WalletInstanceAttestationDTO)]
 #[serde(rename_all = "camelCase")]
-pub struct WalletAppAttestationRestDTO {
+pub struct WalletInstanceAttestationRestDTO {
     name: String,
     link: String,
     attestation: String,
@@ -209,7 +209,7 @@ pub(crate) struct CredentialDetailSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
 }
 
 #[derive(Clone, Debug, Serialize, ToSchema, From)]

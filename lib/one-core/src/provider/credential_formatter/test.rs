@@ -48,7 +48,7 @@ fn generate_credential_detail_response(
             schema_id: "".to_string(),
             layout_properties: None,
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         },
         issuer: None,
@@ -62,7 +62,7 @@ fn generate_credential_detail_response(
         holder: None,
         protocol: "OPENID4VCI_DRAFT13".to_string(),
         profile: None,
-        wallet_app_attestation: None,
+        wallet_instance_attestation: None,
         wallet_unit_attestation: None,
     }
 }
@@ -150,7 +150,7 @@ fn generate_credential_matching_detail(
             schema_id: detail.schema.schema_id,
             imported_source_url: detail.schema.imported_source_url,
             allow_suspension: detail.schema.allow_suspension,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             claim_schemas: None,
             organisation: None,
             transaction_code: None,
@@ -160,7 +160,7 @@ fn generate_credential_matching_detail(
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     }
 }
 

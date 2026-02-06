@@ -5,7 +5,7 @@ walletProvider:
     params:
       public:
         walletName: "Procivis One Dev Wallet"
-        walletAppAttestation:
+        walletInstanceAttestation:
           integrityCheck:
             android:
               bundleId: ch.procivis.one.wallet.dev
@@ -96,4 +96,3 @@ signer:
           maxValidityDuration: 157680000 # 5 years
           allowCaSigning: true
         revocationMethod: CRL
-

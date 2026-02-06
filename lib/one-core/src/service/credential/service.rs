@@ -375,7 +375,7 @@ impl CredentialService {
         &self,
         credential: &Credential,
     ) -> Result<CredentialAttestationBlobs, ServiceError> {
-        if credential.wallet_app_attestation_blob_id.is_none()
+        if credential.wallet_instance_attestation_blob_id.is_none()
             && credential.wallet_unit_attestation_blob_id.is_none()
         {
             return Ok(CredentialAttestationBlobs::default());
@@ -387,9 +387,10 @@ impl CredentialService {
             .await
             .ok_or_else(|| MissingProviderError::BlobStorage(BlobStorageType::Db.to_string()))?;
 
-        let wallet_app_attestation_blob = match &credential.wallet_app_attestation_blob_id {
+        let wallet_instance_attestation_blob = match &credential.wallet_instance_attestation_blob_id
+        {
             Some(blob_id) => Some(db_blob_storage.get(blob_id).await?.ok_or(
-                ServiceError::MappingError("wallet app attestation blob is None".to_string()),
+                ServiceError::MappingError("wallet instance attestation blob is None".to_string()),
             )?),
             None => None,
         };
@@ -401,7 +402,7 @@ impl CredentialService {
         };
 
         Ok(CredentialAttestationBlobs {
-            wallet_app_attestation_blob,
+            wallet_instance_attestation_blob,
             wallet_unit_attestation_blob,
         })
     }

@@ -31,7 +31,7 @@ pub struct Model {
     #[serde(deserialize_with = "bool_from_int")]
     pub allow_suspension: bool,
     #[serde(deserialize_with = "bool_from_int")]
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     pub transaction_code_type: Option<TransactionCodeType>,
     pub transaction_code_length: Option<u32>,
     pub transaction_code_description: Option<String>,

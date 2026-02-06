@@ -206,7 +206,7 @@ pub(crate) fn extracted_credential_to_model(
         role: CredentialRole::Verifier,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     })
 }
 
@@ -594,7 +594,7 @@ mod tests {
                 organisation: None,
                 imported_source_url: "CORE_URL".to_string(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             },
             vec![(

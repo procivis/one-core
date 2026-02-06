@@ -31,7 +31,7 @@ pub struct CredentialSchema {
     pub schema_id: String,
     pub imported_source_url: String,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<TransactionCode>,
 
     // Relations

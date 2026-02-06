@@ -905,7 +905,7 @@ fn test_credential_schema_id() {
         layout_properties: None,
         schema_id: Some(schema_id.clone()),
         allow_suspension: None,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 

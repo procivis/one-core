@@ -54,7 +54,7 @@ pub(crate) struct CredentialSchemaListItemResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
 }
 
 #[options_not_nullable]
@@ -89,7 +89,7 @@ pub(crate) struct CredentialSchemaResponseRestDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRestDTO>,
 }
@@ -278,7 +278,7 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     pub external_schema: bool,
     #[serde(default)]
     #[try_into(infallible)]
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
@@ -476,7 +476,7 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     pub allow_suspension: Option<bool>,
     #[serde(default)]
     #[try_into(infallible)]
-    pub requires_app_attestation: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
     #[serde(default)]
     #[try_into(with_fn = convert_inner, infallible)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeRequestRestDTO>,
@@ -587,7 +587,7 @@ mod test {
                 }),
             }),
             allow_suspension: true,
-            requires_app_attestation: true,
+            requires_wallet_instance_attestation: true,
             transaction_code: Some(CredentialSchemaTransactionCodeRestDTO {
                 r#type: TransactionCodeTypeRestEnum::Numeric,
                 length: 6,

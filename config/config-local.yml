@@ -30,7 +30,7 @@ walletProvider:
         walletLink: "https://procivis.ch"
         walletClientId: "eudiw-abca"
         walletRegistration: OPTIONAL
-        walletAppAttestation:
+        walletInstanceAttestation:
           expirationTime: 86400 # 24*60*60 seconds
           integrityCheck:
             android:

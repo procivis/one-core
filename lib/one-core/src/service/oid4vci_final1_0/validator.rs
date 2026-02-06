@@ -18,7 +18,7 @@ use crate::provider::issuance_protocol::openid4vci_final1_0::model::{
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::service::error::ServiceError;
 use crate::service::wallet_provider::dto::{
-    WalletAppAttestationClaims, WalletUnitAttestationClaims,
+    WalletInstanceAttestationClaims, WalletUnitAttestationClaims,
 };
 use crate::validator::{
     validate_expiration_time, validate_issuance_time, validate_not_before_time,
@@ -100,7 +100,7 @@ pub(crate) fn validate_pop_audience(
 
 pub(crate) fn verify_pop_signature(
     pop_token: &DecomposedJwt<()>,
-    wallet_unit_attestation: &DecomposedJwt<WalletAppAttestationClaims>,
+    wallet_unit_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
     key_algorithm_provider: &dyn KeyAlgorithmProvider,
 ) -> Result<(), ServiceError> {
     let (_, alg) = key_algorithm_provider
@@ -137,25 +137,25 @@ pub(crate) fn verify_pop_signature(
 }
 
 #[tracing::instrument(level = "debug", skip_all, err(level = "info"))]
-pub(crate) async fn verify_waa_signature(
-    wallet_app_attestation: &DecomposedJwt<WalletAppAttestationClaims>,
+pub(crate) async fn verify_wia_signature(
+    wallet_instance_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
     verifier: &dyn TokenVerifier,
 ) -> Result<(), ServiceError> {
     let public_key_source = match (
-        wallet_app_attestation.header.jwk.as_ref(),
-        wallet_app_attestation.header.x5c.as_ref(),
+        wallet_instance_attestation.header.jwk.as_ref(),
+        wallet_instance_attestation.header.x5c.as_ref(),
     ) {
         (Some(jwk), None) => jwk.into(),
         (None, Some(x5c)) => PublicKeySource::X5c { x5c },
         _ => {
-            tracing::info!("WAA issuer not specified");
+            tracing::info!("WIA issuer not specified");
             return Err(ServiceError::OpenID4VCIError(
                 OpenID4VCIError::InvalidRequest,
             ));
         }
     };
 
-    wallet_app_attestation
+    wallet_instance_attestation
         .verify_signature(public_key_source, verifier)
         .await
         .map_err(|_| ServiceError::OpenID4VCIError(OpenID4VCIError::InvalidRequest))?;
@@ -164,9 +164,9 @@ pub(crate) async fn verify_waa_signature(
 }
 
 pub(crate) fn extract_wallet_metadata(
-    wallet_app_attestation: &DecomposedJwt<WalletAppAttestationClaims>,
+    wallet_instance_attestation: &DecomposedJwt<WalletInstanceAttestationClaims>,
 ) -> Result<(String, String), ServiceError> {
-    let name = wallet_app_attestation
+    let name = wallet_instance_attestation
         .payload
         .custom
         .wallet_name
@@ -176,7 +176,7 @@ pub(crate) fn extract_wallet_metadata(
         ))?
         .clone();
 
-    let link = wallet_app_attestation
+    let link = wallet_instance_attestation
         .payload
         .custom
         .wallet_link
@@ -231,17 +231,17 @@ pub(crate) async fn validate_key_attestation(
 }
 
 #[tracing::instrument(level = "debug", err(level = "debug"))]
-pub(crate) fn verify_wua_waa_issuers_match(
+pub(crate) fn verify_wua_wia_issuers_match(
     wua_jwt: &str,
-    waa: &DecomposedJwt<WalletAppAttestationClaims>,
+    wia: &DecomposedJwt<WalletInstanceAttestationClaims>,
 ) -> Result<(), ServiceError> {
     let wua = Jwt::<WalletUnitAttestationClaims>::decompose_token(wua_jwt)?;
 
-    let waa_issuer = (waa.header.jwk.as_ref(), waa.header.x5c.as_ref());
+    let wia_issuer = (wia.header.jwk.as_ref(), wia.header.x5c.as_ref());
     let wua_issuer = (wua.header.jwk.as_ref(), wua.header.x5c.as_ref());
 
-    if waa_issuer != wua_issuer {
-        tracing::info!("WUA issuer does not match WAA issuer");
+    if wia_issuer != wua_issuer {
+        tracing::info!("WUA issuer does not match WIA issuer");
         return Err(ServiceError::OpenID4VCIError(
             OpenID4VCIError::InvalidRequest,
         ));

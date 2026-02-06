@@ -69,13 +69,13 @@ pub struct CredentialDetailResponseDTO<T> {
     pub holder: Option<GetIdentifierListItemResponseDTO>,
     pub protocol: String,
     pub profile: Option<String>,
-    pub wallet_app_attestation: Option<WalletAppAttestationDTO>,
+    pub wallet_instance_attestation: Option<WalletInstanceAttestationDTO>,
     pub wallet_unit_attestation: Option<WalletUnitAttestationDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct WalletAppAttestationDTO {
+pub struct WalletInstanceAttestationDTO {
     pub name: String,
     pub link: String,
     pub attestation: String,
@@ -119,7 +119,7 @@ pub struct DetailCredentialSchemaResponseDTO {
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<DetailCredentialSchemaTransactionCodeDTO>,
 }
 
@@ -218,7 +218,7 @@ pub struct CredentialRevocationCheckResponseDTO {
 
 #[derive(Clone, Debug, Default)]
 pub struct CredentialAttestationBlobs {
-    pub wallet_app_attestation_blob: Option<Blob>,
+    pub wallet_instance_attestation_blob: Option<Blob>,
     pub wallet_unit_attestation_blob: Option<Blob>,
 }
 

@@ -2733,7 +2733,7 @@ fn complex_document() -> &'static str {
 }
 
 #[tokio::test]
-async fn test_waa_pop_iss_equals_waa_sub() {
+async fn test_wia_pop_iss_equals_wia_sub() {
     // GIVEN
     let (context, organisation) = TestContext::new_with_organisation(None).await;
 
@@ -2849,7 +2849,7 @@ async fn test_waa_pop_iss_equals_waa_sub() {
         .db
         .credential_schemas
         .create(
-            "test_waa_pop",
+            "test_wia_pop",
             &organisation,
             None,
             TestingCreateSchemaParams {
@@ -2886,7 +2886,7 @@ async fn test_waa_pop_iss_equals_waa_sub() {
             "display": [
                 {
                     "lang": "en",
-                    "name": "test_waa_pop"
+                    "name": "test_wia_pop"
                 }
             ]
         },
@@ -2955,28 +2955,28 @@ async fn test_waa_pop_iss_equals_waa_sub() {
         .find(|r| r.url.path().contains("/token"))
         .expect("Token request not found");
 
-    let waa_header = token_request
+    let wia_header = token_request
         .headers
         .get("oauth-client-attestation")
         .expect("OAuth-Client-Attestation header not found");
-    let waa_pop_header = token_request
+    let wia_pop_header = token_request
         .headers
         .get("oauth-client-attestation-pop")
         .expect("OAuth-Client-Attestation-PoP header not found");
 
-    let waa =
-        Jwt::<()>::decompose_token(waa_header.to_str().unwrap()).expect("Failed to parse WAA JWT");
-    let waa_pop = Jwt::<()>::decompose_token(waa_pop_header.to_str().unwrap())
-        .expect("Failed to parse WAA PoP JWT");
+    let wia =
+        Jwt::<()>::decompose_token(wia_header.to_str().unwrap()).expect("Failed to parse WIA JWT");
+    let wia_pop = Jwt::<()>::decompose_token(wia_pop_header.to_str().unwrap())
+        .expect("Failed to parse WIA PoP JWT");
 
     assert_eq!(
-        waa_pop.payload.issuer, waa.payload.subject,
-        "WAA PoP 'iss' must equal WAA 'sub' per OAuth Attestation-Based Client Auth spec section 5.2"
+        wia_pop.payload.issuer, wia.payload.subject,
+        "WIA PoP 'iss' must equal WIA 'sub' per OAuth Attestation-Based Client Auth spec section 5.2"
     );
 
     assert_eq!(
-        waa.payload.subject,
+        wia.payload.subject,
         Some("eudiw-abca".to_string()),
-        "WAA 'sub' should be wallet_client_id from config"
+        "WIA 'sub' should be wallet_client_id from config"
     );
 }

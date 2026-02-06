@@ -62,28 +62,15 @@ pub(crate) async fn credential_from_proved(
         wallet_unit_attestation_blob_id: proved_credential
             .credential
             .wallet_unit_attestation_blob_id,
-        wallet_app_attestation_blob_id: proved_credential.credential.wallet_app_attestation_blob_id,
+        wallet_instance_attestation_blob_id: proved_credential
+            .credential
+            .wallet_instance_attestation_blob_id,
     })
 }
 
 fn from_provider_schema(schema: CredentialSchema, organisation: Organisation) -> CredentialSchema {
     CredentialSchema {
-        id: schema.id,
-        deleted_at: schema.deleted_at,
-        created_date: schema.created_date,
-        last_modified: schema.last_modified,
-        name: schema.name,
-        format: schema.format,
-        revocation_method: schema.revocation_method,
-        key_storage_security: schema.key_storage_security,
-        layout_type: schema.layout_type,
-        layout_properties: schema.layout_properties,
-        imported_source_url: schema.imported_source_url,
-        schema_id: schema.schema_id,
-        claim_schemas: schema.claim_schemas,
-        organisation: organisation.into(),
-        allow_suspension: schema.allow_suspension,
-        requires_app_attestation: schema.requires_app_attestation,
-        transaction_code: schema.transaction_code,
+        organisation: Some(organisation),
+        ..schema
     }
 }

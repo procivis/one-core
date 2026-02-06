@@ -318,7 +318,7 @@ fn generic_credential() -> Credential {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -326,6 +326,6 @@ fn generic_credential() -> Credential {
         profile: None,
         credential_blob_id: Some(Uuid::new_v4().into()),
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     }
 }

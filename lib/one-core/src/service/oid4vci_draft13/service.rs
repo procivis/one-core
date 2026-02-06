@@ -93,11 +93,12 @@ impl OID4VCIDraft13Service {
             return Err(EntityNotFoundError::CredentialSchema(*credential_schema_id).into());
         };
 
-        let token_endpoint_auth_methods_supported = if credential_schema.requires_app_attestation {
-            vec![TokenEndpointAuthMethod::AttestJwtClientAuth]
-        } else {
-            vec![TokenEndpointAuthMethod::None]
-        };
+        let token_endpoint_auth_methods_supported =
+            if credential_schema.requires_wallet_instance_attestation {
+                vec![TokenEndpointAuthMethod::AttestJwtClientAuth]
+            } else {
+                vec![TokenEndpointAuthMethod::None]
+            };
 
         // Per https://datatracker.ietf.org/doc/html/draft-ietf-oauth-attestation-based-client-auth-07#section-10.1
         // If token_endpoint_auth_methods_supported includes attest_jwt_client_auth, we MUST include these fields

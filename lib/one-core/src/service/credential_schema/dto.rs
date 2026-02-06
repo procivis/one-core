@@ -43,7 +43,7 @@ pub struct CredentialSchemaListItemResponseDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -65,7 +65,7 @@ pub struct CredentialSchemaDetailResponseDTO {
     pub layout_type: Option<LayoutType>,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesResponseDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeDTO>,
 }
 
@@ -134,7 +134,7 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,
     pub allow_suspension: Option<bool>,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestDTO>,
 }
 
@@ -288,7 +288,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
     #[into(with_fn = convert_inner)]
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
     pub allow_suspension: Option<bool>,
-    pub requires_app_attestation: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
     #[into(with_fn = convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeDTO>,
 }

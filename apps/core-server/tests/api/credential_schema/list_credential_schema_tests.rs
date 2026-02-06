@@ -72,7 +72,10 @@ async fn test_get_list_credential_schema_include_layout_properties_success() {
         resp["values"][0]["layoutProperties"]["background"]["color"],
         "#DA2727"
     );
-    assert_eq!(resp["values"][0]["requiresAppAttestation"], false);
+    assert_eq!(
+        resp["values"][0]["requiresWalletInstanceAttestation"],
+        false
+    );
     assert_eq!(
         resp["values"][0]["layoutProperties"]["primaryAttribute"],
         "firstName"

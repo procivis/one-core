@@ -539,7 +539,7 @@ pub(crate) fn extracted_credential_to_model(
             interaction: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
-            wallet_app_attestation_blob_id: None,
+            wallet_instance_attestation_blob_id: None,
         },
         issuer_details,
         holder_details,

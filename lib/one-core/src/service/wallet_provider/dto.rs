@@ -45,12 +45,12 @@ pub struct RefreshWalletUnitRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct IssueWalletUnitAttestationRequestDTO {
-    pub waa: Vec<IssueWaaRequestDTO>,
+    pub wia: Vec<IssueWiaRequestDTO>,
     pub wua: Vec<IssueWuaRequestDTO>,
 }
 
 #[derive(Clone, Debug)]
-pub struct IssueWaaRequestDTO {
+pub struct IssueWiaRequestDTO {
     pub proof: String,
 }
 
@@ -62,7 +62,7 @@ pub struct IssueWuaRequestDTO {
 
 #[derive(Clone, Debug)]
 pub struct IssueWalletUnitAttestationResponseDTO {
-    pub waa: Vec<String>,
+    pub wia: Vec<String>,
     pub wua: Vec<String>,
 }
 
@@ -74,7 +74,7 @@ pub(super) struct WalletProviderParams {
     pub wallet_client_id: String,
     // Information for wallet whether it enforces having a wallet unit attestation when starting app
     pub wallet_registration: WalletRegistrationRequirement,
-    pub wallet_app_attestation: WalletAppAttestationParams,
+    pub wallet_instance_attestation: WalletInstanceAttestationParams,
     pub wallet_unit_attestation: WalletUnitAttestationParams,
     pub device_auth_leeway: u64,
     pub app_version: Option<AppVersionDTO>,
@@ -91,7 +91,7 @@ pub(super) enum WalletRegistrationRequirement {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct WalletAppAttestationParams {
+pub(super) struct WalletInstanceAttestationParams {
     pub expiration_time: u64,
     #[serde(default)]
     pub integrity_check: IntegrityCheck,
@@ -238,7 +238,7 @@ pub(super) struct NoncePayload {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct WalletAppAttestationClaims {
+pub(crate) struct WalletInstanceAttestationClaims {
     pub wallet_name: Option<String>,
     pub wallet_link: Option<String>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
@@ -246,7 +246,7 @@ pub struct WalletAppAttestationClaims {
 
 #[skip_serializing_none]
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct WalletUnitAttestationClaims {
+pub(crate) struct WalletUnitAttestationClaims {
     pub key_storage: Vec<KeyStorageSecurityLevel>,
     pub attested_keys: Vec<PublicJwk>,
     pub eudi_wallet_info: Option<EudiWalletInfo>,
@@ -254,19 +254,19 @@ pub struct WalletUnitAttestationClaims {
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct EudiWalletInfo {
+pub(crate) struct EudiWalletInfo {
     pub general_info: EudiWalletGeneralInfo,
     pub wscd_info: Option<WscdInfo>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct EudiWalletGeneralInfo {
+pub(crate) struct EudiWalletGeneralInfo {
     pub wallet_provider_name: String,
     pub wallet_solution_id: String,
     pub wallet_solution_version: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct WscdInfo {
+pub(crate) struct WscdInfo {
     pub wscd_type: WscdType,
 }

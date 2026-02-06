@@ -78,7 +78,7 @@ fn wallet_provider_config(
                 "walletClientId": "mock-client-id",
                 "walletLink": "https://procivis.ch",
                 "walletRegistration": "MANDATORY",
-                "walletAppAttestation": {
+                "walletInstanceAttestation": {
                     "expirationTime": 60,
                     "integrityCheck": {
                         "enabled": integrity_check_enabled,

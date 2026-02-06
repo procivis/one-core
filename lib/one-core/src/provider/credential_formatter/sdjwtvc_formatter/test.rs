@@ -638,7 +638,7 @@ async fn test_extract_credentials_swiyu() {
         schema_id: "".to_string(),
         imported_source_url: "".to_string(),
         allow_suspension: false,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         claim_schemas: Some(vec![CredentialSchemaClaim {
             schema: ClaimSchema {
                 id: Uuid::new_v4().into(),
@@ -874,7 +874,7 @@ fn test_schema_id_internal() {
         layout_properties: None,
         schema_id: None,
         allow_suspension: None,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -921,7 +921,7 @@ fn test_schema_id_external() {
         layout_properties: None,
         schema_id: Some(vct.to_string()),
         allow_suspension: None,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 

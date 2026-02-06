@@ -142,7 +142,7 @@ async fn setup_with_schema(repositories: Repositories) -> TestSetupWithCredentia
             layout_properties: None,
             schema_id: credential_schema_id.to_string(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         },
         organisation,
@@ -205,7 +205,7 @@ async fn test_create_credential_schema_success() {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         })
         .await;
@@ -494,7 +494,7 @@ async fn test_delete_credential_schema_not_found() {
             schema_id: "Test_schema_id".to_string(),
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             claim_schemas: None,
             organisation: None,
             transaction_code: None,

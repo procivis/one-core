@@ -220,7 +220,7 @@ pub struct ImportProofSchemaCredentialSchemaBindingDTO {
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
     #[try_into(infallible)]
-    pub requires_app_attestation: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
 }
 
 #[derive(Clone, Debug, uniffi::Record)]

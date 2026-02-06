@@ -42,14 +42,14 @@ pub struct ActivateWalletUnitRequestRestDTO {
 #[from(dto::IssueWalletUnitAttestationRequestDTO)]
 pub struct IssueWalletUnitAttestationRequestRestDTO {
     #[from(with_fn = convert_inner)]
-    pub waa: Vec<IssueWaaRequestRestDTO>,
+    pub wia: Vec<IssueWiaRequestRestDTO>,
     #[from(with_fn = convert_inner)]
     pub wua: Vec<IssueWuaRequestRestDTO>,
 }
 
 #[derive(Clone, Debug, Serialize, From)]
-#[from(dto::IssueWaaRequestDTO)]
-pub struct IssueWaaRequestRestDTO {
+#[from(dto::IssueWiaRequestDTO)]
+pub struct IssueWiaRequestRestDTO {
     pub proof: String,
 }
 
@@ -65,7 +65,7 @@ pub struct IssueWuaRequestRestDTO {
 #[into(dto::IssueWalletUnitAttestationResponseDTO)]
 pub(super) struct IssueWalletUnitAttestationResponseRestDTO {
     #[serde(default)]
-    pub waa: Vec<String>,
+    pub wia: Vec<String>,
     #[serde(default)]
     pub wua: Vec<String>,
 }

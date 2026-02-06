@@ -97,11 +97,14 @@ pub(crate) async fn issue_wallet_unit_attestation(
         ErrorResponseRestDTO,
     >,
 ) -> OkOrErrorResponse<IssueWalletUnitAttestationResponseRestDTO> {
-    let result = state
-        .core
-        .wallet_provider_service
-        .issue_attestation(id, bearer.token(), request.into())
-        .await;
+    let result = async {
+        state
+            .core
+            .wallet_provider_service
+            .issue_attestation(id, bearer.token(), request.try_into()?)
+            .await
+    }
+    .await;
     OkOrErrorResponse::from_result(result, state, "issuing wallet attestation")
 }
 

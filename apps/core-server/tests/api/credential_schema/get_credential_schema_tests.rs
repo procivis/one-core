@@ -32,7 +32,8 @@ async fn test_get_credential_schema_success() {
 
     resp["id"].assert_eq(&credential_schema.id);
     resp["schemaId"].assert_eq(&credential_schema.id);
-    resp["requiresAppAttestation"].assert_eq(&credential_schema.requires_app_attestation);
+    resp["requiresWalletInstanceAttestation"]
+        .assert_eq(&credential_schema.requires_wallet_instance_attestation);
     assert_eq!(resp["claims"].as_array().unwrap().len(), 2);
     assert_eq!(resp["revocationMethod"], "STATUSLIST2021");
     assert_eq!(resp["layoutType"], "CARD");

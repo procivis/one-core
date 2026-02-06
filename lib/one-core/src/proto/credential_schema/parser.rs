@@ -87,7 +87,10 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
                 dto.schema.allow_suspension,
                 revocation_method.as_deref(),
             )?,
-            requires_app_attestation: dto.schema.requires_app_attestation.unwrap_or(false),
+            requires_wallet_instance_attestation: dto
+                .schema
+                .requires_wallet_instance_attestation
+                .unwrap_or(false),
             claim_schemas: Some(claim_schemas),
             organisation: Some(dto.organisation),
             transaction_code: convert_inner(dto.schema.transaction_code),

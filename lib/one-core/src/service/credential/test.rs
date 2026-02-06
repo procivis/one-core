@@ -211,7 +211,7 @@ fn generic_credential() -> Credential {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -219,7 +219,7 @@ fn generic_credential() -> Credential {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     }
 }
 
@@ -282,7 +282,7 @@ fn generic_credential_list_entity() -> Credential {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -290,7 +290,7 @@ fn generic_credential_list_entity() -> Credential {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     }
 }
 
@@ -3354,7 +3354,7 @@ fn generate_credential_schema_with_claim_schemas(
         claim_schemas: Some(claim_schemas),
         organisation: None,
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     }
 }
@@ -3945,7 +3945,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -3953,7 +3953,7 @@ async fn test_get_credential_success_array_complex_nested_all() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     {
@@ -4514,7 +4514,7 @@ async fn test_get_credential_success_array_index_sorting() {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -4522,7 +4522,7 @@ async fn test_get_credential_success_array_index_sorting() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     {
@@ -4832,7 +4832,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -4840,7 +4840,7 @@ async fn test_get_credential_success_array_complex_nested_first_case() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     {
@@ -5053,7 +5053,7 @@ async fn test_get_credential_success_array_single_element() {
             layout_properties: None,
             schema_id: "CredentialSchemaId".to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
         interaction: None,
@@ -5061,7 +5061,7 @@ async fn test_get_credential_success_array_single_element() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     {
@@ -5179,7 +5179,7 @@ async fn test_create_credential_array(
         ),
         organisation: Some(organisation.to_owned()),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 

@@ -23,7 +23,7 @@ pub(super) struct CredentialListEntityModel {
     pub profile: Option<String>,
     pub credential_blob_id: Option<BlobId>,
     pub wallet_unit_attestation_blob_id: Option<BlobId>,
-    pub wallet_app_attestation_blob_id: Option<BlobId>,
+    pub wallet_instance_attestation_blob_id: Option<BlobId>,
 
     pub credential_schema_deleted_at: Option<OffsetDateTime>,
     pub credential_schema_created_date: OffsetDateTime,
@@ -36,7 +36,7 @@ pub(super) struct CredentialListEntityModel {
     pub credential_schema_schema_id: String,
     pub credential_schema_imported_source_url: String,
     pub credential_schema_allow_suspension: bool,
-    pub credential_schema_requires_app_attestation: bool,
+    pub credential_schema_requires_wallet_instance_attestation: bool,
     pub credential_schema_schema_layout_properties: Option<LayoutProperties>,
     pub credential_schema_transaction_code_type: Option<TransactionCodeType>,
     pub credential_schema_transaction_code_length: Option<u32>,

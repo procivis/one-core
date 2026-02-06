@@ -88,7 +88,7 @@ impl TryFrom<CredentialSchema> for credential_schema::ActiveModel {
             layout_properties: Set(convert_inner(value.layout_properties)),
             schema_id: Set(value.schema_id),
             allow_suspension: Set(value.allow_suspension),
-            requires_app_attestation: Set(value.requires_app_attestation),
+            requires_wallet_instance_attestation: Set(value.requires_wallet_instance_attestation),
             transaction_code_type: Set(transaction_code_type),
             transaction_code_length: Set(transaction_code_length),
             transaction_code_description: Set(transaction_code_description),
@@ -157,7 +157,8 @@ pub(super) fn credential_schema_from_models(
         imported_source_url: credential_schema.imported_source_url,
         schema_id: credential_schema.schema_id,
         allow_suspension: credential_schema.allow_suspension,
-        requires_app_attestation: credential_schema.requires_app_attestation,
+        requires_wallet_instance_attestation: credential_schema
+            .requires_wallet_instance_attestation,
         transaction_code,
     })
 }

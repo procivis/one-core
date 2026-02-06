@@ -256,6 +256,7 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             credential::Column::Profile,
             credential::Column::CredentialBlobId,
             credential::Column::WalletUnitAttestationBlobId,
+            credential::Column::WalletInstanceAttestationBlobId,
         ])
         .join(
             sea_orm::JoinType::InnerJoin,
@@ -300,8 +301,8 @@ fn get_credential_list_query(query_params: GetCredentialQuery) -> Select<credent
             "credential_schema_allow_suspension",
         )
         .column_as(
-            credential_schema::Column::RequiresAppAttestation,
-            "credential_schema_requires_app_attestation",
+            credential_schema::Column::RequiresWalletInstanceAttestation,
+            "credential_schema_requires_wallet_instance_attestation",
         )
         .column_as(
             credential_schema::Column::TransactionCodeType,
@@ -402,7 +403,7 @@ impl CredentialRepository for CredentialProvider {
             convert_inner(key_id),
             request.credential_blob_id,
             request.wallet_unit_attestation_blob_id,
-            request.wallet_app_attestation_blob_id,
+            request.wallet_instance_attestation_blob_id,
         )
         .insert(&self.db)
         .await
@@ -556,7 +557,8 @@ impl CredentialRepository for CredentialProvider {
             Some(blob_id) => Set(Some(blob_id)),
         };
 
-        let wallet_app_attestation_blob_id = match request.wallet_app_attestation_blob_id {
+        let wallet_instance_attestation_blob_id = match request.wallet_instance_attestation_blob_id
+        {
             None => Unchanged(Default::default()),
             Some(blob_id) => Set(Some(blob_id)),
         };
@@ -575,7 +577,7 @@ impl CredentialRepository for CredentialProvider {
             state,
             credential_blob_id,
             wallet_unit_attestation_blob_id,
-            wallet_app_attestation_blob_id,
+            wallet_instance_attestation_blob_id,
             ..Default::default()
         };
 

@@ -3,7 +3,7 @@ walletProvider:
     params:
       public:
         walletName: "Procivis One Demo Wallet"
-        walletAppAttestation:
+        walletInstanceAttestation:
           integrityCheck:
             android:
               bundleId: ch.procivis.one.wallet.demo

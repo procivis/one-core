@@ -225,7 +225,7 @@ pub struct CredentialSchemaDetailBindingDTO {
     #[from(with_fn = convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     #[from(with_fn = convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeBindingDTO>,
 }
@@ -252,7 +252,7 @@ pub struct CredentialSchemaBindingDTO {
     pub imported_source_url: String,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesBindingDTO>,
     pub allow_suspension: bool,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
 }
 
 #[derive(Clone, Debug, From, uniffi::Record)]
@@ -436,7 +436,7 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     #[try_into(infallible, with_fn = convert_inner)]
     pub allow_suspension: Option<bool>,
     #[try_into(infallible, with_fn = convert_inner)]
-    pub requires_app_attestation: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeBindingDTO>,
 }

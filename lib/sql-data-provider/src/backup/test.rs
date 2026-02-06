@@ -83,7 +83,7 @@ async fn insert_credential_to_database(
         profile: Set(None),
         credential_blob_id: Set(None),
         wallet_unit_attestation_blob_id: Set(None),
-        wallet_app_attestation_blob_id: Set(None),
+        wallet_instance_attestation_blob_id: Set(None),
     }
     .insert(database)
     .await

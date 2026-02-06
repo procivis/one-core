@@ -16,7 +16,7 @@ async fn test_register_wallet_unit_successfully_integrity_check_disabled() {
         PROCIVIS_ONE:
             params:
               public:
-                walletAppAttestation:
+                walletInstanceAttestation:
                     integrityCheck:
                         enabled: false
     "}
@@ -97,7 +97,7 @@ async fn test_register_wallet_unit_fail_integrity_check_disabled_no_proof_and_pu
         PROCIVIS_ONE:
             params:
               public:
-                walletAppAttestation:
+                walletInstanceAttestation:
                     integrityCheck:
                         enabled: false
     "}

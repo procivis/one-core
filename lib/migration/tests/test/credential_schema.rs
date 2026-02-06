@@ -20,7 +20,7 @@ async fn test_db_schema_credential_schema() {
         "layout_type",
         "imported_source_url",
         "allow_suspension",
-        "requires_app_attestation",
+        "requires_wallet_instance_attestation",
         "key_storage_security",
         "transaction_code_type",
         "transaction_code_length",
@@ -113,7 +113,7 @@ async fn test_db_schema_credential_schema() {
         .nullable(false)
         .default(None);
     credential_schema
-        .column("requires_app_attestation")
+        .column("requires_wallet_instance_attestation")
         .r#type(ColumnType::Boolean)
         .nullable(false)
         .default(None);

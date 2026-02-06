@@ -96,14 +96,15 @@ impl TryFrom<UnexportableCredentialModel> for Credential {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: value.credential_schema_allow_suspension,
-                requires_app_attestation: value.credential_schema_requires_app_attestation,
+                requires_wallet_instance_attestation: value
+                    .credential_schema_requires_wallet_instance_attestation,
                 transaction_code,
             }),
             interaction: None,
             key: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
-            wallet_app_attestation_blob_id: None,
+            wallet_instance_attestation_blob_id: None,
         })
     }
 }

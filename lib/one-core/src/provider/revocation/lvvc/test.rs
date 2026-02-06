@@ -107,7 +107,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
             schema_id: "schema_id".to_string(),
             imported_source_url: "URL".to_string(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             claim_schemas: None,
             organisation: None,
             transaction_code: None,
@@ -117,7 +117,7 @@ fn generic_did_credential(role: CredentialRole) -> (Did, Identifier, Credential)
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     (did, identifier, credential)

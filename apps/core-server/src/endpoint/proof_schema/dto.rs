@@ -185,7 +185,7 @@ pub(crate) struct ImportProofSchemaCredentialSchemaRestDTO {
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
     #[try_into(infallible)]
-    pub requires_app_attestation: Option<bool>,
+    pub requires_wallet_instance_attestation: Option<bool>,
 }
 
 // list endpoint
@@ -386,7 +386,7 @@ mod test {
                         }),
                     }),
                     allow_suspension: true,
-                    requires_app_attestation: true,
+                    requires_wallet_instance_attestation: true,
                 },
                 validity_constraint: Some(42),
             }],

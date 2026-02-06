@@ -145,7 +145,7 @@ impl From<credential::Model> for Credential {
             key: None,
             credential_blob_id: credential.credential_blob_id,
             wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
-            wallet_app_attestation_blob_id: credential.wallet_app_attestation_blob_id,
+            wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
         }
     }
 }
@@ -161,7 +161,7 @@ pub(super) fn request_to_active_model(
     key_id: Option<KeyId>,
     credential_blob_id: Option<BlobId>,
     wallet_unit_attestation_blob_id: Option<BlobId>,
-    wallet_app_attestation_blob_id: Option<BlobId>,
+    wallet_instance_attestation_blob_id: Option<BlobId>,
 ) -> credential::ActiveModel {
     credential::ActiveModel {
         id: Set(request.id),
@@ -183,7 +183,7 @@ pub(super) fn request_to_active_model(
         profile: Set(request.profile.clone()),
         credential_blob_id: Set(credential_blob_id),
         wallet_unit_attestation_blob_id: Set(wallet_unit_attestation_blob_id),
-        wallet_app_attestation_blob_id: Set(wallet_app_attestation_blob_id),
+        wallet_instance_attestation_blob_id: Set(wallet_instance_attestation_blob_id),
     }
 }
 
@@ -222,7 +222,8 @@ pub(super) fn credential_list_model_to_repository_model(
             .credential_schema_schema_layout_properties
             .map(|layout_properties| layout_properties.into()),
         allow_suspension: credential.credential_schema_allow_suspension,
-        requires_app_attestation: credential.credential_schema_requires_app_attestation,
+        requires_wallet_instance_attestation: credential
+            .credential_schema_requires_wallet_instance_attestation,
         transaction_code,
     };
 
@@ -279,7 +280,7 @@ pub(super) fn credential_list_model_to_repository_model(
         key: None,
         credential_blob_id: credential.credential_blob_id,
         wallet_unit_attestation_blob_id: credential.wallet_unit_attestation_blob_id,
-        wallet_app_attestation_blob_id: credential.wallet_app_attestation_blob_id,
+        wallet_instance_attestation_blob_id: credential.wallet_instance_attestation_blob_id,
     })
 }
 

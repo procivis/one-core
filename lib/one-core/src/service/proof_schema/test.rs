@@ -398,7 +398,7 @@ async fn test_create_proof_schema_success() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -531,7 +531,7 @@ async fn test_create_proof_schema_success_mixed_key_storage_security_types() {
                 layout_properties: None,
                 schema_id: "software".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -669,7 +669,7 @@ async fn test_create_proof_schema_fail_unsupported_wallet_storage_type() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -819,7 +819,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -842,7 +842,7 @@ async fn test_create_proof_schema_with_physical_card_multiple_schemas_fail() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -1012,7 +1012,7 @@ async fn test_create_proof_schema_array_object_fail() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -1174,7 +1174,7 @@ async fn test_create_proof_schema_array_success() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -1333,7 +1333,7 @@ async fn test_create_proof_schema_claims_dont_exist() {
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 
@@ -1559,7 +1559,7 @@ async fn test_import_proof_schema_ok_for_new_credential_schema() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
-                requires_app_attestation: None,
+                requires_wallet_instance_attestation: None,
             },
             validity_constraint: None,
         }],
@@ -1764,7 +1764,7 @@ async fn test_import_proof_ok_existing_but_deleted_credential_schema() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
-                requires_app_attestation: None,
+                requires_wallet_instance_attestation: None,
             },
             validity_constraint: None,
         }],
@@ -1947,7 +1947,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 }]),
                 organisation: None,
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             }))
         });
@@ -1992,7 +1992,7 @@ async fn test_import_proof_ok_existing_credential_schema_all_claims_present() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
-                requires_app_attestation: None,
+                requires_wallet_instance_attestation: None,
             },
             validity_constraint: None,
         }],
@@ -2103,7 +2103,7 @@ async fn test_import_proof_failed_existing_proof_schema() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
-                requires_app_attestation: None,
+                requires_wallet_instance_attestation: None,
             },
             validity_constraint: None,
         }],
@@ -2178,7 +2178,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_datatype() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
-                requires_app_attestation: None,
+                requires_wallet_instance_attestation: None,
             },
             validity_constraint: None,
         }],
@@ -2247,7 +2247,7 @@ async fn test_import_proof_schema_fails_validation_for_unsupported_format() {
                 layout_type: None,
                 layout_properties: None,
                 allow_suspension: None,
-                requires_app_attestation: None,
+                requires_wallet_instance_attestation: None,
             },
             validity_constraint: None,
         }],
@@ -2542,7 +2542,7 @@ fn credential_schema_with_claims(claims: Vec<CredentialSchemaClaim>) -> Credenti
         claim_schemas: Some(claims),
         organisation: None,
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     }
 }
@@ -2803,7 +2803,7 @@ async fn test_create_proof_schema_verify_nested_generic(
                 layout_properties: None,
                 schema_id: "CredentialSchemaId".to_owned(),
                 allow_suspension: true,
-                requires_app_attestation: false,
+                requires_wallet_instance_attestation: false,
                 transaction_code: None,
             };
 

@@ -46,9 +46,9 @@ async fn test_issue_wallet_attestations_success() {
         create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
             .await;
 
-    let waa_key_pair = Ecdsa.generate_key().unwrap();
-    let waa_pop =
-        create_key_possession_proof(&waa_key_pair, context.config.app.core_base_url.clone()).await;
+    let wia_key_pair = Ecdsa.generate_key().unwrap();
+    let wia_pop =
+        create_key_possession_proof(&wia_key_pair, context.config.app.core_base_url.clone()).await;
 
     let wua_key_pair1 = Ecdsa.generate_key().unwrap();
     let wua_key_pair2 = Ecdsa.generate_key().unwrap();
@@ -63,7 +63,7 @@ async fn test_issue_wallet_attestations_success() {
         .issue_attestation(
             wallet_unit.id,
             &auth_key_pop,
-            vec![waa_pop],
+            vec![wia_pop],
             vec![
                 (wua_pop1, KeyStorageSecurityLevel::Moderate),
                 (wua_pop2, KeyStorageSecurityLevel::Basic),
@@ -75,20 +75,20 @@ async fn test_issue_wallet_attestations_success() {
     assert_eq!(resp.status(), 200);
     let resp_json = resp.json_value().await;
 
-    assert!(resp_json["waa"].is_array());
+    assert!(resp_json["wia"].is_array());
     assert!(resp_json["wua"].is_array());
 
-    let waa = Jwt::<()>::decompose_token(resp_json["waa"][0].as_str().unwrap());
-    let Ok(waa_jwt) = waa else {
+    let wia = Jwt::<()>::decompose_token(resp_json["wia"][0].as_str().unwrap());
+    let Ok(wia_jwt) = wia else {
         panic!("attestation is not a valid JWT");
     };
     assert_eq!(
-        waa_jwt.header.r#type.as_ref().unwrap(),
+        wia_jwt.header.r#type.as_ref().unwrap(),
         "oauth-client-attestation+jwt"
     );
-    assert!(waa_jwt.payload.proof_of_possession_key.is_some());
+    assert!(wia_jwt.payload.proof_of_possession_key.is_some());
     // Verify sub claim is set to wallet_client_id from config
-    assert_eq!(waa_jwt.payload.subject, Some("eudiw-abca".to_string()));
+    assert_eq!(wia_jwt.payload.subject, Some("eudiw-abca".to_string()));
 
     let wua = Jwt::<serde_json::Value>::decompose_token(resp_json["wua"][0].as_str().unwrap());
     let Ok(wua_jwt) = wua else {
@@ -100,7 +100,7 @@ async fn test_issue_wallet_attestations_success() {
     );
     assert!(wua_jwt.payload.proof_of_possession_key.is_none());
     assert!(wua_jwt.payload.custom["attested_keys"].is_array());
-    // One Updated entry if at least one WAA is issued
+    // One Updated entry if at least one WIA is issued
     assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Updated, 1).await;
     // One Issued entry for every WUA
     assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Issued, 2).await;
@@ -154,15 +154,15 @@ async fn test_issue_wallet_attestations_failed_with_non_existing_wallet_unit() {
         create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
             .await;
 
-    let waa_key_pair = Ecdsa.generate_key().unwrap();
-    let waa_pop =
-        create_key_possession_proof(&waa_key_pair, context.config.app.core_base_url.clone()).await;
+    let wia_key_pair = Ecdsa.generate_key().unwrap();
+    let wia_pop =
+        create_key_possession_proof(&wia_key_pair, context.config.app.core_base_url.clone()).await;
 
     // when
     let resp = context
         .api
         .wallet_provider
-        .issue_attestation(Uuid::new_v4().into(), &auth_key_pop, vec![waa_pop], vec![])
+        .issue_attestation(Uuid::new_v4().into(), &auth_key_pop, vec![wia_pop], vec![])
         .await;
 
     // then
@@ -257,7 +257,7 @@ async fn test_issue_wua_only_success() {
     assert_eq!(resp.status(), 200);
     let resp_json = resp.json_value().await;
 
-    assert!(resp_json["waa"].is_null());
+    assert!(resp_json["wia"].is_null());
     assert!(resp_json["wua"].is_array());
 
     let wua = Jwt::<serde_json::Value>::decompose_token(resp_json["wua"][0].as_str().unwrap());
@@ -288,7 +288,7 @@ async fn test_issue_wua_only_success() {
 }
 
 #[tokio::test]
-async fn test_issue_waa_only_with_existing_attested_keys_success() {
+async fn test_issue_wia_only_with_existing_attested_keys_success() {
     // given
     let (context, org) = TestContext::new_with_organisation(None).await;
     create_wallet_unit_attestation_issuer_identifier(&context, &org).await;
@@ -332,36 +332,36 @@ async fn test_issue_waa_only_with_existing_attested_keys_success() {
         create_key_possession_proof(&holder_key_pair, context.config.app.core_base_url.clone())
             .await;
 
-    let waa_key_pair = Ecdsa.generate_key().unwrap();
-    let waa_pop =
-        create_key_possession_proof(&waa_key_pair, context.config.app.core_base_url.clone()).await;
+    let wia_key_pair = Ecdsa.generate_key().unwrap();
+    let wia_pop =
+        create_key_possession_proof(&wia_key_pair, context.config.app.core_base_url.clone()).await;
 
     // when
     let resp = context
         .api
         .wallet_provider
-        .issue_attestation(wallet_unit.id, &auth_key_pop, vec![waa_pop], vec![])
+        .issue_attestation(wallet_unit.id, &auth_key_pop, vec![wia_pop], vec![])
         .await;
 
     // then
     assert_eq!(resp.status(), 200);
     let resp_json = resp.json_value().await;
 
-    assert!(resp_json["waa"].is_array());
+    assert!(resp_json["wia"].is_array());
     assert!(resp_json["wua"].is_null());
 
-    let waa = Jwt::<()>::decompose_token(resp_json["waa"][0].as_str().unwrap());
-    let Ok(waa_jwt) = waa else {
+    let wia = Jwt::<()>::decompose_token(resp_json["wia"][0].as_str().unwrap());
+    let Ok(wia_jwt) = wia else {
         panic!("attestation is not a valid JWT");
     };
     assert_eq!(
-        waa_jwt.header.r#type.as_ref().unwrap(),
+        wia_jwt.header.r#type.as_ref().unwrap(),
         "oauth-client-attestation+jwt"
     );
-    assert!(waa_jwt.payload.proof_of_possession_key.is_some());
+    assert!(wia_jwt.payload.proof_of_possession_key.is_some());
     // Verify sub claim is set to wallet_client_id from config
-    assert_eq!(waa_jwt.payload.subject, Some("eudiw-abca".to_string()));
-    // One Updated entry for WAA
+    assert_eq!(wia_jwt.payload.subject, Some("eudiw-abca".to_string()));
+    // One Updated entry for WIA
     assert_history_count(&context, &wallet_unit.id.into(), HistoryAction::Updated, 1).await;
     let wallet_unit = context
         .db

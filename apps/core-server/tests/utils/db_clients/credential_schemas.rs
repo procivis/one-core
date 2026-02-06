@@ -24,7 +24,7 @@ pub struct TestingCreateSchemaParams {
     pub allow_suspension: Option<bool>,
     pub imported_source_url: Option<String>,
     pub claim_schemas: Option<Vec<CredentialSchemaClaim>>,
-    pub requires_app_attestation: bool,
+    pub requires_wallet_instance_attestation: bool,
     pub deleted_at: Option<OffsetDateTime>,
     pub transaction_code: Option<TransactionCode>,
 }
@@ -110,7 +110,7 @@ impl CredentialSchemasDB {
             }),
             schema_id: params.schema_id.unwrap_or_else(|| id.to_string()),
             allow_suspension: params.allow_suspension.unwrap_or(true),
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: params.transaction_code,
         };
 
@@ -172,7 +172,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: id.to_string(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         };
 
@@ -277,7 +277,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: params.schema_id.unwrap_or("doctype".to_string()),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         };
 
@@ -382,7 +382,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         };
 
@@ -500,7 +500,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         };
 
@@ -722,7 +722,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: format!("ssi/schema/{id}"),
             allow_suspension: true,
-            requires_app_attestation: params.requires_app_attestation,
+            requires_wallet_instance_attestation: params.requires_wallet_instance_attestation,
             transaction_code: None,
         };
 
@@ -771,7 +771,7 @@ impl CredentialSchemasDB {
             layout_properties: None,
             schema_id: new_id.to_string(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         };
 
@@ -839,7 +839,7 @@ impl CredentialSchemasDB {
             }),
             schema_id: schema_id.to_owned(),
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         };
 

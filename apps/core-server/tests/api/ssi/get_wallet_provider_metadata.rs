@@ -42,7 +42,7 @@ async fn test_wallet_provider_metadata_success_all_fields() {
           params:
             public:
               walletRegistration: DISABLED
-              walletAppAttestation:
+              walletInstanceAttestation:
                 integrityCheck:
                   enabled: false
               appVersion:

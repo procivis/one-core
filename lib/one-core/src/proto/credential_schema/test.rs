@@ -112,7 +112,7 @@ fn test_parse_import_credential_schema_success() {
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: Some(true),
-            requires_app_attestation: Some(true),
+            requires_wallet_instance_attestation: Some(true),
             transaction_code: Some(ImportCredentialSchemaTransactionCodeDTO {
                 r#type: TransactionCodeType::Numeric,
                 length: 6,
@@ -209,7 +209,7 @@ fn test_parse_import_with_nested_claims_success() {
             layout_properties: None,
             imported_source_url: "http://source.com".to_string(),
             allow_suspension: Some(true),
-            requires_app_attestation: Some(true),
+            requires_wallet_instance_attestation: Some(true),
             transaction_code: None,
         },
     };
@@ -253,7 +253,7 @@ async fn test_importer_import_credential_schema_success() {
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
     let credential_schema_id = credential_schema.id;
@@ -312,7 +312,7 @@ async fn test_importer_import_credential_schema_success_duplicate_name() {
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -378,7 +378,7 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         layout_properties: None,
         schema_id: "http://example.com/schema".to_string(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 

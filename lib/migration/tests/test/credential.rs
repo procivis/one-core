@@ -26,7 +26,7 @@ async fn test_db_schema_credential() {
             "profile",
             "credential_blob_id",
             "wallet_unit_attestation_blob_id",
-            "wallet_app_attestation_blob_id",
+            "wallet_instance_attestation_blob_id",
         ])
         .index("index-Credential-CreatedDate", false, &["created_date"])
         .index("index-Credential-Role", false, &["role"])
@@ -138,11 +138,11 @@ async fn test_db_schema_credential() {
             "id",
         );
     credential
-        .column("wallet_app_attestation_blob_id")
+        .column("wallet_instance_attestation_blob_id")
         .r#type(ColumnType::Uuid)
         .nullable(true)
         .foreign_key(
-            "fk_credential_wallet_app_attestation_blob_id",
+            "fk_credential_wallet_instance_attestation_blob_id",
             "blob_storage",
             "id",
         );

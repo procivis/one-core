@@ -31,7 +31,6 @@ async fn test_import_credential_schema_fails_deactivated_organisation() {
 
         let object = value.as_object_mut().unwrap();
         object.remove("externalSchema");
-        object.remove("requiresAppAttestation");
 
         value
     };
@@ -80,7 +79,6 @@ async fn test_import_credential_schema_success_with_same_name() {
 
         let object = value.as_object_mut().unwrap();
         object.remove("externalSchema");
-        object.remove("requiresAppAttestation");
         object.insert("id".to_owned(), json!(imported_schema_id));
         object.insert("schemaId".to_owned(), json!(imported_schema_id));
 

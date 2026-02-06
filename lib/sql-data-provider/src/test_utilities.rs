@@ -86,7 +86,7 @@ pub async fn insert_credential(
         profile: Set(None),
         credential_blob_id: Set(Some(credential_blob_id)),
         wallet_unit_attestation_blob_id: Set(None),
-        wallet_app_attestation_blob_id: Set(None),
+        wallet_instance_attestation_blob_id: Set(None),
     }
     .insert(db)
     .await?;
@@ -139,7 +139,7 @@ pub async fn insert_credential_schema_to_database(
         layout_properties: Set(None),
         schema_id: Set(new_id.to_string()),
         allow_suspension: Set(true),
-        requires_app_attestation: Set(key_storage_security.is_some()),
+        requires_wallet_instance_attestation: Set(key_storage_security.is_some()),
         transaction_code_type: Set(None),
         transaction_code_length: Set(None),
         transaction_code_description: Set(None),

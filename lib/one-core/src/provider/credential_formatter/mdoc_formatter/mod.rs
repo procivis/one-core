@@ -496,7 +496,7 @@ impl CredentialFormatter for MdocFormatter {
             schema_id: doctype,
             imported_source_url: "".to_string(),
             allow_suspension: false,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             organisation: None,
             claim_schemas: Some(claim_schemas),
             transaction_code: None,
@@ -527,7 +527,7 @@ impl CredentialFormatter for MdocFormatter {
             profile: None,
             credential_blob_id: None,
             wallet_unit_attestation_blob_id: None,
-            wallet_app_attestation_blob_id: None,
+            wallet_instance_attestation_blob_id: None,
             issuer_certificate: issuer_identifier
                 .certificates
                 .as_ref()

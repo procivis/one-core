@@ -705,8 +705,8 @@ pub(super) struct TokenRequestWalletAttestationRequest {
 
 #[derive(Debug, Default)]
 pub(super) struct WalletAttestationResult {
-    /// WAA with proof-of-possession for token request (if WAA is used)
-    pub waa_request: Option<TokenRequestWalletAttestationRequest>,
+    /// WIA with proof-of-possession for token request (if WIA is used)
+    pub wia_request: Option<TokenRequestWalletAttestationRequest>,
     /// WUA proof for credential request (if key attestation is required)
     pub wua_proof: Option<String>,
 }

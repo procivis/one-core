@@ -266,7 +266,7 @@ fn generic_proof_input_schema() -> ProofInputSchema {
             claim_schemas: None,
             organisation: None,
             allow_suspension: true,
-            requires_app_attestation: false,
+            requires_wallet_instance_attestation: false,
             transaction_code: None,
         }),
     }
@@ -326,7 +326,7 @@ async fn test_get_presentation_definition_proof_role_verifier() {
                     layout_properties: None,
                     schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
-                    requires_app_attestation: false,
+                    requires_wallet_instance_attestation: false,
                     transaction_code: None,
                 }),
             }]),
@@ -454,7 +454,7 @@ async fn test_get_proof_exists() {
                     layout_properties: None,
                     schema_id: "CredentialSchemaId".to_owned(),
                     allow_suspension: true,
-                    requires_app_attestation: false,
+                    requires_wallet_instance_attestation: false,
                     transaction_code: None,
                 }),
             }]),
@@ -598,7 +598,7 @@ async fn test_get_proof_with_array_holder() {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -654,7 +654,7 @@ async fn test_get_proof_with_array_holder() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -855,7 +855,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -921,7 +921,7 @@ async fn test_get_proof_with_array_in_object_holder() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1127,7 +1127,7 @@ async fn test_get_proof_with_object_array_holder() {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -1203,7 +1203,7 @@ async fn test_get_proof_with_object_array_holder() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1403,7 +1403,7 @@ async fn test_get_proof_with_array() {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -1459,7 +1459,7 @@ async fn test_get_proof_with_array() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1668,7 +1668,7 @@ async fn test_get_proof_with_array_in_object() {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -1734,7 +1734,7 @@ async fn test_get_proof_with_array_in_object() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     let proof = Proof {
@@ -1949,7 +1949,7 @@ async fn test_get_proof_with_object_array() {
         layout_properties: None,
         schema_id: "CredentialSchemaId".to_owned(),
         allow_suspension: true,
-        requires_app_attestation: false,
+        requires_wallet_instance_attestation: false,
         transaction_code: None,
     };
 
@@ -2025,7 +2025,7 @@ async fn test_get_proof_with_object_array() {
         profile: None,
         credential_blob_id: None,
         wallet_unit_attestation_blob_id: None,
-        wallet_app_attestation_blob_id: None,
+        wallet_instance_attestation_blob_id: None,
     };
 
     let proof = Proof {

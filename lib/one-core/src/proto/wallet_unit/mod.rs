@@ -28,14 +28,14 @@ use crate::provider::wallet_provider_client::dto::IssueWalletAttestationResponse
 use crate::repository::holder_wallet_unit_repository::HolderWalletUnitRepository;
 use crate::service::error::{MissingProviderError, ServiceError};
 use crate::service::wallet_provider::dto::{
-    IssueWaaRequestDTO, IssueWalletUnitAttestationRequestDTO,
-    IssueWalletUnitAttestationResponseDTO, IssueWuaRequestDTO, WalletUnitAttestationClaims,
+    IssueWalletUnitAttestationRequestDTO, IssueWalletUnitAttestationResponseDTO,
+    IssueWiaRequestDTO, IssueWuaRequestDTO, WalletUnitAttestationClaims,
 };
 use crate::service::wallet_unit::error::HolderWalletUnitError;
 pub enum IssueWalletAttestationRequest<'a> {
-    Waa,
+    Wia,
     Wua(&'a Key, KeyStorageSecurityLevel),
-    WuaAndWaa(&'a Key, KeyStorageSecurityLevel),
+    WuaAndWia(&'a Key, KeyStorageSecurityLevel),
 }
 
 #[derive(PartialEq)]
@@ -305,7 +305,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 holder_wallet_unit.provider_wallet_unit_id,
                 &bearer_token,
                 IssueWalletUnitAttestationRequestDTO {
-                    waa: vec![],
+                    wia: vec![],
                     wua: vec![],
                 },
             )
@@ -372,15 +372,15 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                     "holder wallet unit authentication key not found".to_string(),
                 ))?;
 
-        let waa_proof = match request {
-            IssueWalletAttestationRequest::Waa | IssueWalletAttestationRequest::WuaAndWaa(_, _) => {
+        let wia_proof = match request {
+            IssueWalletAttestationRequest::Wia | IssueWalletAttestationRequest::WuaAndWia(_, _) => {
                 let proof = self
                     .create_proof_of_key_possesion(
                         &holder_wallet_unit.wallet_provider_url,
                         authentication_key,
                     )
                     .await?;
-                vec![IssueWaaRequestDTO { proof }]
+                vec![IssueWiaRequestDTO { proof }]
             }
             IssueWalletAttestationRequest::Wua(_, _) => {
                 vec![]
@@ -388,7 +388,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
         };
 
         let wua_proof = match request {
-            IssueWalletAttestationRequest::WuaAndWaa(attested_key, security_level)
+            IssueWalletAttestationRequest::WuaAndWia(attested_key, security_level)
             | IssueWalletAttestationRequest::Wua(attested_key, security_level) => {
                 let proof = self
                     .create_proof_of_key_possesion(
@@ -418,7 +418,7 @@ impl HolderWalletUnitProto for HolderWalletUnitProtoImpl {
                 holder_wallet_unit.provider_wallet_unit_id,
                 &bearer_token,
                 IssueWalletUnitAttestationRequestDTO {
-                    waa: waa_proof,
+                    wia: wia_proof,
                     wua: wua_proof,
                 },
             )
