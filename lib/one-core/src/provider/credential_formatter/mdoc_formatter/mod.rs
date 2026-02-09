@@ -88,6 +88,8 @@ pub struct Params {
     #[serde_as(as = "DurationSeconds<i64>")]
     pub mso_minimum_refresh_time: Duration,
     pub leeway: u64,
+    #[serde(default)]
+    pub ecosystem_schema_ids: Vec<String>,
 }
 
 impl MdocFormatter {
@@ -354,13 +356,15 @@ impl CredentialFormatter for MdocFormatter {
         FormatterCapabilities {
             features: vec![
                 Features::SelectiveDisclosure,
-                Features::RequiresSchemaId,
+                Features::SupportsSchemaId,
+                Features::RequiresSchemaIdForExternal,
                 Features::SupportsCredentialDesign,
                 Features::RequiresPresentationEncryption,
                 Features::SupportsCombinedPresentation,
                 Features::SupportsTxCode,
             ],
             allowed_schema_ids: vec![],
+            ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
             selective_disclosure: vec![SelectiveDisclosure::SecondLevel],
             issuance_did_methods: vec![],
             issuance_exchange_protocols: vec![
@@ -406,14 +410,14 @@ impl CredentialFormatter for MdocFormatter {
 
     fn credential_schema_id(
         &self,
-        _id: CredentialSchemaId,
+        id: CredentialSchemaId,
         request: &CreateCredentialSchemaRequestDTO,
         _core_base_url: &str,
     ) -> Result<String, FormatterError> {
-        request
+        Ok(request
             .schema_id
-            .clone()
-            .ok_or(FormatterError::Failed("Missing schema_id".to_string()))
+            .to_owned()
+            .unwrap_or_else(|| id.to_string()))
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {

@@ -332,6 +332,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
+        ecosystem_schema_ids: vec![],
     };
 
     let config = generic_config().core;
@@ -546,6 +547,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
+        ecosystem_schema_ids: vec![],
     };
 
     let mut certificate_validator = MockCertificateValidator::new();
@@ -813,6 +815,7 @@ Fp40RTAKBggqhkjOPQQDAgNJADBGAiEAiRmxICo5Gxa4dlcK0qeyGDqyBOA9s/EI
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
+        ecosystem_schema_ids: vec![],
     };
 
     let mut certificate_validator = MockCertificateValidator::new();
@@ -883,6 +886,7 @@ fn test_credential_schema_id() {
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
+        ecosystem_schema_ids: vec![],
     };
     let formatter = MdocFormatter::new(
         params,
@@ -928,6 +932,7 @@ async fn test_parse_credential() {
         mso_expected_update_in: Duration::days(10),
         mso_minimum_refresh_time: Duration::seconds(10),
         leeway: 60_u64,
+        ecosystem_schema_ids: vec![],
     };
 
     let mut certificate_validator = MockCertificateValidator::new();

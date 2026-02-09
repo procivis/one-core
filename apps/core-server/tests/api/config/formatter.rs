@@ -67,7 +67,8 @@ async fn test_expected_format_features() {
         resp["format"]["MDOC"]["capabilities"]["features"],
         json!([
             "SELECTIVE_DISCLOSURE",
-            "REQUIRES_SCHEMA_ID",
+            "SUPPORTS_SCHEMA_ID",
+            "REQUIRES_SCHEMA_ID_FOR_EXTERNAL",
             "SUPPORTS_CREDENTIAL_DESIGN",
             "REQUIRES_PRESENTATION_ENCRYPTION",
             "SUPPORTS_COMBINED_PRESENTATION",
@@ -87,6 +88,7 @@ async fn test_expected_format_features() {
         resp["format"]["SD_JWT_VC"]["capabilities"]["features"],
         json!([
             "SELECTIVE_DISCLOSURE",
+            "SUPPORTS_SCHEMA_ID",
             "REQUIRES_SCHEMA_ID_FOR_EXTERNAL",
             "SUPPORTS_CREDENTIAL_DESIGN",
             "SUPPORTS_COMBINED_PRESENTATION",
@@ -112,7 +114,7 @@ async fn test_expected_format_features() {
     );
     assert_eq!(
         resp["format"]["PHYSICAL_CARD"]["capabilities"]["features"],
-        json!(["REQUIRES_SCHEMA_ID"])
+        json!(["SUPPORTS_SCHEMA_ID"])
     );
     assert_eq!(
         resp["format"]["JWT"]["capabilities"]["features"],

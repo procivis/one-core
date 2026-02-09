@@ -78,6 +78,8 @@ pub struct Params {
     pub swiyu_mode: bool,
     #[serde(default = "default_sd_array_elements")]
     pub sd_array_elements: bool,
+    #[serde(default)]
+    ecosystem_schema_ids: Vec<String>,
 }
 
 fn default_sd_array_elements() -> bool {
@@ -341,6 +343,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let mut signing_algorithms = vec![KeyAlgorithmType::Ecdsa];
         let mut features = vec![
             Features::SelectiveDisclosure,
+            Features::SupportsSchemaId,
             Features::RequiresSchemaIdForExternal,
             Features::SupportsCredentialDesign,
         ];
@@ -377,6 +380,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
         FormatterCapabilities {
             signing_key_algorithms: signing_algorithms.clone(),
             allowed_schema_ids: vec![],
+            ecosystem_schema_ids: self.params.ecosystem_schema_ids.to_owned(),
             datatypes,
             features,
             selective_disclosure: vec![SelectiveDisclosure::AnyLevel],
@@ -407,7 +411,7 @@ impl CredentialFormatter for SDJWTVCFormatter {
     ) -> Result<String, FormatterError> {
         Ok(
             match (request.external_schema, request.schema_id.as_ref()) {
-                (true, Some(schema_id)) => schema_id.to_string(),
+                (_, Some(schema_id)) => schema_id.to_string(),
                 (false, None) => format!(
                     "{core_base_url}/ssi/vct/v1/{}/{id}",
                     request.organisation_id

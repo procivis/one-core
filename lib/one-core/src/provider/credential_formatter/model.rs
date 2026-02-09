@@ -390,6 +390,7 @@ pub struct FormatterCapabilities {
     pub holder_identifier_types: Vec<IdentifierType>,
     pub holder_key_algorithms: Vec<KeyAlgorithmType>,
     pub holder_did_methods: Vec<DidType>,
+    pub ecosystem_schema_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Eq, PartialEq)]
@@ -397,7 +398,8 @@ pub struct FormatterCapabilities {
 pub enum Features {
     SelectiveDisclosure,
     SupportsCredentialDesign,
-    RequiresSchemaId,
+    /// custom schemaId can be specified by the user during creation
+    SupportsSchemaId,
     RequiresSchemaIdForExternal,
     RequiresPresentationEncryption,
     SupportsCombinedPresentation,

@@ -48,7 +48,6 @@ impl CredentialSchemaService {
             &self.config,
             &*formatter,
             &*self.revocation_method_provider,
-            false,
         )?;
 
         match super::validator::credential_schema_already_exists(

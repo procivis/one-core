@@ -19,7 +19,7 @@ use crate::proto::credential_schema::dto::{
     ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::Features;
+use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
@@ -219,19 +219,19 @@ impl CredentialSchemaImportParserImpl {
         schema_id: String,
         formatter: &dyn CredentialFormatter,
     ) -> Result<String, ServiceError> {
-        let is_schema_id_required = formatter
-            .get_capabilities()
-            .features
-            .contains(&Features::RequiresSchemaId);
-        if is_schema_id_required {
-            if schema_id.is_empty() {
-                return Err(BusinessLogicError::MissingSchemaId.into());
-            }
-            let allowed_schema_ids = formatter.get_capabilities().allowed_schema_ids;
-            if !allowed_schema_ids.is_empty() && !allowed_schema_ids.iter().any(|v| v == &schema_id)
-            {
-                return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
-            }
+        let FormatterCapabilities {
+            features,
+            allowed_schema_ids,
+            ..
+        } = formatter.get_capabilities();
+
+        let is_schema_id_required = features.contains(&Features::SupportsSchemaId);
+        if is_schema_id_required && schema_id.is_empty() {
+            return Err(BusinessLogicError::MissingSchemaId.into());
+        }
+
+        if !allowed_schema_ids.is_empty() && !allowed_schema_ids.iter().any(|v| v == &schema_id) {
+            return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
         }
         Ok(schema_id)
     }
@@ -813,7 +813,6 @@ mod test {
         formatter
             .expect_get_capabilities()
             .returning(|| FormatterCapabilities {
-                features: vec![Features::RequiresSchemaId],
                 allowed_schema_ids: vec!["TEST_SCHEMA_ID".to_string()],
                 ..Default::default()
             });
@@ -839,7 +838,6 @@ mod test {
         formatter
             .expect_get_capabilities()
             .returning(|| FormatterCapabilities {
-                features: vec![Features::RequiresSchemaId],
                 allowed_schema_ids: vec!["TEST_SCHEMA_ID".to_string()],
                 ..Default::default()
             });
@@ -868,7 +866,7 @@ mod test {
         formatter
             .expect_get_capabilities()
             .returning(|| FormatterCapabilities {
-                features: vec![Features::RequiresSchemaId],
+                features: vec![Features::SupportsSchemaId],
                 ..Default::default()
             });
 

@@ -125,6 +125,7 @@ async fn test_format_credential() {
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -311,6 +312,7 @@ async fn test_format_credential_swiyu() {
             embed_layout_properties: false,
             swiyu_mode: true,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -446,6 +448,7 @@ async fn test_extract_credentials() {
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -585,6 +588,7 @@ async fn test_extract_credentials_swiyu() {
             embed_layout_properties: false,
             swiyu_mode: true,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -780,6 +784,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -851,6 +856,7 @@ fn test_schema_id_internal() {
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
@@ -898,6 +904,7 @@ fn test_schema_id_external() {
             embed_layout_properties: false,
             swiyu_mode: false,
             sd_array_elements: true,
+            ecosystem_schema_ids: vec![],
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
@@ -942,6 +949,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: false,
+        ecosystem_schema_ids: vec![],
     };
 
     let (key_algorithm_provider, did_method_provider, formatter) = formatter_for_params(params);
@@ -1153,6 +1161,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
+        ecosystem_schema_ids: vec![],
     };
 
     let (key_algorithm_provider, did_method_provider, formatter) = formatter_for_params(params);
@@ -1451,6 +1460,7 @@ async fn test_parse_credential_eudi() {
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
+        ecosystem_schema_ids: vec![],
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1705,6 +1715,7 @@ async fn test_parse_credential() {
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
+        ecosystem_schema_ids: vec![],
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1888,6 +1899,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
+        ecosystem_schema_ids: vec![],
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1935,6 +1947,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         embed_layout_properties: false,
         swiyu_mode: false,
         sd_array_elements: true,
+        ecosystem_schema_ids: vec![],
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>

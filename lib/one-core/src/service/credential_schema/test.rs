@@ -463,7 +463,7 @@ async fn test_create_credential_schema_success_mdoc_with_custom_schema_id() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
-            features: vec![Features::SelectiveDisclosure, Features::RequiresSchemaId],
+            features: vec![Features::SelectiveDisclosure, Features::SupportsSchemaId],
             datatypes: vec!["STRING".into(), "OBJECT".into()],
             ..Default::default()
         });
@@ -546,7 +546,11 @@ async fn test_create_credential_schema_success_sdjwtvc_external() {
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
             revocation_methods: vec![RevocationType::None],
-            features: [Features::RequiresSchemaId].into(),
+            features: [
+                Features::SupportsSchemaId,
+                Features::RequiresSchemaIdForExternal,
+            ]
+            .into(),
             datatypes: vec!["STRING".into()],
             ..Default::default()
         });
@@ -1619,84 +1623,6 @@ async fn test_create_credential_schema_failed_mdoc_not_all_top_claims_are_object
 }
 
 #[tokio::test]
-async fn test_create_credential_schema_failed_mdoc_missing_doctype() {
-    let mut formatter = MockCredentialFormatter::default();
-    let mut formatter_provider = MockCredentialFormatterProvider::default();
-
-    formatter
-        .expect_get_capabilities()
-        .returning(|| FormatterCapabilities {
-            features: vec![
-                Features::SelectiveDisclosure,
-                Features::RequiresSchemaId,
-                Features::SupportsCredentialDesign,
-            ],
-            ..generic_formatter_capabilities()
-        });
-    formatter_provider
-        .expect_get_credential_formatter()
-        .once()
-        .return_once(|_| Some(Arc::new(formatter)));
-
-    let mut revocation_method = MockRevocationMethod::default();
-    revocation_method
-        .expect_get_capabilities()
-        .returning(|| RevocationMethodCapabilities {
-            operations: vec![Operation::Suspend],
-        });
-
-    let mut revocation_method_provider = MockRevocationMethodProvider::new();
-    revocation_method_provider
-        .expect_get_revocation_method()
-        .with(eq::<RevocationMethodId>("mock".into()))
-        .once()
-        .return_once(move |_| Some(Arc::new(revocation_method)));
-
-    let service = setup_service(
-        MockCredentialSchemaRepository::default(),
-        MockOrganisationRepository::default(),
-        formatter_provider,
-        revocation_method_provider,
-        generic_config().core,
-    );
-
-    let result = service
-        .create_credential_schema(CreateCredentialSchemaRequestDTO {
-            name: "cred".to_string(),
-            format: "MDOC".into(),
-            external_schema: false,
-            key_storage_security: None,
-            revocation_method: Some("mock".into()),
-            organisation_id: Uuid::new_v4().into(),
-            claims: vec![CredentialClaimSchemaRequestDTO {
-                key: "test".to_string(),
-                datatype: "OBJECT".to_string(),
-                array: Some(false),
-                required: true,
-                claims: vec![CredentialClaimSchemaRequestDTO {
-                    key: "nested".to_string(),
-                    datatype: "STRING".to_string(),
-                    required: true,
-                    array: Some(false),
-                    claims: vec![],
-                }],
-            }],
-            layout_type: LayoutType::Card,
-            layout_properties: None,
-            schema_id: Some("".to_string()),
-            allow_suspension: Some(true),
-            requires_wallet_instance_attestation: false,
-            transaction_code: None,
-        })
-        .await
-        .unwrap_err();
-    assert!(matches!(
-        result,
-        ServiceError::BusinessLogic(BusinessLogicError::MissingSchemaId)
-    ));
-}
-
-#[tokio::test]
 async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() {
     let mut formatter = MockCredentialFormatter::default();
     let mut formatter_provider = MockCredentialFormatterProvider::default();
@@ -1704,11 +1630,7 @@ async fn test_create_credential_schema_failed_physical_card_invalid_schema_id() 
     formatter
         .expect_get_capabilities()
         .returning(|| FormatterCapabilities {
-            features: vec![
-                Features::SelectiveDisclosure,
-                Features::RequiresSchemaId,
-                Features::SupportsCredentialDesign,
-            ],
+            features: vec![Features::SupportsSchemaId],
             allowed_schema_ids: vec!["UtopiaEmploymentDocument".to_string()],
             ..generic_formatter_capabilities()
         });

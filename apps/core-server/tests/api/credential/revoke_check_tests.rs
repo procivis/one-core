@@ -2281,6 +2281,7 @@ async fn valid_mdoc_credential() -> String {
         mso_expected_update_in: Duration::seconds(300),
         mso_minimum_refresh_time: Duration::seconds(300),
         leeway: 60,
+        ecosystem_schema_ids: vec![],
     };
     minimal_mdoc_credential(params).await
 }
@@ -2291,6 +2292,7 @@ async fn expired_mdoc_credential() -> String {
         mso_expected_update_in: Duration::days(-1),
         mso_minimum_refresh_time: Duration::seconds(0), // refresh immediately
         leeway: 60,
+        ecosystem_schema_ids: vec![],
     };
     minimal_mdoc_credential(params).await
 }

@@ -542,3 +542,74 @@ async fn test_fail_create_credential_schema_with_unsupported_data_type() {
     let err = resp.error_code().await;
     assert_eq!(err, "BR_0245");
 }
+
+#[tokio::test]
+async fn test_create_credential_schema_modc_without_schema_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(
+            CreateSchemaParams {
+                name: "schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "MDOC".into(),
+                schema_id: None,
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    assert_eq!(credential_schema.name, "schema");
+    assert_eq!(credential_schema.revocation_method, None);
+    assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
+    assert_eq!(credential_schema.format.as_ref(), "MDOC");
+    assert_eq!(credential_schema.schema_id, id.to_string());
+}
+
+#[tokio::test]
+async fn test_create_credential_schema_sdjwtvc_with_schema_id() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    let schema_id = "custom.schema.id";
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(
+            CreateSchemaParams {
+                name: "schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "SD_JWT_VC".into(),
+                schema_id: Some(schema_id.to_string()),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 201);
+    let resp = resp.json_value().await;
+
+    let id = resp["id"].parse();
+    let credential_schema = context.db.credential_schemas.get(&id).await;
+
+    assert_eq!(credential_schema.name, "schema");
+    assert_eq!(credential_schema.revocation_method, None);
+    assert_eq!(credential_schema.organisation.unwrap().id, organisation.id);
+    assert_eq!(credential_schema.format.as_ref(), "SD_JWT_VC");
+    assert_eq!(credential_schema.schema_id, schema_id);
+}

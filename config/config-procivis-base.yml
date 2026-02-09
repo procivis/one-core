@@ -48,6 +48,21 @@ format:
         msoExpectedUpdateIn: 86400 # 24h in seconds
         msoMinimumRefreshTime: 300 # 5 min in seconds
         leeway: 60
+        ecosystemSchemaIds:
+          [
+            "org.iso.18013.5.1.mDL",
+            "org.iso.23220.photoid.1",
+            "eu.europa.ec.av.1",
+            "eu.europa.ec.eudi.iban.1",
+            "eu.europa.ec.eudi.ehic.1",
+            "eu.europa.ec.eudi.pseudonym.age_over_18.1",
+            "eu.europa.ec.eudi.loyalty.1",
+            "eu.europa.ec.eudi.hiid.1",
+            "eu.europa.ec.eudi.pid.1",
+            "eu.europa.ec.eudi.msisdn.1",
+            "eu.europa.ec.eudi.por.1",
+            "eu.europa.ec.eudi.tax.1",
+          ]
   SD_JWT_VC:
     type: "SD_JWT_VC"
     display: "format.sdjwtVc"
@@ -57,6 +72,18 @@ format:
       public:
         leeway: 60
         embedLayoutProperties: true
+        ecosystemSchemaIds:
+          [
+            "urn:eudi:pid:1",
+            "urn:eu.europa.ec.eudi:pseudonym_age_over_18:1",
+            "urn:eu.europa.ec.eudi:ehic:1",
+            "urn:eu.europa.ec.eudi:por:1",
+            "urn:eu.europa.ec.eudi:pid:1",
+            "urn:eu.europa.ec.eudi:tax:1",
+            "urn:eu.europa.ec.eudi:msisdn:1",
+            "urn:eu.europa.ec.eudi:iban:1",
+            "urn:eu.europa.ec.eudi:hiid:1",
+          ]
   SD_JWT_VC_SWIYU:
     type: "SD_JWT_VC"
     display:
@@ -68,6 +95,7 @@ format:
         leeway: 60
         embedLayoutProperties: true
         swiyuMode: true
+        ecosystemSchemaIds: ["betaid-sdjwt"]
 identifier:
   DID:
     display: "identifier.did"

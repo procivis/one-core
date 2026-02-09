@@ -204,6 +204,7 @@ impl CredentialFormatter for JsonLdClassic {
                 RevocationType::Lvvc,
             ],
             allowed_schema_ids: vec![],
+            ecosystem_schema_ids: vec![],
             datatypes: vec![
                 "STRING".to_string(),
                 "BOOLEAN".to_string(),

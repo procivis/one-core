@@ -9,7 +9,7 @@ use crate::config::validator::revocation::validate_revocation;
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::credential_schema::KeyStorageSecurity;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::model::Features;
+use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
@@ -61,7 +61,6 @@ pub(crate) fn validate_create_request(
     config: &CoreConfig,
     formatter: &dyn CredentialFormatter,
     revocation_method_provider: &dyn RevocationMethodProvider,
-    during_import: bool,
 ) -> Result<(), ServiceError> {
     // at least one claim must be declared
     if request.claims.is_empty() {
@@ -92,7 +91,7 @@ pub(crate) fn validate_create_request(
     )?;
     validate_credential_design(request, formatter)?;
     validate_mdoc_claim_types(request, config)?;
-    validate_schema_id(request, formatter, during_import)?;
+    validate_schema_id(request, formatter)?;
     validate_transaction_code(request, formatter)?;
 
     Ok(())
@@ -462,23 +461,29 @@ fn validate_mdoc_claim_types(
 fn validate_schema_id(
     request: &CreateCredentialSchemaRequestDTO,
     formatter: &dyn CredentialFormatter,
-    during_import: bool,
 ) -> Result<(), ServiceError> {
-    let format_features = formatter.get_capabilities().features;
-    if format_features.contains(&Features::RequiresSchemaId)
-        || (format_features.contains(&Features::RequiresSchemaIdForExternal)
-            && request.external_schema)
-    {
-        let schema_id = request.schema_id.as_deref().filter(|s| !s.is_empty());
-        let Some(schema_id) = schema_id else {
+    let FormatterCapabilities {
+        features,
+        allowed_schema_ids,
+        ..
+    } = formatter.get_capabilities();
+
+    let schema_id_required =
+        features.contains(&Features::RequiresSchemaIdForExternal) && request.external_schema;
+
+    if features.contains(&Features::SupportsSchemaId) || schema_id_required {
+        if let Some(schema_id) = request.schema_id.as_ref() {
+            if schema_id.is_empty() {
+                return Err(BusinessLogicError::SchemaIdNotAllowed.into());
+            }
+
+            if !allowed_schema_ids.is_empty() && !allowed_schema_ids.contains(schema_id) {
+                return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
+            }
+        } else if schema_id_required {
             return Err(BusinessLogicError::MissingSchemaId.into());
         };
-
-        let allowed_schema_ids = formatter.get_capabilities().allowed_schema_ids;
-        if !allowed_schema_ids.is_empty() && !allowed_schema_ids.iter().any(|v| v == schema_id) {
-            return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
-        }
-    } else if !during_import && request.schema_id.is_some() {
+    } else if request.schema_id.is_some() {
         return Err(BusinessLogicError::SchemaIdNotAllowed.into());
     }
 
