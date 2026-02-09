@@ -249,7 +249,7 @@ async fn test_handle_invitation_success() {
     let mut identify_topic = MockMqttTopic::default();
     identify_topic
         .expect_send()
-        .with(always(), eq(true))
+        .with(always(), eq(false))
         .return_once(move |identity_request, _| {
             let request = IdentityRequest::parse(identity_request).unwrap();
 
@@ -331,7 +331,7 @@ async fn test_presentation_reject_success() {
     let mut reject_topic = MockMqttTopic::default();
     reject_topic
         .expect_send()
-        .with(always(), eq(true))
+        .with(always(), eq(false))
         .return_once(move |data, _| {
             let verifier_encryption = generate_verifier_encryption(
                 verifier_key,

@@ -117,9 +117,9 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
-        // ONE-8357: always send enveloped messages from holder side
+        // ONE-8380: always send non-enveloped messages from holder side
         identify_topic
-            .send(identity_request.encode(), true)
+            .send(identity_request.encode(), false)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
@@ -232,7 +232,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         presentation_submission_topic
-            .send(encrypted, true)
+            .send(encrypted, false)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))
     }
@@ -269,7 +269,7 @@ impl ProximityHolderTransport for MqttHolderTransport {
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
         reject_topic
-            .send(encrypted, true)
+            .send(encrypted, false)
             .await
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
 
