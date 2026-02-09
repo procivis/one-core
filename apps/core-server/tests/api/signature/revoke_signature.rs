@@ -10,7 +10,7 @@ use crate::utils::db_clients::revocation_lists::TestingRevocationListParams;
 
 #[tokio::test]
 async fn test_revoke_wrprc_success() {
-    let (context, _org, _did, identifier, _key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let revocation_list_id = context
         .db
         .revocation_lists
@@ -83,7 +83,7 @@ async fn test_revoke_fail_on_missing_entry() {
 
 #[tokio::test]
 async fn test_revoke_fail_on_missing_signer() {
-    let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let revocation_list_id = context
         .db
         .revocation_lists
@@ -111,7 +111,8 @@ async fn test_fail_on_missing_signer_specific_permission() {
         token,
         mock_server: _mock_server,
     } = setup_sts(vec!["X509_CERTIFICATE_REVOKE"]).await;
-    let (context, _org, _did, identifier, _) = TestContext::new_with_did(Some(config)).await;
+    let (context, _org, identifier, ..) =
+        TestContext::new_with_certificate_identifier(Some(config)).await;
     let revocation_list_id = context
         .db
         .revocation_lists

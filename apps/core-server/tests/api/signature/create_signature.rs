@@ -19,7 +19,8 @@ use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_sign_wrprc_success() {
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .signatures
@@ -41,7 +42,8 @@ async fn test_sign_wrprc_success() {
 
 #[tokio::test]
 async fn test_fail_on_unknown_signer() {
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
 
     let resp = context
         .api
@@ -65,7 +67,8 @@ async fn test_fail_on_unknown_signer() {
 
 #[tokio::test]
 async fn test_sign_wrprc_custom_validty_success() {
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
     // the JWT timestamps will not contain fractional seconds
     let now = OffsetDateTime::now_utc().replace_millisecond(0).unwrap();
     let nbf = now + time::Duration::days(1);
@@ -96,7 +99,8 @@ async fn test_sign_wrprc_custom_validty_success() {
 
 #[tokio::test]
 async fn test_sign_wrprc_validity_too_long() {
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .signatures
@@ -119,7 +123,8 @@ async fn test_sign_wrprc_validity_too_long() {
 
 #[tokio::test]
 async fn test_sign_wrprc_validity_start_after_end() {
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .signatures
@@ -142,7 +147,8 @@ async fn test_sign_wrprc_validity_start_after_end() {
 
 #[tokio::test]
 async fn test_sign_wrprc_validity_start_end_in_past() {
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(None).await;
     let resp = context
         .api
         .signatures
@@ -389,7 +395,8 @@ async fn test_fail_on_missing_signer_specific_permission() {
         token,
         mock_server: _mock_server,
     } = setup_sts(vec!["X509_CERTIFICATE_CREATE"]).await;
-    let (context, _org, _did, identifier, key) = TestContext::new_with_did(Some(config)).await;
+    let (context, _org, identifier, _cert, key) =
+        TestContext::new_with_certificate_identifier(Some(config)).await;
 
     let resp = context
         .api

@@ -6,7 +6,7 @@ use crate::utils::context::TestContext;
 
 #[tokio::test]
 async fn test_sign_wrprc_success() {
-    let (context, _, _, identifier, _) = TestContext::new_with_did(None).await;
+    let (context, _org, identifier, ..) = TestContext::new_with_certificate_identifier(None).await;
     let revocation_list = context.db.revocation_lists.create(identifier, None).await;
     let entry_id1 = context
         .db
