@@ -41,6 +41,20 @@ impl ECDSASigner {
         y: &[u8],
         compressed: bool,
     ) -> Result<Vec<u8>, SignerError> {
+        if x.len() != 32 {
+            return Err(SignerError::CouldNotExtractPublicKey(format!(
+                "Couldn't initialize verifying key, invalid x length: {}",
+                x.len()
+            )));
+        };
+
+        if y.len() != 32 {
+            return Err(SignerError::CouldNotExtractPublicKey(format!(
+                "Couldn't initialize verifying key, invalid y length: {}",
+                y.len()
+            )));
+        };
+
         let encoded_point = EncodedPoint::from_affine_coordinates(
             GenericArray::from_slice(x),
             GenericArray::from_slice(y),
@@ -134,6 +148,21 @@ impl ECDSASigner {
             .clone()
             .ok_or(EncryptionError::Crypto("Missing y coordinate".to_string()))?;
         let y = decode_b64(y_encoded.as_str(), "y coordinate")?;
+
+        if x.len() != 32 {
+            return Err(EncryptionError::Crypto(format!(
+                "Couldn't initialize remote key, invalid x length: {}",
+                x.len()
+            )));
+        };
+
+        if y.len() != 32 {
+            return Err(EncryptionError::Crypto(format!(
+                "Couldn't initialize remote key, invalid y length: {}",
+                y.len()
+            )));
+        };
+
         let peer_affine_point =
             AffinePoint::from_encoded_point(&EncodedPoint::from_affine_coordinates(
                 GenericArray::from_slice(&x),

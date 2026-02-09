@@ -13,8 +13,9 @@ use super::model::{
 };
 use crate::model::proof::Proof;
 use crate::proto::http_client::HttpClient;
+use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::verification_protocol::error::VerificationProtocolError;
-use crate::provider::verification_protocol::openid4vp::jwe_presentation::ec_key_from_metadata;
+use crate::provider::verification_protocol::openid4vp::jwe_presentation::encryption_key_from_metadata;
 use crate::provider::verification_protocol::openid4vp::model::{
     OpenID4VPDraftClientMetadata, OpenID4VPPresentationDefinition,
 };
@@ -78,6 +79,7 @@ pub(crate) fn oidc_verifier_presentation_definition(
 
 pub(crate) async fn encryption_info_from_metadata(
     client: &dyn HttpClient,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
     interaction_data: &OpenID4VPHolderInteractionData,
 ) -> Result<Option<EncryptionInfo>, VerificationProtocolError> {
     let Some(OpenID4VPClientMetadata::Draft(mut client_metadata)) =
@@ -122,7 +124,9 @@ pub(crate) async fn encryption_info_from_metadata(
             .json()
             .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
     }
-    let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
+    let Some(verifier_key) =
+        encryption_key_from_metadata(client_metadata.into(), key_algorithm_provider)
+    else {
         return Ok(None);
     };
     Ok(Some(EncryptionInfo {

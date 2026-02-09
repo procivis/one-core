@@ -51,15 +51,25 @@ pub(crate) async fn build_jwe(
     )?)
 }
 
-pub(crate) fn ec_key_from_metadata(metadata: OpenID4VPClientMetadata) -> Option<PublicJwk> {
+pub(crate) fn encryption_key_from_metadata(
+    metadata: OpenID4VPClientMetadata,
+    key_algorithm_provider: &dyn KeyAlgorithmProvider,
+) -> Option<PublicJwk> {
     let jwks = match metadata {
         OpenID4VPClientMetadata::Draft(metadata) => metadata.jwks,
         OpenID4VPClientMetadata::Final1_0(metadata) => metadata.jwks,
     };
 
-    jwks.into_iter().flat_map(|jwk| jwk.keys).find(|key| {
-        matches!(&key,
-            PublicJwk::Ec(key) | PublicJwk::Okp(key) if key.r#use == Some(JwkUse::Encryption)
-        )
-    })
+    jwks.into_iter()
+        .flat_map(|jwk| jwk.keys)
+        .filter(|key| {
+            matches!(&key,
+                PublicJwk::Ec(key) | PublicJwk::Okp(key) if key.r#use == Some(JwkUse::Encryption)
+            )
+        })
+        .find(|key| {
+            key_algorithm_provider
+                .parse_jwk(key)
+                .is_ok_and(|parsed_key| parsed_key.key.key_agreement().is_some())
+        })
 }

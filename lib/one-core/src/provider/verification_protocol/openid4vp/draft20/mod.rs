@@ -61,8 +61,8 @@ mod utils;
 #[cfg(test)]
 mod test;
 
+const CLIENT_ID_QUERY_PARAM_KEY: &str = "client_id";
 const PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY: &str = "presentation_definition";
-const CLIENT_ID_SCHEME_QUERY_PARAM_KEY: &str = "client_id_scheme";
 const PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY: &str = "presentation_definition_uri";
 const REQUEST_URI_QUERY_PARAM_KEY: &str = "request_uri";
 const REQUEST_QUERY_PARAM_KEY: &str = "request";
@@ -121,7 +121,7 @@ impl VerificationProtocol for OpenID4VP20HTTP {
         let query_has_key = |name| url.query_pairs().any(|(key, _)| name == key);
 
         self.params.url_scheme == url.scheme()
-            && query_has_key(CLIENT_ID_SCHEME_QUERY_PARAM_KEY)
+            && query_has_key(CLIENT_ID_QUERY_PARAM_KEY)
             && (query_has_key(PRESENTATION_DEFINITION_VALUE_QUERY_PARAM_KEY)
                 || query_has_key(PRESENTATION_DEFINITION_REFERENCE_QUERY_PARAM_KEY)
                 || query_has_key(REQUEST_URI_QUERY_PARAM_KEY)

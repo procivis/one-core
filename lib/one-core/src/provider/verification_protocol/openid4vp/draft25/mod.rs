@@ -121,8 +121,12 @@ impl OpenID4VP25HTTP {
         holder_nonce: String,
     ) -> Result<(VpSubmissionData, Option<EncryptionInfo>), VerificationProtocolError> {
         let mut vp_token = HashMap::new();
-        let encryption_info =
-            encryption_info_from_metadata(&*self.client, interaction_data).await?;
+        let encryption_info = encryption_info_from_metadata(
+            self.client.as_ref(),
+            self.key_algorithm_provider.as_ref(),
+            interaction_data,
+        )
+        .await?;
 
         // For DCQL each credential gets a presentation individually
         for credential_presentation in credential_presentations {

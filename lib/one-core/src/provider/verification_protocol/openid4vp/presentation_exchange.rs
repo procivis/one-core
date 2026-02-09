@@ -56,7 +56,9 @@ pub(crate) async fn pex_submission_data(
             .ok_or(VerificationProtocolError::Failed(
                 "nonce is None".to_string(),
             ))?;
-    let encryption_info = encryption_info_from_metadata(client, interaction_data).await?;
+    let encryption_info =
+        encryption_info_from_metadata(client, key_algorithm_provider.as_ref(), interaction_data)
+            .await?;
 
     let vp_token_is_array = credential_presentations.len() > 1;
     let mut vp_tokens = vec![];

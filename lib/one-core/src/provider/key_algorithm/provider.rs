@@ -90,6 +90,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
             .map(|(id, alg)| (id.to_owned(), alg.clone()))
     }
 
+    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     fn parse_jwk(&self, key: &PublicJwk) -> Result<ParsedKey, KeyAlgorithmProviderError> {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_jwk(key) {
@@ -105,6 +106,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         ))
     }
 
+    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     fn parse_multibase(&self, multibase: &str) -> Result<ParsedKey, KeyAlgorithmProviderError> {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_multibase(multibase) {
@@ -120,6 +122,7 @@ impl KeyAlgorithmProvider for KeyAlgorithmProviderImpl {
         ))
     }
 
+    #[tracing::instrument(level = "debug", skip(self), err(level = "info"))]
     fn parse_raw(&self, public_key_der: &[u8]) -> Result<ParsedKey, KeyAlgorithmProviderError> {
         for algorithm in self.algorithms.values() {
             if let Ok(public_key) = algorithm.parse_raw(public_key_der) {

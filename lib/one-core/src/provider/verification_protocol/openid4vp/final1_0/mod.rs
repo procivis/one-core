@@ -17,7 +17,7 @@ use url::Url;
 use utils::{interaction_data_from_openid4vp_query, validate_interaction_data};
 use uuid::Uuid;
 
-use super::jwe_presentation::{self, ec_key_from_metadata};
+use super::jwe_presentation::{self, encryption_key_from_metadata};
 use super::mapper::{format_to_type, unencrypted_params};
 use super::mdoc::mdoc_presentation_context;
 use crate::config::core_config::{
@@ -168,7 +168,10 @@ impl OpenID4VPFinal1_0 {
                 .json()
                 .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
         }
-        let Some(verifier_key) = ec_key_from_metadata(client_metadata.into()) else {
+        let Some(verifier_key) = encryption_key_from_metadata(
+            client_metadata.into(),
+            self.key_algorithm_provider.as_ref(),
+        ) else {
             return Ok(None);
         };
         Ok(Some(EncryptionInfo {
