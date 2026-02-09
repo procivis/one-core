@@ -5,7 +5,7 @@ use one_core::service::certificate::dto::{
 use one_dto_mapper::{From, Into, TryFrom, convert_inner, try_convert_inner};
 use proc_macros::options_not_nullable;
 use serde::Serialize;
-use shared_types::{CertificateId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId, OrganisationId};
 use time::OffsetDateTime;
 use utoipa::ToSchema;
 
@@ -20,6 +20,8 @@ use crate::serialize::front_time;
 pub(crate) struct CertificateResponseRestDTO {
     #[try_from(infallible)]
     pub id: CertificateId,
+    #[try_from(infallible)]
+    pub identifier_id: IdentifierId,
     #[try_from(infallible)]
     #[schema(example = "2023-06-09T14:19:57.000Z")]
     #[serde(serialize_with = "front_time")]

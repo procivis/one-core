@@ -1,4 +1,4 @@
-use shared_types::{CertificateId, KeyId, OrganisationId};
+use shared_types::{CertificateId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 
 use crate::model::certificate::CertificateState;
@@ -32,6 +32,7 @@ pub struct CertificateX509ExtensionDTO {
 #[derive(Clone, Debug)]
 pub struct CertificateResponseDTO {
     pub id: CertificateId,
+    pub identifier_id: IdentifierId,
     pub created_date: OffsetDateTime,
     pub last_modified: OffsetDateTime,
     pub state: CertificateState,

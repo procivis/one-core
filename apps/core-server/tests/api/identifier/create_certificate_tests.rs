@@ -433,6 +433,7 @@ async fn test_create_certificate_identifier_with_crl() {
     assert_eq!(result.status(), 200);
     let resp = result.json_value().await;
     resp["id"].assert_eq(&certificate_id);
+    resp["identifierId"].assert_eq(&identifier_id);
     resp["organisationId"].assert_eq(&organisation.id);
 }
 

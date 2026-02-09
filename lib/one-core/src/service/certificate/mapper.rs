@@ -12,6 +12,7 @@ impl TryFrom<Certificate> for CertificateResponseDTO {
         let x509_attributes = parse_chain_to_x509_attributes(certificate.chain.as_bytes())?;
         Ok(Self {
             id: certificate.id,
+            identifier_id: certificate.identifier_id,
             created_date: certificate.created_date,
             last_modified: certificate.last_modified,
             state: certificate.state,
