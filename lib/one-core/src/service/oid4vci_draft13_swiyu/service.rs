@@ -46,6 +46,7 @@ impl OID4VCIDraft13SwiyuService {
                             .into_iter()
                             .filter(only_p256_or_p512)
                             .collect();
+                        cfg.key_attestations_required = None;
                     })
                 }
                 if let Some(ref mut claims) = config.claims {

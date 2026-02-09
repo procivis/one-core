@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use one_core::model::credential_schema::KeyStorageSecurity;
+use sea_orm::JsonValue;
 use serde_json::{Value, json};
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -291,4 +293,58 @@ fn assert_expected_claims(subject: &Value) {
     assert_eq!(subject["object_array"][0]["field1"]["mandatory"], true);
     assert_eq!(subject["object_array"][0]["field2"]["value_type"], "string");
     assert_eq!(subject["object_array"][0]["field2"]["mandatory"], true);
+}
+
+#[tokio::test]
+async fn test_get_credential_issuer_metadata_sd_jwt_vc_swiyu() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create_with_nested_hell(
+            "test",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                format: Some("SD_JWT_VC".into()),
+                key_storage_security: Some(KeyStorageSecurity::Basic),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    // WHEN
+    let resp = context
+        .api
+        .ssi
+        .openid_credential_issuer_draft13_swiyu(credential_schema.id)
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 200);
+    let resp = resp.json_value().await;
+    let issuer = format!(
+        "{}/ssi/openid4vci/draft-13-swiyu/{}",
+        context.config.app.core_base_url, credential_schema.id
+    );
+    assert_eq!(issuer, resp["credential_issuer"]);
+    assert_eq!(format!("{issuer}/credential"), resp["credential_endpoint"]);
+
+    let credentials = resp["credential_configurations_supported"]
+        .as_object()
+        .unwrap();
+    assert!(!credentials.is_empty());
+    assert_eq!(
+        credentials[&credential_schema.schema_id]["wallet_storage_type"],
+        "SOFTWARE"
+    );
+    assert_eq!(
+        credentials[&credential_schema.schema_id]["proof_types_supported"]["jwt"]["key_attestations_required"],
+        JsonValue::Null
+    );
+    assert_eq!(
+        credentials[&credential_schema.schema_id]["proof_types_supported"]["jwt"]["proof_signing_alg_values_supported"],
+        json!(["ES256"])
+    );
 }

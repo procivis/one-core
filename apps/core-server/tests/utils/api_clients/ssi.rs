@@ -165,6 +165,17 @@ impl SSIApi {
         self.client.get(&url).await
     }
 
+    pub async fn openid_credential_issuer_draft13_swiyu(
+        &self,
+        credential_schema_id: impl Into<Uuid>,
+    ) -> Response {
+        let credential_schema_id = credential_schema_id.into();
+        let url = format!(
+            "/ssi/openid4vci/draft-13-swiyu/{credential_schema_id}/.well-known/openid-credential-issuer"
+        );
+        self.client.get(&url).await
+    }
+
     pub async fn openid_credential_issuer_final1(
         &self,
         protocol_id: &str,
