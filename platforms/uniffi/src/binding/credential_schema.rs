@@ -435,17 +435,19 @@ pub struct ImportCredentialSchemaRequestSchemaBindingDTO {
     pub layout_properties: Option<ImportCredentialSchemaLayoutPropertiesBindingDTO>,
     #[try_into(infallible, with_fn = convert_inner)]
     pub allow_suspension: Option<bool>,
-    #[try_into(infallible, with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub requires_wallet_instance_attestation: Option<bool>,
-    #[try_into(infallible, with_fn = convert_inner)]
+    #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeBindingDTO>,
 }
 
-#[derive(Clone, Debug, uniffi::Record, Into)]
-#[into(ImportCredentialSchemaTransactionCodeDTO)]
+#[derive(Clone, Debug, uniffi::Record, TryInto)]
+#[try_into(T = ImportCredentialSchemaTransactionCodeDTO, Error = ErrorResponseBindingDTO)]
 pub struct ImportCredentialSchemaTransactionCodeBindingDTO {
+    #[try_into(infallible)]
     pub r#type: TransactionCodeTypeBindingEnum,
     pub length: u32,
+    #[try_into(infallible)]
     pub description: Option<String>,
 }
 

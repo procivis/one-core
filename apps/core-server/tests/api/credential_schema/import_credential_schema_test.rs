@@ -1,3 +1,4 @@
+use one_core::model::credential_schema::{TransactionCode, TransactionCodeType};
 use serde_json::json;
 use similar_asserts::assert_eq;
 use uuid::Uuid;
@@ -112,4 +113,56 @@ async fn test_import_credential_schema_success_with_same_name() {
             .name
             .contains("some credential schema")
     );
+}
+
+#[tokio::test]
+async fn test_import_credential_schema_fail_tx_code_length_too_short() {
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+    let credential_schema = context
+        .db
+        .credential_schemas
+        .create(
+            "schema",
+            &organisation,
+            None,
+            TestingCreateSchemaParams {
+                allow_suspension: Some(false),
+                transaction_code: Some(TransactionCode {
+                    r#type: TransactionCodeType::Numeric,
+                    length: 2,
+                    description: None,
+                }),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    let imported_schema_id = Uuid::new_v4();
+    let credential_schema_json = {
+        let mut value = context
+            .api
+            .credential_schemas
+            .get(&credential_schema.id)
+            .await
+            .json_value()
+            .await;
+
+        let object = value.as_object_mut().unwrap();
+        object.insert("id".to_owned(), json!(imported_schema_id));
+        object.insert("schemaId".to_owned(), json!(imported_schema_id));
+
+        value
+    };
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .import(organisation.id, credential_schema_json)
+        .await;
+
+    // then
+    assert_eq!(resp.status(), 400);
+    let err = resp.error_code().await;
+    assert_eq!(err, "BR_0338");
 }

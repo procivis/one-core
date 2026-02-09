@@ -16,6 +16,7 @@ use crate::model::credential_schema::{
 };
 use crate::model::list_filter::{ListFilterValue, StringMatch, ValueComparison};
 use crate::model::list_query::ListQuery;
+use crate::proto::credential_schema::transaction_code::TransactionCodeLength;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
 
 pub type CredentialSchemaLogo = BoundedB64Image<{ 500 * KB }>;
@@ -142,7 +143,7 @@ pub struct CreateCredentialSchemaRequestDTO {
 #[into(TransactionCode)]
 pub struct CredentialSchemaTransactionCodeRequestDTO {
     pub r#type: TransactionCodeType,
-    pub length: u32,
+    pub length: TransactionCodeLength,
     pub description: Option<String>,
 }
 
@@ -298,7 +299,7 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaTransactionCodeDTO {
     pub r#type: TransactionCodeType,
-    pub length: u32,
+    pub length: TransactionCodeLength,
     pub description: Option<String>,
 }
 

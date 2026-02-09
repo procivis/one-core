@@ -746,6 +746,9 @@ pub enum ValidationError {
 
     #[error("Invalid transaction code length")]
     InvalidTransactionCodeLength,
+
+    #[error("Invalid transaction code description length")]
+    InvalidTransactionCodeDescriptionLength,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -1056,6 +1059,7 @@ impl ErrorCodeMixin for ValidationError {
             Self::UnfulfilledKeyStorageSecurityLevel { .. } => ErrorCode::BR_0310,
             Self::TransactionCodeNotSupported => ErrorCode::BR_0337,
             Self::InvalidTransactionCodeLength => ErrorCode::BR_0338,
+            Self::InvalidTransactionCodeDescriptionLength => ErrorCode::BR_0346,
         }
     }
 }

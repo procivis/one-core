@@ -1,3 +1,6 @@
+use core_server::endpoint::credential_schema::dto::{
+    CredentialSchemaTransactionCodeRequestRestDTO, TransactionCodeTypeRestEnum,
+};
 use one_core::model::credential_schema::KeyStorageSecurity;
 use one_core::repository::error::DataLayerError;
 use similar_asserts::assert_eq;
@@ -541,6 +544,37 @@ async fn test_fail_create_credential_schema_with_unsupported_data_type() {
     assert_eq!(resp.status(), 400);
     let err = resp.error_code().await;
     assert_eq!(err, "BR_0245");
+}
+
+#[tokio::test]
+async fn test_fail_create_credential_schema_transaction_code_length_too_big() {
+    // GIVEN
+    let (context, organisation) = TestContext::new_with_organisation(None).await;
+
+    // WHEN
+    let resp = context
+        .api
+        .credential_schemas
+        .create(
+            CreateSchemaParams {
+                name: "schema".into(),
+                organisation_id: organisation.id.into(),
+                format: "JWT".into(),
+                transaction_code: Some(CredentialSchemaTransactionCodeRequestRestDTO {
+                    r#type: TransactionCodeTypeRestEnum::Numeric,
+                    length: 11,
+                    description: None,
+                }),
+                ..Default::default()
+            }
+            .with_default_claims("firstName".into()),
+        )
+        .await;
+
+    // THEN
+    assert_eq!(resp.status(), 400);
+    let err = resp.error_code().await;
+    assert_eq!(err, "BR_0338");
 }
 
 #[tokio::test]

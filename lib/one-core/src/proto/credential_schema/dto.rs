@@ -1,4 +1,4 @@
-use one_dto_mapper::{From, Into, convert_inner};
+use one_dto_mapper::{From, Into, TryFrom, convert_inner};
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use shared_types::{CredentialFormat, CredentialSchemaId, OrganisationId, RevocationMethodId};
@@ -10,7 +10,9 @@ use crate::model::credential_schema::{
     CodeTypeEnum, KeyStorageSecurity, LayoutType, TransactionCodeType,
 };
 use crate::model::organisation::Organisation;
+use crate::proto::credential_schema::transaction_code::TransactionCodeLength;
 use crate::service::common_dto::{BoundedB64Image, KB, MB};
+use crate::service::error::ValidationError;
 
 pub type CredentialSchemaLogo = BoundedB64Image<{ 500 * KB }>;
 #[allow(clippy::identity_op)]
@@ -61,13 +63,15 @@ pub struct ImportCredentialSchemaClaimSchemaDTO {
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
 }
 
-#[derive(Clone, Debug, Deserialize, From, Into)]
+#[derive(Clone, Debug, Deserialize, TryFrom, Into)]
 #[serde(rename_all = "camelCase")]
-#[from(model::credential_schema::TransactionCode)]
 #[into(model::credential_schema::TransactionCode)]
+#[try_from(T = model::credential_schema::TransactionCode, Error = ValidationError)]
 pub struct ImportCredentialSchemaTransactionCodeDTO {
+    #[try_from(infallible)]
     pub r#type: TransactionCodeType,
-    pub length: u32,
+    pub length: TransactionCodeLength,
+    #[try_from(infallible)]
     pub description: Option<String>,
 }
 

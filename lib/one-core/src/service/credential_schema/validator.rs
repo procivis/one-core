@@ -494,7 +494,7 @@ fn validate_transaction_code(
     request: &CreateCredentialSchemaRequestDTO,
     formatter: &dyn CredentialFormatter,
 ) -> Result<(), ValidationError> {
-    if let Some(code) = &request.transaction_code {
+    if let Some(transaction_code) = &request.transaction_code {
         if !formatter
             .get_capabilities()
             .features
@@ -503,8 +503,10 @@ fn validate_transaction_code(
             return Err(ValidationError::TransactionCodeNotSupported);
         }
 
-        if code.length < 4 || code.length > 10 {
-            return Err(ValidationError::InvalidTransactionCodeLength);
+        if let Some(description) = &transaction_code.description
+            && (description.is_empty() || description.len() > 300)
+        {
+            return Err(ValidationError::InvalidTransactionCodeDescriptionLength);
         }
     }
 

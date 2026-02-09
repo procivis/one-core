@@ -280,17 +280,19 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[try_into(infallible)]
     pub requires_wallet_instance_attestation: bool,
     #[serde(default)]
-    #[try_into(with_fn = convert_inner, infallible)]
+    #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, Into)]
-#[into(CredentialSchemaTransactionCodeRequestDTO)]
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema, TryInto)]
+#[try_into(T=CredentialSchemaTransactionCodeRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
-pub(crate) struct CredentialSchemaTransactionCodeRequestRestDTO {
+pub struct CredentialSchemaTransactionCodeRequestRestDTO {
+    #[try_into(infallible)]
     pub r#type: TransactionCodeTypeRestEnum,
     pub length: u32,
+    #[try_into(infallible)]
     pub description: Option<String>,
 }
 
@@ -298,7 +300,7 @@ pub(crate) struct CredentialSchemaTransactionCodeRequestRestDTO {
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[into(TransactionCodeType)]
 #[from(TransactionCodeType)]
-pub(crate) enum TransactionCodeTypeRestEnum {
+pub enum TransactionCodeTypeRestEnum {
     Numeric,
     Alphanumeric,
 }
@@ -478,17 +480,19 @@ pub(crate) struct ImportCredentialSchemaRequestSchemaRestDTO {
     #[try_into(infallible)]
     pub requires_wallet_instance_attestation: Option<bool>,
     #[serde(default)]
-    #[try_into(with_fn = convert_inner, infallible)]
+    #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<ImportCredentialSchemaTransactionCodeRequestRestDTO>,
 }
 
 #[options_not_nullable]
-#[derive(Clone, Debug, Deserialize, ToSchema, Into)]
-#[into(one_core::service::credential_schema::dto::ImportCredentialSchemaTransactionCodeDTO)]
+#[derive(Clone, Debug, Deserialize, ToSchema, TryInto)]
+#[try_into(T=one_core::service::credential_schema::dto::ImportCredentialSchemaTransactionCodeDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct ImportCredentialSchemaTransactionCodeRequestRestDTO {
+    #[try_into(infallible)]
     pub r#type: TransactionCodeTypeRestEnum,
     pub length: u32,
+    #[try_into(infallible)]
     pub description: Option<String>,
 }
 

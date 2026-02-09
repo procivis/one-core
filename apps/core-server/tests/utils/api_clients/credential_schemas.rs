@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use core_server::endpoint::credential_schema::dto::CredentialSchemaTransactionCodeRequestRestDTO;
 use one_core::service::credential_schema::dto::CredentialSchemaListIncludeEntityTypeEnum;
 use serde::Serialize;
 use serde_json::json;
@@ -48,6 +49,7 @@ pub struct CreateSchemaParams {
     pub suspension_allowed: Option<bool>,
     pub key_storage_security: Option<String>,
     pub logo: Option<String>,
+    pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
 }
 
 impl CreateSchemaParams {
@@ -104,6 +106,16 @@ impl CredentialSchemasApi {
         }
         if let Some(logo) = params.logo {
             body["layoutProperties"]["logo"] = json!({"image": logo});
+        }
+        if let Some(transaction_code) = params.transaction_code {
+            let mut code = json!({
+                "type": transaction_code.r#type,
+                "length": transaction_code.length
+            });
+            if let Some(description) = transaction_code.description {
+                code["description"] = json!(description);
+            }
+            body["transactionCode"] = code;
         }
 
         self.client.post("/api/credential-schema/v1", body).await

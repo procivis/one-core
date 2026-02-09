@@ -1,3 +1,4 @@
+use std::convert::Infallible;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
 
@@ -757,10 +758,19 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid transaction code length")]
     BR_0338,
+
+    #[strum(message = "Invalid transaction code description length")]
+    BR_0346,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {
     fn error_code(&self) -> ErrorCode;
+}
+
+impl ErrorCodeMixin for Infallible {
+    fn error_code(&self) -> ErrorCode {
+        match *self {}
+    }
 }
 
 pub trait ErrorCodeMixinExt: ErrorCodeMixin {

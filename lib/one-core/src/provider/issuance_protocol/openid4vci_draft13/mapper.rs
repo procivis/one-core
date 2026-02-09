@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use indexmap::map::Entry;
 use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
-use one_dto_mapper::convert_inner;
+use one_dto_mapper::{convert_inner, try_convert_inner};
 use secrecy::ExposeSecret;
 use shared_types::{ClaimSchemaId, CredentialId, CredentialSchemaId};
 use time::OffsetDateTime;
@@ -1156,11 +1156,11 @@ pub(crate) fn map_to_import_credential_schema_request(
             imported_source_url,
             allow_suspension: Some(false),
             requires_wallet_instance_attestation: None,
-            transaction_code: convert_inner(
+            transaction_code: try_convert_inner(
                 credential_schema
                     .transaction_code
                     .map(Into::<TransactionCode>::into),
-            ),
+            )?,
         },
     })
 }

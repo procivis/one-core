@@ -115,7 +115,7 @@ fn test_parse_import_credential_schema_success() {
             requires_wallet_instance_attestation: Some(true),
             transaction_code: Some(ImportCredentialSchemaTransactionCodeDTO {
                 r#type: TransactionCodeType::Numeric,
-                length: 6,
+                length: 6.try_into().unwrap(),
                 description: None,
             }),
         },
