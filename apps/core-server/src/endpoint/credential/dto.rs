@@ -469,6 +469,10 @@ pub(crate) struct CredentialRevocationCheckResponseRestDTO {
 pub(crate) struct ShareCredentialResponseRestDTO {
     /// Share URL, typically encoded as a QR code.
     pub url: String,
+    /// The generated one-time code required for the holder to complete
+    /// credential issuance. Must be transmitted to the holder through a
+    /// secure out-of-band channel such as SMS or email to a verified
+    /// contact.
     pub transaction_code: Option<String>,
     /// URL becomes unusable by wallet holder at this time. Call the share
     /// endpoint again to get a new URL.

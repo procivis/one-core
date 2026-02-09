@@ -279,6 +279,9 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub requires_wallet_instance_attestation: bool,
+    /// Optional transaction code configuration. When included, credentials
+    /// issued from this schema will require holders to submit a generated
+    /// one-time code to complete issuance.
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub transaction_code: Option<CredentialSchemaTransactionCodeRequestRestDTO>,
@@ -289,9 +292,14 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
 #[try_into(T=CredentialSchemaTransactionCodeRequestDTO, Error=ServiceError)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct CredentialSchemaTransactionCodeRequestRestDTO {
+    /// Character set for generated codes. `NUMERIC` uses digits 0-9.
+    /// `ALPHANUMERIC` uses letters and digits.
     #[try_into(infallible)]
     pub r#type: TransactionCodeTypeRestEnum,
+    /// Number of characters in generated codes. Must be between 4 and 10.
     pub length: u32,
+    /// Optional context provided to holders about the transaction code,
+    /// such as where to find it or how to use it. Maximum 300 characters.
     #[try_into(infallible)]
     pub description: Option<String>,
 }
