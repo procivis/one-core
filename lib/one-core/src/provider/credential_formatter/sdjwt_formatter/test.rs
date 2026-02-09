@@ -114,6 +114,7 @@ async fn test_format_credential_a() {
             leeway,
             embed_layout_properties: false,
             sd_array_elements: true,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -292,6 +293,7 @@ async fn test_format_credential_with_array() {
             leeway,
             embed_layout_properties: false,
             sd_array_elements: false,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -420,6 +422,7 @@ async fn test_format_credential_with_array_sd() {
             leeway,
             embed_layout_properties: false,
             sd_array_elements: true,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -548,6 +551,7 @@ async fn test_extract_credentials() {
             leeway,
             embed_layout_properties: false,
             sd_array_elements: true,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -717,6 +721,7 @@ async fn test_extract_credentials_with_array() {
             leeway,
             embed_layout_properties: false,
             sd_array_elements: true,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -836,6 +841,7 @@ async fn test_extract_credentials_with_array_stripped() {
             leeway,
             embed_layout_properties: false,
             sd_array_elements: true,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -974,6 +980,7 @@ fn test_get_capabilities() {
             leeway: 123u64,
             embed_layout_properties: false,
             sd_array_elements: true,
+            expiration_time: Duration::days(1),
         },
         client: Arc::new(MockHttpClient::new()),
     };
@@ -1065,6 +1072,7 @@ async fn test_parse_credential() {
         leeway: 60,
         embed_layout_properties: false,
         sd_array_elements: true,
+        expiration_time: Duration::days(1),
     };
 
     let hashers = hashmap! {
@@ -1241,6 +1249,7 @@ async fn test_parse_credential_with_lvvc() {
         leeway: 60,
         embed_layout_properties: false,
         sd_array_elements: true,
+        expiration_time: Duration::days(1),
     };
 
     let hashers = hashmap! {

@@ -11,6 +11,7 @@ use async_trait::async_trait;
 use one_crypto::CryptoProvider;
 use serde::Deserialize;
 use serde_json::Value;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -38,6 +39,7 @@ use crate::model::identifier::Identifier;
 use crate::proto::http_client::HttpClient;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
+use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -55,6 +57,7 @@ pub struct SDJWTFormatter {
     params: Params,
 }
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
@@ -62,6 +65,9 @@ pub struct Params {
     pub embed_layout_properties: bool,
     #[serde(default = "default_sd_array_elements")]
     pub sd_array_elements: bool,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_2_years")]
+    pub expiration_time: Duration,
 }
 
 fn default_sd_array_elements() -> bool {
@@ -77,6 +83,14 @@ impl CredentialFormatter for SDJWTFormatter {
     ) -> Result<String, FormatterError> {
         const HASH_ALG: &str = "sha-256";
         let mut vcdm = credential_data.vcdm;
+
+        let now = OffsetDateTime::now_utc();
+        if vcdm.valid_from.is_none() {
+            vcdm.valid_from = Some(now);
+        }
+        if vcdm.valid_until.is_none() {
+            vcdm.valid_until = Some(now + self.params.expiration_time);
+        }
 
         if !self.params.embed_layout_properties {
             vcdm.remove_layout_properties();

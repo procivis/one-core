@@ -32,6 +32,7 @@ use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
+use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -59,6 +60,9 @@ pub struct Params {
     #[serde(default)]
     embed_layout_properties: bool,
     allowed_contexts: Option<Vec<Url>>,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_2_years")]
+    expiration_time: Duration,
 }
 
 #[async_trait]
@@ -69,6 +73,14 @@ impl CredentialFormatter for JsonLdClassic {
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
         let mut vcdm = credential_data.vcdm;
+
+        let now = OffsetDateTime::now_utc();
+        if vcdm.valid_from.is_none() {
+            vcdm.valid_from = Some(now);
+        }
+        if vcdm.valid_until.is_none() {
+            vcdm.valid_until = Some(now + self.params.expiration_time);
+        }
 
         let holder_did = credential_data
             .holder_identifier

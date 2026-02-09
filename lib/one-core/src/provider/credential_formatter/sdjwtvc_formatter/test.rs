@@ -126,6 +126,7 @@ async fn test_format_credential() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -313,6 +314,7 @@ async fn test_format_credential_swiyu() {
             swiyu_mode: true,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
         Arc::new(did_method_provider),
@@ -449,6 +451,7 @@ async fn test_extract_credentials() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -589,6 +592,7 @@ async fn test_extract_credentials_swiyu() {
             swiyu_mode: true,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -785,6 +789,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(crypto),
         Arc::new(MockDidMethodProvider::new()),
@@ -857,6 +862,7 @@ fn test_schema_id_internal() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
@@ -905,6 +911,7 @@ fn test_schema_id_external() {
             swiyu_mode: false,
             sd_array_elements: true,
             ecosystem_schema_ids: vec![],
+            expiration_time: Duration::days(1),
         },
         Arc::new(MockCryptoProvider::default()),
         Arc::new(MockDidMethodProvider::new()),
@@ -950,6 +957,7 @@ async fn test_format_extract_round_trip_non_sd_array_elements() {
         swiyu_mode: false,
         sd_array_elements: false,
         ecosystem_schema_ids: vec![],
+        expiration_time: Duration::days(1),
     };
 
     let (key_algorithm_provider, did_method_provider, formatter) = formatter_for_params(params);
@@ -1162,6 +1170,7 @@ async fn test_format_extract_round_trip_sd_array_elements() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        expiration_time: Duration::days(1),
     };
 
     let (key_algorithm_provider, did_method_provider, formatter) = formatter_for_params(params);
@@ -1461,6 +1470,7 @@ async fn test_parse_credential_eudi() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1716,6 +1726,7 @@ async fn test_parse_credential() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1900,6 +1911,7 @@ async fn test_format_presentation_mixed_sd_array_claim() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>
@@ -1948,6 +1960,7 @@ async fn test_format_presentation_complex_test_vector_sd_array_element() {
         swiyu_mode: false,
         sd_array_elements: true,
         ecosystem_schema_ids: vec![],
+        expiration_time: Duration::days(1),
     };
     let hashers = hashmap! {
         "sha-256".to_string() => Arc::new(SHA256) as Arc<dyn Hasher>

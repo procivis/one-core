@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use convert_case::{Case, Casing};
 use indexmap::IndexSet;
 use one_dto_mapper::{convert_inner, try_convert_inner};
-use time::OffsetDateTime;
+use time::Duration;
 use url::Url;
 use uuid::fmt::Urn;
 
@@ -26,6 +26,10 @@ use crate::service::error::ServiceError;
 
 pub const W3C_SCHEMA_TYPE: &str = "ProcivisOneSchema2024";
 
+pub(super) fn default_2_years() -> Duration {
+    Duration::days(365 * 2)
+}
+
 #[expect(clippy::too_many_arguments)]
 pub(crate) fn credential_data_from_credential_detail_response(
     credential_detail: CredentialDetailResponseDTO<DetailCredentialClaimResponseDTO>,
@@ -39,9 +43,6 @@ pub(crate) fn credential_data_from_credential_detail_response(
 ) -> Result<CredentialData, ServiceError> {
     let flat_claims = map_claims(&credential_detail.claims, false);
     let claims = nest_claims(flat_claims.clone())?;
-
-    let valid_from = OffsetDateTime::now_utc();
-    let valid_until = valid_from + time::Duration::days(365 * 2);
 
     let schema = credential_detail.schema;
     // The ID property is optional according to the VCDM. We need to include it for BBS+ due to ONE-3193
@@ -89,9 +90,7 @@ pub(crate) fn credential_data_from_credential_detail_response(
 
     let mut vcdm = VcdmCredential::new_v2(issuer, credential_subject)
         .add_type(schema.name.to_case(Case::Pascal))
-        .add_credential_schema(credential_schema)
-        .with_valid_from(valid_from)
-        .with_valid_until(valid_until);
+        .add_credential_schema(credential_schema);
     vcdm.id = credential_id;
     vcdm.context.extend(context);
     vcdm.credential_status.extend(credential_status);

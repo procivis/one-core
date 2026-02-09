@@ -35,6 +35,7 @@ use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::json_ld_context::{ContextCache, JsonLdCachingLoader};
+use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::did_method::provider::DidMethodProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
@@ -68,6 +69,9 @@ pub struct Params {
     #[serde(default)]
     pub embed_layout_properties: bool,
     pub allowed_contexts: Option<Vec<Url>>,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_2_years")]
+    pub expiration_time: Duration,
 }
 
 impl JsonLdBbsplus {
@@ -107,6 +111,14 @@ impl CredentialFormatter for JsonLdBbsplus {
             .ok_or_else(|| FormatterError::CouldNotFormat("Missing jwk key id".to_string()))?;
 
         let mut vcdm = credential_data.vcdm;
+
+        let now = OffsetDateTime::now_utc();
+        if vcdm.valid_from.is_none() {
+            vcdm.valid_from = Some(now);
+        }
+        if vcdm.valid_until.is_none() {
+            vcdm.valid_until = Some(now + self.params.expiration_time);
+        }
 
         let holder_did = credential_data
             .holder_identifier

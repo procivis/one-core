@@ -115,6 +115,7 @@ async fn create_token(include_layout: bool) -> Value {
         leeway: Duration::seconds(60),
         embed_layout_properties: include_layout,
         allowed_contexts: None,
+        expiration_time: Duration::days(1),
     };
     let key_algorithm = MockKeyAlgorithm::new();
     let mut key_algorithm_provider = MockKeyAlgorithmProvider::new();
@@ -201,6 +202,7 @@ async fn test_parse_credential() {
             leeway: Duration::seconds(60),
             embed_layout_properties: false,
             allowed_contexts: None,
+            expiration_time: Duration::days(1),
         },
         Arc::new(MockCryptoProvider::default()),
         prepare_caching_loader(None),

@@ -183,6 +183,7 @@ async fn test_format_credential() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -276,6 +277,7 @@ async fn test_format_credential_with_layout_properties() {
         params: Params {
             leeway,
             embed_layout_properties: true,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -368,6 +370,7 @@ async fn test_format_credential_nested_array() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -450,6 +453,7 @@ async fn test_extract_credentials() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -557,6 +561,7 @@ async fn test_extract_credentials_nested_array() {
         params: Params {
             leeway,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -659,6 +664,7 @@ async fn test_format_credential_presentation() {
         params: Params {
             leeway: 45,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -695,6 +701,7 @@ fn test_get_capabilities() {
         params: Params {
             leeway: 123u64,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -716,6 +723,7 @@ fn test_schema_id() {
         params: Params {
             leeway: 123u64,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(MockDataTypeProvider::new()),
@@ -763,6 +771,7 @@ async fn test_parse_credential() {
         params: Params {
             leeway: 45,
             embed_layout_properties: false,
+            expiration_time: Duration::days(1),
         },
         key_algorithm_provider: Arc::new(MockKeyAlgorithmProvider::new()),
         data_type_provider: Arc::new(datatype_provider),

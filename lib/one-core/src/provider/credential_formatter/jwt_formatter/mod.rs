@@ -8,8 +8,9 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use model::VcClaim;
 use serde::Deserialize;
+use serde_with::{DurationSeconds, serde_as};
 use shared_types::DidValue;
-use time::OffsetDateTime;
+use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
 
 use super::error::FormatterError;
@@ -29,6 +30,7 @@ use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::identifier::Identifier;
 use crate::proto::jwt::Jwt;
 use crate::proto::jwt::model::{JWTPayload, jwt_metadata_claims};
+use crate::provider::credential_formatter::mapper::default_2_years;
 use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
@@ -46,11 +48,15 @@ pub struct JWTFormatter {
     data_type_provider: Arc<dyn DataTypeProvider>,
 }
 
+#[serde_as]
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Params {
     pub leeway: u64,
     pub embed_layout_properties: bool,
+    #[serde_as(as = "DurationSeconds<i64>")]
+    #[serde(default = "default_2_years")]
+    pub expiration_time: Duration,
 }
 
 impl JWTFormatter {
@@ -74,9 +80,14 @@ impl CredentialFormatter for JWTFormatter {
         credential_data: CredentialData,
         auth_fn: AuthenticationFn,
     ) -> Result<String, FormatterError> {
+        let now = OffsetDateTime::now_utc();
+
         let mut vcdm = credential_data.vcdm;
         let invalid_before = vcdm.valid_from.or(vcdm.issuance_date);
-        let expires_at = vcdm.valid_until.or(vcdm.expiration_date);
+        let expires_at = vcdm
+            .valid_until
+            .or(vcdm.expiration_date)
+            .or(Some(now + self.params.expiration_time));
         let credential_id = vcdm.id.clone().map(|id| id.to_string());
 
         let issuer = vcdm.issuer.as_url().to_string();
@@ -94,7 +105,7 @@ impl CredentialFormatter for JWTFormatter {
             .map(|did| did.did.to_string());
 
         let payload = JWTPayload {
-            issued_at: Some(OffsetDateTime::now_utc()),
+            issued_at: Some(now),
             expires_at,
             invalid_before,
             issuer: Some(issuer),
