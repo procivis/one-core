@@ -255,13 +255,11 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(with_fn = try_convert_inner)]
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRestDTO>,
-    /// Document type or credential type identifier. For credential formats
-    /// requiring a schema ID (check your `format` configuration for
-    /// `REQUIRES_SCHEMA_ID`), specify the document type here. For ISO mdoc,
-    /// use DocType. For IETF SD-JWT VC, use the vct value. For VC barcodes,
-    /// use predefined types like `UtopiaEmploymentDocument`. For formats not
-    /// requiring a schema ID, do not pass this field and a URI will be
-    /// auto-generated.
+    /// Identifier for the credential schema. For ISO mdoc, this specifies
+    /// the DocType (for example, `org.iso.18013.5.1.mDL`). For SD-JWT VC,
+    /// this specifies the `vct` value. If omitted, the system auto-generates
+    /// an identifier using the credential schema's UUID. Must be unique
+    /// within the organization.
     #[schema(example = "org.iso.18013.5.1.mDL")]
     #[serde(default)]
     #[try_into(infallible)]
