@@ -269,13 +269,7 @@ pub struct OpenID4VCIIssuerMetadataClaimDisplay {
     pub locale: Option<String>,
 }
 
-/// Credential signing algorithm value - can be a string (e.g., "ES256") or a COSE algorithm ID (e.g., -7)
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum CredentialSigningAlgValue {
-    String(String),
-    Integer(i64),
-}
+pub use super::super::model::CredentialSigningAlgValue;
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(transparent)]

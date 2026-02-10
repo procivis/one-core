@@ -14,6 +14,7 @@ use strum::{Display, EnumString};
 use time::{Duration, OffsetDateTime};
 use url::Url;
 
+use super::super::model::CredentialSigningAlgValue;
 use crate::mapper::opt_secret_string;
 use crate::mapper::params::deserialize_encryption_key;
 use crate::model::credential_schema::{
@@ -122,7 +123,7 @@ pub(crate) struct HolderInteractionData {
     #[serde(default)]
     pub cryptographic_binding_methods_supported: Option<Vec<String>>,
     #[serde(default)]
-    pub credential_signing_alg_values_supported: Option<Vec<String>>,
+    pub credential_signing_alg_values_supported: Option<Vec<CredentialSigningAlgValue>>,
     #[serde(default)]
     pub proof_types_supported: Option<IndexMap<String, OpenID4VCIProofTypeSupported>>,
     #[serde(default)]

@@ -45,6 +45,14 @@ pub(crate) enum InvitationResponseEnum {
     },
 }
 
+/// Credential signing algorithm value - can be a string (e.g., "ES256") or a COSE algorithm ID (e.g., -7)
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum CredentialSigningAlgValue {
+    String(String),
+    Integer(i64),
+}
+
 #[skip_serializing_none]
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
 pub struct OpenID4VCIProofTypeSupported {

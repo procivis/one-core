@@ -70,8 +70,8 @@ use crate::provider::issuance_protocol::mapper::{
     interaction_from_handle_invitation,
 };
 use crate::provider::issuance_protocol::model::{
-    ContinueIssuanceResponseDTO, InvitationResponseEnum, ShareResponse, SubmitIssuerResponse,
-    UpdateResponse,
+    ContinueIssuanceResponseDTO, CredentialSigningAlgValue, InvitationResponseEnum, ShareResponse,
+    SubmitIssuerResponse, UpdateResponse,
 };
 use crate::provider::issuance_protocol::openid4vci_draft13::handle_invitation_operations::{
     BuildCredentialSchemaResponse, HandleInvitationOperations, HandleInvitationOperationsAccess,
@@ -1895,7 +1895,12 @@ async fn prepare_issuance_interaction_and_credentials_with_claims(
         refresh_token_expires_at: None,
         credential_signing_alg_values_supported: credential_config
             .credential_signing_alg_values_supported
-            .clone(),
+            .clone()
+            .map(|v| {
+                v.into_iter()
+                    .map(CredentialSigningAlgValue::String)
+                    .collect()
+            }),
         cryptographic_binding_methods_supported,
         proof_types_supported: credential_config.proof_types_supported.clone(),
         nonce: None,
