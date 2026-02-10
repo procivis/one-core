@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use time::OffsetDateTime;
 
-use super::{
-    CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
-};
+use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 
@@ -34,9 +33,13 @@ impl TrustListCache {
     }
 
     pub async fn get(&self, key: &str) -> Result<serde_json::Value, CacheError> {
-        let (schema, _) = self.inner.get(key, self.resolver.clone(), false).await?;
+        let (schema, _) = self
+            .inner
+            .get(key, self.resolver.clone(), false)
+            .await
+            .error_while("getting trust list")?;
 
-        Ok(serde_json::from_slice(&schema).map_err(Into::<InvalidCachedValueError>::into)?)
+        Ok(serde_json::from_slice(&schema)?)
     }
 }
 
@@ -59,7 +62,14 @@ impl Resolver for TrustListResolver {
         key: &str,
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let response = self.client.get(key).send().await?.error_for_status()?;
+        let response = self
+            .client
+            .get(key)
+            .send()
+            .await
+            .error_while("downloading trust list")?
+            .error_for_status()
+            .error_while("downloading trust list")?;
 
         let media_type = response.header_get("content-type").map(|t| t.to_owned());
 

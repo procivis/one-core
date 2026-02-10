@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver, ResolverError};
 
@@ -28,7 +29,14 @@ impl Resolver for StatusListResolver {
         url: &str,
         _previous: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let response = self.client.get(url).send().await?.error_for_status()?;
+        let response = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .error_while("downloading bitstring status list")?
+            .error_for_status()
+            .error_while("downloading bitstring status list")?;
         let content_type = response
             .header_get("Content-Type")
             .ok_or_else(|| {

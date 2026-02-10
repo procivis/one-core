@@ -3,8 +3,7 @@
 use shared_types::{DidId, KeyId};
 use thiserror::Error;
 
-use crate::provider::caching_loader::CachingLoaderError;
-use crate::provider::remote_entity_storage::RemoteEntityStorageError;
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 
 #[derive(Debug, Error, Eq, PartialEq)]
 pub enum DidMethodError {
@@ -43,12 +42,27 @@ pub enum DidMethodProviderError {
     #[error("Other: `{0}`")]
     Other(String),
 
-    #[error("Caching loader error: `{0}`")]
-    CachingLoader(#[from] CachingLoaderError),
     #[error("JSON parse error: `{0}`")]
     JsonParse(#[from] serde_json::Error),
-    #[error("Remote entity storage error: `{0}`")]
-    RemoteEntityStorage(#[from] RemoteEntityStorageError),
     #[error("Did value validation error")]
     DidValueValidationError,
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for DidMethodProviderError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::DidMethod(_)
+            | Self::FailedToResolve(_)
+            | Self::JsonParse(_)
+            | Self::MissingDidMethodNameInDidValue
+            | Self::VerificationMethodIdNotFound { .. }
+            | Self::DidValueValidationError
+            | Self::Other(_) => ErrorCode::BR_0064,
+            Self::MissingProvider(_) => ErrorCode::BR_0031,
+            Self::Nested(nested) => nested.error_code(),
+        }
+    }
 }

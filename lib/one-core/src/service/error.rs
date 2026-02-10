@@ -1118,23 +1118,6 @@ impl ErrorCodeMixin for FormatterError {
     }
 }
 
-impl ErrorCodeMixin for DidMethodProviderError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::DidMethod(_)
-            | Self::CachingLoader(_)
-            | Self::FailedToResolve(_)
-            | Self::JsonParse(_)
-            | Self::MissingDidMethodNameInDidValue
-            | Self::RemoteEntityStorage(_)
-            | Self::VerificationMethodIdNotFound { .. }
-            | Self::DidValueValidationError
-            | Self::Other(_) => ErrorCode::BR_0064,
-            Self::MissingProvider(_) => ErrorCode::BR_0031,
-        }
-    }
-}
-
 impl ErrorCodeMixin for DataLayerError {
     fn error_code(&self) -> ErrorCode {
         match self {

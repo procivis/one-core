@@ -350,9 +350,9 @@ async fn test_create_certificate_identifier_crl_not_available() {
         .create_certificate_identifier("test-identifier", key.id, organisation.id, &chain)
         .await;
 
-    // revocation error
-    assert_eq!(result.status(), 500);
-    assert_eq!(result.error_code().await, "BR_0101");
+    // http client error
+    assert_eq!(result.status(), 400);
+    assert_eq!(result.error_code().await, "BR_0347");
 }
 
 #[tokio::test]

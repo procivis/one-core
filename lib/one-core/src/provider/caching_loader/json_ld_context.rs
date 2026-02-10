@@ -7,13 +7,12 @@ use time::macros::offset;
 use time::{Duration, OffsetDateTime};
 
 use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::proto::http_client::HttpClient;
-use crate::provider::caching_loader::{CachingLoader, CachingLoaderError, ResolveResult, Resolver};
+use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver};
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
-use crate::provider::remote_entity_storage::{
-    RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
-};
+use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 use crate::repository::remote_entity_cache_repository::RemoteEntityCacheRepository;
 
 pub struct JsonLdResolver {
@@ -76,7 +75,7 @@ impl Resolver for JsonLdResolver {
     }
 }
 
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum JsonLdResolverError {
     #[error("HTTP error: Cannot parse Last-Modified header")]
     CannotParseLastModifiedHeader,
@@ -85,14 +84,10 @@ pub enum JsonLdResolverError {
     #[error("HTTP error: unexpected status code: `{0}`")]
     UnexpectedStatusCode(String),
 
-    #[error("Caching loader error: `{0}`")]
-    CachingLoaderError(#[from] CachingLoaderError),
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] FromUtf8Error),
     #[error("OffsetDateTime parse error: `{0}`")]
     OffsetDateTimeError(#[from] time::error::Parse),
-    #[error("Remote entity storage error: `{0}`")]
-    RemoteEntityStorageError(#[from] RemoteEntityStorageError),
 
     #[error("URL parse error: `{0}`")]
     UrlParseError(#[from] url::ParseError),
@@ -109,6 +104,18 @@ pub enum JsonLdResolverError {
     Reqwest(String),
     #[error("Time error: `{0}`")]
     TimeError(String),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for JsonLdResolverError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0354,
+        }
+    }
 }
 
 #[derive(Clone)]

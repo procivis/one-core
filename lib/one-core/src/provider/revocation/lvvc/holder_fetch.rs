@@ -8,6 +8,7 @@ use uuid::Uuid;
 use super::Params;
 use super::dto::IssuerResponseDTO;
 use crate::KeyProvider;
+use crate::error::ContextWithErrorCode;
 use crate::model::credential::{Credential, CredentialRole};
 use crate::model::validity_credential::{Lvvc, ValidityCredential, ValidityCredentialType};
 use crate::proto::bearer_token::prepare_bearer_token;
@@ -116,9 +117,12 @@ async fn fetch_remote_lvvc(
         .get(lvvc_url.as_str())
         .bearer_auth(&bearer_token)
         .send()
-        .await?
-        .error_for_status()?
-        .json()?;
+        .await
+        .error_while("downloading LVVC")?
+        .error_for_status()
+        .error_while("downloading LVVC")?
+        .json()
+        .error_while("parsing LVVC response")?;
 
     Ok(Lvvc {
         id: Uuid::new_v4(),

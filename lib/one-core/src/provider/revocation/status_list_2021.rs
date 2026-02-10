@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use shared_types::{RevocationListEntryId, RevocationListId};
 
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
@@ -98,7 +99,14 @@ impl RevocationMethod for StatusList2021 {
             .parse()
             .map_err(|_| RevocationError::ValidationError("Invalid list index".to_string()))?;
 
-        let response = self.client.get(list_url).send().await?.error_for_status()?;
+        let response = self
+            .client
+            .get(list_url)
+            .send()
+            .await
+            .error_while("downloading StatusList2021")?
+            .error_for_status()
+            .error_while("downloading StatusList2021")?;
 
         let token = String::from_utf8(response.body)
             .map_err(|e| RevocationError::ValidationError(e.to_string()))?;

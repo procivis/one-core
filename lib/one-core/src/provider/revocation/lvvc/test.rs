@@ -10,6 +10,7 @@ use wiremock::http::Method;
 use wiremock::matchers::{header_regex, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::credential::{Credential, CredentialRole, CredentialStateEnum};
 use crate::model::credential_schema::{CredentialSchema, LayoutType};
 use crate::model::did::{Did, DidType, KeyRole, RelatedKey};
@@ -27,7 +28,6 @@ use crate::provider::key_algorithm::MockKeyAlgorithm;
 use crate::provider::key_algorithm::provider::MockKeyAlgorithmProvider;
 use crate::provider::key_storage::provider::MockKeyProvider;
 use crate::provider::revocation::RevocationMethod;
-use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::lvvc::{LvvcProvider, Params};
 use crate::provider::revocation::model::{CredentialDataByRole, RevocationState};
 use crate::repository::validity_credential_repository::MockValidityCredentialRepository;
@@ -355,9 +355,9 @@ async fn test_check_revocation_status_as_holder_cached_force_refresh_fail() {
             Some(CredentialDataByRole::Holder(Box::new(credential))),
             true,
         )
-        .await;
-    assert!(result.is_err());
-    assert!(matches!(result, Err(RevocationError::HttpClientError(_))))
+        .await
+        .unwrap_err();
+    assert_eq!(result.error_code(), ErrorCode::BR_0347);
 }
 
 fn common_mock_providers() -> (

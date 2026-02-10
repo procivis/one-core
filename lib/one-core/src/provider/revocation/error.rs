@@ -3,15 +3,12 @@
 use shared_types::{CredentialId, IdentifierId};
 use thiserror::Error;
 
-use crate::error::{ErrorCode, ErrorCodeMixin};
+use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::KeyRole;
-use crate::proto::http_client;
-use crate::provider::caching_loader::ResolverError;
 use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::did_method::error::DidMethodProviderError;
 use crate::provider::key_storage::error::KeyStorageProviderError;
-use crate::provider::remote_entity_storage::RemoteEntityStorageError;
 use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::token_status_list::util::TokenError;
 use crate::repository::error::DataLayerError;
@@ -37,31 +34,30 @@ pub enum RevocationError {
 
     #[error("Bitstring error: `{0}`")]
     BitstringError(#[from] BitstringError),
-    #[error("Resolver error: `{0}`")]
-    ResolverError(#[from] ResolverError),
     #[error("Did method provider error: `{0}`")]
     DidMethodProviderError(#[from] DidMethodProviderError),
     #[error("Formatter error: `{0}`")]
     FormatterError(#[from] FormatterError),
     #[error("Key storage provider error: `{0}`")]
     KeyStorageProviderError(#[from] KeyStorageProviderError),
-    #[error("Remote entity storage error: `{0}`")]
-    RemoteEntityStorageError(#[from] RemoteEntityStorageError),
     #[error("Token error: `{0}`")]
     TokenError(#[from] TokenError),
-
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
-    #[error("HTTP client error: `{0}`")]
-    HttpClientError(#[from] http_client::Error),
     #[error("JSON error: `{0}`")]
     JsonError(#[from] serde_json::Error),
     #[error("Data layer error: `{0}`")]
     DataLayerError(#[from] DataLayerError),
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
 }
 
 impl ErrorCodeMixin for RevocationError {
     fn error_code(&self) -> ErrorCode {
-        ErrorCode::BR_0101
+        match self {
+            Self::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0101,
+        }
     }
 }

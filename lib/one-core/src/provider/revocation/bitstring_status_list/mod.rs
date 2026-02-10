@@ -14,6 +14,7 @@ use uuid::Uuid;
 use self::model::StatusPurpose;
 use self::resolver::StatusListCachingLoader;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -277,7 +278,8 @@ impl RevocationMethod for BitstringStatusList {
         let (content, media_type) = &self
             .caching_loader
             .get(list_url, self.resolver.clone(), force_refresh)
-            .await?;
+            .await
+            .error_while("getting bitstring status list")?;
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
         let response_content = String::from_utf8(response.content)?;

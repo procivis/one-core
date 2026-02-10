@@ -17,6 +17,7 @@ use strum::Display;
 use thiserror::Error;
 use time::OffsetDateTime;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::remote_entity_cache::RemoteEntityCacheEntry;
 
 pub mod db_storage;
@@ -85,4 +86,10 @@ pub enum RemoteEntityStorageError {
     Insert(String),
     #[error("Not updated")]
     NotUpdated,
+}
+
+impl ErrorCodeMixin for RemoteEntityStorageError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0354
+    }
 }

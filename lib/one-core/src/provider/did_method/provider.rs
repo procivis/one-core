@@ -21,6 +21,7 @@ use crate::config::core_config::{
     CacheEntitiesConfig, CacheEntityCacheType, CacheEntityConfig, CoreConfig, DidType, Fields,
 };
 use crate::config::{ConfigValidationError, core_config};
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -107,7 +108,8 @@ impl DidMethodProvider for DidMethodProviderImpl {
         let (content, _media_type) = self
             .caching_loader
             .get(did.as_str(), self.resolver.clone(), false)
-            .await?;
+            .await
+            .error_while("resolving did")?;
         let dto: DidDocumentDTO = serde_json::from_slice(&content)?;
         Ok(dto.into())
     }

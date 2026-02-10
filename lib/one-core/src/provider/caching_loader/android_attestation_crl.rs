@@ -6,8 +6,8 @@ use serde_with::skip_serializing_none;
 use time::{Duration, OffsetDateTime};
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
-use crate::provider::caching_loader::InvalidCachedValueError;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
 
 /// <https://developer.android.com/privacy-and-security/security-key-attestation#certificate_status>
@@ -44,8 +44,9 @@ impl AndroidAttestationCrlCache {
                 self.resolver.clone(),
                 false,
             )
-            .await?;
-        serde_json::from_slice(&crl).map_err(|e| InvalidCachedValueError::SerdeJson(e).into())
+            .await
+            .error_while("getting google android attestation certificate status")?;
+        Ok(serde_json::from_slice(&crl)?)
     }
 }
 
@@ -99,7 +100,14 @@ impl Resolver for AndroidAttestationCrlResolver {
         key: &str,
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let response = self.client.get(key).send().await?.error_for_status()?;
+        let response = self
+            .client
+            .get(key)
+            .send()
+            .await
+            .error_while("downloading Android attestation CRL")?
+            .error_for_status()
+            .error_while("downloading Android attestation CRL")?;
 
         let cache_control =
             response

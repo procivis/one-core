@@ -19,7 +19,9 @@ use tokio::sync::Mutex;
 use super::remote_entity_storage::{
     RemoteEntity, RemoteEntityStorage, RemoteEntityStorageError, RemoteEntityType,
 };
-use crate::proto::http_client;
+use crate::error::{
+    ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt, NestedError,
+};
 
 pub mod android_attestation_crl;
 pub mod json_ld_context;
@@ -30,7 +32,7 @@ pub mod x509_crl;
 
 #[async_trait]
 pub trait Resolver: Send + Sync {
-    type Error: From<RemoteEntityStorageError>;
+    type Error: ErrorCodeMixin;
 
     async fn do_resolve(
         &self,
@@ -41,42 +43,46 @@ pub trait Resolver: Send + Sync {
 
 #[derive(Debug, thiserror::Error)]
 pub enum CacheError {
-    #[error(transparent)]
-    Resolver(#[from] ResolverError),
+    #[error("Failed cached value serialization: {0}")]
+    SerdeJson(#[from] serde_json::Error),
+    #[error("Failed cache hashing: {0}")]
+    Hasher(#[from] one_crypto::HasherError),
 
-    #[error("Failed deserializing cached value: {0}")]
-    InvalidCachedValue(#[from] InvalidCachedValueError),
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for CacheError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0354,
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum ResolverError {
-    #[error("Http client error: {0}")]
-    HttpClient(#[from] http_client::Error),
-
     #[error("Invalid response: {0}")]
     InvalidResponse(String),
 
     #[error("Failed deserializing response body: {0}")]
     InvalidResponseBody(#[from] serde_json::Error),
 
-    #[error("Storage error: {0}")]
-    Storage(#[from] RemoteEntityStorageError),
-
-    #[error("Caching loader error: {0}")]
-    CachingLoader(#[from] CachingLoaderError),
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error(transparent)]
-pub enum InvalidCachedValueError {
-    SerdeJson(#[from] serde_json::Error),
-    Hasher(#[from] one_crypto::HasherError),
-}
-
-#[derive(Clone, Debug, thiserror::Error)]
-pub enum CachingLoaderError {
     #[error("Unexpected resolve result")]
     UnexpectedResolveResult,
+
+    #[error(transparent)]
+    Nested(#[from] NestedError),
+}
+
+impl ErrorCodeMixin for ResolverError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::Nested(nested) => nested.error_code(),
+            _ => ErrorCode::BR_0354,
+        }
+    }
 }
 
 pub enum ResolveResult {
@@ -88,7 +94,6 @@ pub enum ResolveResult {
     LastModificationDateUpdate(OffsetDateTime),
 }
 
-#[derive(Clone)]
 pub struct CachingLoader<E = ResolverError> {
     pub remote_entity_type: RemoteEntityType,
     pub storage: Arc<dyn RemoteEntityStorage>,
@@ -102,7 +107,21 @@ pub struct CachingLoader<E = ResolverError> {
     _marker: std::marker::PhantomData<E>,
 }
 
-impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader<E> {
+impl<E> Clone for CachingLoader<E> {
+    fn clone(&self) -> Self {
+        Self {
+            remote_entity_type: self.remote_entity_type,
+            storage: self.storage.clone(),
+            cache_size: self.cache_size,
+            cache_refresh_timeout: self.cache_refresh_timeout,
+            refresh_after: self.refresh_after,
+            clean_old_mutex: self.clean_old_mutex.clone(),
+            _marker: Default::default(),
+        }
+    }
+}
+
+impl<E: From<NestedError> + ErrorCodeMixin> CachingLoader<E> {
     pub fn new(
         remote_entity_type: RemoteEntityType,
         storage: Arc<dyn RemoteEntityStorage>,
@@ -117,7 +136,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
             cache_refresh_timeout,
             refresh_after,
             clean_old_mutex: Arc::new(Mutex::new(())),
-            _marker: std::marker::PhantomData,
+            _marker: Default::default(),
         }
     }
 
@@ -127,7 +146,11 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
         resolver: Arc<dyn Resolver<Error = E>>,
         force_refresh: bool,
     ) -> Result<(Vec<u8>, Option<String>), E> {
-        let cached_entry_opt = self.storage.get_by_key(url).await?;
+        let cached_entry_opt = self
+            .storage
+            .get_by_key(url)
+            .await
+            .error_while("getting cache key")?;
 
         let result = {
             if let Some(cached_entry) = cached_entry_opt {
@@ -155,7 +178,11 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
     }
 
     pub async fn get_if_cached(&self, key: &str) -> Result<Option<Vec<u8>>, E> {
-        let entity = self.storage.get_by_key(key).await?;
+        let entity = self
+            .storage
+            .get_by_key(key)
+            .await
+            .error_while("checking cache key")?;
 
         Ok(entity.map(|v| v.value))
     }
@@ -217,7 +244,7 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                         "Cache entry deleted while updating. It will be recreated on next usage."
                     );
                 }
-                _ => return Err(error.into()),
+                _ => return Err(error.error_while("inserting cache item").into()),
             }
         }
 
@@ -257,7 +284,9 @@ impl<E: From<CachingLoaderError> + From<RemoteEntityStorageError>> CachingLoader
                 Ok((content, media_type))
             }
             ResolveResult::LastModificationDateUpdate(_) => {
-                Err(CachingLoaderError::UnexpectedResolveResult.into())
+                Err(ResolverError::UnexpectedResolveResult
+                    .error_while("creating cache entry")
+                    .into())
             }
         }
     }

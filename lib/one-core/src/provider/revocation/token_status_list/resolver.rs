@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::caching_loader::{CachingLoader, ResolveResult, Resolver, ResolverError};
 
@@ -33,8 +34,10 @@ impl Resolver for StatusListResolver {
             .get(url)
             .header("Accept", "application/statuslist+jwt")
             .send()
-            .await?
-            .error_for_status()?;
+            .await
+            .error_while("downloading token status list")?
+            .error_for_status()
+            .error_while("downloading token status list")?;
         let content_type = response
             .header_get("Content-Type")
             .ok_or_else(|| {

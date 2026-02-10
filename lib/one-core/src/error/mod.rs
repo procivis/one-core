@@ -782,6 +782,9 @@ pub enum ErrorCode {
 
     #[strum(message = "BLE failure")]
     BR_0353,
+
+    #[strum(message = "Cache failure")]
+    BR_0354,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

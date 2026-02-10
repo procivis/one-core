@@ -2,9 +2,8 @@ use std::sync::Arc;
 
 use time::OffsetDateTime;
 
-use super::{
-    CacheError, CachingLoader, CachingLoaderError, ResolveResult, Resolver, ResolverError,
-};
+use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::proto::http_client::reqwest_client::ReqwestClient;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -35,7 +34,11 @@ impl X509CrlCache {
     }
 
     pub async fn get(&self, key: &str) -> Result<Vec<u8>, CacheError> {
-        let (crl, _) = self.inner.get(key, self.resolver.clone(), false).await?;
+        let (crl, _) = self
+            .inner
+            .get(key, self.resolver.clone(), false)
+            .await
+            .error_while("getting CRL")?;
 
         Ok(crl)
     }
@@ -64,9 +67,17 @@ impl Resolver for X509CrlResolver {
         key: &str,
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let content = self.client.get(key).send().await?.error_for_status()?.body;
+        let content = self
+            .client
+            .get(key)
+            .send()
+            .await
+            .error_while("downloading CRL")?
+            .error_for_status()
+            .error_while("downloading CRL")?
+            .body;
         let (_, crl) = x509_parser::parse_x509_crl(&content)
-            .map_err(|_| CachingLoaderError::UnexpectedResolveResult)?;
+            .map_err(|e| ResolverError::InvalidResponse(e.to_string()))?;
         let expiry_date = crl.next_update().map(|time| time.to_datetime());
 
         Ok(ResolveResult::NewValue {

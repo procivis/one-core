@@ -6,10 +6,9 @@ use one_crypto::Hasher;
 use one_crypto::hasher::sha256::SHA256;
 use time::{Duration, OffsetDateTime};
 
-use super::{
-    CacheError, CachingLoader, InvalidCachedValueError, ResolveResult, Resolver, ResolverError,
-};
+use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
 use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
@@ -93,15 +92,16 @@ impl VctTypeMetadataFetcher for VctTypeMetadataCache {
         if let Ok(url) = url::Url::parse(vct)
             && (url.scheme() == "http" || url.scheme() == "https")
         {
-            let (bytes, _) = self.inner.get(vct, self.resolver.clone(), false).await?;
+            let (bytes, _) = self
+                .inner
+                .get(vct, self.resolver.clone(), false)
+                .await
+                .error_while("getting VCT")?;
 
-            let hash_base64 = SHA256
-                .hash_base64(&bytes)
-                .map_err(Into::<InvalidCachedValueError>::into)?;
+            let hash_base64 = SHA256.hash_base64(&bytes)?;
 
             return Ok(Some(SdJwtVcTypeMetadataCacheItem {
-                metadata: serde_json::from_slice(&bytes)
-                    .map_err(Into::<InvalidCachedValueError>::into)?,
+                metadata: serde_json::from_slice(&bytes)?,
                 integrity: Some(format!("sha256-{hash_base64}")),
             }));
         }
@@ -110,11 +110,11 @@ impl VctTypeMetadataFetcher for VctTypeMetadataCache {
         let metadata: Option<SdJwtVcTypeMetadataResponseDTO> = self
             .inner
             .get_if_cached(vct)
-            .await?
+            .await
+            .error_while("getting VCT from cache")?
             .as_deref()
             .map(serde_json::from_slice)
-            .transpose()
-            .map_err(Into::<InvalidCachedValueError>::into)?;
+            .transpose()?;
 
         Ok(metadata.map(|metadata| SdJwtVcTypeMetadataCacheItem {
             metadata,
@@ -142,7 +142,14 @@ impl Resolver for VctTypeMetadataResolver {
         key: &str,
         _last_modified: Option<&OffsetDateTime>,
     ) -> Result<ResolveResult, Self::Error> {
-        let response = self.client.get(key).send().await?.error_for_status()?;
+        let response = self
+            .client
+            .get(key)
+            .send()
+            .await
+            .error_while("downloading VCT")?
+            .error_for_status()
+            .error_while("downloading VCT")?;
 
         serde_json::from_slice::<SdJwtVcTypeMetadataResponseDTO>(&response.body)?;
 

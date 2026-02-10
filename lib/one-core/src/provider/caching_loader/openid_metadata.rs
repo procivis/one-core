@@ -6,8 +6,8 @@ use time::{Duration, OffsetDateTime};
 
 use super::{CacheError, CachingLoader, ResolveResult, Resolver, ResolverError};
 use crate::config::core_config::{CacheEntityCacheType, CacheEntityConfig, CoreConfig};
+use crate::error::ContextWithErrorCode;
 use crate::proto::http_client::HttpClient;
-use crate::provider::caching_loader::InvalidCachedValueError;
 use crate::provider::remote_entity_storage::db_storage::DbStorage;
 use crate::provider::remote_entity_storage::in_memory::InMemoryStorage;
 use crate::provider::remote_entity_storage::{RemoteEntityStorage, RemoteEntityType};
@@ -22,8 +22,7 @@ pub trait OpenIDMetadataFetcher: Send + Sync {
 impl<'a> dyn OpenIDMetadataFetcher + 'a {
     pub(crate) async fn fetch<T: DeserializeOwned>(&self, url: &str) -> Result<T, CacheError> {
         let content = self.get(url).await?;
-        serde_json::from_slice(&content)
-            .map_err(|e| CacheError::InvalidCachedValue(InvalidCachedValueError::SerdeJson(e)))
+        Ok(serde_json::from_slice(&content)?)
     }
 }
 
@@ -56,7 +55,11 @@ impl OpenIDMetadataCache {
 #[async_trait::async_trait]
 impl OpenIDMetadataFetcher for OpenIDMetadataCache {
     async fn get(&self, key: &str) -> Result<Vec<u8>, CacheError> {
-        let (metadata, _) = self.inner.get(key, self.resolver.clone(), false).await?;
+        let (metadata, _) = self
+            .inner
+            .get(key, self.resolver.clone(), false)
+            .await
+            .error_while("getting OpenID metadata")?;
 
         Ok(metadata)
     }
@@ -86,8 +89,10 @@ impl Resolver for OpenIDMetadataResolver {
             .get(key)
             .header("Accept", "application/json")
             .send()
-            .await?
-            .error_for_status()?;
+            .await
+            .error_while("downloading OpenID metadata")?
+            .error_for_status()
+            .error_while("downloading OpenID metadata")?;
 
         let media_type = response.header_get("content-type").map(|t| t.to_owned());
         let content = response.body;

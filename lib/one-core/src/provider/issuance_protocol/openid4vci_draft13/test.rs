@@ -19,6 +19,7 @@ use wiremock::matchers::{body_json, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 use crate::config::core_config::{CoreConfig, Fields, FormatType, KeyAlgorithmType};
+use crate::error::ErrorCodeMixinExt;
 use crate::model::certificate::{Certificate, CertificateState};
 use crate::model::claim::Claim;
 use crate::model::claim_schema::ClaimSchema;
@@ -36,8 +37,8 @@ use crate::proto::identifier_creator::{
     IdentifierRole, MockIdentifierCreator, RemoteIdentifierRelation,
 };
 use crate::provider::blob_storage_provider::MockBlobStorageProvider;
+use crate::provider::caching_loader::ResolverError;
 use crate::provider::caching_loader::openid_metadata::MockOpenIDMetadataFetcher;
-use crate::provider::caching_loader::{CacheError, ResolverError};
 use crate::provider::credential_formatter::MockCredentialFormatter;
 use crate::provider::credential_formatter::model::{
     CredentialSubject, DetailCredential, IdentifierDetails, MockSignatureProvider,
@@ -1514,9 +1515,9 @@ async fn inner_test_handle_invitation_credential_by_ref_success(
             )))
             .once()
             .returning(|_| {
-                Err(CacheError::Resolver(ResolverError::InvalidResponse(
-                    "".to_string(),
-                )))
+                Err(ResolverError::InvalidResponse("".to_string())
+                    .error_while("checking cache")
+                    .into())
             });
     }
 
@@ -1670,9 +1671,9 @@ async fn inner_continue_issuance_test(
             .with(eq(auth_server_metadata_url))
             .once()
             .returning(|_| {
-                Err(CacheError::Resolver(ResolverError::InvalidResponse(
-                    "".to_string(),
-                )))
+                Err(ResolverError::InvalidResponse("".to_string())
+                    .error_while("checking cache")
+                    .into())
             });
     }
 

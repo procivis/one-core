@@ -17,6 +17,7 @@ use uuid::Uuid;
 use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
 use crate::config::core_config::{FormatType, RevocationType};
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -292,7 +293,8 @@ impl RevocationMethod for TokenStatusList {
         let (content, _media_type) = &self
             .caching_loader
             .get(list_url, self.resolver.clone(), force_refresh)
-            .await?;
+            .await
+            .error_while("getting token status list")?;
 
         let response: StatusListCacheEntry = serde_json::from_slice(content)?;
 
