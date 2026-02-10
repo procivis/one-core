@@ -357,7 +357,6 @@ impl CredentialFormatter for SDJWTVCFormatter {
         let mut features = vec![
             Features::SelectiveDisclosure,
             Features::SupportsSchemaId,
-            Features::RequiresSchemaIdForExternal,
             Features::SupportsCredentialDesign,
         ];
 
@@ -422,20 +421,13 @@ impl CredentialFormatter for SDJWTVCFormatter {
         request: &CreateCredentialSchemaRequestDTO,
         core_base_url: &str,
     ) -> Result<String, FormatterError> {
-        Ok(
-            match (request.external_schema, request.schema_id.as_ref()) {
-                (_, Some(schema_id)) => schema_id.to_string(),
-                (false, None) => format!(
-                    "{core_base_url}/ssi/vct/v1/{}/{id}",
-                    request.organisation_id
-                ),
-                _ => {
-                    return Err(FormatterError::Failed(
-                        "Invalid combination schema_id/external".to_string(),
-                    ));
-                }
-            },
-        )
+        Ok(match request.schema_id.as_ref() {
+            Some(schema_id) => schema_id.to_string(),
+            None => format!(
+                "{core_base_url}/ssi/vct/v1/{}/{id}",
+                request.organisation_id
+            ),
+        })
     }
 
     fn get_metadata_claims(&self) -> Vec<MetadataClaimSchema> {

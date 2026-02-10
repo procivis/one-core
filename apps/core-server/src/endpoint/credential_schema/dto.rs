@@ -269,11 +269,10 @@ pub(crate) struct CreateCredentialSchemaRequestRestDTO {
     #[serde(default)]
     #[try_into(infallible)]
     pub allow_suspension: Option<bool>,
-    /// If `true`, credentials issued using this schema will use the specified `schema_id` directly.
-    /// If `false`, a Procivis credential schema will be created for the given `schema_id`.
     #[serde(default)]
-    #[try_into(infallible)]
-    pub external_schema: bool,
+    #[try_into(skip)]
+    #[deprecated]
+    pub external_schema: Option<bool>,
     #[serde(default)]
     #[try_into(infallible)]
     pub requires_wallet_instance_attestation: bool,

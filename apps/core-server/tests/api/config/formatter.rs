@@ -68,7 +68,6 @@ async fn test_expected_format_features() {
         json!([
             "SELECTIVE_DISCLOSURE",
             "SUPPORTS_SCHEMA_ID",
-            "REQUIRES_SCHEMA_ID_FOR_EXTERNAL",
             "SUPPORTS_CREDENTIAL_DESIGN",
             "REQUIRES_PRESENTATION_ENCRYPTION",
             "SUPPORTS_COMBINED_PRESENTATION",
@@ -89,7 +88,6 @@ async fn test_expected_format_features() {
         json!([
             "SELECTIVE_DISCLOSURE",
             "SUPPORTS_SCHEMA_ID",
-            "REQUIRES_SCHEMA_ID_FOR_EXTERNAL",
             "SUPPORTS_CREDENTIAL_DESIGN",
             "SUPPORTS_COMBINED_PRESENTATION",
             "SUPPORTS_TX_CODE"

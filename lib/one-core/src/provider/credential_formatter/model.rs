@@ -400,7 +400,6 @@ pub enum Features {
     SupportsCredentialDesign,
     /// custom schemaId can be specified by the user during creation
     SupportsSchemaId,
-    RequiresSchemaIdForExternal,
     RequiresPresentationEncryption,
     SupportsCombinedPresentation,
     SupportsTxCode,

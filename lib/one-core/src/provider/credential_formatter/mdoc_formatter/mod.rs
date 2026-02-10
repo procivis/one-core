@@ -357,7 +357,6 @@ impl CredentialFormatter for MdocFormatter {
             features: vec![
                 Features::SelectiveDisclosure,
                 Features::SupportsSchemaId,
-                Features::RequiresSchemaIdForExternal,
                 Features::SupportsCredentialDesign,
                 Features::RequiresPresentationEncryption,
                 Features::SupportsCombinedPresentation,

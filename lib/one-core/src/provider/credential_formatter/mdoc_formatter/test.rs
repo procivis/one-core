@@ -901,7 +901,6 @@ fn test_credential_schema_id() {
         name: "".to_string(),
         format: "".into(),
         revocation_method: None,
-        external_schema: false,
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
         key_storage_security: None,

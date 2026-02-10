@@ -468,8 +468,7 @@ fn validate_schema_id(
         ..
     } = formatter.get_capabilities();
 
-    let schema_id_required =
-        features.contains(&Features::RequiresSchemaIdForExternal) && request.external_schema;
+    let schema_id_required = !allowed_schema_ids.is_empty();
 
     if features.contains(&Features::SupportsSchemaId) || schema_id_required {
         if let Some(schema_id) = request.schema_id.as_ref() {

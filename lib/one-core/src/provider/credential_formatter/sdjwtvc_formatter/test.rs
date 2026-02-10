@@ -9,7 +9,7 @@ use one_crypto::hasher::sha256::SHA256;
 use one_crypto::signer::eddsa::{EDDSASigner, KeyPair};
 use one_crypto::{CryptoProviderImpl, Hasher, MockCryptoProvider, MockHasher, Signer};
 use serde_json::json;
-use shared_types::{CredentialSchemaId, DidValue, OrganisationId};
+use shared_types::{DidValue, OrganisationId};
 use similar_asserts::assert_eq;
 use time::{Duration, OffsetDateTime};
 use uuid::Uuid;
@@ -854,7 +854,7 @@ async fn test_extract_credentials_with_cnf_no_subject() {
 }
 
 #[test]
-fn test_schema_id_internal() {
+fn test_schema_id() {
     let formatter = SDJWTVCFormatter::new(
         Params {
             leeway: 45u64,
@@ -880,7 +880,6 @@ fn test_schema_id_internal() {
         revocation_method: None,
         organisation_id: OrganisationId::from(Uuid::new_v4()),
         claims: vec![],
-        external_schema: false,
         key_storage_security: None,
         layout_type: LayoutType::Card,
         layout_properties: None,
@@ -900,52 +899,6 @@ fn test_schema_id_internal() {
             request_dto.organisation_id
         )
     )
-}
-
-#[test]
-fn test_schema_id_external() {
-    let formatter = SDJWTVCFormatter::new(
-        Params {
-            leeway: 45u64,
-            embed_layout_properties: false,
-            swiyu_mode: false,
-            sd_array_elements: true,
-            ecosystem_schema_ids: vec![],
-            expiration_time: Duration::days(1),
-        },
-        Arc::new(MockCryptoProvider::default()),
-        Arc::new(MockDidMethodProvider::new()),
-        Arc::new(MockKeyAlgorithmProvider::new()),
-        Arc::new(MockVctTypeMetadataFetcher::new()),
-        Arc::new(MockCertificateValidator::new()),
-        generic_config().core.datatype,
-        Arc::new(MockHttpClient::new()),
-        Arc::new(MockDataTypeProvider::new()),
-    );
-    let vct = "https://example.com/vct/xyz%20some_vct_type";
-    let request_dto = CreateCredentialSchemaRequestDTO {
-        name: "".to_string(),
-        format: "".into(),
-        revocation_method: None,
-        organisation_id: OrganisationId::from(Uuid::new_v4()),
-        claims: vec![],
-        external_schema: true,
-        key_storage_security: None,
-        layout_type: LayoutType::Card,
-        layout_properties: None,
-        schema_id: Some(vct.to_string()),
-        allow_suspension: None,
-        requires_wallet_instance_attestation: false,
-        transaction_code: None,
-    };
-
-    let result = formatter.credential_schema_id(
-        CredentialSchemaId::from(Uuid::new_v4()),
-        &request_dto,
-        "https://core.base.com",
-    );
-    assert!(result.is_ok());
-    assert_eq!(result.unwrap(), vct)
 }
 
 #[tokio::test]

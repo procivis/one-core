@@ -130,7 +130,6 @@ pub struct CreateCredentialSchemaRequestDTO {
     pub organisation_id: OrganisationId,
     pub claims: Vec<CredentialClaimSchemaRequestDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
-    pub external_schema: bool,
     pub layout_type: LayoutType,
     pub layout_properties: Option<CredentialSchemaLayoutPropertiesRequestDTO>,
     pub schema_id: Option<String>,

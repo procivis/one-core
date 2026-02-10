@@ -733,7 +733,6 @@ fn test_schema_id() {
         format: "".into(),
         revocation_method: None,
         organisation_id: OrganisationId::from(Uuid::new_v4()),
-        external_schema: false,
         claims: vec![],
         key_storage_security: None,
         layout_type: LayoutType::Card,
