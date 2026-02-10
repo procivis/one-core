@@ -17,20 +17,31 @@ use uuid::Uuid;
 #[into(CreateSignatureRequestDTO)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub(crate) struct CreateSignatureRequestRestDTO {
-    /// Issuer ID.
+    /// Identifier ID of the signing entity. Must be a CA identifier for
+    /// X.509 and Access Certificates, or a Certificate identifier for
+    /// Registration Certificates. Ensure the identifier is registered
+    /// on the appropriate trust lists.
     pub issuer: IdentifierId,
-    /// Preferred key ID; leave empty for automatic selection.
+    /// Specific key to use from the issuer identifier. Omit for
+    /// automatic selection.
     pub issuer_key: Option<KeyId>,
-    /// Preferred certificate ID; leave empty for automatic selection.
+    /// Specific certificate to use from the issuer identifier. Omit
+    /// for automatic selection.
     pub issuer_certificate: Option<CertificateId>,
-    /// Signature provider to use for creating the signature.
+    /// Type of signature to create. This must reference a configured
+    /// `signer` object.
     #[modify_schema(field = signer)]
     pub signer: String,
-    /// Signer-specific request data.
+    /// Signer-specific request data. Structure varies based on signer
+    /// value. See the Signatures guide for complete specifications.
     pub data: serde_json::Value,
-
+    /// Pass nothing to start validity now or choose a datetime
+    /// in the future.
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_start: Option<OffsetDateTime>,
+    /// Pass nothing to set the maximum validity period allowed
+    /// by the configuration or choose a datetime with a shorter
+    /// validity period.
     #[serde(default, with = "time::serde::rfc3339::option")]
     pub validity_end: Option<OffsetDateTime>,
 }
