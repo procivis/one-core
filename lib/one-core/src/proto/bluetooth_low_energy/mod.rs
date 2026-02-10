@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
+
 pub(crate) mod ble_resource;
 pub mod low_level;
 
@@ -46,4 +48,29 @@ pub enum BleError {
     ServerNotRunning,
     #[error("Unknown BLE error: {reason}")]
     Unknown { reason: String },
+}
+
+impl ErrorCodeMixin for BleError {
+    fn error_code(&self) -> ErrorCode {
+        match self {
+            Self::AdapterNotEnabled => ErrorCode::BR_0350,
+            Self::NotSupported => ErrorCode::BR_0351,
+            Self::NotAuthorized => ErrorCode::BR_0352,
+
+            Self::ScanAlreadyStarted
+            | Self::ScanNotStarted
+            | Self::BroadcastAlreadyStarted
+            | Self::BroadcastNotStarted
+            | Self::AnotherOperationInProgress
+            | Self::WriteDataTooLong
+            | Self::DeviceAddressNotFound { .. }
+            | Self::ServiceNotFound { .. }
+            | Self::CharacteristicNotFound { .. }
+            | Self::InvalidUUID { .. }
+            | Self::DeviceNotConnected { .. }
+            | Self::InvalidCharacteristicOperation { .. }
+            | Self::ServerNotRunning
+            | Self::Unknown { .. } => ErrorCode::BR_0353,
+        }
+    }
 }

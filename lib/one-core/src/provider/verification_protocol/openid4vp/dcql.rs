@@ -820,7 +820,7 @@ fn select_claims(
                         },
                     ))
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<Result<Vec<_>, VerificationProtocolError>>()?,
         );
     }
 
@@ -874,7 +874,7 @@ fn select_claims(
                         },
                     );
                 };
-                Ok(())
+                Ok::<_, VerificationProtocolError>(())
             })?;
         } else if claim_filter.required {
             // no match but claim is required --> add to missing claims (mark the credential as inapplicable)
@@ -969,7 +969,7 @@ fn get_matching_claims<'a>(
             claims_towards_root.insert(parent_claim);
             current_path = parent_path;
         }
-        Ok(())
+        Ok::<_, VerificationProtocolError>(())
     })?;
 
     // branches of nodes that are not selectively disclosable

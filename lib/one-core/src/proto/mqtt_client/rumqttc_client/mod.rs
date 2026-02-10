@@ -14,7 +14,7 @@ use tokio::sync::{RwLock, broadcast};
 use tracing::warn;
 use uuid::Uuid;
 
-use super::{MqttClient, MqttTopic};
+use super::{Error, MqttClient, MqttTopic};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Envelope {
@@ -59,7 +59,7 @@ pub struct RumqttcClient {
 }
 
 impl RumqttcClient {
-    fn subscribe_to_broker(&self, broker_addr: &BrokerAddr) -> anyhow::Result<Broker> {
+    fn subscribe_to_broker(&self, broker_addr: &BrokerAddr) -> Result<Broker, Error> {
         const PACKET_SIZE_LIMIT: usize = 30 * 1024 * 1024; // 30MB
         let id = Uuid::new_v4();
 
@@ -70,7 +70,9 @@ impl RumqttcClient {
         );
         mqttoptions
             .set_transport(Transport::Tls(TlsConfiguration::Rustls(Arc::new(
-                ClientConfig::with_platform_verifier().context("failed to get TLS config")?,
+                ClientConfig::with_platform_verifier()
+                    .context("failed to get TLS config")
+                    .map_err(Error::SubscriptionError)?,
             ))))
             .set_max_packet_size(PACKET_SIZE_LIMIT, PACKET_SIZE_LIMIT);
 
@@ -133,7 +135,7 @@ impl MqttClient for RumqttcClient {
         host: String,
         port: u16,
         topic: String,
-    ) -> anyhow::Result<Box<dyn MqttTopic>> {
+    ) -> Result<Box<dyn MqttTopic>, Error> {
         let broker_addr = BrokerAddr { host, port };
 
         let mut brokers = self.brokers.write().await;
@@ -156,7 +158,8 @@ impl MqttClient for RumqttcClient {
                     .client
                     .subscribe(topic.clone(), QoS::AtMostOnce)
                     .await
-                    .context("failed to subscribe")?;
+                    .context("failed to subscribe")
+                    .map_err(Error::SubscriptionError)?;
 
                 let (tx, rx) = broadcast::channel(16);
                 vacant_entry.insert(Topic {
@@ -243,13 +246,14 @@ impl Drop for RumqttcTopic {
 #[async_trait::async_trait]
 impl MqttTopic for RumqttcTopic {
     #[tracing::instrument(level = "debug", skip(self, payload), err(Debug))]
-    async fn send(&self, payload: Vec<u8>, enveloped: bool) -> anyhow::Result<()> {
+    async fn send(&self, payload: Vec<u8>, enveloped: bool) -> Result<(), Error> {
         let msg = if enveloped {
             bincode::serialize(&Envelope {
                 sender_id: self.sender_id,
                 payload,
             })
-            .context("failed to serialize")?
+            .context("failed to serialize")
+            .map_err(Error::SendingError)?
         } else {
             payload
         };
@@ -258,13 +262,15 @@ impl MqttTopic for RumqttcTopic {
             .publish(&self.topic_name, QoS::AtMostOnce, false, msg)
             .await
             .context("failed to send mqtt message")
+            .map_err(Error::SendingError)
     }
 
     #[tracing::instrument(level = "debug", skip(self), err(Debug))]
-    async fn recv(&mut self) -> anyhow::Result<(Vec<u8>, bool)> {
+    async fn recv(&mut self) -> Result<(Vec<u8>, bool), Error> {
         self.incoming
             .recv()
             .await
             .context("failed to recv mqtt message")
+            .map_err(Error::SubscriptionError)
     }
 }

@@ -167,7 +167,7 @@ pub(crate) async fn get_presentation_definition_with_local_credentials(
                         required: !requested_claim.optional.is_some_and(|optional| optional),
                     })
                 })
-                .collect::<anyhow::Result<Vec<_>, _>>()?,
+                .collect::<anyhow::Result<Vec<_>, VerificationProtocolError>>()?,
             applicable_credentials: vec![],
             inapplicable_credentials: vec![],
             validity_credential_nbf,

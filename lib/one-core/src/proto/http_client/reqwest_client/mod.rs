@@ -69,25 +69,18 @@ impl HttpClient for ReqwestClient {
             builder = builder.body(body);
         }
 
-        let response = builder
-            .send()
-            .await
-            .map_err(|e| Error::HttpError(e.to_string()))?;
+        let response = builder.send().await?;
 
         let headers = response
             .headers()
             .iter()
             .map(|(k, v)| {
-                let value = v.to_str().map_err(|e| Error::Other(e.to_string()))?;
-
+                let value = v.to_str()?;
                 Ok((k.to_string(), value.to_string()))
             })
             .collect::<Result<Headers, Error>>()?;
         let status_code = response.status().as_u16();
-        let body = response
-            .bytes()
-            .await
-            .map_err(|e| Error::HttpError(e.to_string()))?;
+        let body = response.bytes().await?;
 
         Ok(Response {
             body: body.to_vec(),
@@ -102,9 +95,8 @@ fn to_header_map(headers: HashMap<String, String>) -> Result<HeaderMap, Error> {
     headers
         .into_iter()
         .map(|(k, v)| {
-            let name = HeaderName::from_str(k.as_str()).map_err(|e| Error::Other(e.to_string()))?;
-            let value =
-                HeaderValue::from_str(v.as_str()).map_err(|e| Error::Other(e.to_string()))?;
+            let name = HeaderName::from_str(k.as_str())?;
+            let value = HeaderValue::from_str(v.as_str())?;
 
             Ok((name, value))
         })

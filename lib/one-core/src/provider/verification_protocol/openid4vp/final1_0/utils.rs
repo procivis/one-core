@@ -445,16 +445,18 @@ pub(crate) async fn interaction_data_from_openid4vp_query(
                     ));
                 }
 
-                Ok(retrieve_authorization_params_by_reference(
-                    query_params,
-                    request_uri,
-                    client,
-                    did_method_provider,
-                    key_algorithm_provider,
-                    certificate_validator,
-                    params,
+                Ok::<_, VerificationProtocolError>(
+                    retrieve_authorization_params_by_reference(
+                        query_params,
+                        request_uri,
+                        client,
+                        did_method_provider,
+                        key_algorithm_provider,
+                        certificate_validator,
+                        params,
+                    )
+                    .await?,
                 )
-                .await?)
             }
             (None, Some(request)) => {
                 let authorization_request = serde_json::from_str(request).map_err(|e| {

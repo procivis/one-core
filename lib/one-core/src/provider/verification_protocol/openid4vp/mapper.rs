@@ -120,7 +120,7 @@ pub(super) fn presentation_definition_from_interaction_data(
                         validity_credential_nbf: group.validity_credential_nbf,
                     })
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<Result<Vec<_>, VerificationProtocolError>>()?,
         }],
         credentials: credential_model_to_credential_dto(convert_inner(credentials), config)?,
     })
@@ -348,7 +348,7 @@ fn create_open_id_for_vp_presentation_definition_input_descriptor(
                 intent_to_retain,
             })
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, VerificationProtocolError>>()?;
 
     Ok(OpenID4VPPresentationDefinitionInputDescriptor {
         id,

@@ -761,6 +761,27 @@ pub enum ErrorCode {
 
     #[strum(message = "Invalid transaction code description length")]
     BR_0346,
+
+    #[strum(message = "Remote HTTP request failed")]
+    BR_0347,
+
+    #[strum(message = "HTTP request failure")]
+    BR_0348,
+
+    #[strum(message = "MQTT failure")]
+    BR_0349,
+
+    #[strum(message = "BLE adapter not enabled")]
+    BR_0350,
+
+    #[strum(message = "BLE not supported")]
+    BR_0351,
+
+    #[strum(message = "BLE permission declined")]
+    BR_0352,
+
+    #[strum(message = "BLE failure")]
+    BR_0353,
 }
 
 pub trait ErrorCodeMixin: Error + Send + Sync + 'static {

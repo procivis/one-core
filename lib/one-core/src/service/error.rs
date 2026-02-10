@@ -1091,23 +1091,6 @@ impl ErrorCodeMixin for IssuanceProtocolError {
     }
 }
 
-impl ErrorCodeMixin for VerificationProtocolError {
-    fn error_code(&self) -> ErrorCode {
-        match self {
-            Self::Failed(_) => ErrorCode::BR_0062,
-            Self::Transport(_) => ErrorCode::BR_0086,
-            Self::JsonError(_) => ErrorCode::BR_0062,
-            Self::OperationNotSupported => ErrorCode::BR_0062,
-            Self::InvalidRequest(_) => ErrorCode::BR_0085,
-            Self::Disabled(_) => ErrorCode::BR_0085,
-            Self::Other(_) => ErrorCode::BR_0062,
-            Self::StorageAccessError(_) => ErrorCode::BR_0062,
-            Self::InvalidDcqlQueryOrPresentationDefinition(_) => ErrorCode::BR_0083,
-            Self::DcqlError(_) => ErrorCode::BR_0085,
-        }
-    }
-}
-
 impl ErrorCodeMixin for FormatterError {
     fn error_code(&self) -> ErrorCode {
         match self {

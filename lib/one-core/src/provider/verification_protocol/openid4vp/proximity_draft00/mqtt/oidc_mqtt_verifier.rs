@@ -13,6 +13,7 @@ use url::Url;
 use super::model::{MQTTOpenID4VPInteractionDataVerifier, MQTTVerifierProtocolData};
 use super::{ConfigParams, SubscriptionHandle, extract_host_and_port};
 use crate::config::core_config::TransportType;
+use crate::error::ContextWithErrorCode;
 use crate::model::proof::Proof;
 use crate::proto::mqtt_client::{MqttClient, MqttTopic};
 use crate::provider::verification_protocol::error::VerificationProtocolError;
@@ -175,7 +176,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             .identify
             .recv()
             .await
-            .map_err(VerificationProtocolError::Transport)?;
+            .error_while("connecting to wallet")?;
         let identity_request =
             IdentityRequest::parse(identify_bytes).map_err(VerificationProtocolError::Transport)?;
         let (encryption_key, decryption_key) = key_agreement
@@ -202,7 +203,8 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
         self.presentation_definition
             .send(bytes, context.enveloping)
             .await
-            .map_err(VerificationProtocolError::Transport)
+            .error_while("sending presentation request")?;
+        Ok(())
     }
 
     async fn receive_presentation(
@@ -216,7 +218,7 @@ impl ProximityVerifierTransport for MqttVerifierTransport {
             }
             response = self.accept.recv() => response
         }
-        .map_err(VerificationProtocolError::Transport)?;
+        .error_while("receiving presentation")?;
 
         if enveloped != context.enveloping {
             tracing::warn!(
