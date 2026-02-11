@@ -14,7 +14,7 @@ use uuid::Uuid;
 use self::model::StatusPurpose;
 use self::resolver::StatusListCachingLoader;
 use crate::config::core_config::{KeyAlgorithmType, RevocationType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::model::certificate::Certificate;
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -33,7 +33,6 @@ use crate::proto::http_client::HttpClient;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::credential_formatter::provider::CredentialFormatterProvider;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
@@ -201,7 +200,8 @@ impl RevocationMethod for BitstringStatusList {
                 &self.config_id,
                 &Default::default(),
             )
-            .await?
+            .await
+            .error_while("getting revocation list")?
             .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
                 credential.id,
                 issuer_identifier.id,
@@ -214,12 +214,14 @@ impl RevocationMethod for BitstringStatusList {
                     status: Some(new_state.into()),
                 },
             )
-            .await?;
+            .await
+            .error_while("updating revocation list entry")?;
 
         let current_entries = self
             .revocation_list_repository
             .get_entries(current_list.id)
-            .await?;
+            .await
+            .error_while("getting revocation list entries")?;
 
         let encoded_list = generate_bitstring_from_entries(current_entries, purpose).await?;
 
@@ -237,7 +239,8 @@ impl RevocationMethod for BitstringStatusList {
 
         self.revocation_list_repository
             .update_formatted_list(&current_list.id, list_credential.into_bytes())
-            .await?;
+            .await
+            .error_while("updating revocation list")?;
 
         Ok(())
     }
@@ -311,7 +314,8 @@ impl RevocationMethod for BitstringStatusList {
         let status_credential = self
             .get_formatter_for_parsing(content_type, is_bbs)?
             .extract_credentials(&response_content, None, key_verification, None)
-            .await?;
+            .await
+            .error_while("parsing status list")?;
 
         let encoded_list = status_credential
             .claims
@@ -322,7 +326,9 @@ impl RevocationMethod for BitstringStatusList {
                 "Missing encodedList in status credential".to_string(),
             ))?;
 
-        if util::extract_bitstring_index(encoded_list.to_owned(), list_index)? {
+        if util::extract_bitstring_index(encoded_list.to_owned(), list_index)
+            .error_while("extracting bitstring index")?
+        {
             status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
         } else {
             Ok(RevocationState::Valid)
@@ -560,7 +566,8 @@ impl BitstringStatusList {
                     &self.config_id,
                     &Default::default(),
                 )
-                .await?
+                .await
+                .error_while("getting revocation list")?
                 .ok_or(RevocationError::MappingError(
                     "No revocation list found".to_string(),
                 ))?
@@ -612,7 +619,9 @@ impl BitstringStatusList {
                     }
                 }
                 .boxed())
-                .await??;
+                .await
+                .error_while("creating revocation list entry")?
+                .error_while("creating revocation list entry")?;
 
             if let Some(index) = result {
                 return Ok(index);
@@ -621,7 +630,9 @@ impl BitstringStatusList {
             if retry_counter > 100 {
                 tracing::error!("Too many retries on revocation list: {list_id}");
                 return Err(
-                    DataLayerError::TransactionError("Too many retries".to_string()).into(),
+                    DataLayerError::TransactionError("Too many retries".to_string())
+                        .error_while("adding revocation list entry")
+                        .into(),
                 );
             }
 
@@ -639,7 +650,7 @@ impl BitstringStatusList {
         let list_credential = format_status_list_credential(
             &revocation_list_id,
             issuer_identifier,
-            util::generate_bitstring(vec![])?,
+            util::generate_bitstring(vec![]).error_while("generating bitstring")?,
             purpose,
             &*self.key_provider,
             &self.key_algorithm_provider,
@@ -660,7 +671,8 @@ impl BitstringStatusList {
                 issuer_identifier: Some(issuer_identifier.to_owned()),
                 issuer_certificate: None,
             })
-            .await?;
+            .await
+            .error_while("creating revocation list")?;
 
         self.revocation_list_repository
             .create_entry(
@@ -668,7 +680,8 @@ impl BitstringStatusList {
                 RevocationListEntityId::Credential(credential_id),
                 Some(0),
             )
-            .await?;
+            .await
+            .error_while("creating revocation list entry")?;
 
         Ok(revocation_list_id)
     }
@@ -688,11 +701,9 @@ pub(crate) async fn format_status_list_credential(
     let revocation_list_url = get_revocation_list_url(revocation_list_id, core_base_url)?;
 
     if issuer_identifier.r#type != IdentifierType::Did {
-        return Err(FormatterError::CouldNotFormat(format!(
-            "Unsupported identifier type: {}",
-            issuer_identifier.r#type
-        ))
-        .into());
+        return Err(RevocationError::InvalidIdentifierType(
+            issuer_identifier.r#type,
+        ));
     }
 
     let issuer_did = issuer_identifier
@@ -713,15 +724,15 @@ pub(crate) async fn format_status_list_credential(
     let key_id = issuer_did.verification_method_id(key);
     let key = &key.key;
 
-    let auth_fn =
-        key_provider.get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())?;
+    let auth_fn = key_provider
+        .get_signature_provider(key, Some(key_id), key_algorithm_provider.clone())
+        .error_while("getting signature provider")?;
 
     let algorithm_type = key
         .key_algorithm_type()
-        .ok_or(FormatterError::CouldNotFormat(format!(
-            "Unsupported algorithm: {}",
-            key.key_type
-        )))?;
+        .ok_or(RevocationError::InvalidKeyAlgorithm(
+            key.key_type.to_owned(),
+        ))?;
 
     let status_list = formatter
         .format_status_list(
@@ -733,7 +744,8 @@ pub(crate) async fn format_status_list_credential(
             purpose.into(),
             RevocationType::BitstringStatusList,
         )
-        .await?;
+        .await
+        .error_while("formatting status list")?;
 
     Ok(status_list)
 }
@@ -754,7 +766,7 @@ async fn generate_bitstring_from_entries(
         })
         .collect::<Result<Vec<_>, RevocationError>>()?;
 
-    util::generate_bitstring(states).map_err(RevocationError::from)
+    Ok(util::generate_bitstring(states).error_while("generating bitstring")?)
 }
 
 fn get_revocation_list_url(

@@ -17,7 +17,7 @@ use uuid::Uuid;
 use self::resolver::StatusListCachingLoader;
 use self::util::{PREFERRED_ENTRY_SIZE, calculate_preferred_token_size};
 use crate::config::core_config::{FormatType, RevocationType};
-use crate::error::ContextWithErrorCode;
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin, ErrorCodeMixinExt};
 use crate::model::certificate::{Certificate, CertificateRelations, CertificateState};
 use crate::model::common::LockType;
 use crate::model::credential::Credential;
@@ -38,7 +38,6 @@ use crate::proto::jwt::Jwt;
 use crate::proto::key_verification::KeyVerification;
 use crate::proto::transaction_manager::TransactionManager;
 use crate::provider::credential_formatter::CredentialFormatter;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListContent;
 use crate::provider::credential_formatter::model::{
     CredentialStatus, IdentifierDetails, TokenVerifier,
@@ -216,7 +215,8 @@ impl RevocationMethod for TokenStatusList {
                 &self.config_id,
                 &Default::default(),
             )
-            .await?
+            .await
+            .error_while("getting revocation list")?
             .ok_or(RevocationError::MissingCredentialIndexOnRevocationList(
                 credential.id,
                 issuer_identifier.id,
@@ -229,12 +229,14 @@ impl RevocationMethod for TokenStatusList {
                     status: Some(new_state.into()),
                 },
             )
-            .await?;
+            .await
+            .error_while("updating revocation list entry")?;
 
         let current_entries = self
             .revocation_list_repository
             .get_entries(current_list.id)
-            .await?;
+            .await
+            .error_while("getting revocation list entries")?;
 
         let encoded_list = generate_token_from_entries(current_entries).await?;
 
@@ -252,7 +254,8 @@ impl RevocationMethod for TokenStatusList {
 
         self.revocation_list_repository
             .update_formatted_list(&current_list.id, list_credential.into_bytes())
-            .await?;
+            .await
+            .error_while("updating revocation list")?;
 
         Ok(())
     }
@@ -319,10 +322,10 @@ impl RevocationMethod for TokenStatusList {
                 .await
                 .error_while("validating token status list")?;
 
-        Ok(util::extract_state_from_token(
-            &jwt.payload.custom.status_list,
-            list_index,
-        )?)
+        Ok(
+            util::extract_state_from_token(&jwt.payload.custom.status_list, list_index)
+                .error_while("extracting token status")?,
+        )
     }
 
     async fn add_issued_attestation(
@@ -338,7 +341,8 @@ impl RevocationMethod for TokenStatusList {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting wallet unit")?
             .ok_or(RevocationError::MappingError(
                 "Missing wallet unit".to_string(),
             ))?;
@@ -370,7 +374,8 @@ impl RevocationMethod for TokenStatusList {
                     }),
                 },
             )
-            .await?
+            .await
+            .error_while("getting identifier")?
             .ok_or(RevocationError::MappingError(
                 "Missing issuer_identifier".to_string(),
             ))?;
@@ -445,10 +450,15 @@ impl RevocationMethod for TokenStatusList {
                                     status: Some(new_state.clone().into()),
                                 },
                             )
-                            .await?;
+                            .await
+                            .error_while("updating revocation list entry")?;
                     }
 
-                    let entries = self.revocation_list_repository.get_entries(list.id).await?;
+                    let entries = self
+                        .revocation_list_repository
+                        .get_entries(list.id)
+                        .await
+                        .error_while("getting revocation list entries")?;
 
                     let encoded_list = generate_token_from_entries(entries).await?;
 
@@ -468,12 +478,14 @@ impl RevocationMethod for TokenStatusList {
 
                     self.revocation_list_repository
                         .update_formatted_list(&list.id, list_credential.into_bytes())
-                        .await?;
+                        .await
+                        .error_while("updating revocation list")?;
                 }
                 Ok::<_, RevocationError>(())
             }
             .boxed())
-            .await??;
+            .await
+            .error_while("updating attestations")??;
 
         Ok(())
     }
@@ -508,7 +520,8 @@ impl RevocationMethod for TokenStatusList {
                             status: Some(RevocationListEntryStatus::Revoked),
                         },
                     )
-                    .await?;
+                    .await
+                    .error_while("updating revocation list entry")?;
 
                 let current_list = self
                     .revocation_list_repository
@@ -530,7 +543,8 @@ impl RevocationMethod for TokenStatusList {
                             issuer_certificate: Some(Default::default()),
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("getting revocation list")?
                     .ok_or(RevocationError::MappingError(
                         "Missing list for revocation entry".to_owned(),
                     ))?;
@@ -544,7 +558,8 @@ impl RevocationMethod for TokenStatusList {
                 let current_entries = self
                     .revocation_list_repository
                     .get_entries(current_list.id)
-                    .await?;
+                    .await
+                    .error_while("getting revocation list entries")?;
 
                 let encoded_list = generate_token_from_entries(current_entries).await?;
 
@@ -562,12 +577,14 @@ impl RevocationMethod for TokenStatusList {
 
                 self.revocation_list_repository
                     .update_formatted_list(&current_list.id, list_credential.into_bytes())
-                    .await?;
+                    .await
+                    .error_while("updating revocation list")?;
 
                 Ok::<_, RevocationError>(())
             }
             .boxed())
-            .await?
+            .await
+            .error_while("revoking signature")?
     }
 
     async fn get_updated_list(
@@ -623,7 +640,8 @@ impl TokenStatusList {
                         &self.config_id,
                         &Default::default(),
                     )
-                    .await?;
+                    .await
+                    .error_while("getting revocation list")?;
 
                 Ok(match current_list {
                     Some(list) => (list.id, None),
@@ -634,19 +652,20 @@ impl TokenStatusList {
                                 issuer_identifier,
                                 issuer_certificate,
                             )
-                            .await?;
+                            .await
+                            .error_while("starting new token status list")?;
                         (new_list_id, Some(new_entry_id))
                     }
                 })
             }
             .boxed())
             .await
-            .map_err(|e| e.into())
+            .error_while("finding revocation list")
             .flatten();
 
         let (list_id, maybe_entry_id) = match maybe_list_and_entry_id {
             Ok((list_id, maybe_entry_id)) => (list_id, maybe_entry_id),
-            Err(RevocationError::DataLayerError(DataLayerError::AlreadyExists)) => {
+            Err(error) if error.error_code() == ErrorCode::BR_0357 => {
                 // this means the transaction failed, and a new list was created in parallel
                 // fetch the newly created list instead
                 (
@@ -658,7 +677,8 @@ impl TokenStatusList {
                             &self.config_id,
                             &Default::default(),
                         )
-                        .await?
+                        .await
+                        .error_while("getting revocation list")?
                         .ok_or(RevocationError::MappingError(
                             "No revocation list found".to_string(),
                         ))?
@@ -667,7 +687,7 @@ impl TokenStatusList {
                 )
             }
             Err(e) => {
-                return Err(e);
+                return Err(e.into());
             }
         };
 
@@ -714,7 +734,9 @@ impl TokenStatusList {
                     }
                 }
                 .boxed())
-                .await??;
+                .await
+                .error_while("creating revocation list entry")?
+                .error_while("creating revocation list entry")?;
 
             if let Some(index) = result {
                 return Ok(index);
@@ -723,7 +745,9 @@ impl TokenStatusList {
             if retry_counter > 100 {
                 tracing::error!("Too many retries on revocation list: {list_id}");
                 return Err(
-                    DataLayerError::TransactionError("Too many retries".to_string()).into(),
+                    DataLayerError::TransactionError("Too many retries".to_string())
+                        .error_while("adding revocation list entry")
+                        .into(),
                 );
             }
 
@@ -763,12 +787,14 @@ impl TokenStatusList {
                 issuer_identifier: Some(issuer_identifier.to_owned()),
                 issuer_certificate: issuer_certificate.cloned(),
             })
-            .await?;
+            .await
+            .error_while("creating revocation list")?;
 
         let entry_id = self
             .revocation_list_repository
             .create_entry(revocation_list_id, entity_id, Some(0))
-            .await?;
+            .await
+            .error_while("creating revocation list entry")?;
 
         Ok((revocation_list_id, entry_id))
     }
@@ -860,15 +886,15 @@ async fn format_status_list_credential(
         None
     };
 
-    let auth_fn =
-        key_provider.get_signature_provider(key, key_id, key_algorithm_provider.clone())?;
+    let auth_fn = key_provider
+        .get_signature_provider(key, key_id, key_algorithm_provider.clone())
+        .error_while("getting signature provider")?;
 
     let algorithm = key
         .key_algorithm_type()
-        .ok_or(FormatterError::CouldNotFormat(format!(
-            "Unsupported algorithm: {}",
-            key.key_type
-        )))?;
+        .ok_or(RevocationError::InvalidKeyAlgorithm(
+            key.key_type.to_owned(),
+        ))?;
 
     let status_list = formatter
         .format_status_list(
@@ -880,7 +906,8 @@ async fn format_status_list_credential(
             StatusPurpose::Revocation,
             RevocationType::TokenStatusList,
         )
-        .await?;
+        .await
+        .error_while("formatting token statu list")?;
 
     Ok(status_list)
 }
@@ -902,8 +929,10 @@ async fn generate_token_from_entries(
 
     let preferred_token_size =
         calculate_preferred_token_size(index_states.len(), PREFERRED_ENTRY_SIZE);
-    util::generate_token(index_states, PREFERRED_ENTRY_SIZE, preferred_token_size)
-        .map_err(RevocationError::from)
+    Ok(
+        util::generate_token(index_states, PREFERRED_ENTRY_SIZE, preferred_token_size)
+            .error_while("generating token status list")?,
+    )
 }
 
 fn get_revocation_list_url(

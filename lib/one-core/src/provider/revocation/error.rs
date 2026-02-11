@@ -6,12 +6,7 @@ use thiserror::Error;
 use crate::error::{ErrorCode, ErrorCodeMixin, NestedError};
 use crate::model::credential::CredentialStateEnum;
 use crate::model::did::KeyRole;
-use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::did_method::error::DidMethodProviderError;
-use crate::provider::key_storage::error::KeyStorageProviderError;
-use crate::provider::revocation::bitstring_status_list::util::BitstringError;
-use crate::provider::revocation::token_status_list::util::TokenError;
-use crate::repository::error::DataLayerError;
+use crate::model::identifier::IdentifierType;
 
 #[derive(Debug, Error)]
 pub enum RevocationError {
@@ -21,6 +16,10 @@ pub enum RevocationError {
     FormatterNotFound(String),
     #[error("Invalid credential state: `{0}`")]
     InvalidCredentialState(CredentialStateEnum),
+    #[error("Invalid identifier type: `{0}`")]
+    InvalidIdentifierType(IdentifierType),
+    #[error("Invalid key algorithm: `{0}`")]
+    InvalidKeyAlgorithm(String),
     #[error("Key with role `{0}` not found`")]
     KeyWithRoleNotFound(KeyRole),
     #[error("Mapping error: `{0}`")]
@@ -32,22 +31,12 @@ pub enum RevocationError {
     #[error("Validation error: `{0}`")]
     ValidationError(String),
 
-    #[error("Bitstring error: `{0}`")]
-    BitstringError(#[from] BitstringError),
-    #[error("Did method provider error: `{0}`")]
-    DidMethodProviderError(#[from] DidMethodProviderError),
-    #[error("Formatter error: `{0}`")]
-    FormatterError(#[from] FormatterError),
-    #[error("Key storage provider error: `{0}`")]
-    KeyStorageProviderError(#[from] KeyStorageProviderError),
-    #[error("Token error: `{0}`")]
-    TokenError(#[from] TokenError),
     #[error("From UTF-8 error: `{0}`")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
     #[error("JSON error: `{0}`")]
     JsonError(#[from] serde_json::Error),
-    #[error("Data layer error: `{0}`")]
-    DataLayerError(#[from] DataLayerError),
+    #[error("X509 error: `{0}`")]
+    X509Error(#[from] rcgen::Error),
 
     #[error(transparent)]
     Nested(#[from] NestedError),

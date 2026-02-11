@@ -9,12 +9,13 @@ use flate2::read::ZlibDecoder;
 use flate2::write::ZlibEncoder;
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::revocation_list::RevocationListEntryStatus;
 use crate::provider::credential_formatter::jwt_formatter::model::TokenStatusListSubject;
 use crate::provider::revocation::model::RevocationState;
 
 #[derive(Debug, Error)]
-pub enum TokenError {
+pub(super) enum TokenError {
     #[error("Token encoding error: `{0}`")]
     Base64Encoding(ct_codecs::Error),
     #[error("Token decoding error: `{0}`")]
@@ -29,9 +30,15 @@ pub enum TokenError {
     SuspensionRequiresAtLeastTwoBits,
 }
 
+impl ErrorCodeMixin for TokenError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0101
+    }
+}
+
 pub(crate) const PREFERRED_ENTRY_SIZE: usize = 2;
 
-pub(crate) fn extract_state_from_token(
+pub(super) fn extract_state_from_token(
     status_list: &TokenStatusListSubject,
     index: usize,
 ) -> Result<RevocationState, TokenError> {

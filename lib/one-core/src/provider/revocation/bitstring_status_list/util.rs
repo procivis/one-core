@@ -4,10 +4,11 @@ use bit_vec::BitVec;
 use ct_codecs::{Base64UrlSafeNoPadding, Decoder, Encoder};
 use thiserror::Error;
 
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::provider::revocation::utils::{gzip_compress, gzip_decompress};
 
 #[derive(Debug, Error)]
-pub enum BitstringError {
+pub(crate) enum BitstringError {
     #[error("Bitstring encoding error: `{0}`")]
     Base64Encoding(ct_codecs::Error),
     #[error("Bitstring decoding error: `{0}`")]
@@ -20,6 +21,12 @@ pub enum BitstringError {
     IndexOutOfBounds { index: usize },
     #[error("Encoded list has invalid prefix: {0}")]
     InvalidPrefix(String),
+}
+
+impl ErrorCodeMixin for BitstringError {
+    fn error_code(&self) -> ErrorCode {
+        ErrorCode::BR_0049
+    }
 }
 
 const MULTIBASE_PREFIX: char = 'u';

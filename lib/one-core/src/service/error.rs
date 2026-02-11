@@ -26,7 +26,6 @@ use crate::provider::issuance_protocol::error::{
 use crate::provider::key_algorithm::error::{KeyAlgorithmError, KeyAlgorithmProviderError};
 use crate::provider::key_algorithm::key::KeyHandleError;
 use crate::provider::key_storage::error::{KeyStorageError, KeyStorageProviderError};
-use crate::provider::revocation::bitstring_status_list::util::BitstringError;
 use crate::provider::revocation::error::RevocationError;
 use crate::provider::signer::error::SignerError;
 use crate::provider::trust_management::error::TrustManagementError;
@@ -64,9 +63,6 @@ pub enum ServiceError {
 
     #[error("Formatter error `{0}`")]
     FormatterError(#[from] FormatterError),
-
-    #[error("Credential revocation status list bitstring error `{0}`")]
-    BitstringError(#[from] BitstringError),
 
     #[error("Missing signer for algorithm `{0}`")]
     MissingSigner(String),
@@ -812,7 +808,6 @@ impl ErrorCodeMixin for ServiceError {
                 ErrorCode::BR_0048
             }
             Self::ConfigValidationError(error) => error.error_code(),
-            Self::BitstringError(_) => ErrorCode::BR_0049,
             Self::MissingSigner(_) => ErrorCode::BR_0060,
             Self::MissingAlgorithm(_) => ErrorCode::BR_0061,
             Self::MissingExchangeProtocol(_) => ErrorCode::BR_0046,

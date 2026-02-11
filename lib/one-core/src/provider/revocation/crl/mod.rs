@@ -13,6 +13,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use super::model::{CredentialRevocationInfo, Operation};
+use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
 use crate::mapper::x509::SigningKeyAdapter;
 use crate::model::certificate::{Certificate, CertificateRelations};
 use crate::model::credential::Credential;
@@ -27,7 +28,6 @@ use crate::model::wallet_unit_attested_key::{
 };
 use crate::proto::certificate_validator::parse::extract_leaf_pem_from_chain;
 use crate::proto::transaction_manager::TransactionManager;
-use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{CredentialStatus, IdentifierDetails};
 use crate::provider::key_storage::error::KeyStorageProviderError;
 use crate::provider::key_storage::provider::KeyProvider;
@@ -36,7 +36,6 @@ use crate::provider::revocation::error::RevocationError;
 use crate::provider::revocation::model::{
     CredentialDataByRole, JsonLdContext, RevocationMethodCapabilities, RevocationState,
 };
-use crate::repository::error::DataLayerError;
 use crate::repository::revocation_list_repository::RevocationListRepository;
 
 #[cfg(test)]
@@ -173,21 +172,25 @@ impl RevocationMethod for CRLRevocation {
                         &self.config_id,
                         &Default::default(),
                     )
-                    .await?;
+                    .await
+                    .error_while("getting revocation list")?;
 
                 Ok(match current_list {
                     Some(list) => list.id,
-                    None => self.start_new_list(issuer, certificate).await?,
+                    None => self
+                        .start_new_list(issuer, certificate)
+                        .await
+                        .error_while("starting new revocation list")?,
                 })
             }
             .boxed())
             .await
-            .map_err(|e| e.into())
+            .error_while("finding revocation list")
             .flatten();
 
         let list_id = match list_id {
             Ok(list_id) => list_id,
-            Err(RevocationError::DataLayerError(DataLayerError::AlreadyExists)) => {
+            Err(error) if error.error_code() == ErrorCode::BR_0357 => {
                 // this means the transaction failed, and a new list was created in parallel
                 // fetch the newly created list instead
                 self.revocation_list_repository
@@ -198,14 +201,15 @@ impl RevocationMethod for CRLRevocation {
                         &self.config_id,
                         &Default::default(),
                     )
-                    .await?
+                    .await
+                    .error_while("getting revocation list")?
                     .ok_or(RevocationError::MappingError(
                         "No revocation list found".to_string(),
                     ))?
                     .id
             }
             Err(e) => {
-                return Err(e);
+                return Err(e.into());
             }
         };
 
@@ -217,7 +221,8 @@ impl RevocationMethod for CRLRevocation {
                 RevocationListEntityId::Signature(signature_type, Some(serial.to_owned())),
                 None,
             )
-            .await?;
+            .await
+            .error_while("creating revocation list entry")?;
 
         let crl_url = format!("{base_url}/ssi/revocation/v1/crl/{list_id}")
             .parse()
@@ -248,7 +253,8 @@ impl RevocationMethod for CRLRevocation {
                     status: Some(RevocationListEntryStatus::Revoked),
                 },
             )
-            .await?;
+            .await
+            .error_while("updating revocation list entry")?;
 
         let list = self
             .revocation_list_repository
@@ -262,7 +268,8 @@ impl RevocationMethod for CRLRevocation {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting revocation list entry")?
             .ok_or(RevocationError::MappingError(
                 "Missing revocation list".to_string(),
             ))?;
@@ -288,7 +295,8 @@ impl RevocationMethod for CRLRevocation {
                     ..Default::default()
                 },
             )
-            .await?
+            .await
+            .error_while("getting revocation list")?
             .ok_or(RevocationError::MappingError(
                 "Missing revocation list".to_string(),
             ))?;
@@ -336,7 +344,8 @@ impl CRLRevocation {
                 issuer_identifier: Some(issuer.to_owned()),
                 issuer_certificate: Some(certificate.to_owned()),
             })
-            .await?)
+            .await
+            .error_while("creating revocation list")?)
     }
 
     #[tracing::instrument(level = "debug", skip_all, err(level = "warn"))]
@@ -350,7 +359,8 @@ impl CRLRevocation {
         let revoked_certificates = self
             .revocation_list_repository
             .get_entries(list.id)
-            .await?
+            .await
+            .error_while("getting revocation list entries")?
             .into_iter()
             .filter_map(|entry| {
                 if entry.status == RevocationListEntryStatus::Revoked
@@ -386,7 +396,8 @@ impl CRLRevocation {
 
         self.revocation_list_repository
             .update_formatted_list(&list.id, formatted_list.to_owned())
-            .await?;
+            .await
+            .error_while("updating revocation list")?;
 
         Ok(formatted_list)
     }
@@ -405,9 +416,13 @@ impl CRLRevocation {
             ))?
             .to_owned();
 
-        let key_storage = self.key_provider.get_key_storage(&key.storage_type).ok_or(
-            KeyStorageProviderError::InvalidKeyStorage(key.storage_type.to_owned()),
-        )?;
+        let key_storage = self
+            .key_provider
+            .get_key_storage(&key.storage_type)
+            .ok_or(KeyStorageProviderError::InvalidKeyStorage(
+                key.storage_type.to_owned(),
+            ))
+            .error_while("getting key storage")?;
 
         let signing_key =
             SigningKeyAdapter::new(key, key_storage, tokio::runtime::Handle::current())
@@ -456,9 +471,7 @@ impl CRLRevocation {
         let crl_issuer = rcgen::Issuer::from_ca_cert_pem(&pem_str, signing_key)
             .map_err(|e| RevocationError::ValidationError(e.to_string()))?;
 
-        let crl = crl_params
-            .signed_by(&crl_issuer)
-            .map_err(|e| FormatterError::CouldNotSign(e.to_string()))?;
+        let crl = crl_params.signed_by(&crl_issuer)?;
 
         Ok(crl.der().to_vec())
     }

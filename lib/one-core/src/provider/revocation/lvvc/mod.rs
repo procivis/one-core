@@ -17,6 +17,7 @@ use uuid::fmt::Urn;
 
 use self::dto::LvvcStatus;
 use self::mapper::{create_status_claims, status_from_lvvc_claims};
+use crate::error::ContextWithErrorCode;
 use crate::model::certificate::Certificate;
 use crate::model::credential::Credential;
 use crate::model::did::KeyRole;
@@ -171,7 +172,8 @@ impl LvvcProvider {
 
         let lvvc = formatter
             .extract_credentials_unverified(lvvc_credential_content, None)
-            .await?;
+            .await
+            .error_while("parsing lvvc")?;
 
         let status = status_from_lvvc_claims(&lvvc.claims.claims)?;
         Ok(match status {
@@ -273,7 +275,8 @@ impl RevocationMethod for LvvcProvider {
 
         self.validity_credential_repository
             .insert(lvvc.into())
-            .await?;
+            .await
+            .error_while("inserting validity credential")?;
 
         Ok(vec![CredentialRevocationInfo {
             credential_status: CredentialStatus {
@@ -308,7 +311,8 @@ impl RevocationMethod for LvvcProvider {
 
         self.validity_credential_repository
             .insert(lvvc.into())
-            .await?;
+            .await
+            .error_while("inserting validity credential")?;
 
         Ok(())
     }
@@ -455,11 +459,9 @@ pub(crate) async fn create_lvvc_with_status(
 
     let issuer_jwk_key_id = issuer_did.verification_method_id(related_did_key);
 
-    let auth_fn = key_provider.get_signature_provider(
-        &key,
-        Some(issuer_jwk_key_id),
-        key_algorithm_provider,
-    )?;
+    let auth_fn = key_provider
+        .get_signature_provider(&key, Some(issuer_jwk_key_id), key_algorithm_provider)
+        .error_while("getting signature provider")?;
 
     let lvvc_credential_id = Uuid::new_v4();
     let credential_id = format!("{base_url}/ssi/lvvc/v1/{lvvc_credential_id}")
@@ -479,7 +481,9 @@ pub(crate) async fn create_lvvc_with_status(
     let claims = nest_claims(claims)
         .map_err(|err| RevocationError::ValidationError(format!("Invalid claims: {err}")))?;
 
-    let credential_subject = VcdmCredentialSubject::new(claims)?.with_id(credential_subject_id);
+    let credential_subject = VcdmCredentialSubject::new(claims)
+        .error_while("creating VCDM")?
+        .with_id(credential_subject_id);
 
     let lvvc_context = json_ld_context
         .url
@@ -507,7 +511,8 @@ pub(crate) async fn create_lvvc_with_status(
 
     let formatted_credential = formatter
         .format_credential(credential_data, auth_fn)
-        .await?;
+        .await
+        .error_while("formatting lvvc")?;
 
     let lvvc_credential = Lvvc {
         id: lvvc_credential_id,

@@ -120,9 +120,12 @@ impl RevocationMethod for StatusList2021 {
 
         let encoded_list =
             StatusList2021JWTFormatter::parse_status_list(&token, issuer_did, key_verification)
-                .await?;
+                .await
+                .error_while("parsing status list")?;
 
-        if extract_bitstring_index(encoded_list, list_index)? {
+        if extract_bitstring_index(encoded_list, list_index)
+            .error_while("extracting bitstring index")?
+        {
             status_purpose_to_revocation_state(credential_status.status_purpose.as_ref())
         } else {
             Ok(RevocationState::Valid)
