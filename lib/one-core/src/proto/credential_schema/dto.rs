@@ -27,14 +27,18 @@ pub struct ImportCredentialSchemaRequestDTO {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaRequestSchemaDTO {
+    #[expect(unused)]
     pub id: CredentialSchemaId,
     #[serde(with = "time::serde::rfc3339")]
+    #[expect(unused)]
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
+    #[expect(unused)]
     pub last_modified: OffsetDateTime,
     pub name: String,
     pub format: CredentialFormat,
     pub revocation_method: Option<RevocationMethodId>,
+    #[expect(unused)]
     pub organisation_id: OrganisationId,
     pub claims: Vec<ImportCredentialSchemaClaimSchemaDTO>,
     pub key_storage_security: Option<KeyStorageSecurity>,
@@ -50,10 +54,13 @@ pub struct ImportCredentialSchemaRequestSchemaDTO {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImportCredentialSchemaClaimSchemaDTO {
+    #[expect(unused)]
     pub id: Uuid,
     #[serde(with = "time::serde::rfc3339")]
+    #[expect(unused)]
     pub created_date: OffsetDateTime,
     #[serde(with = "time::serde::rfc3339")]
+    #[expect(unused)]
     pub last_modified: OffsetDateTime,
     pub key: String,
     pub datatype: String,

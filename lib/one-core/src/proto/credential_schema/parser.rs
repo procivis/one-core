@@ -6,17 +6,19 @@ use shared_types::{CredentialFormat, RevocationMethodId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::Error;
+use super::dto::{
+    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
+    CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
+    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
+};
 use crate::config::core_config::{ConfigExt, CoreConfig, DatatypeType, FormatType};
+use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::NESTED_CLAIM_MARKER;
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     BackgroundProperties, CodeProperties, CredentialSchema, CredentialSchemaClaim,
     LayoutProperties, LayoutType, LogoProperties,
-};
-use crate::proto::credential_schema::dto::{
-    CredentialSchemaBackgroundPropertiesRequestDTO, CredentialSchemaCodePropertiesDTO,
-    CredentialSchemaLogoPropertiesRequestDTO, ImportCredentialSchemaClaimSchemaDTO,
-    ImportCredentialSchemaLayoutPropertiesDTO, ImportCredentialSchemaRequestDTO,
 };
 use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::model::{Features, FormatterCapabilities};
@@ -24,42 +26,47 @@ use crate::provider::credential_formatter::provider::CredentialFormatterProvider
 use crate::provider::revocation::RevocationMethod;
 use crate::provider::revocation::model::Operation;
 use crate::provider::revocation::provider::RevocationMethodProvider;
-use crate::service::error::{
-    BusinessLogicError, MissingProviderError, ServiceError, ValidationError,
-};
+use crate::service::error::{BusinessLogicError, MissingProviderError, ValidationError};
 
-pub struct CredentialSchemaImportParserImpl {
+pub(crate) struct CredentialSchemaImportParserImpl {
     config: Arc<CoreConfig>,
     formatter_provider: Arc<dyn CredentialFormatterProvider>,
     revocation_method_provider: Arc<dyn RevocationMethodProvider>,
 }
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
-pub trait CredentialSchemaImportParser: Send + Sync {
+pub(crate) trait CredentialSchemaImportParser: Send + Sync {
     fn parse_import_credential_schema(
         &self,
         dto: ImportCredentialSchemaRequestDTO,
-    ) -> Result<CredentialSchema, ServiceError>;
+    ) -> Result<CredentialSchema, Error>;
 }
 
 impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
     fn parse_import_credential_schema(
         &self,
         dto: ImportCredentialSchemaRequestDTO,
-    ) -> Result<CredentialSchema, ServiceError> {
+    ) -> Result<CredentialSchema, Error> {
         let now = OffsetDateTime::now_utc();
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&dto.schema.format)
             .ok_or(MissingProviderError::Formatter(
                 dto.schema.format.to_string(),
-            ))?;
-        let format = self.config.format.get_fields(&dto.schema.format)?.r#type();
+            ))
+            .error_while("getting formatter")?;
+        let format = self
+            .config
+            .format
+            .get_fields(&dto.schema.format)
+            .error_while("getting format type")?
+            .r#type();
         let revocation_method = match &dto.schema.revocation_method {
             Some(method_id) => Some(
                 self.revocation_method_provider
                     .get_revocation_method(method_id)
-                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))?,
+                    .ok_or(MissingProviderError::RevocationMethod(method_id.clone()))
+                    .error_while("getting revocation provider")?,
             ),
             None => None,
         };
@@ -99,7 +106,7 @@ impl CredentialSchemaImportParser for CredentialSchemaImportParserImpl {
 }
 
 impl CredentialSchemaImportParserImpl {
-    pub fn new(
+    pub(crate) fn new(
         config: Arc<CoreConfig>,
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         revocation_method_provider: Arc<dyn RevocationMethodProvider>,
@@ -115,7 +122,7 @@ impl CredentialSchemaImportParserImpl {
         &self,
         revocation_method_type: Option<RevocationMethodId>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Option<RevocationMethodId>, ServiceError> {
+    ) -> Result<Option<RevocationMethodId>, Error> {
         let Some(revocation_method_type) = revocation_method_type else {
             return Ok(None);
         };
@@ -123,7 +130,8 @@ impl CredentialSchemaImportParserImpl {
         let revocation_method_config = self
             .config
             .revocation
-            .get_if_enabled(&revocation_method_type)?;
+            .get_if_enabled(&revocation_method_type)
+            .error_while("checking revocation")?;
 
         if formatter
             .get_capabilities()
@@ -132,7 +140,11 @@ impl CredentialSchemaImportParserImpl {
         {
             Ok(Some(revocation_method_type.clone()))
         } else {
-            Err(BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat.into())
+            Err(
+                BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat
+                    .error_while("checking revocation")
+                    .into(),
+            )
         }
     }
 
@@ -140,7 +152,7 @@ impl CredentialSchemaImportParserImpl {
         &self,
         allow_suspension: Option<bool>,
         revocation_method: Option<&dyn RevocationMethod>,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<bool, Error> {
         let operations = match revocation_method {
             Some(method) => method.get_capabilities().operations,
             None => vec![],
@@ -151,6 +163,7 @@ impl CredentialSchemaImportParserImpl {
                 if !operations.contains(&Operation::Suspend) {
                     return Err(
                         BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod
+                            .error_while("checking suspension")
                             .into(),
                     );
                 }
@@ -159,6 +172,7 @@ impl CredentialSchemaImportParserImpl {
                 if operations == vec![Operation::Suspend] {
                     return Err(
                         BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod
+                            .error_while("checking suspension")
                             .into(),
                     );
                 }
@@ -172,14 +186,16 @@ impl CredentialSchemaImportParserImpl {
         layout_properties: Option<ImportCredentialSchemaLayoutPropertiesDTO>,
         claim_schemas: &[CredentialSchemaClaim],
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Option<LayoutProperties>, ServiceError> {
+    ) -> Result<Option<LayoutProperties>, Error> {
         if layout_properties.is_some()
             && !formatter
                 .get_capabilities()
                 .features
                 .contains(&Features::SupportsCredentialDesign)
         {
-            return Err(BusinessLogicError::LayoutPropertiesNotSupported.into());
+            return Err(BusinessLogicError::LayoutPropertiesNotSupported
+                .error_while("checking design")
+                .into());
         }
 
         let Some(layout_properties) = layout_properties else {
@@ -218,7 +234,7 @@ impl CredentialSchemaImportParserImpl {
         &self,
         schema_id: String,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, Error> {
         let FormatterCapabilities {
             features,
             allowed_schema_ids,
@@ -227,20 +243,24 @@ impl CredentialSchemaImportParserImpl {
 
         let is_schema_id_required = features.contains(&Features::SupportsSchemaId);
         if is_schema_id_required && schema_id.is_empty() {
-            return Err(BusinessLogicError::MissingSchemaId.into());
+            return Err(BusinessLogicError::MissingSchemaId
+                .error_while("checking schemaId")
+                .into());
         }
 
         if !allowed_schema_ids.is_empty() && !allowed_schema_ids.iter().any(|v| v == &schema_id) {
-            return Err(ValidationError::SchemaIdNotAllowedForFormat.into());
+            return Err(ValidationError::SchemaIdNotAllowedForFormat
+                .error_while("checking schemaId")
+                .into());
         }
         Ok(schema_id)
     }
 
-    pub(super) fn parse_format(
-        &self,
-        format: CredentialFormat,
-    ) -> Result<CredentialFormat, ServiceError> {
-        self.config.format.get_if_enabled(&format)?;
+    pub(super) fn parse_format(&self, format: CredentialFormat) -> Result<CredentialFormat, Error> {
+        self.config
+            .format
+            .get_if_enabled(&format)
+            .error_while("checking format")?;
         Ok(format)
     }
 
@@ -250,9 +270,11 @@ impl CredentialSchemaImportParserImpl {
         format: &FormatType,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<CredentialSchemaClaim>, ServiceError> {
+    ) -> Result<Vec<CredentialSchemaClaim>, Error> {
         if claim_schemas.is_empty() {
-            return Err(ValidationError::CredentialSchemaMissingClaims.into());
+            return Err(ValidationError::CredentialSchemaMissingClaims
+                .error_while("checking claims")
+                .into());
         }
         self.validate_top_level_claims_mdoc_types(format, &claim_schemas)?;
         self.parse_level_claim_schemas(now, None, claim_schemas, formatter)
@@ -264,8 +286,9 @@ impl CredentialSchemaImportParserImpl {
         parent_key: Option<&str>,
         claim_schemas: Vec<ImportCredentialSchemaClaimSchemaDTO>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<CredentialSchemaClaim>, ServiceError> {
-        self.validate_claim_schema_keys_unique(&claim_schemas)?;
+    ) -> Result<Vec<CredentialSchemaClaim>, Error> {
+        self.validate_claim_schema_keys_unique(&claim_schemas)
+            .error_while("checking claims")?;
 
         claim_schemas
             .into_iter()
@@ -280,7 +303,7 @@ impl CredentialSchemaImportParserImpl {
         parent_key: Option<&str>,
         claim_schema_dto: ImportCredentialSchemaClaimSchemaDTO,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<Vec<CredentialSchemaClaim>, ServiceError> {
+    ) -> Result<Vec<CredentialSchemaClaim>, Error> {
         let mut flattened_claim_schemas = vec![];
         let key = claim_schema_dto.key.clone();
         let flattened_key =
@@ -319,16 +342,22 @@ impl CredentialSchemaImportParserImpl {
         parent_key: Option<&str>,
         key: String,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, Error> {
         if key.find(NESTED_CLAIM_MARKER).is_some() {
-            return Err(ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(key).into());
+            return Err(
+                ValidationError::CredentialSchemaClaimSchemaSlashInKeyName(key)
+                    .error_while("checking claims")
+                    .into(),
+            );
         }
         if formatter
             .get_capabilities()
             .forbidden_claim_names
             .contains(&key)
         {
-            return Err(ValidationError::ForbiddenClaimName.into());
+            return Err(ValidationError::ForbiddenClaimName
+                .error_while("checking claims")
+                .into());
         }
 
         const MAX_KEY_LENGTH: usize = 255;
@@ -337,7 +366,9 @@ impl CredentialSchemaImportParserImpl {
             Some(parent_key) => format!("{parent_key}{NESTED_CLAIM_MARKER}{key}"),
         };
         if flattened_key.len() > MAX_KEY_LENGTH {
-            return Err(BusinessLogicError::ClaimSchemaKeyTooLong.into());
+            return Err(BusinessLogicError::ClaimSchemaKeyTooLong
+                .error_while("checking claims")
+                .into());
         }
         Ok(flattened_key)
     }
@@ -347,10 +378,14 @@ impl CredentialSchemaImportParserImpl {
         claim_name: &str,
         is_array: Option<bool>,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<bool, ServiceError> {
+    ) -> Result<bool, Error> {
         if let Some(true) = is_array {
-            self.config.datatype.get_if_enabled("ARRAY")?;
-            self.validate_datatype_formatter_capabilities(claim_name, "ARRAY", formatter)?;
+            self.config
+                .datatype
+                .get_if_enabled("ARRAY")
+                .error_while("checking claims")?;
+            self.validate_datatype_formatter_capabilities(claim_name, "ARRAY", formatter)
+                .error_while("checking claims")?;
             Ok(true)
         } else {
             Ok(false)
@@ -363,21 +398,25 @@ impl CredentialSchemaImportParserImpl {
         claim_schema_claims: &[ImportCredentialSchemaClaimSchemaDTO],
         claim_schema_data_type: String,
         formatter: &dyn CredentialFormatter,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, Error> {
         self.config
             .datatype
-            .get_if_enabled(&claim_schema_data_type)?;
+            .get_if_enabled(&claim_schema_data_type)
+            .error_while("checking claims datatype")?;
         let claim_type = self
             .config
             .datatype
-            .get_fields(&claim_schema_data_type)?
+            .get_fields(&claim_schema_data_type)
+            .error_while("checking claims datatype")?
             .r#type();
-        self.validate_claim_schema_datatype(claim_shema_key, claim_type, claim_schema_claims)?;
+        self.validate_claim_schema_datatype(claim_shema_key, claim_type, claim_schema_claims)
+            .error_while("checking claims datatype")?;
         self.validate_datatype_formatter_capabilities(
             claim_shema_key,
             &claim_schema_data_type,
             formatter,
-        )?;
+        )
+        .error_while("checking claims datatype")?;
         Ok(claim_schema_data_type)
     }
 
@@ -442,16 +481,23 @@ impl CredentialSchemaImportParserImpl {
         &self,
         format_type: &FormatType,
         claim_schemas: &[ImportCredentialSchemaClaimSchemaDTO],
-    ) -> Result<(), ServiceError> {
+    ) -> Result<(), Error> {
         if *format_type != FormatType::Mdoc {
             return Ok(());
         }
 
         for claim in claim_schemas {
-            let data_type = self.config.datatype.get_fields(&claim.datatype)?.r#type;
+            let data_type = self
+                .config
+                .datatype
+                .get_fields(&claim.datatype)
+                .error_while("checking claims")?
+                .r#type;
             if data_type != DatatypeType::Object {
                 return Err(
-                    BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed.into(),
+                    BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
+                        .error_while("checking claims")
+                        .into(),
                 );
             }
         }
@@ -461,7 +507,7 @@ impl CredentialSchemaImportParserImpl {
     pub(super) fn parse_logo_properties(
         &self,
         logo: CredentialSchemaLogoPropertiesRequestDTO,
-    ) -> Result<LogoProperties, ServiceError> {
+    ) -> Result<LogoProperties, Error> {
         match (logo.background_color, logo.font_color, logo.image) {
             (Some(background), Some(font), None) => Ok(LogoProperties {
                 font_color: Some(font),
@@ -473,14 +519,16 @@ impl CredentialSchemaImportParserImpl {
                 background_color: None,
                 image: Some(image.into()),
             }),
-            _ => Err(ValidationError::AttributeCombinationNotAllowed.into()),
+            _ => Err(ValidationError::AttributeCombinationNotAllowed
+                .error_while("checking logo")
+                .into()),
         }
     }
 
     pub(super) fn parse_background_properties(
         &self,
         background: CredentialSchemaBackgroundPropertiesRequestDTO,
-    ) -> Result<BackgroundProperties, ServiceError> {
+    ) -> Result<BackgroundProperties, Error> {
         match (background.color, background.image) {
             (Some(color), None) => Ok(BackgroundProperties {
                 color: Some(color),
@@ -490,7 +538,9 @@ impl CredentialSchemaImportParserImpl {
                 color: None,
                 image: Some(image.into()),
             }),
-            _ => Err(ValidationError::AttributeCombinationNotAllowed.into()),
+            _ => Err(ValidationError::AttributeCombinationNotAllowed
+                .error_while("checking background")
+                .into()),
         }
     }
 
@@ -499,7 +549,7 @@ impl CredentialSchemaImportParserImpl {
         attribute: String,
         claim_schemas: &[CredentialSchemaClaim],
         attribute_name: &str,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, Error> {
         tracing::debug!(
             "{:?} {:?} {:?}",
             &attribute,
@@ -509,7 +559,11 @@ impl CredentialSchemaImportParserImpl {
         if claim_schemas.iter().any(|c| c.schema.key == attribute) {
             Ok(attribute)
         } else {
-            Err(ValidationError::MissingLayoutAttribute(attribute_name.to_owned()).into())
+            Err(
+                ValidationError::MissingLayoutAttribute(attribute_name.to_owned())
+                    .error_while("checking layout")
+                    .into(),
+            )
         }
     }
 
@@ -517,7 +571,7 @@ impl CredentialSchemaImportParserImpl {
         &self,
         code_properties: CredentialSchemaCodePropertiesDTO,
         claim_schemas: &[CredentialSchemaClaim],
-    ) -> Result<CodeProperties, ServiceError> {
+    ) -> Result<CodeProperties, Error> {
         if claim_schemas
             .iter()
             .any(|c| c.schema.key == code_properties.attribute)
@@ -527,7 +581,11 @@ impl CredentialSchemaImportParserImpl {
                 r#type: code_properties.r#type,
             })
         } else {
-            Err(ValidationError::MissingLayoutAttribute("Code attribute".to_owned()).into())
+            Err(
+                ValidationError::MissingLayoutAttribute("Code attribute".to_owned())
+                    .error_while("checking code")
+                    .into(),
+            )
         }
     }
 }
@@ -541,10 +599,10 @@ mod test {
     use time::OffsetDateTime;
     use uuid::Uuid;
 
-    use crate::config::ConfigValidationError;
     use crate::config::core_config::{
         ConfigEntryDisplay, CoreConfig, DatatypeType, Fields, FormatType, RevocationType,
     };
+    use crate::error::{ErrorCode, ErrorCodeMixin};
     use crate::model::claim_schema::ClaimSchema;
     use crate::model::credential_schema::{CodeTypeEnum, CredentialSchemaClaim};
     use crate::proto::credential_schema::dto::{
@@ -559,7 +617,7 @@ mod test {
     use crate::provider::revocation::MockRevocationMethod;
     use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
     use crate::provider::revocation::provider::MockRevocationMethodProvider;
-    use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+    use crate::service::error::ValidationError;
     use crate::service::test_utilities::{generic_config, get_dummy_date};
 
     fn setup_parser(
@@ -658,11 +716,7 @@ mod test {
         let result = parser.parse_revocation_method(Some("INVALID".to_owned().into()), &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::ConfigValidationError(
-                ConfigValidationError::EntryNotFound(_)
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0051);
     }
 
     #[test]
@@ -701,11 +755,7 @@ mod test {
             .parse_revocation_method(Some("BITSTRINGSTATUSLIST".to_owned().into()), &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::BusinessLogic(
-                BusinessLogicError::RevocationMethodNotCompatibleWithSelectedFormat
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0110);
     }
 
     #[test]
@@ -772,11 +822,7 @@ mod test {
         let result = parser.parse_allow_suspension(Some(true), Some(&revocation_method));
 
         // then
-        let_assert!(
-            Err(ServiceError::BusinessLogic(
-                BusinessLogicError::SuspensionNotAvailableForSelectedRevocationMethod
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0162);
     }
 
     #[test]
@@ -799,11 +845,7 @@ mod test {
         let result = parser.parse_allow_suspension(Some(false), Some(&revocation_method));
 
         // then
-        let_assert!(
-            Err(ServiceError::BusinessLogic(
-                BusinessLogicError::SuspensionNotEnabledForSuspendOnlyRevocationMethod
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0191);
     }
 
     #[test]
@@ -852,11 +894,7 @@ mod test {
         let result = parser.parse_schema_id("OTHER_TEST_SCHEMA_ID".to_string(), &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::SchemaIdNotAllowedForFormat
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0146);
     }
 
     #[test]
@@ -880,11 +918,7 @@ mod test {
         let result = parser.parse_schema_id("".to_string(), &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::BusinessLogic(
-                BusinessLogicError::MissingSchemaId
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0138);
     }
 
     #[test]
@@ -979,11 +1013,7 @@ mod test {
         let result = parser.parse_layout_properties(layout_props, &[], &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::BusinessLogic(
-                BusinessLogicError::LayoutPropertiesNotSupported
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0131);
     }
 
     #[test]
@@ -1030,11 +1060,7 @@ mod test {
         let result = parser.parse_layout_attribute("nonexistent".to_string(), &[], "primary");
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::MissingLayoutAttribute(_)
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0105);
     }
 
     #[test]
@@ -1102,11 +1128,7 @@ mod test {
         let result = parser.parse_background_properties(bg);
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::AttributeCombinationNotAllowed
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0118);
     }
 
     #[test]
@@ -1127,11 +1149,7 @@ mod test {
         let result = parser.parse_background_properties(bg);
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::AttributeCombinationNotAllowed
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0118);
     }
 
     #[test]
@@ -1206,11 +1224,7 @@ mod test {
         let result = parser.parse_logo_properties(logo);
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::AttributeCombinationNotAllowed
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0118);
     }
 
     #[test]
@@ -1267,11 +1281,7 @@ mod test {
         let result = parser.parse_code_attribute(code, &[]);
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::MissingLayoutAttribute(_)
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0105);
     }
 
     #[test]
@@ -1381,11 +1391,7 @@ mod test {
         );
 
         // then
-        let_assert!(
-            Err(ServiceError::ConfigValidationError(
-                ConfigValidationError::EntryNotFound(_)
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0051);
     }
 
     #[test]
@@ -1445,11 +1451,7 @@ mod test {
         let result = parser.parse_claim_schema_array("claim1", Some(true), &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::ConfigValidationError(
-                ConfigValidationError::EntryNotFound(_)
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0051);
     }
 
     #[test]
@@ -1636,11 +1638,7 @@ mod test {
         let result = parser.parse_all_claim_schemas(now, &FormatType::Jwt, vec![], &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::Validation(
-                ValidationError::CredentialSchemaMissingClaims
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0008);
     }
 
     #[test]
@@ -1676,10 +1674,6 @@ mod test {
         let result = parser.parse_all_claim_schemas(now, &FormatType::Mdoc, claims, &formatter);
 
         // then
-        let_assert!(
-            Err(ServiceError::BusinessLogic(
-                BusinessLogicError::InvalidClaimTypeMdocTopLevelOnlyObjectsAllowed
-            )) = result
-        );
+        assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0117);
     }
 }

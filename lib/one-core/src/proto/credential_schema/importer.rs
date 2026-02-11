@@ -7,6 +7,7 @@ use time::format_description::well_known::iso8601::{
     Config, EncodedConfig, FormattedComponents, TimePrecision,
 };
 
+use super::Error;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
 use crate::mapper::credential_schema_claim::claim_schema_from_metadata_claim_schema;
 use crate::model::credential_schema::CredentialSchema;
@@ -18,7 +19,7 @@ use crate::repository::error::DataLayerError;
 use crate::service::credential_schema::dto::{
     CredentialSchemaFilterValue, GetCredentialSchemaQueryDTO,
 };
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::service::error::{BusinessLogicError, MissingProviderError};
 
 const DATE_TIME_NO_MILLIS: EncodedConfig = Config::DEFAULT
     .set_formatted_components(FormattedComponents::DateTime)
@@ -29,20 +30,20 @@ const DATE_TIME_NO_MILLIS: EncodedConfig = Config::DEFAULT
 
 #[cfg_attr(any(test, feature = "mock"), mockall::automock)]
 #[async_trait::async_trait]
-pub trait CredentialSchemaImporter: Send + Sync {
+pub(crate) trait CredentialSchemaImporter: Send + Sync {
     async fn import_credential_schema(
         &self,
         credential_schema: CredentialSchema,
-    ) -> Result<CredentialSchema, ServiceError>;
+    ) -> Result<CredentialSchema, Error>;
 }
 
 pub struct CredentialSchemaImporterProto {
-    pub formatter_provider: Arc<dyn CredentialFormatterProvider>,
-    pub repository: Arc<dyn CredentialSchemaRepository>,
+    formatter_provider: Arc<dyn CredentialFormatterProvider>,
+    repository: Arc<dyn CredentialSchemaRepository>,
 }
 
 impl CredentialSchemaImporterProto {
-    pub fn new(
+    pub(crate) fn new(
         formatter_provider: Arc<dyn CredentialFormatterProvider>,
         repository: Arc<dyn CredentialSchemaRepository>,
     ) -> Self {
@@ -59,14 +60,11 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
     async fn import_credential_schema(
         &self,
         mut credential_schema: CredentialSchema,
-    ) -> Result<CredentialSchema, ServiceError> {
-        let organisation =
-            credential_schema
-                .organisation
-                .as_ref()
-                .ok_or(ServiceError::MappingError(
-                    "Missing organisation".to_string(),
-                ))?;
+    ) -> Result<CredentialSchema, Error> {
+        let organisation = credential_schema
+            .organisation
+            .as_ref()
+            .ok_or(Error::MappingError("Missing organisation".to_string()))?;
 
         let conflicting_credential_schemas = self
             .get_credential_schemas_with_same_name_and_id(
@@ -80,7 +78,9 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             &credential_schema,
             &conflicting_credential_schemas,
         ) {
-            return Err(BusinessLogicError::CredentialSchemaAlreadyExists.into());
+            return Err(BusinessLogicError::CredentialSchemaAlreadyExists
+                .error_while("checking name conflict")
+                .into());
         }
 
         if credential_schema_with_same_name_exists(
@@ -98,9 +98,10 @@ impl CredentialSchemaImporter for CredentialSchemaImporterProto {
             .await
             .map_err(|e| {
                 if matches!(e, DataLayerError::AlreadyExists) {
-                    ServiceError::from(BusinessLogicError::CredentialSchemaAlreadyExists)
+                    BusinessLogicError::CredentialSchemaAlreadyExists
+                        .error_while("creating credential schema")
                 } else {
-                    e.error_while("creating credential schema").into()
+                    e.error_while("creating credential schema")
                 }
             })?;
 
@@ -114,7 +115,7 @@ impl CredentialSchemaImporterProto {
         organisation_id: OrganisationId,
         name: String,
         schema_id: String,
-    ) -> Result<Vec<CredentialSchema>, ServiceError> {
+    ) -> Result<Vec<CredentialSchema>, Error> {
         let query = GetCredentialSchemaQueryDTO {
             pagination: Some(ListPagination {
                 page: 0,
@@ -145,31 +146,29 @@ impl CredentialSchemaImporterProto {
     fn generate_unique_credential_schema_name(
         &self,
         credential_schema: &CredentialSchema,
-    ) -> Result<String, ServiceError> {
+    ) -> Result<String, Error> {
         let formated_now = OffsetDateTime::now_utc()
             .format(&Iso8601::<DATE_TIME_NO_MILLIS>)
-            .map_err(|e| ServiceError::MappingError(format!("Failed to format date: {e}")))?;
+            .map_err(|e| Error::MappingError(format!("Failed to format date: {e}")))?;
         Ok(format!("{}_{}", credential_schema.name, formated_now))
     }
 
     fn append_metadata_claims(
         &self,
         mut credential_schema: CredentialSchema,
-    ) -> Result<CredentialSchema, ServiceError> {
+    ) -> Result<CredentialSchema, Error> {
         let formatter = self
             .formatter_provider
             .get_credential_formatter(&credential_schema.format)
             .ok_or(MissingProviderError::Formatter(
                 credential_schema.format.to_string(),
-            ))?;
+            ))
+            .error_while("getting formatter")?;
 
-        let claim_schemas =
-            credential_schema
-                .claim_schemas
-                .as_mut()
-                .ok_or(ServiceError::MappingError(
-                    "Missing claim schemas".to_string(),
-                ))?;
+        let claim_schemas = credential_schema
+            .claim_schemas
+            .as_mut()
+            .ok_or(Error::MappingError("Missing claim schemas".to_string()))?;
         let metadata_claims = formatter
             .get_metadata_claims()
             .into_iter()

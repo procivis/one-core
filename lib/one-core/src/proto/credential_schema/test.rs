@@ -8,6 +8,7 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::config::core_config::{CoreConfig, RevocationType};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::claim_schema::ClaimSchema;
 use crate::model::credential_schema::{
     CredentialSchema, CredentialSchemaClaim, GetCredentialSchemaList, KeyStorageSecurity,
@@ -30,7 +31,6 @@ use crate::provider::revocation::MockRevocationMethod;
 use crate::provider::revocation::model::{Operation, RevocationMethodCapabilities};
 use crate::provider::revocation::provider::MockRevocationMethodProvider;
 use crate::repository::credential_schema_repository::MockCredentialSchemaRepository;
-use crate::service::error::{BusinessLogicError, ServiceError};
 use crate::service::test_utilities::{dummy_organisation, generic_config, get_dummy_date};
 
 fn setup_parser(
@@ -406,9 +406,5 @@ async fn test_importer_import_credential_schema_failure_duplicate_schema_id() {
         .await;
 
     // then
-    let_assert!(
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::CredentialSchemaAlreadyExists
-        )) = result
-    );
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0007);
 }

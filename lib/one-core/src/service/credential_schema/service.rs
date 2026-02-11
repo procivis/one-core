@@ -256,12 +256,15 @@ impl CredentialSchemaService {
             );
         }
 
-        let credential_schema = self.import_parser.parse_import_credential_schema(
-            crate::proto::credential_schema::dto::ImportCredentialSchemaRequestDTO {
-                organisation,
-                schema: request.schema.into(),
-            },
-        )?;
+        let credential_schema = self
+            .import_parser
+            .parse_import_credential_schema(
+                crate::proto::credential_schema::dto::ImportCredentialSchemaRequestDTO {
+                    organisation,
+                    schema: request.schema.into(),
+                },
+            )
+            .error_while("parsing schema")?;
 
         let success_log = format!(
             "Imported credential schema `{}` ({}): format `{}`, revocation method {:?}, key storage security {}",
@@ -275,7 +278,8 @@ impl CredentialSchemaService {
         let credential_schema = self
             .importer_proto
             .import_credential_schema(credential_schema)
-            .await?;
+            .await
+            .error_while("importing schema")?;
         tracing::info!(message = success_log);
         Ok(credential_schema.id)
     }

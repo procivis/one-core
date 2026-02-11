@@ -32,7 +32,7 @@ pub struct ProofSchemaService {
 
 impl ProofSchemaService {
     #[expect(clippy::too_many_arguments)]
-    pub fn new(
+    pub(crate) fn new(
         proof_schema_repository: Arc<dyn ProofSchemaRepository>,
         credential_schema_repository: Arc<dyn CredentialSchemaRepository>,
         organisation_repository: Arc<dyn OrganisationRepository>,

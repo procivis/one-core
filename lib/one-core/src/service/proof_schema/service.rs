@@ -415,12 +415,14 @@ impl ProofSchemaService {
             .parse_import_credential_schema(ImportCredentialSchemaRequestDTO {
                 organisation: organisation.to_owned(),
                 schema: credential_schema_import_request.into(),
-            })?;
+            })
+            .error_while("parsing credential schema")?;
 
         let credential_schema = self
             .credential_schema_importer
             .import_credential_schema(credential_schema)
-            .await?;
+            .await
+            .error_while("importing credential schema")?;
 
         Ok(credential_schema)
     }

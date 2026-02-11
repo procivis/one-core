@@ -45,6 +45,7 @@ use super::{
     deserialize_interaction_data, serialize_interaction_data,
 };
 use crate::config::core_config::{CoreConfig, DidType as ConfigDidType, FormatType};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::mapper::oidc::map_from_oidc_format_to_core_detailed;
 use crate::model::blob::{Blob, BlobType, UpdateBlobRequest};
 use crate::model::certificate::CertificateRelations;
@@ -97,7 +98,7 @@ use crate::repository::key_repository::KeyRepository;
 use crate::repository::validity_credential_repository::ValidityCredentialRepository;
 use crate::service::credential::dto::CredentialAttestationBlobs;
 use crate::service::credential::mapper::credential_detail_response_from_model;
-use crate::service::error::{BusinessLogicError, MissingProviderError, ServiceError};
+use crate::service::error::MissingProviderError;
 use crate::service::oid4vci_final1_0::dto::{
     OAuthAuthorizationServerMetadataResponseDTO, OpenID4VCICredentialResponseDTO,
 };
@@ -2116,7 +2117,7 @@ async fn prepare_credential_schema(
                 credential.schema = Some(schema);
                 return Ok(None);
             }
-            Err(ServiceError::BusinessLogic(BusinessLogicError::CredentialSchemaAlreadyExists)) => {
+            Err(error) if error.error_code() == ErrorCode::BR_0007 => {
                 tracing::debug!("Conflicting schema detected during parsing, refetching");
             }
             Err(e) => {
