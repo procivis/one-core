@@ -25,16 +25,8 @@ pub(super) fn convert_to_detail_credential(
         ));
     }
 
-    let (plain_metadata, sd_metadata): (Vec<_>, Vec<_>) =
-        if let Some(mandatory_pointers) = &mandatory_pointers {
-            metadata_claim_keys
-                .iter()
-                .cloned()
-                .partition(|key| mandatory_pointers.contains(key))
-        } else {
-            (metadata_claim_keys.to_vec(), vec![])
-        };
-    let metadata_claims = vcdm.get_metadata_claims(&plain_metadata, &sd_metadata)?;
+    let metadata_claims =
+        metadata_claims_with_sd_flags(&vcdm, &mandatory_pointers, metadata_claim_keys)?;
 
     let credential_schema = vcdm
         .credential_schema
@@ -90,6 +82,24 @@ pub(super) fn convert_to_detail_credential(
         status: vcdm.credential_status,
         credential_schema,
     })
+}
+
+fn metadata_claims_with_sd_flags(
+    vcdm: &VcdmCredential,
+    mandatory_pointers: &Option<Vec<String>>,
+    metadata_claim_keys: &[String],
+) -> Result<HashMap<String, CredentialClaim>, FormatterError> {
+    let (plain_metadata, sd_metadata): (Vec<_>, Vec<_>) =
+        if let Some(mandatory_pointers) = &mandatory_pointers {
+            metadata_claim_keys
+                .iter()
+                .cloned()
+                .partition(|key| mandatory_pointers.contains(key))
+        } else {
+            (metadata_claim_keys.to_vec(), vec![])
+        };
+    let metadata_claims = vcdm.get_metadata_claims(&plain_metadata, &sd_metadata)?;
+    Ok(metadata_claims)
 }
 
 fn mark_object_claims_selectively_disclosable(

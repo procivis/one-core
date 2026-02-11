@@ -33,7 +33,7 @@ use crate::provider::presentation_formatter::model::{
     FormattedPresentation,
 };
 use crate::util::rdf_canonization::json_ld_processor_options;
-use crate::util::vcdm_jsonld_contexts::{DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid};
+use crate::util::vcdm_jsonld_contexts::is_context_list_valid;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -230,17 +230,12 @@ impl LdpVpPresentationFormatter {
             .await?;
         }
 
-        if !is_context_list_valid(
+        is_context_list_valid(
             &presentation.context,
             self.params.allowed_contexts.as_ref(),
-            &DEFAULT_ALLOWED_CONTEXTS,
             None,
             None,
-        ) {
-            return Err(FormatterError::CouldNotVerify(
-                "Used context is not allowed".to_string(),
-            ));
-        };
+        )?;
 
         let credentials: Vec<String> = presentation
             .verifiable_credential

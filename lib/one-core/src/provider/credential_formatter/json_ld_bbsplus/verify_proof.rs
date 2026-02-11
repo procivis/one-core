@@ -1,34 +1,27 @@
-use super::{JsonLdBbsplus, convert_to_detail_credential, data_integrity};
+use super::{JsonLdBbsplus, data_integrity};
 use crate::config::core_config::KeyAlgorithmType;
-use crate::provider::credential_formatter::CredentialFormatter;
 use crate::provider::credential_formatter::error::FormatterError;
-use crate::provider::credential_formatter::model::{DetailCredential, VerificationFn};
+use crate::provider::credential_formatter::model::VerificationFn;
 use crate::provider::credential_formatter::vcdm::VcdmCredential;
 use crate::provider::key_algorithm::key::MultiMessageSignatureKeyHandle;
 use crate::util::rdf_canonization::json_ld_processor_options;
-use crate::util::vcdm_jsonld_contexts::{DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid};
+use crate::util::vcdm_jsonld_contexts::is_context_list_valid;
 
 impl JsonLdBbsplus {
+    /// Verifies the proof of the credential. To do so the proof must be removed from the
+    /// credential. This function is given a mutable reference to avoid cloning the whole thing.
+    /// Returns the list of mandatory pointers if the proof is valid.
     pub(super) async fn verify(
         &self,
-        credential: &str,
+        vcdm: &mut VcdmCredential,
         verification: VerificationFn,
-    ) -> Result<DetailCredential, FormatterError> {
-        let mut vcdm: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
-            FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
-        })?;
-
-        if !is_context_list_valid(
+    ) -> Result<Option<Vec<String>>, FormatterError> {
+        is_context_list_valid(
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
-            &DEFAULT_ALLOWED_CONTEXTS,
             vcdm.credential_schema.as_ref(),
             vcdm.id.as_ref(),
-        ) {
-            return Err(FormatterError::CouldNotVerify(
-                "Used context is not allowed".to_string(),
-            ));
-        }
+        )?;
 
         let Some(mut proof) = vcdm.proof.take() else {
             return Err(FormatterError::CouldNotVerify("Missing proof".to_string()));
@@ -52,15 +45,10 @@ impl JsonLdBbsplus {
             .get_hasher("sha-256")
             .map_err(|_| FormatterError::CouldNotVerify("SHA256 hasher unavailable".to_string()))?;
 
-        let metadata_claims = self
-            .get_metadata_claims()
-            .into_iter()
-            .map(|c| c.key)
-            .collect::<Vec<_>>();
-        match proof_type(proof_value)? {
+        let mandatory_pointers = match proof_type(proof_value)? {
             ProofType::Base => {
                 let mandatory_pointers = data_integrity::verify_base_proof(
-                    &vcdm,
+                    vcdm,
                     proof,
                     &self.caching_loader,
                     &*hasher,
@@ -69,17 +57,16 @@ impl JsonLdBbsplus {
                 )
                 .await?
                 .mandatory_pointers;
-
-                convert_to_detail_credential(vcdm, Some(mandatory_pointers), &metadata_claims)
+                Some(mandatory_pointers)
             }
             ProofType::Derived => {
                 let handle = self
-                    .get_public_signature_handle(&vcdm, &proof.verification_method)
+                    .get_public_signature_handle(vcdm, &proof.verification_method)
                     .await?;
                 let public_key = handle.public().as_raw();
 
                 data_integrity::verify_derived_proof(
-                    &vcdm,
+                    vcdm,
                     proof,
                     &public_key,
                     &self.caching_loader,
@@ -87,16 +74,12 @@ impl JsonLdBbsplus {
                     json_ld_processor_options(),
                 )
                 .await?;
-
-                convert_to_detail_credential(
-                    vcdm,
-                    // mandatory pointers not easily visible on verifier side,
-                    // so skipping marking the disclosability of claims
-                    None,
-                    &metadata_claims,
-                )
+                // mandatory pointers not easily visible on verifier side,
+                // so skipping marking the disclosability of claims
+                None
             }
-        }
+        };
+        Ok(mandatory_pointers)
     }
 
     async fn get_public_signature_handle(

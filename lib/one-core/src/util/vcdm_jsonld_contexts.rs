@@ -1,6 +1,7 @@
 use indexmap::{IndexSet, indexset};
 use url::Url;
 
+use crate::provider::credential_formatter::error::FormatterError;
 use crate::provider::credential_formatter::model::{Context, CredentialSchema};
 use crate::provider::credential_formatter::vcdm::ContextType;
 
@@ -41,7 +42,7 @@ pub(crate) fn vcdm_type(additional_types: Option<Vec<String>>) -> Vec<String> {
     types
 }
 
-pub(crate) static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
+static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
     "https://www.w3.org/ns/credentials/v2",
     "https://www.w3.org/2018/credentials/v1",
     "https://w3c.github.io/vc-bitstring-status-list/contexts/v1.jsonld",
@@ -51,10 +52,9 @@ pub(crate) static DEFAULT_ALLOWED_CONTEXTS: [&str; 4] = [
 pub(crate) fn is_context_list_valid(
     context_list: &IndexSet<ContextType>,
     allowed_contexts: Option<&Vec<Url>>,
-    default_allowed_contexts: &[&str],
     credential_schemas: Option<&Vec<CredentialSchema>>,
     credential_id: Option<&Url>,
-) -> bool {
+) -> Result<(), FormatterError> {
     for context in context_list {
         match context {
             ContextType::Url(url) => {
@@ -67,7 +67,7 @@ pub(crate) fn is_context_list_valid(
                     }
                     // Check defaults if required are not provided
                     None => {
-                        if default_allowed_contexts.contains(&url.as_str()) {
+                        if DEFAULT_ALLOWED_CONTEXTS.contains(&url.as_str()) {
                             continue;
                         }
                     }
@@ -104,11 +104,13 @@ pub(crate) fn is_context_list_valid(
         }
 
         // If we could not match it with any allowed context bail here
-        return false;
+        return Err(FormatterError::CouldNotVerify(
+            "Used context is not allowed".to_string(),
+        ));
     }
 
     // All contexts whitelisted
-    true
+    Ok(())
 }
 
 // These terms are defined in the default w3c contexts

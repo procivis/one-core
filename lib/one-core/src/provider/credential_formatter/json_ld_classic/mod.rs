@@ -36,9 +36,7 @@ use crate::provider::data_type::provider::DataTypeProvider;
 use crate::provider::key_algorithm::provider::KeyAlgorithmProvider;
 use crate::provider::revocation::bitstring_status_list::model::StatusPurpose;
 use crate::util::rdf_canonization::{json_ld_processor_options, rdf_canonize};
-use crate::util::vcdm_jsonld_contexts::{
-    DEFAULT_ALLOWED_CONTEXTS, is_context_list_valid, jsonld_forbidden_claim_names,
-};
+use crate::util::vcdm_jsonld_contexts::{is_context_list_valid, jsonld_forbidden_claim_names};
 #[cfg(test)]
 mod test;
 
@@ -420,17 +418,12 @@ impl JsonLdClassic {
             .await?;
         }
 
-        if !is_context_list_valid(
+        is_context_list_valid(
             &vcdm.context,
             self.params.allowed_contexts.as_ref(),
-            &DEFAULT_ALLOWED_CONTEXTS,
             vcdm.credential_schema.as_ref(),
             vcdm.id.as_ref(),
-        ) {
-            return Err(FormatterError::CouldNotVerify(
-                "Used context is not allowed".to_string(),
-            ));
-        }
+        )?;
 
         let metadata_claims = vcdm.get_metadata_claims(
             &self

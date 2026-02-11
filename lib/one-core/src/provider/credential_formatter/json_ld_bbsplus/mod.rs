@@ -225,7 +225,16 @@ impl CredentialFormatter for JsonLdBbsplus {
         _credential_schema: Option<&'a CredentialSchema>,
         verification_fn: VerificationFn,
     ) -> Result<DetailCredential, FormatterError> {
-        self.verify(credential, verification_fn).await
+        let mut vcdm: VcdmCredential = serde_json::from_str(credential).map_err(|e| {
+            FormatterError::CouldNotVerify(format!("Could not deserialize base proof: {e}"))
+        })?;
+        let mandatory_pointers = self.verify(&mut vcdm, verification_fn).await?;
+        let metadata_claims = self
+            .get_metadata_claims()
+            .into_iter()
+            .map(|c| c.key)
+            .collect::<Vec<_>>();
+        convert_to_detail_credential(vcdm, mandatory_pointers, &metadata_claims)
     }
 
     async fn extract_credentials_unverified<'a>(
