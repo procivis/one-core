@@ -246,17 +246,25 @@ impl OpenId4VpProofValidatorProto {
         // If multiple is true, then the verifier will accept multiple presentation tokens
         // for the same credential query.
         let multiple_presentations_allowed = credential_query.multiple;
+        let require_holder_binding = credential_query.require_cryptographic_holder_binding;
         let dcql_credential_format = &credential_query.format;
         let query_id = &credential_query.id;
         let trusted_authorities = credential_query.trusted_authorities.as_deref();
 
-        if !multiple_presentations_allowed && presentation_strings.len() != 1 {
-            return Err(OpenID4VCError::ValidationError(format!(
-                "Expected one presentation for credential query {query_id}"
-            )));
-        }
+        // cryptographic holder binding is required, we expect verifialbe presentations (one or many, depending on `multiple` flag)
+        let (holder_details, lvvc_credentials, non_lvvc_credentials) = if require_holder_binding {
+            if !multiple_presentations_allowed && presentation_strings.len() != 1 {
+                return Err(OpenID4VCError::ValidationError(format!(
+                    "Expected one presentation for credential query {query_id}"
+                )));
+            }
 
-        for presentation_string in presentation_strings {
+            let presentation_string = presentation_strings.first().ok_or_else(|| {
+                OpenID4VCError::ValidationError(format!(
+                    "No presentations for credential query {query_id}"
+                ))
+            })?;
+
             let presentation_format_type = match dcql_credential_format {
                 // Our existing implementation conflated the vc+sd-jwt and dc+sd-jwt formats.
                 // The SD_JWT(_VC) presentation formatter was used for both W3C and IETF SD-JWTs.
@@ -286,41 +294,54 @@ impl OpenId4VpProofValidatorProto {
                 )
                 .await?;
 
-            let (lvvc_credentials, non_lvvc_credentials) = self
+            let holder_details = issuer.ok_or(OpenID4VCError::ValidationError(
+                "Presentation missing holder id".to_string(),
+            ))?;
+
+            let (lvvc, non_lvvc) = self
                 .filter_lvvc_credentials(credential_query, proof_input_schema, credentials)
                 .await?;
 
-            for credential_token in non_lvvc_credentials {
-                let (credential, mso) = self
-                    .validate_credential(
-                        issuer.as_ref().ok_or(OpenID4VCError::ValidationError(
-                            "Presentation missing holder id".to_string(),
-                        ))?,
-                        &credential_token,
-                        &lvvc_credentials,
-                        proof_input_schema,
-                        trusted_authorities,
-                    )
-                    .await?;
+            (Some(holder_details), lvvc, non_lvvc)
+        } else {
+            // No holder binding — presentation_strings contains bare credential tokens
+            let credential_tokens = presentation_strings.to_vec();
 
-                let proved_claims: Vec<ValidatedProofClaimDTO> =
-                    validate_claims(credential, proof_input_schema, mso)?;
+            let (lvvc, non_lvvc) = self
+                .filter_lvvc_credentials(credential_query, proof_input_schema, credential_tokens)
+                .await?;
 
-                if let Some(claim_sets) = credential_query.claim_sets.as_ref()
-                    && claim_sets.iter().any(|claim_set| {
-                        claim_set.iter().all(|claim| {
-                            proved_claims.iter().any(|proved_claim| {
-                                proved_claim.proof_input_claim.schema.key == claim.to_string()
-                            })
+            (None, lvvc, non_lvvc)
+        };
+
+        for credential_token in non_lvvc_credentials {
+            let (credential, mso) = self
+                .validate_credential(
+                    holder_details.as_ref(),
+                    &credential_token,
+                    &lvvc_credentials,
+                    proof_input_schema,
+                    trusted_authorities,
+                )
+                .await?;
+
+            let proved_claims: Vec<ValidatedProofClaimDTO> =
+                validate_claims(credential, proof_input_schema, mso)?;
+
+            if let Some(claim_sets) = credential_query.claim_sets.as_ref()
+                && claim_sets.iter().any(|claim_set| {
+                    claim_set.iter().all(|claim| {
+                        proved_claims.iter().any(|proved_claim| {
+                            proved_claim.proof_input_claim.schema.key == claim.to_string()
                         })
                     })
-                {
-                    return Err(OpenID4VCError::ValidationError(
-                        "Claim set is not satisfied".to_string(),
-                    ));
-                }
-                total_proved_claims.extend(proved_claims);
+                })
+            {
+                return Err(OpenID4VCError::ValidationError(
+                    "Claim set is not satisfied".to_string(),
+                ));
             }
+            total_proved_claims.extend(proved_claims);
         }
 
         Ok(total_proved_claims)
@@ -408,7 +429,7 @@ impl OpenId4VpProofValidatorProto {
 
     async fn validate_credential(
         &self,
-        holder_details: &IdentifierDetails,
+        holder_details: Option<&IdentifierDetails>,
         credential_token: &str,
         extracted_lvvcs: &[DetailCredential],
         proof_schema_input: &ProofInputSchema,
@@ -477,19 +498,21 @@ impl OpenId4VpProofValidatorProto {
         }
 
         // Check if all subjects of the submitted VCs are matching the holder did.
-        let Some(credential_subject) = &credential.subject else {
-            return Err(OpenID4VCError::ValidationError(
-                "Claim Holder DID missing".to_owned(),
-            ));
-        };
+        if let Some(holder_details) = holder_details {
+            let Some(credential_subject) = &credential.subject else {
+                return Err(OpenID4VCError::ValidationError(
+                    "Claim Holder DID missing".to_owned(),
+                ));
+            };
 
-        check_matching_identifiers(
-            credential_subject,
-            holder_details,
-            &*self.did_method_provider,
-            &formatter.get_capabilities().holder_did_methods,
-        )
-        .await?;
+            check_matching_identifiers(
+                credential_subject,
+                holder_details,
+                &*self.did_method_provider,
+                &formatter.get_capabilities().holder_did_methods,
+            )
+            .await?;
+        }
 
         if let Some(authorities) = trusted_authorities {
             check_issuer_is_trusted_authority(&credential.issuer, authorities)?;
@@ -728,7 +751,7 @@ impl OpenId4VpProofValidatorProto {
 
             let (credential, mso) = self
                 .validate_credential(
-                    holder_details,
+                    Some(holder_details),
                     credential_token,
                     &extracted_lvvcs,
                     proof_schema_input,

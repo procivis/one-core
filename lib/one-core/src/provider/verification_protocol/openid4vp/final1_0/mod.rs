@@ -210,61 +210,87 @@ impl OpenID4VPFinal1_0 {
 
         // For DCQL each credential gets a presentation individually
         for credential_presentation in credential_presentations {
-            let credential_format = format_to_type(&credential_presentation, &self.config)?;
-            let presentation_format = match credential_format {
-                FormatType::SdJwt => FormatType::SdJwt,
-                FormatType::SdJwtVc => FormatType::SdJwtVc,
-                FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => FormatType::JsonLdClassic,
-                FormatType::Mdoc => FormatType::Mdoc,
-                FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
-            };
-
-            let presentation_formatter = self
-                .presentation_formatter_provider
-                .get_presentation_formatter(&presentation_format.to_string())
-                .ok_or_else(|| {
-                    VerificationProtocolError::Failed("Formatter not found".to_string())
-                })?;
-
-            let auth_fn = self
-                .key_provider
-                .get_signature_provider(
-                    &credential_presentation.key,
-                    credential_presentation.jwk_key_id,
-                    self.key_algorithm_provider.clone(),
-                )
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
-
-            let credentials = CredentialToPresent {
-                credential_token: credential_presentation.presentation,
-                lvvc_credential_token: credential_presentation
-                    .validity_credential_presentation
-                    .clone(),
-                credential_format,
-            };
-            let formatted_presentation = presentation_formatter
-                .format_presentation(
-                    vec![credentials],
-                    auth_fn,
-                    &credential_presentation.holder_did.map(|did| did.did),
-                    format_presentation_context(interaction_data, presentation_format)?,
-                )
-                .await
-                .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
             let PresentationReference::Dcql {
                 credential_query_id,
-            } = credential_presentation.reference
+            } = credential_presentation.reference.clone()
             else {
                 return Err(VerificationProtocolError::Failed(
                     "Incompatible presentation reference".to_string(),
                 ));
             };
-            vp_token
-                .entry(credential_query_id)
-                .and_modify(|presentations: &mut Vec<String>| {
-                    presentations.push(formatted_presentation.vp_token.to_owned())
+
+            // Look up the credential query to check require_cryptographic_holder_binding
+            let require_holder_binding = interaction_data
+                .dcql_query
+                .as_ref()
+                .and_then(|query| {
+                    query
+                        .credentials
+                        .iter()
+                        .find(|cq| cq.id.to_string() == credential_query_id)
                 })
-                .or_insert(vec![formatted_presentation.vp_token]);
+                .map(|cq| cq.require_cryptographic_holder_binding)
+                .unwrap_or(true);
+
+            if require_holder_binding {
+                let credential_format = format_to_type(&credential_presentation, &self.config)?;
+                let presentation_format = match credential_format {
+                    FormatType::SdJwt => FormatType::SdJwt,
+                    FormatType::SdJwtVc => FormatType::SdJwtVc,
+                    FormatType::JsonLdClassic | FormatType::JsonLdBbsPlus => {
+                        FormatType::JsonLdClassic
+                    }
+                    FormatType::Mdoc => FormatType::Mdoc,
+                    FormatType::Jwt | FormatType::PhysicalCard => FormatType::Jwt,
+                };
+
+                let presentation_formatter = self
+                    .presentation_formatter_provider
+                    .get_presentation_formatter(&presentation_format.to_string())
+                    .ok_or_else(|| {
+                        VerificationProtocolError::Failed("Formatter not found".to_string())
+                    })?;
+
+                let auth_fn = self
+                    .key_provider
+                    .get_signature_provider(
+                        &credential_presentation.key,
+                        credential_presentation.jwk_key_id,
+                        self.key_algorithm_provider.clone(),
+                    )
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+                let credentials = CredentialToPresent {
+                    credential_token: credential_presentation.presentation,
+                    lvvc_credential_token: credential_presentation
+                        .validity_credential_presentation
+                        .clone(),
+                    credential_format,
+                };
+                let formatted_presentation = presentation_formatter
+                    .format_presentation(
+                        vec![credentials],
+                        auth_fn,
+                        &credential_presentation.holder_did.map(|did| did.did),
+                        format_presentation_context(interaction_data, presentation_format)?,
+                    )
+                    .await
+                    .map_err(|e| VerificationProtocolError::Failed(e.to_string()))?;
+
+                vp_token
+                    .entry(credential_query_id)
+                    .and_modify(|presentations: &mut Vec<String>| {
+                        presentations.push(formatted_presentation.vp_token.to_owned())
+                    })
+                    .or_insert(vec![formatted_presentation.vp_token]);
+            } else {
+                // No holder binding — send bare credential tokens without VP wrapper
+                let tokens = vp_token.entry(credential_query_id).or_default();
+                tokens.push(credential_presentation.presentation);
+                if let Some(lvvc) = credential_presentation.validity_credential_presentation {
+                    tokens.push(lvvc);
+                }
+            }
         }
         Ok((
             VpSubmissionData::Dcql(DcqlSubmission { vp_token }),

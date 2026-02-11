@@ -68,6 +68,23 @@ struct TestData {
     mock_data: MockData,
 }
 
+impl TestData {
+    fn with_revocation_method(mut self, method: &str) -> Self {
+        self.proof
+            .schema
+            .as_mut()
+            .unwrap()
+            .input_schemas
+            .as_mut()
+            .unwrap()[0]
+            .credential_schema
+            .as_mut()
+            .unwrap()
+            .revocation_method = Some(method.into());
+        self
+    }
+}
+
 #[derive(Default)]
 struct MockData {
     presentation_extraction_unverified: Option<Result<ExtractedPresentation, FormatterError>>,
@@ -146,7 +163,7 @@ async fn test_validate_submission_success_pex() {
 
 #[tokio::test]
 async fn test_validate_submission_success_dcql() {
-    let test_data = test_data(None, Some(dummy_dcql_query()));
+    let test_data = test_data(None, Some(dummy_dcql_query(true)));
     let mocks = mocks_with_test_data(test_data.mock_data);
     let proto = setup_proto(mocks);
 
@@ -220,7 +237,7 @@ async fn test_validate_submission_suspended() {
 
 #[tokio::test]
 async fn test_validate_submission_suspended_dcql() {
-    let mut test_data = test_data(None, Some(dummy_dcql_query()));
+    let mut test_data = test_data(None, Some(dummy_dcql_query(true)));
     test_data.mock_data.revocation_check = Some(Ok(RevocationState::Suspended {
         suspend_end_date: None,
     }));
@@ -248,7 +265,7 @@ async fn test_validate_submission_suspended_dcql() {
 
 #[tokio::test]
 async fn test_validate_submission_incompatible_did_method() {
-    let mut test_data = test_data(None, Some(dummy_dcql_query()));
+    let mut test_data = test_data(None, Some(dummy_dcql_query(true)));
     test_data
         .mock_data
         .presentation_extraction_unverified
@@ -294,9 +311,56 @@ async fn test_validate_submission_incompatible_did_method() {
     );
 }
 
-fn mocks_with_test_data(mock_data: MockData) -> Mocks {
+fn base_credential_formatter() -> MockCredentialFormatter {
+    let mut formatter = MockCredentialFormatter::new();
+    formatter
+        .expect_get_capabilities()
+        .returning(generic_formatter_capabilities);
+    formatter.expect_get_leeway().returning(|| 10);
+    formatter
+}
+
+fn setup_mocks(
+    presentation_formatter: MockPresentationFormatter,
+    credential_formatter: MockCredentialFormatter,
+    revocation_method: Option<MockRevocationMethod>,
+) -> Mocks {
     let mut mocks = Mocks::default();
 
+    let presentation_formatter = Arc::new(presentation_formatter);
+    let presentation_formatter_clone = presentation_formatter.clone();
+    mocks
+        .presentation_formatter_provider
+        .expect_get_presentation_formatter()
+        .returning(move |_| Some(presentation_formatter_clone.clone()));
+    mocks
+        .presentation_formatter_provider
+        .expect_get_presentation_formatter_by_type()
+        .returning(move |_| Some(("JWT".to_string(), presentation_formatter.clone())));
+
+    let credential_formatter = Arc::new(credential_formatter);
+    let credential_formatter_clone = credential_formatter.clone();
+    mocks
+        .credential_formatter_provider
+        .expect_get_credential_formatter()
+        .returning(move |_| Some(credential_formatter_clone.clone()));
+    mocks
+        .credential_formatter_provider
+        .expect_get_formatter_by_type()
+        .returning(move |_| Some(("JWT".into(), credential_formatter.clone())));
+
+    if let Some(revocation_method) = revocation_method {
+        mocks
+            .revocation_method_provider
+            .expect_get_revocation_method_by_status_type()
+            .once()
+            .return_once(|_| Some((Arc::new(revocation_method), "mock".into())));
+    }
+
+    mocks
+}
+
+fn mocks_with_test_data(mock_data: MockData) -> Mocks {
     let mut presentation_formatter = MockPresentationFormatter::new();
     presentation_formatter.expect_get_leeway().returning(|| 10);
     if let Some(presentation_extraction) = mock_data.presentation_extraction_unverified {
@@ -310,11 +374,7 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
             .return_once(move |_, _, _| presentation_extraction);
     }
 
-    let mut credential_formatter = MockCredentialFormatter::new();
-    credential_formatter
-        .expect_get_capabilities()
-        .returning(generic_formatter_capabilities);
-    credential_formatter.expect_get_leeway().returning(|| 10);
+    let mut credential_formatter = base_credential_formatter();
     if let Some(credential_extraction) = mock_data.credential_extraction_unverified {
         credential_formatter
             .expect_extract_credentials_unverified()
@@ -325,40 +385,20 @@ fn mocks_with_test_data(mock_data: MockData) -> Mocks {
             .expect_extract_credentials()
             .return_once(move |_, _, _| credential_extraction);
     }
-    let presentation_formatter = Arc::new(presentation_formatter);
-    let presentation_formatter_clone = presentation_formatter.clone();
-    mocks
-        .presentation_formatter_provider
-        .expect_get_presentation_formatter()
-        .returning(move |_| Some(presentation_formatter_clone.clone()));
-    mocks
-        .presentation_formatter_provider
-        .expect_get_presentation_formatter_by_type()
-        .returning(move |_| Some(("JWT".to_string(), presentation_formatter.clone())));
-    let credential_formatter = Arc::new(credential_formatter);
-    let credential_formatter_clone = credential_formatter.clone();
-    mocks
-        .credential_formatter_provider
-        .expect_get_credential_formatter()
-        .returning(move |_| Some(credential_formatter_clone.clone()));
-    mocks
-        .credential_formatter_provider
-        .expect_get_formatter_by_type()
-        .returning(move |_| Some(("JWT".into(), credential_formatter.clone())));
 
-    let mut revocation_method = MockRevocationMethod::new();
-    if let Some(revocation_check) = mock_data.revocation_check {
-        revocation_method
-            .expect_check_credential_revocation_status()
+    let revocation_method = mock_data.revocation_check.map(|check| {
+        let mut rm = MockRevocationMethod::new();
+        rm.expect_check_credential_revocation_status()
             .once()
-            .return_once(|_, _, _, _| revocation_check);
-    }
-    mocks
-        .revocation_method_provider
-        .expect_get_revocation_method_by_status_type()
-        .once()
-        .return_once(|_| Some((Arc::new(revocation_method), "mock".into())));
-    mocks
+            .return_once(|_, _, _, _| check);
+        rm
+    });
+
+    setup_mocks(
+        presentation_formatter,
+        credential_formatter,
+        revocation_method,
+    )
 }
 
 fn dummy_presentation_definition() -> OpenID4VPPresentationDefinition {
@@ -400,7 +440,7 @@ fn dummy_presentation_definition() -> OpenID4VPPresentationDefinition {
     }
 }
 
-fn dummy_dcql_query() -> DcqlQuery {
+fn dummy_dcql_query(require_cryptographic_holder_binding: bool) -> DcqlQuery {
     DcqlQuery {
         credentials: vec![CredentialQuery {
             id: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".into(),
@@ -412,7 +452,7 @@ fn dummy_dcql_query() -> DcqlQuery {
             claim_sets: None,
             trusted_authorities: None,
             multiple: false,
-            require_cryptographic_holder_binding: false,
+            require_cryptographic_holder_binding,
         }],
         credential_sets: None,
     }
@@ -551,4 +591,123 @@ fn test_data(
         proof,
         mock_data,
     }
+}
+
+#[tokio::test]
+async fn test_validate_submission_dcql_no_holder_binding() {
+    let mut test_data = test_data(None, Some(dummy_dcql_query(false)));
+    // No VP extraction for bare credentials
+    test_data.mock_data.presentation_extraction = None;
+    test_data.mock_data.presentation_extraction_unverified = None;
+    let mocks = mocks_with_test_data(test_data.mock_data);
+    let proto = setup_proto(mocks);
+
+    let submission_data = SubmissionRequestData {
+        submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["bare_credential_token".to_string()]},
+        }),
+        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    };
+    let result = proto
+        .validate_submission(
+            submission_data,
+            test_data.proof,
+            test_data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap();
+    assert_eq!(result.0.proved_claims.len(), 1);
+    assert_eq!(result.0.proved_credentials.len(), 1);
+    assert_eq!(
+        result.0.proved_credentials.first().unwrap().issuer_details,
+        IdentifierDetails::Did(test_data.issuer_did.to_owned())
+    );
+}
+
+#[tokio::test]
+async fn test_validate_submission_dcql_no_holder_binding_with_lvvc() {
+    let mut test_data =
+        test_data(None, Some(dummy_dcql_query(false))).with_revocation_method("LVVC");
+
+    let extracted_credential = test_data
+        .mock_data
+        .credential_extraction
+        .take()
+        .unwrap()
+        .unwrap();
+
+    let lvvc_credential = DetailCredential {
+        id: Some("lvvc-id".to_string()),
+        claims: CredentialSubject {
+            claims: try_convert_inner(HashMap::from([("status".to_string(), json!("active"))]))
+                .unwrap(),
+            id: None,
+        },
+        status: vec![],
+        ..extracted_credential.clone()
+    };
+
+    let mut credential_formatter = base_credential_formatter();
+    let lvvc_cred_clone = lvvc_credential.clone();
+    credential_formatter
+        .expect_extract_credentials_unverified()
+        .times(2)
+        .returning(move |token, _| {
+            if token == "lvvc_token" {
+                Ok(lvvc_cred_clone.clone())
+            } else {
+                Ok(DetailCredential {
+                    id: None,
+                    claims: CredentialSubject {
+                        claims: Default::default(),
+                        id: None,
+                    },
+                    ..lvvc_cred_clone.clone()
+                })
+            }
+        });
+    credential_formatter
+        .expect_extract_credentials()
+        .return_once(move |_, _, _| Ok(extracted_credential));
+
+    let mut revocation_method = MockRevocationMethod::new();
+    revocation_method
+        .expect_check_credential_revocation_status()
+        .once()
+        .return_once(|_, _, _, _| Ok(RevocationState::Valid));
+
+    let mocks = setup_mocks(
+        MockPresentationFormatter::new(),
+        credential_formatter,
+        Some(revocation_method),
+    );
+    let proto = setup_proto(mocks);
+
+    let submission_data = SubmissionRequestData {
+        submission_data: VpSubmissionData::Dcql(DcqlSubmission {
+            // 2 entries: bare credential + LVVC
+            vp_token: hashmap! {"a83dabc3-1601-4642-84ec-7a5ad8a70d36".to_string() => vec!["main_credential_token".to_string(), "lvvc_token".to_string()]},
+        }),
+        state: "a83dabc3-1601-4642-84ec-7a5ad8a70d36".parse().unwrap(),
+        mdoc_generated_nonce: None,
+        encryption_key: None,
+    };
+    let result = proto
+        .validate_submission(
+            submission_data,
+            test_data.proof,
+            test_data.interaction_data,
+            VerificationProtocolType::OpenId4VpFinal1_0,
+        )
+        .await
+        .unwrap();
+    assert_eq!(result.0.proved_claims.len(), 1);
+    assert_eq!(result.0.proved_credentials.len(), 1);
+    assert_eq!(
+        result.0.proved_credentials.first().unwrap().issuer_details,
+        IdentifierDetails::Did(test_data.issuer_did)
+    );
 }

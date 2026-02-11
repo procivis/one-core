@@ -196,6 +196,11 @@ pub fn generic_config() -> AppConfig<CustomConfig> {
                 order: 1
                 type: 'BITSTRINGSTATUSLIST'
                 params: null
+            LVVC:
+                display: 'revocation.lvvc'
+                order: 2
+                type: 'LVVC'
+                params: null
         did:
             KEY:
                 display: 'did.key'
