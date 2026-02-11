@@ -3,7 +3,8 @@ use std::sync::Arc;
 use futures::FutureExt;
 
 use super::{
-    CreateLocalIdentifierRequest, IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
+    CreateLocalIdentifierRequest, Error, IdentifierCreator, IdentifierRole,
+    RemoteIdentifierRelation,
 };
 use crate::config::core_config::CoreConfig;
 use crate::error::{ContextWithErrorCode, ErrorCode, ErrorCodeMixin};
@@ -19,7 +20,6 @@ use crate::repository::certificate_repository::CertificateRepository;
 use crate::repository::did_repository::DidRepository;
 use crate::repository::identifier_repository::IdentifierRepository;
 use crate::repository::key_repository::KeyRepository;
-use crate::service::error::ServiceError;
 use crate::{CertificateValidator, KeyAlgorithmProvider};
 
 pub(crate) struct IdentifierCreatorProto {
@@ -78,12 +78,12 @@ impl IdentifierCreator for IdentifierCreatorProto {
         organisation: &Option<Organisation>,
         details: &IdentifierDetails,
         role: IdentifierRole,
-    ) -> Result<(Identifier, RemoteIdentifierRelation), ServiceError> {
+    ) -> Result<(Identifier, RemoteIdentifierRelation), Error> {
         let result = self
             .tx_manager
             .tx_with_config(
                 async {
-                    Ok::<_, ServiceError>(match details {
+                    Ok::<_, Error>(match details {
                         IdentifierDetails::Did(did_value) => {
                             let (did, identifier) = self
                                 .get_or_create_did_and_identifier(organisation, did_value, role)
@@ -143,12 +143,12 @@ impl IdentifierCreator for IdentifierCreatorProto {
         name: String,
         request: CreateLocalIdentifierRequest,
         organisation: Organisation,
-    ) -> Result<Identifier, ServiceError> {
+    ) -> Result<Identifier, Error> {
         Ok(self
             .tx_manager
             .tx_with_config(
                 async {
-                    Ok::<_, ServiceError>(match request {
+                    Ok::<_, Error>(match request {
                         CreateLocalIdentifierRequest::Did(did_request) => {
                             self.create_local_did_identifier(name, did_request, organisation)
                                 .await?

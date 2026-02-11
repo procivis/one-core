@@ -459,7 +459,8 @@ impl OID4VCIDraft13Service {
                             &IdentifierDetails::Did(holder_did_value),
                             IdentifierRole::Holder,
                         )
-                        .await?;
+                        .await
+                        .error_while("creating remote holder identifier")?;
                     Ok((identifier, holder_key_id))
                 }
                 Either::Right(jwk) => {
@@ -470,7 +471,8 @@ impl OID4VCIDraft13Service {
                             &IdentifierDetails::Key(jwk),
                             IdentifierRole::Holder,
                         )
-                        .await?
+                        .await
+                        .error_while("creating remote holder identifier")?
                     else {
                         return Err(ServiceError::MappingError(
                             "Invalid identifier type".to_string(),

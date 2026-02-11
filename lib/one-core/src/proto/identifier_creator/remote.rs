@@ -3,8 +3,8 @@ use standardized_types::jwk::PublicJwk;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::IdentifierRole;
 use super::creator::IdentifierCreatorProto;
+use super::{Error, IdentifierRole};
 use crate::error::ContextWithErrorCode;
 use crate::model::certificate::{
     Certificate, CertificateFilterValue, CertificateListQuery, CertificateState,
@@ -20,7 +20,7 @@ use crate::model::organisation::Organisation;
 use crate::proto::certificate_validator::{CertificateValidationOptions, ParsedCertificate};
 use crate::proto::identifier_creator::RemoteIdentifierRelation;
 use crate::provider::credential_formatter::model::IdentifierDetails;
-use crate::service::error::{MissingProviderError, ServiceError};
+use crate::service::error::MissingProviderError;
 
 impl IdentifierCreatorProto {
     pub(super) async fn get_or_create_did_and_identifier(
@@ -28,7 +28,7 @@ impl IdentifierCreatorProto {
         organisation: &Option<Organisation>,
         did_value: &DidValue,
         role: IdentifierRole,
-    ) -> Result<(Did, Identifier), ServiceError> {
+    ) -> Result<(Did, Identifier), Error> {
         let now = OffsetDateTime::now_utc();
 
         let did = match self
@@ -47,9 +47,10 @@ impl IdentifierCreatorProto {
                 let did_method = self
                     .did_method_provider
                     .get_did_method_id(did_value)
-                    .ok_or(ServiceError::MissingProvider(
-                        MissingProviderError::DidMethod(did_value.method().to_string()),
-                    ))?;
+                    .ok_or(MissingProviderError::DidMethod(
+                        did_value.method().to_string(),
+                    ))
+                    .error_while("getting did provider")?;
                 let did = Did {
                     id: DidId::from(id),
                     created_date: now,
@@ -118,7 +119,7 @@ impl IdentifierCreatorProto {
         chain: String,
         fingerprint: String,
         role: IdentifierRole,
-    ) -> Result<(Certificate, Identifier), ServiceError> {
+    ) -> Result<(Certificate, Identifier), Error> {
         let organisation_id = organisation
             .as_ref()
             .map(|org| CertificateFilterValue::OrganisationId(org.id));
@@ -141,7 +142,7 @@ impl IdentifierCreatorProto {
                 .get(certificate.identifier_id, &Default::default())
                 .await
                 .error_while("getting identifier")?
-                .ok_or(ServiceError::MappingError(
+                .ok_or(Error::MappingError(
                     "Certificate identifier not found".to_string(),
                 ))?;
 
@@ -155,10 +156,11 @@ impl IdentifierCreatorProto {
         } = self
             .certificate_validator
             .parse_pem_chain(&chain, CertificateValidationOptions::no_validation())
-            .await?;
+            .await
+            .error_while("parsing PEM chain")?;
 
         if attributes.fingerprint != fingerprint {
-            return Err(ServiceError::MappingError(format!(
+            return Err(Error::MappingError(format!(
                 "Fingerprint {fingerprint} doesn't match provided certificate"
             )));
         }
@@ -212,7 +214,7 @@ impl IdentifierCreatorProto {
         organisation: Option<&Organisation>,
         public_key: &PublicJwk,
         role: IdentifierRole,
-    ) -> Result<(Key, Identifier), ServiceError> {
+    ) -> Result<(Key, Identifier), Error> {
         let parsed_key = self.key_algorithm_provider.parse_jwk(public_key)?;
         let organisation_id = organisation.as_ref().map(|org| org.id);
         let now = OffsetDateTime::now_utc();
@@ -301,7 +303,7 @@ impl IdentifierCreatorProto {
         &self,
         organisation: &Option<Organisation>,
         details: &IdentifierDetails,
-    ) -> Result<(Identifier, RemoteIdentifierRelation), ServiceError> {
+    ) -> Result<(Identifier, RemoteIdentifierRelation), Error> {
         match details {
             IdentifierDetails::Did(did_value) => {
                 let did = self
@@ -313,7 +315,7 @@ impl IdentifierCreatorProto {
                     )
                     .await
                     .error_while("getting did")?
-                    .ok_or(ServiceError::MappingError("Did not found".to_string()))?;
+                    .ok_or(Error::MappingError("Did not found".to_string()))?;
 
                 let identifier = self
                     .identifier_repository
@@ -326,9 +328,7 @@ impl IdentifierCreatorProto {
                     )
                     .await
                     .error_while("getting identifier")?
-                    .ok_or(ServiceError::MappingError(
-                        "Identifier not found".to_string(),
-                    ))?;
+                    .ok_or(Error::MappingError("Identifier not found".to_string()))?;
 
                 Ok((identifier, RemoteIdentifierRelation::Did(did)))
             }
@@ -353,9 +353,7 @@ impl IdentifierCreatorProto {
                     .error_while("getting certificates")?;
 
                 let Some(certificate) = list.values.into_iter().next() else {
-                    return Err(ServiceError::MappingError(
-                        "Certificate not found".to_string(),
-                    ));
+                    return Err(Error::MappingError("Certificate not found".to_string()));
                 };
 
                 let identifier = self
@@ -363,7 +361,7 @@ impl IdentifierCreatorProto {
                     .get(certificate.identifier_id, &Default::default())
                     .await
                     .error_while("getting identifier")?
-                    .ok_or(ServiceError::MappingError(
+                    .ok_or(Error::MappingError(
                         "Certificate identifier not found".to_string(),
                     ))?;
 
@@ -393,7 +391,7 @@ impl IdentifierCreatorProto {
                     .error_while("getting keys")?;
 
                 let Some(key) = list.values.into_iter().next() else {
-                    return Err(ServiceError::MappingError("Key not found".to_string()));
+                    return Err(Error::MappingError("Key not found".to_string()));
                 };
 
                 let identifier = self
@@ -411,9 +409,7 @@ impl IdentifierCreatorProto {
                     .values
                     .into_iter()
                     .next()
-                    .ok_or(ServiceError::MappingError(
-                        "Identifier not found".to_string(),
-                    ))?;
+                    .ok_or(Error::MappingError("Identifier not found".to_string()))?;
 
                 Ok((identifier, RemoteIdentifierRelation::Key(key)))
             }

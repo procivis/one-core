@@ -300,7 +300,8 @@ impl TrustEntityService {
                 &IdentifierDetails::Did(did_value.to_owned()),
                 did_role,
             )
-            .await?;
+            .await
+            .error_while(format!("creating remote {:?} identifier", request.role))?;
 
         let entity = trust_entity_from_did_request(request, trust_anchor.clone(), did_value);
 

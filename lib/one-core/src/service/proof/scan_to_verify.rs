@@ -224,7 +224,8 @@ impl ProofService {
                 &credential.issuer,
                 IdentifierRole::Issuer,
             )
-            .await?;
+            .await
+            .error_while("creating remote issuer identifier")?;
 
         let credential = extracted_credential_to_model(
             &claim_schemas,

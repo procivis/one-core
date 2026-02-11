@@ -639,7 +639,8 @@ impl SSIHolderService {
                         &details,
                         IdentifierRole::Verifier,
                     )
-                    .await?;
+                    .await
+                    .error_while("creating remote verifier identifier")?;
                 proof.verifier_identifier = Some(identifier);
                 match verifier_identifier_relation {
                     RemoteIdentifierRelation::Certificate(certificate) => {

@@ -238,12 +238,6 @@ pub enum BusinessLogicError {
     #[error("Invalid DID method: {method}")]
     InvalidDidMethod { method: String },
 
-    #[error("Incapable DID method: {key_algorithm}")]
-    DidMethodIncapableKeyAlgorithm { key_algorithm: String },
-
-    #[error("Did value already exists: {0}")]
-    DidValueAlreadyExists(DidValue),
-
     #[error("Credential schema already exists")]
     CredentialSchemaAlreadyExists,
 
@@ -443,9 +437,6 @@ pub enum BusinessLogicError {
     #[error("Rejection not supported")]
     RejectionNotSupported,
 
-    #[error("Identifier already exists")]
-    IdentifierAlreadyExists,
-
     #[error("Certificate `{certificate_id}` is not associated with identifier `{identifier_id}`")]
     IdentifierCertificateIdMismatch {
         identifier_id: String,
@@ -454,9 +445,6 @@ pub enum BusinessLogicError {
 
     #[error("Certificate id not specified")]
     CertificateIdNotSpecified,
-
-    #[error("Certificate already exists")]
-    CertificateAlreadyExists,
 
     #[error("Presentation submission must contain at least one credential")]
     EmptyPresentationSubmission,
@@ -641,11 +629,6 @@ pub enum ValidationError {
     )]
     InvalidIdentifierInput,
 
-    #[error(
-        "Chain or self-signed must be specified when creating Certificate Authority identifier"
-    )]
-    InvalidCertificateAuthorityIdentifierInput,
-
     #[error("Certificate signature invalid")]
     CertificateSignatureInvalid,
 
@@ -657,9 +640,6 @@ pub enum ValidationError {
 
     #[error("Certificate is not yet valid")]
     CertificateNotYetValid,
-
-    #[error("Key does not match public key of certificate")]
-    CertificateKeyNotMatching,
 
     #[error("Certificate parsing failure: `{0}`")]
     CertificateParsingFailed(String),
@@ -693,9 +673,6 @@ pub enum ValidationError {
 
     #[error("Missing authority key identifier")]
     MissingAuthorityKeyIdentifier,
-
-    #[error("Key must not be remote: `{0}`")]
-    KeyMustNotBeRemote(String),
 
     #[error("Unknown critical X.509 extension: {0}")]
     UnknownCriticalExtension(String),
@@ -865,11 +842,9 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::OrganisationIsDeactivated(_) => ErrorCode::BR_0241,
             Self::IncompatibleDidType { .. } => ErrorCode::BR_0025,
             Self::IncompatibleIdentifierType { .. } => ErrorCode::BR_0025,
-            Self::DidMethodIncapableKeyAlgorithm { .. } => ErrorCode::BR_0065,
             Self::InvalidDidMethod { .. } => ErrorCode::BR_0026,
             Self::DidIsDeactivated(_) => ErrorCode::BR_0027,
             Self::IdentifierIsDeactivated(_) => ErrorCode::BR_0027,
-            Self::DidValueAlreadyExists(_) => ErrorCode::BR_0028,
             Self::CredentialSchemaAlreadyExists => ErrorCode::BR_0007,
             Self::InvalidCredentialState { .. } => ErrorCode::BR_0002,
             Self::ProofSchemaAlreadyExists => ErrorCode::BR_0015,
@@ -932,12 +907,10 @@ impl ErrorCodeMixin for BusinessLogicError {
             Self::IncompatibleHolderKeyAlgorithm => ErrorCode::BR_0218,
             Self::IdentifierTypeNotFound => ErrorCode::BR_0207,
             Self::RejectionNotSupported => ErrorCode::BR_0237,
-            Self::IdentifierAlreadyExists => ErrorCode::BR_0240,
             Self::IdentifierCertificateIdMismatch { .. } | Self::CertificateIdNotSpecified => {
                 ErrorCode::BR_0242
             }
             Self::EmptyPresentationSubmission => ErrorCode::BR_0246,
-            Self::CertificateAlreadyExists => ErrorCode::BR_0247,
             Self::IdentifierOrganisationMismatch => ErrorCode::BR_0285,
             Self::WalletProviderAlreadyAssociated(_) => ErrorCode::BR_0283,
             Self::OrganisationNotSpecified => ErrorCode::BR_0290,
@@ -999,11 +972,9 @@ impl ErrorCodeMixin for ValidationError {
             Self::EmptyValueNotAllowed => ErrorCode::BR_0204,
             Self::NoKeyWithRole(_) => ErrorCode::BR_0222,
             Self::InvalidIdentifierInput => ErrorCode::BR_0206,
-            Self::InvalidCertificateAuthorityIdentifierInput => ErrorCode::BR_0331,
             Self::CertificateSignatureInvalid => ErrorCode::BR_0211,
             Self::CertificateRevoked => ErrorCode::BR_0212,
             Self::CertificateExpired | Self::CertificateNotYetValid => ErrorCode::BR_0213,
-            Self::CertificateKeyNotMatching => ErrorCode::BR_0214,
             Self::CertificateParsingFailed(_) => ErrorCode::BR_0224,
             Self::UnknownCriticalExtension(_) => ErrorCode::BR_0248,
             Self::KeyUsageViolation(_) => ErrorCode::BR_0249,
@@ -1018,7 +989,6 @@ impl ErrorCodeMixin for ValidationError {
             Self::MissingAuthorityKeyIdentifier => ErrorCode::BR_0243,
             Self::InvalidCaCertificateChain(_) => ErrorCode::BR_0244,
             Self::CredentialSchemaClaimSchemaUnsupportedDatatype { .. } => ErrorCode::BR_0245,
-            Self::KeyMustNotBeRemote(_) => ErrorCode::BR_0076,
             Self::BasicConstraintsViolation(_) => ErrorCode::BR_0250,
             Self::MissingVerificationEngagementConfig(_) => ErrorCode::BR_0077,
             Self::MissingEngagementForISOmDLFlow => ErrorCode::BR_0079,

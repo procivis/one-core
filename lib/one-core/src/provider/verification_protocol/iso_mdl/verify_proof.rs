@@ -405,7 +405,8 @@ pub(crate) async fn accept_proof(
                 &first_claim.credential.issuer,
                 IdentifierRole::Issuer,
             )
-            .await?;
+            .await
+            .error_while("creating remote issuer identifier")?;
 
         let credential_schema = &first_claim.credential_schema;
         let claim_schemas =

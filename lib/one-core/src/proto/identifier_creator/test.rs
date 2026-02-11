@@ -13,6 +13,7 @@ use super::{
     CreateLocalIdentifierRequest, IdentifierCreator, IdentifierRole, RemoteIdentifierRelation,
 };
 use crate::config::core_config::{CoreConfig, KeyAlgorithmType};
+use crate::error::{ErrorCode, ErrorCodeMixin};
 use crate::model::certificate::{Certificate, CertificateState, GetCertificateList};
 use crate::model::identifier::{GetIdentifierList, Identifier};
 use crate::model::key::{GetKeyList, Key};
@@ -37,7 +38,6 @@ use crate::repository::identifier_repository::MockIdentifierRepository;
 use crate::repository::key_repository::MockKeyRepository;
 use crate::service::certificate::dto::CertificateX509AttributesDTO;
 use crate::service::did::dto::{CreateDidRequestDTO, CreateDidRequestKeysDTO};
-use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
 use crate::service::test_utilities::{
     dummy_identifier, dummy_key, dummy_organisation, generic_config,
 };
@@ -577,12 +577,7 @@ async fn test_create_local_identifier_did_did_value_already_exists() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::BusinessLogic(
-            BusinessLogicError::DidValueAlreadyExists(_)
-        ))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0028);
 }
 
 #[tokio::test]
@@ -633,10 +628,5 @@ async fn test_create_local_identifier_did_invalid_num_keys() {
         )
         .await;
 
-    assert!(matches!(
-        result,
-        Err(ServiceError::Validation(
-            ValidationError::DidInvalidKeyNumber
-        ))
-    ));
+    assert_eq!(result.unwrap_err().error_code(), ErrorCode::BR_0030);
 }

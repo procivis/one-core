@@ -5,6 +5,7 @@ use shared_types::{DidId, IdentifierId, KeyId, OrganisationId};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
+use super::Error;
 use super::creator::IdentifierCreatorProto;
 use crate::config::validator::did::validate_did_method;
 use crate::error::{ContextWithErrorCode, ErrorCodeMixinExt};
@@ -25,9 +26,7 @@ use crate::service::did::dto::CreateDidRequestDTO;
 use crate::service::did::mapper::did_from_did_request;
 use crate::service::did::service::{build_keys_request, generate_update_key};
 use crate::service::did::validator::validate_request_amount_of_keys;
-use crate::service::error::{
-    BusinessLogicError, EntityNotFoundError, MissingProviderError, ServiceError, ValidationError,
-};
+use crate::service::error::{EntityNotFoundError, MissingProviderError, ValidationError};
 use crate::service::identifier::dto::CreateCertificateAuthorityRequestDTO;
 
 impl IdentifierCreatorProto {
@@ -36,7 +35,7 @@ impl IdentifierCreatorProto {
         name: String,
         request: CreateDidRequestDTO,
         organisation: Organisation,
-    ) -> Result<Identifier, ServiceError> {
+    ) -> Result<Identifier, Error> {
         let did = self
             .create_did_without_identifier(request, organisation.to_owned())
             .await?;
@@ -69,23 +68,19 @@ impl IdentifierCreatorProto {
         name: String,
         key: Key,
         organisation: Organisation,
-    ) -> Result<Identifier, ServiceError> {
+    ) -> Result<Identifier, Error> {
         if key.is_remote() {
-            return Err(ValidationError::KeyMustNotBeRemote(key.name).into());
+            return Err(Error::KeyMustNotBeRemote(key.name));
         }
 
         if key
             .organisation
             .as_ref()
-            .ok_or(ServiceError::MappingError(
-                "missing organisation".to_string(),
-            ))?
+            .ok_or(Error::MappingError("missing organisation".to_string()))?
             .id
             != organisation.id
         {
-            return Err(ServiceError::MappingError(
-                "Organisation ID mismatch".to_string(),
-            ));
+            return Err(Error::MappingError("Organisation ID mismatch".to_string()));
         }
 
         let now = OffsetDateTime::now_utc();
@@ -116,7 +111,7 @@ impl IdentifierCreatorProto {
         name: String,
         requests: Vec<CreateCertificateRequestDTO>,
         organisation: Organisation,
-    ) -> Result<Identifier, ServiceError> {
+    ) -> Result<Identifier, Error> {
         let id = Uuid::new_v4().into();
 
         let mut certificates = vec![];
@@ -152,9 +147,7 @@ impl IdentifierCreatorProto {
                 .create(certificate)
                 .await
                 .map_err(|err| match err {
-                    DataLayerError::AlreadyExists => {
-                        ServiceError::BusinessLogic(BusinessLogicError::CertificateAlreadyExists)
-                    }
+                    DataLayerError::AlreadyExists => Error::CertificateAlreadyExists,
                     e => e.error_while("creating certificate").into(),
                 })?;
         }
@@ -167,7 +160,7 @@ impl IdentifierCreatorProto {
         name: String,
         requests: Vec<CreateCertificateAuthorityRequestDTO>,
         organisation: Organisation,
-    ) -> Result<Identifier, ServiceError> {
+    ) -> Result<Identifier, Error> {
         let id = Uuid::new_v4().into();
 
         let mut certificates = vec![];
@@ -203,9 +196,7 @@ impl IdentifierCreatorProto {
                 .create(certificate)
                 .await
                 .map_err(|err| match err {
-                    DataLayerError::AlreadyExists => {
-                        ServiceError::BusinessLogic(BusinessLogicError::CertificateAlreadyExists)
-                    }
+                    DataLayerError::AlreadyExists => Error::CertificateAlreadyExists,
                     e => e.error_while("creating certificate").into(),
                 })?;
         }
@@ -217,22 +208,23 @@ impl IdentifierCreatorProto {
         &self,
         request: CreateDidRequestDTO,
         organisation: Organisation,
-    ) -> Result<Did, ServiceError> {
+    ) -> Result<Did, Error> {
         if request.organisation_id != organisation.id {
-            return Err(ServiceError::MappingError(
-                "Organisation ID mismatch".to_string(),
-            ));
+            return Err(Error::MappingError("Organisation ID mismatch".to_string()));
         }
 
-        validate_did_method(&request.did_method, &self.config.did)?;
+        validate_did_method(&request.did_method, &self.config.did)
+            .error_while("validating did request")?;
 
         let did_method_key = &request.did_method;
         let did_method = self
             .did_method_provider
             .get_did_method(did_method_key)
-            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))?;
+            .ok_or(MissingProviderError::DidMethod(did_method_key.to_owned()))
+            .error_while("getting did provider")?;
 
-        validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())?;
+        validate_request_amount_of_keys(did_method.deref(), request.keys.to_owned())
+            .error_while("validating did request")?;
 
         let keys = request.keys.to_owned();
 
@@ -260,27 +252,28 @@ impl IdentifierCreatorProto {
         let capabilities = did_method.get_capabilities();
         for key in &all_keys {
             if key.is_remote() {
-                return Err(ValidationError::KeyMustNotBeRemote(key.name.clone()).into());
+                return Err(Error::KeyMustNotBeRemote(key.name.clone()));
             }
             let key_algorithm = key
                 .key_algorithm_type()
                 .and_then(|alg| self.key_algorithm_provider.key_algorithm_from_type(alg))
                 .ok_or(ValidationError::InvalidKeyAlgorithm(
                     key.key_type.to_owned(),
-                ))?;
+                ))
+                .error_while("getting key algorithm")?;
 
             if !capabilities
                 .key_algorithms
                 .contains(&key_algorithm.algorithm_type())
             {
-                return Err(BusinessLogicError::DidMethodIncapableKeyAlgorithm {
+                return Err(Error::DidMethodIncapableKeyAlgorithm {
                     key_algorithm: key.key_type.to_owned(),
-                }
-                .into());
+                });
             }
         }
 
-        let mut keys = build_keys_request(&request.keys, all_keys.clone())?;
+        let mut keys = build_keys_request(&request.keys, all_keys.clone())
+            .error_while("building key request")?;
 
         let mut update_keys = None;
         if let Some(update_key_type) = capabilities.supported_update_key_types.first() {
@@ -291,7 +284,8 @@ impl IdentifierCreatorProto {
                 *update_key_type,
                 &*self.key_provider,
             )
-            .await?;
+            .await
+            .error_while("generating update key")?;
 
             update_keys = Some(vec![update_key]);
             keys.update_keys = update_keys.clone();
@@ -326,16 +320,15 @@ impl IdentifierCreatorProto {
             keys,
             now,
             key_reference_mapping,
-        )?;
+        )
+        .error_while("creating did model")?;
         let did_value = did.did.clone();
 
         self.did_repository
             .create_did(did.to_owned())
             .await
             .map_err(|err| match err {
-                DataLayerError::AlreadyExists => {
-                    ServiceError::from(BusinessLogicError::DidValueAlreadyExists(did_value))
-                }
+                DataLayerError::AlreadyExists => Error::DidValueAlreadyExists(did_value),
                 err => err.error_while("creating did").into(),
             })?;
 
@@ -347,13 +340,14 @@ impl IdentifierCreatorProto {
         identifier_id: IdentifierId,
         organisation_id: OrganisationId,
         request: CreateCertificateRequestDTO,
-    ) -> Result<Certificate, ServiceError> {
+    ) -> Result<Certificate, Error> {
         let key = self
             .key_repository
             .get_key(&request.key_id, &Default::default())
             .await
             .error_while("getting key")?
-            .ok_or(EntityNotFoundError::Key(request.key_id))?;
+            .ok_or(EntityNotFoundError::Key(request.key_id))
+            .error_while("getting key")?;
 
         let ParsedCertificate {
             attributes,
@@ -368,15 +362,18 @@ impl IdentifierCreatorProto {
                     EnforceKeyUsage::DigitalSignature,
                 ])),
             )
-            .await?;
+            .await
+            .error_while("parsing PEM chain")?;
 
         validate_subject_public_key(&public_key, &key)?;
 
         let name = match request.name {
             Some(name) => name,
-            None => subject_common_name.ok_or_else(|| {
-                ValidationError::CertificateParsingFailed("missing common-name".to_string())
-            })?,
+            None => subject_common_name
+                .ok_or_else(|| {
+                    ValidationError::CertificateParsingFailed("missing common-name".to_string())
+                })
+                .error_while("preparing certificate name")?,
         };
 
         Ok(Certificate {
@@ -399,13 +396,14 @@ impl IdentifierCreatorProto {
         identifier_id: IdentifierId,
         organisation_id: OrganisationId,
         request: CreateCertificateAuthorityRequestDTO,
-    ) -> Result<Certificate, ServiceError> {
+    ) -> Result<Certificate, Error> {
         let key = self
             .key_repository
             .get_key(&request.key_id, &Default::default())
             .await
             .error_while("getting key")?
-            .ok_or(EntityNotFoundError::Key(request.key_id))?;
+            .ok_or(EntityNotFoundError::Key(request.key_id))
+            .error_while("getting key")?;
 
         let chain = match (request.chain, request.self_signed) {
             (Some(chain), None) => chain,
@@ -413,11 +411,13 @@ impl IdentifierCreatorProto {
                 let csr = self
                     .csr_creator
                     .create_csr(key.clone(), self_signed.content.clone().into())
-                    .await?;
+                    .await
+                    .error_while("creating CSR")?;
                 let signer = self
                     .signer_provider
                     .get(&self_signed.signer)
-                    .ok_or(MissingProviderError::Signer(self_signed.signer.clone()))?;
+                    .ok_or(MissingProviderError::Signer(self_signed.signer.clone()))
+                    .error_while("getting signer")?;
                 signer
                     .sign(
                         Issuer::Key(Box::new(key.clone())),
@@ -427,10 +427,13 @@ impl IdentifierCreatorProto {
                             validity_end: self_signed.validity_end,
                         },
                     )
-                    .await?
+                    .await
+                    .error_while("parsing PEM chain")?
                     .result
             }
-            _ => return Err(ValidationError::InvalidCertificateAuthorityIdentifierInput.into()),
+            _ => {
+                return Err(Error::InvalidCertificateAuthorityIdentifierInput);
+            }
         };
 
         let ParsedCertificate {
@@ -451,15 +454,18 @@ impl IdentifierCreatorProto {
                     leaf_validations: vec![validate_ca],
                 },
             )
-            .await?;
+            .await
+            .error_while("parsing PEM chain")?;
 
         validate_subject_public_key(&public_key, &key)?;
 
         let name = match request.name {
             Some(name) => name,
-            None => subject_common_name.ok_or_else(|| {
-                ValidationError::CertificateParsingFailed("missing common-name".to_string())
-            })?,
+            None => subject_common_name
+                .ok_or_else(|| {
+                    ValidationError::CertificateParsingFailed("missing common-name".to_string())
+                })
+                .error_while("preparing CA name")?,
         };
 
         Ok(Certificate {
@@ -478,11 +484,9 @@ impl IdentifierCreatorProto {
     }
 }
 
-fn map_already_exists_error(error: DataLayerError) -> ServiceError {
+fn map_already_exists_error(error: DataLayerError) -> Error {
     match error {
-        DataLayerError::AlreadyExists => {
-            ServiceError::BusinessLogic(BusinessLogicError::IdentifierAlreadyExists)
-        }
+        DataLayerError::AlreadyExists => Error::IdentifierAlreadyExists,
         e => e.error_while("creating identifier").into(),
     }
 }
@@ -490,10 +494,10 @@ fn map_already_exists_error(error: DataLayerError) -> ServiceError {
 fn validate_subject_public_key(
     subject_public_key: &KeyHandle,
     expected_key: &Key,
-) -> Result<(), ServiceError> {
+) -> Result<(), Error> {
     let subject_raw_public_key = subject_public_key.public_key_as_raw();
     if expected_key.public_key != subject_raw_public_key {
-        return Err(ValidationError::CertificateKeyNotMatching.into());
+        return Err(Error::CertificateKeyNotMatching);
     }
 
     Ok(())

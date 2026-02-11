@@ -570,7 +570,8 @@ impl OID4VCIFinal1_0Service {
                         &IdentifierDetails::Did(did),
                         IdentifierRole::Holder,
                     )
-                    .await?;
+                    .await
+                    .error_while("creating remote holder identifier")?;
                 (identifier, key_id)
             }
             OpenID4VCIProofHolderBinding::Jwk(jwk) => {
@@ -581,7 +582,8 @@ impl OID4VCIFinal1_0Service {
                         &IdentifierDetails::Key(jwk),
                         IdentifierRole::Holder,
                     )
-                    .await?
+                    .await
+                    .error_while("creating remote holder identifier")?
                 else {
                     return Err(ServiceError::MappingError(
                         "Invalid identifier type".to_string(),

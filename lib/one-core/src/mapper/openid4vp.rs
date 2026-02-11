@@ -1,5 +1,6 @@
 use one_dto_mapper::{convert_inner, convert_inner_of_inner};
 
+use crate::error::ContextWithErrorCode;
 use crate::mapper::RemoteIdentifierRelation;
 use crate::model::credential::Credential;
 use crate::model::credential_schema::CredentialSchema;
@@ -19,7 +20,8 @@ pub(crate) async fn credential_from_proved(
             &proved_credential.issuer_details,
             IdentifierRole::Issuer,
         )
-        .await?;
+        .await
+        .error_while("creating remote issuer identifier")?;
 
     let issuer_certificate =
         if let RemoteIdentifierRelation::Certificate(certificate) = issuer_relation {
@@ -34,7 +36,8 @@ pub(crate) async fn credential_from_proved(
             &proved_credential.holder_details,
             IdentifierRole::Holder,
         )
-        .await?;
+        .await
+        .error_while("creating remote holder identifier")?;
 
     Ok(Credential {
         id: proved_credential.credential.id,

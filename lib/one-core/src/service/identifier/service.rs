@@ -129,7 +129,8 @@ impl IdentifierService {
                         CreateLocalIdentifierRequest::Did(did_request),
                         organisation,
                     )
-                    .await?
+                    .await
+                    .error_while("creating local did identifier")?
             }
             // IdentifierType::Key
             // Deprecated. Use the `key` field instead.
@@ -157,7 +158,8 @@ impl IdentifierService {
                         CreateLocalIdentifierRequest::Key(key),
                         organisation,
                     )
-                    .await?
+                    .await
+                    .error_while("creating local key identifier")?
             }
             (None, None, Some(CreateIdentifierKeyRequestDTO { key_id }), None, None) => {
                 validate_identifier_type(
@@ -182,7 +184,8 @@ impl IdentifierService {
                         CreateLocalIdentifierRequest::Key(key),
                         organisation,
                     )
-                    .await?
+                    .await
+                    .error_while("creating local key identifier")?
             }
             // IdentifierType::Certificate
             (None, None, None, Some(certificate_requests), None) => {
@@ -197,7 +200,8 @@ impl IdentifierService {
                         CreateLocalIdentifierRequest::Certificate(certificate_requests),
                         organisation,
                     )
-                    .await?
+                    .await
+                    .error_while("creating local certificate identifier")?
             }
             // IdentifierType::Certificate authority
             (None, None, None, None, Some(ca_requests)) => {
@@ -212,7 +216,8 @@ impl IdentifierService {
                         CreateLocalIdentifierRequest::CertificateAuthority(ca_requests),
                         organisation,
                     )
-                    .await?
+                    .await
+                    .error_while("creating local CA identifier")?
             }
             // invalid input combinations
             _ => return Err(ValidationError::InvalidIdentifierInput.into()),

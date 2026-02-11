@@ -6,7 +6,7 @@ use crate::model::did::Did;
 use crate::provider::did_method::DidMethod;
 use crate::provider::did_method::model::{AmountOfKeys, Operation};
 use crate::service::did::dto::CreateDidRequestKeysDTO;
-use crate::service::error::{BusinessLogicError, ServiceError, ValidationError};
+use crate::service::error::{BusinessLogicError, ValidationError};
 
 fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
     vec.into_iter().collect::<HashSet<_>>().len()
@@ -15,7 +15,7 @@ fn count_uniq<T: Eq + Hash>(vec: impl IntoIterator<Item = T>) -> usize {
 pub(crate) fn validate_request_amount_of_keys(
     did_method: &dyn DidMethod,
     keys: CreateDidRequestKeysDTO,
-) -> Result<(), ServiceError> {
+) -> Result<(), ValidationError> {
     let keys = AmountOfKeys {
         global: count_uniq(
             keys.authentication
@@ -33,9 +33,7 @@ pub(crate) fn validate_request_amount_of_keys(
     };
 
     if !did_method.validate_keys(keys) {
-        Err(ServiceError::Validation(
-            ValidationError::DidInvalidKeyNumber,
-        ))
+        Err(ValidationError::DidInvalidKeyNumber)
     } else {
         Ok(())
     }

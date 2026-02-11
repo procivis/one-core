@@ -200,7 +200,8 @@ impl DidService {
                 CreateLocalIdentifierRequest::Did(request),
                 organisation,
             )
-            .await?;
+            .await
+            .error_while("creating local did identifier")?;
 
         let did = identifier
             .did
